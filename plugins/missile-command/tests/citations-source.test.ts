@@ -251,6 +251,12 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // `.BYTE` row. All carry real numeric entries (not kind tags) and are pinned in
     // the mc5-3 consistency block below.
     'CMKILL', 'CRMWAV', 'SLOPEH', 'SLOPEL', 'ANGADD',
+    // mc7-1: the high-score ladder. HSCORL (MC-HISCORE-DEPTH) is a `.BLKB 3*5`
+    // reservation whose numeric value 5 is the entry-count factor; SCOINI
+    // (MC-HISCORE-DEFAULT-*) is the seeded default-score `.BYTE` table whose claim
+    // values are little-endian BCD triples (7500..6950), not single bytes. Both
+    // carry real numerics (not kind tags) and are pinned in the mc7-1 block below.
+    'HSCORL', 'SCOINI',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -551,5 +557,38 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     const icspd = loadClaims().find((c) => c.symbol === 'ICSPDL')
     expect(Number(icspd?.value), 'ICSPDL fraction scale = 2^8 (a one-byte fraction of a frame)').toBe(256)
     expect(icspd?.source.verbatim, 'cited to the ICSPDL declaration that names it a FRACTION').toMatch(/ICSPDL:\s*\.BLKB.*FRACTION/)
+  })
+
+  // mc7-1: the high-score ladder depth + seeded defaults. The DERIVED exemption
+  // lets HSCORL carry the numeric 5 and SCOINI carry the decoded scores 7500..6950;
+  // this block is their teeth — depth re-derives from `.BLKB 3*5`, and every SCOINI
+  // claim value must be a genuine little-endian BCD triple of its cited `.BYTE` line,
+  // so no fabricated depth or score can ride into the un-cited-literal guard's set.
+  it('mc7-1: HSCORL depth and SCOINI default scores derive from their cited lines', () => {
+    const claims = loadClaims()
+
+    // HSCORL: .BLKB 3*5 → depth = the entry-count factor (the `*5`).
+    const depth = claims.find((c) => c.symbol === 'HSCORL')
+    expect(depth, 'MC-HISCORE-DEPTH must be committed').toBeTruthy()
+    const blk = depth!.source.verbatim.match(/\.BLKB\s+(\d+)\*(\d+)/)
+    expect(blk, 'HSCORL is a `.BLKB N*M` reservation').toBeTruthy()
+    expect(Number(depth!.value), 'depth is the M entry-count factor').toBe(Number(blk![2]))
+    expect(Number(depth!.value), 'the MC ladder is 5 deep').toBe(5)
+
+    // SCOINI: five little-endian BCD score triples. Decode and assert each SCOINI
+    // claim value is one of the decoded scores.
+    const bcd = (b: number): number => (b >> 4) * 10 + (b & 0x0f)
+    const scoiniClaims = claims.filter((c) => c.symbol === 'SCOINI')
+    expect(scoiniClaims.length, 'the five SCOINI default-score rungs must be claimed').toBe(5)
+    const bytes = (scoiniClaims[0].source.verbatim.split('.BYTE')[1] ?? '')
+      .split(',').map((t) => t.trim()).filter((t) => t.length > 0).map((t) => decodeRadix16(t))
+    const scores: number[] = []
+    for (let i = 0; i + 2 < bytes.length; i += 3) {
+      scores.push(bcd(bytes[i]) + bcd(bytes[i + 1]) * 100 + bcd(bytes[i + 2]) * 10000)
+    }
+    expect(scores, 'the five decoded SCOINI scores (ascending storage)').toEqual([6950, 7005, 7330, 7495, 7500])
+    for (const c of scoiniClaims) {
+      expect(scores, `${c.id}: value ${c.value} must be a decoded SCOINI score`).toContain(Number(c.value))
+    }
   })
 })

@@ -1,0 +1,90 @@
+[
+ {
+  "id": "MC-HISCORE-DEPTH",
+  "symbol": "HSCORL",
+  "value": 5,
+  "meaning": "High-score ladder depth: HSCORL reserves 3 BCD score bytes x 5 rungs (.BLKB 3*5); BEST is read from HSCORL+<3*4> (index 4, the fifth rung). MC threads depth 5 through @shared/highscore rather than the shared default of 10.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 125,
+   "verbatim": "HSCORL:\t.BLKB 3*5\t\t;HIGH SCORE LSB"
+  }
+ },
+ {
+  "id": "MC-HISCORE-DEFAULT-DFT",
+  "symbol": "SCOINI",
+  "value": 7500,
+  "meaning": "Seeded default ladder rung 1 (BEST), initials DFT: SCOINI little-endian BCD triple [00,75,00] = 7500.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3748,
+   "verbatim": "SCOINI:\t.BYTE 50,69,0,05,70,0,30,73,0,95,74,0,0,75,0"
+  }
+ },
+ {
+  "id": "MC-HISCORE-DEFAULT-DLS",
+  "symbol": "SCOINI",
+  "value": 7495,
+  "meaning": "Seeded default ladder rung 2, initials DLS: SCOINI little-endian BCD triple [95,74,00] = 7495.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3748,
+   "verbatim": "SCOINI:\t.BYTE 50,69,0,05,70,0,30,73,0,95,74,0,0,75,0"
+  }
+ },
+ {
+  "id": "MC-HISCORE-DEFAULT-SRC",
+  "symbol": "SCOINI",
+  "value": 7330,
+  "meaning": "Seeded default ladder rung 3, initials SRC: SCOINI little-endian BCD triple [30,73,00] = 7330.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3748,
+   "verbatim": "SCOINI:\t.BYTE 50,69,0,05,70,0,30,73,0,95,74,0,0,75,0"
+  }
+ },
+ {
+  "id": "MC-HISCORE-DEFAULT-RDA",
+  "symbol": "SCOINI",
+  "value": 7005,
+  "meaning": "Seeded default ladder rung 4, initials RDA: SCOINI little-endian BCD triple [05,70,00] = 7005.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3748,
+   "verbatim": "SCOINI:\t.BYTE 50,69,0,05,70,0,30,73,0,95,74,0,0,75,0"
+  }
+ },
+ {
+  "id": "MC-HISCORE-DEFAULT-MJP",
+  "symbol": "SCOINI",
+  "value": 6950,
+  "meaning": "Seeded default ladder rung 5 (lowest), initials MJP: SCOINI little-endian BCD triple [50,69,00] = 6950.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3748,
+   "verbatim": "SCOINI:\t.BYTE 50,69,0,05,70,0,30,73,0,95,74,0,0,75,0"
+  }
+ },
+ {
+  "id": "MC-HISCORE-INITIALS",
+  "symbol": "STRINI",
+  "value": "cite",
+  "meaning": "Default ladder initials MJPRDASRCDLSDFT — 5 x 3 chars copied into INITAL positionally with SCOINI: MJP RDA SRC DLS DFT (ascending storage; DFT pairs with the BEST rung). The programmers' initials easter egg.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3746,
+   "verbatim": "STRINI:\t.ASCIN /MJPRDASRCDLSDFT /"
+  }
+ },
+ {
+  "id": "MC-HISCORE-QUALIFY",
+  "symbol": "UPDATE HIGH SCORE LADDER",
+  "value": "anchor",
+  "meaning": "The insert-on-qualify ladder update MC's qualifiesForHighScore/insertHighScore realize: search the 5-deep ladder for the new score's rung and insert, dropping the lowest. UPDATE HIGH SCORE LADDER -> SEARCH -> INSERT.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3780,
+   "verbatim": "\t.SBTTL UPDATE HIGH SCORE LADDER"
+  }
+ }
+]
