@@ -23,10 +23,12 @@ stories:
     title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     type: bug
+    branch: feat/mc10-1-absolute-aim-cursor
+    assignee: Keith Avery
   - id: mc10-2
     title: Draw the GROUND (COL001) yellow terrain landmass at the field bottom so cities/bases sit on it instead of floating on black — render.ts currently skips the GROUND slot; colour already correct (wave-1 CYELLO), no palette change needed
     points: 2
