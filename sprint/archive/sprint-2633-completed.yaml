@@ -74,3 +74,8 @@ completed_stories:
     title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
     points: 3
     completed: '2026-08-08'
+  - id: SH4-3
+    epic: SH4
+    title: 'Extract the RASTER integer-scale letterbox fitIntegerScale (largest whole-number scale + centred integer offsets) into @shared/view as a variant distinct from its DPR/vector letterbox: centipede + pac-man shell/layout.ts are byte-identical (pac-man header: "ported from centipede"), fold joust shell/render.ts viewport (near-identical, offsets-only shape). SUPERSEDES the @shared/view-letterbox clause of SH3-4 — pac-man needs THIS, not the DPR path'
+    points: 3
+    completed: '2026-08-09'
