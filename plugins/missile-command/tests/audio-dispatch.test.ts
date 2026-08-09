@@ -41,6 +41,7 @@ import { playEventSounds, updateSustainedSounds } from '../src/shell/audio-dispa
 import type { SoundEvent } from '../src/core/sound-events.js'
 import { createGame, type GameState } from '../src/core/game.js'
 import type { Icbm } from '../src/core/icbm.js'
+import type { DroneKind } from '../src/core/drone.js'
 
 /** A recording fake of the audio surface — captures every call, in order. */
 function recorder() {
@@ -60,7 +61,7 @@ function recorder() {
       // mc8-5: the parametric sweep feed. Records the KIND and the sweep FRAME it was
       // driven with, so a test can prove the running drone is fed the right voice and
       // that the sweep actually advances (droneSweep reachability).
-      feedDrone(frame: number, kind: string): void {
+      feedDrone(frame: number, kind: DroneKind): void {
         calls.push(`feedDrone:${kind}:${frame}`)
       },
     },
@@ -352,14 +353,30 @@ describe('mc8-5 — the drone LIVE TRIGGER starts/stops from on-screen threats',
     expect(r.calls.some((c) => c.startsWith('feedDrone'))).toBe(false)
   })
 
-  it('a PAUSED game with a threat on screen does NOT drone (pause extends the game-over seam)', () => {
-    // 'pause' freezes the field like 'over' (enemies remain, droneRequest non-null), so
-    // the same phase gate must silence it — a paused cabinet should not hum. Fails today
-    // (updateSustainedSounds only special-cases 'over').
+  it('a PAUSED game with a threat on screen does NOT drone (pre-emptive guard for mc6 pause)', () => {
+    // 'pause' is NOT yet wired into stepGame/nextPhase — nothing sets phase 'pause' today
+    // (unlike 'over', which game.ts:178 genuinely freezes). This is a forward guard: when
+    // mc6 wires pause, a paused cabinet must not hum, and the SAME 'play'-only phase gate
+    // already silences it (droneRequest is phase-agnostic, so presence alone would leak).
     const r = recorder()
     r.audio.startLoop('drone')
     updateSustainedSounds(r.audio, play({ phase: 'pause', icbms: [cruise] }))
     expect(droneRunning(r.calls), 'a paused game must not drone').toBe(false)
     expect(r.calls.some((c) => c.startsWith('feedDrone'))).toBe(false)
+  })
+
+  it('a NON-play, non-terminal phase (between/attract) with a threat present does NOT drone — the gate is an ALLOWLIST', () => {
+    // Locks the 'play'-ONLY allowlist. Without this, an enumerated-denylist mutant
+    // (`phase === 'over' || phase === 'pause' ? null : droneRequest(state)`) passes every
+    // other test yet drones through 'between'/'attract'/'setup'. 'between' carries a
+    // frozen-in ICBM roster into its one-frame beat, so droneRequest is non-null here —
+    // only the phase gate silences it.
+    for (const phase of ['between', 'attract', 'setup'] as const) {
+      const r = recorder()
+      r.audio.startLoop('drone')
+      updateSustainedSounds(r.audio, play({ phase, icbms: [cruise], sputniks: [plane] }))
+      expect(droneRunning(r.calls), `phase '${phase}' must not drone`).toBe(false)
+      expect(r.calls.some((c) => c.startsWith('feedDrone')), `phase '${phase}' feeds no sweep`).toBe(false)
+    }
   })
 })

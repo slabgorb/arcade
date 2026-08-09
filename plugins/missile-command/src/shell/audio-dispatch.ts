@@ -77,13 +77,16 @@ export function playEventSounds(audio: SoundSurface, events: readonly SoundEvent
 // `droneSweep`, fed via `feedDrone`); the moment the threat clears, stop it.
 //
 // The edge-driven-voices gotcha (mc8-2): the drone is a continuous voice with no
-// closing event when the game ENDS (or PAUSES) with the threat still on screen — at
-// those phases the rosters are frozen, so `droneRequest` still returns non-null. A
-// trigger keyed on presence alone would therefore RE-START the drone across the
-// terminal/pause edge and leak it. So the phase gate wins over presence: the drone
-// runs ONLY during `'play'`; every other phase silences it outright (battlezone forces
-// stopEngine at 'gameover' the same way). `startLoop`/`stopLoop` are idempotent, so a
-// held threat re-`startLoop`s harmlessly and an empty frame is a cheap no-op.
+// closing event when the game ENDS with the threat still on screen — `stepGame` freezes
+// the roster at `'over'` (game.ts:178 short-circuits, copying icbms/sputniks unchanged),
+// so `droneRequest` still returns non-null there. A trigger keyed on presence alone would
+// therefore RE-START the drone across the terminal edge and leak it. So the phase gate
+// wins over presence: the drone runs ONLY during `'play'`, and every other phase silences
+// it outright (battlezone forces stopEngine at 'gameover' the same way). That allowlist
+// also pre-empts `'pause'` — not yet wired into the state machine (nothing sets that phase
+// today), but the same presence-leak would apply once mc6 adds it, so it is covered now.
+// `startLoop`/`stopLoop` are idempotent, so a held threat re-`startLoop`s harmlessly and
+// an empty frame is a cheap no-op.
 export function updateSustainedSounds(audio: DroneSurface, state: GameState): void {
   const kind = state.phase === 'play' ? droneRequest(state) : null
   if (kind === null) {
