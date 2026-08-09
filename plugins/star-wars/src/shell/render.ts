@@ -60,12 +60,12 @@ import { trenchChannel } from '../core/trench-channel'
 import { trenchWallDetail, trenchFarEnd } from '../core/trench-detail'
 // COCKPIT: the space eye = the cockpit (sw8-8), not a literal
 import { crosshairNdc, FOV_Y, COCKPIT } from '../core/gameRules'
+import { CAMERA_ORIENT, toNative } from '../core/basis' // sw10-1: native world → eye remap (retires *_ORIENT)
 import { surfaceShip } from '../core/sim' // the ship point (sw7-16), not a copy
 import {
   perspective,
   multiply,
   rotationX,
-  rotationZ,
   translation,
   scaling,
   viewMatrix,
@@ -74,7 +74,7 @@ import {
   type Mat4,
   type Vec3,
 } from '@shared/math3d'
-import { project, drawWireframe, GLOW_FOR, NEAR, FAR } from './wireframe'
+import { project, drawWireframe, ndcToScreen, GLOW_FOR, NEAR, FAR } from './wireframe'
 import { layoutText, CELL_H } from './font'
 import { glowPolyline } from './glow'
 
@@ -144,9 +144,15 @@ const TRENCH_GLOW = '#22e600' // PROVISIONAL(findings ## Colors & intensities) �
 // point, then gone, not a glow trailing the bolt down its whole 6s flight.
 const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 
-// Display orientation per surface model (story 8-4). The authentic object-space
-// axes do not match the in-game view, so each model is rotated into place before
-// it is drawn (the vertex data in core/models.ts stays untouched).
+// Display orientation per surface model (story 8-4). RETIRED by sw10-1 for
+// SURFACE / PORT / TIE — the world now runs in the ROM-native basis (basis.ts),
+// so those models drop in under the ONE camera remap and their constants below
+// are `IDENTITY`. The paragraphs that follow describe the PRE-sw10-1 per-model
+// rotations as HISTORY (why each const existed), not current behaviour; only
+// TOWER_ORIENT remains a live rotation (it carries real display geometry, not a
+// basis conversion — see its own note). The authentic object-space axes did not
+// match the old view, so each model WAS rotated into place before it was drawn
+// (the vertex data in core/models.ts stayed untouched).
 //
 //   SURFACE — the cross-sections stand in the X/Y plane in object space; a -90°
 //   roll about Z lays them down so the relief rises in +Y from the y=0 floor.
@@ -161,7 +167,7 @@ const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 //
 // NOTE: structural tests can't catch orientation/scale — these MUST be eyeballed
 // in the dev server once the surface phase is reachable in play.
-export const SURFACE_ORIENT: Mat4 = rotationZ(-Math.PI / 2)
+export const SURFACE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 export const TRENCH_ORIENT: Mat4 = IDENTITY
 
 // The exhaust port's placement basis (story sw5-6).
@@ -190,7 +196,7 @@ export const TRENCH_ORIENT: Mat4 = IDENTITY
 //
 // The port is three concentric SQUARES (|x| = |y| at every point), so it is 4-fold
 // symmetric about the vertical and the rotation's horizontal-axis swap is invisible.
-export const PORT_ORIENT: Mat4 = rotationX(-Math.PI / 2)
+export const PORT_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
 // The ROM → world presentation scale for the ground objects (story sw5-5).
 //
@@ -203,40 +209,48 @@ export const PORT_ORIENT: Mat4 = rotationX(-Math.PI / 2)
 // heights), never wider.
 export const GROUND_MODEL_SCALE = 1 / 30
 
-// The ground-object placement basis (story sw5-5). TOWER_ORIENT was IDENTITY only
-// because sw3-11 had hand-re-authored these models into the port's own frame; now
-// that they carry the ROM's data verbatim, this is what bridges the two. Applied
-// as `modelMatrix(pos, TOWER_ORIENT, GROUND_MODEL_SCALE)`, i.e. AFTER the scale:
+// The ground-object placement basis (story sw5-5; sw10-1 native-basis remap).
+// TOWER_ORIENT is the ONE per-model orient the native migration keeps: it is not a
+// leftover axis hack but the display posture the shipped game gave the tower (its
+// ROM fore/aft axis reads left/right on screen), preserved verbatim. It is left of
+// the AC #2 guarded set (SURFACE/PORT/TIE) precisely because it carries real display
+// geometry, not a basis conversion. Applied as
+// `modelMatrix(pos, TOWER_ORIENT, GROUND_MODEL_SCALE)`, i.e. AFTER the scale.
 //
-//   1. rotationX(-90°) stands the model up. The ROM's up-axis is Z (x is fore/aft,
-//      y lateral); ours is Y. This maps (x, y, z) -> (x, z, -y).
+// It is the old OpenGL orient carried onto the native axis by the camera remap P
+// (NATIVE_FROM_OPENGL): a STATIC model's native orient is `P · orient_old` (proven
+// numerically to project err 0 — NOT the conjugate `P·M·Pᵀ`, which is only right
+// for a dynamically-composed orient like the TIE). The old orient was:
+//
+//   1. rotationX(-90°) — the display posture (in the old y-up world it stood the
+//      Z-up ROM model up: (x, y, z) -> (x, z, -y)). P carries it onto native axes.
 //   2. the lift undoes GD$MDT. The ROM recentres every ground object's height so
 //      that model z = 0 is the height the PLAYER flies at (its comment: "OFFSET
-//      HITE TO MID OF PLAYERS HITE"), which leaves the base ring at z = -GD$MDT.
-//      Adding GD$MDT back — at the presentation scale — seats the base on the y=0
-//      floor, where the camera and the maze expect it.
+//      HITE TO MID OF PLAYERS HITE"), leaving the base ring at z = -GD$MDT. Adding
+//      GD$MDT back — at the presentation scale — seats the base on the floor; under
+//      P the old +Y lift lands on the native up (+Z) axis, where it belongs.
 //
 // That lift is 3840/30 = 128 world units, which is exactly SKIM_ALTITUDE: the ROM
 // has been telling us the ship's skim height all along. Derived here from the ROM
 // constant rather than from SKIM_ALTITUDE itself, so that retuning the flight
 // height (a play-balance knob) cannot silently sink the towers into the floor.
 export const TOWER_ORIENT: Mat4 = multiply(
-  translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0),
-  rotationX(-Math.PI / 2),
+  CAMERA_ORIENT, // P · orient_old: carry the old display orient onto the native axes
+  multiply(translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0), rotationX(-Math.PI / 2)),
 )
 
-// TIE display correction (story 8-13). The authentic model stacks its two
-// hexagonal solar panels along the object-space Y axis (panels at y=±208, lying
-// flat in X/Z) — a TIE on its side. A +90° roll about Z stands them upright so
-// they sit left/right of the cockpit pod, with the model's depth axis on +Z.
-// This FIXED correction is composed with each enemy's DYNAMIC look-at-cockpit
-// `orient` (computed in core) so the upright TIE then banks at the player.
+// TIE display correction (story 8-13) — RETIRED by sw10-1 (history only). The
+// authentic model stacks its two hexagonal solar panels along the object-space Y
+// axis (panels at y=±208, lying flat in X/Z) — a TIE on its side. Pre-sw10-1 a
+// +90° roll about Z stood them upright, composed with each enemy's DYNAMIC
+// look-at-cockpit `orient`. sw10-1 baked that roll into the vertex data (via
+// `bakeTie`), so TIE_ORIENT is now IDENTITY and composing it at the draw call is
+// a no-op; the panels read upright straight from the baked model data.
 //
-// NOTE: like the surface orients, the exact correction escapes structural tests
-// (the render guard only asserts `orient` is APPLIED) and MUST be eyeballed in
-// the dev server (port 5274) — confirm the panels read upright and the ship
-// faces the cockpit before sign-off.
-export const TIE_ORIENT: Mat4 = rotationZ(Math.PI / 2)
+// NOTE: the upright posture escapes structural tests (the render guard only
+// asserts `orient` is APPLIED) and is eyeballed in the dev server (port 5270) —
+// confirm the panels read upright and the ship faces the cockpit before sign-off.
+export const TIE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
 // TRENCH_SKIM (a fixed 60-unit cockpit skim, added to the eye here) is GONE (sw5-6). It
 // was the fudge that hid a frame collision: the channel builds its floor at y=0, but the
@@ -246,14 +260,15 @@ export const TIE_ORIENT: Mat4 = rotationZ(Math.PI / 2)
 // (TRENCH_EYE_MIN..TRENCH_EYE_MAX) and `state.trenchView` IS the eye. Nothing to add.
 const PORT_GLOW = GLOW_FOR['Exhaust Port'] // exhaust-port target amber (shared)
 
-// Where the shell seats the Death Star surface in Z (story 8-11). The relief is
-// DEEP (object Z spans ~ -3840..+6720) and SURFACE_ORIENT only ROLLS it about Z,
-// so its near end stays at +6720 in world Z. Drawn at Z=0 (the old bug) that near
-// end fell BEHIND the cockpit and was clipped by the near plane, leaving the
-// floor invisible while only a far speck survived ahead of the turrets. We shift
-// the whole relief forward so its near ring sits just inside the turret band
-// (turrets spawn at -SPAWN_DISTANCE and scroll in) and the rest recedes ahead to
-// the horizon — derived from the model so it tracks the geometry, not a literal.
+// Where the shell seats the Death Star surface, forward of the cockpit (story 8-11).
+// The relief is DEEP (object Z spans ~ -3840..+6720); seated at the origin (the old
+// bug) its near end fell BEHIND the cockpit and was clipped by the near plane. We
+// shift the whole relief forward so its near ring sits just inside the turret band
+// (turrets spawn one SPAWN_DISTANCE ahead and scroll in) and the rest recedes to the
+// horizon — derived from the model so it tracks the geometry, not a literal. The
+// magnitude is unchanged by sw10-1; `surfacePlacement` re-expresses the SEAT onto the
+// native depth (+X) axis. DEATH_STAR_SURFACE is retired from the live surface scene
+// (surfaceGrid draws it now); this seat survives only for the debug overlay.
 const SURFACE_NEAR_EXTENT = Math.max(...DEATH_STAR_SURFACE.vertices.map((v) => v[2]))
 const Z_SURFACE_PLACEMENT = SURFACE_NEAR_EXTENT + SPAWN_DISTANCE / 2
 
@@ -263,11 +278,12 @@ const Z_SURFACE_PLACEMENT = SURFACE_NEAR_EXTENT + SPAWN_DISTANCE / 2
  * straddling it at the origin (the 8-11 bug). The altitude-skim framing — the
  * floor dropping away as the ship climbs — is no longer baked here; it lives in
  * the CAMERA (`cameraView`), which lifts the eye to the ship's altitude. The floor
- * keeps its true world Y = 0 (the surface plane), so it and the turrets (also at
- * y ≈ 0) share one frame and the camera lifts them together.
+ * keeps its true native up = 0 (the surface plane), so it and the turrets (also at
+ * up ≈ 0) share one frame and the camera lifts them together. sw10-1: the seat is
+ * `toNative` of the old −Z seat, i.e. ahead on the native depth (+X) axis.
  */
 export function surfacePlacement(): { floor: Vec3 } {
-  return { floor: [0, 0, -Z_SURFACE_PLACEMENT] }
+  return { floor: toNative([0, 0, -Z_SURFACE_PLACEMENT]) }
 }
 
 // Where the shell seats the Death Star BODY during the space phase (story 11-7).
@@ -330,7 +346,7 @@ export function deathStarPlacement(state: GameState): { pos: Vec3; scale: number
   const z = DEATH_STAR_Z_FAR + (DEATH_STAR_Z_NEAR - DEATH_STAR_Z_FAR) * p
   const scale = DEATH_STAR_SCALE_FAR + (DEATH_STAR_SCALE_NEAR - DEATH_STAR_SCALE_FAR) * p
   const x = Math.tan(deathStarOffAxis(t)) * -z
-  return { pos: [x, 0, z], scale }
+  return { pos: toNative([x, 0, z]), scale } // sw10-1: native [depth, right, up]
 }
 
 // sw7-15 / M-010: the picture is in raw ROM units (radius 50); scale it up so the body
@@ -354,7 +370,7 @@ function deathStarSeat(state: GameState): { pos: Vec3; scale: number } {
     if (age >= 0 && age <= DEATH_STAR_BOOM_SECONDS) {
       const loomT = Math.min(1, age / DEATH_STAR_LOOM_SECONDS)
       const scale = DEATH_STAR_SCALE_NEAR + (DEATH_STAR_LOOM_MAX_SCALE - DEATH_STAR_SCALE_NEAR) * loomT
-      return { pos: [0, 0, DEATH_STAR_Z_NEAR], scale }
+      return { pos: toNative([0, 0, DEATH_STAR_Z_NEAR]), scale } // sw10-1: native [depth, right, up]
     }
   }
   return deathStarPlacement(state)
@@ -380,17 +396,32 @@ function drawDeathStar(ctx: CanvasRenderingContext2D, seat: { pos: Vec3; scale: 
  * world-shift constants (`SKIM_OFFSET` and the per-entity altitude drops): instead
  * of shoving the world down, we raise the camera. Pure core math; the boundary holds.
  */
+/**
+ * The scene projection matrix (sw10-1 rework, Reviewer F1). The cabinet lens is
+ * the authentic SYMMETRIC ±45° square glass — aspect-INDEPENDENT — so it projects
+ * with `aspect = 1` regardless of the canvas shape; the non-square window is
+ * absorbed by the LETTERBOX in `ndcToScreen` (a centered square viewport), not by
+ * skewing the frustum. This is the single projection BOTH `render()` and
+ * `drawDebugOverlay()` draw with, retiring the old duplicated
+ * `perspective(FOV_Y, w/h)` whose aspect term made the fired ray and the crosshair
+ * disagree horizontally (the 8-16 kill-loop, F1). `w`/`h` are accepted for the
+ * seam contract but do not skew the lens — aspect independence is the point.
+ */
+export function sceneProjection(_w: number, _h: number): Mat4 {
+  return perspective(FOV_Y, 1, NEAR, FAR)
+}
+
 export function cameraView(state: GameState): Mat4 {
   // The surface eye IS the core's ship point, not a copy of it (sw7-16): the camera and the gun
   // read the same function, so they cannot drift apart.
-  if (state.phase === 'surface') return viewMatrix(surfaceShip(state.altitude), IDENTITY)
+  if (state.phase === 'surface') return viewMatrix(surfaceShip(state.altitude), CAMERA_ORIENT)
   // The trench eye rides the fixed skim PLUS the pilotable viewpoint offset (story
   // sw3-2): steering pans/dives the camera so the dodge the sim computes is what the
   // player sees. `trenchView` is a collision-world offset (z unused); added onto the
   // display skim, kept separate from it.
   if (state.phase === 'trench')
     // `trenchView` IS the eye: lateral offset, height above the y=0 trench floor (sw5-6).
-    return viewMatrix(state.trenchView, IDENTITY)
+    return viewMatrix(state.trenchView, CAMERA_ORIENT)
   // space: the eye IS the cockpit at the world origin (sw8-8). sw8-1 drove this camera off
   // `ST.UX`, but `ST.UX` is the STARFIELD's register — its only CONSUMER in the 1983 tree is the
   // star generator (`WSSTAR.MAC:98`, `LDD ST.UX ;STARS RELATIVE MOVEMENT`); the WSMAIN reads are
@@ -401,7 +432,7 @@ export function cameraView(state: GameState): Mat4 {
   // homes at — the sw7-16 invariant, now satisfied by holding the view still rather than by
   // dragging the gun. The LATERAL DRIFT still happens where the ROM puts it: the starfield slides
   // under `STAR_LATERAL_SPEED` (`core/starfield.ts`), which is what makes space read as motion.
-  return viewMatrix(COCKPIT, IDENTITY)
+  return viewMatrix(COCKPIT, CAMERA_ORIENT)
 }
 
 /**
@@ -487,7 +518,7 @@ export function render(
   // the field in flight too, WSMAIN.MAC:2525-2528).
   drawStarfield(ctx, state.starfield, w, h)
 
-  const proj = perspective(FOV_Y, w / h, NEAR, FAR)
+  const proj = sceneProjection(w, h)
   // The cockpit IS the camera (story 11-2): one view matrix from sim state places
   // every model via MVP = projection × view × model, retiring the per-entity
   // world-shift glue. Space → origin; surface/trench → eye lifted to skim height.
@@ -524,7 +555,7 @@ export function render(
     for (const d of state.groundDebris) {
       const glow = d.kind === 'bunker' ? FIREBALL_GLOW : CAP_GLOW // VGCRED / VGCWHT
       drawWireframe(ctx, GROUND_DEBRIS_CHUNK, multiply(view, modelMatrix(d.pos)), proj, w, h, glow)
-      const shadowAt: Vec3 = [d.pos[0], 0, d.pos[2]]
+      const shadowAt: Vec3 = [d.pos[0], d.pos[1], 0] // native floor: up (+Z) = 0
       drawWireframe(ctx, GROUND_DEBRIS_SHADOW, multiply(view, modelMatrix(shadowAt)), proj, w, h, glow)
     }
   } else if (state.phase === 'trench') {
@@ -561,9 +592,9 @@ export function render(
     // the player closes on it (deathStarPlacement). Draw it FIRST so it sits BEHIND
     // the TIEs (painter's order) and never intrudes on a fighter's hit-test.
     drawDeathStar(ctx, deathStarSeat(state), view, proj, w, h)
-    // Each TIE banks at the player: its per-enemy look-at `orient` (core) turned
-    // upright by the fixed TIE_ORIENT display correction (display first, then look
-    // => multiply(orient, TIE_ORIENT)), placed in the world by its model matrix.
+    // Each TIE banks at the player: its per-enemy look-at `orient` (core), placed
+    // in the world by its model matrix. The `multiply(e.orient, TIE_ORIENT)` is a
+    // no-op post-sw10-1 (TIE_ORIENT is IDENTITY); the upright posture is baked in.
     for (const e of state.enemies)
       drawWireframe(ctx, TIE_FIGHTER, multiply(view, modelMatrix(e.pos, multiply(e.orient, TIE_ORIENT))), proj, w, h, TIE_GLOW)
     // A destroyed TIE breaks into three ROM pieces (story sw3-8), each with its OWN
@@ -571,8 +602,10 @@ export function render(
     // 1.170 s) while the centre globe pops FIRST at TIE_GLOBE_LIFE_SECONDS (0x10 = 16f ≈
     // 0.780 s). Each piece colours itself from its OWN remaining ROM timer via the
     // shared TVWCLE ramp (sw7-7 X-003) — never the white VJFLS flash, which is a
-    // ground-object path. The split direction is a render tell (TIE_ORIENT), and the
-    // fly-apart spread stays age-driven (no per-piece velocity state — finding X-004,
+    // ground-object path. The split direction is the fly-apart position offsets
+    // below (wings on ±native-right, globe on -native-depth; swept to native in
+    // sw10-1 — TIE_ORIENT is IDENTITY, no longer a tell); the spread stays
+    // age-driven (no per-piece velocity state — finding X-004,
     // an accepted structural gap).
     for (const d of state.dyingTies) {
       const at = (dx: number, dy: number, dz: number): Mat4 =>
@@ -584,14 +617,14 @@ export function render(
         const wf = Math.min(1, d.age / TIE_WING_LIFE_SECONDS)
         const ws = wf * TIE_DEATH_SPREAD
         const wc = tiePieceGlow((TIE_WING_LIFE_SECONDS - d.age) * TICK_HZ)
-        drawWireframe(ctx, TIE_WING_FRAG_1, at(-ws, 0, 0), proj, w, h, wc)
-        drawWireframe(ctx, TIE_WING_FRAG_2, at(ws, 0, 0), proj, w, h, wc)
+        drawWireframe(ctx, TIE_WING_FRAG_1, at(0, -ws, 0), proj, w, h, wc)
+        drawWireframe(ctx, TIE_WING_FRAG_2, at(0, ws, 0), proj, w, h, wc)
       }
       if (d.age <= TIE_GLOBE_LIFE_SECONDS) {
         const gf = Math.min(1, d.age / TIE_GLOBE_LIFE_SECONDS)
         const gs = gf * TIE_DEATH_SPREAD
         const gc = tiePieceGlow((TIE_GLOBE_LIFE_SECONDS - d.age) * TICK_HZ)
-        drawWireframe(ctx, TIE_WING_FRAG_3, at(0, 0, gs), proj, w, h, gc)
+        drawWireframe(ctx, TIE_WING_FRAG_3, at(-gs, 0, 0), proj, w, h, gc)
       }
     }
   }
@@ -682,9 +715,10 @@ function drawPlayerLaserToSite(
   h: number,
 ): void {
   const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
-  // The same NDC→screen mapping `drawCrosshair` and `project` use (Y flipped for the canvas),
-  // so the beams converge exactly on the reticle rather than near it.
-  const tip: readonly [number, number] = [(nx * 0.5 + 0.5) * w, (-ny * 0.5 + 0.5) * h]
+  // The same letterboxed NDC→screen mapping `drawCrosshair` and `project` use (the
+  // shared `ndcToScreen`), so the beams converge exactly on the reticle — and, since
+  // the scene shares that square, on whatever the crosshair covers (sw10-1 F1).
+  const tip: readonly [number, number] = ndcToScreen(nx, ny, w, h)
   const cannons: ReadonlyArray<readonly [number, number]> = [
     [0, 0],
     [w, 0],
@@ -1125,10 +1159,10 @@ function drawCockpitFrame(ctx: CanvasRenderingContext2D, w: number, h: number): 
  */
 function drawCrosshair(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
   const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
-  const cx = (nx * 0.5 + 0.5) * w
-  // Match project()'s NDC→screen mapping (which flips Y for the canvas), so the
-  // reticle sits exactly where a target at the same NDC is drawn: +aimY → top.
-  const cy = (-ny * 0.5 + 0.5) * h
+  // Match project()'s letterboxed NDC→screen mapping (the shared `ndcToScreen`, Y
+  // flipped for the canvas), so the reticle sits exactly where a target at the same
+  // NDC is drawn: +aimY → top, and no horizontal drift at any window shape (sw10-1 F1).
+  const [cx, cy] = ndcToScreen(nx, ny, w, h)
   const r = 16
   ctx.lineWidth = 2
   ctx.strokeStyle = GLOW

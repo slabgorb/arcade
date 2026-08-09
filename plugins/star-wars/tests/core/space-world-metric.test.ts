@@ -68,7 +68,7 @@ import {
 } from '../../src/core/state'
 import { stepGame } from '../../src/core/sim'
 import { NO_INPUT, type Input } from '../../src/core/input'
-import { perspective, transform, IDENTITY } from '@shared/math3d'
+import { IDENTITY } from '@shared/math3d'
 
 // The ROM constants this story restores, named here so the assertions read as the
 // spec's table (and so a reviewer can diff the expectations against WSCPU.MAC).
@@ -84,16 +84,17 @@ const AUTHENTIC_PAIR_KEYS = new Set(['0:1024', '1024:0', '2048:0', '0:2048'])
 // --- Spawn observation ------------------------------------------------------
 //
 // The space step spawns at most one TIE per frame, placing it at exactly
-// pos = [x, y, -TIE_SPAWN_DISTANCE] (sim.ts spawnTie), and only THEN, on later
-// frames, does the VM-driven flight (applyManeuver) advance it inward. So a fresh
-// spawn is the unique enemy whose z equals -TIE_SPAWN_DISTANCE exactly; every moved
-// TIE has a fractional, closer z that never returns to the spawn plane. Exact-equality
-// detection is thus robust to whatever the flight model does after spawn.
+// native pos = [TIE_SPAWN_DISTANCE, x, y] (sim.ts spawnTie: toNative([x,y,-D]) =
+// [depth, right, up]), and only THEN, on later frames, does the VM-driven flight
+// (applyManeuver) advance it inward. So a fresh spawn is the unique enemy whose depth
+// (pos[0]) equals TIE_SPAWN_DISTANCE exactly; every moved TIE has a fractional, closer
+// depth that never returns to the spawn plane. Exact-equality detection is thus robust
+// to whatever the flight model does after spawn.
 
 interface Spawn {
-  x: number
-  y: number
-  z: number
+  x: number // lateral right (native pos[1])
+  y: number // lateral up (native pos[2])
+  z: number // depth ahead (native pos[0], +TIE_SPAWN_DISTANCE at spawn)
 }
 
 /** Step a fresh space wave forward `steps` frames at `dt`, capturing every TIE on
@@ -106,10 +107,10 @@ interface Spawn {
 function collectSpawns(dt: number, steps: number, seed = 4041): Spawn[] {
   let s: GameState = { ...initialState(seed), lives: 1e9 }
   const out: Spawn[] = []
-  const atPlane = (e: Enemy) => Math.abs(e.pos[2] + TIE_SPAWN_DISTANCE) < 1e-6
+  const atPlane = (e: Enemy) => Math.abs(e.pos[0] - TIE_SPAWN_DISTANCE) < 1e-6 // native depth
   for (let i = 0; i < steps; i++) {
     s = stepGame(s, NO_INPUT, dt)
-    for (const e of s.enemies) if (atPlane(e)) out.push({ x: e.pos[0], y: e.pos[1], z: e.pos[2] })
+    for (const e of s.enemies) if (atPlane(e)) out.push({ x: e.pos[1], y: e.pos[2], z: e.pos[0] })
     // sw8-2 RE-SEAT: force slot turnover independent of the flight model. sw8-2 ports the ROM's
     // rate-limited $67 aim (4.48°/frame, `aimOrient`), so a homing TIE now curves at turn radius
     // v/ω ≈ 3–6k units — far outside the 80u cockpit hit sphere — and ORBITS instead of snap-homing
@@ -166,10 +167,11 @@ describe('sw4-1 §A — player bolt reach covers the restored approach volume', 
     // model. Depth 24000 is beyond the pre-sw4-1 ~10000 reach yet comfortably inside
     // the restored 32000 reach — RED today (the bolt expires short; the TIE lives).
     const DEEP = 24000
-    const tie: Enemy = { pos: [0, 0, -DEEP], kind: 'tie', orient: IDENTITY }
-    const proj = perspective(Math.PI / 3, 16 / 9, 1, 5000)
-    const ndc = transform(proj, tie.pos) // crosshairNdc is identity: aim = projected NDC
-    const fire: Input = { aimX: ndc[0], aimY: ndc[1], fire: true }
+    // Native [depth, right, up]: the TIE sits dead ahead at depth DEEP, centred on
+    // both lateral axes.
+    const tie: Enemy = { pos: [DEEP, 0, 0], kind: 'tie', orient: IDENTITY }
+    // A dead-centre target projects to NDC centre, so the aim is straight ahead (0,0).
+    const fire: Input = { aimX: 0, aimY: 0, fire: true }
     let s: GameState = { ...initialState(1983), enemies: [tie], spawnTimer: 1e9, enemyFireCooldown: 1e9 }
     for (let i = 0; i < 1200 && s.enemies.length > 0; i++) s = stepGame(s, fire, 1 / 60)
     expect(s.enemies).toHaveLength(0) // the bolt reached across the approach volume
@@ -197,7 +199,7 @@ describe('sw4-1 §A — TIEs spawn on the far plane with the TBG lateral table',
   })
 
   it('every fresh TIE spawns on the far plane at depth 31744', () => {
-    for (const sp of spawns) expect(-sp.z).toBe(ROM_SPAWN_DEPTH)
+    for (const sp of spawns) expect(sp.z).toBe(ROM_SPAWN_DEPTH)
   })
 
   it('every spawn lateral is an authentic table value {0, ±1024, ±2048}', () => {
@@ -280,7 +282,7 @@ describe('sw4-1 §A — deterministic & frame-rate-independent spawn geometry', 
       const spawns = collectSpawns(dt, Math.ceil(60 / dt), 7777)
       expect(spawns.length).toBeGreaterThanOrEqual(10)
       for (const sp of spawns) {
-        expect(-sp.z).toBe(ROM_SPAWN_DEPTH)
+        expect(sp.z).toBe(ROM_SPAWN_DEPTH)
         expect(AUTHENTIC_LATERALS.has(sp.x)).toBe(true)
         expect(AUTHENTIC_LATERALS.has(sp.y)).toBe(true)
       }

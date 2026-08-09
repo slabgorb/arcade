@@ -21,7 +21,7 @@
 // public render path — the model FORM is Dev's open design choice).
 //
 // WHAT SURVIVES: the SHELL PLACEMENT — `deathStarPlacement(state)` seats the object
-// far in −Z and grows its apparent size as the approach progresses (sw8-11: the
+// far ahead in +X depth and grows its apparent size as the approach progresses (sw8-11: the
 // phase clock; formerly the kill count — the fixture drives BOTH). M-010 swaps the
 // MODEL, not the space-approach placement (the X-007 finale LOOM is a separate
 // finale beat, tests/shell/render.death-star-finale.test.ts), so this block is a
@@ -63,14 +63,14 @@ describe('11-7 — Death Star body placement grows on approach (pure, from sim s
     expect(placementFn()).toBeDefined()
   })
 
-  it('seats the body far ahead in −Z at the start of the space phase (0 kills)', () => {
+  it('seats the body far ahead in +X depth at the start of the space phase (0 kills)', () => {
     const fn = placementFn()
     expect(fn).toBeDefined()
     if (!fn) return
     const p = fn(spaceState(0))
-    expect(Number.isFinite(p.pos[2])).toBe(true)
-    expect(p.pos[2]).toBeLessThan(0) // down −Z, in front of the cockpit
-    expect(Math.abs(p.pos[2])).toBeGreaterThanOrEqual(3000) // genuinely distant
+    expect(Number.isFinite(p.pos[0])).toBe(true)
+    expect(p.pos[0]).toBeGreaterThan(0) // +X depth, ahead of the cockpit
+    expect(Math.abs(p.pos[0])).toBeGreaterThanOrEqual(3000) // genuinely distant
   })
 
   it('grows on approach — apparent size increases monotonically as phaseKills rises', () => {
@@ -82,7 +82,7 @@ describe('11-7 — Death Star body placement grows on approach (pure, from sim s
     if (!fn) return
     const apparent = (k: number): number => {
       const p = fn(spaceState(k))
-      const z = Math.abs(p.pos[2])
+      const z = Math.abs(p.pos[0]) // native depth
       expect(z).toBeGreaterThan(0)
       return (p.scale ?? 1) / z
     }
@@ -95,12 +95,12 @@ describe('11-7 — Death Star body placement grows on approach (pure, from sim s
     expect(apparent(6)).toBeGreaterThan(apparent(0)) // strictly bigger by the dive
   })
 
-  it('keeps the body in front of the camera (−Z) the whole approach', () => {
+  it('keeps the body in front of the camera (+X depth) the whole approach', () => {
     const fn = placementFn()
     expect(fn).toBeDefined()
     if (!fn) return
     for (let k = 0; k <= 6; k++) {
-      expect(fn(spaceState(k)).pos[2]).toBeLessThan(0)
+      expect(fn(spaceState(k)).pos[0]).toBeGreaterThan(0)
     }
   })
 

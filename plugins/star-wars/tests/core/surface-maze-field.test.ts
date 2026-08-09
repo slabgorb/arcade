@@ -65,7 +65,7 @@ function turretXsOverRun(seed: number, wave: number, frames: number): Set<number
   let s = enterSurface(seed, wave)
   const xs = new Set<number>()
   for (let i = 0; i < frames; i++) {
-    for (const t of s.turrets) xs.add(t.pos[0])
+    for (const t of s.turrets) xs.add(t.pos[1]) // native: lateral (right, = MazeEntry.x) is index 1
     s = stepGame(s, NO_INPUT, DT)
   }
   return xs
@@ -189,7 +189,7 @@ describe('sw4-3 — bishops ride the existing tower collision/quota path', () =>
    * yoke's vertical axis is ALSO the throttle, so aiming down at a floor-level object flies the
    * ship mid-measurement. Height is inert to the claim — the quota reads `kind`, never `pos[1]`.
    */
-  const SITE: Vec3 = [0, SKIM_ALTITUDE, -800]
+  const SITE: Vec3 = [800, 0, SKIM_ALTITUDE] // native [depth, right, up]: old OpenGL [0, SKIM_ALTITUDE, -800]
 
   it('a bishop is shootable and DOES advance the tower quota (BISHOP increments .TWRS)', () => {
     // Requires Turret.kind to admit 'bishop' (new in sw4-3). A bishop, like a

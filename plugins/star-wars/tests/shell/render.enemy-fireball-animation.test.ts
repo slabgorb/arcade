@@ -144,7 +144,7 @@ const scene = (over: Partial<GameState>): GameState => ({
 /** A fireball with an explicit ttl (its remaining life). elapsed = TTL - ttl is
  *  the shot's age — the same quantity render() already uses to time the muzzle
  *  flash — so varying ttl advances any age-driven animation. */
-const fireballAt = (pos: Vec3, ttl: number): Projectile => ({ pos, vel: [0, 0, 1], ttl })
+const fireballAt = (pos: Vec3, ttl: number): Projectile => ({ pos, vel: [-1, 0, 0], ttl })
 
 // The fireball projects to a compact region around its screen point; the playing
 // HUD also strokes red ink but sits far away at the top. Restrict every red check
@@ -210,7 +210,7 @@ const AGED_TTLS = Array.from({ length: SAMPLES }, (_, i) => 0.2 + ((ENEMY_SHOT_T
 
 const renderAt = (ttl: number) => {
   const rec = makeCtx()
-  render(rec.ctx, scene({ enemyShots: [fireballAt([0, 0, -1000], ttl)] }), W, H)
+  render(rec.ctx, scene({ enemyShots: [fireballAt([1000, 0, 0], ttl)] }), W, H)
   return rec
 }
 

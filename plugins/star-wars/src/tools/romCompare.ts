@@ -6,9 +6,28 @@
 //
 // Dev tool. Never imported by src/core.
 
-import { MODELS, type Model3D } from '../core/models'
+import { MODELS, bakeTie, type Model3D } from '../core/models'
 import { ROM_MODELS, type RomModel } from './romModels.generated'
 import type { Vec3 } from '@shared/math3d'
+
+/**
+ * sw10-1 — the port models are stored in the NATIVE world basis (the `*_ORIENT`
+ * display corrections are baked into the data), while `ROM_MODELS` is the raw ROM
+ * object dump. To compare like with like, the ROM side must be expressed in the
+ * port's basis: this maps each ROM object name to the SAME bake `models.ts` applied
+ * to its counterpart. Entries default to identity; a family gains an entry here the
+ * moment its port model is baked (keep in lockstep with models.ts). TIE-family first
+ * (sw10-1); tower/port/trench join as their phases flip.
+ */
+const ROM_TO_BAKE: Readonly<Record<string, (vs: readonly Vec3[]) => Vec3[]>> = {
+  TIE: bakeTie,
+  RTH: bakeTie,
+  TI1: bakeTie,
+  TI2: bakeTie,
+  TI3: bakeTie,
+}
+export const bakeRom = (name: string, vs: readonly Vec3[]): Vec3[] =>
+  (ROM_TO_BAKE[name] ?? ((v: readonly Vec3[]) => v.map((p) => [...p] as Vec3)))(vs)
 
 /**
  * ROM object name (WSOBJ.MAC) -> the `name` of its counterpart in MODELS.
@@ -155,7 +174,10 @@ export interface ModelPair {
  * against fabricated fixtures without touching the real ROM_MODELS/MODELS
  * data (see romCompare.test.ts's mismatched-vertices coverage). */
 export function pairOne(rom: RomModel, portName: string | null, port: Model3D | null): ModelPair {
-  const verticesMatch = port ? verticesEqual(rom.vertices, port.vertices) : false
+  // sw10-1: compare in the port's basis — bake the raw ROM object dump to native
+  // (identity for families not yet flipped) so a baked port still matches its ROM.
+  const romVertices = bakeRom(rom.name, rom.vertices)
+  const verticesMatch = port ? verticesEqual(romVertices, port.vertices) : false
   // Edges are indices into `vertices` — an edge diff is only meaningful when
   // the ROM actually has a draw list AND the two vertex arrays agree. If they
   // don't, refuse to diff: reporting edge drift over mismatched vertex arrays

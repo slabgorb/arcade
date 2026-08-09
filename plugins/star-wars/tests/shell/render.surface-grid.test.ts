@@ -65,7 +65,7 @@ const surfaceScene: GameState = {
   ...initialState(1983),
   mode: 'playing',
   phase: 'surface',
-  turrets: [{ pos: [0, 0, -800] }],
+  turrets: [{ pos: [800, 0, 0] }], // native [depth, right, up]: 800 ahead
 }
 
 describe('Story 11-5 — the surface phase renders the ground grid, not the spike', () => {
@@ -80,13 +80,13 @@ describe('Story 11-5 — the surface phase renders the ground grid, not the spik
     expect(names).not.toContain(DEATH_STAR_SURFACE.name)
   })
 
-  it('draws a wide, flat (y=0) ground grid with more lines than the spike has edges', () => {
+  it('draws a wide, flat (up=0) ground grid with more lines than the spike has edges', () => {
     render(makeCtx(), surfaceScene, W, H)
     const models = vi.mocked(drawWireframe).mock.calls.map((c) => c[1])
     const grid = models.find(
       (m) =>
         m.vertices.length > 0 &&
-        m.vertices.every((v) => v[1] === 0) && // a floor, flat on y=0
+        m.vertices.every((v) => v[2] === 0) && // a floor, flat on native up (+Z) = 0
         m.edges.length > DEATH_STAR_SURFACE.edges.length, // a grid, not a lone tile/spike
     )
     expect(grid).toBeDefined()

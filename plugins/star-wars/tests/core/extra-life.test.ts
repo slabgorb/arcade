@@ -41,7 +41,7 @@ import { IDENTITY, type Vec3 } from '@shared/math3d'
 // --- Fixtures. A TIE the beam is aimed at dies on that very step and scores
 //     TIE_SCORE (1,000). AT is dead ahead of the space cockpit eye and outside
 //     COCKPIT_HIT_RADIUS. ------------------------------------------------------
-const AT: Vec3 = [0, 0, -100]
+const AT: Vec3 = [100, 0, 0] // native [depth,right,up]: dead ahead of the space cockpit eye
 const TICK = 1 / 60
 const wave = (seed = 1983): GameState => initialState(seed)
 const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })

@@ -60,6 +60,7 @@ import {
   TIE_WING_FRAG_1,
   TIE_WING_FRAG_2,
   TIE_WING_FRAG_3,
+  bakeTie,
   type Model3D,
 } from '../../src/core/models'
 import { ROM_MODELS } from '../../src/tools/romModels.generated'
@@ -208,24 +209,27 @@ describe('sw5-3 — the ROM oracle (hand-decoded from WSOBJ.MAC `.WL TIE/TI1/TI2
 })
 
 // ---------------------------------------------------------------------------
-// AC-4 — VERTICES ARE UNCHANGED. They already match the ROM byte-for-byte; this
-// story must not touch them (they are what the contact sheet's vertex guard
-// requires before it will diff edges at all).
+// AC-4 — VERTICES ARE THE ROM'S, in the native world basis. sw10-1 bakes the
+// `TIE_ORIENT` display correction into the data (`bakeTie`, (x,y,z)→(-z,-y,x)),
+// so the port vertices are the ROM point table baked to native — still the ROM's
+// geometry, byte-for-byte after the one orthogonal bake, in ROM order (edges are
+// indices into this array, so order is load-bearing).
 // ---------------------------------------------------------------------------
 
-describe('sw5-3 AC-4 — the TIE family vertices are the ROM\'s, untouched', () => {
-  it.each(FAMILY)('$rom: deep-equals the ROM $rom point table, in ROM order', ({ rom, port, verts }) => {
+describe('sw5-3 AC-4 — the TIE family vertices are the ROM\'s, baked to native (sw10-1)', () => {
+  it.each(FAMILY)('$rom: deep-equals the ROM $rom point table baked to native, in ROM order', ({ rom, port, verts }) => {
     // DEEP equality: edges are INDICES into this array, so a reorder would
     // silently repoint every edge while both arrays still "look" right.
-    expect(port.vertices).toEqual(romOf(rom).vertices)
+    expect(port.vertices).toEqual(bakeTie(romOf(rom).vertices))
     expect(port.vertices).toHaveLength(verts)
   })
 
-  it('TIE_FIGHTER vertex 0 is [-130,-208,234] — `.P -10,-16,18` scaled by `.S=13.`', () => {
+  it('TIE_FIGHTER vertex 0 is `.P -10,-16,18` × `.S=13.` = [-130,-208,234] raw, baked native to [-234,208,-130]', () => {
     const S = 13
-    const v0: Vec3 = [-10 * S, -16 * S, 18 * S]
-    expect(TIE_FIGHTER.vertices[0]).toEqual(v0)
-    expect(v0).toEqual([-130, -208, 234])
+    const v0Raw: Vec3 = [-10 * S, -16 * S, 18 * S] // the RAW ROM point (audited source)
+    expect(v0Raw).toEqual([-130, -208, 234])
+    expect(TIE_FIGHTER.vertices[0]).toEqual(bakeTie([v0Raw])[0]) // sw10-1: stored in native basis
+    expect(bakeTie([v0Raw])[0]).toEqual([-234, 208, -130])
   })
 
   it('TIE_WING_FRAG_3 is still TIE_FIGHTER\'s aft 28 vertices (verts 24-51), sliced not re-typed', () => {

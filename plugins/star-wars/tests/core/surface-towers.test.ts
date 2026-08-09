@@ -79,17 +79,17 @@ describe('sw2-3 — tall towers fire from their cube top, not the ground', () =>
     // surface-hazard.test.ts).
     const s0: GameState = {
       ...surface(),
-      turrets: [{ pos: [0, 0, -2000] as Vec3, age: TOWER_FIRE_GRACE + 1, kind: 'tower' }],
+      turrets: [{ pos: [2000, 0, 0] as Vec3, age: TOWER_FIRE_GRACE + 1, kind: 'tower' }],
       surfaceMazeLaid: true,
       enemyFireCooldown: 0,
     }
     const s1 = stepGame(s0, NO_INPUT, DT)
     const shot = s1.enemyShots[s1.enemyShots.length - 1]
     expect(shot).toBeDefined()
-    // The bug: a grounded turret fires from the floor (y = 0). A tall tower's gun
-    // is the yellow cube on top — the fireball erupts from up at TOWER_HEIGHT.
-    expect(shot!.pos[1]).toBeGreaterThan(0)
-    expect(shot!.pos[1]).toBeCloseTo(TOWER_HEIGHT, 0)
+    // The bug: a grounded turret fires from the floor (up = 0). A tall tower's gun
+    // is the yellow cube on top — the fireball erupts from up (native index 2) at TOWER_HEIGHT.
+    expect(shot!.pos[2]).toBeGreaterThan(0)
+    expect(shot!.pos[2]).toBeCloseTo(TOWER_HEIGHT, 0)
   })
 
   it('still looses the fireball back toward the cockpit (aim preserved)', () => {
@@ -156,11 +156,11 @@ describe('sw2-3 — the new fire logic stays pure and back-compatible', () => {
     // OPTIONAL (nullish-defaulted), so the hand-placed `{ pos }` turrets used across
     // the surface suite keep working. A bare turret must still scroll deterministically.
     const seed = 11
-    const mk = (): GameState => ({ ...surface(seed), turrets: [{ pos: [0, 0, -300] as Vec3 }] })
+    const mk = (): GameState => ({ ...surface(seed), turrets: [{ pos: [300, 0, 0] as Vec3 }] })
     const a = stepGame(mk(), NO_INPUT, 0.05)
     const b = stepGame(mk(), NO_INPUT, 0.05)
     expect(a.turrets).toHaveLength(1)
-    expect(a.turrets[0].pos[2]).toBeGreaterThan(-300) // scrolled toward the cockpit
+    expect(a.turrets[0].pos[0]).toBeLessThan(300) // scrolled toward the cockpit (native depth +X)
     expect(a).toEqual(b) // deterministic on the bare fixture shape
   })
 })

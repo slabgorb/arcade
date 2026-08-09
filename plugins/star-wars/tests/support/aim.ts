@@ -28,13 +28,14 @@ import * as RenderModule from '../../src/shell/render'
  * drift in render.ts. Going through `cameraView` binds the assertion to the shell's real camera,
  * across the boundary. (Tests may import the shell; only `src/core/**` may not.)
  *
- * Every phase's view matrix is IDENTITY-oriented, so it is a pure translation by −eye and the eye
- * falls straight out of the world origin's image: transform(view, [0,0,0]) = −eye.
+ * sw10-1: the native camera is P-oriented (CAMERA_ORIENT), NOT IDENTITY, so the view is
+ * `Pᵀ·translation(−eye)` and `transform(view, [0,0,0]) = Pᵀ·(−eye)`. Recover the native eye by
+ * `eye = −P·originInView`, i.e. `[o[2], −o[0], −o[1]]` (with `P·v = [−v2, v0, v1]`).
  * (`+ 0` normalises −0, which `toEqual` reports as a difference from 0.)
  */
 export function eyeOf(s: GameState): Vec3 {
-  const originInView = transform(RenderModule.cameraView(s), [0, 0, 0])
-  return [-originInView[0] + 0, -originInView[1] + 0, -originInView[2] + 0]
+  const o = transform(RenderModule.cameraView(s), [0, 0, 0]) // = Pᵀ·(−eye)
+  return [o[2] + 0, -o[0] + 0, -o[1] + 0]
 }
 
 /**
@@ -52,9 +53,17 @@ export function aimAt(
   aspect = 1,
 ): { aimX: number; aimY: number; reachable: boolean } {
   const f = 1 / Math.tan(FOV_Y / 2)
-  const depth = -(target[2] - eye[2])
-  const aimX = (f * (target[0] - eye[0])) / depth / aspect
-  const aimY = (f * (target[1] - eye[1])) / depth
+  // sw10-1 native basis: a world point is [depth(+X), right(+Y), up(+Z)]. `aimDirection`
+  // is `normalize([1, aimX/f, aimY/f])` in native, so its inverse divides the right/up
+  // offsets by the DEPTH offset (index 0), not by −z.
+  const depth = target[0] - eye[0]
+  // the authentic lens is aspect-INDEPENDENT — `aimDirection` no longer scales the
+  // lateral axis by viewport aspect, so neither does its inverse. The `aspect` param is
+  // retained (callers thread it into `Input.aspect`, and it still drives the C_PV/C_PS
+  // pyramid's state.aspect field) but no longer skews aimX.
+  void aspect
+  const aimX = (f * (target[1] - eye[1])) / depth
+  const aimY = (f * (target[2] - eye[2])) / depth
   return { aimX, aimY, reachable: Math.abs(aimX) <= 1 && Math.abs(aimY) <= 1 }
 }
 
@@ -88,12 +97,13 @@ export function release(input: Input): Input {
 
 /**
  * Hold the trigger with the crosshair on the exhaust port, from the seated pilot's eye at the
- * port's spawn distance (~17.7° down — comfortably inside the 30° cone the 60° FOV allows).
+ * port's spawn distance (~17.7° down — comfortably inside the 45° half-angle the authentic 90° FOV allows).
  *
  * This is what the old centred `FIRE` was *trying* to be: "the player shoots at the target".
  */
 export const FIRE_AT_PORT: Input = (() => {
-  const { aimX, aimY } = aimAt([0, 0, -EXHAUST_PORT_DISTANCE], [0, TRENCH_EYE_SEAT, 0], 1)
+  // sw10-1 native: port at depth +X, seated eye lifted on native up (+Z).
+  const { aimX, aimY } = aimAt([EXHAUST_PORT_DISTANCE, 0, 0], [0, 0, TRENCH_EYE_SEAT], 1)
   return { aimX, aimY, fire: true, aspect: 1 }
 })()
 

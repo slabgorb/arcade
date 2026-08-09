@@ -72,10 +72,10 @@ const surfaceAtWave = (wave: number, seed = 1983): GameState => ({
   lives: 9999,
 })
 
-const bolt = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, -1], ttl: PROJECTILE_TTL })
+const bolt = (pos: Vec3): Projectile => ({ pos, vel: [1, 0, 0], ttl: PROJECTILE_TTL }) // native basis
 const tie = (pos: Vec3): Enemy => ({ pos } as Enemy)
 
-const TIE_SITE: Vec3 = [0, 0, -100]
+const TIE_SITE: Vec3 = [100, 0, 0] // native [depth,right,up]: 100 ahead
 
 /** Step in small ticks until the phase leaves `from` (or give up after a few). */
 function crossFrom(s: GameState, from: string, input: Input = NO_INPUT): GameState {
@@ -163,8 +163,8 @@ describe('Wave progression — space clears to surface (wave 2)', () => {
     const s0: GameState = {
       ...spaceBeforeSurface(),
       ...SPACE_PHASE_OVER,
-      enemies: [tie([0, 0, -300]), tie([10, 0, -300])],
-      enemyShots: [bolt([0, 0, -50])],
+      enemies: [tie([300, 0, 0]), tie([300, 10, 0])], // native [depth,right,up]: 300 ahead
+      enemyShots: [bolt([50, 0, 0])],
     }
     const s1 = crossFrom(s0, 'space')
     expect(s1.phase).toBe('surface')

@@ -21,23 +21,27 @@ import { stepGame } from '../../src/core/sim'
 import { waveParams } from '../../src/core/gameRules'
 import { initialState, TICK_HZ, FIRE_MASK, type GameState, type Enemy } from '../../src/core/state'
 import { NO_INPUT } from '../../src/core/input'
-import { lookRotation, normalize, sub, type Vec3, type Mat4 } from '@shared/math3d'
+import { normalize, sub, scale, type Vec3, type Mat4 } from '@shared/math3d'
+import { lookRotationNative } from '../../src/core/basis'
 
 const COCKPIT: Vec3 = [0, 0, 0]
 /** One whole game frame of dt — exactly one decision tick per `stepGame`, so
  *  `state.frame` after a step is the frame the §6 gate just evaluated. */
 const TICK_DT = 1 / TICK_HZ
 
-/** Orientation whose nose (model +Z) points from `pos` straight back at the cockpit
- *  — the player dead in the TIE's sights, so `computeStatus` sets C_AS. */
+/** Orientation whose nose points from `pos` straight back at the cockpit — the
+ *  player dead in the TIE's sights, so `computeStatus` sets C_AS. sw10-1 native:
+ *  the nose reads as −col0 and `lookRotationNative` sets col0 = its argument, so
+ *  pass the AWAY direction to aim the nose back at the cockpit. */
 function lookAtOrigin(pos: Vec3): Mat4 {
-  return lookRotation(normalize(sub(COCKPIT, pos)))
+  return lookRotationNative(scale(normalize(sub(COCKPIT, pos)), -1))
 }
 
 /** A TIE held DEAD IN-SIGHTS: facing the cockpit, at a fixed range past the §6
  *  "not too close" floor ($800 = 2048), with NO VM — so `applyManeuver` never moves
  *  it and it stays in-sights every tick. That leaves the frame-mask + PRNG gate as
- *  the ONLY thing deciding whether it fires (twist 0 ⇒ the AIM_AHEAD lockout passes). */
+ *  the ONLY thing deciding whether it fires (twist 0 ⇒ the AIM_AHEAD lockout passes).
+ *  sw10-1 native position [depth(+X ahead), right(+Y), up(+Z)]. */
 function inSightsTie(pos: Vec3): Enemy {
   return { pos, kind: 'tie', orient: lookAtOrigin(pos) }
 }
@@ -52,7 +56,7 @@ function oneInSightsTie(opts: { wave?: number; seed?: number; maskOverride?: num
   return {
     ...initialState(opts.seed ?? 1983),
     wave,
-    enemies: [inSightsTie([0, 0, -4000])],
+    enemies: [inSightsTie([4000, 0, 0])],
     spawnTimer: 1e9,
     lives: 999,
   }
@@ -63,7 +67,7 @@ function manyInSightsTies(opts: { wave?: number; seed?: number } = {}): GameStat
   return {
     ...initialState(opts.seed ?? 1983),
     wave: opts.wave ?? 1,
-    enemies: [inSightsTie([0, 0, -4000]), inSightsTie([600, 0, -3600]), inSightsTie([-600, 0, -3700])],
+    enemies: [inSightsTie([4000, 0, 0]), inSightsTie([3600, 600, 0]), inSightsTie([3700, -600, 0])],
     spawnTimer: 1e9,
     lives: 999,
   }

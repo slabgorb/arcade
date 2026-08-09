@@ -134,9 +134,9 @@ describe('sw3-11 — bunkers are quota-NEUTRAL (the ROM .TWRS count is towers on
    * (`altitude += aimY · ALTITUDE_RATE · dt`), so aiming down at a floor-level object FLIES THE
    * SHIP while the shot is being measured. Level with the eye, dead-on is a purely lateral shot,
    * `aimY` stays 0, and the fixture's only moving part is the gun — which is what these pins are
-   * about. Height is otherwise inert here: the quota reads `kind`, never `pos[1]`.
+   * about. Height is otherwise inert here: the quota reads `kind`, never `pos[2]`.
    */
-  const SITE: Vec3 = [0, SKIM_ALTITUDE, -800]
+  const SITE: Vec3 = [800, 0, SKIM_ALTITUDE]
 
   it('destroying a bunker does not advance phaseKills', () => {
     // RED: today every turret-list kill bumps phaseKills, so a bunker kill

@@ -56,6 +56,13 @@
 // already notices the geometry in its own comment ("4,000 at this depth is 33.7° off the
 // nose — still outside the ±30° glass") without recognising it as this defect.
 //
+// (As of sw10-1, `tie-loiter-sights.test.ts` re-seats this fixture at [9000, 0, -10000]:
+// the authentic ±45° lens makes the ORIGINAL [4000, 0, -6000] seat visible for most of its
+// parked flight — 4,000 lateral at depth 6,000 is now well INSIDE a 45° cone, not outside
+// a 30° one — so it stopped demonstrating the off-glass case that motivated this gate. The
+// measurement above is preserved as the historical evidence that led to writing it, not as
+// a claim about the current tree.)
+//
 // WHY THE DIVERGENCE IS BIGGER THAN THE FILING SAYS. The filing calls it "behaviourally
 // small (the fighter is about to collide)", which is true of the single seat it chose and
 // false of the region. The band is a FIXED size while the pyramid's half-width GROWS with
@@ -68,16 +75,28 @@
 // now the cabinet's L1 octagon, `|dx| + |dy| <= SIGHTS_OCTAGON × TIE_HIT_RADIUS`
 // (WSMAIN.MAC:3920-3924). So it is no longer ONE number: it reaches 750 u on each axis and
 // 375 u per axis on the diagonal, which is 530 u radially. The crossover is per-axis too —
-// vertically `3 × TIE_HIT_RADIUS / tan(FOV_Y/2)` = 750 / 0.57735 = 1299 u, where this
-// paragraph used to say 866. Every seat below still sits inside BOTH models, so the seats
-// did not move; only the description of the region they sit in did.)
+// `3 × TIE_HIT_RADIUS / tan(FOV_Y/2)`, and it has tracked FOV_Y through every rework of the
+// glass: 866 at the retired ±45° pyramid, 1299 once uf1-14 rendered it at 30° vertical, and
+// — since sw10-1's authentic lens restores FOV_Y's half-angle to 45° on BOTH axes — back to
+// `750 / 1 = 750` now, identically on the lateral axis too. Every seat below still sits
+// inside BOTH models, so the seats did not move; only the description of the region they
+// sit in did.)
 //
 // And uf1-14 made the region BIGGER, which is why the story's dependency ordering
 // mattered: at the retired ±45° pyramid the crossover was 500/1.0 = 500; at the rendered
-// 30° vertical it is 866. Horizontally it scales with the canvas (`hBound = vBound ×
-// aspect`), so the SAME seat can be off-glass on a square canvas and on-glass at 16:9 —
-// pinned below, because that pair is what proves the gate reads the real viewport rather
-// than a constant.
+// 30° vertical it was 866. Horizontally it scaled with the canvas (`hBound = vBound ×
+// aspect`), so the SAME seat could be off-glass on a square canvas and on-glass at 16:9.
+//
+// (SUPERSEDED at sw10-1, which retires uf1-14's rendered 30°-vertical/aspect-scaled
+// pyramid for the cabinet's own ±45° SYMMETRIC one — the "REAL viewport" this file chased
+// was never the ROM's. WSMAIN.MAC's ratio tests carry no aspect term at all (`LDD M.YPS /
+// SUBD M.XPS / LBHS RTS1` at :3834-3836, and the identical shape on Z at :3840-3842 — a
+// 1:1 comparison against depth on BOTH axes), so `hBound` no longer scales with the canvas:
+// it equals `vBound` — depth itself, since `tan(45°) = 1` — at every aspect. The crossover
+// numbers above return to exactly the RETIRED ±45° pyramid's values, reached this time
+// because they are the cabinet's own rather than because the render reverted. The "opposite
+// answers on two canvases" seat below is now rewritten to its inversion: one seat, every
+// canvas, the SAME answer — the property an aspect-independent lens actually has to prove.)
 //
 // RED until computeStatus gates C_PS on C_PV.
 //
@@ -160,10 +179,14 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     expect(SIGHTS_OCTAGON, "the sights octagon, ADDD TMPSIZ twice at WSMAIN.MAC:3920-3923").toBe(3)
     expect(VIEW_NEAR, "the ROM's near clamp, CMPD #10 at WSMAIN.MAC:3825").toBe(0x10)
     expect(VIEW_FAR, "the ROM's far clamp, CMPD #7F00 at WSMAIN.MAC:3827").toBe(0x7f00)
-    // The crossover depth below which band-but-off-glass is reachable at all, on the
-    // VERTICAL axis — where the octagon reaches 3 × the kill radius. (sw8-27 moved this
-    // from 866 to 1299: the retired disc stopped at 2 ×.)
-    expect((SIGHTS_OCTAGON * TIE_HIT_RADIUS) / TAN_HALF).toBeCloseTo(1299.0, 1)
+    // The crossover depth below which band-but-off-glass is reachable at all — where the
+    // octagon reaches 3 × the kill radius. IDENTICAL on both axes now (sw10-1's lens sets
+    // `TAN_HALF = tan(45°) = 1`, so the vertical and lateral bounds are the same formula):
+    // 750, exactly the retired ±45° pyramid's own octagon crossover, where the rendered
+    // 30°-vertical tree (uf1-14) had pushed it out to 1299. Landing back on the RETIRED
+    // tree's own bound is not a coincidence: `TAN_HALF` is 1 again because 45° is the
+    // cabinet's own half-angle, not because anything reverted.
+    expect((SIGHTS_OCTAGON * TIE_HIT_RADIUS) / TAN_HALF).toBeCloseTo(750.0, 1)
     // NOT a behavioural anchor, and it must not be read as one: since sw8-27 nothing in
     // `src/` consumes `SIGHTS_BAND_FACTOR`. It survives as the docstring statement of the
     // cabinet's unit-free 3 ÷ 1.5 ratio, so what is pinned here is that ARITHMETIC — the
@@ -177,7 +200,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // (750 u since sw8-27, and 500 before it, so the seat reads the same either way), so the
     // beam test passes — while its view depth of 10 is under VIEW_NEAR (0x10 = 16), so the
     // cabinet would have returned at :3826 and never reached :3930.
-    const seat: Vec3 = [400, 0, -10]
+    const seat: Vec3 = [10, 400, 0] // native [depth, right, up]: depth 10, lateral 400
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'near-clamp seat')
     expect(
       sights(seat, 16 / 9),
@@ -185,43 +208,62 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     ).toBe(0)
   })
 
-  it('a RATIO exit (LBHS RTS1, :3836/:3842): off the pyramid edge at depth 800, nowhere near collision', () => {
-    // The non-degenerate case the filing does not have. This fighter is a hair outside the
-    // pyramid's vertical bound (800 · tan30° = 461.9) and ~925 u from the cockpit — 3.7 ×
-    // its own kill radius — so "it is about to collide anyway" does not apply.
-    const seat: Vec3 = [0, 462.3, -800]
+  it('a RATIO exit (LBHS RTS1, :3836/:3842): off the pyramid edge on the VERTICAL axis, unambiguously', () => {
+    // RE-SEATED at sw10-1. The old seat (462.3 u vertical at depth 800) cleared the
+    // rendered 30°-vertical bound (800 · tan30° = 461.9) by less than a unit — a margin the
+    // authentic ±45° lens erases outright: `vBound` at depth 800 is now 800 itself, so 462.3
+    // sits deep INSIDE the glass, not a hair outside it. Because the disc-based fixture
+    // guard below (`SIGHTS_BAND_FACTOR × TIE_HIT_RADIUS` = 500) is what actually bounds how
+    // far off-axis a seat can be while still reading as "in the band," and the glass now
+    // grows exactly as fast as depth (`vBound = depth`), an off-glass-yet-banded seat can
+    // only exist at depth < 500 — the retired ±45° pyramid's own crossover. The seat below
+    // sits at depth 400 with a clean 10% margin on both bounds (440 clears 400 by 10%, and
+    // sits 60 u — 12% — inside the 500 u disc), so neither bound is ambiguous.
+    const seat: Vec3 = [400, 0, 440] // native [depth, right, up]: depth 400, vertical 440
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'vertical-edge seat')
     const range = Math.hypot(seat[0], seat[1], seat[2])
-    expect(range / TIE_HIT_RADIUS, 'this seat is far outside collision range').toBeGreaterThan(3)
+    expect(range / TIE_HIT_RADIUS, 'still well outside collision range').toBeGreaterThan(2)
     expect(sights(seat, 16 / 9), 'off the glass ⇒ no sights bit').toBe(0)
   })
 
   it('the OTHER ratio exit: off the pyramid edge laterally at 16:9, depth 400', () => {
     // The two ratio tests are separate exits in the ROM (:3836 and :3842) and separate
     // terms in the port, so a fix that gates on only one of them survives the seat above.
-    const seat: Vec3 = [450, 0, -400]
+    const seat: Vec3 = [400, 450, 0] // native [depth, right, up]: depth 400, lateral 450
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'lateral-edge seat')
     expect(sights(seat, 16 / 9), 'off the glass laterally ⇒ no sights bit').toBe(0)
   })
 
-  it('follows the REAL viewport: one seat, two canvases, opposite answers', () => {
-    // The strongest single discriminator in this file, and the one a hard-coded cone
-    // cannot pass. `hBound = depth · tan(FOV_Y/2) · aspect`, so at depth 800 the lateral
-    // bound is 461.9 on a square canvas and 821.1 at 16:9. A TIE at x = 480 is therefore
-    // OFF the glass at 1:1 and ON it at 16:9 — while sitting inside the sights band at
-    // both, so the sights band alone cannot explain the difference.
-    const seat: Vec3 = [480, 0, -800]
+  it('follows the REAL viewport: one seat, EVERY canvas, the SAME answer', () => {
+    // INVERTED by sw10-1. This used to be the strongest single discriminator against a
+    // hard-coded cone: under uf1-14's rendered, aspect-scaled pyramid (`hBound = depth ·
+    // tan(FOV_Y/2) · aspect`), the very seat below sat OFF the glass on a square canvas
+    // (bound 461.9 at depth 800) and ON it at 16:9 (bound 821.1) — opposite answers from
+    // one position. The authentic ROM lens has no aspect term in it at all (WSMAIN.MAC's
+    // ratio tests compare lateral/vertical to depth 1:1 on both axes, full stop), so
+    // `hBound` now equals `vBound` — depth itself — at every aspect the canvas can take.
+    // The seat that used to flip between two canvases now reads identically at ALL of
+    // them, which is the property an aspect-independent lens actually has to prove — a
+    // stronger claim than "opposite at two points" and the one a residual aspect term in
+    // `aimDirection` or `inPlayerView` would still fail.
+    const onGlass: Vec3 = [800, 480, 0] // native [depth, right, up]: the SAME seat this test pinned before sw10-1
+    const offGlass: Vec3 = [400, 0, 440] // native: the vertical-edge seat from the test above
 
-    assertSeatIsInBandAndOffGlass(seat, 1, 'square-canvas seat')
-    expect(sights(seat, 1), 'square canvas: the fighter is off the glass, so no sights bit').toBe(0)
-
-    // The positive half of the same pair — this is what makes the negative meaningful
-    // rather than "C_PS never sets at this position".
-    expect(inView(seat, 16 / 9), 'at 16:9 the very same seat IS on the glass').toBe(Status.C_PV)
+    // Fixture guards, aspect-independent themselves: both seats sit inside the sights band
+    // (the band is a world-space octagon around the aim ray, never a screen quantity).
+    const ray = aimDirection(0, 0, 1)
     expect(
-      sights(seat, 16 / 9),
-      'at 16:9 the fighter is visible and in the band, so the sights bit stands',
-    ).toBe(Status.C_PS)
+      beamHit(COCKPIT, ray, onGlass, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS),
+      'fixture guard: the on-glass seat sits inside the sights band',
+    ).not.toBeNull()
+    assertSeatIsInBandAndOffGlass(offGlass, 1, 'off-glass seat')
+
+    for (const aspect of [1, 4 / 3, 16 / 9, 21 / 9]) {
+      expect(inView(onGlass, aspect), `on the glass at aspect ${aspect.toFixed(3)}`).toBe(Status.C_PV)
+      expect(sights(onGlass, aspect), `and sighted at aspect ${aspect.toFixed(3)}`).toBe(Status.C_PS)
+      expect(inView(offGlass, aspect), `off the glass at aspect ${aspect.toFixed(3)}`).toBe(0)
+      expect(sights(offGlass, aspect), `never sighted at aspect ${aspect.toFixed(3)}`).toBe(0)
+    }
   })
 
   it('holds as a UNIVERSAL across depth, offset and canvas shape — C_PS ⇒ C_PV', () => {
@@ -234,7 +276,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
       for (const depth of [20, 100, 400, 800, 1500, 6000, 20000]) {
         for (const lat of [0, 120, 300, 460, 480, 700]) {
           for (const vert of [0, 300, 480]) {
-            const pos: Vec3 = [lat, vert, -depth]
+            const pos: Vec3 = [depth, lat, vert] // native [depth, right, up]
             const st = statusAt(pos, aspect)
             const ps = st & Status.C_PS
             const pv = st & Status.C_PV
@@ -266,11 +308,11 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // The whole suite above is negatives. If a fix simply stopped deriving C_PS, every one
     // of them would pass. This is the assertion that forbids it.
     const s = makeSpaceState()
-    const onRay: Vec3 = [0, 0, -6000]
+    const onRay: Vec3 = [6000, 0, 0] // native [depth, right, up]: dead ahead at 6000
     expect(inView(onRay, 16 / 9), 'dead ahead at 6000 is plainly on the glass').toBe(Status.C_PV)
     expect(sights(onRay, 16 / 9), 'and therefore still in the sights').toBe(Status.C_PS)
     // Inside the band but off the ray, still well within the pyramid at this depth.
-    const offset: Vec3 = [SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS - 1, 0, -6000]
+    const offset: Vec3 = [6000, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS - 1, 0] // native: broadside on the right axis
     expect(sights(offset, 16 / 9), 'one unit inside the band, and visible').toBe(Status.C_PS)
     expect(s.aspect, 'a fresh state is square until the shell says otherwise').toBe(1)
   })
@@ -288,8 +330,11 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // `gameRules.ts`, 272 lines — and reports a span out of range. That is sw8-25's
     // association defect reproduced by accident while writing this file, and the
     // documented spelling is what avoids it.)
+    // RE-SEATED at sw10-1 — see the vertical-edge seat above for the derivation: the
+    // authentic ±45° lens grows the glass exactly as fast as depth, so an off-glass seat
+    // that still sits inside the sights band now needs depth < 500, not 800.
     const ray = aimDirection(0, 0, 16 / 9)
-    const offGlass: Vec3 = [0, 462.3, -800]
+    const offGlass: Vec3 = [400, 0, 440] // native [depth, right, up]: depth 400, vertical 440
     expect(inView(offGlass, 16 / 9), 'fixture guard: this seat is off the glass').toBe(0)
     expect(
       beamHit(COCKPIT, ray, offGlass, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS),
@@ -297,9 +342,13 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     ).not.toBeNull()
 
     // A closer seat, off the glass AND inside the kill radius. This is the one that shows
-    // the gate is not being smuggled into the ray: at depth 400 the pyramid's vertical
-    // bound is 230.9, so vert 240 is off-screen while sitting 240 u from the ray — inside
-    // TIE_HIT_RADIUS. A view clamp added to `beamHit` would silently change what the player
+    // the gate is not being smuggled into the ray. RE-SEATED at sw10-1: the authentic ±45°
+    // pyramid's bound EQUALS depth, so a seat needing "off-glass and inside TIE_HIT_RADIUS
+    // (250)" now has to sit closer in than the old 400/240 pair (whose 240 now reads as
+    // 240 < 400 — deep inside the wider glass, not off it). At depth 200 the bound is 200
+    // itself, so vert 220 is off-screen (10% past the bound) while sitting 220 u from the
+    // ray — inside TIE_HIT_RADIUS with a comfortable 12% margin. A view clamp added to
+    // `beamHit` would silently change what the player
     // can shoot in the phases that still call it: the surface turrets (`sim.ts:1161`) and
     // the trench's exhaust port and obstacles (`:1390`, `:1406`). The cabinet gates none of
     // those — `GRLZCL` runs unconditionally straight after `BJGDRW` (WSGRND.MAC:978-979).
@@ -326,7 +375,7 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // so this direct `beamHit` probe is now the ONLY thing standing between the shared helper
     // and a well-meant "just clamp it in one place" refactor. It stays green precisely because
     // it calls the helper directly.
-    const killableOffGlass: Vec3 = [0, 240, -400]
+    const killableOffGlass: Vec3 = [200, 0, 220] // native [depth, right, up]: depth 200, vertical 220
     expect(inView(killableOffGlass, 16 / 9), 'fixture guard: also off the glass').toBe(0)
     expect(
       beamHit(COCKPIT, ray, killableOffGlass, TIE_HIT_RADIUS),
@@ -354,7 +403,7 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     //
     // VERBATIM MUTANT this kills, applied to `tie-status.ts`:
     //   export const SIGHTS_OCTAGON = 1.5
-    const inTheOuterBand: Vec3 = [700, 0, -6000]
+    const inTheOuterBand: Vec3 = [6000, 700, 0] // native [depth, right, up]: depth 6000, lateral 700
     expect(inView(inTheOuterBand, 16 / 9), 'fixture guard: this seat is ON the glass').toBe(Status.C_PV)
     expect(700, 'fixture guard: outside a HALVED band, so halving the octagon reddens this').toBeGreaterThan(
       1.5 * TIE_HIT_RADIUS,
@@ -405,10 +454,10 @@ describe('sw8-19 — in play: the shipped loiter fixture never sights an off-gla
    *  the same inversion `tie-loiter-sights.test.ts` flies this fixture with. */
   function aimAt(pos: Vec3): { aimX: number; aimY: number } {
     const f = 1 / Math.tan(FOV_Y / 2)
-    const dz = pos[2] - COCKPIT[2]
-    if (dz >= 0) return { aimX: 0, aimY: 0 }
+    const depth = pos[0] - COCKPIT[0] // native: index 0 = depth
+    if (depth <= 0) return { aimX: 0, aimY: 0 }
     const c = (v: number) => Math.max(-1, Math.min(1, v))
-    return { aimX: c((f * (pos[0] - COCKPIT[0])) / -dz), aimY: c((f * (pos[1] - COCKPIT[1])) / -dz) }
+    return { aimX: c((f * (pos[1] - COCKPIT[1])) / depth), aimY: c((f * (pos[2] - COCKPIT[2])) / depth) }
   }
 
   it('flies the uf1-12 seat and counts frames where the sights bit outlives visibility', () => {
@@ -420,7 +469,7 @@ describe('sw8-19 — in play: the shipped loiter fixture never sights an off-gla
     const target = program[sightsBranch() + 1]
     if (target.op !== ChoreoOp.GOTO) throw new Error('tie-vm: .CIF C$PS is not followed by a .CGOTO')
     const entry = target.target
-    const seat: Vec3 = [4000, 0, -6000]
+    const seat: Vec3 = [6000, 4000, 0] // native [depth, right, up]: lateral 4000 at depth 6000
 
     let s: GameState = {
       ...initialState(1983),

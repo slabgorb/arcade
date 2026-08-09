@@ -202,12 +202,16 @@ function assertGunSeat(pos: Vec3, radius: number, aspect: number, offGlass: bool
 // ---------------------------------------------------------------------------
 
 describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have drawn', () => {
-  it('the filed seat: off the glass at depth 400, inside the kill radius, survives the shot', () => {
-    // The story's headline seat, and TEA's original sw8-19 measurement. At depth 400 the
-    // pyramid's vertical bound is 400 · tan30° = 230.9, so vert 240 is off-screen — while
+  it('the filed seat: off the glass at depth 200, inside the kill radius, survives the shot', () => {
+    // The story's headline seat, RE-DERIVED for sw10-1's ±45° symmetric, aspect-independent
+    // lens (tan 45° = 1, `hBound = vBound`, uf1-14): the pyramid's bound at any depth is now
+    // simply the depth itself, on BOTH axes, at EVERY aspect. That bound (250, TIE_HIT_RADIUS)
+    // only sits INSIDE the kill radius for depth < 250, so the headline seat has to move
+    // shallower than its original depth 400 — at depth 400 the new bound (400) would swallow
+    // the old vert 240 whole. At depth 200 the bound is 200, so vert 240 is off-screen — while
     // sitting 240 u from the at-rest ray, inside TIE_HIT_RADIUS (250). Killable while
-    // invisible: the cabinet returns at :3836 and never reaches its hit block.
-    const seat: Vec3 = [0, 240, -400]
+    // invisible: the cabinet's authentic law rejects `|pos.y| < depth`.
+    const seat: Vec3 = [200, 0, 240] // native [depth, right, up]: depth 200, vert 240 off-glass
     assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, true, 'filed off-glass seat')
 
     const s = stepGame(spaceRun({ enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
@@ -219,7 +223,7 @@ describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have
   it('the POSITIVE CONTROL: the same depth, on the glass, still dies', () => {
     // Without this every negative in this file passes for a gate that simply stopped the gun.
     // Vert 200 is inside the 230.9 bound at the same depth and the same distance regime.
-    const seat: Vec3 = [0, 200, -400]
+    const seat: Vec3 = [400, 0, 200] // native: depth 400, vert 200 on-glass
     assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, false, 'on-glass control')
 
     const s = stepGame(spaceRun({ enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
@@ -228,21 +232,25 @@ describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have
     expect(s.enemies, 'and is removed from the wave').toHaveLength(0)
   })
 
-  it('follows the REAL viewport: one seat, two canvases, opposite outcomes', () => {
-    // The strongest single discriminator here, and the one a hard-coded cone cannot pass.
-    // `hBound = depth · tan(FOV_Y/2) · aspect`, so at depth 400 the lateral bound is 230.9 on
-    // a square canvas and 410.5 at 16:9. A TIE at x = 240 is therefore OFF the glass at 1:1
-    // and ON it at 16:9 — while sitting 240 u from the ray at both, so the kill radius alone
-    // cannot explain the difference. A gate that ignores `state.aspect` reddens here.
-    const seat: Vec3 = [240, 0, -400]
+  it('follows the REAL viewport: one seat, the SAME outcome at every canvas', () => {
+    // INVERTED by sw10-1. Before it, `hBound = depth · tan(FOV_Y/2) · aspect`, so this exact
+    // seat produced OPPOSITE outcomes on a square canvas and at 16:9 — the strongest
+    // discriminator against a hard-coded, aspect-blind cone. After it, `hBound = vBound =
+    // depth` at EVERY aspect (aspect dropped from the pyramid entirely, uf1-14) — the
+    // cabinet's screen shape does not change with the viewport, so neither may the glass. The
+    // discriminator this story needs is now the mirror image: a TIE at x = 240, depth 400
+    // sits inside the 400-unit bound on a square canvas AND at 16:9 — while sitting 240 u from
+    // the ray at both, so the kill radius alone does not explain the agreement. A gate that
+    // still keys off `state.aspect` reddens here.
+    const seat: Vec3 = [400, 240, 0] // native: depth 400, x = 240 to the right, on the vertical axis
 
-    assertGunSeat(seat, TIE_HIT_RADIUS, 1, true, 'square-canvas seat')
+    assertGunSeat(seat, TIE_HIT_RADIUS, 1, false, 'square-canvas seat')
     const square = stepGame(spaceRun({ aspect: 1, enemies: [tieAt(seat)] }), restTrigger(1), DT)
-    expect(tieDied(square), 'square canvas: off the glass, so the shot cannot land').toBe(false)
+    expect(tieDied(square), 'square canvas: on the glass, so the shot lands').toBe(true)
 
     assertGunSeat(seat, TIE_HIT_RADIUS, WIDE, false, 'wide-canvas seat')
     const wide = stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(seat)] }), restTrigger(WIDE), DT)
-    expect(tieDied(wide), 'at 16:9 the very same seat is on the glass, and dies').toBe(true)
+    expect(tieDied(wide), 'at 16:9 the very same seat is likewise on the glass, and dies').toBe(true)
   })
 
   it('holds as a UNIVERSAL across depth, offset and canvas shape — a kill implies C_PV', () => {
@@ -254,7 +262,7 @@ describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have
       for (const depth of [120, 200, 400, 800, 2000, 6000]) {
         for (const lat of [0, 120, 240]) {
           for (const vert of [0, 120, 240]) {
-            const pos: Vec3 = [lat, vert, -depth]
+            const pos: Vec3 = [depth, lat, vert] // native [depth, right, up]
             const ray = aimDirection(0, 0, aspect)
             const underSite = beamHit(COCKPIT, ray, pos, TIE_HIT_RADIUS) !== null
             const visible = inView(pos, aspect) !== 0
@@ -285,15 +293,16 @@ describe('sw8-27 AC1 — the player cannot kill a TIE the cabinet would not have
 // ---------------------------------------------------------------------------
 
 describe('sw8-27 AC2 — the player cannot shoot down a fireball the cabinet would not have drawn', () => {
-  // A fireball's hit radius (150) is SMALLER than the pyramid's vertical bound at any depth
-  // past 260, so an off-glass-but-under-site seat only exists close in: the bound is
-  // depth · 0.5774, which is under 150 only for depth < 259.8. These seats are therefore
-  // shallow by necessity, not by choice — and still well outside COCKPIT_HIT_RADIUS (80), so
-  // the shot is not consumed as cockpit damage before the beam can reach it.
-  it('off the glass at depth 200, under the crosshair, is NOT shot down', () => {
-    const seat: Vec3 = [0, 140, -200]
+  // A fireball's hit radius (150) is SMALLER than the pyramid's bound at any depth past 150 —
+  // RE-DERIVED for sw10-1's ±45° symmetric lens, where the bound is simply the depth itself
+  // (tan 45° = 1, aspect dropped, uf1-14), so an off-glass-but-under-site seat only exists
+  // close in: depth < 150. These seats are therefore shallow by necessity, not by choice —
+  // and still well outside COCKPIT_HIT_RADIUS (80), so the shot is not consumed as cockpit
+  // damage before the beam can reach it.
+  it('off the glass at depth 100, under the crosshair, is NOT shot down', () => {
+    const seat: Vec3 = [100, 0, 140] // native: depth 100, vert 140 above the pyramid
     expect(
-      Math.abs(seat[1]) > Math.abs(seat[2]) * TAN_HALF,
+      Math.abs(seat[2]) > Math.abs(seat[0]) * TAN_HALF,
       'fixture guard: the seat is above the rendered pyramid at this depth',
     ).toBe(true)
     expect(
@@ -317,7 +326,7 @@ describe('sw8-27 AC2 — the player cannot shoot down a fireball the cabinet wou
   it('the POSITIVE CONTROL: an on-glass fireball under the crosshair is still shot down', () => {
     // sw8-3 / 8-18 shipped fireball interception deliberately; this is the assertion that
     // stops AC2 being satisfied by disabling it.
-    const seat: Vec3 = [0, 100, -6000]
+    const seat: Vec3 = [6000, 0, 100] // native: depth 6000, vert 100 on-glass
     assertGunSeat(seat, ENEMY_SHOT_HIT_RADIUS, WIDE, false, 'on-glass fireball')
 
     const s = stepGame(
@@ -333,8 +342,8 @@ describe('sw8-27 AC2 — the player cannot shoot down a fireball the cabinet wou
     // The filing named a single space-arm call site. There are two, four lines apart, and a
     // gate applied to the loop the description mentions leaves the other one open. Seating
     // both off-glass at once means neither may resolve.
-    const tieSeat: Vec3 = [0, 240, -400]
-    const shotSeat: Vec3 = [0, 140, -200]
+    const tieSeat: Vec3 = [200, 0, 240] // native: depth 200, vert 240 off-glass
+    const shotSeat: Vec3 = [100, 0, 140] // native: depth 100, vert 140 off-glass
     const s = stepGame(
       spaceRun({
         enemies: [tieAt(tieSeat)],
@@ -368,7 +377,7 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // What does catch that mutant is `hitscan-laser.test.ts`'s 6,000-off-axis tower (and the
     // direct `beamHit` probe below), so the property was covered — by a different test than
     // this one claimed. Kept as ordinary surface-still-fires cover, named for what it does.
-    const tower: Vec3 = [0, SKIM_ALTITUDE, -400]
+    const tower: Vec3 = [400, 0, SKIM_ALTITUDE] // native: depth 400, at SKIM_ALTITUDE up
     const s0: GameState = {
       ...enterPhase(initialState(1983), 'surface'),
       mode: 'playing',
@@ -421,7 +430,7 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // because it changes gameRules.ts's LINE COUNT and the findings' `ours` citations are
     // re-opened against the working tree. A mutant that moves lines cannot report a clean
     // blast radius in this repo. Folded to five lines, exactly replacing the original five.)
-    const corner: Vec3 = [189.6, SKIM_ALTITUDE + 94.8, -3000]
+    const corner: Vec3 = [3000, 189.6, SKIM_ALTITUDE + 94.8] // native: depth 3000, 189.6 right, 94.8 above skim
     expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
       TURRET_HIT_RADIUS,
     )
@@ -448,7 +457,7 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
 
     // The positive control, without which the assertion above passes for any broken fixture:
     // the same bearing, just inside the disc, still dies.
-    const inside: Vec3 = [170, SKIM_ALTITUDE + 85, -3000]
+    const inside: Vec3 = [3000, 170, SKIM_ALTITUDE + 85] // native: depth 3000, 170 right, 85 above skim
     expect(Math.hypot(170, 85), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
     expect(
       turretDied(stepGame(surfaceAt(inside), restTrigger(WIDE), DT)),
@@ -461,7 +470,7 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // `tie-sights-visibility.test.ts`'s "does NOT change the GUN" — which stays green and
     // must: what it pins is that the gate is not in the helper, which AC3 still requires.
     const ray = aimDirection(0, 0, WIDE)
-    const offGlass: Vec3 = [0, 240, -400]
+    const offGlass: Vec3 = [200, 0, 240] // native: depth 200, vert 240 off-glass
     expect(inView(offGlass, WIDE), 'fixture guard: off the glass').toBe(0)
     expect(
       beamHit(COCKPIT, ray, offGlass, TIE_HIT_RADIUS),
@@ -479,8 +488,8 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
   // Every seat here is ON the glass and at depth 6000, so the AC1 gate cannot confound the
   // shape measurement: at that depth the bounds are 3464 vertical and 6157 lateral at 16:9,
   // and no offset below approaches either.
-  const DEPTH = -6000
-  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+  const DEPTH = 6000
+  const at = (dx: number, dy: number): Vec3 => [DEPTH, dx, dy] // native [depth, right, up]; dx=right, dy=up
   const shootAt = (pos: Vec3): GameState =>
     stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(pos)] }), restTrigger(WIDE), DT)
 
@@ -588,7 +597,7 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
     const rayY = (AIM_Y / (1 / Math.tan(FOV_Y / 2))) * DEEP // where the deflected ray sits at that depth
     const deflected: Input = { aimX: 0, aimY: AIM_Y, fire: true, aspect: WIDE }
 
-    const beyond: Vec3 = [0, rayY + 265, -DEEP]
+    const beyond: Vec3 = [DEEP, 0, rayY + 265] // native: depth DEEP, vert 265 above the deflected ray
     expect(inView(beyond, WIDE), 'fixture guard: still on the glass, so the gate cannot explain a miss').toBe(
       Status.C_PV,
     )
@@ -599,7 +608,7 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
 
     // Positive control on the SAME deflected ray, without which the miss above proves nothing:
     // a seat inside the box in plane terms still dies.
-    const within: Vec3 = [0, rayY + 237.5, -DEEP]
+    const within: Vec3 = [DEEP, 0, rayY + 237.5] // native: depth DEEP, vert 237.5 above the deflected ray
     expect(inView(within, WIDE), 'fixture guard: also on the glass').toBe(Status.C_PV)
     expect(
       tieDied(stepGame(spaceRun({ aspect: WIDE, enemies: [tieAt(within)] }), deflected, DT)),
@@ -634,8 +643,8 @@ describe('sw8-27 AC5 — the space kill region is the cabinet box ∩ octagon, n
 // ---------------------------------------------------------------------------
 
 describe('sw8-27 AC6 — the sights band is the cabinet L1 octagon at 3×, not a disc at 2×', () => {
-  const DEPTH = -6000
-  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+  const DEPTH = 6000
+  const at = (dx: number, dy: number): Vec3 => [DEPTH, dx, dy] // native [depth, right, up]; dx=right, dy=up
   const R = TIE_HIT_RADIUS
 
   it('RED — on the axis the cabinet warns out to 3·TMPSIZ, where the disc stops at 2·', () => {
@@ -735,8 +744,8 @@ describe('sw8-27 AC6 — the sights band is the cabinet L1 octagon at 3×, not a
 // ---------------------------------------------------------------------------
 
 describe('sw8-27 AC7 — the port and the cabinet now agree about every seat, not merely nest', () => {
-  const DEPTH = -6000
-  const at = (dx: number, dy: number): Vec3 => [dx, dy, DEPTH]
+  const DEPTH = 6000
+  const at = (dx: number, dy: number): Vec3 => [DEPTH, dx, dy] // native [depth, right, up]; dx=right, dy=up
 
   it('the KILL region matches the cabinet term for term, in both directions', () => {
     // Before this story the relationship was CONTAINMENT — 0/2000 directions where the clone
@@ -816,19 +825,21 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // caps at the hit radius — so the only way to lose is with `t` SMALL, which means shallow
     // depth, which means a tiny frustum. Everything has to be near a corner at once.
     //
-    // The round-1 review named a seat at [1025.4, 576.8, -1000] with `along = -249.5`. That
-    // seat proves the exit is reachable and NOT that it matters: measured, its in-plane offset
-    // is dx 2051.8, dy 1154.2, so the box rejects it and the guard changes nothing there. The
-    // seat below is the one that actually bites — at depth 117 with the yoke jammed to the
-    // opposite corner, dx 239.6 and dy 134.8 clear the box (250) and sum to 374.3, inside the
-    // octagon's 375, while `along` is -28.8.
+    // RE-DERIVED for sw10-1's ±45° symmetric lens: `hBound = vBound` at every aspect (aspect
+    // dropped, uf1-14), so the corner is now the SAME fraction of the SAME bound on both axes
+    // — the old seat's asymmetric dx/dy (239.6 / 134.8, from `hBound = vBound · WIDE`) collapse
+    // to a symmetric pair. The round-1 review named a seat at [1025.4, 576.8, -1000] with
+    // `along = -249.5`; that seat proved the exit reachable and not that it matters — measured,
+    // its in-plane offset is dx 2051.8, dy 1154.2, so the box rejects it regardless of lens. The
+    // seat below is the one that actually bites — at depth 94 with the yoke jammed to the
+    // opposite corner, dx and dy are both 187.06, clear the box (250) and sum to 374.12, inside
+    // the octagon's 375, while `along` is -53.19.
     //
     // VERBATIM MUTANT this kills, replacing that line in `siteOffset` (`gameRules.ts`):
     //   if (along <= 0 && false) return null // behind the gun — never under the site
-    const DEPTH = 117
-    const vBound = DEPTH * TAN_HALF
-    const hBound = vBound * WIDE
-    const oppositeCorner: Vec3 = [hBound * 0.995, vBound * 0.995, -DEPTH]
+    const DEPTH = 94
+    const bound = DEPTH * TAN_HALF
+    const oppositeCorner: Vec3 = [DEPTH, bound * 0.99, bound * 0.99] // native: depth DEPTH, near the (right, up) corner
     // The yoke jammed to the corner DIAGONALLY opposite the seat.
     const cornerYoke: Input = { aimX: -1, aimY: -1, fire: true, aspect: WIDE }
 
@@ -841,10 +852,10 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // Re-derive what `siteOffset` would have returned with the guard neutralised, so the
     // claim "the box and octagon both accept it" is measured here rather than asserted in
     // the comment above.
-    const t = (COCKPIT[2] - oppositeCorner[2]) / -dir[2]
-    const dx = Math.abs(oppositeCorner[0] - (COCKPIT[0] + dir[0] * t))
-    const dy = Math.abs(oppositeCorner[1] - (COCKPIT[1] + dir[1] * t))
-    const along = dir[0] * oppositeCorner[0] + dir[1] * oppositeCorner[1] + dir[2] * oppositeCorner[2]
+    const t = (oppositeCorner[0] - COCKPIT[0]) / dir[0] // native depth is index 0
+    const dx = Math.abs(oppositeCorner[1] - (COCKPIT[1] + dir[1] * t)) // native right is index 1
+    const dy = Math.abs(oppositeCorner[2] - (COCKPIT[2] + dir[2] * t)) // native up is index 2
+    const along = dir[0] * oppositeCorner[0] + dir[1] * oppositeCorner[1] + dir[2] * oppositeCorner[2] // dot: basis-independent
     expect(along, 'fixture guard: the seat really is BEHIND the gun').toBeLessThan(0)
     expect(dx, 'fixture guard: and inside the ROM box on x, so the box does not save us').toBeLessThanOrEqual(
       BOX * TIE_HIT_RADIUS,
@@ -859,11 +870,13 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
       'the player is aiming at the far corner of the glass — this fighter must survive',
     ).toBe(false)
 
-    // POSITIVE CONTROL, without which "nothing dies at depth 117" passes for the wrong reason:
-    // the same fighter, same frame, with the yoke pointed AT it, dies.
+    // POSITIVE CONTROL, without which "nothing dies at depth 94" passes for the wrong reason:
+    // the same fighter, same frame, with the yoke pointed AT it, dies. `aimX` no longer divides
+    // by `WIDE` — `aimDirection` inverts x and y identically now, with no aspect term on
+    // either (uf1-14) — so the inversion is the same formula on both axes.
     const onTarget: Input = {
-      aimX: (oppositeCorner[0] / -oppositeCorner[2] / WIDE) * (1 / TAN_HALF),
-      aimY: (oppositeCorner[1] / -oppositeCorner[2]) * (1 / TAN_HALF),
+      aimX: (oppositeCorner[1] / oppositeCorner[0]) * (1 / TAN_HALF), // right / depth
+      aimY: (oppositeCorner[2] / oppositeCorner[0]) * (1 / TAN_HALF), // up / depth
       fire: true,
       aspect: WIDE,
     }
@@ -874,20 +887,28 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
   })
 
   it('F7 — a degenerate viewport aspect does not silently disarm the gun', () => {
-    // RED. `inPlayerView` builds `hBound = vBound * aspect`, so `aspect === 0` collapses the
-    // lateral bound to zero and `lat * lat < 0` is false for EVERY position — including dead
-    // ahead. Before this story that corrupted a status bit; as of this story it also gates
-    // `spaceSiteHit`, so the player's laser hits NOTHING in space for the whole frame and
-    // nothing anywhere says why.
+    // RE-DERIVED for sw10-1. Before it, `inPlayerView` built `hBound = vBound * aspect`, so
+    // `aspect === 0` collapsed the lateral bound to zero and `lat * lat < 0` was false for
+    // EVERY position — including dead ahead — and an unbounded aspect ran the opposite way,
+    // widening the bound enough to re-admit a fighter off the side of the glass. Both were
+    // reachable because `inPlayerView` genuinely CONSUMED the viewport's value.
+    //
+    // After sw10-1, `hBound = vBound = depth`, full stop — `inPlayerView` and `aimDirection`
+    // both ignore their `aspect` argument entirely (uf1-14: the cabinet's screen shape does not
+    // change with the viewport, so the pyramid may not either). So the SPECIFIC mechanism named
+    // above — a degenerate aspect corrupting the frustum math — is retired by construction:
+    // there is no longer an aspect-shaped input those two functions can be fed that moves their
+    // answer. What survives, and is pinned below, is narrower but still real: `state.aspect`
+    // itself must still sanitise a degenerate `Input.aspect` to something finite and positive,
+    // because OTHER consumers — chiefly the shell's own render projection — still key off it
+    // even though the gun no longer does; and no aspect value, sane or degenerate, may be able
+    // to move the gate's answer for a fixed seat, which is the residual, storable form of "does
+    // not silently disarm the gun" once the frustum itself stopped listening.
     //
     // It is reachable from the shell: `shell/input.ts` guards `clientHeight === 0` but not
     // `clientWidth === 0`, which yields exactly 0 and reaches `input.aspect ?? 1` untouched —
     // and `?? 1` does not fire, because 0 is not nullish. A zero-width canvas is what a
     // display: none container, a collapsed flex child or a pre-layout first frame all produce.
-    //
-    // The fix belongs where the viewport ENTERS the core, not inside the frustum math: one
-    // guard at the boundary keeps `inPlayerView` a pure statement of the pyramid, and covers
-    // every future reader rather than the two that exist today.
     //
     // THE RULE PINNED HERE is the one the core already documents for a viewport the shell has
     // not supplied — fall back to SQUARE (`tie-sights-status.test.ts`, "defaults to a square
@@ -896,29 +917,16 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     // not a clamp, deliberately: clamping into a sane band means inventing the band, and still
     // hands the frustum a number nobody measured.
     //
-    // AND IT MUST REACH TWO CALL SITES, which is what the last block below is for. `stepGame`
-    // shadows the viewport onto the state at `sim.ts:193-195`, and the preamble above that line
-    // says "this one line reaches every exit path" — but `beamDir` is built at `sim.ts:354`
-    // from `input.aspect` RAW, not from the shadowed `state.aspect` — that is how it stood when
-    // this test was written. A guard added at the shadow ALONE would have made the two disagree,
-    // and the beam would have gone on inverting the projection with the very viewport the gate
-    // had just rejected. GREEN moved that line onto `state.aspect`, so the two agree again for a
-    // reason rather than by luck.
-    //
-    // VERBATIM MUTANTS this kills, both line-preserving, both in `sim.ts`:
+    // VERBATIM MUTANT this still kills, line-preserving, in `sim.ts`:
     //
     //   the sanitiser itself —
     //     const aspect = rawAspect
-    //   MEASURED at GREEN: reddens exactly 1 test — this one.
-    //
-    //   the second call site put back the way it was, i.e. a state-only fix —
-    //     const beamDir: Vec3 = aimDirection(aimX, aimY, input.aspect)
-    //   MEASURED at GREEN: reddens 5, of which ONE is behavioural — this test. The other four
-    //   are the citation guards, and for a different reason from the line-count artefact noted
-    //   in group C: this mutant changes the CONTENT of a line `tie-sights-status.test.ts` quotes
-    //   verbatim, so the quote stops matching its own citation. Two independent ways for a
-    //   mutant's count to overstate its blast radius in this repo, and neither is the code.
-    const deadAhead: Vec3 = [0, 0, -3000]
+    //   Uncaught by `inPlayerView`/`aimDirection` now — neither reads the value — but still
+    //   caught below: with the sanitiser bypassed, `after.aspect` is the RAW degenerate input
+    //   (0, -1, NaN, Infinity) rather than the fallback 1, and the loop's `after.aspect` check
+    //   catches it directly at the state field, not by inference from a kill outcome the
+    //   frustum can no longer produce.
+    const deadAhead: Vec3 = [3000, 0, 0] // native: 3000 dead ahead
     expect(
       tieDied(stepGame(spaceRun({ aspect: 1, enemies: [tieAt(deadAhead)] }), restTrigger(1), DT)),
       'control: on a sane viewport this fighter is dead centre and dies',
@@ -938,34 +946,56 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
       ).toBe(true)
     }
 
-    // FAIL-OPEN, the mirror of the case above and the third of the round-1 review's confirmed
-    // silent failures. An unbounded aspect makes `hBound` unbounded, so a fighter off the SIDE
-    // of the glass reads as drawn. The seat has to be one the SHAPE admits, or the assertion
-    // passes without the gate ever being consulted: at depth 400 the lateral bound is 230.9 on
-    // a square canvas while 240 is inside TIE_HIT_RADIUS of the at-rest ray. It is AC1's filed
-    // seat rotated onto the other axis.
-    const offGlassLaterally: Vec3 = [240, 0, -400]
+    // FAIL-OPEN, the mirror of the case above — STRENGTHENED rather than merely re-derived.
+    // Before sw10-1 an unbounded aspect made `hBound` unbounded, so a fighter off the SIDE of
+    // the glass could read as drawn; the property worth pinning now is stronger, because the
+    // gate no longer keys off aspect AT ALL: an off-glass seat must stay off-glass under EVERY
+    // aspect this file can throw at it, degenerate or sane, not just survive the one value
+    // (Infinity) that used to unbound the old formula. The seat has to be one the SHAPE admits,
+    // or the assertion passes without the gate ever being consulted: at depth 200 the
+    // (aspect-independent) bound is 200, while 240 is inside TIE_HIT_RADIUS of the at-rest ray.
+    // It is AC1's filed seat rotated onto the other axis.
+    const offGlassLaterally: Vec3 = [200, 240, 0] // native: depth 200, 240 to the right, off-glass laterally
     assertGunSeat(offGlassLaterally, TIE_HIT_RADIUS, 1, true, 'lateral fail-open seat')
-    expect(
-      tieDied(
-        stepGame(
-          spaceRun({ enemies: [tieAt(offGlassLaterally)] }),
-          { aimX: 0, aimY: 0, fire: true, aspect: Infinity },
-          DT,
+    for (const [label, aspect] of [
+      ['sane (1)', 1],
+      ['zero', 0],
+      ['negative', -1],
+      ['NaN', NaN],
+      ['Infinity', Infinity],
+    ] as const) {
+      expect(
+        tieDied(
+          stepGame(spaceRun({ enemies: [tieAt(offGlassLaterally)] }), { aimX: 0, aimY: 0, fire: true, aspect }, DT),
         ),
-      ),
-      'aspect Infinity: an unbounded lateral bound must not re-admit a fighter that was never drawn',
-    ).toBe(false)
+        `aspect ${label}: aspect no longer reaches the gate at all, so it cannot re-admit a fighter that was never drawn`,
+      ).toBe(false)
+    }
 
-    // THE SECOND CALL SITE. Seat a fighter on the ray the yoke describes AT THE FALLBACK
-    // ASPECT, then send the degenerate one. A fix applied only where `state.aspect` is set
-    // leaves `sim.ts:354` building `aimDirection(aimX, aimY, 0)`, whose x term is multiplied to
-    // zero: the beam flies straight ahead while the crosshair is deflected, and this fighter
-    // lives through a shot that is on it.
+    // THE SECOND CALL SITE — RETIRED BY THE LENS CHANGE, not merely re-verified. Before
+    // sw10-1, `sim.ts:354` built `beamDir` from `input.aspect` raw while `inPlayerView`'s call
+    // site read the sanitised `state.aspect`, so a state-only guard left the beam vulnerable to
+    // exactly the degenerate values the gate had just rejected — the crosshair and the laser
+    // could point at different things on the very frames the guard existed to handle.
+    // `aimDirection` now drops `aspect` from the ray entirely — `normalize([aimX / f, aimY / f,
+    // -1])`, no aspect term at either position (uf1-14) — so there is no second value left for
+    // the two call sites to disagree ABOUT. Pinned directly, at the seam that used to diverge,
+    // rather than inferred from a kill outcome the two functions can no longer tell apart:
     const YOKE = 0.5
+    expect(
+      aimDirection(YOKE, 0, 0),
+      'aimDirection drops aspect entirely — a raw, unsanitised aspect cannot move the ray',
+    ).toEqual(aimDirection(YOKE, 0, 1))
+    expect(
+      aimDirection(YOKE, 0, Infinity),
+      'nor can an aspect the OLD lens would have called unbounded',
+    ).toEqual(aimDirection(YOKE, 0, 1))
+
+    // End to end, so the seam-level guarantee above is not the whole story: the deflected shot
+    // still lands when the frame actually carries a degenerate aspect.
     const deflectedRay = aimDirection(YOKE, 0, 1)
-    const tOf = 3000 / -deflectedRay[2]
-    const onDeflectedRay: Vec3 = [deflectedRay[0] * tOf, deflectedRay[1] * tOf, -3000]
+    const tOf = 3000 / deflectedRay[0] // native: depth is index 0
+    const onDeflectedRay: Vec3 = [3000, deflectedRay[1] * tOf, deflectedRay[2] * tOf]
     // Guarded by hand rather than through `assertGunSeat`, which measures from the AT-REST ray
     // (see its docstring) and would reject a seat 866 u off it — the whole point of this seat.
     expect(
@@ -977,13 +1007,13 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
       tieDied(
         stepGame(spaceRun({ enemies: [tieAt(onDeflectedRay)] }), { aimX: YOKE, aimY: 0, fire: true, aspect: 1 }, DT),
       ),
-      'control: at the fallback aspect the deflected crosshair is on this fighter',
+      'control: at a sane aspect the deflected crosshair is on this fighter',
     ).toBe(true)
     expect(
       tieDied(
         stepGame(spaceRun({ enemies: [tieAt(onDeflectedRay)] }), { aimX: YOKE, aimY: 0, fire: true, aspect: 0 }, DT),
       ),
-      'aspect zero: the BEAM must fall back too — a state-only guard leaves sim.ts:354 raw',
+      'aspect zero: the beam lands just the same — aspect having been dropped from the ray entirely',
     ).toBe(true)
   })
 
@@ -1023,21 +1053,21 @@ describe('sw8-27 F — degenerate inputs to the new gate, which the ACs did not 
     ] as const) {
       const dir = aimDirection(aimX, aimY, WIDE)
       expect(
-        siteOffset(COCKPIT, dir, [0, 0, -3000]),
+        siteOffset(COCKPIT, dir, [3000, 0, 0]),
         `${label}: a ray that cannot be resolved yields no site, rather than a NaN one`,
       ).toBeNull()
     }
 
     // And end-to-end, because the seam contract is only worth having if the arm honours it:
     // no kill, and no crash, on a frame the shell should never send but might.
-    const s = spaceRun({ aspect: WIDE, enemies: [tieAt([0, 0, -3000])] })
+    const s = spaceRun({ aspect: WIDE, enemies: [tieAt([3000, 0, 0])] })
     const after = stepGame(s, { aimX: Infinity, aimY: 0, fire: true, aspect: WIDE }, DT)
     expect(tieDied(after), 'a non-finite yoke kills nothing').toBe(false)
 
     // POSITIVE CONTROL for the whole block: the ordinary ray at the same seat still resolves,
     // so "returns null" is not passing because `siteOffset` stopped working.
     expect(
-      siteOffset(COCKPIT, aimDirection(0, 0, WIDE), [0, 0, -3000]),
+      siteOffset(COCKPIT, aimDirection(0, 0, WIDE), [3000, 0, 0]),
       'positive control: the at-rest ray still resolves the very same target',
     ).not.toBeNull()
   })

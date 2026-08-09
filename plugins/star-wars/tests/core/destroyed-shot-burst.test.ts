@@ -44,11 +44,11 @@ import type { Vec3 } from '@shared/math3d'
 // Well downrange of the cockpit (outside COCKPIT_HIT_RADIUS = 80) so a kill here is
 // unambiguously "before it reaches the cockpit", never a cockpit collision. Mirrors
 // tests/core/shootable-fireballs.test.ts.
-const DOWNRANGE: Vec3 = [0, 0, -400]
+const DOWNRANGE: Vec3 = [400, 0, 0] // native [depth, right, up]: 400 ahead
 
-// A fireball flies back toward the cockpit (+Z); at the tiny TICK below it barely
-// moves, so it stays inside the hit sphere it starts in.
-const fireball = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL })
+// A fireball flies back toward the cockpit (native -X depth); at the tiny TICK below
+// it barely moves, so it stays inside the hit sphere it starts in.
+const fireball = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL })
 
 /** A fresh wave with the sky held EMPTY and QUIET — no live TIEs, no spawns, no enemy
  *  fire — so the only thing that can change the scene is the player's own trigger and
@@ -95,7 +95,7 @@ describe('sw8-3 — shooting a fireball down spawns a burst (AC2)', () => {
     // i.e. the fireball's captured position — not the cockpit origin. Ties the two
     // representations together without hard-coding the homing-decayed z.
     expect(kill.destroyedShots[0].pos).toEqual(cue!.pos)
-    expect(kill.destroyedShots[0].pos[2], 'downrange near its launch, not at the cockpit').toBeLessThan(-350)
+    expect(kill.destroyedShots[0].pos[0], 'downrange near its launch, not at the cockpit').toBeGreaterThan(350)
   })
 
   it('spawns the burst at age ~0 (this frame’s kill, not yet aged)', () => {
@@ -148,7 +148,7 @@ describe('sw8-3 — the burst never crosses a phase boundary (AC6)', () => {
     // WOULD carry one through `...s` if enterPhase forgot to reset it.
     const withBurst = {
       ...quietWave(),
-      destroyedShots: [{ pos: [0, 0, -400] as Vec3, age: 0 }],
+      destroyedShots: [{ pos: [400, 0, 0] as Vec3, age: 0 }],
     } as GameState
     const next = enterPhase(withBurst, 'surface')
     expect(next.destroyedShots ?? []).toHaveLength(0)

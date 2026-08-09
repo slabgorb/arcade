@@ -142,7 +142,8 @@ describe('sw8-17 — the Death Star wander belongs to the STATION', () => {
   it("the wander is the STATION's own: the camera stays cockpit-pinned at every sampled time", () => {
     // The sw8-8 tombstone from the station's side: whatever lateral term the seat
     // gains, the view matrix must stay bit-identical across the whole box, and the
-    // station's view-x must be exactly its world-x (no hidden camera contribution).
+    // station's view-x must be exactly its world lateral (native pos[1] = right; no
+    // hidden camera contribution).
     const view0 = cameraView(spaceAt(0))
     for (const t of SAMPLE_TIMES) {
       const s = spaceAt(t)
@@ -150,7 +151,7 @@ describe('sw8-17 — the Death Star wander belongs to the STATION', () => {
         matMaxDelta(cameraView(s), view0),
         `the space camera moved at t=${t}s — the ST.UX camera slide is back`,
       ).toBeLessThan(1e-9)
-      expect(stationInView(s).x).toBeCloseTo(deathStarPlacement(s).pos[0], 9)
+      expect(stationInView(s).x).toBeCloseTo(deathStarPlacement(s).pos[1], 9)
     }
   })
 

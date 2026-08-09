@@ -37,7 +37,8 @@ import {
   type Enemy,
 } from '../../src/core/state'
 import { NO_INPUT, type Input } from '../../src/core/input'
-import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
+import { IDENTITY, type Vec3 } from '@shared/math3d'
+import { FOV_Y } from '../../src/core/gameRules'
 
 const W = 800
 const H = 600
@@ -81,12 +82,11 @@ const segCount = (state: GameState): number => {
 }
 
 // --- the same TIE-kill fixture the combat-kill-loop suite uses -----------------
-const FOV_Y = Math.PI / 3
-const proj = perspective(FOV_Y, 16 / 9, 1, 5000)
-/** Yoke deflection that puts the crosshair ON a world point (crosshairNdc is id). */
+const F = 1 / Math.tan(FOV_Y / 2)
+/** Yoke deflection that puts the crosshair ON a world point (crosshairNdc is id).
+ *  sw10-1 native: eye at the origin, depth = pos[0]; aim = right/depth, up/depth. */
 const aimAt = (pos: Vec3): { aimX: number; aimY: number } => {
-  const ndc = transform(proj, pos)
-  return { aimX: ndc[0], aimY: ndc[1] }
+  return { aimX: (F * pos[1]) / pos[0], aimY: (F * pos[2]) / pos[0] }
 }
 const tieStill = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
 /** A lone TIE with spawns and enemy fire suppressed — the only thing that can
@@ -106,7 +106,7 @@ const loneWave = (enemy: Enemy, over: Partial<GameState> = {}): GameState => ({
 /** Fire on a dead-ahead TIE and return the FIRST state in which it is destroyed by
  *  fire (its own kill frame). Guards the fixture: it really died to a bolt, not a ram. */
 function destroyTie(): GameState {
-  const P: Vec3 = [0, 0, -1200]
+  const P: Vec3 = [1200, 0, 0] // native depth 1200 ahead
   let s = loneWave(tieStill(P))
   const fire: Input = { ...aimAt(P), fire: true }
   let postKill: GameState | null = null

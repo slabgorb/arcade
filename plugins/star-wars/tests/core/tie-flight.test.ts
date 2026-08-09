@@ -62,9 +62,9 @@ import {
   type Mat4,
 } from '@shared/math3d'
 
-/** Model-space forward — the TIE's nose (the codebase "looking down -Z"
- *  convention adopted by story 8-13: a TIE's nose points back at the cockpit). */
-const FORWARD: Vec3 = [0, 0, 1]
+/** Model-space forward — the TIE's nose. sw10-1 native basis: the conjugated
+ *  orient reads its nose as −col0, so `applyDir(orient, [-1,0,0])` = −col0 = the nose. */
+const FORWARD: Vec3 = [-1, 0, 0]
 
 /** Apply only the rotation (linear) part of a row-major Mat4 to a direction. */
 const applyDir = (m: Mat4, v: Vec3): Vec3 => [
@@ -206,8 +206,9 @@ describe('Story 9-2 — existing collision & motion contracts are unaffected (AC
   // Fully-typed minimal fixtures (the combat-kill-loop.test.ts `tieStill` idiom):
   // collision reads only .pos, but a complete Enemy keeps the suite type-clean.
   const tieAt = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
-  /** Dead ahead, outside COCKPIT_HIT_RADIUS — the beam's target, and the old bolt's spot. */
-  const AT: Vec3 = [0, 0, -100]
+  /** Dead ahead, outside COCKPIT_HIT_RADIUS — the beam's target, and the old bolt's spot.
+   *  sw10-1 native: ahead is +X depth. */
+  const AT: Vec3 = [100, 0, 0]
 
   it('the laser still destroys a TIE and scores under the flight model', () => {
     // sw7-17: this used to hand-place a bolt on the TIE and step with the trigger up. The gun is
@@ -246,10 +247,10 @@ describe('Story 9-2 — existing collision & motion contracts are unaffected (AC
     // stays put. Guards the `x || default` vs `x ?? default` trap — 0 is falsy
     // but a valid speed (lang-review TS check #4, null/undefined handling).
     const base = initialState(1983)
-    const still = tieAt([0, 660, -1200])
+    const still = tieAt([1200, 0, 660]) // native [depth 1200, right 0, up 660]
     const s = stepGame({ ...base, enemies: [still], spawnTimer: 999 }, NO_INPUT, 0.05)
-    expect(s.enemies[0].pos[0]).toBeCloseTo(0, 6)
-    expect(s.enemies[0].pos[1]).toBeCloseTo(660, 6)
-    expect(s.enemies[0].pos[2]).toBeCloseTo(-1200, 6)
+    expect(s.enemies[0].pos[0]).toBeCloseTo(1200, 6)
+    expect(s.enemies[0].pos[1]).toBeCloseTo(0, 6)
+    expect(s.enemies[0].pos[2]).toBeCloseTo(660, 6)
   })
 })

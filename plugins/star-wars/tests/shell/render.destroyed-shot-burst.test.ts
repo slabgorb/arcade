@@ -131,7 +131,7 @@ const quietScene = (over: Partial<GameState> = {}): GameState => ({
   ...over,
 })
 
-const fireball = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL })
+const fireball = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL })
 const TICK = 0.001
 const DT = 1 / 60
 
@@ -143,7 +143,7 @@ const DT = 1 / 60
 describe('sw8-3 — render paints the destroy-burst from state.destroyedShots (AC4)', () => {
   it('a fresh burst adds red ink near its position that a burst-free frame lacks', () => {
     // On-axis burst dead ahead projects to screen centre.
-    const withBurst = quietScene({ destroyedShots: [{ pos: [0, 0, -1000] as Vec3, age: 0 }] } as Partial<GameState>)
+    const withBurst = quietScene({ destroyedShots: [{ pos: [1000, 0, 0] as Vec3, age: 0 }] } as Partial<GameState>)
     const withoutBurst = quietScene({ destroyedShots: [] } as Partial<GameState>)
 
     // GREEN: the burst strokes extra red near centre. RED: render never reads the
@@ -157,8 +157,8 @@ describe('sw8-3 — render paints the destroy-burst from state.destroyedShots (A
   it('a real fireball kill puts the burst on screen end-to-end (sim populates, render draws)', () => {
     // Drive the REAL kill path, then render the FOLLOWING frame with the trigger UP so
     // the player beam is off and cannot confound the red count while the burst still burns.
-    const s0: GameState = { ...quietScene(), enemyShots: [fireball([0, 0, -1000])] }
-    const kill = stepGame(s0, fireAt(s0, [0, 0, -1000]), TICK)
+    const s0: GameState = { ...quietScene(), enemyShots: [fireball([1000, 0, 0])] }
+    const kill = stepGame(s0, fireAt(s0, [1000, 0, 0]), TICK)
     expect(kill.enemyShots, 'the fireball really was shot down').toHaveLength(0)
 
     const burning = stepGame(kill, NO_INPUT, DT) // trigger up: beam off, burst still lit

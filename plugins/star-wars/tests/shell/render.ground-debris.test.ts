@@ -112,7 +112,7 @@ const redCount = (segs: Seg[]): number => segs.filter((s) => isRed(s.color)).len
 const whiteCount = (segs: Seg[]): number => segs.filter((s) => isWhite(s.color)).length
 
 // --- the kill fixture (surface-bunkers.test.ts / core ground-debris) -------------
-const SITE: Vec3 = [0, SKIM_ALTITUDE, -800]
+const SITE: Vec3 = [800, 0, SKIM_ALTITUDE] // native [depth, right, up]: 800 ahead, level with the eye
 const groundObject = (kind: 'tower' | 'bunker'): Turret => ({ pos: SITE, kind } as Turret)
 const armedKill = (kind: 'tower' | 'bunker'): GameState => ({
   ...initialState(1983),

@@ -32,6 +32,7 @@ import { DEATH_STAR_SURFACE } from '../../src/core/models'
 import { FOV_Y } from '../../src/core/gameRules'
 import { perspective, transform, add, type Vec3 } from '@shared/math3d'
 import { project, NEAR, FAR } from '../../src/shell/wireframe'
+import { toNative } from '../../src/core/basis'
 import * as RenderModule from '../../src/shell/render'
 
 /** A fresh surface run, optionally overridden (e.g. a different altitude). */
@@ -48,13 +49,19 @@ const W = 1280
 const H = 960
 const proj = perspective(FOV_Y, W / H, NEAR, FAR)
 
-/** A surface vertex after the display orientation and the floor placement. */
-const placed = (v: Vec3, floor: Vec3): Vec3 =>
-  add(transform(RenderModule.SURFACE_ORIENT, v), floor)
+// sw10-1: the world is ROM-native now, so a floor point reaches eye space through
+// the live camera (`cameraView`), not by treating the world AS eye space. The
+// surface eye is altitude-independent in depth, so any nominal altitude serves.
+const eyeView = (alt = SKIM_ALTITUDE) => RenderModule.cameraView(surface({ altitude: alt }))
+
+/** A surface vertex baked to native, placed at the native floor seat, carried into
+ *  eye space by the camera — where `project`'s near-plane clip expects it. */
+const placedEye = (v: Vec3, floor: Vec3, view = eyeView()): Vec3 =>
+  transform(view, add(toNative(v), floor))
 
 /** How many of the surface's vertices land in front of the cockpit (drawable). */
-const visibleCount = (floor: Vec3): number =>
-  DEATH_STAR_SURFACE.vertices.filter((v) => project(placed(v, floor), proj, W, H) !== null)
+const visibleCount = (floor: Vec3, view = eyeView()): number =>
+  DEATH_STAR_SURFACE.vertices.filter((v) => project(placedEye(v, floor, view), proj, W, H) !== null)
     .length
 
 // --- AC-1 / export shape & altitude framing ---------------------------------
@@ -77,8 +84,10 @@ describe('Story 8-11/11-2 — surfacePlacement seat & camera altitude framing', 
     // Story 11-2 moved the terrain-skim framing from the floor into the CAMERA: the
     // eye rises to the cockpit's altitude, so a y=0 floor point sits -altitude below
     // it. Climbing/diving still moves the surface away/closer — now via the view.
+    // native floor point 100 ahead: [depth 100, right 0, up 0]. Its eye-space up
+    // (index 1) sits `-altitude` below the eye that the camera lifted to `altitude`.
     const floorBelowEye = (alt: number): number =>
-      transform(RenderModule.cameraView(surface({ altitude: alt })), [0, 0, -100])[1]
+      transform(RenderModule.cameraView(surface({ altitude: alt })), [100, 0, 0])[1]
     expect(floorBelowEye(SKIM_ALTITUDE)).toBeCloseTo(-SKIM_ALTITUDE)
     expect(floorBelowEye(300)).toBeCloseTo(-300)
   })
@@ -86,7 +95,7 @@ describe('Story 8-11/11-2 — surfacePlacement seat & camera altitude framing', 
   it('reads a grounded ship (altitude 0) verbatim through the camera, no falsy default', () => {
     // altitude 0 is falsy-but-valid; a `|| SKIM_ALTITUDE` default would be a bug.
     // The camera consumes altitude verbatim, so a grounded ship gets no eye lift.
-    const eyeY = transform(RenderModule.cameraView(surface({ altitude: 0 })), [0, 0, -100])[1]
+    const eyeY = transform(RenderModule.cameraView(surface({ altitude: 0 })), [100, 0, 0])[1]
     expect(eyeY === 0).toBe(true) // -0 or +0, both === 0
     expect(eyeY).not.toBe(-SKIM_ALTITUDE)
   })
@@ -97,22 +106,23 @@ describe('Story 8-11/11-2 — surfacePlacement seat & camera altitude framing', 
 describe('Story 8-11 — the surface sits ahead of the cockpit', () => {
   it('places the floor ahead of the near clip plane, not on top of the cockpit', () => {
     const { floor } = RenderModule.surfacePlacement()
-    expect(floor[2]).toBeLessThan(-NEAR) // down -Z, never the buggy Z=0
+    expect(floor[0]).toBeGreaterThan(NEAR) // ahead on +X depth, never the buggy origin
   })
 
   it('draws the WHOLE surface — every vertex lands in front of the cockpit, none clipped', () => {
-    // The crux: at the buggy Z=0 floor the near rings (object Z up to +6720) are
+    // The crux: at the buggy origin seat the near rings (object Z up to +6720) are
     // behind the cockpit and dropped. A correct placement puts all of them ahead.
     const { floor } = RenderModule.surfacePlacement()
     for (const v of DEATH_STAR_SURFACE.vertices) {
-      expect(placed(v, floor)[2]).toBeLessThan(-NEAR)
+      expect(placedEye(v, floor)[2]).toBeLessThan(-NEAR)
     }
     expect(visibleCount(floor)).toBe(DEATH_STAR_SURFACE.vertices.length)
   })
 
-  it('shows strictly more of the surface than the buggy Z=0 placement did', () => {
-    // Pins the bug and guards against any regression to a Z=0 floor.
-    const buggy = visibleCount([0, -SKIM_ALTITUDE, 0])
+  it('shows strictly more of the surface than the buggy origin placement did', () => {
+    // Pins the bug and guards against any regression to a cockpit-straddling seat
+    // (the native twin of the old Z=0 floor: depth 0, straddling the eye).
+    const buggy = visibleCount(toNative([0, -SKIM_ALTITUDE, 0]))
     const fixed = visibleCount(RenderModule.surfacePlacement().floor)
     expect(buggy).toBeLessThan(DEATH_STAR_SURFACE.vertices.length) // the bug: floor partly clipped
     expect(fixed).toBeGreaterThan(buggy) // the fix reveals the clipped rings
@@ -128,10 +138,10 @@ describe('Story 8-11 — turrets stand on the surface, not over a distant speck'
     // INSIDE that band (so turrets sit on visible floor) AND extend BEYOND it (so
     // the floor reads as receding terrain, not a slab that stops at the turrets).
     const { floor } = RenderModule.surfacePlacement()
-    const worldZ = DEATH_STAR_SURFACE.vertices.map((v) => placed(v, floor)[2])
+    const eyeZ = DEATH_STAR_SURFACE.vertices.map((v) => placedEye(v, floor)[2])
 
-    const inTurretZone = worldZ.some((z) => z > -SPAWN_DISTANCE && z < -NEAR)
-    const beyondTurrets = worldZ.some((z) => z < -SPAWN_DISTANCE)
+    const inTurretZone = eyeZ.some((z) => z > -SPAWN_DISTANCE && z < -NEAR)
+    const beyondTurrets = eyeZ.some((z) => z < -SPAWN_DISTANCE)
 
     expect(inTurretZone).toBe(true) // floor beneath where the turrets stand
     expect(beyondTurrets).toBe(true) // and it keeps going past them

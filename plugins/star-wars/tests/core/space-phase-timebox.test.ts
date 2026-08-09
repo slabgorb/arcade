@@ -187,7 +187,7 @@ describe('sw8-11 — the Death Star approach rides the clock, not the kill count
   it('apparent size grows monotonically from 0s to 21s with ZERO kills', () => {
     const apparent = (t: number): number => {
       const p = deathStarPlacement(spaceAt(t))
-      const z = Math.abs(p.pos[2])
+      const z = Math.abs(p.pos[0]) // native depth
       expect(z).toBeGreaterThan(0)
       return (p.scale ?? 1) / z
     }

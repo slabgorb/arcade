@@ -47,7 +47,8 @@ function advance(s0: GameState, steps: number): GameState {
   return s
 }
 
-/** The Death Star's lateral position in the camera's view space. */
+/** The Death Star's lateral position in the camera's view space. View space is the
+ *  OpenGL projection basis [lateral, up, -depth], so the lateral component is index 0. */
 function deathStarViewX(state: GameState): number {
   return transform(cameraView(state), deathStarPlacement(state).pos)[0]
 }
@@ -102,7 +103,7 @@ describe('sw8-8 — the space camera is the cockpit', () => {
       expect(
         deathStarViewX(s),
         'the camera displaced the Death Star laterally — the ST.UX camera slide is back',
-      ).toBeCloseTo(deathStarPlacement(s).pos[0], 9)
+      ).toBeCloseTo(deathStarPlacement(s).pos[1], 9) // native [depth, right, up]: lateral is index 1
     }
   })
 

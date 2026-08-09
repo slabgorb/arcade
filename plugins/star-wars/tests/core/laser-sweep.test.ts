@@ -76,6 +76,18 @@ import type { Vec3 } from '@shared/math3d'
 const DT = 1 / 60
 const ASPECT = 16 / 9
 
+/**
+ * sw10-1: the lens is now symmetric — 90° FOV, divide-by-depth, ASPECT-INDEPENDENT
+ * (`gameRules.aimDirection` dropped its aspect scaling entirely; f went from √3 to 1). `ASPECT`
+ * above still feeds `Input.aspect` in `yoke()` below (the cabinet still has a real 16:9
+ * viewport), but every `aimAt` call in this file passes `1`, not `ASPECT`: `aimAt`
+ * (tests/support/aim.ts) still divides by whatever aspect it is given, and `1` is what cancels
+ * that division into the new aspect-independent inverse (`aimX = X/depth`). Passing the
+ * viewport's real `ASPECT` there reintroduces the OLD skew and misaims the off-axis tower —
+ * exactly why the tests walking the crosshair onto `TOWER` went red under the new lens until
+ * this file stopped doing it.
+ */
+
 /** The ROM's `LDB #8`, in the clone's house idiom for a ROM frame count — the same shape as
  *  `ENEMY_SHOT_TTL = 64 / TICK_HZ` (state.ts:393). ≈ 0.390 s. Derived here rather than imported
  *  so this suite pins the DURATION the player can observe, and leaves the naming and the storage
@@ -87,8 +99,9 @@ const SWEEP_SECONDS = 8 / TICK_HZ
  *  fly the ship while the window is being timed. See hitscan-laser.test.ts for the full note. */
 const EYE_HIGH = SKIM_ALTITUDE
 
-/** A tower far enough off-axis that a centred-ish crosshair is nowhere near it. */
-const TOWER: Vec3 = [6000, EYE_HIGH, -10000]
+/** A tower far enough off-axis that a centred-ish crosshair is nowhere near it.
+ *  Native basis `[depth, right, up]`: depth 10,000 ahead, 6,000 to the right, at the pilot's height. */
+const TOWER: Vec3 = [10000, 6000, EYE_HIGH]
 
 /** The crosshair on empty sky, hard over to the LEFT — the tower is 6,000 to the RIGHT. */
 const SKY_AIM_X = -0.9
@@ -130,7 +143,7 @@ function fireAtSkyThenLookAt(s0: GameState, delaySeconds: number): boolean {
   const tower = s.turrets[0]
   expect(tower, 'fixture: the tower must still be standing when the crosshair arrives').toBeTruthy()
   // Aim at where it IS now — it has been scrolling toward the pilot the whole time.
-  const aim = aimAt(tower.pos, eyeOf(s), ASPECT)
+  const aim = aimAt(tower.pos, eyeOf(s), 1)
   s = stepGame(s, yoke(aim.aimX, false), DT)
   return towerDied(s)
 }
@@ -174,7 +187,7 @@ describe('sw7-17 — a trigger pull opens an 8-game-frame sweep (LZ.EDG)', () =>
     for (let i = 0; i < 30; i++) {
       const tower = s.turrets[0]
       expect(tower, 'fixture: the tower must not scroll away mid-test').toBeTruthy()
-      const aim = aimAt(tower.pos, eyeOf(s), ASPECT)
+      const aim = aimAt(tower.pos, eyeOf(s), 1)
       s = stepGame(s, yoke(aim.aimX, false), DT)
       expect(towerDied(s), 'the crosshair alone must never kill anything').toBe(false)
     }
@@ -217,7 +230,7 @@ describe('sw7-17 — the sweep is retriggerable (a fresh pull reloads LZ.EDG to 
 
     const tower = s.turrets[0]
     expect(tower, 'the tower is still standing').toBeTruthy()
-    const aim = aimAt(tower.pos, eyeOf(s), ASPECT)
+    const aim = aimAt(tower.pos, eyeOf(s), 1)
     s = stepGame(s, yoke(aim.aimX, false), DT)
 
     expect(towerDied(s), 'the reloaded sweep is still on at 0.5 s').toBe(true)
@@ -257,7 +270,7 @@ describe('sw7-17 — the 8-frame sweep is the laser ON-time, not the re-fire int
     // ordinary shot and it lands. If the sweep has been wired up as the cooldown, the gun is
     // still locked out at 0.3 s and the tower lives.
     const tower = s.turrets[0]
-    const aim = aimAt(tower.pos, eyeOf(s), ASPECT)
+    const aim = aimAt(tower.pos, eyeOf(s), 1)
     s = stepGame(s, yoke(aim.aimX, true), DT)
 
     expect(towerDied(s), 're-fire is gated by FIRE_INTERVAL, never by LZ.EDG').toBe(true)
@@ -293,7 +306,7 @@ describe('sw7-17 — the drawn window IS the collision window (LZ.ON)', () => {
     for (let i = 0; i < 60; i++) {
       // Put a tower under the site and see whether it dies THIS frame.
       const withTower: GameState = { ...s, turrets: [{ pos: [...TOWER] as Vec3, age: 0 }] }
-      const aim = aimAt(TOWER, eyeOf(withTower), ASPECT)
+      const aim = aimAt(TOWER, eyeOf(withTower), 1)
       const n = stepGame(withTower, yoke(aim.aimX, false), DT)
       const killed = n.events.some((e) => e.type === 'enemy-death' && e.enemyType === 'turret')
       if (killed) {

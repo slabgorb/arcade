@@ -300,7 +300,7 @@ describe('sw7-17 — the player laser renders as four cyan beams converging on t
 describe('sw7-17 — enemy fireballs keep their own render (scope guard for 8-18)', () => {
   it('leaves a fireball as its own red sparkle — it summons no cannon-tip beams', () => {
     const { ctx, segments } = makeCtx()
-    render(ctx, scene({ laserEdge: 0, enemyShots: [fireballAt([0, 0, -1000])] }), W, H)
+    render(ctx, scene({ laserEdge: 0, enemyShots: [fireballAt([1000, 0, 0])] }), W, H) // native [depth, right, up]: dead ahead
 
     // A fireball must NOT recruit the player's converging beams — that shoot-the-
     // fireball interaction is a separate story (8-18).
@@ -321,7 +321,7 @@ describe('sw7-17 — enemy fireballs keep their own render (scope guard for 8-18
     const { ctx, segments } = makeCtx()
     render(
       ctx,
-      scene({ ...SWEEPING, aimX: 0, aimY: 0, enemyShots: [fireballAt([300, 0, -1000])] }),
+      scene({ ...SWEEPING, aimX: 0, aimY: 0, enemyShots: [fireballAt([1000, 300, 0])] }), // native [depth, right, up]: off to the right
       W,
       H,
     )

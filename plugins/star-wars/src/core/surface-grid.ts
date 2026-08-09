@@ -6,8 +6,8 @@
 // 600 units from the eye it balloons off every screen edge and collapses to a
 // triangle at the crosshair (docs/adr/0002-scene-geometry-surface-and-trench.md
 // part A). This replaces it — for the surface SCENE only; the model stays in the
-// registry, re-classified — with a wide grid on the y=0 floor that recedes to a
-// horizon and scrolls toward the cockpit.
+// registry, re-classified — with a wide grid on the native floor plane (up = 0)
+// that recedes to a horizon and scrolls toward the cockpit.
 //
 // PURE core, exactly like Tempest's tube geometry: deterministic, no DOM/time/
 // randomness, so the boundary holds and the geometry is unit-tested (segment
@@ -17,47 +17,53 @@
 import type { Vec3 } from '@shared/math3d'
 import type { Model3D } from './models'
 
-/** Lateral spacing between the longitudinal (parallel-to-−Z) lines. */
+/** Lateral (right-axis) spacing between the longitudinal (parallel-to-depth) lines. */
 export const GRID_X = 400
-/** Spacing between the lateral (across-X) lines — also the scroll period. */
+/** Spacing between the lateral (across-right) lines — also the scroll period. */
 export const GRID_Z = 500
-/** Half the grid's total width: the outermost longitudinal lines sit at ±this,
+/** Half the grid's total width: the outermost longitudinal lines sit at right = ±this,
  *  wide enough to run off-screen at the horizon (ADR 0002 part A: ≈ 3000–4000). */
 export const GRID_HALF_WIDTH = 3600
-/** Far cutoff: the grid recedes from the cockpit out to z ≈ −GRID_FAR (the horizon). */
+/** Far cutoff: the grid recedes from the cockpit out to depth ≈ +GRID_FAR (the horizon). */
 export const GRID_FAR = 6000
 
 /**
- * A wide ground grid on the y=0 plane, scrolled toward the cockpit by `scroll`.
+ * A wide ground grid on the native floor plane (up = 0), scrolled toward the
+ * cockpit by `scroll`. sw10-1: authored directly in the ROM-native world basis
+ * `[depth(+X ahead), right(+Y), up(+Z)]`, so it drops in unrotated under the one
+ * camera remap (no per-model orient). Geometry is `toNative` of the old OpenGL
+ * grid, vertex-for-vertex, so the shipped scroll/envelope is preserved exactly.
  *
- * - Longitudinal lines parallel to −Z at x = ±k·GRID_X out to ±GRID_HALF_WIDTH —
- *   the receding "ground". They are static under z-scroll (sliding a line along
- *   its own −Z direction looks identical), so only the laterals move.
- * - Lateral lines across X every GRID_Z, from the cockpit (z≈0) out to −GRID_FAR,
- *   advanced toward the camera by `scroll mod GRID_Z` so the ground rushes past
- *   and recycles every GRID_Z (surfaceGrid(s) ≡ surfaceGrid(s + GRID_Z)).
+ * - Longitudinal lines parallel to +X (depth) at right = ±k·GRID_X out to
+ *   ±GRID_HALF_WIDTH — the receding "ground". They are static under depth-scroll
+ *   (sliding a line along its own depth direction looks identical), so only the
+ *   laterals move.
+ * - Lateral lines across right (Y) every GRID_Z, from the cockpit (depth≈0) out
+ *   to +GRID_FAR, advanced toward the camera by `scroll mod GRID_Z` so the ground
+ *   rushes past and recycles every GRID_Z (surfaceGrid(s) ≡ surfaceGrid(s + GRID_Z)).
  */
 export function surfaceGrid(scroll: number): Model3D {
   const vertices: Vec3[] = []
   const edges: [number, number][] = []
 
-  // Longitudinal lines (parallel to −Z), each spanning cockpit → horizon.
+  // Longitudinal lines (parallel to +X depth), each spanning cockpit → horizon.
   const halfCount = Math.round(GRID_HALF_WIDTH / GRID_X)
   for (let k = -halfCount; k <= halfCount; k++) {
-    const x = k * GRID_X
-    const near = vertices.push([x, 0, 0]) - 1
-    const far = vertices.push([x, 0, -GRID_FAR]) - 1
+    const y = k * GRID_X // lateral (right) offset
+    const near = vertices.push([0, y, 0]) - 1
+    const far = vertices.push([GRID_FAR, y, 0]) - 1
     edges.push([near, far])
   }
 
-  // Lateral lines (across X), recycling toward the camera every GRID_Z. The
-  // modulo keeps `offset` in [0, GRID_Z) for any scroll (incl. negative).
+  // Lateral lines (across right Y), recycling toward the camera every GRID_Z. The
+  // modulo keeps `offset` in [0, GRID_Z) for any scroll (incl. negative). Depth
+  // decreases toward the cockpit as `scroll` grows (native twin of the old +Z advance).
   const offset = ((scroll % GRID_Z) + GRID_Z) % GRID_Z
   const farCount = Math.round(GRID_FAR / GRID_Z)
   for (let k = 0; k <= farCount; k++) {
-    const z = -k * GRID_Z + offset
-    const left = vertices.push([-GRID_HALF_WIDTH, 0, z]) - 1
-    const right = vertices.push([GRID_HALF_WIDTH, 0, z]) - 1
+    const depth = k * GRID_Z - offset
+    const left = vertices.push([depth, -GRID_HALF_WIDTH, 0]) - 1
+    const right = vertices.push([depth, GRID_HALF_WIDTH, 0]) - 1
     edges.push([left, right])
   }
 

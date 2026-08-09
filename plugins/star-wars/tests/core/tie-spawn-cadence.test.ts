@@ -106,8 +106,8 @@ describe('sw8-7 — onset: the wave opens swirling, not empty (NWNSHP fills ever
     // All three are FRESH constructs on the far spawn horizon ($7C00 = 31,744,
     // WSCPU.MAC:1179-1200) — nobody teleported in half-way down the approach.
     for (const e of s.enemies) {
-      expect(e.pos[2], 'a fresh fighter enters at the far spawn depth').toBeLessThan(
-        -TIE_SPAWN_DISTANCE * 0.95,
+      expect(e.pos[0], 'a fresh fighter enters at the far spawn depth').toBeGreaterThan(
+        TIE_SPAWN_DISTANCE * 0.95,
       )
       expect(e.kind, "wave 1's opening group TWV1A is three plain TIEs").toBe('tie')
     }
@@ -162,15 +162,15 @@ describe('sw8-7 — the seams the fix must keep (green before AND after)', () =>
     const s = stepGame(s0, NO_INPUT, TICK)
     expect(s.enemies.length).toBe(1)
     expect(s.spawnCount).toBe(4)
-    expect(s.enemies[0].pos[0], 'plan entry 3 (1B1) spawns dead-centre laterally').toBe(0)
-    expect(s.enemies[0].pos[1], 'plan entry 3 (1B1) spawns one lateral unit up').toBe(0x400)
+    expect(s.enemies[0].pos[1], 'plan entry 3 (1B1) spawns dead-centre laterally').toBe(0)
+    expect(s.enemies[0].pos[2], 'plan entry 3 (1B1) spawns one lateral unit up').toBe(0x400)
   })
 
   it('density never exceeds the three ROM alien slots, even with the timer expired', () => {
     // A$EQ == 3 (WSGLOB.MAC:589) — there is no fourth record to construct into.
     const full: GameState = {
       ...wave(),
-      enemies: [tie([0, 1024, -20000]), tie([-1024, 0, -24000]), tie([1024, 0, -28000])],
+      enemies: [tie([20000, 0, 1024]), tie([24000, -1024, 0]), tie([28000, 1024, 0])],
       spawnTimer: 0,
     }
     const s = stepGame(full, NO_INPUT, TICK)

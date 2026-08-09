@@ -46,16 +46,16 @@ describe('Wave 1 — aim direction', () => {
   it('is a forward unit vector at rest', () => {
     const d = aimDirection(0, 0)
     expect(length(d)).toBeCloseTo(1)
-    expect(d[2]).toBeLessThan(0) // forward is -Z
-    expect(d[0]).toBeCloseTo(0)
-    expect(d[1]).toBeCloseTo(0)
+    expect(d[0]).toBeGreaterThan(0) // forward is +X (native depth, ahead)
+    expect(d[1]).toBeCloseTo(0) // no right deflection
+    expect(d[2]).toBeCloseTo(0) // no up deflection
   })
 
   it('deflects with the yoke yet stays unit-length and forward', () => {
     const d = aimDirection(0.5, 0)
     expect(length(d)).toBeCloseTo(1)
-    expect(d[0]).toBeGreaterThan(0) // aim right => +X
-    expect(d[2]).toBeLessThan(0) // still flying forward
+    expect(d[1]).toBeGreaterThan(0) // aim right => +Y (native right)
+    expect(d[0]).toBeGreaterThan(0) // still flying forward (+X native depth)
   })
 })
 

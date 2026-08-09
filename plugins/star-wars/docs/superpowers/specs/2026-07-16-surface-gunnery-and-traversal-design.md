@@ -20,7 +20,7 @@ ROM cites verified against `~/Projects/star-wars-1983-source-text` (LF copy);
 
 - Bolts spawn at `COCKPIT` (origin): `sim.ts:173` — the sw5-6 muzzle fix covered
   only the trench (`state.phase === 'trench' ? trenchView : COCKPIT`).
-- The surface **camera** flies at `[0, altitude, 0]` (`sim.ts:2309
+- The surface **camera** flies at `[0, 0, altitude]` (`sim.ts:2309
   surfaceShip`), altitude ∈ [40..238], nominal `SKIM_ALTITUDE` 128.
 - `aimDirection` is a camera-space direction, so sight-line and bolt run on
   **parallel rays separated by `altitude`**: every impact lands 40–238 units
@@ -33,7 +33,7 @@ ROM cites verified against `~/Projects/star-wars-1983-source-text` (LF copy);
 - ROM: the shot leaves the ship — `WSGUNS.MAC FRPTGN`: `LDD M$TX / ADDD #100
   ;JUST A BIT IN FRONT`, `LDD M$TY`, `LDD M$TZ`.
 
-**Design (R11a):** one ship-point for the surface phase, `[0, altitude, 0]`,
+**Design (R11a):** one ship-point for the surface phase, `[0, 0, altitude]`,
 used by (a) the player muzzle, (b) the fireball target (`toCockpit`), (c) the
 cockpit hit-test centre — exactly the trench's `trenchView` pattern. Fix the
 stale comment. Pure-core change; TDD directly (muzzle == camera eye on surface).

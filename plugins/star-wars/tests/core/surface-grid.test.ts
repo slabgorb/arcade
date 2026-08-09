@@ -60,31 +60,31 @@ import { DEATH_STAR_SURFACE, type Model3D } from '../../src/core/models'
 
 const EPS = 1e-6
 
-/** Distinct x-values carrying a LONGITUDINAL line (an edge parallel to −Z: both
- *  endpoints share an x and differ in z), sorted ascending. */
-function longitudinalXs(m: Model3D): number[] {
-  const xs = new Set<number>()
+/** Distinct right-values (native Y) carrying a LONGITUDINAL line (an edge parallel
+ *  to +X depth: both endpoints share a right and differ in depth), sorted ascending. */
+function longitudinalRights(m: Model3D): number[] {
+  const ys = new Set<number>()
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (va[0] === vb[0] && va[2] !== vb[2]) xs.add(va[0])
+    if (va[1] === vb[1] && va[0] !== vb[0]) ys.add(va[1])
   }
-  return [...xs].sort((p, q) => p - q)
+  return [...ys].sort((p, q) => p - q)
 }
 
-/** Distinct z-values carrying a LATERAL line (an edge across X: both endpoints
- *  share a z and differ in x), sorted ascending. */
-function lateralZs(m: Model3D): number[] {
-  const zs = new Set<number>()
+/** Distinct depth-values (native X) carrying a LATERAL line (an edge across right Y:
+ *  both endpoints share a depth and differ in right), sorted ascending. */
+function lateralDepths(m: Model3D): number[] {
+  const ds = new Set<number>()
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (va[2] === vb[2] && va[0] !== vb[0]) zs.add(va[2])
+    if (va[0] === vb[0] && va[1] !== vb[1]) ds.add(va[0])
   }
-  return [...zs].sort((p, q) => p - q)
+  return [...ds].sort((p, q) => p - q)
 }
 
-// --- AC1: surfaceGrid is a well-formed Model3D on the y=0 ground plane --------
+// --- AC1: surfaceGrid is a well-formed Model3D on the native floor plane -------
 
 describe('Story 11-5 — surfaceGrid: shape & the ground plane', () => {
   it('returns a Model3D with vertices and edges', () => {
@@ -119,9 +119,9 @@ describe('Story 11-5 — surfaceGrid: shape & the ground plane', () => {
     }
   })
 
-  it('lies flat on the y=0 ground plane (this is a floor, not the y-spanning spike)', () => {
+  it('lies flat on the native floor plane up=0 (this is a floor, not the up-spanning spike)', () => {
     const g = surfaceGrid(0)
-    for (const v of g.vertices) expect(v[1]).toBe(0)
+    for (const v of g.vertices) expect(v[2]).toBe(0) // native up (+Z) = 0
   })
 })
 
@@ -140,43 +140,43 @@ describe('Story 11-5 — surfaceGrid is pure & deterministic', () => {
 // --- AC1: width / length envelope & line counts ------------------------------
 
 describe('Story 11-5 — surfaceGrid envelope & line counts', () => {
-  it('spans the full width: outermost longitudinal lines reach ±GRID_HALF_WIDTH', () => {
-    const xs = surfaceGrid(0).vertices.map((v) => v[0])
-    expect(Math.max(...xs)).toBeCloseTo(GRID_HALF_WIDTH)
-    expect(Math.min(...xs)).toBeCloseTo(-GRID_HALF_WIDTH)
+  it('spans the full width: outermost longitudinal lines reach right = ±GRID_HALF_WIDTH', () => {
+    const ys = surfaceGrid(0).vertices.map((v) => v[1]) // native right (+Y)
+    expect(Math.max(...ys)).toBeCloseTo(GRID_HALF_WIDTH)
+    expect(Math.min(...ys)).toBeCloseTo(-GRID_HALF_WIDTH)
   })
 
-  it('is mirror-symmetric across x=0 (for every (x,0,z) there is a (-x,0,z))', () => {
+  it('is mirror-symmetric across right=0 (for every (depth,y,0) there is a (depth,-y,0))', () => {
     const g = surfaceGrid(0)
-    const present = new Set(g.vertices.map((v) => `${v[0]}|${v[2]}`))
+    const present = new Set(g.vertices.map((v) => `${v[1]}|${v[0]}`))
     for (const v of g.vertices) {
-      expect(present.has(`${-v[0]}|${v[2]}`)).toBe(true)
+      expect(present.has(`${-v[1]}|${v[0]}`)).toBe(true)
     }
   })
 
   it('spaces the longitudinal lines exactly GRID_X apart, with no gaps', () => {
-    const xs = longitudinalXs(surfaceGrid(0))
-    expect(xs.length).toBeGreaterThanOrEqual(3) // a grid, not a lone line
-    for (let i = 1; i < xs.length; i++) {
-      expect(xs[i] - xs[i - 1]).toBeCloseTo(GRID_X)
+    const ys = longitudinalRights(surfaceGrid(0))
+    expect(ys.length).toBeGreaterThanOrEqual(3) // a grid, not a lone line
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i] - ys[i - 1]).toBeCloseTo(GRID_X)
     }
     // count is consistent with the spacing across the full ±GRID_HALF_WIDTH span
-    const span = xs[xs.length - 1] - xs[0]
-    expect(xs.length).toBe(Math.round(span / GRID_X) + 1)
+    const span = ys[ys.length - 1] - ys[0]
+    expect(ys.length).toBe(Math.round(span / GRID_X) + 1)
   })
 
   it('spaces the lateral lines exactly GRID_Z apart, receding from the cockpit to the horizon', () => {
-    const zs = lateralZs(surfaceGrid(0))
-    expect(zs.length).toBeGreaterThanOrEqual(3)
-    for (let i = 1; i < zs.length; i++) {
-      expect(zs[i] - zs[i - 1]).toBeCloseTo(GRID_Z)
+    const ds = lateralDepths(surfaceGrid(0))
+    expect(ds.length).toBeGreaterThanOrEqual(3)
+    for (let i = 1; i < ds.length; i++) {
+      expect(ds[i] - ds[i - 1]).toBeCloseTo(GRID_Z)
     }
-    const nearest = zs[zs.length - 1] // least-negative z = closest to the cockpit
-    const farthest = zs[0] // most-negative z = the horizon
-    expect(nearest).toBeLessThanOrEqual(0 + EPS) // ahead of / at the cockpit
-    expect(nearest).toBeGreaterThanOrEqual(-GRID_Z - EPS) // within one cell of it
-    expect(farthest).toBeLessThanOrEqual(-(GRID_FAR - GRID_Z)) // recedes to ≈ the far cutoff
-    expect(farthest).toBeGreaterThanOrEqual(-GRID_FAR - EPS) // but never overshoots it
+    const nearest = ds[0] // least depth = closest to the cockpit (depth +X ahead)
+    const farthest = ds[ds.length - 1] // greatest depth = the horizon
+    expect(nearest).toBeGreaterThanOrEqual(-EPS) // ahead of / at the cockpit
+    expect(nearest).toBeLessThanOrEqual(GRID_Z + EPS) // within one cell of it
+    expect(farthest).toBeGreaterThanOrEqual(GRID_FAR - GRID_Z) // recedes to ≈ the far cutoff
+    expect(farthest).toBeLessThanOrEqual(GRID_FAR + EPS) // but never overshoots it
   })
 })
 
@@ -189,16 +189,17 @@ describe('Story 11-5 — surfaceGrid scroll recycling', () => {
     }
   })
 
-  it('scrolls the ground toward the camera as scroll grows (lateral lines advance in +Z)', () => {
-    const base = lateralZs(surfaceGrid(0))
+  it('scrolls the ground toward the camera as scroll grows (lateral lines advance toward depth 0)', () => {
+    const base = lateralDepths(surfaceGrid(0))
     // An INTERIOR lateral line — away from both ends, so a sub-cell scroll can't
-    // wrap it. A grid that scrolls toward the cockpit moves it by +delta in z.
+    // wrap it. A grid that scrolls toward the cockpit moves it by −delta in depth
+    // (depth +X ahead, so nearing the cockpit means depth decreases).
     const interior = base[Math.floor(base.length / 2)]
     const delta = GRID_Z * 0.3
-    const shifted = lateralZs(surfaceGrid(delta))
-    expect(shifted.some((z) => Math.abs(z - (interior + delta)) < EPS)).toBe(true)
+    const shifted = lateralDepths(surfaceGrid(delta))
+    expect(shifted.some((d) => Math.abs(d - (interior - delta)) < EPS)).toBe(true)
     // …and it did NOT stay put (it genuinely moved, not a no-op scroll).
-    expect(shifted.some((z) => Math.abs(z - interior) < EPS)).toBe(false)
+    expect(shifted.some((d) => Math.abs(d - interior) < EPS)).toBe(false)
   })
 })
 
@@ -224,10 +225,12 @@ describe('Story 11-5 — surfaceScrollZ accumulator', () => {
   })
 
   it('rides the SAME flow as the turrets (ground and turrets advance by one delta)', () => {
-    const s0: GameState = { ...enterPhase(initialState(), 'surface'), turrets: [{ pos: [0, 0, -1000] }] }
+    // native: a turret 1000 ahead is depth (+X) = 1000; scrolling toward the cockpit
+    // DECREASES its depth, so the advance is the drop in pos[0].
+    const s0: GameState = { ...enterPhase(initialState(), 'surface'), turrets: [{ pos: [1000, 0, 0] }] }
     const dt = 0.1
     const s1 = stepGame(s0, NO_INPUT, dt)
-    const turretAdvance = s1.turrets[0].pos[2] - -1000
+    const turretAdvance = 1000 - s1.turrets[0].pos[0]
     // Whatever the (accelerating) rate is, the ground grid and the turrets ride it
     // together — one delta — so the field never shears against the floor.
     expect(s1.surfaceScrollZ).toBeCloseTo(turretAdvance)

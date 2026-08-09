@@ -23,9 +23,9 @@
 //   The scaled ground SHADOW (VWTWN white :691, VWBKN red :695) is a RENDER concern
 //   pinned in tests/shell/render.ground-debris.test.ts — colour stays out of core.
 //
-// THE ROM'S UP-AXIS IS Z; OURS IS Y (render.ts TOWER_ORIENT; the "third coordinate
-// is HEIGHT" rule). So XP$MZ (vertical velocity) → our `vel[1]`, XP$CZ (height) →
-// our `pos[1]`, and the floor is `pos[1] = 0`.
+// THE ROM'S UP-AXIS IS Z; OURS IS NOW ALSO Z (sw10-1 native [depth, right, up]).
+// So XP$MZ (vertical velocity) → our `vel[2]`, XP$CZ (height) → our `pos[2]`, and
+// the floor is `pos[2] = 0`.
 //
 // TIMEBASE CONVENTION (state.ts, established by sw7-1 / sw7-18): a ROM per-frame
 // VELOCITY ports to u/s as `value × TICK_HZ` (SURFACE_SEED_SPEED = 0x100 × TICK_HZ);
@@ -97,7 +97,7 @@ const killedAGroundObject = (s: GameState): boolean =>
 
 // Level with the eye so a dead-on shot is purely lateral (aimY stays 0, so aiming
 // does not fly the ship) — surface-bunkers.test.ts's SITE, verbatim.
-const SITE: Vec3 = [0, SKIM_ALTITUDE, -800]
+const SITE: Vec3 = [800, 0, SKIM_ALTITUDE] // native [depth, right, up]: 800 ahead, level with the eye
 
 /** A surface state with one ground object of `kind` at SITE, ready to be shot on
  *  the first frame (edge-triggered trigger released, no cooldown, field pre-laid). */
@@ -116,7 +116,7 @@ const killAndStep = (s0: GameState): GameState => stepGame(s0, fireAt(s0, SITE),
 // A debris fixture parked far above the floor so it ages/accelerates freely without
 // ever tripping the floor-freeze — for isolating gravity and lifetime.
 const aloft = (over: Partial<DebrisPiece> = {}): DebrisPiece => ({
-  pos: [0, 1e7, -800],
+  pos: [800, 0, 1e7], // native [depth, right, up]: parked far above the floor (up=1e7)
   vel: [0, 0, 0],
   age: 0,
   kind: 'tower',
@@ -158,7 +158,7 @@ describe('sw7-14 — pieces launch UPWARD at the ROM vertical velocity (728–10
   it('all three bunker pieces launch with an upward velocity', () => {
     const pieces = debrisOf(killAndStep(armedKill('bunker')))
     expect(pieces).toHaveLength(3)
-    for (const p of pieces) expect(p.vel[1]).toBeGreaterThan(0) // +Y is up (ROM +Z)
+    for (const p of pieces) expect(p.vel[2]).toBeGreaterThan(0) // native +Z is up (ROM +Z)
   })
 
   it('the upward launch speed is the ROM 728–1024 ×4 u/frame band', () => {
@@ -170,7 +170,7 @@ describe('sw7-14 — pieces launch UPWARD at the ROM vertical velocity (728–10
     const pieces = debrisOf(killAndStep(armedKill('bunker')))
     expect(pieces).toHaveLength(3)
     for (const p of pieces) {
-      const uPerFrame = p.vel[1] / TICK_HZ
+      const uPerFrame = p.vel[2] / TICK_HZ
       expect(uPerFrame).toBeGreaterThanOrEqual(2712)
       expect(uPerFrame).toBeLessThanOrEqual(4096)
     }
@@ -179,20 +179,20 @@ describe('sw7-14 — pieces launch UPWARD at the ROM vertical velocity (728–10
   it('a tower piece also launches upward (BGTWXP, type-3 base 0x800 = 4×0x200)', () => {
     const pieces = debrisOf(killAndStep(armedKill('tower')))
     expect(pieces).toHaveLength(3)
-    for (const p of pieces) expect(p.vel[1]).toBeGreaterThan(0)
+    for (const p of pieces) expect(p.vel[2]).toBeGreaterThan(0)
   })
 })
 
 describe('sw7-14 — gravity pulls the pieces down at 200 u/frame² (SUBD #50.*4)', () => {
   it('the vertical velocity loses 200 u/frame² each frame', () => {
-    // A piece parked high up: gravity is the only thing acting on vel[1]. Sample the
+    // A piece parked high up: gravity is the only thing acting on vel[2]. Sample the
     // velocity on two consecutive frames; the per-frame delta is −GRAVITY·FRAME, so
     // (vy1 − vy2)/FRAME = GRAVITY = 200 × TICK_HZ². Read back to u/frame² for the pin.
     let s = debrisOnly([aloft({ vel: [0, 0, 0] })])
     s = stepGame(s, NO_INPUT, FRAME)
-    const vy1 = debrisOf(s)[0]?.vel[1] ?? 0
+    const vy1 = debrisOf(s)[0]?.vel[2] ?? 0
     s = stepGame(s, NO_INPUT, FRAME)
-    const vy2 = debrisOf(s)[0]?.vel[1] ?? 0
+    const vy2 = debrisOf(s)[0]?.vel[2] ?? 0
 
     expect(vy2).toBeLessThan(vy1) // gravity always pulls DOWN (RED: no piece exists → 0 == 0 fails)
     const accelPerFrame2 = (vy1 - vy2) / FRAME / (TICK_HZ * TICK_HZ)
@@ -205,17 +205,17 @@ describe('sw7-14 — pieces freeze at the floor, never sinking below y=0', () =>
   it('a descending piece is clamped to the floor (LDD #0 ;FREEZE AT GROUND LEVEL)', () => {
     // A piece just above the floor, falling fast: one step would carry it well below
     // 0; the ROM pins it at exactly 0 instead.
-    const falling = aloft({ pos: [0, 10, -800], vel: [0, -4000 * TICK_HZ, 0] })
+    const falling = aloft({ pos: [800, 0, 10], vel: [0, 0, -4000 * TICK_HZ] }) // native: up=10, falling (vel up<0)
     let s = debrisOnly([falling])
     s = stepGame(s, NO_INPUT, FRAME)
     const p1 = debrisOf(s)[0]
     expect(p1).toBeDefined()
-    expect(p1.pos[1]).toBe(0) // frozen at ground, not −3990-ish (RED: undefined → toBeDefined fails)
+    expect(p1.pos[2]).toBe(0) // frozen at ground, not −3990-ish (RED: undefined → toBeDefined fails)
 
     // …and it STAYS on the floor the next frame (gravity keeps pulling, but the
     // clamp re-freezes it — no sinking, no bounce).
     s = stepGame(s, NO_INPUT, FRAME)
-    expect(debrisOf(s)[0].pos[1]).toBe(0)
+    expect(debrisOf(s)[0].pos[2]).toBe(0)
   })
 
   it('a launched piece never dips below the floor across its whole life', () => {
@@ -225,7 +225,7 @@ describe('sw7-14 — pieces freeze at the floor, never sinking below y=0', () =>
     let s = killAndStep(armedKill('tower'))
     let lowest = Infinity
     for (let i = 0; i < 40; i++) {
-      for (const p of debrisOf(s)) lowest = Math.min(lowest, p.pos[1])
+      for (const p of debrisOf(s)) lowest = Math.min(lowest, p.pos[2])
       s = stepGame(s, NO_INPUT, FRAME)
     }
     expect(Number.isFinite(lowest)).toBe(true) // debris existed at all (RED: never any → Infinity)

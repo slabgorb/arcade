@@ -142,15 +142,13 @@ export const VIEW_NEAR = 0x10
 export const VIEW_FAR = 0x7f00
 
 /**
- * tan of the rendered frustum's vertical half-angle — the slope C_PV's pyramid
- * actually has on OUR glass (uf1-14). The ROM compares lateral/vertical to the
- * depth 1:1 — a ±45° pyramid — because that is the 1983 cabinet's screen shape.
- * Ours is `perspective(FOV_Y, aspect, NEAR, FAR)` (render.ts:490), whose glass
- * ends at FOV_Y/2 = 30° vertically at EVERY aspect, and at
- * atan(aspect · tan(FOV_Y/2)) horizontally. Keeping the 45° claimed a 15° band
- * of sky the player cannot see (so off-screen TIEs passed the §6 fire gate —
- * the defect sw7-24 meant to kill, surviving on the vertical axis) and
- * UNDER-claimed ultrawide flanks by 8.4°, silently starving their fire.
+ * tan of the rendered frustum's half-angle — tan(45°) = 1 under the cabinet's
+ * authentic symmetric ~90° lens (sw10-1). The ROM compares lateral/vertical to
+ * the depth 1:1 — a ±45° pyramid, the 1983 cabinet's screen shape — and now that
+ * the render projects with that same lens (aspect-independent, both half-angles
+ * 45°), C_PV is that pyramid again on BOTH axes. uf1-14 diverged to 30°/aspect
+ * only because the old `perspective(FOV_Y=60°, aspect)` glass was not ±45°; that
+ * lens is retired, so its principle ("the bit matches the glass") lands on ±45°.
  */
 const TAN_HALF_FOV = Math.tan(FOV_Y / 2)
 
@@ -204,11 +202,15 @@ export const SIGHTS_OCTAGON = 3
  */
 export function inPlayerView(pos: Vec3, aspect: number): boolean {
   const eye = COCKPIT
-  const depth = eye[2] - pos[2]
-  const lat = pos[0] - eye[0]
-  const vert = pos[1] - eye[1]
+  const depth = pos[0] - eye[0] // sw10-1: X = depth (forward/away)
+  const lat = pos[1] - eye[1] // Y = right
+  const vert = pos[2] - eye[2] // Z = up
   const vBound = depth * TAN_HALF_FOV
-  const hBound = vBound * aspect
+  // sw10-1: the authentic lens is aspect-INDEPENDENT — both half-angles are 45°,
+  // so the horizontal bound equals the vertical (the ROM's |lat| < depth ratio).
+  // `aspect` is retained on the signature (callers still pass state.aspect) but
+  // no longer widens the pyramid; the bit matches the now-±45° glass on both axes.
+  const hBound = vBound
   return depth > VIEW_NEAR && depth <= VIEW_FAR && lat * lat < hBound * hBound && vert * vert < vBound * vBound
 }
 
@@ -223,8 +225,8 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
 
   // C_AS (0x04) — "ALIEN HAS PLAYER IN SITES" (WSCPU.MAC:29,604-621). Three
   // conditions, in the ROM's own order, all measured on the offset from the fighter
-  // to the cockpit resolved about its nose axis — model +Z mapped through e.orient,
-  // the same column lookRotation writes forward into (math3d.ts:171-186):
+  // to the cockpit resolved about its nose axis — the native conjugate orient's nose is
+  // −col0 (basis.ts; the OpenGL nose col2 conjugated by P; sw10-1):
   //
   //   :607-608  `LDD M.XP / BMI 140$`   ;?PLAYER IN FRONT?  — the sign of the depth
   //   :610-611  `SUBD #4000 / BGE 140$` ;IGNORE GUN IF TOO FAR AWAY
@@ -246,7 +248,7 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // missing matrix by defaulting to IDENTITY (nose = model +Z), exactly as
   // `applyManeuver` does, rather than reading off `undefined[2]`.
   const orient = e.orient ?? IDENTITY
-  const nose: Vec3 = [orient[2], orient[6], orient[10]]
+  const nose: Vec3 = [-orient[0], -orient[4], -orient[8]]
   const toCockpitOffset = sub(COCKPIT, e.pos)
   const noseDepth = dot(nose, toCockpitOffset) // M.XP
   const offAxis = sub(toCockpitOffset, scale(nose, noseDepth)) // (M.YP, M.ZP)
@@ -272,15 +274,15 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   // `spaceEye` camera instead; sw8-8 retired that eye (ST.UX is the starfield's
   // register, never a camera — see the tombstone in gameRules.ts), so the
   // pyramid, the gun and the shield hit-test now share one point. In-front is
-  // negative z, so the view depth is eye z minus alien z.
+  // +X (larger depth), so the view depth is alien x minus eye x (sw10-1).
   //
   // The pyramid keeps the ROM's ratio law as its SHAPE — per-axis, strict, the
-  // edge itself out of view — but its slope is the RENDERED frustum's, not the
-  // cabinet's ±45° (uf1-14, TAN_HALF_FOV above): the vertical bound is
-  // depth · tan(FOV_Y/2), the horizontal bound scales that by the viewport
-  // aspect the frame was actually projected with — state.aspect, the uf1-12
-  // field C_PS below already reads, so the bit and the glass cannot disagree
-  // on any canvas shape.
+  // edge itself out of view — and, since sw10-1 unified the render onto the
+  // cabinet's authentic symmetric ~90° lens, its slope IS the cabinet's ±45°
+  // again (TAN_HALF_FOV above = tan 45° = 1): both bounds are depth · tan(45°) =
+  // depth, aspect-independent. state.aspect is still threaded through (uf1-12,
+  // read by C_PS below) but no longer widens the pyramid — the bit and the glass
+  // agree on any canvas because neither depends on its shape.
   const eye = COCKPIT
   if (inPlayerView(e.pos, state.aspect)) {
     status |= Status.C_PV
@@ -339,13 +341,13 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   //   WSMAIN.MAC:3840-3842  `LDD M.ZPS` / `SUBD M.XPS` / `LBHS RTS1`  the other ratio test
   //
   // Those four tests are the ROM's C_PV — the same near/far literals and the
-  // same per-axis ratio SHAPE our C_PV block above ports, re-sloped to our glass
-  // by uf1-14. Read that as an analogue, not an identity: the cabinet's ratio
-  // tests are a fixed ±45° square pyramid, ours is the RENDERED frustum (30°
-  // vertical, horizontal swinging with the canvas), and that deviation is
-  // deliberate and disclosed fifty lines up — a bit that claims "the player can
-  // see it" has to use the player's actual glass. Do NOT "restore fidelity" by
-  // putting ±45° back here; that undoes uf1-14. What transcribes exactly is the
+  // same per-axis ratio SHAPE our C_PV block above ports. Since sw10-1 unified the
+  // render onto the cabinet's authentic symmetric ~90° lens, our slope IS the
+  // cabinet's ±45° again (the C_PV note fifty lines up: TAN_HALF_FOV = tan 45° =
+  // 1), so this is now an IDENTITY, not the uf1-14 analogue it once was — the
+  // cabinet's fixed ±45° square pyramid and ours are the same shape, aspect-
+  // independent. (History: uf1-14 once re-sloped our C_PV to a 30°/aspect RENDERED
+  // frustum; sw10-1 retired that skew — do not reintroduce it.) What transcribes exactly is the
   // CONTROL FLOW below, which is what this gate ports. `CHSET C$PV` is
   // WSMAIN.MAC:3846 and the sole `CHSET C$PS` is WSMAIN.MAC:3930, and between
   // those two lines there is NO label at all — so nothing can branch into the

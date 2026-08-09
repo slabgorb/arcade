@@ -84,13 +84,13 @@ import { IDENTITY, type Vec3 } from '@shared/math3d'
 
 // A point well downrange of the cockpit: far outside COCKPIT_HIT_RADIUS (80),
 // so anything destroyed here is destroyed "before it reaches the cockpit" and
-// cannot be confused with a cockpit collision.
-const DOWNRANGE: Vec3 = [0, 0, -400]
+// cannot be confused with a cockpit collision. Native [depth, right, up]: 400 ahead.
+const DOWNRANGE: Vec3 = [400, 0, 0]
 
 // Minimal literals; stepGame reads `.pos` for the hit-test (and vel/ttl to age
-// the shot). A fireball flies back toward the cockpit (+Z). At the tiny dt these
-// tests use, it does not move enough to leave the hit sphere it starts in.
-const fireball = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL })
+// the shot). A fireball flies back toward the cockpit (depth toward 0, native -X).
+// At the tiny dt these tests use, it does not move enough to leave the hit sphere.
+const fireball = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL })
 // A fully-typed TIE fixture (stepGame reads `.pos` for the hit-test; vel/orient
 // keep it a real Enemy, no type-escape cast).
 const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
@@ -160,8 +160,8 @@ describe('Wave 1 — intercepting a fireball (story 8-18)', () => {
     // Carries the fireball's OWN world-space position — downrange near its launch
     // (~-400, less one homing tick's inward decay; sw4-2 fireballs decay toward the
     // cockpit each step), not the cockpit origin — for Wave-5 particle/SFX placement.
-    expect(cue?.pos[2]).toBeLessThan(-350)
-    expect(cue?.pos[2]).toBeGreaterThan(-401)
+    expect(cue?.pos[0]).toBeGreaterThan(350)
+    expect(cue?.pos[0]).toBeLessThan(401)
   })
 
   it('exposes a positive named hit radius for fireballs', () => {
@@ -189,8 +189,8 @@ describe('Wave 1 — intercepting a fireball (story 8-18)', () => {
     // 60 units out: still inside COCKPIT_HIT_RADIUS (80), so it lands this frame if it is not
     // stopped, but in front of the gun, so the shot is real. The ordering under test is
     // untouched — only the geometry moved, and it moved to somewhere the pilot can shoot.
-    const DOORSTEP: Vec3 = [0, 0, -60]
-    expect(Math.abs(DOORSTEP[2]), 'fixture: inside the cockpit sphere — it lands if not stopped').toBeLessThan(
+    const DOORSTEP: Vec3 = [60, 0, 0] // native [depth, right, up]: 60 ahead
+    expect(Math.abs(DOORSTEP[0]), 'fixture: inside the cockpit sphere — it lands if not stopped').toBeLessThan(
       COCKPIT_HIT_RADIUS,
     )
 
@@ -284,8 +284,8 @@ describe('Wave 1 — multiple shots and fireballs (story 8-18)', () => {
     // Seated at ±200 across a depth of 400: both are reachable yoke positions (|aimX| = 0.87 at
     // the 30° half-FOV) and 400 apart, so neither is ever under the ray aimed at the other.
     const base = wave()
-    const a: Vec3 = [-200, 0, -400]
-    const b: Vec3 = [200, 0, -400]
+    const a: Vec3 = [400, -200, 0] // native [depth, right, up]: 400 ahead, 200 left
+    const b: Vec3 = [400, 200, 0] // 400 ahead, 200 right
     const s0: GameState = { ...base, enemyShots: [fireball(a), fireball(b)] }
 
     const shot = fireAt(s0, a)
@@ -316,8 +316,8 @@ describe('Wave 1 — multiple shots and fireballs (story 8-18)', () => {
     // contest BOTH WAYS. The invariant under test is the one that survives the rule change and
     // is what "spends on only one" always meant: exactly one thing dies, and exactly one scores.
     const base = wave()
-    const NEAR: Vec3 = [0, 0, -100] // outside COCKPIT_HIT_RADIUS (80), so nothing lands on us
-    const FAR: Vec3 = [0, 0, -600] // same ray, five times further out
+    const NEAR: Vec3 = [100, 0, 0] // native depth 100 ahead; outside COCKPIT_HIT_RADIUS (80)
+    const FAR: Vec3 = [600, 0, 0] // same ray, six times further out
 
     // (i) The fireball is in front of the TIE that fired it — the ROM's own example. It eats the
     //     beam and the fighter behind it lives.

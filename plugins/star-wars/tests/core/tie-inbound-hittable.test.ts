@@ -36,16 +36,18 @@ import {
 } from '../../src/core/state'
 import { stepGame } from '../../src/core/sim'
 import type { Input } from '../../src/core/input'
-import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
+import { FOV_Y } from '../../src/core/gameRules'
+import { IDENTITY, type Vec3 } from '@shared/math3d'
 
 const DT = 1 / 60
 
-// The projection the renderer paints the scene with (render.ts): a 60° vertical FOV.
-// near/far don't affect the x/y NDC a point maps to (only its depth), so any positive
-// pair mirrors the render. Aspect scales X only; every aimed target below is on the
-// vertical axis (x = 0), so the aspect choice is irrelevant.
-const FOV_Y = Math.PI / 3
-const proj = (aspect = 16 / 9): ReturnType<typeof perspective> => perspective(FOV_Y, aspect, 1, 5000)
+// The inverse of the native aim the crosshair is drawn under (gameRules.aimDirection =
+// normalize([1, aimX/f, aimY/f]), f = 1/tan(FOV_Y/2)). A world point in the native basis
+// [depth(+X), right(+Y), up(+Z)], seen from the cockpit at the origin, sits on the crosshair
+// at NDC [f·right/depth, f·up/depth]. Using the SAME f the sim uses makes "aim at it" exact
+// whatever the lens angle; every aimed target below is on-axis (right = up = 0), so its yoke
+// is dead centre regardless.
+const f = 1 / Math.tan(FOV_Y / 2)
 
 /** A TIE holding station at `pos`. A real fighter flies straight at the cockpit,
  * holding the same line of sight the whole way in; a stationary stand-in is that
@@ -53,11 +55,12 @@ const proj = (aspect = 16 / 9): ReturnType<typeof perspective> => perspective(FO
  * the player's own fire. */
 const tieStill = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
 
-/** The yoke deflection that puts the crosshair ON a world point (crosshairNdc is
- * identity, so aiming at a point = setting the yoke to that point's projected NDC). */
+/** The yoke deflection that puts the crosshair ON a world point, from the cockpit eye at the
+ * origin — the inverse of `aimDirection` (crosshairNdc is identity, so aiming at a point =
+ * setting the yoke to that point's native NDC). */
 const aimAt = (pos: Vec3): { aimX: number; aimY: number } => {
-  const ndc = transform(proj(), pos)
-  return { aimX: ndc[0], aimY: ndc[1] }
+  const depth = pos[0]
+  return { aimX: (f * pos[1]) / depth, aimY: (f * pos[2]) / depth }
 }
 
 /** A lone-TIE wave with spawns and enemy fire suppressed, so the only thing that can
@@ -85,7 +88,7 @@ describe('Story sw2-1 — inbound TIEs are hittable on the way in', () => {
     // Dead ahead, far downrange: a freshly-inbound fighter at the far edge of the
     // approach. Today the bolt expires at ~1800 units and never reaches 8000, so this
     // fails RED; the GREEN fix must let a bolt reach across the approach volume.
-    const tie = tieStill([0, 0, -TIE_SPAWN_DISTANCE])
+    const tie = tieStill([TIE_SPAWN_DISTANCE, 0, 0])
     const s = fireUntilClear(loneWave(tie), tie.pos, 1200)
     expect(s.enemies).toHaveLength(0) // the bolt reached it — killed on the way IN
     expect(s.score).toBe(TIE_SCORE) // by fire (a ram never scores)
@@ -97,7 +100,7 @@ describe('Story sw2-1 — inbound TIEs are hittable on the way in', () => {
     // A representative mid-approach range (4000): unambiguously "inbound" (>2x the
     // ~1800 bolt reach, >2x TIE_EXIT_RANGE), so it too is out of reach today. Guards
     // against a partial fix that only nudges reach a little past close range.
-    const tie = tieStill([0, 0, -4000])
+    const tie = tieStill([4000, 0, 0])
     const s = fireUntilClear(loneWave(tie), tie.pos, 600)
     expect(s.enemies).toHaveLength(0)
     expect(s.score).toBe(TIE_SCORE)
@@ -110,7 +113,7 @@ describe('Story sw2-1 — the retreat path and aim precision must survive the re
     // "After the attack run, turned back, very close": a fighter that has closed in
     // lives well inside a bolt's reach — the one window the player can hit today.
     // Passes now; the GREEN reach fix must NOT break it.
-    const tie = tieStill([0, 0, -900])
+    const tie = tieStill([900, 0, 0])
     const s = fireUntilClear(loneWave(tie), tie.pos, 300)
     expect(s.enemies).toHaveLength(0)
     expect(s.score).toBe(TIE_SCORE)
@@ -121,7 +124,7 @@ describe('Story sw2-1 — the retreat path and aim precision must survive the re
     // Extending a bolt's reach must not turn it into a depth-plane sweep: a fighter at
     // the same downrange depth but far off the firing axis must still be missed. Guards
     // the GREEN fix against widening WHAT collides instead of only HOW FAR the bolt flies.
-    const tie = tieStill([1600, 0, -4000]) // deep-inbound depth, far off-centre
+    const tie = tieStill([4000, 1600, 0]) // deep-inbound depth (+X), far off-centre (+Y right)
     let s = loneWave(tie)
     const fire: Input = { aimX: 0, aimY: 0, fire: true } // aim dead centre, NOT at the TIE
     for (let i = 0; i < 600 && s.enemies.length > 0; i++) s = stepGame(s, fire, DT)
@@ -133,6 +136,6 @@ describe('Story sw2-1 — the retreat path and aim precision must survive the re
     // with the non-ROM 12° fire cone gone, this plainly-visible fighter shoots back over the 600
     // frames, exactly as the cabinet's gate allows. Assert what the comment actually meant instead:
     // the stationary fighter never moved.
-    expect(s.enemies[0].pos).toEqual([1600, 0, -4000])
+    expect(s.enemies[0].pos).toEqual([4000, 1600, 0])
   })
 })

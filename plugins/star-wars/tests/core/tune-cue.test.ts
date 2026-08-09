@@ -99,7 +99,7 @@ describe("tune cue — the death knell fires when the torpedo ARMS, not when it 
     // torpedo now (WSLAZR.MAC's PT.LZF test), so the launch is a real shot — aimed from the
     // eye the pilot actually flies (768 above the floor: ~17.7° down at this range, well
     // inside the yoke's 30°), through the real resolve. Strictly stronger than the bolt.
-    const far: Vec3 = [0, 0, -EXHAUST_PORT_DISTANCE]
+    const far: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0] // native [depth,right,up]: far down the trench, dead ahead
     const s0 = trench(portAt(far))
     // The shot is one the yoke can physically make — pinned, not asserted in prose: a
     // launch fixture that needed an impossible crosshair would be the bolt's unbuildable
@@ -114,7 +114,7 @@ describe("tune cue — the death knell fires when the torpedo ARMS, not when it 
   })
 
   it('the knell is a ONE-SHOT: the armed torpedo does not re-knell on later frames', () => {
-    const far: Vec3 = [0, 0, -EXHAUST_PORT_DISTANCE]
+    const far: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0] // native [depth,right,up]: far down the trench, dead ahead
     const s0 = trench(portAt(far))
     const shot = fireAt(s0, far)
     const s1 = stepGame(s0, shot, DT)
@@ -136,9 +136,9 @@ describe("tune cue — the death knell fires when the torpedo ARMS, not when it 
     // sw7-17: this used to park a bolt mid-trench, which under a hitscan laser cannot arm
     // anything no matter what — it would now pass whatever the beam did. A real miss is
     // what keeps the test discriminating.
-    const far: Vec3 = [0, 0, -EXHAUST_PORT_DISTANCE]
+    const far: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0] // native [depth,right,up]: far down the trench, dead ahead
     const s0 = trench(portAt(far))
-    const s1 = stepGame(s0, fireAt(s0, [300, 0, -EXHAUST_PORT_DISTANCE]), DT)
+    const s1 = stepGame(s0, fireAt(s0, [EXHAUST_PORT_DISTANCE, 300, 0]), DT) // native: 300 off-axis (right) at the port's range
     expect(s1.laserEdge).toBeGreaterThan(0) // he really did shoot…
     expect(s1.portTorpedoArmed).toBe(false) // …and really did miss
     expect(tunesOf(s1)).not.toContain('deathKnell')
@@ -150,7 +150,7 @@ describe('tune cue — the finale fires when the Death Star detonates (U-012, WS
     // Armed on an earlier frame (latch set), port now inside the window with no
     // bolt in flight: this frame detonates — the ROM's PH$DX1 entry, whose init
     // starts the end-of-Death-Star music.
-    const s0 = trench(portAt([0, 0, -300]), { portTorpedoArmed: true })
+    const s0 = trench(portAt([300, 0, 0]), { portTorpedoArmed: true }) // native [depth,right,up]: 300 ahead
     const s1 = stepGame(s0, NO_INPUT, DT)
     expect(s1.events.map((e) => e.type)).toContain('death-star-destroyed')
     expect(tunesOf(s1)).toContain('finale')
@@ -167,19 +167,32 @@ describe('tune cue — the finale fires when the Death Star detonates (U-012, WS
     // not a shot at all — and it cannot simply become one, because a port at -300 sits
     // 68.7° below a seated pilot and the yoke reaches 30°. The shot exists but it is a
     // sliver: the port lies IN the floor and climbs out of reach as it closes, so the
-    // pilot must be flying the floor himself. At TRENCH_EYE_MIN (512, the ROM's minimum
-    // ground clearance) with the yoke hard down, the beam grazes the porthole exactly as
-    // it crosses the $800 gate — the last frame on which this shot is takeable at all.
-    // RE-DERIVED for the ROM scroll (sw7-6 / B-008): the port advances one scroll-step
-    // (TRENCH_SCROLL_SPEED × DT ≈ 262 u) between the frame's start and the beam's resolution, so
-    // it must be seated one step + a hair OUTSIDE the gate to land just inside the $800 window on
-    // the resolution frame — where it both detonates (in-window) and is still within the EYE_MIN
-    // hard-down beam's grazing reach (which the port climbs out of as it closes). At the old 500
-    // u/s speed it barely moved, so seating it AT the gate sufficed. The 30-unit inset keeps it
-    // clear of the window edge without climbing past where the yoke-hard-down beam can reach.
-    const atGate: Vec3 = [0, 0, -(PORT_APPROACH_WINDOW + TRENCH_SCROLL_SPEED * DT - 30)]
+    // pilot must be flying the floor himself.
+    //
+    // RE-SEATED for sw10-1's ±45° authentic lens (fixture re-derivation, not a lens-semantic
+    // change to what this test asserts). `aimDirection`'s f = 1/tan(FOV_Y/2) is now 1 (was
+    // √3 under the retired 60°-vertical lens), so a hard-down yoke (aimY=-1) descends at a
+    // 45° slope, not 30°. At TRENCH_EYE_MIN (512, the ROM's minimum ground clearance) that
+    // beam now crosses the floor (up=0) — the porthole's own height — dead ahead at native
+    // depth = TRENCH_EYE_MIN = 512, with a PORT_HIT_RADIUS=108 tolerance band of only
+    // ±(108/√2) ≈ ±76 either side of it (the ray's 45° slope makes the perpendicular-distance
+    // conversion a plain /√2). That whole band sits comfortably INSIDE the $800 window now —
+    // before sw10-1 the shallower 30° beam only grazed the porthole well beyond it, at
+    // depth ≈ 887, which is why the old fixture aimed for the window edge itself.
+    //
+    // So the coincidence this test needs — the beam's reach and the window edge lining up —
+    // no longer exists; the reach point is now deep inside the window instead of past it. What
+    // still has to hold is the "collapsed" case: the port is OUT of reach one frame before
+    // resolution, and the resolution frame lands it BOTH in-window and grazed by the beam at
+    // once. Native depth 600 sits inside the reach tolerance (62 of the available 108 units,
+    // comfortable headroom either side) while remaining one scroll-step (TRENCH_SCROLL_SPEED ×
+    // DT ≈ 262 u) beyond depth = 537.5, the boundary inside which the pre-scroll seat would
+    // already be within the $800 window — so the port still crosses INTO the window on the very
+    // frame the beam first reaches it.
+    const RESOLVED_DEPTH = 600 // native +X depth at the resolving frame (was OLD z = -600)
+    const atGate: Vec3 = [RESOLVED_DEPTH + TRENCH_SCROLL_SPEED * DT, 0, 0] // one scroll-step further out; native [depth,right,up]
     const HARD_DOWN: Input = { aimX: 0, aimY: -1, fire: true, aspect: 1 }
-    const s0 = trench(portAt(atGate), { trenchView: [0, TRENCH_EYE_MIN, 0] })
+    const s0 = trench(portAt(atGate), { trenchView: [0, 0, TRENCH_EYE_MIN] }) // native: eye lifted on up (+Z)
     const s1 = stepGame(s0, HARD_DOWN, DT)
     const tunes = tunesOf(s1)
     expect(tunes).toContain('deathKnell')
@@ -246,7 +259,7 @@ describe('tune cue — the descent is the 20s PH.TIM milestone, ONE second befor
     expect(tunesOf(started)).not.toContain('descent')
     // Port kill: the trench clears back to the NEXT wave's space phase — that
     // edge belongs to the finale, not the descent.
-    const s0 = trench(portAt([0, 0, -300]), { portTorpedoArmed: true })
+    const s0 = trench(portAt([300, 0, 0]), { portTorpedoArmed: true }) // native [depth,right,up]: 300 ahead
     const won = stepGame(s0, NO_INPUT, DT)
     expect(won.phase).toBe('space')
     expect(tunesOf(won)).not.toContain('descent')

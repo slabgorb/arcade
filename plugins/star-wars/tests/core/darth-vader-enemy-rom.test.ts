@@ -88,7 +88,7 @@ import { IDENTITY, type Vec3 } from '@shared/math3d'
 // sw7-17, in FRONT of the gun, which is where a beam can reach them at all.
 const TINY = 0.001 // one hit-test, negligible movement
 const TICK = 1 / 60
-const DOWNRANGE: Vec3 = [0, 0, -400]
+const DOWNRANGE: Vec3 = [400, 0, 0] // native [depth,right,up]: 400 ahead, in front of the gun
 const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
 // `kind: 'darth'` does not typecheck until GREEN widens the Enemy.kind union —
 // that widening is part of this story. Vitest (esbuild) runs it regardless; the

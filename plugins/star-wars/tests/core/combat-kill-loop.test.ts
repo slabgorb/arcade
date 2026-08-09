@@ -9,24 +9,34 @@
 // miss. The cause is a consistency bug between the firing aim and the perspective
 // projection the scene is drawn under:
 //
-//   * The renderer projects the world with a 60° vertical FOV (render.ts:
-//     perspective(Math.PI/3, ...)). A world point [x,y,z] therefore lands at NDC
-//     [(f/aspect)·x/-z, f·y/-z] with f = 1/tan(30°) ≈ 1.732.
+//   * The renderer projects the world with FOV_Y (gameRules.ts — render.ts imports
+//     the SAME constant, so the camera and the aim below share one lens; this file
+//     mirrors that import rather than hardcoding a duplicate). A native world point
+//     [depth, right, up] lands at NDC [(f/aspect)·right/depth, f·up/depth] with
+//     f = 1/tan(FOV_Y/2) (sw10-1: the native→eye remap CAMERA_ORIENT precedes it).
 //   * The crosshair is drawn at NDC [aimX, aimY] (gameRules.crosshairNdc), but a
-//     bolt is fired along aimDirection = [aimX, aimY, -1] — whose path projects
-//     to NDC [(f/aspect)·aimX, f·aimY]. The bolt overshoots the reticle by ~f,
-//     so a TIE sitting under the crosshair is missed.
+//     bolt was fired along aimDirection = [aimX, aimY, -1] — whose path projected
+//     to NDC [(f/aspect)·aimX, f·aimY]. Without the f (and, before sw10-1, aspect)
+//     term the bolt overshot the reticle, so a TIE sitting under the crosshair
+//     was missed.
 //
 // With shots missing, the player can never meet the space kill quota by fire —
 // the only thing that clears the sky is letting TIEs RAM the cockpit, which costs
 // a shield and must NOT advance the wave. That is the reported symptom.
+//
+// sw10-1: the cabinet's lens is now the symmetric 90° FOV (45° half-angle both
+// axes, f = 1) and aimDirection dropped the aspect term entirely — divide-by-
+// depth, aspect-INDEPENDENT. Nothing below hardcodes the old 60°/f=√3 numbers;
+// FOV_Y is imported from gameRules so this file cannot drift out of sync with a
+// future lens change again.
 //
 // These tests drive the REAL firing path (the trigger via Input), so the bolt is
 // spawned and aimed by stepGame, not hand-placed on the enemy. They assert
 // observable sim state (enemy count, score, shields, phase) so the GREEN fix is
 // free to realign aim/projection however it likes. Vertical aim only (x = 0), so
 // they are independent of the render's aspect ratio (a shell value the pure core
-// cannot read — see the Delivery Findings for the horizontal/aspect dimension).
+// cannot read — see the Delivery Findings for the horizontal/aspect dimension) —
+// doubly so since sw10-1, when aspect stopped mattering to the firing ray at all.
 //
 // Boundary intact: no DOM, no time except dt, no randomness except the seeded RNG.
 
@@ -43,17 +53,24 @@ import {
 import { SPACE_PHASE_NOT_OVER, SPACE_PHASE_CLOSING_KILL } from '../support/space-phase-end'
 import { stepGame } from '../../src/core/sim'
 import type { Input } from '../../src/core/input'
-import { aimDirection, crosshairNdc } from '../../src/core/gameRules'
-import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
+import { aimDirection, crosshairNdc, FOV_Y } from '../../src/core/gameRules'
+import { CAMERA_ORIENT } from '../../src/core/basis'
+import { perspective, viewMatrix, transform, IDENTITY, type Vec3 } from '@shared/math3d'
 
 const DT = 1 / 60
 
-// The projection the renderer paints the scene with (render.ts): a 60° vertical
-// FOV. near/far don't affect the x/y NDC a point maps to (only its depth), so any
-// positive pair mirrors the render. Aspect only scales X; every test below keeps
-// enemies on the vertical axis (x = 0), so the aspect choice is irrelevant.
-const FOV_Y = Math.PI / 3
-const proj = (aspect = 16 / 9): ReturnType<typeof perspective> => perspective(FOV_Y, aspect, 1, 5000)
+// The camera→clip transform the renderer paints the scene with (render.ts), built from
+// gameRules' FOV_Y rather than a duplicated lens so this test cannot describe a different
+// lens than the one the sim actually fires under. sw10-1: a native world point
+// [depth(+X), right(+Y), up(+Z)] reaches the shared `perspective` through the fixed
+// native→eye remap CAMERA_ORIENT (viewMatrix at the cockpit origin, eye = [Y, Z, −X]).
+// near/far don't affect the x/y NDC a point maps to (only its depth), so any positive pair
+// mirrors the render. Aspect only scales X; every test below keeps enemies on the vertical
+// axis (right = 0), so the aspect choice is irrelevant.
+const projectNdc = (pos: Vec3, aspect = 16 / 9): readonly [number, number] => {
+  const ndc = transform(perspective(FOV_Y, aspect, 1, 5000), transform(viewMatrix([0, 0, 0], CAMERA_ORIENT), pos))
+  return [ndc[0], ndc[1]]
+}
 
 /** A TIE holding station at `pos` (vel 0). A real TIE flies straight at the
  * cockpit, which keeps it on the same line of sight — under the same crosshair —
@@ -65,8 +82,8 @@ const tieStill = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
  * drawn at NDC [aimX, aimY] (crosshairNdc is identity), so aiming at a point means
  * setting the yoke to that point's projected NDC. */
 const aimAt = (pos: Vec3): { aimX: number; aimY: number } => {
-  const ndc = transform(proj(), pos)
-  return { aimX: ndc[0], aimY: ndc[1] }
+  const [aimX, aimY] = projectNdc(pos)
+  return { aimX, aimY }
 }
 
 /** A lone-TIE wave with spawns and enemy fire suppressed, so the only thing that
@@ -81,7 +98,7 @@ const loneWave = (enemy: Enemy, over: Partial<GameState> = {}): GameState => ({
 
 describe('Story 8-16 — firing kills the enemy under the crosshair', () => {
   it('a centred shot destroys a TIE dead ahead (control: the centre already works)', () => {
-    const tie = tieStill([0, 0, -1200])
+    const tie = tieStill([1200, 0, 0]) // native [depth, right, up]: 1200 dead ahead
     let s = loneWave(tie)
     const fire: Input = { ...aimAt(tie.pos), fire: true } // dead centre → aim (0, 0)
     for (let i = 0; i < 180 && s.enemies.length > 0; i++) s = stepGame(s, fire, DT)
@@ -92,7 +109,7 @@ describe('Story 8-16 — firing kills the enemy under the crosshair', () => {
 
   it('a shot aimed at an OFF-CENTRE TIE under the crosshair destroys it', () => {
     // The TIE renders well above centre; the yoke puts the crosshair right on it.
-    const tie = tieStill([0, 660, -1200])
+    const tie = tieStill([1200, 0, 660]) // native [depth, right, up]: 660 up, 1200 ahead
     let s = loneWave(tie)
     const fire: Input = { ...aimAt(tie.pos), fire: true }
     for (let i = 0; i < 180 && s.enemies.length > 0; i++) s = stepGame(s, fire, DT)
@@ -106,17 +123,17 @@ describe('Story 8-16 — firing kills the enemy under the crosshair', () => {
     // exactly where the crosshair is drawn. Today aimDirection ignores the FOV, so
     // the bolt's path projects to f·aimY instead of aimY and the two diverge.
     const aimY = 0.6
-    const dir = aimDirection(0, aimY) // the direction the bolt flies
+    const dir = aimDirection(0, aimY) // the direction the bolt flies (native [depth, right, up])
     const downrange: Vec3 = [dir[0] * 1000, dir[1] * 1000, dir[2] * 1000] // a point on its path
-    const ndc = transform(proj(), downrange) // where that point lands on screen (NDC)
+    const [, ndcY] = projectNdc(downrange) // where that point lands on screen (NDC)
     const [, crossY] = crosshairNdc(0, aimY) // where the crosshair sits (NDC)
-    expect(ndc[1]).toBeCloseTo(crossY, 5) // the bolt must fly toward the reticle
+    expect(ndcY).toBeCloseTo(crossY, 5) // the bolt must fly toward the reticle
   })
 })
 
 describe('Story 8-16 — TIEs die to fire, never to ramming (phase end per sw8-11)', () => {
   it('shooting the final TIE across the closing frame is a clean clear — no shield lost', () => {
-    const tie = tieStill([0, 660, -1200])
+    const tie = tieStill([1200, 0, 660]) // native [depth, right, up]: 660 up, 1200 ahead
     // WAVE 2 — wave 1 has no ground phase (sw7-18 / D-015), so the space clear this
     // test rides into the surface first appears on wave 2. sw8-11: staged so the
     // closing frame both lands the kill (quota) and spends the clock (time-box) —

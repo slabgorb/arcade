@@ -33,8 +33,9 @@ import { makeTie, lookAtOrigin } from './helpers/space'
 /** One whole game frame of dt — exactly one decision tick per `stepGame`. */
 const TICK_DT = 1 / TICK_HZ
 
-/** Dead ahead of the cockpit: inside the view pyramid, well past the $800 floor. */
-const POST: Vec3 = [0, 0, -4000]
+/** Dead ahead of the cockpit: inside the view pyramid, well past the $800 floor.
+ *  sw10-1 native [depth(+X ahead), right(+Y), up(+Z)]. */
+const POST: Vec3 = [4000, 0, 0]
 
 /** A VM mid-maneuver: `waitFrames` far beyond any run below, so `tickChoreo`
  *  only counts down (tie-vm.ts CHTW.E path) and the twist bits hold for the

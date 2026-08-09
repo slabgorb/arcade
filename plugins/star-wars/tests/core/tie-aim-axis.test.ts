@@ -95,7 +95,7 @@ function hasSights(pos: Vec3, orient: Mat4 = IDENTITY): boolean {
 }
 
 /**
- * A TIE at `[-lat, 0, -lat]` with its nose pointed AT the cockpit, so its nose-depth is
+ * A TIE at native `[lat, -lat, 0]` with its nose pointed AT the cockpit, so its nose-depth is
  * exactly the range `lat·√2` and its off-axis distance is zero.
  *
  * This is how a fighter legitimately gets further from the pilot than either axis allows
@@ -104,20 +104,20 @@ function hasSights(pos: Vec3, orient: Mat4 = IDENTITY): boolean {
  * as a face. Every position built here is asserted legal below before it is used.
  */
 function diagonalAt(lat: number): Vec3 {
-  return [-lat, 0, -lat]
+  return [lat, -lat, 0] // sw10-1 native [depth, right, up]
 }
 
 /**
  * A TIE placed so the cockpit sits exactly `depth` along its nose axis and `perp` off it.
  *
- * With `orient` left at IDENTITY the nose (`orient` column 3, the codebase's forward) is
- * +Z, so a fighter at [-perp, 0, -depth] is AHEAD of the pilot (in front is -Z) and facing
- * back at him. The vector cockpit-minus-TIE is then [perp, 0, depth]: its component along
- * the nose is `depth` and its perpendicular component is `perp`, by construction. Both are
- * exact — no trig, nothing for a fixture bug to round away.
+ * sw10-1 native basis: with `orient` at IDENTITY the nose is −col0 = [-1, 0, 0] (tie-status),
+ * so a fighter at native [depth, -perp, 0] is AHEAD of the pilot (in front is +X depth) with
+ * its nose pointing back at him. The vector cockpit-minus-TIE is then [-depth, perp, 0]: its
+ * component along the nose ([-1,0,0]) is `depth` and its perpendicular component is `perp`, by
+ * construction. Both are exact — no trig, nothing for a fixture bug to round away.
  */
 function tieAt(depth: number, perp: number): Vec3 {
-  return [-perp, 0, -depth]
+  return [depth, -perp, 0]
 }
 
 describe('uf1-15 — the M$PSB2 unit chain, pinned from primary source', () => {
@@ -201,7 +201,7 @@ describe('uf1-15 — the gates C_AS is nested inside (WSCPU.MAC:611-614)', () =>
     // directly away from him — perpendicular distance alone says "in sights". The ROM's
     // `LDD M.XP / BMI 140$` ("?PLAYER IN FRONT?") is what forbids it, so the port needs the
     // half-line, not the line. Green today under the cone law; it must STAY green.
-    expect(hasSights([0, 0, -5000], lookAway([0, 0, -5000]))).toBe(false)
+    expect(hasSights([5000, 0, 0], lookAway([5000, 0, 0]))).toBe(false)
   })
 
   it('clears the bit past AIM_DEPTH_MAX even with the nose dead on', () => {

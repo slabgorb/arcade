@@ -30,7 +30,6 @@ import {
 import { FOV_Y } from '../core/gameRules'
 import { modelBounds } from '../core/modelView'
 import {
-  perspective,
   multiply,
   transform,
   translation,
@@ -42,6 +41,7 @@ import {
 import { project, drawWireframe, NEAR, FAR } from './wireframe'
 import {
   cameraView,
+  sceneProjection,
   modelMatrix,
   surfacePlacement,
   trenchPlacement,
@@ -199,9 +199,9 @@ function sceneModels(state: GameState, view: Mat4): { model: Model3D; mv: Mat4 }
 
 /**
  * Draw the debug overlay on top of the rendered scene. Builds the SAME projection
- * and camera the scene uses (perspective(FOV_Y, w/h, NEAR, FAR) and
- * cameraView(state)), then strokes the axes, grid, frustum gizmo, and a bounds
- * ring + name label per on-screen model. Reads `state`; never mutates it.
+ * and camera the scene uses (sceneProjection(w, h) — the aspect-independent lens
+ * shared with render() — and cameraView(state)), then strokes the axes, grid, the
+ * frustum gizmo, and a bounds ring + name label per model. Reads `state`; never mutates it.
  */
 export function drawDebugOverlay(
   ctx: CanvasRenderingContext2D,
@@ -209,8 +209,8 @@ export function drawDebugOverlay(
   w: number,
   h: number,
 ): void {
-  const aspect = w / h
-  const proj = perspective(FOV_Y, aspect, NEAR, FAR)
+  const aspect = w / h // still shapes the FRUSTUM GIZMO below (a dev aid), not the scene lens
+  const proj = sceneProjection(w, h) // sw10-1 F1: the ONE aspect-independent lens the scene draws with
   const view = cameraView(state)
 
   // 1. World axes at the origin, through the scene camera (X red, Y green, Z blue).

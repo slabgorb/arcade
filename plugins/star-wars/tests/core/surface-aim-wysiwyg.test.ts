@@ -183,7 +183,7 @@ describe('sw7-16 — the surface gun IS on the flying ship', () => {
   it.each(ALTITUDE_BAND)('casts the beam from the ship point at %s (altitude %s)', (_label, alt) => {
     // The design names one ship point, `[0, altitude, 0]`, with no forward offset (the trench's
     // `trenchView` muzzle carries none either), so pin it exactly.
-    expect(shipPoint(surface({ altitude: alt }))).toEqual([0, alt, 0])
+    expect(shipPoint(surface({ altitude: alt }))).toEqual([0, 0, alt]) // native [depth, right, up]
   })
 
   it('rides the ship up and down — the gun is never at a fixed height', () => {
@@ -193,9 +193,9 @@ describe('sw7-16 — the surface gun IS on the flying ship', () => {
     const low = shipPoint(surface({ altitude: MIN_SKIM_ALTITUDE }))
     const high = shipPoint(surface({ altitude: MAX_SKIM_ALTITUDE }))
 
-    expect(low[1]).toBe(MIN_SKIM_ALTITUDE)
-    expect(high[1]).toBe(MAX_SKIM_ALTITUDE)
-    expect(high[1]).toBeGreaterThan(low[1])
+    expect(low[2]).toBe(MIN_SKIM_ALTITUDE) // native up is index 2
+    expect(high[2]).toBe(MAX_SKIM_ALTITUDE)
+    expect(high[2]).toBeGreaterThan(low[2])
   })
 
   it('puts the gun exactly on the camera eye — "muzzle == camera eye on surface"', () => {
@@ -271,7 +271,7 @@ describe('sw7-16 — the two ship points inside one frame', () => {
     ).toBe(true)
     expect(s.altitude, 'the bump teleports the ship; it does not ease it').toBe(SKIM_ALTITUDE)
     expect(
-      eyeOf(s)[1] - s0.altitude,
+      eyeOf(s)[2] - s0.altitude, // native up is index 2
       'the frame really does hold two ship points ~87 apart — the docstring said 3.33',
     ).toBeCloseTo(87)
   })
@@ -324,7 +324,7 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
   it.each(ALTITUDE_BAND)(
     'DESTROYS a tower the crosshair is on, flying at %s (altitude %s)',
     (_label, alt) => {
-      const tower: Vec3 = [0, 0, -4000]
+      const tower: Vec3 = [4000, 0, 0] // native [depth, right, up]: 4000 ahead
       const s0 = surface({ altitude: alt, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
       const aim = aimAt(tower, eyeOf(s0), ASPECT)
@@ -345,7 +345,7 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
     // absurdity: with the gun on the floor, a crosshair pointed at nothing sent a bolt running
     // level out of the origin and into things the player never aimed at. A centred yoke, flying
     // at the band ceiling, points high over a tower's base — that shot must miss.
-    const tower: Vec3 = [0, 0, -4000]
+    const tower: Vec3 = [4000, 0, 0] // native [depth, right, up]: 4000 ahead
     const s0 = surface({ altitude: MAX_SKIM_ALTITUDE, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     expect(fireOnce(s0, trigger()), 'a crosshair on empty sky must not kill a tower').toBe(false)
@@ -367,7 +367,7 @@ const PROBE_Y = (COCKPIT_HIT_RADIUS + (MIN_SKIM_ALTITUDE + COCKPIT_HIT_RADIUS)) 
 describe('sw7-16 — enemy fire tracks the flying ship', () => {
   it('aims a tower fireball at the ship point, not at the origin', () => {
     // One armed tower => `armed[nextInt(rng, 1)]` is deterministic, no seeding games.
-    const tower: Vec3 = [0, 0, -2000]
+    const tower: Vec3 = [2000, 0, 0] // native [depth, right, up]: 2000 ahead
     const s0 = surface({
       altitude: MAX_SKIM_ALTITUDE,
       turrets: [{ pos: [...tower] as Vec3, age: 10 }], // long past TOWER_FIRE_GRACE
@@ -399,7 +399,7 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     // Belt and braces: the two targets must be genuinely distinguishable at this altitude,
     // or the assertion above proves nothing. (The cap is 352 up, the ship 238 up — the
     // fireball's climb differs by a wide margin.)
-    expect(atShip[1]).not.toBeCloseTo(atOrigin[1], 3)
+    expect(atShip[2]).not.toBeCloseTo(atOrigin[2], 3) // native up (climb) is index 2
   })
 
   it('costs a shield when a fireball reaches the ship point', () => {
@@ -408,7 +408,7 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     // through the pilot.
     const s0 = surface({
       altitude: MAX_SKIM_ALTITUDE,
-      enemyShots: [{ pos: [0, MAX_SKIM_ALTITUDE, 0], vel: [0, 0, 0], ttl: 5 }],
+      enemyShots: [{ pos: [0, 0, MAX_SKIM_ALTITUDE], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]: on the ship
     })
     const s = stepGame(s0, trigger({ fire: false }), DT)
 
@@ -444,7 +444,7 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     // than merely moving away — because a sphere left at the origin misses PROBE_Y entirely.
     const s0 = surface({
       altitude: MIN_SKIM_ALTITUDE,
-      enemyShots: [{ pos: [0, PROBE_Y, 0], vel: [0, 0, 0], ttl: 5 }],
+      enemyShots: [{ pos: [0, 0, PROBE_Y], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]
     })
     const s = stepGame(s0, trigger({ fire: false }), DT)
 
@@ -472,7 +472,7 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     // `0/0` on a zero-height canvas rect (the yoke listener is on `window`, not the canvas).
     const s0 = surface({
       altitude: MIN_SKIM_ALTITUDE,
-      enemyShots: [{ pos: [0, PROBE_Y, 0], vel: [0, 0, 0], ttl: 5 }],
+      enemyShots: [{ pos: [0, 0, PROBE_Y], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]
       lives: 3,
     })
     const s = stepGame(s0, trigger({ fire: false, aimY: NaN }), DT)
@@ -524,7 +524,7 @@ describe('sw7-16 — the other phases do not move', () => {
       ...enterPhase(initialState(1983), 'space'),
       mode: 'playing',
       altitude: MAX_SKIM_ALTITUDE,
-      enemyShots: [{ pos: [0, 0, 0], vel: [0, 0, -1], ttl: PROJECTILE_TTL }],
+      enemyShots: [{ pos: [0, 0, 0], vel: [1, 0, 0], ttl: PROJECTILE_TTL }], // native: toward cockpit
       fireCooldown: 0,
     }
     const s = stepGame(s0, trigger({ fire: false }), DT)

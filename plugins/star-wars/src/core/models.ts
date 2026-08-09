@@ -61,6 +61,16 @@ export interface Model3D {
 const S = 0.5
 
 /**
+ * sw10-1 — bake the TIE-family object tables from ROM object space into the native
+ * world basis, retiring render.ts's `TIE_ORIENT` display correction (`rotationZ(π/2)`)
+ * into the DATA. The transform is `P · TIE_ORIENT`, i.e. `(x,y,z) → (-z,-y,x)`; applied
+ * once here, a fresh TIE then drops in with a plain heading `orient` and no per-model
+ * rotation at the draw site. The RAW ROM vertices stay visible in each literal below
+ * (they remain the audited `.P` values, ×`.S=13.`); only their basis changes.
+ */
+export const bakeTie = (vs: readonly Vec3[]): Vec3[] => vs.map(([x, y, z]) => [-z, -y, x])
+
+/**
  * Unit wireframe cube — the Wave 0 skeleton's placeholder draw target
  * (consumed by src/shell/render.ts until Wave 1 wires in the authentic models).
  */
@@ -80,7 +90,7 @@ export const CUBE: Model3D = {
 /** Authentic `Obj_Tie_Fighter` geometry from the cabinet disassembly. */
 export const TIE_FIGHTER: Model3D = {
   name: 'TIE Fighter',
-  vertices: [
+  vertices: bakeTie([
     [-130, -208, 234],
     [104, -208, 234],
     [182, -208, 0],
@@ -133,7 +143,7 @@ export const TIE_FIGHTER: Model3D = {
     [26, 26, -78],
     [-52, 26, -78],
     [-104, 26, 0],
-  ],
+  ]),
   // Edges RE-PORTED from the ROM draw list `.WL TIE` (WSOBJ.MAC:1351-1367) by
   // story sw5-3 — the exact set the cabinet strokes, no longer the story-8-10
   // heuristic (which fabricated the lower cap's 6th-vertex closure [24,29]/[28,29]
@@ -205,14 +215,14 @@ const TIE_WING_FRAG_EDGES: ReadonlyArray<readonly [number, number]> = [
 /** `Obj_Tie_Wing_Frag_1` (`TI1`) — the exploded TIE's LEFT wing + strut (18 verts). */
 export const TIE_WING_FRAG_1: Model3D = {
   name: 'TIE Fragment Left Wing',
-  vertices: [
+  vertices: bakeTie([
     // left outer fin (ROM y = −2 plane)
     [-130, -26, 234], [104, -26, 234], [182, -26, 0], [104, -26, -234], [-130, -26, -234], [-208, -26, 0],
     // small circle on the fin
     [-26, -26, 26], [0, -26, 26], [13, -26, 0], [0, -26, -26], [-26, -26, -26], [-39, -26, 0],
     // inner circle on the strut (ROM y = 10 plane)
     [-26, 130, 26], [0, 130, 26], [13, 130, 0], [0, 130, -26], [-26, 130, -26], [-39, 130, 0],
-  ],
+  ]),
   edges: TIE_WING_FRAG_EDGES,
 }
 
@@ -220,14 +230,14 @@ export const TIE_WING_FRAG_1: Model3D = {
  *  Same shape as TI1, rotated onto a new plane: (x,y,z) → (x,z,−y). */
 export const TIE_WING_FRAG_2: Model3D = {
   name: 'TIE Fragment Right Wing',
-  vertices: [
+  vertices: bakeTie([
     // right outer fin (ROM z = 2 plane)
     [-130, 234, 26], [104, 234, 26], [182, 0, 26], [104, -234, 26], [-130, -234, 26], [-208, 0, 26],
     // small circle on the fin
     [-26, 26, 26], [0, 26, 26], [13, 0, 26], [0, -26, 26], [-26, -26, 26], [-39, 0, 26],
     // inner circle on the strut (ROM z = −10 plane)
     [-26, 26, -130], [0, 26, -130], [13, 0, -130], [0, -26, -130], [-26, -26, -130], [-39, 0, -130],
-  ],
+  ]),
   edges: TIE_WING_FRAG_EDGES,
 }
 
@@ -264,7 +274,7 @@ export const TIE_WING_FRAG_3: Model3D = {
 /** Authentic `Obj_Darth_Tie` geometry from the cabinet disassembly. */
 export const DARTH_TIE: Model3D = {
   name: 'Darth Vader TIE',
-  vertices: [
+  vertices: bakeTie([
     [-180, -180, 130],
     [180, -180, 130],
     [180, -270, 50],
@@ -321,7 +331,7 @@ export const DARTH_TIE: Model3D = {
     [50, -20, -60],
     [80, -60, -20],
     [80, -60, 20],
-  ],
+  ]),
   // Edges are the ROM draw list `.WL RTH` (WSOBJ.MAC:1427-1479), re-ported by
   // story sw5-2 — replacing story 8-10's heuristic reconstruction, which invented
   // 44 edges the ROM never draws (the rim→hub spokes and a 4-strut pylon) and
@@ -765,7 +775,7 @@ export const TRENCH_CATWALK: Model3D = {
  * pair-models.json): the 1983 cabinet does NOT draw a 3D sphere — it draws an
  * authentic 2D vector PICTURE ("DEATH STAR PICS", WSVROM.MAC:2449), a flat billboard
  * SCALED by the AVG multiplier `M.=32` as the player closes. It has three coloured
- * parts, ported here as three flat (z=0) picture models the shell strokes in their
+ * parts, ported here as three flat (native depth X=0) picture models the shell strokes in their
  * own colour: a GREEN disc (`BSCIR`, VGCGRN, radius 50), a WHITE equatorial trench
  * chord (`BSTRN`, VGCWHT), and a RED offset superlaser dish (`BSDSH`, VGCRED). This
  * replaces the story-11-7 procedural UV sphere (a stand-in whose doc comment wrongly
@@ -777,18 +787,19 @@ export const TRENCH_CATWALK: Model3D = {
  * no DOM/time/random.
  */
 
-/** A flat (z=0) picture model from a single polyline; `close` links last→first. */
+/** A flat (native depth X=0) picture model from a single polyline; `close` links last→first. */
 function picture(name: string, pts2d: readonly (readonly [number, number])[], close: boolean): Model3D {
-  const vertices: Vec3[] = pts2d.map(([x, y]) => [x, y, 0])
+  // sw10-1: a flat billboard in the NATIVE screen plane — depth X=0, right Y=x, up Z=y.
+  const vertices: Vec3[] = pts2d.map(([x, y]) => [0, x, y])
   const edges: [number, number][] = []
   for (let i = 0; i + 1 < pts2d.length; i++) edges.push([i, i + 1])
   if (close && pts2d.length > 2) edges.push([pts2d.length - 1, 0])
   return { name, vertices, edges }
 }
 
-/** A flat (z=0) picture model from explicit disjoint segments (each [a,b] a line). */
+/** A flat (native depth X=0) picture model from explicit disjoint segments (each [a,b] a line). */
 function pictureSegments(name: string, pts2d: readonly (readonly [number, number])[], edges: readonly [number, number][]): Model3D {
-  return { name, vertices: pts2d.map(([x, y]) => [x, y, 0]), edges: edges.map(([a, b]) => [a, b]) }
+  return { name, vertices: pts2d.map(([x, y]) => [0, x, y]), edges: edges.map(([a, b]) => [a, b]) } // sw10-1: native billboard plane
 }
 
 // BSCIR — the green base circle (WSVROM.MAC), 28 points on a radius-50 circle.

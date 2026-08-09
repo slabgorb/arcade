@@ -173,7 +173,9 @@ describe('sw7-15 / M-010 — the body circle (BSCIR) is a smooth loop, no transc
     const v = DEATH_STAR.vertices
     expect(v.length).toBeGreaterThanOrEqual(8)
     // Signed turn from vertex i to i+1 about the origin (the picture is centred there).
-    const cross = (a: readonly number[], b: readonly number[]): number => a[0] * b[1] - a[1] * b[0]
+    // sw10-1: the picture is a native billboard plane [depth=0, right=Y, up=Z], so the
+    // 2D shape lives in indices [1] (right) and [2] (up); wind about those.
+    const cross = (a: readonly number[], b: readonly number[]): number => a[1] * b[2] - a[2] * b[1]
     let pos = 0
     let neg = 0
     for (let i = 0; i < v.length; i++) {
