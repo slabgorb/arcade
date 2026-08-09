@@ -8,8 +8,11 @@
 // PURE: seeded @shared/rng only — no clock, no ambient entropy, no shell import.
 //
 // ─── SOURCE OF TRUTH (REV-01 W3COMN.MAC, single-spaced → physical cites) ──────
-//   NICBMS = 8   W3COMN.MAC:35  — max ICBMs, the per-wave budget ceiling. (claim MC-NICBMS)
-//   MXICON = 7   W3COMN.MAC:193 — max ICBMs on screen at once.            (claim MC-MXICON)
+//   NICBMS = 8   W3COMN.MAC:35  — ICBM table size = max concurrent on-screen
+//                                 = the launch headroom ceiling.          (claim MC-NICBMS)
+//   MXICON = 7   W3COMN.MAC:193 — count−1 operand of the ICNORM launch
+//                                 arithmetic (its INX recovers the true
+//                                 ceiling); NOT a hard on-screen cap.     (claim MC-MXICON)
 //   LAUHGT = 202 W3COMN.MAC:171 — 0xCA; ";HEIGHT OF HIGHEST ICBM < THIS LAUNCHES
 //                                 MORE": launch once the HIGHEST live ICBM has
 //                                 fallen below this height.               (claim MC-LAUHGT)
