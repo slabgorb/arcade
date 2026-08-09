@@ -1,0 +1,58 @@
+id: mc10
+type: epic
+title: Missile Command — authentic look & feel, round 2 (aim, ground, HUD, per-wave palette, aspect)
+description: |-
+  Tenth Missile Command epic. mc9 shipped the authentic stamps/palette/HUD DATA but closed with the render + shell WIRING wrong, so the game looks and feels off versus the real cabinet (owner-reported 2026-08-09 with side-by-side screenshots + arcade longplay). Architect (Mimir) diagnosis, verified against primary source:
+
+  (1) AIM — main.ts feeds RELATIVE pointer movementX/movementY into the cursor with NO pointer lock, at 1 screen-px = 1 cabinet-unit; ~256 units stretched across a ~2000px canvas makes the crosshair ~8x twitchy and it never tracks the real mouse. DECISION: default to ABSOLUTE pointer mapping (mouse canvas-position -> cabinet coord via inverse of render.project, then clamp); keep trackball (relative+pointer-lock, scaled) as an optional later mode.
+
+  (2) GROUND not drawn — render.ts explicitly skips the COL001 GROUND slot ('has no on-screen element in this clone'), yet that colour is already correct (wave-1 WV1COL[1]=CYELLO). The real cabinet's defining yellow terrain/landmass is simply never painted; cities/bases float on black. Biggest single look gap; needs NO palette change.
+
+  (3) HUD is un-authentic clutter — the font glyphs are BYTE-EXACT to the ROM (glyphs.ts == W3DSUP.MAC NUMBER :3552 / LETTER :3574, verified), so DO NOT change the font. What's wrong: invented SCORE/AMMO/WAVE labels in the top-LEFT, oversized (gp=height/120), AMMO text redundant (base stacks already show ammo, mc9-1), and the multiplier belongs bottom-center as 'nX'. Strip to authentic centered numeric score + high score.
+
+  (4) PER-WAVE PALETTE not wired — main.ts calls drawFrame without the 5th 'wave' arg, so it defaults to INITIAL_WAVE and every wave paints in wave-1 colours forever. paletteForWave (mc9-2) is fully built; one-line wiring bug. Real cabinet flips the whole background (black wave 1 -> cyan later).
+
+  (5) ASPECT not preserved — index.html stretches canvas to 100%x100% of a ~2:1 window; logical 256x222 (~1.15:1) is mapped across all of it -> horizontally smeared field, huge empty middle. Letterbox to the logical aspect, centered, black bars.
+
+  Core/shell boundary holds (contract 2): aim adds a pure placeCursor to core/cursor.ts (keep the V-flip + clamp); everything else is shell (render.ts/main.ts/input.ts). Verify in the BUILD, not just green vitest — the mc9 miss was green-tests/wrong-pixels. OUT OF SCOPE: audio (mc8), core enemy behavior (mc5).
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc10-1
+    title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: mc10-2
+    title: Draw the GROUND (COL001) yellow terrain landmass at the field bottom so cities/bases sit on it instead of floating on black — render.ts currently skips the GROUND slot; colour already correct (wave-1 CYELLO), no palette change needed
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc10-3
+    title: "Rebuild the HUD to authentic layout: centered numeric score + high score, delete the top-left SCORE/AMMO/WAVE labels and X1 text, move multiplier to bottom-center as 'nX', fix oversized scale (gp=height/120). Keep the byte-exact ROM font (glyphs.ts) UNCHANGED; ammo already shown by base stacks"
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc10-4
+    title: "Wire the per-wave palette: pass game.wave as drawFrame's 5th arg in main.ts (currently defaults to INITIAL_WAVE, freezing wave-1 colours forever) + a regression test that a later-wave sky differs from wave 1. paletteForWave already built (mc9-2)"
+    points: 1
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: mc10-5
+    title: 'Preserve field aspect ratio: letterbox the logical 256x222 (~1.15:1) field centered with black bars instead of stretching to the ~2:1 window (index.html 100%x100%), removing the horizontal smear and empty middle'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
