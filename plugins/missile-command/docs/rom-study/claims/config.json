@@ -14,7 +14,7 @@
     "id": "MC-NICBMS",
     "symbol": "NICBMS",
     "value": 8,
-    "meaning": "Max enemy ICBMs tracked",
+    "meaning": "ICBM table size = max concurrent ICBMs on screen (8): the launch headroom ceiling ICNORM's INX recovers from MXICON+1. game.ts:110 currently also reuses it as the wave-1 budget — a known pre-mc4 approximation (ROM wave-1 = ICBWAV[0]=12, W3MAIN.MAC:5713), tracked in mc5-7",
     "source": {
       "file": "W3COMN.MAC",
       "line": 35,
@@ -36,7 +36,7 @@
     "id": "MC-MXICON",
     "symbol": "MXICON",
     "value": 7,
-    "meaning": "Max ICBMs on screen at once",
+    "meaning": "Count-1 operand of the ICNORM launch arithmetic — the INX lifts MXICON+1 = NICBMS(8) into count-space, so this is NOT a standalone hard on-screen cap",
     "source": {
       "file": "W3COMN.MAC",
       "line": 193,

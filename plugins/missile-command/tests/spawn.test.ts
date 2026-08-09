@@ -2,15 +2,20 @@
 //
 // Story mc3-1 — RED phase (Han Solo / TEA). AC4: the MINIMAL enemy spawner.
 // Each frame it decides whether to launch an ICBM and against which live target,
-// from REV-01's ACTUAL mechanism (not an invented cadence): keep at most MXICON
-// on screen, launch more while the HIGHEST live ICBM has fallen below LAUHGT,
+// from REV-01's ACTUAL mechanism (not an invented cadence): keep at most NICBMS
+// concurrent (mc5-6 — ICNORM's INX lifts MXICON+1=8 into count-space, so
+// MXICON(7) is the count−1 operand, not the ceiling), launch more while the
+// HIGHEST live ICBM has fallen below LAUHGT,
 // against a per-wave budget of NICBMS, placing each at a random top-edge column
 // (seeded @shared/rng) aimed at a random live structure. mc4 replaces this with
 // the full wave-difficulty schedule.
 //
 // ─── GROUND TRUTH (REV-01 W3COMN.MAC, single-spaced → physical cites) ─────────
 //   NICBMS = 8   W3COMN.MAC:35  — max ICBMs, the per-wave budget ceiling.
-//   MXICON = 7   W3COMN.MAC:193 — max ICBMs on screen at once.
+//   MXICON = 7   W3COMN.MAC:193 — "MAX # OF ICBMS ON SCREEN" per the ROM comment,
+//                                 but mc5-6: it is ICNORM's count−1 OPERAND — the
+//                                 INX (W3MAIN.MAC:2473) recovers NICBMS(8) as the
+//                                 true concurrent ceiling.
 //   LAUHGT = 202 W3COMN.MAC:171 — 0xCA; ";HEIGHT OF HIGHEST ICBM < THIS LAUNCHES
 //                                 MORE". Launch only once the HIGHEST live ICBM
 //                                 has fallen below this height.
@@ -80,7 +85,7 @@ async function loadSpawn(): Promise<SpawnMod> {
     throw new Error(
       'spawn core module not built yet — GREEN (Yoda) creates src/core/spawn.ts exporting ' +
         'NICBMS(8), MXICON(7), LAUHGT(202) and spawnIcbms(current,liveTargets,remaining,rng,velocity?,opts?): ' +
-        'launches per cycle min(MXICON − 2·cruiseOnScreen − on-screen − (planeActive?1:0), 4, remaining), ' +
+        'launches per cycle min(NICBMS − 2·cruiseOnScreen − on-screen − (planeActive?1:0), 4, remaining), ' +
         'floored at 0 (ROM ICNORM, W3MAIN.MAC:2457-2510; mc5-5), while remaining>0, there are live ' +
         'targets, and the HIGHEST live ICBM has fallen below LAUHGT (or the screen is empty); places each at a random ' +
         'top-edge column aimed at a random live target; decrements the per-wave budget. Seeded ' +
@@ -106,11 +111,13 @@ const icbmAt = (v: number, h = 10): Icbm => ({
   arrived: false,
 })
 
-describe('mc3-1 AC4 — the spawner never exceeds MXICON on screen', () => {
-  it('an empty screen with budget to spare launches one ICNORM cycle of 4, within MXICON', async () => {
-    const { spawnIcbms, MXICON } = await loadSpawn()
+describe('mc3-1 AC4 — the spawner never exceeds the NICBMS on-screen ceiling', () => {
+  it('an empty screen with budget to spare launches one ICNORM cycle of 4, within NICBMS', async () => {
+    const { spawnIcbms, NICBMS } = await loadSpawn()
     const r = spawnIcbms([], TARGETS, 8, createRng(1))
-    expect(r.icbms.length).toBeLessThanOrEqual(MXICON)
+    // mc5-6: the concurrent ceiling is NICBMS(8) — the 8-slot ICBM table —
+    // not MXICON(7), which is ICNORM's count−1 operand (spawn-clamp.test.ts).
+    expect(r.icbms.length).toBeLessThanOrEqual(NICBMS)
     // mc5-5 faithfulness correction (ROM always wins): ICNORM launches at most 4
     // per cycle ("MAX AT 4", W3MAIN.MAC:2475) — NOT fill-to-MXICON(7), the mc3
     // approximation that saturated the screen and starved the mc5-2 plane.
@@ -170,9 +177,9 @@ describe('mc3-1 AC4 — hold fire while a live ICBM is still above LAUHGT', () =
     const { spawnIcbms, LAUHGT } = await loadSpawn()
     const low = icbmAt(LAUHGT - 50) // the only ICBM, now below the launch height
     const r = spawnIcbms([low], TARGETS, 8, createRng(1))
-    // Deterministic. mc5-5 (ROM ICNORM): headroom = MXICON − 1 = 6, but the
-    // per-cycle cap is 4 ("MAX AT 4", W3MAIN.MAC:2475), so this cycle launches
-    // min(6, 4, 8) = 4 ⇒ total 5, NOT a refill to MXICON (the retired mc3
+    // Deterministic. mc5-5/mc5-6 (ROM ICNORM, count-space): headroom = NICBMS
+    // − 1 = 7, but the per-cycle cap is 4 ("MAX AT 4", W3MAIN.MAC:2475), so
+    // this cycle launches min(7, 4, 8) = 4 ⇒ total 5, NOT a refill to the ceiling (the retired mc3
     // approximation). Pinned exactly — a `> 1` bound would pass an under-launch
     // bug on this non-empty-cleared path.
     expect(r.icbms.length, 'a cleared non-empty screen refills by the ICNORM cap (1 + 4)').toBe(5)

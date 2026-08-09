@@ -46,7 +46,7 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { INITIAL_WAVE, waveSchedule, waveEndBonus, nextWaveBudget } from '../src/core/wave.js'
 import { scoreMultiplier, ICBM_KILL_POINTS } from '../src/core/score.js'
 import { START_CITIES, NCITY, MAXMIS } from '../src/core/field.js'
-import { MXICON } from '../src/core/spawn.js'
+import { NICBMS } from '../src/core/spawn.js'
 import { type Icbm } from '../src/core/icbm.js'
 import { startExplosion, stepExplosion, blastRadius, MAX_BLAST_RADIUS, type Explosion } from '../src/core/explosion.js'
 
@@ -353,9 +353,11 @@ describe('mc4-4 AC3 — the composed run is fully deterministic in the seed', ()
     expect(crossWave(endOfWaveOne(SEED))).toEqual(crossWave(endOfWaveOne(SEED)))
   })
 
-  it('never more than MXICON ICBMs on screen across the whole run', () => {
+  it('never more than NICBMS ICBMs on screen across the whole run', () => {
+    // mc5-6: the concurrent ceiling is the 8-slot ICBM table (NICBMS,
+    // W3COMN.MAC:35), not MXICON(7) — ICNORM's count−1 operand.
     for (const s of trajectory(SEED, 200)) {
-      expect(s.icbms.length, `frame ${s.frame}: MXICON exceeded`).toBeLessThanOrEqual(MXICON)
+      expect(s.icbms.length, `frame ${s.frame}: NICBMS exceeded`).toBeLessThanOrEqual(NICBMS)
     }
   })
 })
