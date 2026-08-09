@@ -1,0 +1,35 @@
+[
+  {
+    "id": "MC-STATE-PLAY",
+    "symbol": "S.PLAY",
+    "value": 0,
+    "meaning": "MAINLINE PLAY-state code. STATE == 0 takes the IFEQ arm and dispatches to the PLAY handler (W3MAIN.MAC:507-525). Hex 0 under W3COMN.MAC's inherited .RADIX 16.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 61,
+      "verbatim": "S.PLAY\t=0\t\t\t;PLAY STATE (STATE)"
+    }
+  },
+  {
+    "id": "MC-STATE-PAUS",
+    "symbol": "S.PAUS",
+    "value": 128,
+    "meaning": "MAINLINE PAUSE-state code. Hex 80 sets the high bit, so as a signed byte STATE < 0 and MAINLINE's IFMI (branch-on-minus) dispatches to the PAUSE handler (W3MAIN.MAC:507-525). The hex reading is forced by that sign test; decimal 80 would still be positive and dispatch down the SETUP branch.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 59,
+      "verbatim": "S.PAUS\t=80\t\t\t;PAUSE STATE (STATE)"
+    }
+  },
+  {
+    "id": "MC-STATE-SETU",
+    "symbol": "S.SETU",
+    "value": 64,
+    "meaning": "MAINLINE SETUP-state code. Hex 40 > 0 with the high bit clear, so STATE > 0 takes MAINLINE's ELSE arm to the SETUP handler (W3MAIN.MAC:507-525); the cold start writes it to STATE (W3MAIN.MAC:491 LDA I,S.SETU). Hex 40 under .RADIX 16.",
+    "source": {
+      "file": "W3COMN.MAC",
+      "line": 57,
+      "verbatim": "S.SETU\t=40\t\t\t;SETUP STATS (STATE)"
+    }
+  }
+]
