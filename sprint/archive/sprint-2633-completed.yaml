@@ -94,3 +94,8 @@ completed_stories:
     title: "ICBM on-screen ceiling: reconcile MXICON(7) vs NICBMS(8). The ROM's ICNORM/POTENT launch arithmetic (INX before caps, DEX after, STX POTENT=count-1) makes true concurrency NICBMS(8); MXICON=7 is the count-1 operand. Align mc3/mc4/mc5 spawn headroom + MC-MXICON claim prose + playthrough <=MXICON bounds. REV-01 W3MAIN.MAC:2439 ICNORM / 2669 FROMTOP"
     points: 3
     completed: '2026-08-09'
+  - id: sw10-1
+    epic: sw10
+    title: Unify on the cabinet's authentic projection lens (symmetric ~90° FOV, divide-by-depth) and retire the per-model *_ORIENT axis hacks
+    points: 8
+    completed: '2026-08-09'

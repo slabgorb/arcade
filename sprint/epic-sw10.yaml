@@ -10,9 +10,10 @@ stories:
     title: Unify on the cabinet's authentic projection lens (symmetric ~90° FOV, divide-by-depth) and retire the per-model *_ORIENT axis hacks
     points: 8
     priority: p1
-    status: in_progress
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: refactor
   - id: sw10-2
     title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
