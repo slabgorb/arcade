@@ -72,7 +72,15 @@ function inScopeFiles() {
   const contextFiles = readdirSync(join(repo, ...CONTEXT_DIR))
     .filter((f) => /^context-.*jt9.*\.md$/i.test(f))
     .map((f) => [...CONTEXT_DIR, f]);
-  return [['sprint', 'epic-jt9.yaml'], ...contextFiles];
+  // `epic-jt9.yaml` is included ONLY while it lives at the active sprint path.
+  // Once the jt9 epic completes it is archived to `sprint/archive/epic-jt9.yaml`
+  // (frozen history, deliberately out of scope per this file's header), and the
+  // active path 404s — this gate must not assert an archived epic back into
+  // existence. The active `context-*jt9*.md` files remain in scope and carry the
+  // bulk of the refs, so the gate keeps its teeth after the epic retires.
+  const epic = ['sprint', 'epic-jt9.yaml'];
+  const activeEpic = existsSync(join(repo, ...epic)) ? [epic] : [];
+  return [...activeEpic, ...contextFiles];
 }
 
 // ─── Every `.ts` file under plugins/joust/, for bare-ref resolution ───────────
@@ -137,7 +145,11 @@ function checkRef({ refPath, start, end }, joustFiles) {
 
 test('PREMISE: in-scope joust sprint files exist and are non-trivial', () => {
   const files = inScopeFiles();
-  assert.ok(files.length >= 2, 'expected at least the epic plus one context file');
+  // At least a couple of in-scope files. Historically this was "the epic plus one
+  // context file"; after the epic is archived it is the active context-*jt9*.md set
+  // alone (43 files as of 2026-08-09) — still comfortably ≥ 2. If this ever drops
+  // below 2, every jt9 sprint file has been archived and this gate is obsolete.
+  assert.ok(files.length >= 2, 'expected at least two in-scope jt9 sprint files (context files, plus the epic while it is active)');
   for (const p of files) {
     assert.ok(existsSync(join(repo, ...p)), `${p.join('/')} must exist`);
   }
@@ -145,10 +157,13 @@ test('PREMISE: in-scope joust sprint files exist and are non-trivial', () => {
 
 test('PREMISE: the ref pattern finds a substantial number of refs in scope', () => {
   const total = inScopeFiles().reduce((n, p) => n + extractRefs(read(...p)).length, 0);
-  // Measured 2026-08-08: 111 in epic-jt9.yaml + ~130 across context-*jt9*.md.
   // A wide floor, not a pinned count — the point is "the extractor isn't
   // silently matching nothing", not "no one may ever add or resolve a ref".
-  assert.ok(total > 150, `expected >150 '.ts:<line>' refs across in-scope files, found ${total}`);
+  // Measured 2026-08-08 at 111 (epic-jt9.yaml) + ~130 (context-*jt9*.md) = >150.
+  // The epic was archived 2026-08-09, taking its ~111 refs out of active scope;
+  // the active context files still carry ~126, so the floor is 100 (below the
+  // measured 126, above zero — a broken extractor still trips it).
+  assert.ok(total > 100, `expected >100 '.ts:<line>' refs across in-scope files, found ${total}`);
 });
 
 test('PREMISE: bare-ref resolution has real joust source to resolve against', () => {
