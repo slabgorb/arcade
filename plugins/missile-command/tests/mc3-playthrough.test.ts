@@ -22,6 +22,7 @@
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS } from '../src/core/spawn.js'
+import { waveSchedule, INITIAL_WAVE } from '../src/core/wave.js'
 
 // ─── Block 2's fire seam, via the fleet @vite-ignore RED-import idiom ──────────
 interface FireModule {
@@ -63,7 +64,12 @@ describe('AC3 — the enemy loop runs coherently for a whole seeded wave', () =>
   })
 
   it('the wave budget draws down as ICBMs launch', () => {
-    expect(end.remaining, 'ICBMs are drawn from the NICBMS budget').toBeLessThan(NICBMS)
+    // mc5-7: the wave-1 budget is waveSchedule(INITIAL_WAVE).count = ICBWAV[0] = 12
+    // (the TOTAL ICBMs launched this wave), NOT NICBMS(8) (the on-screen cap). The
+    // drawdown check pins that the budget shrinks from its wave-1 seed as ICBMs launch.
+    expect(end.remaining, 'ICBMs are drawn from the wave-1 ICBWAV budget').toBeLessThan(
+      waveSchedule(INITIAL_WAVE).count,
+    )
     expect(end.remaining, 'the budget never goes negative').toBeGreaterThanOrEqual(0)
   })
 

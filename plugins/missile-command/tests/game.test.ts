@@ -21,6 +21,7 @@
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS } from '../src/core/spawn.js'
+import { waveSchedule, INITIAL_WAVE } from '../src/core/wave.js'
 import { type Icbm } from '../src/core/icbm.js'
 import {
   startExplosion,
@@ -64,9 +65,16 @@ describe('mc3-4 AC1 — createGame(seed) returns a fresh, fully-defended game', 
     expect(g.frame).toBe(0)
   })
 
-  it('seeds the per-wave ICBM budget to NICBMS and carries a seeded rng', () => {
+  it('seeds the per-wave ICBM budget to the wave-1 ICBWAV budget (12), NOT the NICBMS(8) on-screen cap, and carries a seeded rng', () => {
     const g = createGame(1)
-    expect(g.remaining).toBe(NICBMS)
+    // mc5-7 (REV-01 bug): createGame must seed `remaining` from the wave-1 launch
+    // BUDGET — waveSchedule(INITIAL_WAVE).count = ICBWAV[0] = 12 (W3MAIN.MAC:5713;
+    // loaded LDA AY,ICBWAV-1 / STA ICBTOL) — not NICBMS(8). NICBMS is the
+    // max-ICBMs-ON-SCREEN-at-once ceiling (a different constant); the wave budget is
+    // the TOTAL launched across the whole wave. The two must never be conflated.
+    expect(g.remaining).toBe(waveSchedule(INITIAL_WAVE).count) // seeded from the schedule (the story's contract)
+    expect(g.remaining).toBe(12) // ICBWAV[0] — the ROM wave-1 budget, pinned independently of the schedule fn
+    expect(g.remaining).not.toBe(NICBMS) // 12 ≠ 8: the budget is NOT the on-screen cap
     // createRng(1) seeds the durable word to 1; a later step must advance it.
     expect(g.rng.seed).toBe(1)
   })
@@ -82,11 +90,13 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
     // From empty, spawn.ts launches min(4, remaining) at once — the ROM ICNORM
     // per-cycle cap ("MAX AT 4", W3MAIN.MAC:2475; mc5-5 retired the mc3
     // fill-to-MXICON approximation). This pins the per-cycle cap AND budget
-    // conservation in one step: launched + remaining === NICBMS.
+    // conservation in one step: launched + remaining === the wave-1 budget
+    // (waveSchedule(INITIAL_WAVE).count = ICBWAV[0] = 12; mc5-7), NOT NICBMS(8).
+    const wave1Budget = waveSchedule(INITIAL_WAVE).count
     const g1 = stepGame(createGame(1))
     expect(g1.icbms.length).toBe(4)
-    expect(g1.remaining).toBe(NICBMS - 4)
-    expect(g1.icbms.length + g1.remaining).toBe(NICBMS)
+    expect(g1.remaining).toBe(wave1Budget - 4)
+    expect(g1.icbms.length + g1.remaining).toBe(wave1Budget)
     expect(g1.frame).toBe(1)
   })
 

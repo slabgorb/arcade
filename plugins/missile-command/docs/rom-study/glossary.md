@@ -30,7 +30,7 @@ the source token verbatim (including the trailing period) so the radix is audita
 | `NMISBA` | `3` | 3 | hex | Missile bases | `W3COMN.MAC:41` | `MC-NMISBA` |
 | `TOPSCR` | `222.` | 222 | dec | Top-of-screen vertical coord | `W3COMN.MAC:107` | `MC-TOPSCR` |
 | `LAUHGT` | `0CA` | 202 | hex | ICBM height gate: an ICBM below this launches more | `W3COMN.MAC:171` | `MC-LAUHGT` |
-| `MXICON` | `7` | 7 | hex | Max ICBMs on screen at once | `W3COMN.MAC:193` | `MC-MXICON` |
+| `MXICON` | `7` | 7 | hex | On-screen ICBM loop bound (count−1 convention, mc5-6); one below the true ceiling `NICBMS(8)` | `W3COMN.MAC:193` | `MC-MXICON` |
 | `SCITYM` | `03` | 3 | hex (mask) | Option-2 mask: "5 cities at start" — see **O-4** | `W3COMN.MAC:195` | `MC-SCITYM` |
 | `MAXMUL` | `6` | 6 | hex | Max score multiplier (rises by wave) | `W3COMN.MAC:201` | `MC-MAXMUL` |
 | `SPUTWV` | `2` | 2 | hex | First wave with a Sputnik (satellite) | `W3COMN.MAC:203` | `MC-SPUTWV` |

@@ -98,7 +98,7 @@ physical lines are the W3MAIN.MAC:239 / W3MAIN.MAC:781 cited above.)
 | `NICBMS` | `8`    | 8      | max enemy ICBMs tracked                | `:35` |
 | `NCITY`  | `6`    | 6      | **max cities (default hardware = 6)**  | `:39` |
 | `NMISBA` | `3`    | 3      | missile bases                          | `:41` |
-| `MXICON` | `7`    | 7      | max ICBMs on screen at once            | `:193` |
+| `MXICON` | `7`    | 7      | on-screen ICBM loop bound (count−1; one below true ceiling `NICBMS(8)`, mc5-6) | `:193` |
 | `MAXMUL` | `6`    | 6      | max score multiplier (rises by wave)   | `:201` |
 | `SPUTWV` | `2`    | 2      | first wave with a Sputnik (satellite)  | `:203` |
 | `MIRVWV` | `1`    | 1      | first wave with a MIRV                  | `:205` |
