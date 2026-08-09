@@ -25,7 +25,10 @@
 //    keeps a future edit from re-opening the asset loop (e.g. re-pointing the
 //    worklet at `https://arcade.slabgorb.com/...` or a `fetch()`), which is
 //    exactly the class of regression the story exists to foreclose. Its
-//    non-vacuity: flip the worklet URL to an http literal and BLOCK 1 reddens.
+//    non-vacuity (concrete, re-runnable mutant): replace the audio.ts worklet URL
+//    literal `'../../../star-wars/tools/pokey-bake/vendor/pokey.js'` with
+//    `'https://arcade.slabgorb.com/pokey.js'` — the `not.toMatch(/https?:\/\//)`
+//    guard below then reddens the BLOCK-1 describe.
 //  BLOCK 2 (the RED work — FAILS until Dev records evidence): AC1 demands the
 //    audible confirmation be "evidence recorded, not asserted", and the AC demands
 //    "if runtime-synth: the game is audible with no external asset fetch" be
@@ -128,6 +131,7 @@ describe('mc8-3 — docs/ops/hosting.md records the live-audio verification (Bra
   })
 
   it('records the runtime-synth verdict and the mc8-3 marker inside that section', () => {
+    expect(section, 'the missile-command audio section must exist').not.toBeNull()
     const s = section ?? ''
     expect(s, 'the section must state the audio is runtime-synth (POKEY worklet)').toMatch(
       /runtime[-\s]?synth/i,
@@ -136,19 +140,35 @@ describe('mc8-3 — docs/ops/hosting.md records the live-audio verification (Bra
   })
 
   it('records that the asset loop is CLOSED — no external asset / no arcade-bucket upload required', () => {
+    expect(section, 'the missile-command audio section must exist').not.toBeNull()
     const s = section ?? ''
     // The closed-loop claim: missile-command needs NO external asset, so it is
-    // absent from the `arcade` bucket manifest by design.
+    // absent from the `arcade` bucket manifest by design. The qualifier ("external"
+    // or "…bucket asset") is REQUIRED so a negated sentence that merely contains the
+    // fragment "no asset" (e.g. "it is NOT the case that … no asset needed") cannot
+    // satisfy this — the guard must confirm the positive closed-loop claim, not a
+    // stray substring (Reviewer mc8-3 round 1).
     expect(
       s,
-      'the section must state no external asset / no arcade-bucket upload is required',
-    ).toMatch(/no (external )?asset|requires no .*asset|no .*arcade.*asset|not .*bucket/i)
+      'the section must state no EXTERNAL asset / no <name>-bucket asset is required',
+    ).toMatch(/no external asset|requires no external asset|no \S*bucket asset/i)
   })
 
   it('records the LIVE audible evidence, offline — not a mere assertion', () => {
+    expect(section, 'the missile-command audio section must exist').not.toBeNull()
     const s = section ?? ''
-    expect(s, 'the section must record that the served game was confirmed AUDIBLE').toMatch(
-      /audible|heard|played back|playback/i,
+    // WORD-ANCHORED on purpose: a bare /audible/ also matches the substring inside
+    // "inaudible" — the NEGATIVE claim — so a section recording that the game is
+    // "inaudible" would pass. `\baudible\b` cannot match "inaudible" (no word
+    // boundary between "in" and "audible"), so this distinguishes the audible verdict
+    // from its negation, which is the whole point of the story (Reviewer mc8-3 round 1).
+    // (No negative /inaudible/ guard here: the section legitimately uses "inaudible"
+    // to disclose the dev-serve gap — "MC is inaudible in dev" — so banning the word
+    // would redden against the correct record. The word-anchored POSITIVE match is
+    // what fixes the finding: it requires a standalone "audible" verdict and is NOT
+    // satisfied by "inaudible" alone.)
+    expect(s, 'the section must record that the served game was confirmed AUDIBLE (not merely "inaudible")').toMatch(
+      /\baudible\b|\bplayback\b|\bplayed back\b|\bheard\b/i,
     )
     expect(s, 'the Branch-B evidence is that it stays audible with the network OFFLINE').toMatch(
       /offline|network.*(off|disabled)|no network|air[-\s]?gap/i,
@@ -156,6 +176,10 @@ describe('mc8-3 — docs/ops/hosting.md records the live-audio verification (Bra
   })
 
   it('does NOT record a baked/R2-upload (Branch A) manifest for missile-command — the void branch', () => {
+    // Non-empty precondition FIRST: `''.not.toMatch(...)` passes vacuously, so without
+    // this a missing section would report a false "no baked-asset claim" PASS. Assert
+    // the section exists before the negative control means anything (Reviewer mc8-3 round 1).
+    expect(section, 'the missile-command audio section must exist for this control to be meaningful').not.toBeNull()
     const s = section ?? ''
     // Control: a copy of star-wars' baked manifest would assert live-200 / upload
     // for missile-command. Branch A is void; the section must not claim it.

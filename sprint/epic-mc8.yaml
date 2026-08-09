@@ -48,6 +48,8 @@ stories:
       - 'the served game (/missile-command/) is confirmed audible for the mapped events — evidence recorded, not asserted (a screenshot/console log of playback or, for baked assets, the live 200 results).'
       - 'if any sound is baked: every asset returns a live 200 from the R2 bucket, the manifest + results are recorded in docs/ops/hosting.md; if runtime-synth: the game is audible with no external asset fetch.'
       - 'no open Delivery Finding of the form asset-follows-later remains — any such item is filed as a tracked story before this story finishes.'
+    review_findings: "REJECT (test-guard robustness only; finding-of-fact is correct). HIGH: audible-evidence guard (test:151) matches 'inaudible' (no word boundary) — anchor to /confirmed audible/. MEDIUM: Branch-A control (:165) passes vacuously on missing section — add non-empty precondition. MEDIUM: closed-loop guard (:145) matches negated prose — require fuller phrase. LOW: non-vacuity comment (:28) names a mutant class not a concrete string. Recorded hosting.md evidence is accurate and stays as-is; audio genuinely plays (peak 0.157). Route: red rework -> TEA."
+    review_verdict: rejected
   - id: mc8-4
     title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
     points: 5
