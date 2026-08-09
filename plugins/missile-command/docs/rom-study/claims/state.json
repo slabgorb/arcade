@@ -36,7 +36,7 @@
     "id": "MC-STATE-INIT",
     "symbol": "S.SETU (cold-start boot)",
     "value": "cite",
-    "meaning": "Cold start: the cabinet boots into SETUP with ATRACT on. Power-up loads S.SETU (W3MAIN.MAC:491 LDA I,S.SETU) and stores it to STATE (:493 STA STATE), and ATRACT is the ;ATTRACT (0)/GAME (-1) FLAG (:135) — so the machine comes up in SETUP/attract, not play. This is the boot state mc6-4 wires; mc6-2 files the anchor.",
+    "meaning": "Cold start: power-up loads S.SETU (W3MAIN.MAC:491 LDA I,S.SETU) and stores it to STATE (:493 STA STATE), so the cabinet boots into the SETUP state. It also seeds SETUPC=CPRGM1 (:487-489), and CPRGM1's SETUP task PREGM1 clears ATRACT to attract mode (:3761 STA ATRACT ;ATTRACT MODE — the ATRACT byte is the ;ATTRACT (0)/GAME (-1) FLAG, :135). So the machine comes up in SETUP/attract, not play. This is the boot state mc6-4 wires; mc6-2 files the S.SETU anchor.",
     "source": {
       "file": "W3MAIN.MAC",
       "line": 491,

@@ -108,7 +108,7 @@ export function fireFromKey(key: string, state: GameState): GameState {
 /**
  * mc6-2 "press fire to start": route a fire key to `startGame` when the game is
  * NOT running (attract or over), otherwise delegate to `fireFromKey`. So a fire
- * key at the title/game-over screen begins a fresh game (the SETUP NEWGAM reseed),
+ * key at the title/game-over screen begins a fresh game (the NEWGAM->NEWWV1 SETUP reseed),
  * a fire key in play still launches an ABM and never wipes the board, and a
  * non-fire key changes nothing. Pure — the input state is never mutated. This is
  * the reducer main.ts drives on each keydown, replacing the bare fireFromKey call.
