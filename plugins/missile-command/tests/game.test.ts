@@ -78,13 +78,14 @@ describe('mc3-4 AC1 — createGame(seed) returns a fresh, fully-defended game', 
 
 // ─── AC2: the attack runs, respects the caps, and can be scored against ───────
 describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
-  it('first step launches up to MXICON and draws the budget down by exactly that many', () => {
-    // From empty, spawn.ts launches min(MXICON, remaining) at once. That pins the
-    // on-screen cap (MXICON, not NICBMS) AND budget conservation in one step:
-    // launched + remaining === NICBMS.
+  it('first step launches one ICNORM cycle (4) and draws the budget down by exactly that many', () => {
+    // From empty, spawn.ts launches min(4, remaining) at once — the ROM ICNORM
+    // per-cycle cap ("MAX AT 4", W3MAIN.MAC:2475; mc5-5 retired the mc3
+    // fill-to-MXICON approximation). This pins the per-cycle cap AND budget
+    // conservation in one step: launched + remaining === NICBMS.
     const g1 = stepGame(createGame(1))
-    expect(g1.icbms.length).toBe(MXICON)
-    expect(g1.remaining).toBe(NICBMS - MXICON)
+    expect(g1.icbms.length).toBe(4)
+    expect(g1.remaining).toBe(NICBMS - 4)
     expect(g1.icbms.length + g1.remaining).toBe(NICBMS)
     expect(g1.frame).toBe(1)
   })
