@@ -20,6 +20,7 @@
 // can be indexed as one — otherwise every row after the first shears left.
 
 import { PALETTES, PIXEL_BLOCKS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
+import { fitIntegerScale } from '@shared/view'
 
 /** The visible raster: 292x240 (MAME williams driver, schema-only claim). */
 export const LOGICAL_WIDTH = 292
@@ -69,14 +70,16 @@ export function rgbaPalette(palette: Palette): Rgba[] {
  * image smoothing is disabled at the blit.
  */
 export function viewport(vw: number, vh: number): { scale: number; offsetX: number; offsetY: number } {
-  const fit = Math.min(Math.floor(vw / LOGICAL_WIDTH), Math.floor(vh / LOGICAL_HEIGHT))
-  const scale = Math.max(1, fit)
+  // SH4-3: the integer scale + centred offsets are the shared raster fit. joust keeps
+  // its OWN clamp: on a viewport smaller than one logical frame (shrunk window,
+  // pre-layout) the shared fit's offsets go negative, and joust pins them at 0 (jt1-6
+  // review addendum). Math.min(floor,floor) === floor(min) for positive reals, so the
+  // scale is unchanged by the fold; only joust's >= 0 clamp is reapplied here.
+  const fit = fitIntegerScale(vw, vh, LOGICAL_WIDTH, LOGICAL_HEIGHT)
   return {
-    scale,
-    // Clamped: on a viewport smaller than one logical frame (shrunk window,
-    // pre-layout) the centring offsets go negative (jt1-6 review addendum).
-    offsetX: Math.max(0, Math.floor((vw - LOGICAL_WIDTH * scale) / 2)),
-    offsetY: Math.max(0, Math.floor((vh - LOGICAL_HEIGHT * scale) / 2)),
+    scale: fit.scale,
+    offsetX: Math.max(0, fit.dx),
+    offsetY: Math.max(0, fit.dy),
   }
 }
 

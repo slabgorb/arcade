@@ -24,9 +24,12 @@ stories:
     title: 'Extract the RASTER integer-scale letterbox fitIntegerScale (largest whole-number scale + centred integer offsets) into @shared/view as a variant distinct from its DPR/vector letterbox: centipede + pac-man shell/layout.ts are byte-identical (pac-man header: "ported from centipede"), fold joust shell/render.ts viewport (near-identical, offsets-only shape). SUPERSEDES the @shared/view-letterbox clause of SH3-4 — pac-man needs THIS, not the DPR path'
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    review_findings: "Round 2 APPROVED. Round-1 HIGH (joust AC-4 verified on real viewport + false comment) RESOLVED and mutation-verified by test-analyzer + rule-checker; both DOC findings resolved (comment-analyzer clean); all lang-review #25 whole-file anchors resolved (rule-checker clean, 0 violations). Code provably correct, shared 582/582 on clean tree. One residual MEDIUM (non-blocking, documented): the de-dup positive anchor still matches a type-only @shared/view import, so a deliberate type-only-import + 2-statement reimpl evades — cheap follow-up: add a bounded-body call-anchor to the shared binding. Preflight 'critical' was a concurrent-mutation false alarm (verified clean tree)."
+    review_verdict: approved
   - id: SH4-4
     title: 'Extract the generic clamp(v,lo,hi) into the shared pure core — duplicated across 4 games (red-baron, star-wars, missile-command, asteroids) in three spellings (Math.max/min nest, ternary, Math.min(Math.max)) that agree except on NaN. DESIGN GATE: choose ONE explicit NaN policy first (the ternary/guarded form matches red-baron enemy.ts''s Number.isNaN->lo intent). Fold ONLY the generic 3-arg form; leave clampVel/clamp01/clampIndex and inline index-clamps local'
     points: 2

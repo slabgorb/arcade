@@ -7,7 +7,7 @@
 // tempest/star-wars/asteroids run it byte-identically (fill the window); battlezone's
 // viewport.ts wraps the same math to letterbox the canvas ELEMENT to a fixed aspect,
 // and asteroids' margin.ts derives its drawn margin bars from the same aspect fit.
-// This module owns both halves once, for all of them:
+// This module owns those seams once, for all of them — three primitives:
 //
 //   resizeToDisplay(canvas, cssW, cssH, rawDpr)  — the DOM seam. Resolves the DPR
 //     (cap + guard), sizes the backing store to whole device pixels, sets the CSS
@@ -16,12 +16,17 @@
 //     `aspect`-ratio rectangle that fits inside canvasW×canvasH, centered. battlezone
 //     sizes its canvas element to this box; asteroids draws its margin bars as the
 //     container minus this box.
+//   fitIntegerScale(containerW, containerH, logicalW, logicalH) — PURE raster fit
+//     (SH4-3). The largest WHOLE-NUMBER scale of a logicalW×logicalH raster that fits
+//     the container, centred with integer offsets — crisp pixels, no resampling.
+//     centipede/pac-man/joust bind it to their own logical dims (share the VERB, keep
+//     the NUMBERS). Distinct from `letterbox`: whole scale, not fractional aspect.
 //
 // BROWSER subpath (ADR-0003): resizeToDisplay mutates a canvas element, so `view` is
 // EXEMPT from the pure-core purity guard. It references no DOM *global* — it only
 // touches the CanvasLike the caller hands in — but a subpath is classified by its
-// dirtiest export, and this one writes to a canvas. `letterbox` is nonetheless pure
-// arithmetic and is unit-tested in node.
+// dirtiest export, and this one writes to a canvas. `letterbox` and `fitIntegerScale`
+// are nonetheless pure arithmetic and are unit-tested in node.
 
 /** HiDPI backing-store cap. A 3×/4× display would otherwise blow the backing store
  *  up 9×/16×; 2× is the crispness/cost sweet spot every cabinet already used. */
@@ -71,6 +76,56 @@ export function letterbox(canvasW: number, canvasH: number, aspect: number): Let
     width,
     height,
     scale: height,
+  }
+}
+
+/** The integer-scale fit of a logical raster inside a container: the whole-number
+ *  `scale`, the fitted pixel `width`/`height`, and the centred integer offsets
+ *  `dx`/`dy`. Distinct from LetterboxRect — this is a RASTER fit (a whole scale for
+ *  crisp pixels), not a fractional aspect-fit. `dx`/`dy` are floored and MAY be
+ *  negative when the container is smaller than one logical frame. Origin top-left. */
+export interface Fit {
+  /** Largest whole-number scale that fits (>= 1). */
+  readonly scale: number
+  /** Left offset of the scaled raster inside the container (floored; may be < 0). */
+  readonly dx: number
+  /** Top offset of the scaled raster inside the container (floored; may be < 0). */
+  readonly dy: number
+  /** Scaled raster width (`logicalW * scale`). */
+  readonly width: number
+  /** Scaled raster height (`logicalH * scale`). */
+  readonly height: number
+}
+
+/**
+ * The largest WHOLE-NUMBER scale of a logicalW × logicalH raster that fits inside a
+ * containerW × containerH box, clamped to at least 1×, centred with FLOORED integer
+ * offsets. Pure — no DOM, no state, no time.
+ *
+ * Raster cabinets (centipede, pac-man, joust) blit at a whole scale so the 1980s
+ * pixels never resample into a blur — this is the crisp-pixel counterpart to the
+ * fractional `letterbox` above. The logical dimensions are the CALLER's: they differ
+ * per cabinet (centipede 240×256, pac-man 224×288, joust 292×240), so they are
+ * ARGUMENTS, not module constants — share the VERB, keep the NUMBERS (SH4-3).
+ *
+ * `dx`/`dy` may be negative when the container is smaller than one logical frame; a
+ * caller that wants a non-negative offset clamps at its own call site (joust does).
+ */
+export function fitIntegerScale(
+  containerW: number,
+  containerH: number,
+  logicalW: number,
+  logicalH: number,
+): Fit {
+  const scale = Math.max(1, Math.floor(Math.min(containerW / logicalW, containerH / logicalH)))
+  const width = logicalW * scale
+  const height = logicalH * scale
+  return {
+    scale,
+    dx: Math.floor((containerW - width) / 2),
+    dy: Math.floor((containerH - height) / 2),
+    width,
+    height,
   }
 }
 
