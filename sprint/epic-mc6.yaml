@@ -22,7 +22,8 @@ stories:
     title: 'SETUP -> PLAY start-of-game: a start/coin action advances attract|over -> setup -> play, reseeding createGame (6 live cities, 3 bases full ammo, wave 1 schedule). REV-01 W3MAIN.MAC:561 SETUP'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
   - id: mc6-3
