@@ -98,7 +98,7 @@ stories:
     title: DAILY BUZZARDS daily-reset high-score table (TXHSP $0F) — second table + daily reset timer, alongside jt10-7's all-time JOUST CHAMPIONS
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     depends_on: jt10-7
