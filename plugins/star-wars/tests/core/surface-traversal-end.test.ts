@@ -280,7 +280,7 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // >> Line numbers below marked (pre-fix) describe that OLD layout and will not
 // >> match the current file: the fix moved the push. Current anchors are
 // >> `const scrollSpeed` (sim.ts:1067, where the crossing is computed),
-// >> `loseShield` / `const lives` (:1210-1211) and the gated push (:1227-1232).
+// >> `loseShield` / `const lives` (:1210-1211) and the gated push (:1232-1237).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the
@@ -368,7 +368,7 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   })
 
   it('silences it for a TURRET BOLT too — damage that lands BELOW the cue site', () => {
-    // The bolt's hit-test (`liveShots`, sim.ts:1191-1198) runs BELOW the point
+    // The bolt's hit-test (`liveShots`, sim.ts:1201-1208) runs BELOW the point
     // where the crossing is computed (`const scrollSpeed`, :1050), so at that
     // point this frame's `damage` counter has not yet seen the bolt — whereas
     // the terrain scrape above it (:1000-1004) has already been counted. A fix

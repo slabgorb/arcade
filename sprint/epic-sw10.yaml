@@ -19,11 +19,13 @@ stories:
     title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: "Two stale line-citations introduced by this diff's +4 line-shift, left un-reanchored while their siblings were fixed (rule #17/#24): surface-traversal-end.test.ts:371 :1191-1198 -> :1201-1208 (liveShots block), and :283 :1227-1232 -> :1232-1237 (finishGround gated push). Comment-only; core change is correct + mutation-verified."
+    review_verdict: rejected
   - id: sw10-3
     title: Migrate the trench phase to the ROM-native world basis — sim scroll/collision index+sign flips, channel/detail/obstacle/wedge generators to native output, and trench-furniture model bakes (sw10-1 AC#2 remaining phase)
     points: 5
