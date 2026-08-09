@@ -77,7 +77,7 @@ stories:
     title: SLAM/tilt blip (SLMSND, W3SOUN:262) — the cabinet tilt-switch sound. No tilt input exists in the browser clone (no source), so this is filed for completeness and may be won't-do; needs a tilt/slam input decision first.
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: trivial
   - id: mc8-7
