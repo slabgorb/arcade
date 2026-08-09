@@ -416,21 +416,21 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
       6,
     )
 
-    // Aimed at the SHIP — which here means aimed DOWNWARD. The white cap stands at TOWER_HEIGHT
-    // (352) and the pilot cruises at MAX_SKIM_ALTITUDE (238), so the tower shoots down at him.
-    // Assert the DIRECTION rather than a sign: "it climbs toward the pilot" is simply false at
-    // this altitude, and a sign test would also pass for a shot aimed at the floor.
-    // Read the launch point from the fire event — the surface scroll is the accelerating pace
-    // now (sw7-18 / D-022), so the cap's advanced z is whatever the sim scrolled it to.
-    const fired = s.events.find((e) => e.type === 'enemy-fire') as { pos: Vec3 } | undefined
-    expect(fired, 'the fire event carries the muzzle launch point').toBeDefined()
-    const muzzle: Vec3 = fired!.pos
-    const toShip = normalize(sub(eyeOf(s), muzzle))
-    const flown = normalize(s.enemyShots[0].vel)
-    expect(flown[0]).toBeCloseTo(toShip[0], 6)
-    expect(flown[1]).toBeCloseTo(toShip[1], 6)
-    expect(flown[2]).toBeCloseTo(toShip[2], 6)
-    expect(toShip[2], 'the cap stands ABOVE the pilot, so "at the ship" is downward (native up is index 2)').toBeLessThan(0)
+    // sw10-2: "flies AT the ship" now means the shot LEADS the ship while RIDING the surface scroll
+    // in depth — it converges on the pilot as its depth reaches the cockpit plane — rather than
+    // creeping straight at him at its own ~300 u/s muzzle speed (`surface-fire-scroll-carry.test.ts`
+    // owns that contract). sw7-16's guard still stands under the corrected fire model: the shot leaves
+    // the cap (asserted above) and targets the flying SHIP, and reaching him is DOWNWARD — the cap
+    // stands at TOWER_HEIGHT (352) while the pilot cruises at MAX_SKIM_ALTITUDE (238).
+    const shot = s.enemyShots[0]
+    expect(shot.vel[0], 'depth rides the scroll toward the cockpit, not the muzzle creep').toBeCloseTo(
+      -s.surfaceScrollSpeed,
+      2,
+    )
+    const transit = shot.pos[0] / s.surfaceScrollSpeed
+    const arrival = add(shot.pos, scale(shot.vel, transit)) // the shot when its depth reaches the cockpit plane
+    expect(arrival[2], 'the shot descends onto the pilot (native up is index 2)').toBeCloseTo(eyeOf(s)[2], 1)
+    expect(eyeOf(s)[2], 'the cap stands ABOVE the pilot, so reaching him is downward').toBeLessThan(tower[2] + TOWER_HEIGHT)
   })
 
   it('a space TIE fireball still HOMES by the 7/8-per-tick decay (sw4-2 stands)', () => {
