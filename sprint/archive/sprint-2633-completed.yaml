@@ -8,6 +8,7 @@ sprint:
 completed_epics:
   - mc4
   - mc9
+  - sw10
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -136,5 +137,10 @@ completed_stories:
   - id: mc8-5
     epic: mc8
     title: Wire the cruise/Sputnik parametric drone LIVE TRIGGER (CMSNON/STSNON gated by CRMONS) — mc8-4 built the sweeping drone voice; this starts/stops it from on-screen cruise-missile & Sputnik threats. BLOCKED until mc5 adds those enemies to core.
+    points: 3
+    completed: '2026-08-09'
+  - id: sw10-2
+    epic: sw10
+    title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
     points: 3
     completed: '2026-08-09'

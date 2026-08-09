@@ -3,7 +3,7 @@ type: epic
 title: Star Wars projection & fire-frame fidelity
 description: "From the 2026-08-08 projection audit (plugins/star-wars/docs/2026-08-08-star-wars-projection-audit.md): our 3D→2D lens diverges from the cabinet (authentic symmetric ~90° FOV, divide-by-depth-X, native X-fwd/Y-right/Z-up) and enemy fire must be consistent with each phase's scroll frame. Covers the lens unification and the surface-fire scroll-carry follow-up to the shipped trench fix (PR #125)."
 priority: p1
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: sw10-1
@@ -19,10 +19,11 @@ stories:
     title: Surface turret fire rides surfaceScrollZ — mirror the trench wall-gun scroll-carry fix (sim.ts:1139)
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: bug
     review_findings: "Two stale line-citations introduced by this diff's +4 line-shift, left un-reanchored while their siblings were fixed (rule #17/#24): surface-traversal-end.test.ts:371 :1191-1198 -> :1201-1208 (liveShots block), and :283 :1227-1232 -> :1232-1237 (finishGround gated push). Comment-only; core change is correct + mutation-verified."
     review_verdict: rejected
@@ -37,3 +38,4 @@ stories:
     depends_on: sw10-1
     completed: '2026-08-09'
     type: refactor
+completed: '2026-08-09'
