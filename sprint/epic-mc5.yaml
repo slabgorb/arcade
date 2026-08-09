@@ -81,7 +81,8 @@ stories:
     title: 'develop RED: mc5-7 reseeded the wave-1 ICBM budget to waveSchedule(INITIAL_WAVE).count=ICBWAV[0]=12 and updated its own game.test.ts, but left the SIBLING start-of-game.test.ts (mc6-2) asserting remaining===NICBMS(8) in expectFreshPlayGame + the AC1 budget test — 6 failures on develop. Update start-of-game.test.ts to expect waveSchedule(INITIAL_WAVE).count (mirror game.test.ts:68-77). Found at mc8-3 finish trial-merge.'
     points: 1
     priority: p1
-    status: backlog
+    status: done
     repos: arcade
     workflow: trivial
+    completed: '2026-08-09'
     type: bug
