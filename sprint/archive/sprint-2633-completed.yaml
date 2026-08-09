@@ -113,3 +113,8 @@ completed_stories:
     title: 'Phase machine (state.ts): extend Phase from play|between|over to add attract|setup|pause and a pure MAINLINE dispatch (attract -> setup -> play -> [pause] -> over -> attract). Pure transition fn, seeded, no clock. REV-01 W3MAIN.MAC:475 MAINLINE / :539 PLAY / :561 SETUP / :615 PAUSE'
     points: 5
     completed: '2026-08-09'
+  - id: mc6-2
+    epic: mc6
+    title: 'SETUP -> PLAY start-of-game: a start/coin action advances attract|over -> setup -> play, reseeding createGame (6 live cities, 3 bases full ammo, wave 1 schedule). REV-01 W3MAIN.MAC:561 SETUP'
+    points: 3
+    completed: '2026-08-09'

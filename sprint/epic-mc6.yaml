@@ -22,10 +22,13 @@ stories:
     title: 'SETUP -> PLAY start-of-game: a start/coin action advances attract|over -> setup -> play, reseeding createGame (6 live cities, 3 bases full ammo, wave 1 schedule). REV-01 W3MAIN.MAC:561 SETUP'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
+    review_findings: "4 ROM-fidelity prose-precision fixes (green rework, no logic/test change): (1) MC-STATE-INIT meaning cites :135 for attract but real ATRACT write is W3MAIN.MAC:3761/PREGM1 via SETUPC=CPRGM1; (2)+(3) 'the NEWGAM reseed' over-attributes ammo+ICBM budget to NEWGAM (NEWWV1's work, :4021) in game.ts+input.ts JSDoc; (4) rule-30 JSDoc bare 6/3 leak past the un-cited-literal scanner. Code correctness solid, mutation-proven, all gates green."
+    review_verdict: approved
   - id: mc6-3
     title: 'PAUSE toggle: phase play <-> pause freezes enemy motion, ABM flight, scoring and spawn (stepGame no-op but the clock) while paused; shell binds the pause key and reuses @shared/pause for the overlay. REV-01 W3MAIN.MAC:615 PAUSE'
     points: 3
