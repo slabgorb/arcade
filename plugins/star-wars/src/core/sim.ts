@@ -1561,8 +1561,8 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // --- ARM: the laser earns the shot; the machine takes it (story sw5-6) ------
   //
   // The pilot flies 768 above the floor and the porthole lies IN the floor, so inside the $800
-  // window the port sits 43.8° below him — past the 30° the 60° FOV allows. He physically cannot
-  // make that shot, and the cabinet never asked him to. `WSLAZR.MAC` tests his LASER against a
+  // window the port sits 43.8° below him — a hair inside the 45° the authentic 90° FOV allows, and
+  // a brutal down-shot the cabinet never asked him to make. `WSLAZR.MAC` tests his LASER against a
   // ±$200 box around the hole ("?LAZAR GOT CLOSE ENUF TO FIRE PROTON TORPS?") and, if it lands
   // inside, launches the torpedo for him — `JSR FRPTGN ;THEN LAUNCH DIRECT HIT PROTON TORPS`.
   // `MVPTGN` then funnels it home (height above floor ≤ D, lateral ≤ D/16, stopping above the

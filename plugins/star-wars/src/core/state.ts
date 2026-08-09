@@ -868,8 +868,8 @@ export const PORT_APPROACH_WINDOW = 800
  * both clamps drive to zero: it cannot miss.
  *
  * So the PRECISION LIVES IN THE ARMING, not the terminal — which is the whole reason the
- * cabinet's pilot never has to make the 43.8°-down shot into his own floor that our 60° FOV
- * forbids. He only has to get close; the machine flies it home.
+ * cabinet's pilot never has to nail the brutal 43.8°-down shot into his own floor at the wall
+ * (barely inside the 45° the authentic 90° FOV allows). He only gets close; the machine flies it home.
  *
  * ⚠ WE DO **NOT** TRANSPLANT THE ±$200, and the reason matters. The ROM's box is measured
  * against `TMPTX` — the endpoint of a laser drawn a fixed `$7000` (28,672 units) ahead of the
