@@ -17,11 +17,17 @@
 import type { SoundEvent } from '../core/sound-events.js'
 import type { GameState } from '../core/game.js'
 import { bonusCitiesEarned, bonusInterval } from '../core/wave.js'
+import { droneRequest } from '../core/drone-trigger.js'
 import type { AudioEngine } from './audio.js'
 
 // Just the slice of the engine the dispatch needs — decoupled from resume(), so
 // tests pass a recording fake (tempest's SoundPlayer narrowing).
 type SoundSurface = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
+
+// The sustained drone update needs the loop lifecycle AND the parametric sweep feed
+// (mc8-5) — a distinct, narrower slice so the one-shot/edge dispatchers stay decoupled
+// from `feedDrone`.
+type DroneSurface = Pick<AudioEngine, 'startLoop' | 'stopLoop' | 'feedDrone'>
 
 // Play one cue per gameplay event the core emitted this step, in order. `play()`
 // is a no-op until the gesture gate opens, so pre-interaction events are silently
@@ -64,17 +70,30 @@ export function playEventSounds(audio: SoundSurface, events: readonly SoundEvent
 
 // Drive the sustained voices from live state, once per render frame.
 //
-// The edge-driven-voices gotcha: the cruise/Sputnik drone is a continuous voice
-// with no closing event when the game simply ENDS with the threat still on screen.
-// A stop keyed only on a "drone-gone" event would therefore leak it across the
-// terminal edge. So — exactly as battlezone forces stopEngine at 'gameover' — this
-// re-reads phase each frame and silences the drone outright once the game is over
-// (mc6's pause will extend the same seam). `stopLoop` is idempotent, so a frame
-// where nothing is running is a cheap no-op.
-export function updateSustainedSounds(audio: SoundSurface, state: GameState): void {
-  if (state.phase === 'over') {
+// mc8-5 — the cruise/Sputnik drone LIVE TRIGGER (CMSNON/STSNON, gated by CRMONS). The
+// pure `droneRequest(state)` selector projects on-screen cruise/Sputnik presence to a
+// drone kind (or null); this seam consumes it live: while the game is in PLAY and a
+// threat is up, start the drone and drive its parametric pitch sweep (mc8-4's
+// `droneSweep`, fed via `feedDrone`); the moment the threat clears, stop it.
+//
+// The edge-driven-voices gotcha (mc8-2): the drone is a continuous voice with no
+// closing event when the game ENDS (or PAUSES) with the threat still on screen — at
+// those phases the rosters are frozen, so `droneRequest` still returns non-null. A
+// trigger keyed on presence alone would therefore RE-START the drone across the
+// terminal/pause edge and leak it. So the phase gate wins over presence: the drone
+// runs ONLY during `'play'`; every other phase silences it outright (battlezone forces
+// stopEngine at 'gameover' the same way). `startLoop`/`stopLoop` are idempotent, so a
+// held threat re-`startLoop`s harmlessly and an empty frame is a cheap no-op.
+export function updateSustainedSounds(audio: DroneSurface, state: GameState): void {
+  const kind = state.phase === 'play' ? droneRequest(state) : null
+  if (kind === null) {
     audio.stopLoop('drone')
+    return
   }
+  audio.startLoop('drone')
+  // The sim frame counter is the sweep's clock — a pure, monotonic input so the pitch
+  // descends deterministically each frame (droneSweep wraps TOP→BOTTOM per kind).
+  audio.feedDrone(state.frame, kind)
 }
 
 // mc8-4: the EDGE cues — one-shots that fire on a state TRANSITION, not on a per-frame
