@@ -48,6 +48,23 @@ export function killIcbmsInBlasts(
   return { survivors, killed }
 }
 
+/** BLAST DAMAGE for any positioned entity (the Sputnik plane, mc5-2): partition into
+ *  those whose `pos` a live blast covers and the untouched survivors (input order
+ *  preserved). Generic over `{ pos }` so it serves the plane without damage.ts
+ *  importing sputnik.ts. Same point-in-circle idiom as killIcbmsInBlasts. Pure. */
+export function killSputniksInBlasts<T extends { readonly pos: Vec }>(
+  entities: readonly T[],
+  explosions: readonly Explosion[],
+): { survivors: T[]; killed: T[] } {
+  const survivors: T[] = []
+  const killed: T[] = []
+  for (const e of entities) {
+    if (explosions.some((exp) => insideBlast(e.pos, exp))) killed.push(e)
+    else survivors.push(e)
+  }
+  return { survivors, killed }
+}
+
 /** Two positions coincide (a warhead's target vs a structure's cabinet coord). */
 function samePos(a: Vec, b: Vec): boolean {
   return a.h === b.h && a.v === b.v

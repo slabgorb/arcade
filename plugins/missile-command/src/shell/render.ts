@@ -146,6 +146,19 @@ export function drawFrame(
     ctx.fill()
   }
 
+  // Sputnik/bomber planes (mc5-2) — a small fly-across glyph at each plane's position,
+  // drawn in the enemy hue (COL010) and shaped by variant (a bomber reads as a wide
+  // thin wing, a satellite as a boxier body). Functional only; the pixel-authentic
+  // plane sprite and its own palette register are mc9. `project` flips V so the
+  // bottom-origin cabinet coord lands correctly, as for every other entity.
+  ctx.fillStyle = hue(SLOT.ICBMS)
+  const planeW = Math.max(3, Math.round(width / 90))
+  for (const plane of state.sputniks) {
+    const c = project(plane.pos, width, height)
+    const wingH = plane.variant === 'bomber' ? Math.max(1, Math.round(planeW / 3)) : Math.max(2, Math.round(planeW / 2))
+    ctx.fillRect(c.x - planeW / 2, c.y - wingH / 2, planeW, wingH)
+  }
+
   // ABM trails (mc1-4) — a line from each missile's launch base to its head, tipped
   // with an authentic flashing leading dot. MISSILE TIPS & TRAIL (W3DSUP.MAC:925):
   // "TIP OF MISSILE TRAIL IS FLASH" (:931) — the trail body draws in the ABMS hue

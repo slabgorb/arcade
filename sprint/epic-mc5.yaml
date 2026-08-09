@@ -19,7 +19,8 @@ stories:
     title: 'Sputnik/bomber fly-across launcher (sputnik.ts): plane activates from wave 2 (SPUTWV), flies across firing ICBMs on WSPFIR/WSPLAU cadence, killed x4. REV-01 W3MAIN.MAC:2069/2433'
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-08'
     repos: arcade
     workflow: tdd
   - id: mc5-3
@@ -61,3 +62,10 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: mc5-8
+    title: 'Sputnik fire arbitration + authentic motion (mc9-coupled): the plane fires EITHER/OR vs the normal swarm per launch cycle (ROM JMP SPUTFIR replaces ICNORM launch, W3MAIN.MAC:2543), gated by an in-bounds check (PLCPH within +/-48 of the edges, :2529-2537), and the fire timer is DISTANCE-based (HORFIR vs SPUTDS, :2523-2527) not a frame countdown. Deferred from mc5-2 review F3; couples to mc9 authentic plane velocity (functional speed=1 today). REV-01'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd

@@ -231,6 +231,14 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // the CPY I,12. decimal suppression immediate, value = 12. Both pinned in the mc5-1
     // consistency block below (their values are real numerics, not kind tags).
     'POTENT', 'EXPLCT',
+    // mc5-2: the Sputnik constants. SPUTKI (MC-SPUT-SCORE) is the ×4 kill routine's
+    // LDX I,3 → operand+1 = 4 (like CITYBON/POTENT's inclusive loop); SPUTFIRE_MAX
+    // (MC-SPUT-FIREMAX) is the MIRVER salvo cap ("NO MORE THAN 3 SHOTS FROM A MIRV",
+    // W3MAIN.MAC:2717) = the CMP I,2 immediate + 1 = 3 (the SPUTFIR path falls into
+    // MIRVER; the earlier CPX I,4 cite was ICNORM's normal-swarm cap); WSPFIR /
+    // WSPLAU are `.BYTE` timing tables whose claim value is the full hex-decoded
+    // decimal row. All four pinned in the mc5-2 consistency block below.
+    'SPUTKI', 'SPUTFIRE_MAX', 'WSPFIR', 'WSPLAU',
     // mc5-5: the ICNORM per-cycle launch cap is an instruction-site claim
     // (`CPX I,4`, W3MAIN.MAC:2475, "MAX AT 4") whose value 4 IS the immediate
     // operand — the EXPLCT shape. Pinned in the mc5-5 consistency block below.
@@ -362,6 +370,43 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // EXPLCT: `CPY I,12.` is the decimal suppression threshold; 12 IS the immediate.
     expect(decimalImmediate(exp!.source.verbatim), 'MIRV_EXPSUP is the CPY I,12. decimal immediate').toBe(12)
     expect(exp!.value, 'MC-MIRV-EXPSUP value').toBe(12)
+  })
+
+  // mc5-2: the Sputnik constants, same shape as the mc4-2 bonus rates + mc4-1 tables.
+  // SPUTKI/SPUTFIRE_MAX are instruction-site immediates; WSPFIR/WSPLAU are `.BYTE`
+  // timing tables whose value is the full hex-decoded decimal row. This block keeps
+  // the DERIVED exemption honest — a fabricated number cannot ride into the
+  // un-cited-literal guard's claimedValues set.
+  it('mc5-2: the Sputnik claim values decode from their cited operands / .BYTE rows', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    const immediate = (verbatim: string): number => {
+      const m = verbatim.match(/\bI,([0-9A-F]+)\b/)
+      expect(m, `no immediate operand in "${verbatim}"`).not.toBeNull()
+      return decodeRadix16(m![1])
+    }
+    const row = (verbatim: string): string =>
+      (verbatim.split('.BYTE')[1] ?? '').split(',').map((t) => decodeRadix16(t.trim())).join(',')
+
+    const score = by.get('SPUTKI')
+    const cap = by.get('SPUTFIRE_MAX')
+    const fire = by.get('WSPFIR')
+    const sep = by.get('WSPLAU')
+    expect(score, 'MC-SPUT-SCORE must be committed').toBeTruthy()
+    expect(cap, 'MC-SPUT-FIREMAX must be committed').toBeTruthy()
+    expect(fire, 'MC-WSPFIR must be committed').toBeTruthy()
+    expect(sep, 'MC-WSPLAU must be committed').toBeTruthy()
+    // SPUTKI: `LDX I,3` counts X down through 0 (the shared multiple-score loop), so a
+    // kill scores operand+1 = 4 units ("(4X ICBM)").
+    expect(immediate(score!.source.verbatim) + 1, 'SPUT-SCORE is LDX operand + 1').toBe(4)
+    expect(score!.value, 'MC-SPUT-SCORE value').toBe(4)
+    // SPUTFIRE_MAX: SPUTFIR falls into MIRVER, whose `CMP I,2` POTENT clamp saturates
+    // the salvo at operand+1 = 3 ("NO MORE THAN 3 SHOTS FROM A MIRV", W3MAIN.MAC:2717)
+    // — the inclusive-count convention of SPUTKI and MC-MIRV-MAX's LDA I,2.
+    expect(immediate(cap!.source.verbatim) + 1, 'SPUT-FIREMAX is the MIRVER CMP I,2 immediate + 1').toBe(3)
+    expect(cap!.value, 'MC-SPUT-FIREMAX value').toBe(3)
+    // WSPFIR/WSPLAU: the claimed decimal row IS the hex `.BYTE` verbatim decoded byte-for-byte.
+    expect(row(fire!.source.verbatim), 'WSPFIR decimal row = decoded hex bytes').toBe(fire!.value)
+    expect(row(sep!.source.verbatim), 'WSPLAU decimal row = decoded hex bytes').toBe(sep!.value)
   })
 
   // mc5-5: the ICNORM per-cycle launch cap, same instruction-site shape as the
