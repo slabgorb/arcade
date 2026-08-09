@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -139,19 +139,23 @@
         z-index: 2;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: clamp(2.5rem, 6vh, 4.5rem);
-        padding: clamp(3.5rem, 8vh, 6rem) 5vw clamp(2.5rem, 6vh, 4rem);
+        gap: clamp(1.8rem, 4vh, 2.8rem);
+        max-width: 74rem;
+        margin: 0 auto;
+        padding: clamp(3rem, 7vh, 5rem) 5vw clamp(2.5rem, 6vh, 4rem);
       }
 
+      /* Direction 1a's header: the wordmark on the left, the fan-tribute line on the
+         right, over a single hairline rule — the "everything above the fold" masthead
+         the grid hangs under. On a narrow screen the two stack and centre. */
       .marquee {
         display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.1rem;
-        text-align: center;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: clamp(1rem, 4vw, 2.5rem);
         width: 100%;
-        max-width: 60rem;
+        border-bottom: 1px solid rgba(0, 234, 255, 0.28);
+        padding-bottom: clamp(0.9rem, 2vh, 1.3rem);
       }
 
       /* The wordmark is spread letter-by-letter across the marquee — each glyph is
@@ -160,14 +164,12 @@
          time; the visual trick must not cost the page its name. */
       .wordmark {
         margin: 0;
-        align-self: stretch;
         display: flex;
-        justify-content: space-between;
+        gap: 0.16em;
         font-weight: 900;
-        font-size: clamp(1.5rem, 7vw, 5rem);
+        font-size: clamp(1.9rem, 6vw, 3.4rem);
         line-height: 0.9;
-        letter-spacing: 0.05em;
-        padding-left: 0.05em;
+        letter-spacing: 0.06em;
         color: #fff;
         text-shadow:
           0 0 6px #fff,
@@ -176,28 +178,60 @@
           0 0 80px rgba(0, 234, 255, 0.6);
       }
 
-      /* ---- Showcase pane -------------------------------------------------------
-         One live game, framed, cycling. Content, NOT chrome: it must keep
-         pointer-events so its launch link works. The per-game glow arrives as
-         --glow, set from the registry entry, exactly as the tiles do it. */
+      /* The fan-tribute disclaimer, now the masthead's right-hand line rather than a
+         separate footer (direction 1a folds it up here). It stays the page's one legal
+         line — "NOT AFFILIATED" — so nothing that reads the body text loses it. */
+      .disclaimer {
+        margin: 0 0 0.4rem;
+        max-width: 22em;
+        text-align: right;
+        font-family: 'Share Tech Mono', 'Orbitron', monospace;
+        font-size: clamp(0.5rem, 1vw, 0.62rem);
+        line-height: 1.7;
+        letter-spacing: 0.24em;
+        color: var(--dim);
+        text-shadow: 0 0 5px rgba(0, 234, 255, 0.35);
+      }
+
+      /* The cabinet grid: one 4-column board that holds the live showcase as a 2×2
+         featured cell and every game tile around it. The showcase and the tiles are
+         laid out TOGETHER here — that is what "the showcase folded into the grid"
+         means — so #games carries `display: contents`, letting its tile anchors
+         become grid items of THIS grid instead of stacking inside a box of their own.
+         (display:contents keeps the <nav aria-label="Games"> landmark in every current
+         browser while dropping only its box.) */
+      .cabinet-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-auto-rows: clamp(8rem, 14vw, 11rem);
+        gap: clamp(0.8rem, 1.5vw, 1.1rem);
+        width: 100%;
+      }
+
+      .games { display: contents; }
+
+      /* ---- Showcase pane ------------------------------------------------------
+         One live game, framed, cycling — now the featured 2×2 cell at the top-left of
+         the board. Content, NOT chrome: it must keep pointer-events so its launch link
+         works. The per-game glow arrives as --glow, set from the registry entry by the
+         shell, exactly as the tiles do it. */
       .showcase {
         --glow: var(--fg);
+        grid-column: span 2;
+        grid-row: span 2;
         position: relative;
-        width: 100%;
-        /* Capped against viewport height as well as width: 68rem alone let the pane
-           push #games off the bottom of the screen entirely on shorter desktop
-           viewports. The svh term caps the RESULTING HEIGHT (aspect-ratio locks
-           height = width * 9/16, so width = 40svh * 16/9 => height = 40svh) to 40%
-           of the viewport, leaving room for the marquee above and at least one full
-           tile row below. dvh/vh would do as a fallback; svh was fine in testing. */
-        max-width: min(68rem, calc(40svh * 16 / 9));
-        aspect-ratio: 16 / 9;
         border: 1.5px solid var(--glow);
         border-radius: 3px;
-        background: #000;
+        background:
+          repeating-linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--glow) 14%, transparent) 0 6px,
+            transparent 6px 12px
+          ),
+          #000;
         box-shadow:
-          0 0 18px color-mix(in srgb, var(--glow) 45%, transparent),
-          inset 0 0 24px color-mix(in srgb, var(--glow) 10%, transparent);
+          0 0 22px color-mix(in srgb, var(--glow) 45%, transparent),
+          inset 0 0 26px color-mix(in srgb, var(--glow) 12%, transparent);
         overflow: hidden;
       }
 
@@ -243,20 +277,27 @@
         outline-offset: -3px;
       }
 
+      /* The featured cell's bottom bar: the "NOW SHOWING · <game>" caption shell/
+         showcase.ts writes, drawn as the lit label strip direction 1a puts under the
+         attract screen. pointer-events stays none so the launch link beneath still
+         catches the click across the whole cell. */
       .showcase-caption {
         position: absolute;
         left: 0;
         right: 0;
-        bottom: 0.7rem;
+        bottom: 0;
         z-index: 3;
         pointer-events: none;
-        text-align: center;
-        font-family: 'Orbitron', monospace;
-        font-size: 0.62rem;
-        letter-spacing: 0.24em;
-        padding-left: 0.24em;
+        padding: 0.85rem 1.1rem;
+        font-family: 'Share Tech Mono', 'Orbitron', monospace;
+        font-size: clamp(0.62rem, 1.3vw, 0.82rem);
+        letter-spacing: 0.2em;
         color: var(--glow);
-        opacity: 0.9;
+        border-top: 1px solid color-mix(in srgb, var(--glow) 40%, transparent);
+        background: linear-gradient(
+          rgba(0, 0, 0, 0),
+          color-mix(in srgb, var(--glow) 8%, rgba(0, 0, 0, 0.55))
+        );
         text-shadow: 0 0 6px currentColor;
       }
 
@@ -291,36 +332,34 @@
         border: 0;
       }
 
-      .games {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: clamp(1.4rem, 3vw, 2.6rem);
-        width: 100%;
-        max-width: 68rem;
-      }
-
-      /* Each tile is a real link. The per-game glow colour arrives as --glow, set
-         from the registry entry, and everything inside inherits it. */
+      /* ---- Tiles --------------------------------------------------------------
+         Each tile is a real link and a cell in the cabinet grid. The per-game glow
+         colour arrives as --glow, set from the registry entry, and everything inside
+         inherits it. The hatch fill and the corner-pinned WIP badge are direction 1a's
+         cabinet look. */
       .tile {
         --glow: var(--fg);
-        flex: 0 1 18rem;
-        min-height: 11rem;
+        position: relative;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.7rem;
-        padding: 1.6rem 1.4rem;
-        text-align: center;
+        justify-content: flex-end;
+        gap: 0.4rem;
+        padding: 1rem 1.1rem;
         text-decoration: none;
         color: var(--glow);
-        background: color-mix(in srgb, var(--glow) 4%, #000);
+        background:
+          repeating-linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--glow) 9%, transparent) 0 5px,
+            transparent 5px 10px
+          ),
+          linear-gradient(color-mix(in srgb, var(--glow) 5%, transparent), #000);
         border: 1.5px solid var(--glow);
         border-radius: 3px;
         box-shadow:
-          0 0 10px color-mix(in srgb, var(--glow) 45%, transparent),
-          inset 0 0 14px color-mix(in srgb, var(--glow) 12%, transparent);
+          0 0 10px color-mix(in srgb, var(--glow) 40%, transparent),
+          inset 0 0 14px color-mix(in srgb, var(--glow) 10%, transparent);
+        overflow: hidden;
         transition:
           transform 0.12s ease,
           box-shadow 0.12s ease,
@@ -329,11 +368,10 @@
 
       .tile:hover,
       .tile:focus-visible {
-        transform: translateY(-3px) scale(1.03);
-        background: color-mix(in srgb, var(--glow) 10%, #000);
+        transform: translateY(-3px) scale(1.02);
         box-shadow:
           0 0 22px color-mix(in srgb, var(--glow) 75%, transparent),
-          inset 0 0 22px color-mix(in srgb, var(--glow) 22%, transparent);
+          inset 0 0 22px color-mix(in srgb, var(--glow) 20%, transparent);
       }
 
       /* The tile is keyboard-reachable, so it must be keyboard-VISIBLE. The lift on
@@ -345,37 +383,36 @@
 
       .tile:active { transform: scale(0.98); }
 
-      /* One line, always. Two-word titles ("STAR WARS", "RED BARON") would otherwise
-         break at the space and sit two lines tall while their neighbours sit one,
-         ragging the whole row. The design avoided this with non-breaking spaces in
-         its hardcoded markup; our titles come from the registry as ordinary strings,
-         so the fix belongs here rather than in the data. */
+      /* Sized to fit the LONGEST registry title ("MISSILE COMMAND", 15 chars) inside a
+         4-column cell without clipping. The design special-cased that one title's font
+         size in its hardcoded markup; our titles come from the registry as ordinary
+         strings, so the size is set once here for all of them. Wrapping is allowed as a
+         safety net — at this size every current title stays on one line, but a longer
+         future one wraps upward into the cell (content is bottom-aligned) rather than
+         being cut off by the tile's overflow clip. */
       .tile-title {
         font-family: 'Vector Battle', 'Orbitron', monospace;
         font-weight: 700;
-        font-size: clamp(1.4rem, 3.4vw, 2.2rem);
-        letter-spacing: 0.16em;
-        padding-left: 0.16em;
-        white-space: nowrap;
+        font-size: clamp(0.95rem, 1.7vw, 1.2rem);
+        letter-spacing: 0.08em;
+        overflow-wrap: anywhere;
         text-shadow:
           0 0 5px currentColor,
           0 0 14px currentColor;
       }
 
       .tile-score {
-        font-family: 'Orbitron', monospace;
-        font-size: 0.72rem;
-        letter-spacing: 0.22em;
-        padding-left: 0.22em;
+        font-family: 'Share Tech Mono', 'Orbitron', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
         opacity: 0.85;
         text-shadow: 0 0 6px currentColor;
       }
 
       .tile-version {
         font-family: 'Orbitron', monospace;
-        font-size: 0.6rem;
-        letter-spacing: 0.24em;
-        padding-left: 0.24em;
+        font-size: 0.55rem;
+        letter-spacing: 0.2em;
         opacity: 0.5;
         text-shadow: 0 0 5px currentColor;
       }
@@ -383,30 +420,54 @@
       .tile-controls {
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
-        margin-top: 0.35rem;
+        gap: 0.15rem;
         font-family: 'Orbitron', monospace;
-        font-size: 0.62rem;
-        letter-spacing: 0.05em;
-        opacity: 0.62;
+        font-size: 0.56rem;
+        letter-spacing: 0.04em;
+        opacity: 0.6;
       }
 
-      .footer {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.9rem;
-        text-align: center;
+      /* WIP badge: pinned to the cell's top-right corner, drawn as an outlined chip in
+         the game's own glow. Only present on pre-1.0 games (shell/tiles.ts). */
+      .tile-wip {
+        position: absolute;
+        top: 0.7rem;
+        right: 0.7rem;
+        font-family: 'Share Tech Mono', 'Orbitron', monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.2em;
+        padding: 0.12rem 0.4rem;
+        border: 1px solid color-mix(in srgb, var(--glow) 55%, transparent);
+        border-radius: 2px;
+        opacity: 0.9;
+        text-shadow: none;
       }
 
-      .disclaimer {
-        margin: 0;
-        font-family: 'Orbitron', monospace;
-        font-size: 0.58rem;
-        letter-spacing: 0.34em;
-        padding-left: 0.34em;
-        color: var(--dim);
-        text-shadow: 0 0 5px rgba(0, 234, 255, 0.35);
+      /* ---- Responsive ---------------------------------------------------------
+         Wide: 4 columns with the featured cell 2×2. Medium: 2 columns, featured still
+         2×2 (full width, two rows). Narrow: a single column, and the featured cell
+         relaxes to one full-width 16:9 pane so it never demands a phantom second
+         column. */
+      @media (max-width: 60rem) {
+        .cabinet-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      @media (max-width: 34rem) {
+        .cabinet-grid {
+          grid-template-columns: 1fr;
+          grid-auto-rows: minmax(7rem, auto);
+        }
+        .showcase {
+          grid-column: 1 / -1;
+          grid-row: auto;
+          aspect-ratio: 16 / 9;
+        }
+        .marquee {
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
+        .disclaimer { text-align: center; }
       }
 
       /* The tile lift on hover/focus is a transition; if the player has asked the OS
@@ -450,22 +511,23 @@
             <span aria-hidden="true">D</span>
             <span aria-hidden="true">E</span>
           </h1>
-        </header>
-
-        <!-- One live game, framed and cycling. Filled by main.ts; it removes
-             itself if no game has opted in or every frame fails to load. -->
-        <section id="showcase" class="showcase"></section>
-
-        <!-- Filled from the registry by main.ts. Never hardcoded: a game reaches the
-             cabinet by declaring plugins/<id>/plugin.ts and regenerating
-             src/host/registry.ts (`npm run gen:registry`), and by nothing else. -->
-        <nav id="games" class="games" aria-label="Games"></nav>
-
-        <footer class="footer">
           <p class="disclaimer">
             A&nbsp;FAN-MADE&nbsp;TRIBUTE&nbsp;TO&nbsp;THE&nbsp;80's ARCADE&nbsp;ERA&nbsp;&nbsp;&middot;&nbsp;&nbsp;NOT&nbsp;AFFILIATED
           </p>
-        </footer>
+        </header>
+
+        <!-- The cabinet board. The live showcase is the featured 2×2 cell; the tiles
+             #games builds flow around it as grid items (see .games display:contents). -->
+        <div class="cabinet-grid">
+          <!-- One live game, framed and cycling. Filled by main.ts; it removes
+               itself if no game has opted in or every frame fails to load. -->
+          <section id="showcase" class="showcase"></section>
+
+          <!-- Filled from the registry by main.ts. Never hardcoded: a game reaches the
+               cabinet by declaring plugins/<id>/plugin.ts and regenerating
+               src/host/registry.ts (`npm run gen:registry`), and by nothing else. -->
+          <nav id="games" class="games" aria-label="Games"></nav>
+        </div>
       </div>
     </div>
 

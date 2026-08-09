@@ -131,6 +131,32 @@ describe('buildTile — the version line', () => {
   })
 })
 
+describe('buildTile — the WIP badge derives from the version, never the design', () => {
+  // github.md pins the rule the design (1a) draws: "WIP status now derives from
+  // version < 1.0". So the badge is a function of the registry version and nothing
+  // else — a manifest cannot be tagged WIP while shipping a 1.x, and a pre-1.0 game
+  // cannot hide that it is still in progress.
+  it('tags a pre-1.0 game WIP', () => {
+    const tile = buildTile({ ...SYNTHETIC, version: '0.0.42' }, null)
+    const wip = tile.querySelector('.tile-wip')
+    expect(wip).not.toBeNull()
+    expect(wip?.textContent).toBe('WIP')
+  })
+
+  it('does not tag a shipped 1.x game', () => {
+    const tile = buildTile({ ...SYNTHETIC, version: '1.0.0' }, null)
+    expect(tile.querySelector('.tile-wip')).toBeNull()
+  })
+
+  // The threshold is the MAJOR version, not the string ordering — "0.9.9" is still
+  // WIP and "10.0.0" is not, both of which a naive string compare against "1.0.0"
+  // gets wrong ("10.0.0" < "1.0.0" lexically).
+  it('reads the major version, not the lexical order of the string', () => {
+    expect(buildTile({ ...SYNTHETIC, version: '0.9.9' }, null).querySelector('.tile-wip')).not.toBeNull()
+    expect(buildTile({ ...SYNTHETIC, version: '10.0.0' }, null).querySelector('.tile-wip')).toBeNull()
+  })
+})
+
 describe('buildTile — the score line shows only what the lobby can prove', () => {
   it('shows the real best score when one is readable', () => {
     const tile = buildTile(SYNTHETIC, 149830)
