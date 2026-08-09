@@ -108,3 +108,8 @@ completed_stories:
     title: 'High-score table in core (pure), reusing @shared/highscore: qualifiesForHighScore + insertHighScore over MC GameState; ladder depth pinned to the ROM default table (verify vs W3DSUP INIT HI SCORE, not hard-coded 10). REV-01 W3DSUP.MAC:3724 INIT HI SCORE / :3780 UPDATE LADDER'
     points: 5
     completed: '2026-08-09'
+  - id: mc6-1
+    epic: mc6
+    title: 'Phase machine (state.ts): extend Phase from play|between|over to add attract|setup|pause and a pure MAINLINE dispatch (attract -> setup -> play -> [pause] -> over -> attract). Pure transition fn, seeded, no clock. REV-01 W3MAIN.MAC:475 MAINLINE / :539 PLAY / :561 SETUP / :615 PAUSE'
+    points: 5
+    completed: '2026-08-09'
