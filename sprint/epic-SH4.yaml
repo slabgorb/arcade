@@ -24,7 +24,8 @@ stories:
     title: 'Extract the RASTER integer-scale letterbox fitIntegerScale (largest whole-number scale + centred integer offsets) into @shared/view as a variant distinct from its DPR/vector letterbox: centipede + pac-man shell/layout.ts are byte-identical (pac-man header: "ported from centipede"), fold joust shell/render.ts viewport (near-identical, offsets-only shape). SUPERSEDES the @shared/view-letterbox clause of SH3-4 — pac-man needs THIS, not the DPR path'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
   - id: SH4-4
