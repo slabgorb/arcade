@@ -40,7 +40,8 @@ stories:
     description: "Prove the sound actually plays — a green vitest is not proof (contract 5 + sidecar gotcha: @shared/audio degrades silently, a 404 is indistinguishable from working code). Serve the cabinet (just serve -> /missile-command/) and confirm the mapped events are audible in the running game. IF the mc8-1 path baked any sound to files: upload them to the R2 bucket 'arcade' (there is no automated upload path — do it via the deploy-assets route) and prove each with a live 200 (curl -o /dev/null -w '%{http_code}' <url>); record the manifest + results in docs/ops/hosting.md. IF the path is runtime-synth: confirm no external asset is required and that the served game is audible with the network offline. Any residual 'asset follows later' item is FILED AS A STORY here, not left as a finding. Depends on mc8-2."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
