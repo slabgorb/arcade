@@ -1,0 +1,50 @@
+id: mc6
+type: epic
+title: 'Missile Command — attract + state machine + pause (REV-01): the full MAINLINE attract/setup/play/pause loop'
+description: "Sixth Missile Command epic — grow mc3's minimal phase seam into the full cabinet lifecycle. mc3 shipped state.ts with phase 'play' | 'between' | 'over' and noted the full attract/setup/play/pause machine as mc6. This epic ports the ROM MAINLINE dispatch (W3MAIN.MAC:475 MAINLINE, :539 PLAY, :561 SETUP, :615 PAUSE) as a pure transition function over GameState, adds a self-playing seeded attract mode (smart-cursor demo), the scrolling attract messages + THE END screen (W3MAIN.MAC:891/5277/5331), and a real pause that freezes the sim. The state machine stays in src/core (pure, seeded RNG, no clock); the shell binds the pause key and reuses @shared/pause for the overlay. mc6-5 exposes the attract high-score slot that mc7 fills with the ladder. Dependency: mc6 -> mc3 (done); no dependency on mc5. Ground truth is REV-01 (035820-01); every new src/core constant carries a claim gated by citations.test.ts and purity.test.ts stays green. Per the roadmap fidelity contract, catalogue the REV-01 <-> REV-03 attract/timing delta in the epic design + claim notes. Design: docs/superpowers/specs/2026-08-09-missile-command-mc6-attract-state-machine-design.md; plan: to be authored at epic kickoff; roadmap: docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md. OUT OF SCOPE: high-score ladder + name entry (mc7), authentic audio wiring (mc8), palette/stamps/blast curve (mc9)."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc6-1
+    title: 'Phase machine (state.ts): extend Phase from play|between|over to add attract|setup|pause and a pure MAINLINE dispatch (attract -> setup -> play -> [pause] -> over -> attract). Pure transition fn, seeded, no clock. REV-01 W3MAIN.MAC:475 MAINLINE / :539 PLAY / :561 SETUP / :615 PAUSE'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc6-2
+    title: 'SETUP -> PLAY start-of-game: a start/coin action advances attract|over -> setup -> play, reseeding createGame (6 live cities, 3 bases full ammo, wave 1 schedule). REV-01 W3MAIN.MAC:561 SETUP'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc6-3
+    title: 'PAUSE toggle: phase play <-> pause freezes enemy motion, ABM flight, scoring and spawn (stepGame no-op but the clock) while paused; shell binds the pause key and reuses @shared/pause for the overlay. REV-01 W3MAIN.MAC:615 PAUSE'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc6-4
+    title: 'Self-playing attract (smart-cursor demo): a deterministic seeded auto-player drives cursor + fire during phase attract so the field plays itself; any input -> setup. Pure attract driver in src/core (seeded RNG, no clock). REV-01 W3MAIN.MAC:891 / 5277 / 5331 attract'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc6-5
+    title: 'Attract presentation: scrolling attract messages + THE END screen, rendered in shell, plus the high-score display slot mc7 fills with the ladder. Pin the ROM message strings + cadence at RED. REV-01 W3MAIN.MAC:891 / 5277 / 5331 attract'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: mc6-6
+    title: 'Game-over -> attract timeout: after phase over, a cited ROM cadence auto-returns to attract, closing the MAINLINE loop. Pin the timeout constant at RED. REV-01 W3MAIN.MAC:475 MAINLINE'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
