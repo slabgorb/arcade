@@ -602,8 +602,9 @@ export function render(
     // 1.170 s) while the centre globe pops FIRST at TIE_GLOBE_LIFE_SECONDS (0x10 = 16f ≈
     // 0.780 s). Each piece colours itself from its OWN remaining ROM timer via the
     // shared TVWCLE ramp (sw7-7 X-003) — never the white VJFLS flash, which is a
-    // ground-object path. The split direction rides the baked fragment models
-    // (TIE_ORIENT is now IDENTITY post-sw10-1), and the fly-apart spread stays
+    // ground-object path. The split direction is the fly-apart position offsets
+    // below (wings on ±native-right, globe on -native-depth; swept to native in
+    // sw10-1 — TIE_ORIENT is IDENTITY, no longer a tell); the spread stays
     // age-driven (no per-piece velocity state — finding X-004,
     // an accepted structural gap).
     for (const d of state.dyingTies) {
@@ -616,14 +617,14 @@ export function render(
         const wf = Math.min(1, d.age / TIE_WING_LIFE_SECONDS)
         const ws = wf * TIE_DEATH_SPREAD
         const wc = tiePieceGlow((TIE_WING_LIFE_SECONDS - d.age) * TICK_HZ)
-        drawWireframe(ctx, TIE_WING_FRAG_1, at(-ws, 0, 0), proj, w, h, wc)
-        drawWireframe(ctx, TIE_WING_FRAG_2, at(ws, 0, 0), proj, w, h, wc)
+        drawWireframe(ctx, TIE_WING_FRAG_1, at(0, -ws, 0), proj, w, h, wc)
+        drawWireframe(ctx, TIE_WING_FRAG_2, at(0, ws, 0), proj, w, h, wc)
       }
       if (d.age <= TIE_GLOBE_LIFE_SECONDS) {
         const gf = Math.min(1, d.age / TIE_GLOBE_LIFE_SECONDS)
         const gs = gf * TIE_DEATH_SPREAD
         const gc = tiePieceGlow((TIE_GLOBE_LIFE_SECONDS - d.age) * TICK_HZ)
-        drawWireframe(ctx, TIE_WING_FRAG_3, at(0, 0, gs), proj, w, h, gc)
+        drawWireframe(ctx, TIE_WING_FRAG_3, at(-gs, 0, 0), proj, w, h, gc)
       }
     }
   }
