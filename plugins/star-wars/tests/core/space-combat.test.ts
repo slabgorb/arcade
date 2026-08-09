@@ -52,7 +52,7 @@ import { NO_INPUT, type Input } from '../../src/core/input'
 import { length, type Vec3 } from '@shared/math3d'
 
 /** Trigger held, yoke centred — in the space phase the eye is the cockpit at the origin, so
- *  this points dead down −Z and any target on that axis is under the site. */
+ *  this points dead ahead +X and any target on that axis is under the site. */
 const FIRE: Input = { aimX: 0, aimY: 0, fire: true }
 
 /** The SAME aim with the trigger up. Load-bearing since sw7-17: the gun is edge-triggered, so
@@ -152,13 +152,13 @@ describe('Wave 1 — enemy spawning & movement', () => {
     expect(s.enemies.length).toBeGreaterThan(0)
   })
 
-  it('TIEs spawn ahead of the cockpit (down -Z)', () => {
+  it('TIEs spawn ahead of the cockpit (+X)', () => {
     let s = wave()
     for (let i = 0; i < 16 && s.enemies.length === 0; i++) {
       s = stepGame(s, NO_INPUT, 0.375)
     }
     expect(s.enemies.length).toBeGreaterThan(0)
-    for (const e of s.enemies) expect(e.pos[2]).toBeLessThan(0)
+    for (const e of s.enemies) expect(e.pos[0]).toBeGreaterThan(0)
   })
 
   it('never puts more than a wave of TIEs on screen at once', () => {
@@ -185,13 +185,15 @@ describe('Wave 1 — enemy spawning & movement', () => {
       s = stepGame(s, NO_INPUT, 0.375)
     }
     expect(s.enemies.length).toBeGreaterThan(0)
-    const frontBefore = Math.max(...s.enemies.map((e) => e.pos[2]))
+    const frontBefore = Math.min(...s.enemies.map((e) => e.pos[0]))
     // Net approach over a short window. Story 9-2 gives TIEs curved/weaving paths,
     // so a single sub-step can arc laterally; the cabinet invariant is that they
     // CLOSE IN over time — asserted here across ~1s rather than a single tick.
+    // Native basis: depth is pos[0] (+X ahead), so the nearest fighter has the
+    // SMALLEST depth and closing means that depth SHRINKS.
     for (let i = 0; i < 8; i++) s = stepGame(s, NO_INPUT, 0.1875)
-    const frontAfter = Math.max(...s.enemies.map((e) => e.pos[2]))
-    expect(frontAfter).toBeGreaterThan(frontBefore)
+    const frontAfter = Math.min(...s.enemies.map((e) => e.pos[0]))
+    expect(frontAfter).toBeLessThan(frontBefore)
   })
 
   it('enemies fire fireballs aimed at the cockpit', () => {
@@ -223,11 +225,11 @@ describe('Wave 1 — collisions, scoring & lives', () => {
   // Minimal literals; stepGame reads `.pos` for hit-tests (and an enemy shot's vel/ttl). The
   // player's `bolt` fixture is gone (sw7-17 — the gun spawns nothing); `shot` is ENEMY fire,
   // which really is a travelling projectile and keeps its literal.
-  const shot = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, -1], ttl: PROJECTILE_TTL })
+  const shot = (pos: Vec3): Projectile => ({ pos, vel: [1, 0, 0], ttl: PROJECTILE_TTL })
   const tie = (pos: Vec3): Enemy => ({ pos } as Enemy)
 
-  /** Dead ahead of the cockpit eye, so the centred `FIRE` is a dead-on shot. */
-  const AHEAD: Vec3 = [0, 0, -100]
+  /** Dead ahead of the cockpit eye (+X depth), so the centred `FIRE` is a dead-on shot. */
+  const AHEAD: Vec3 = [100, 0, 0]
 
   it('a shot on a TIE destroys it, leaves nothing in flight, and scores', () => {
     const base = wave()
@@ -250,7 +252,7 @@ describe('Wave 1 — collisions, scoring & lives', () => {
     // 250 radius with the radius to spare again. Same question ("a shot not on it does not kill
     // it"), asked where the pilot can actually get it wrong.
     const base = wave()
-    const OUT: Vec3 = [0, 0, -1000]
+    const OUT: Vec3 = [1000, 0, 0]
     const HARD_OVER: Input = { aimX: -1, aimY: 0, fire: true }
     const s0: GameState = { ...base, enemies: [tie(OUT)], spawnTimer: 1e9 }
     const s1 = stepGame(s0, HARD_OVER, 0.001)

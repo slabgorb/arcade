@@ -74,23 +74,24 @@ import { makeSpaceState, makeTie, lookAtOrigin, lookAway, rngSeed } from './help
 // other instead, so a drift between them fails rather than cancelling out.
 
 /** A point exactly `depth` along the aim ray the given state is holding, pushed
- *  `offset` units broadside (world +X, which is perpendicular to the at-rest ray).
- *  Built from the SAME shared helpers the core aims with, so the fixture cannot
- *  drift from the machine under test. */
+ *  `offset` units broadside (world +Y, the native right axis, which is perpendicular
+ *  to the at-rest ray). Built from the SAME shared helpers the core aims with, so the
+ *  fixture cannot drift from the machine under test. */
 function onRay(s: GameState, depth: number, offset = 0): Vec3 {
   const eye = COCKPIT
   const dir = aimDirection(s.aimX, s.aimY)
   const p = add(eye, scale(dir, depth))
-  return [p[0] + offset, p[1], p[2]]
+  return [p[0], p[1] + offset, p[2]] // native: index 1 = right (broadside)
 }
 
 /** The yoke position that puts the crosshair on a world point, inverting
- *  `aimDirection` (gameRules.ts:49-51) at the unit aspect the tests run at. */
+ *  `aimDirection` (gameRules.ts:54-57) at the unit aspect the tests run at.
+ *  Native basis: depth is index 0, right index 1, up index 2. */
 function aimAt(pos: Vec3): { aimX: number; aimY: number } {
   const eye = COCKPIT
   const f = 1 / Math.tan(FOV_Y / 2)
-  const [dx, dy, dz] = [pos[0] - eye[0], pos[1] - eye[1], pos[2] - eye[2]]
-  return { aimX: (f * dx) / -dz, aimY: (f * dy) / -dz }
+  const depth = pos[0] - eye[0]
+  return { aimX: (f * (pos[1] - eye[1])) / depth, aimY: (f * (pos[2] - eye[2])) / depth }
 }
 
 const sights = (e: ReturnType<typeof makeTie>, s: GameState, seed = 1) =>
@@ -171,7 +172,7 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // to satisfy the axis probes above would accept the second seat here.
     const diag = (perAxis: number): Vec3 => {
       const p = onRay(s, 6000)
-      return [p[0] + perAxis, p[1] + perAxis, p[2]]
+      return [p[0], p[1] + perAxis, p[2] + perAxis] // native: offset right (1) and up (2)
     }
     expect(
       sights(makeTie({ pos: diag(1.5 * T - 1) }), s),
@@ -221,8 +222,8 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // covered by `tie-sights-visibility.test.ts`, so this name narrows to what it proves.
     const s = makeSpaceState()
     const eye = COCKPIT
-    // Mirror of the on-ray fixture, straight out the back of the cockpit.
-    expect(sights(makeTie({ pos: [eye[0], eye[1], eye[2] + 6000] }), s)).toBe(0)
+    // Mirror of the on-ray fixture, straight out the back of the cockpit (native: −depth).
+    expect(sights(makeTie({ pos: [eye[0] - 6000, eye[1], eye[2]] }), s)).toBe(0)
   })
 
   it('follows the YOKE: steering the crosshair onto an off-axis TIE sets the bit', () => {
@@ -266,9 +267,9 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     // the off-origin TIE as IN the sights at frame 128 and OUT at frame 0. The cockpit-anchored
     // law says OUT at both.
     const OFF_ORIGIN = 1024 // what the retired ST.UX sawtooth put the eye at, at frame 128
-    const pos: Vec3 = [OFF_ORIGIN, 0, -6000]
+    const pos: Vec3 = [6000, OFF_ORIGIN, 0] // native [depth, right, up]
     expect(
-      Math.abs(pos[0]),
+      Math.abs(pos[1]), // native: index 1 = lateral (right)
       'fixture guard: this sits outside the band measured from the cockpit',
       // Stated against the ROM OCTAGON (3·TMPSIZ = 750) rather than the retired disc
       // (2·TMPSIZ = 500) since sw8-27 reshaped the band. 1,024 clears both, but a guard
@@ -341,7 +342,7 @@ describe('uf1-12 — C_PS: the player-sights status bit (WSMAIN.MAC:3919-3932)',
     for (const depth of [1200, 6000, 20000]) {
       for (let offset = 0; offset <= 4 * TIE_HIT_RADIUS; offset += 25) {
         const p = add(eye, scale(dir, depth))
-        const pos: Vec3 = [p[0] + offset, p[1], p[2]]
+        const pos: Vec3 = [p[0], p[1] + offset, p[2]] // native: index 1 = right (broadside)
         if (beamHit(eye, dir, pos, TIE_HIT_RADIUS) === null) continue
         killable++
         expect(

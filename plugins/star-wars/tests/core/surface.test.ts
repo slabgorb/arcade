@@ -157,8 +157,8 @@ describe('Wave 2 — laser turrets', () => {
     const turrets = s.turrets ?? []
     expect(turrets.length).toBeGreaterThan(0)
     for (const t of turrets) {
-      expect(t.pos[2]).toBeLessThan(0) // ahead, down -Z
-      expect(t.pos[1]).toBeGreaterThanOrEqual(0) // on or above the floor, never sunk
+      expect(t.pos[0]).toBeGreaterThan(0) // ahead, +X depth (native)
+      expect(t.pos[2]).toBeGreaterThanOrEqual(0) // on or above the floor (native up), never sunk
     }
   })
 
@@ -203,7 +203,7 @@ describe('Wave 2 — laser turrets', () => {
 // --- AC3: collisions, scoring & lives ---------------------------------------
 
 describe('Wave 2 — collisions, scoring & lives', () => {
-  const bolt = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, -1], ttl: PROJECTILE_TTL })
+  const bolt = (pos: Vec3): Projectile => ({ pos, vel: [1, 0, 0], ttl: PROJECTILE_TTL })
   const turretAt = (pos: Vec3): { pos: Vec3 } => ({ pos })
 
   // == sw7-17: THE PLAYER'S SHOT IS A BEAM, NOT A BOLT ========================
@@ -229,7 +229,7 @@ describe('Wave 2 — collisions, scoring & lives', () => {
 
   it('a player shot striking a turret destroys it, spawns no bolt, and scores', () => {
     const base = surface()
-    const site: Vec3 = [0, EYE_HIGH, -100]
+    const site: Vec3 = [100, 0, EYE_HIGH] // native [depth, right, up]: 100 ahead, level with the eye
     const s0 = {
       ...base,
       turrets: [turretAt(site)],
@@ -249,7 +249,7 @@ describe('Wave 2 — collisions, scoring & lives', () => {
 
   it('a player shot that misses leaves the turret standing and the score untouched', () => {
     const base = surface()
-    const site: Vec3 = [0, EYE_HIGH, -4000]
+    const site: Vec3 = [4000, 0, EYE_HIGH] // native [depth, right, up]: 4000 ahead, level with the eye
     const s0 = {
       ...base,
       turrets: [turretAt(site)],
@@ -257,9 +257,9 @@ describe('Wave 2 — collisions, scoring & lives', () => {
       firePrev: false,
     }
     // The trigger goes down with the crosshair on empty ground 2,000 units to the RIGHT of the
-    // turret — an aim the yoke really can reach (|aimX| = 0.87), so this is a miss the pilot
+    // turret — an aim the yoke really can reach (|aimX| = 0.50), so this is a miss the pilot
     // could make, not an un-aimable one standing in for one.
-    const aside: Vec3 = [2000, EYE_HIGH, -4000]
+    const aside: Vec3 = [4000, 2000, EYE_HIGH] // native [depth, right, up]: 4000 ahead, 2000 right
     const aim = aimAt(aside, eyeOf(s0))
     expect(aim.reachable, `the yoke must be able to point here (${aim.aimX.toFixed(2)})`).toBe(true)
 
@@ -274,7 +274,7 @@ describe('Wave 2 — collisions, scoring & lives', () => {
     // fixture used to fire at [0,0,0] and land a hit only because the hit-test was pinned to the
     // origin while the pilot flew SKIM_ALTITUDE above it. Fire laid on the floor passes under him.
     const base = surface()
-    const s0 = { ...base, enemyShots: [bolt([0, base.altitude, 0])] }
+    const s0 = { ...base, enemyShots: [bolt([0, 0, base.altitude])] }
     const s1 = stepGame(s0, NO_INPUT, 0.001)
     expect(s1.lives).toBe(base.lives - 1)
     expect(s1.enemyShots).toHaveLength(0)

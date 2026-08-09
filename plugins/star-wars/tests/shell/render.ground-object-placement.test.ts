@@ -70,9 +70,11 @@ function placedDrawn(m: Model3D): Vec3[] {
   return placed(m).filter((_, i) => used.has(i))
 }
 
-const ys = (vs: Vec3[]) => vs.map((v) => v[1])
+// sw10-1 native [depth, right, up]: height is the up axis (index 2), the footprint
+// spreads across the horizontal depth/right plane (indices 0 and 1).
+const ys = (vs: Vec3[]) => vs.map((v) => v[2])
 /** Horizontal distance from the tower's axis — the footprint radius. */
-const radii = (vs: Vec3[]) => vs.map((v) => Math.hypot(v[0], v[2]))
+const radii = (vs: Vec3[]) => vs.map((v) => Math.hypot(v[0], v[1]))
 
 describe('sw5-5 — the ROM ground objects land correctly in the y-up world', () => {
   // FIRST, and deliberately so. `modelMatrix(pos, orient, s = 1)` has a DEFAULT
@@ -100,7 +102,7 @@ describe('sw5-5 — the ROM ground objects land correctly in the y-up world', ()
 
   it('stands ON the floor: the base ring sits at y = 0', () => {
     const base = placed(SURFACE_TOWER).filter((_, i) => [0, 1, 2].includes(i))
-    for (const v of base) expect(v[1]).toBeCloseTo(0)
+    for (const v of base) expect(v[2]).toBeCloseTo(0) // native up axis: base sits on the floor
   })
 
   it('keeps the shipped FOOTPRINT: the base ring is still r = 32 world units', () => {

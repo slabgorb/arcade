@@ -66,10 +66,10 @@ const FRAME = 1 / 60
 // flying straight down-range. This is a REAL fired bolt, not a hand-placed one.
 const FIRE: Input = { aimX: 0, aimY: 0, fire: true, aspect: 1 }
 
-// An enemy fireball drifting back toward the cockpit (+Z), full lifetime. Placed
-// far enough down-range (-Z) that the bolt needs several frames to reach it, so a
-// per-frame collision gap has room to bite if one exists.
-const fireball = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL })
+// An enemy fireball drifting back toward the cockpit (native -X depth), full
+// lifetime. Placed far enough down-range (+X ahead) that the bolt needs several
+// frames to reach it, so a per-frame collision gap has room to bite if one exists.
+const fireball = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL })
 
 /**
  * Fire ONE real bolt, then coast, stepping at a true 60fps until the fireball is
@@ -95,28 +95,28 @@ describe('sw2-2 — a real-fired bolt downs a fireball (real-speed coverage)', (
     // The gap the 8-18 suite left: those bolts are hand-placed at unit velocity.
     // This one is fired by the sim at 5000 u/s and followed at 60fps.
     const base = wave()
-    const s0: GameState = { ...base, enemyShots: [fireball([0, 0, -2000])], projectiles: [] }
+    const s0: GameState = { ...base, enemyShots: [fireball([2000, 0, 0])], projectiles: [] }
     const { state } = fireAndFollow(s0)
     expect(state.enemyShots).toHaveLength(0) // downed, not tunneled through
   })
 
   it('intercepting it downrange costs no shield', () => {
     const base = wave()
-    const s0: GameState = { ...base, enemyShots: [fireball([0, 0, -2000])], projectiles: [] }
+    const s0: GameState = { ...base, enemyShots: [fireball([2000, 0, 0])], projectiles: [] }
     const { state } = fireAndFollow(s0)
     expect(state.lives).toBe(STARTING_LIVES)
   })
 
   it('scores FIREBALL_SCORE and emits a positioned fireball-destroyed cue', () => {
     const base = wave()
-    const s0: GameState = { ...base, enemyShots: [fireball([0, 0, -2000])], projectiles: [] }
+    const s0: GameState = { ...base, enemyShots: [fireball([2000, 0, 0])], projectiles: [] }
     const { state, events } = fireAndFollow(s0)
     expect(state.score).toBe(base.score + FIREBALL_SCORE)
     const cue = events.find((e) => e.type === 'fireball-destroyed')
     expect(cue).toBeDefined()
     // The cue carries the fireball's OWN down-range position, not the cockpit
     // origin — a kill happened out in front, not a cockpit collision.
-    expect(cue && 'pos' in cue ? cue.pos[2] : 0).toBeLessThan(-100)
+    expect(cue && 'pos' in cue ? cue.pos[0] : 0).toBeGreaterThan(100)
   })
 })
 
@@ -135,7 +135,7 @@ describe('sw2-2 — the fireball is a LARGE target', () => {
     const GRAZE = 110
     expect(ENEMY_SHOT_HIT_RADIUS).toBeGreaterThan(GRAZE)
     const base = wave()
-    const s0: GameState = { ...base, enemyShots: [fireball([GRAZE, 0, -2000])], projectiles: [] }
+    const s0: GameState = { ...base, enemyShots: [fireball([2000, GRAZE, 0])], projectiles: [] }
     const { state } = fireAndFollow(s0)
     expect(state.enemyShots).toHaveLength(0) // the big fireball is hit, not skimmed past
     expect(state.lives).toBe(STARTING_LIVES) // and downed downrange, no shield lost

@@ -200,7 +200,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // (750 u since sw8-27, and 500 before it, so the seat reads the same either way), so the
     // beam test passes — while its view depth of 10 is under VIEW_NEAR (0x10 = 16), so the
     // cabinet would have returned at :3826 and never reached :3930.
-    const seat: Vec3 = [400, 0, -10]
+    const seat: Vec3 = [10, 400, 0] // native [depth, right, up]: depth 10, lateral 400
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'near-clamp seat')
     expect(
       sights(seat, 16 / 9),
@@ -219,7 +219,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // only exist at depth < 500 — the retired ±45° pyramid's own crossover. The seat below
     // sits at depth 400 with a clean 10% margin on both bounds (440 clears 400 by 10%, and
     // sits 60 u — 12% — inside the 500 u disc), so neither bound is ambiguous.
-    const seat: Vec3 = [0, 440, -400]
+    const seat: Vec3 = [400, 0, 440] // native [depth, right, up]: depth 400, vertical 440
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'vertical-edge seat')
     const range = Math.hypot(seat[0], seat[1], seat[2])
     expect(range / TIE_HIT_RADIUS, 'still well outside collision range').toBeGreaterThan(2)
@@ -229,7 +229,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
   it('the OTHER ratio exit: off the pyramid edge laterally at 16:9, depth 400', () => {
     // The two ratio tests are separate exits in the ROM (:3836 and :3842) and separate
     // terms in the port, so a fix that gates on only one of them survives the seat above.
-    const seat: Vec3 = [450, 0, -400]
+    const seat: Vec3 = [400, 450, 0] // native [depth, right, up]: depth 400, lateral 450
     assertSeatIsInBandAndOffGlass(seat, 16 / 9, 'lateral-edge seat')
     expect(sights(seat, 16 / 9), 'off the glass laterally ⇒ no sights bit').toBe(0)
   })
@@ -246,8 +246,8 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
     // them, which is the property an aspect-independent lens actually has to prove — a
     // stronger claim than "opposite at two points" and the one a residual aspect term in
     // `aimDirection` or `inPlayerView` would still fail.
-    const onGlass: Vec3 = [480, 0, -800] // the SAME seat this test pinned before sw10-1
-    const offGlass: Vec3 = [0, 440, -400] // the vertical-edge seat from the test above
+    const onGlass: Vec3 = [800, 480, 0] // native [depth, right, up]: the SAME seat this test pinned before sw10-1
+    const offGlass: Vec3 = [400, 0, 440] // native: the vertical-edge seat from the test above
 
     // Fixture guards, aspect-independent themselves: both seats sit inside the sights band
     // (the band is a world-space octagon around the aim ray, never a screen quantity).
@@ -276,7 +276,7 @@ describe('sw8-19 — C_PS is gated on C_PV: the ROM cannot set the sights bit fo
       for (const depth of [20, 100, 400, 800, 1500, 6000, 20000]) {
         for (const lat of [0, 120, 300, 460, 480, 700]) {
           for (const vert of [0, 300, 480]) {
-            const pos: Vec3 = [lat, vert, -depth]
+            const pos: Vec3 = [depth, lat, vert] // native [depth, right, up]
             const st = statusAt(pos, aspect)
             const ps = st & Status.C_PS
             const pv = st & Status.C_PV
@@ -308,11 +308,11 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // The whole suite above is negatives. If a fix simply stopped deriving C_PS, every one
     // of them would pass. This is the assertion that forbids it.
     const s = makeSpaceState()
-    const onRay: Vec3 = [0, 0, -6000]
+    const onRay: Vec3 = [6000, 0, 0] // native [depth, right, up]: dead ahead at 6000
     expect(inView(onRay, 16 / 9), 'dead ahead at 6000 is plainly on the glass').toBe(Status.C_PV)
     expect(sights(onRay, 16 / 9), 'and therefore still in the sights').toBe(Status.C_PS)
     // Inside the band but off the ray, still well within the pyramid at this depth.
-    const offset: Vec3 = [SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS - 1, 0, -6000]
+    const offset: Vec3 = [6000, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS - 1, 0] // native: broadside on the right axis
     expect(sights(offset, 16 / 9), 'one unit inside the band, and visible').toBe(Status.C_PS)
     expect(s.aspect, 'a fresh state is square until the shell says otherwise').toBe(1)
   })
@@ -334,7 +334,7 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // authentic ±45° lens grows the glass exactly as fast as depth, so an off-glass seat
     // that still sits inside the sights band now needs depth < 500, not 800.
     const ray = aimDirection(0, 0, 16 / 9)
-    const offGlass: Vec3 = [0, 440, -400]
+    const offGlass: Vec3 = [400, 0, 440] // native [depth, right, up]: depth 400, vertical 440
     expect(inView(offGlass, 16 / 9), 'fixture guard: this seat is off the glass').toBe(0)
     expect(
       beamHit(COCKPIT, ray, offGlass, SIGHTS_BAND_FACTOR * TIE_HIT_RADIUS),
@@ -375,7 +375,7 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     // so this direct `beamHit` probe is now the ONLY thing standing between the shared helper
     // and a well-meant "just clamp it in one place" refactor. It stays green precisely because
     // it calls the helper directly.
-    const killableOffGlass: Vec3 = [0, 220, -200]
+    const killableOffGlass: Vec3 = [200, 0, 220] // native [depth, right, up]: depth 200, vertical 220
     expect(inView(killableOffGlass, 16 / 9), 'fixture guard: also off the glass').toBe(0)
     expect(
       beamHit(COCKPIT, ray, killableOffGlass, TIE_HIT_RADIUS),
@@ -403,7 +403,7 @@ describe('sw8-19 — the gate must not cost anything it was not asked to change'
     //
     // VERBATIM MUTANT this kills, applied to `tie-status.ts`:
     //   export const SIGHTS_OCTAGON = 1.5
-    const inTheOuterBand: Vec3 = [700, 0, -6000]
+    const inTheOuterBand: Vec3 = [6000, 700, 0] // native [depth, right, up]: depth 6000, lateral 700
     expect(inView(inTheOuterBand, 16 / 9), 'fixture guard: this seat is ON the glass').toBe(Status.C_PV)
     expect(700, 'fixture guard: outside a HALVED band, so halving the octagon reddens this').toBeGreaterThan(
       1.5 * TIE_HIT_RADIUS,
@@ -454,10 +454,10 @@ describe('sw8-19 — in play: the shipped loiter fixture never sights an off-gla
    *  the same inversion `tie-loiter-sights.test.ts` flies this fixture with. */
   function aimAt(pos: Vec3): { aimX: number; aimY: number } {
     const f = 1 / Math.tan(FOV_Y / 2)
-    const dz = pos[2] - COCKPIT[2]
-    if (dz >= 0) return { aimX: 0, aimY: 0 }
+    const depth = pos[0] - COCKPIT[0] // native: index 0 = depth
+    if (depth <= 0) return { aimX: 0, aimY: 0 }
     const c = (v: number) => Math.max(-1, Math.min(1, v))
-    return { aimX: c((f * (pos[0] - COCKPIT[0])) / -dz), aimY: c((f * (pos[1] - COCKPIT[1])) / -dz) }
+    return { aimX: c((f * (pos[1] - COCKPIT[1])) / depth), aimY: c((f * (pos[2] - COCKPIT[2])) / depth) }
   }
 
   it('flies the uf1-12 seat and counts frames where the sights bit outlives visibility', () => {
@@ -469,7 +469,7 @@ describe('sw8-19 — in play: the shipped loiter fixture never sights an off-gla
     const target = program[sightsBranch() + 1]
     if (target.op !== ChoreoOp.GOTO) throw new Error('tie-vm: .CIF C$PS is not followed by a .CGOTO')
     const entry = target.target
-    const seat: Vec3 = [4000, 0, -6000]
+    const seat: Vec3 = [6000, 4000, 0] // native [depth, right, up]: lateral 4000 at depth 6000
 
     let s: GameState = {
       ...initialState(1983),

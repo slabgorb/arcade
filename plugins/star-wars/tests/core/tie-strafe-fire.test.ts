@@ -105,7 +105,7 @@ describe('Story 9-4 — fire is per-TIE, not a whole-formation timer (AC1)', () 
     // (The pre-sw4-1 ~900-unit placement now falls INSIDE the near-bound and would
     // peel immediately — no fire — so it was moved out into the approach band.)
     let s = fireReady(
-      [tieToward([250, 0, -4000]), tieToward([-200, 150, -3800]), tieToward([0, -220, -3900])],
+      [tieToward([4000, 250, 0]), tieToward([3800, -200, 150]), tieToward([3900, 0, -220])],
       1983,
       7,
     )
@@ -123,7 +123,7 @@ describe('Story 9-4 — fire is per-TIE, not a whole-formation timer (AC1)', () 
     // strafes. Dead-centre so it bores straight in (it is not peeling). The
     // formation timer would still fire it; strafe fire must not. RED today.
     const tooClose = Math.round(TIE_NEAR_BOUND * 0.4) // ≈140: well inside the near edge, still clear of the cockpit sphere
-    let s = fireReady([tieToward([0, 0, -tooClose])])
+    let s = fireReady([tieToward([tooClose, 0, 0])])
     for (let i = 0; i < 8; i++) {
       s = stepGame(s, NO_INPUT, DT)
       expect(s.enemyShots).toHaveLength(0)
@@ -134,9 +134,9 @@ describe('Story 9-4 — fire is per-TIE, not a whole-formation timer (AC1)', () 
 describe('Story 9-4 — fireball source & aim track the firing TIE (AC1, AC3)', () => {
   it('a fireball launches from a firing TIE’s position, aimed at the cockpit', () => {
     let s = fireReady([
-      tieToward([250, 0, -4000]),
-      tieToward([-200, 150, -3800]),
-      tieToward([0, -220, -3900]),
+      tieToward([4000, 250, 0]),
+      tieToward([3800, -200, 150]),
+      tieToward([3900, 0, -220]),
     ])
     let shot: Projectile | undefined
     for (let i = 0; i < 200 && shot === undefined; i++) {
@@ -171,9 +171,9 @@ describe('Story 9-4 — invariants preserved under per-TIE fire (AC2, AC3, AC4)'
     // seconds: without the slot cap the sky would overflow well past six. lives is
     // parked high so a stray ram never ends the run mid-measurement.
     let s: GameState = { ...fireReady([
-      tieToward([250, 60, -4000]),
-      tieToward([-220, -40, -3800]),
-      tieToward([40, 200, -3900]),
+      tieToward([4000, 250, 60]),
+      tieToward([3800, -220, -40]),
+      tieToward([3900, 40, 200]),
     ]), lives: 999 }
     for (let i = 0; i < 120; i++) {
       s = stepGame(s, NO_INPUT, DT)
@@ -186,11 +186,11 @@ describe('Story 9-4 — invariants preserved under per-TIE fire (AC2, AC3, AC4)'
     // The gun is HITSCAN now and spawns nothing, so the honest fixture is to AIM AT the fireball
     // and PULL. The enemy's half is untouched on purpose — enemy fire is still a real travelling
     // projectile in the ROM and in the sim, which is what `enemyShots` below still encodes.
-    const P: Vec3 = [0, 0, -300]
+    const P: Vec3 = [300, 0, 0]
     const base: GameState = {
       ...initialState(7),
       enemies: [],
-      enemyShots: [{ pos: [...P] as Vec3, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL }],
+      enemyShots: [{ pos: [...P] as Vec3, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL }],
       spawnTimer: 1e9,
       enemyFireCooldown: 1e9,
       fireCooldown: 0,
@@ -205,7 +205,7 @@ describe('Story 9-4 — invariants preserved under per-TIE fire (AC2, AC3, AC4)'
     const run = (): Projectile[] =>
       stepN(
         fireReady(
-          [tieToward([250, 0, -4000]), tieToward([-200, 150, -3800]), tieToward([0, -220, -3900])],
+          [tieToward([4000, 250, 0]), tieToward([3800, -200, 150]), tieToward([3900, 0, -220])],
           4242,
         ),
         TWO_INTERVALS,
@@ -214,7 +214,7 @@ describe('Story 9-4 — invariants preserved under per-TIE fire (AC2, AC3, AC4)'
   })
 
   it('firing does not mutate the input enemyShots array in place', () => {
-    let s = fireReady([tieToward([250, 0, -4000])])
+    let s = fireReady([tieToward([4000, 250, 0])])
     for (let i = 0; i < 200 && s.enemyShots.length === 0; i++) s = stepGame(s, NO_INPUT, DT)
     expect(s.enemyShots.length).toBeGreaterThan(0)
     const before = s.enemyShots

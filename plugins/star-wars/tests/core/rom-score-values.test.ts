@@ -54,8 +54,8 @@ import { IDENTITY, type Vec3 } from '@shared/math3d'
 // --------------------------------------------------------------------------
 const wave = (seed = 1983): GameState => initialState(seed)
 const TICK = 0.001
-const DOWNRANGE: Vec3 = [0, 0, -400] // well outside the cockpit hit sphere
-const fireball = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL })
+const DOWNRANGE: Vec3 = [400, 0, 0] // native [depth,right,up]: 400 ahead, well outside the cockpit hit sphere
+const fireball = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL }) // native: -depth = toward cockpit
 const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
 
 /** A port kill lands only inside the narrow approach window (sw3-15: the ROM
@@ -81,7 +81,7 @@ const tie = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
  *  re-seats the port instead of testing sw3-15's gate. No trigger is pulled here, so
  *  `trenchShotsFired` stays exactly what the caller seeded and the clean/dirty branch is
  *  selected as directly as before. */
-const IN_WINDOW_PORT: Vec3 = [0, 0, -300]
+const IN_WINDOW_PORT: Vec3 = [300, 0, 0] // native [depth,right,up]: 300 ahead
 function portKill(state: GameState): GameState {
   return {
     ...state,
@@ -102,7 +102,7 @@ function portKill(state: GameState): GameState {
  *  re-seated its named siblings but missed this transcription suite, leaving
  *  develop red on these two.) */
 function trenchPortInWindow(): GameState {
-  const pos: Vec3 = [0, 0, -300]
+  const pos: Vec3 = [300, 0, 0] // native [depth,right,up]: 300 ahead
   return { ...enterPhase(initialState(), 'trench'), exhaustPort: { pos } }
 }
 
@@ -143,7 +143,7 @@ describe('sw3-1 — resolved ROM score values (transcription contract)', () => {
   // --- End-to-end: the literal value must actually reach the score readout ----
   it('killing a TIE adds exactly 1,000 to the score', () => {
     const base = wave()
-    const at: Vec3 = [0, 0, -100]
+    const at: Vec3 = [100, 0, 0] // native [depth,right,up]: 100 ahead
     const s0: GameState = { ...base, enemies: [tie(at)], spawnTimer: 1e9 }
     const s1 = stepGame(s0, fireAt(s0, at), TICK)
     expect(s1.enemies).toHaveLength(0) // the TIE actually died (not a vacuous pin)

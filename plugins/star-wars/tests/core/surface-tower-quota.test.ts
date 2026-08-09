@@ -175,7 +175,7 @@ describe('sw3-3 — clearing every tower banks the 50,000 exactly once', () => {
     // completion bonus. One pull (`fireAt`); the lone tower dies on the first frame
     // and the aim never moves, so the sweep's remaining frames find nothing under the site.
     const wave = 3
-    const site: Vec3 = [0, EYE_HIGH, -100]
+    const site: Vec3 = [100, 0, EYE_HIGH]
     const s0: GameState = {
       ...surfaceAtWave(wave),
       phaseKills: towersForWave(wave) - 1, // one short; this frame's kill meets it

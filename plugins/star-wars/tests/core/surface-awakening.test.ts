@@ -40,9 +40,10 @@ import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
 
 /** An armed ground object (past its fire grace) at a lateral x / depth z, with an
- *  awakening sequence. Placed near enough that it survives the frame's scroll. */
+ *  awakening sequence. Placed near enough that it survives the frame's scroll.
+ *  sw10-1 native [depth, right, up]: old OpenGL [x, 0, z] → [-z, x, 0]. */
 const armed = (x: number, z: number, seq?: number): Turret => ({
-  pos: [x, 0, z],
+  pos: [-z, x, 0],
   age: TOWER_FIRE_GRACE + 1,
   kind: 'tower',
   ...(seq === undefined ? {} : { seq }),
@@ -66,7 +67,7 @@ function surfaceAt(gdSeq: number, turrets: Turret[]): GameState {
 
 const firedThisFrame = (s: GameState): boolean => s.events.some((e) => e.type === 'enemy-fire')
 const fireMuzzles = (s: GameState): number[] =>
-  s.events.filter((e) => e.type === 'enemy-fire').map((e) => (e as { pos: readonly [number, number, number] }).pos[0])
+  s.events.filter((e) => e.type === 'enemy-fire').map((e) => (e as { pos: readonly [number, number, number] }).pos[1]) // native: lateral (right) = index 1
 
 // --- AC: an object stays dormant until gdSeq reaches its awakening seq --------
 

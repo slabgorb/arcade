@@ -74,8 +74,8 @@ const surface = (over: Partial<GameState> = {}): GameState => ({
 const HEIGHTS = [0, MIN_SKIM_ALTITUDE, SKIM_ALTITUDE, MAX_SKIM_ALTITUDE, 173] as const
 
 describe('sw7-16 — the surface ship point is ONE function', () => {
-  it('is the flying point [0, altitude, 0] — laterally centred, on the floor of nothing', () => {
-    expect(surfaceShip(173)).toEqual([0, 173, 0])
+  it('is the flying point [0, 0, altitude] — laterally centred, on the floor of nothing', () => {
+    expect(surfaceShip(173)).toEqual([0, 0, 173])
   })
 
   it.each(HEIGHTS)('reads altitude verbatim at %s — no default, no clamp, no remembered constant', (alt) => {
@@ -83,7 +83,7 @@ describe('sw7-16 — the surface ship point is ONE function', () => {
     // trap `surface-visibility.test.ts` pins on the camera. And the point must READ the
     // altitude it is handed rather than reaching for a constant: a `surfaceShip` that returns
     // SKIM_ALTITUDE satisfies the nominal case and leaves the gun off the ship everywhere else.
-    expect(surfaceShip(alt)).toEqual([0, alt, 0])
+    expect(surfaceShip(alt)).toEqual([0, 0, alt])
   })
 
   it('is a pure function of altitude — same height in, same point out, no shared array', () => {

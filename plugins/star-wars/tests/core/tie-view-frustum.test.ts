@@ -70,8 +70,8 @@ describe('sw10-1 — C_PV vertical: the authentic ±45° glass (was the render\'
     // Vertical bound at depth 4000 is 4000 · tan(45°) = 4000. The positive claim
     // FIRST, and it sits at 3960 — OUTSIDE the shipping 30° band (2309), so the
     // ±45°-mutant fails it on a positive claim, not a vacuously-clear negative.
-    expect(inView([0, 3960, -4000]), 'vert 3960 at depth 4000 is 44.7° up — on the ±45° glass, C_PV set').toBe(true)
-    expect(inView([0, 4040, -4000]), 'vert 4040 at depth 4000 is 45.3° up — above the glass, C_PV clear').toBe(false)
+    expect(inView([4000, 0, 3960]), 'vert 3960 at depth 4000 is 44.7° up — on the ±45° glass, C_PV set').toBe(true)
+    expect(inView([4000, 0, 4040]), 'vert 4040 at depth 4000 is 45.3° up — above the glass, C_PV clear').toBe(false)
   })
 
   it('reclaims the band the old 30° render cut off — sky the authentic glass shows', () => {
@@ -79,8 +79,8 @@ describe('sw10-1 — C_PV vertical: the authentic ±45° glass (was the render\'
     // authentic ±45°. Both signs — the ratio law squares, and the glass is
     // symmetric about the axis. This INVERTS uf1-14: what the 30° render hid, the
     // cabinet lens shows.
-    expect(inView([0, 3000, -4000]), '36.9° above centre: on the authentic glass').toBe(true)
-    expect(inView([0, -3000, -4000]), '36.9° below centre: on the authentic glass').toBe(true)
+    expect(inView([4000, 0, 3000]), '36.9° above centre: on the authentic glass').toBe(true)
+    expect(inView([4000, 0, -3000]), '36.9° below centre: on the authentic glass').toBe(true)
   })
 
   it('holds the ±45° vertical band at EVERY aspect — the lens is aspect-independent', () => {
@@ -88,8 +88,8 @@ describe('sw10-1 — C_PV vertical: the authentic ±45° glass (was the render\'
     // port that still scales the vertical (or either) axis by aspect fails an arm
     // of this loop.
     for (const aspect of [0.5, 1, 16 / 9, 21 / 9]) {
-      expect(inView([0, 3960, -4000], aspect), `aspect ${aspect}: 44.7° up is on screen`).toBe(true)
-      expect(inView([0, 4040, -4000], aspect), `aspect ${aspect}: 45.3° up is off screen`).toBe(false)
+      expect(inView([4000, 0, 3960], aspect), `aspect ${aspect}: 44.7° up is on screen`).toBe(true)
+      expect(inView([4000, 0, 4040], aspect), `aspect ${aspect}: 45.3° up is off screen`).toBe(false)
     }
   })
 
@@ -98,8 +98,8 @@ describe('sw10-1 — C_PV vertical: the authentic ±45° glass (was the render\'
     // units kills a hand-rounded 0.99/1.01 while any law actually derived from
     // FOV_Y passes untouched — and it fails hard against the 0.577 (30°) mutant.
     const bound = 30000 * TAN_HALF_FOV
-    expect(inView([0, Math.floor(bound) - 2, -30000]), 'just inside the derived bound').toBe(true)
-    expect(inView([0, Math.ceil(bound) + 2, -30000]), 'just outside the derived bound').toBe(false)
+    expect(inView([30000, 0, Math.floor(bound) - 2]), 'just inside the derived bound').toBe(true)
+    expect(inView([30000, 0, Math.ceil(bound) + 2]), 'just outside the derived bound').toBe(false)
   })
 })
 
@@ -107,9 +107,9 @@ describe('sw10-1 — C_PV horizontal: the SAME ±45° bound, aspect-INDEPENDENT 
   it('is the ±45° square bound on a square canvas — the retired 30° under-reported by 15°', () => {
     // aspect 1: horizontal bound == vertical bound == depth == 4000. 36.9°
     // off-axis was OFF the old 30° square glass; it is ON the authentic one.
-    expect(inView([3000, 0, -4000], 1), '36.9° off-axis on a square canvas: on the authentic glass').toBe(true)
-    expect(inView([3960, 0, -4000], 1), '44.7° off-axis on a square canvas: still on the glass').toBe(true)
-    expect(inView([4040, 0, -4000], 1), '45.3° off-axis on a square canvas: past the edge').toBe(false)
+    expect(inView([4000, 3000, 0], 1), '36.9° off-axis on a square canvas: on the authentic glass').toBe(true)
+    expect(inView([4000, 3960, 0], 1), '44.7° off-axis on a square canvas: still on the glass').toBe(true)
+    expect(inView([4000, 4040, 0], 1), '45.3° off-axis on a square canvas: past the edge').toBe(false)
   })
 
   it('does NOT flip with the canvas — the same TIE reads the same at every aspect', () => {
@@ -117,8 +117,8 @@ describe('sw10-1 — C_PV horizontal: the SAME ±45° bound, aspect-INDEPENDENT 
     // (atan(aspect·tan30°)). The authentic law is aspect-independent, so a seat
     // inside ±45° is in view on EVERY canvas and a seat outside is out on every
     // one. This kills any aspect-dependent horizontal law outright.
-    const inside: Vec3 = [3600, 0, -4000] // 42.0° off-axis, |lat| = 0.9·depth
-    const outside: Vec3 = [4800, 0, -4000] // 50.2° off-axis, |lat| = 1.2·depth
+    const inside: Vec3 = [4000, 3600, 0] // 42.0° off-axis, |lat| = 0.9·depth
+    const outside: Vec3 = [4000, 4800, 0] // 50.2° off-axis, |lat| = 1.2·depth
     for (const aspect of [0.5, 1, 16 / 9, 21 / 9]) {
       expect(inView(inside, aspect), `aspect ${aspect}: 42.0° flank is on the ±45° glass`).toBe(true)
       expect(inView(outside, aspect), `aspect ${aspect}: 50.2° flank is off the ±45° glass`).toBe(false)
@@ -130,17 +130,17 @@ describe('sw10-1 — C_PV horizontal: the SAME ±45° bound, aspect-INDEPENDENT 
     // passes independently, so the ROM-shaped pyramid keeps it in view — while a
     // radial/cone rewrite (57.6° from the axis) would clear it. Pins the SHAPE
     // half of the law.
-    expect(inView([3960, 3960, -4000], 1), 'the screen has corners — in view at both near-edges').toBe(true)
+    expect(inView([4000, 3960, 3960], 1), 'the screen has corners — in view at both near-edges').toBe(true)
   })
 
   it('GUARD: the ROM depth clamps survive the re-derivation', () => {
     // Near/far are the ROM's own literals (VIEW_NEAR 0x10 exclusive, VIEW_FAR
     // 0x7F00 inclusive) and are angle-independent: sw10-1 rewrites the pyramid's
     // slope, not its caps. Dead ahead so the caps are all that decide.
-    expect(inView([0, 0, -32512]), 'depth 0x7F00 itself is still in view').toBe(true)
-    expect(inView([0, 0, -32513]), 'one unit past the far clamp is out').toBe(false)
-    expect(inView([0, 0, -17]), 'depth 17 clears the near clamp').toBe(true)
-    expect(inView([0, 0, -16]), 'depth 0x10 is out (LBLE — equality excluded)').toBe(false)
+    expect(inView([32512, 0, 0]), 'depth 0x7F00 itself is still in view').toBe(true)
+    expect(inView([32513, 0, 0]), 'one unit past the far clamp is out').toBe(false)
+    expect(inView([17, 0, 0]), 'depth 17 clears the near clamp').toBe(true)
+    expect(inView([16, 0, 0]), 'depth 0x10 is out (LBLE — equality excluded)').toBe(false)
   })
 })
 
@@ -184,7 +184,7 @@ describe('sw10-1 — §6 fire gate: the ±45° pyramid decides who shoots (WSCPU
     // full view of the player, and every other gate passes (nose on the cockpit,
     // range 4883 > the $800 floor, 40 open windows). Under the cabinet lens it
     // must shoot. RED against the 30° mutant, which keeps it silent.
-    expect(countFires(oneTieState([0, 2801, -4000]), 160)).toBeGreaterThan(0)
+    expect(countFires(oneTieState([4000, 0, 2801]), 160)).toBeGreaterThan(0)
   })
 
   it('a TIE past ±45° — genuinely off the authentic glass — never fires', () => {
@@ -192,15 +192,15 @@ describe('sw10-1 — §6 fire gate: the ±45° pyramid decides who shoots (WSCPU
     // ±45° screen, so the player cannot see it and it must not fire (the sw7-24
     // "no shooting guns if player can't see us" contract, now measured against
     // the authentic glass).
-    expect(countFires(oneTieState([0, 4400, -4000]), 160)).toBe(0)
+    expect(countFires(oneTieState([4000, 0, 4400]), 160)).toBe(0)
   })
 
   it('the gate is aspect-independent: a flank TIE fires (or not) the same on every canvas', () => {
     // The old law un-starved ultrawide flanks — a TIE fired at 21:9 and only at
     // 21:9. The authentic lens is aspect-independent: an on-glass flank fires on
     // BOTH square and ultrawide; an off-glass flank stays silent on both.
-    const onGlass: Vec3 = [3600, 0, -4000] // 42.0° off-axis, |lat| = 0.9·depth
-    const offGlass: Vec3 = [4800, 0, -4000] // 50.2° off-axis, |lat| = 1.2·depth
+    const onGlass: Vec3 = [4000, 3600, 0] // 42.0° off-axis, |lat| = 0.9·depth
+    const offGlass: Vec3 = [4000, 4800, 0] // 50.2° off-axis, |lat| = 1.2·depth
     expect(countFires(oneTieState(onGlass), 160, { ...NO_INPUT, aspect: 21 / 9 }), 'on-glass flank fires at 21:9').toBeGreaterThan(0)
     expect(countFires(oneTieState(onGlass), 160), 'on-glass flank fires on a square canvas too').toBeGreaterThan(0)
     expect(countFires(oneTieState(offGlass), 160, { ...NO_INPUT, aspect: 21 / 9 }), 'off-glass flank stays silent at 21:9').toBe(0)
@@ -211,6 +211,6 @@ describe('sw10-1 — §6 fire gate: the ±45° pyramid decides who shoots (WSCPU
     // 24.2° up at depth 4000 — on the glass under BOTH the old and the authentic
     // law, so it is what makes the silences above a visibility contract rather
     // than a dead fire path.
-    expect(countFires(oneTieState([0, 1800, -4000]), 160)).toBeGreaterThan(0)
+    expect(countFires(oneTieState([4000, 0, 1800]), 160)).toBeGreaterThan(0)
   })
 })

@@ -289,6 +289,8 @@ describe('sw8-18 AC4 — item 7 and the twelfth item sw8-17 created', () => {
     // …and the EXECUTABLE assertion that actually enforces it must survive too, so a
     // rewrite cannot satisfy this row by keeping the prose and gutting the test.
     expect(camera()).toMatch(/deathStarViewX\(s\)/)
-    expect(camera()).toMatch(/toBeCloseTo\(deathStarPlacement\(s\)\.pos\[0\]/)
+    // sw10-1 native basis: the death star's eye-space x IS its native right = pos[1]
+    // (the world→eye remap P maps native [depth, right, up] → eye [right, up, −depth]).
+    expect(camera()).toMatch(/toBeCloseTo\(deathStarPlacement\(s\)\.pos\[1\]/)
   })
 })

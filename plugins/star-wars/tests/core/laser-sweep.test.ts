@@ -99,8 +99,9 @@ const SWEEP_SECONDS = 8 / TICK_HZ
  *  fly the ship while the window is being timed. See hitscan-laser.test.ts for the full note. */
 const EYE_HIGH = SKIM_ALTITUDE
 
-/** A tower far enough off-axis that a centred-ish crosshair is nowhere near it. */
-const TOWER: Vec3 = [6000, EYE_HIGH, -10000]
+/** A tower far enough off-axis that a centred-ish crosshair is nowhere near it.
+ *  Native basis `[depth, right, up]`: depth 10,000 ahead, 6,000 to the right, at the pilot's height. */
+const TOWER: Vec3 = [10000, 6000, EYE_HIGH]
 
 /** The crosshair on empty sky, hard over to the LEFT — the tower is 6,000 to the RIGHT. */
 const SKY_AIM_X = -0.9

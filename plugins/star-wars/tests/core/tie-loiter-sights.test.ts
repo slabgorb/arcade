@@ -162,10 +162,10 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
   function aimAt(pos: Vec3): { aimX: number; aimY: number } {
     const eye = COCKPIT
     const f = 1 / Math.tan(FOV_Y / 2)
-    const dz = pos[2] - eye[2]
-    if (dz >= 0) return { aimX: 0, aimY: 0 } // behind the eye: the yoke cannot point there
+    const depth = pos[0] - eye[0] // native: index 0 = depth
+    if (depth <= 0) return { aimX: 0, aimY: 0 } // behind the eye: the yoke cannot point there
     const clamp = (v: number) => Math.max(-1, Math.min(1, v))
-    return { aimX: clamp((f * (pos[0] - eye[0])) / -dz), aimY: clamp((f * (pos[1] - eye[1])) / -dz) }
+    return { aimX: clamp((f * (pos[1] - eye[1])) / depth), aimY: clamp((f * (pos[2] - eye[2])) / depth) }
   }
 
   it('reaches TCH1DZ_20 while the player keeps it in the sights, and never does when the yoke is parked', () => {
@@ -210,7 +210,7 @@ describe('uf1-12 — in play: a fighter held under the crosshair breaks into 20$
     // sw8-19's original point survives the re-seat even though the NUMBERS don't: a seat
     // inside the sights band and outside the glass. See `tie-sights-visibility.test.ts` for
     // the historical measurement this fixture motivated (the uf1-15 seat, now superseded).
-    const seat: Vec3 = [9000, 0, -10000]
+    const seat: Vec3 = [10000, 9000, 0] // native [depth, right, up]: lateral 9000 at depth 10000
 
     /** Fly the loiter script for `frames`, tracking the fighter with the yoke (or not),
      *  and report whether the VM ever entered 20$. */

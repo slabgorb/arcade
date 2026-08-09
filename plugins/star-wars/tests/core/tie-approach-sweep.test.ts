@@ -46,8 +46,8 @@ type Sample = { frame: number; x: number; depth: number; ratio: number }
 
 /** Fly ONE hero TIE (spawned at ROM lateral `slot`, its real choreography VM) through its
  *  approach with no player input; the spawner and fire clocks are parked so the hero is the only
- *  thing that moves. Returns per-frame world-x, depth (=-z), and the angular lateral position
- *  |x|/depth — the sweep-vs-zoom discriminator — for every frame the hero is alive. */
+ *  thing that moves. Returns per-frame world-x, depth (native +X ahead = pos[0]), and the angular
+ *  lateral position |x|/depth — the sweep-vs-zoom discriminator — for every frame the hero is alive. */
 function approach(slot: number, maxFrames = 120): Sample[] {
   const hero = spawnTieForTest({ wave: 0, slot, seed: SEED }) // wave 1 => spaceWave 0 (sim.ts)
   let s: GameState = { ...initialState(SEED), enemies: [hero], spawnTimer: 1e9, enemyFireCooldown: 1e9 }
@@ -55,8 +55,10 @@ function approach(slot: number, maxFrames = 120): Sample[] {
   for (let f = 0; f < maxFrames; f++) {
     const e = s.enemies[0]
     if (!e) break // rammed / passed the cockpit and despawned
-    const depth = -e.pos[2]
-    out.push({ frame: f, x: e.pos[0], depth, ratio: Math.abs(e.pos[0]) / Math.max(1, depth) })
+    // native basis [depth, right, up]: depth is pos[0] (already +X ahead, no sign flip), the
+    // lateral (world-x) is the RIGHT axis pos[1].
+    const depth = e.pos[0]
+    out.push({ frame: f, x: e.pos[1], depth, ratio: Math.abs(e.pos[1]) / Math.max(1, depth) })
     s = stepGame(s, NO_INPUT, TICK_DT)
   }
   return out

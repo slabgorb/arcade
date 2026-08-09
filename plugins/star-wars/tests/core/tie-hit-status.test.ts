@@ -87,7 +87,7 @@ import {
 } from '../../src/core/state'
 import type { Input } from '../../src/core/input'
 import { makeSpaceState, makeTie, rngSeed } from './helpers/space'
-import { perspective, transform, IDENTITY, type Vec3 } from '@shared/math3d'
+import { IDENTITY, type Vec3 } from '@shared/math3d'
 import { FOV_Y } from '../../src/core/gameRules'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -116,9 +116,10 @@ const TICK_DT = 1.05 / TICK_HZ
  *  wrong FOV then aims the beam at the wrong angle and the shot goes wide.
  *  Importing the real `FOV_Y` keeps this helper's inversion the one the game
  *  actually fires under, whatever that constant is tuned to next. */
+const F = 1 / Math.tan(FOV_Y / 2)
 const aimAt = (pos: Vec3): { aimX: number; aimY: number } => {
-  const ndc = transform(perspective(FOV_Y, 16 / 9, 1, 5000), pos)
-  return { aimX: ndc[0], aimY: ndc[1] }
+  // sw10-1 native: eye at the origin, depth = pos[0]; aim = right/depth, up/depth.
+  return { aimX: (F * pos[1]) / pos[0], aimY: (F * pos[2]) / pos[0] }
 }
 
 /** A lone-fighter wave with spawns and enemy fire suppressed, so the only thing
@@ -160,7 +161,7 @@ const darthStill = (pos: Vec3): Enemy => ({ pos, kind: 'darth', orient: IDENTITY
  * The STILL Darths elsewhere in this file stay at 1,200 deliberately: they do not move, so
  * they never leave the glass, and moving them would be a change with no reason behind it.
  */
-const DARTH_FLYING_STATION: Vec3 = [0, 0, -6000]
+const DARTH_FLYING_STATION: Vec3 = [6000, 0, 0]
 
 /**
  * Hold the trigger until Darth's hit is actually PROCESSED — the ROM scores
@@ -193,12 +194,12 @@ function fireUntilDarthHit(s0: GameState, maxFrames = 240): GameState {
 
 describe('uf1-3 AC-1 — computeStatus reports the damage signal into C_AH', () => {
   it('sets C_AH when the fighter took a processed hit this step', () => {
-    const e = makeTie({ pos: [0, 0, -9000], damaged: true })
+    const e = makeTie({ pos: [9000, 0, 0], damaged: true })
     expect(computeStatus(e, makeSpaceState(), rngSeed(1)) & Status.C_AH).toBe(Status.C_AH)
   })
 
   it('clears C_AH when the fighter was not hit (the negative case)', () => {
-    const e = makeTie({ pos: [0, 0, -9000] })
+    const e = makeTie({ pos: [9000, 0, 0] })
     expect(computeStatus(e, makeSpaceState(), rngSeed(1)) & Status.C_AH).toBe(0)
   })
 
@@ -208,8 +209,8 @@ describe('uf1-3 AC-1 — computeStatus reports the damage signal into C_AH', () 
     // through the entity, only the hit one does. This is the test that dies if
     // the implementation reaches for a file-scope variable.
     const state = makeSpaceState()
-    const hit = makeTie({ pos: [0, 0, -9000], damaged: true })
-    const untouched = makeTie({ pos: [0, 0, -9000] })
+    const hit = makeTie({ pos: [9000, 0, 0], damaged: true })
+    const untouched = makeTie({ pos: [9000, 0, 0] })
     expect(computeStatus(hit, state, rngSeed(7)) & Status.C_AH).toBe(Status.C_AH)
     expect(computeStatus(untouched, state, rngSeed(7)) & Status.C_AH).toBe(0)
   })
@@ -218,8 +219,8 @@ describe('uf1-3 AC-1 — computeStatus reports the damage signal into C_AH', () 
     // C_AH is bit 0 of a 14-bit word. A sloppy `status |= 1` on the wrong value,
     // or a flag that accidentally sets the whole low byte, shows up here.
     const state = makeSpaceState()
-    const plain = computeStatus(makeTie({ pos: [0, 0, -9000] }), state, rngSeed(3))
-    const hit = computeStatus(makeTie({ pos: [0, 0, -9000], damaged: true }), state, rngSeed(3))
+    const plain = computeStatus(makeTie({ pos: [9000, 0, 0] }), state, rngSeed(3))
+    const hit = computeStatus(makeTie({ pos: [9000, 0, 0], damaged: true }), state, rngSeed(3))
     expect(hit & ~Status.C_AH).toBe(plain & ~Status.C_AH)
     expect(hit).toBe(plain | Status.C_AH)
   })
@@ -340,7 +341,7 @@ describe('uf1-3 AC-3 — the C_AH arm of TCH1D3 is reachable', () => {
 
 describe('uf1-3 — end to end: shooting Darth drives his choreography', () => {
   it('a processed laser hit on Darth sets his damage signal', () => {
-    const s = fireUntilDarthHit(loneWave(darthStill([0, 0, -1200])))
+    const s = fireUntilDarthHit(loneWave(darthStill([1200, 0, 0])))
     expect(s.enemies).toHaveLength(1) // KEEP DARTH ALIVE — he survives to react
     expect(s.score).toBe(VADER_SCORE) // the hit was PROCESSED (SCRDARTH ran)
     expect(s.enemies[0].damaged).toBe(true)
@@ -366,7 +367,7 @@ describe('uf1-3 — end to end: shooting Darth drives his choreography', () => {
 
   it('an UNSHOT Darth never leaves the weave — the control that makes the test above mean something', () => {
     const gate = program.reduce<number>((a, instr, i) => (instr.op === 'until' && instr.mask === Status.C_AH ? i : a), -1)
-    const darth: Enemy = { ...darthStill([0, 0, -1200]), vm: initVm(gate) }
+    const darth: Enemy = { ...darthStill([1200, 0, 0]), vm: initVm(gate) }
     let s = loneWave(darth)
     for (let i = 0; i < 12; i++) s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, TICK_DT)
     expect(s.enemies[0].vm?.untilMask).toBe(Status.C_AH)
@@ -436,7 +437,7 @@ describe('uf1-3 — the signal survives the 60fps no-tick gap', () => {
     //   after step 3: frameAcc = 3/60 = 0.05     → TICK, flag read and CLEARED
     // The two surviving steps are what catch a rebuild that drops the field; the
     // clear on step 3 is what catches a latch.
-    let s = fireUntilDarthHit(loneWave(darthStill([0, 0, -1200])))
+    let s = fireUntilDarthHit(loneWave(darthStill([1200, 0, 0])))
     expect(s.enemies[0].damaged).toBe(true)
     s = { ...s, frameAcc: 0 } // pin the tick phase; the schedule above now holds exactly
 
@@ -455,14 +456,14 @@ describe('uf1-3 — the signal survives the 60fps no-tick gap', () => {
 
 describe('uf1-3 AC-4 — the signal clears on the following step', () => {
   it('is false again after the decision tick that consumed it', () => {
-    const hit = fireUntilDarthHit(loneWave(darthStill([0, 0, -1200])))
+    const hit = fireUntilDarthHit(loneWave(darthStill([1200, 0, 0])))
     expect(hit.enemies[0].damaged).toBe(true)
     const after = stepGame(hit, { aimX: 0, aimY: 0, fire: false }, TICK_DT)
     expect(after.enemies[0].damaged ?? false).toBe(false)
   })
 
   it('stays clear for the rest of the wave — it does not re-assert itself', () => {
-    let s = fireUntilDarthHit(loneWave(darthStill([0, 0, -1200])))
+    let s = fireUntilDarthHit(loneWave(darthStill([1200, 0, 0])))
     for (let i = 0; i < 20; i++) {
       s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, TICK_DT)
       expect(s.enemies[0].damaged ?? false).toBe(false)
@@ -475,7 +476,7 @@ describe('uf1-3 AC-4 — the signal clears on the following step', () => {
     // flag and a hand-built enemy that gets hit keeps `damaged: true` forever,
     // which is exactly the latched-flag AC-4 forbids. Darth without a VM is a
     // legal fixture (helpers/space.ts builds them), so this is reachable.
-    const darth: Enemy = darthStill([0, 0, -1200]) // no `vm`
+    const darth: Enemy = darthStill([1200, 0, 0]) // no `vm`
     let s = fireUntilDarthHit(loneWave(darth))
     expect(s.enemies[0].damaged).toBe(true)
     s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, TICK_DT)
@@ -487,7 +488,7 @@ describe('uf1-3 AC-4 — the signal clears on the following step', () => {
     // glowing (`LDA A$GLW(X) / IFNE / 5$: RTS ;LEAVE ALONE FOR A WHILE`). The
     // port already gates SCORING on glow; the new signal must sit behind the
     // same gate, or a held trigger would machine-gun Darth out of his script.
-    const darth: Enemy = { ...darthStill([0, 0, -1200]), glow: DARTH_GLOW_SECONDS }
+    const darth: Enemy = { ...darthStill([1200, 0, 0]), glow: DARTH_GLOW_SECONDS }
     const fire: Input = { ...aimAt(darth.pos), fire: true }
     let s: GameState = loneWave(darth)
     s = stepGame(s, fire, DT)
@@ -526,7 +527,7 @@ describe('uf1-3 AC-6 — tie-status.ts no longer confesses an unwired bit', () =
 
 describe('uf1-3 — plain TIEs are untouched by the new signal', () => {
   it('a killed TIE still dies, scores, and leaves no fighter behind', () => {
-    const tie: Enemy = { pos: [0, 0, -1200], kind: 'tie', orient: IDENTITY }
+    const tie: Enemy = { pos: [1200, 0, 0], kind: 'tie', orient: IDENTITY }
     let s = loneWave(tie)
     const fire: Input = { ...aimAt(tie.pos), fire: true }
     for (let i = 0; i < 180 && s.enemies.length > 0; i++) s = stepGame(s, fire, DT)
@@ -535,7 +536,7 @@ describe('uf1-3 — plain TIEs are untouched by the new signal', () => {
   })
 
   it('an untouched TIE never reports C_AH through a full wave of ticks', () => {
-    const tie: Enemy = { pos: [0, 0, -1200], kind: 'tie', orient: IDENTITY }
+    const tie: Enemy = { pos: [1200, 0, 0], kind: 'tie', orient: IDENTITY }
     let s = loneWave(tie)
     for (let i = 0; i < 20; i++) {
       s = stepGame(s, { aimX: 0, aimY: 0, fire: false }, TICK_DT)

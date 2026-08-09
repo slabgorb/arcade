@@ -89,8 +89,8 @@ function advance(s0: GameState, steps: number): GameState {
 // TIE_SPAWN_DISTANCE = 31,744 toward the cockpit). At depth 8,000 the FOV envelope is
 // depth·tan(30°) ≈ 4,600, which comfortably exceeds the ~3,078 eye_x the sw8-1 finding names as
 // the close-TIE FOV edge.
-const combatTie: Vec3 = [0, 0, -8000] // an approaching TIE dead ahead
-const incomingFireball: Vec3 = [1200, 0, -8000] // an incoming fireball, off to one side
+const combatTie: Vec3 = [8000, 0, 0] // native [depth, right, up]: a TIE dead ahead
+const incomingFireball: Vec3 = [8000, 1200, 0] // native: an incoming fireball, off to one side (right)
 
 /** The longest run that stays inside the time-boxed space phase (sw8-11: ~19 s on the PH.TIM
  *  clock, ≈390 game frames). 300 frames ≈ 14.6 s of continuous flight. */

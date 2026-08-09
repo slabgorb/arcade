@@ -204,10 +204,10 @@ describe('event emission — space phase gameplay moments (AC1)', () => {
     // hand-placed on top of it (nothing the player fires exists as an object any more)
     // — it is AIM AT IT AND PULL THE TRIGGER, resolved in the same frame. The event
     // under test is unchanged; only the way the kill is caused is.
-    const tie: Enemy = { pos: [0, 0, -300], kind: 'tie', orient: IDENTITY }
+    const tie: Enemy = { pos: [300, 0, 0], kind: 'tie', orient: IDENTITY } // native [depth,right,up]: 300 ahead
     const s0 = playing({ enemies: [tie] })
     const out = stepGame(s0, fireAt(s0, tie.pos), DT)
-    expect(out.events).toContainEqual({ type: 'enemy-death', enemyType: 'tie', pos: [0, 0, -300] })
+    expect(out.events).toContainEqual({ type: 'enemy-death', enemyType: 'tie', pos: [300, 0, 0] })
   })
 
   it("emits 'enemy-fire' carrying the bolt's spawn position when a TIE fires", () => {
@@ -218,7 +218,7 @@ describe('event emission — space phase gameplay moments (AC1)', () => {
     // the payload. A dead-in-sights stationary fixture (vel 0, no VM ⇒ no motion,
     // range > TIE_NEAR_BOUND so it is "not too close") holds its exact spot, so
     // whenever it fires the shot still launches from there.
-    const tie: Enemy = { pos: [100, 0, -3000], kind: 'tie', orient: IDENTITY }
+    const tie: Enemy = { pos: [3000, 100, 0], kind: 'tie', orient: IDENTITY } // native [depth,right,up]: 3000 ahead, 100 right
     let s = playing({ enemies: [tie] })
     let fire: GameEvent | undefined
     for (let i = 0; i < 600 && fire === undefined; i++) {
@@ -227,7 +227,7 @@ describe('event emission — space phase gameplay moments (AC1)', () => {
     }
     expect(fire).toBeDefined()
     // pos is a world-space Vec3 (for future panning); here it is the shooter's.
-    expect(fire).toMatchObject({ type: 'enemy-fire', pos: [100, 0, -3000] })
+    expect(fire).toMatchObject({ type: 'enemy-fire', pos: [3000, 100, 0] })
   })
 
   it("emits 'player-death' (cause 'enemy') and spends a shield when a FIREBALL reaches the cockpit", () => {
@@ -237,7 +237,7 @@ describe('event emission — space phase gameplay moments (AC1)', () => {
     // alien-body-vs-ship test), so the TIE is no longer a damage source and could not carry this
     // assertion. The fireball is the source that remains, it pushes the identical event from the
     // same block, and the event contract under test is therefore unchanged.
-    const fireball: Projectile = { pos: [0, 0, 0], vel: [0, 0, -1], ttl: PROJECTILE_TTL }
+    const fireball: Projectile = { pos: [0, 0, 0], vel: [1, 0, 0], ttl: PROJECTILE_TTL } // native basis
     const out = stepGame(playing({ enemyShots: [fireball], lives: 6 }), NO_INPUT, DT)
     expect(out.events).toContainEqual({ type: 'player-death', cause: 'enemy' })
     expect(out.lives).toBe(5)
@@ -267,7 +267,7 @@ describe('event emission — surface phase gameplay moments (AC1, Wave 2+)', () 
     // sw7-17 (hitscan): aimed at from the surface ship — which flies SKIM_ALTITUDE above
     // the floor the turret stands on (sw7-16), so this is a real ~38°-down shot the yoke
     // can make, not a bolt parked on the target.
-    const turret: Turret = { pos: [0, 0, -300] }
+    const turret: Turret = { pos: [300, 0, 0] } // native [depth,right,up]: 300 ahead
     const s0 = playing({ phase: 'surface', turrets: [turret] })
     const out = stepGame(s0, fireAt(s0, turret.pos), DT)
     expect(out.events).toContainEqual(
@@ -281,7 +281,7 @@ describe('event emission — surface phase gameplay moments (AC1, Wave 2+)', () 
     // sit there too, while the eye flew SKIM_ALTITUDE above it; the origin is the floor, and a
     // shot on the floor must miss the pilot. The event under test is unchanged — only the place
     // the pilot actually is has been corrected.
-    const shot: Projectile = { pos: [0, SKIM_ALTITUDE, 0], vel: [0, 0, 0], ttl: 1 }
+    const shot: Projectile = { pos: [0, 0, SKIM_ALTITUDE], vel: [0, 0, 0], ttl: 1 } // native [depth,right,up]: on the ship at skim altitude (up)
     const out = stepGame(playing({ phase: 'surface', enemyShots: [shot] }), NO_INPUT, DT)
     expect(out.events).toContainEqual({ type: 'player-death', cause: 'turret' })
   })

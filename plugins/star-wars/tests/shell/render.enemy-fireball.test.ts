@@ -122,7 +122,7 @@ const scene = (over: Partial<GameState>): GameState => ({
 // An enemy fireball PAST its muzzle-flash window (elapsed = ENEMY_SHOT_TTL - ttl
 // ≫ the flash), so the strokes recorded are the fireball BODY only — no muzzle
 // starburst inflating counts.
-const agedFireballAt = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, 1], ttl: ENEMY_SHOT_TTL / 2 })
+const agedFireballAt = (pos: Vec3): Projectile => ({ pos, vel: [-1, 0, 0], ttl: ENEMY_SHOT_TTL / 2 })
 
 const redSegs = (segs: ReadonlyArray<Seg>) => segs.filter((s) => isRed(s.color))
 const amberSegs = (segs: ReadonlyArray<Seg>) => segs.filter((s) => s.color === OLD_AMBER)
@@ -149,7 +149,7 @@ const redRadius = (segs: ReadonlyArray<Seg>, cx: number, cy: number): number =>
 describe('sw3-9 — the enemy fireball renders as the authentic red sparkle, not amber rings', () => {
   it('draws the body in RED (VGCRED), not the old amber', () => {
     const { ctx, segments } = makeCtx()
-    render(ctx, scene({ enemyShots: [agedFireballAt([0, 0, -1000])] }), W, H)
+    render(ctx, scene({ enemyShots: [agedFireballAt([1000, 0, 0])] }), W, H)
 
     // There is red fireball ink at the shot (HUD red at the top is excluded)…
     expect(redNearShot(segments, CENTER[0], CENTER[1]).length).toBeGreaterThan(0)
@@ -162,7 +162,7 @@ describe('sw3-9 — the enemy fireball renders as the authentic red sparkle, not
 
   it('is a SPARKLE: multiple red strokes anchored at the centre, radiating out (a ring has none)', () => {
     const { ctx, segments } = makeCtx()
-    render(ctx, scene({ enemyShots: [agedFireballAt([0, 0, -1000])] }), W, H)
+    render(ctx, scene({ enemyShots: [agedFireballAt([1000, 0, 0])] }), W, H)
 
     // The authentic base sparkle draws ~8 spikes from CXY 0,0; concentric rings
     // draw zero centre-anchored strokes. Four-plus reads unambiguously as a burst.
@@ -172,9 +172,9 @@ describe('sw3-9 — the enemy fireball renders as the authentic red sparkle, not
 
   it('is a real 3D body: a near fireball draws larger than a distant one (sw2-2 invariant)', () => {
     const near = makeCtx()
-    render(near.ctx, scene({ enemyShots: [agedFireballAt([0, 0, -500])] }), W, H)
+    render(near.ctx, scene({ enemyShots: [agedFireballAt([500, 0, 0])] }), W, H)
     const far = makeCtx()
-    render(far.ctx, scene({ enemyShots: [agedFireballAt([0, 0, -5000])] }), W, H)
+    render(far.ctx, scene({ enemyShots: [agedFireballAt([5000, 0, 0])] }), W, H)
 
     expect(redRadius(near.segments, CENTER[0], CENTER[1])).toBeGreaterThan(
       redRadius(far.segments, CENTER[0], CENTER[1]),

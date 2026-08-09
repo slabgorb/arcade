@@ -56,7 +56,7 @@ const TOWER_STEP = 200
  *  dead-on shot is purely lateral and the resting yoke never moves the ship (the
  *  surface-tower-quota fixture idiom). */
 const EYE_HIGH = SKIM_ALTITUDE
-const SITE: Vec3 = [0, EYE_HIGH, -100]
+const SITE: Vec3 = [100, 0, EYE_HIGH]
 
 const turretAt = (pos: Vec3): Turret => ({ pos })
 const bunkerAt = (pos: Vec3): Turret => ({ pos, kind: 'bunker' })

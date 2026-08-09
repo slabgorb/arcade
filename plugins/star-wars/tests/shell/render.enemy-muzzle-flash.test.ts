@@ -128,7 +128,7 @@ describe('Story 9-6 — a TIE fire renders a brief amber starburst at the muzzle
   it('radiates a multi-ray starburst from a freshly-fired fireball', () => {
     const { ctx, segments } = makeCtx()
     // A just-spawned fireball (full TTL) at screen centre.
-    render(ctx, scene({ enemyShots: [fireballAt([0, 0, -1000], ENEMY_SHOT_TTL)] }), W, H)
+    render(ctx, scene({ enemyShots: [fireballAt([1000, 0, 0], ENEMY_SHOT_TTL)] }), W, H)
 
     // A starburst is more than the plain '+' spark: several rays fan out from the
     // muzzle point. Three-plus radiating rays read unambiguously as a burst.
@@ -143,7 +143,7 @@ describe('Story 9-6 — a TIE fire renders a brief amber starburst at the muzzle
   it('is a transient flash: an aged fireball draws its red sparkle body but no amber starburst', () => {
     const { ctx, segments } = makeCtx()
     // Long past the muzzle window: most of the 6s lifetime already elapsed.
-    render(ctx, scene({ enemyShots: [fireballAt([0, 0, -1000], 1)] }), W, H)
+    render(ctx, scene({ enemyShots: [fireballAt([1000, 0, 0], 1)] }), W, H)
 
     // No amber muzzle rays once the flash window has passed…
     expect(muzzleRays(segments, CENTER[0], CENTER[1])).toHaveLength(0)
@@ -159,7 +159,7 @@ describe('Story 9-6 — a TIE fire renders a brief amber starburst at the muzzle
   it('tracks the muzzle: an off-centre fireball bursts off-centre, not at a fixed point', () => {
     const { ctx, segments } = makeCtx()
     // +x fireball → projects right of screen centre, so the burst must follow it.
-    render(ctx, scene({ enemyShots: [fireballAt([300, 0, -1000], ENEMY_SHOT_TTL)] }), W, H)
+    render(ctx, scene({ enemyShots: [fireballAt([1000, 300, 0], ENEMY_SHOT_TTL)] }), W, H)
 
     // No rays anchored at screen centre…
     expect(muzzleRays(segments, CENTER[0], CENTER[1])).toHaveLength(0)
@@ -174,7 +174,7 @@ describe('Story 9-6 — a TIE fire renders a brief amber starburst at the muzzle
     const { ctx, segments } = makeCtx()
     render(
       ctx,
-      { ...scene({ enemyShots: [fireballAt([0, 0, -1000], ENEMY_SHOT_TTL)] }), mode: 'gameover' },
+      { ...scene({ enemyShots: [fireballAt([1000, 0, 0], ENEMY_SHOT_TTL)] }), mode: 'gameover' },
       W,
       H,
     )

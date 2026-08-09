@@ -642,9 +642,9 @@ describe('sw8-27 R5 — the separation figures, re-derived from the production g
   /** Where a ray sits in the target's DEPTH PLANE — the plane `siteOffset` measures dx/dy
    *  in, and therefore the plane the octagon bound applies to. */
   const inPlane = (aimX: number, aspect: number): [number, number] => {
-    const d = aimDirection(aimX, 0, aspect)
-    const t = DEPTH / -d[2]
-    return [d[0] * t, d[1] * t]
+    const d = aimDirection(aimX, 0, aspect) // sw10-1 native: d = [depth(+X), right(+Y), up(+Z)]
+    const t = DEPTH / d[0] // scale the ray so its depth (index 0) reaches DEPTH
+    return [d[1] * t, d[2] * t] // the in-plane (right, up) offset
   }
   const apart = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1])
 

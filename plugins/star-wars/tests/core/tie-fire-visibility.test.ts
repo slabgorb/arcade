@@ -100,12 +100,12 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // Dead ahead at depth 4000: in view. FIRST assertion so the unfixed code (which
     // never sets the bit) fails here, not on a vacuously-clear negative case.
     expect(
-      computeStatus(aimedTie([0, 0, -4000]), s, rngSeed(1)) & Status.C_PV,
+      computeStatus(aimedTie([4000, 0, 0]), s, rngSeed(1)) & Status.C_PV,
       'a TIE dead ahead is on the player\'s screen — C$PV set (WSMAIN.MAC:3846)',
     ).toBe(Status.C_PV)
-    // Behind the eye (positive z): the player cannot see it.
+    // Behind the eye (native: negative depth): the player cannot see it.
     expect(
-      computeStatus(aimedTie([0, 0, 4000]), s, rngSeed(1)) & Status.C_PV,
+      computeStatus(aimedTie([-4000, 0, 0]), s, rngSeed(1)) & Status.C_PV,
       'a TIE behind the eye is off screen — C$PV clear',
     ).toBe(0)
     // The pyramid edge (lateral² < bound², the ROM's ratio SHAPE, WSMAIN.MAC:
@@ -113,12 +113,12 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // (sw10-1) is the cabinet's own ±45° — bound = depth (tan 45° = 1), aspect-
     // independent. At depth 4000: 3600 (0.9·depth) is comfortably inside, 4400
     // (1.1·depth) comfortably outside — neither sits on the 4000 boundary itself.
-    expect(computeStatus(aimedTie([3600, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
-    expect(computeStatus(aimedTie([4400, 0, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    expect(computeStatus(aimedTie([4000, 3600, 0]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
+    expect(computeStatus(aimedTie([4000, 4400, 0]), s, rngSeed(1)) & Status.C_PV).toBe(0)
     // Same law on the vertical axis (M.ZPS vs M.XPS, WSMAIN.MAC:3838-3840) — the
     // SAME bound at every aspect, because the authentic lens is symmetric: ±45°
-    // on both axes, not just the vertical.
-    expect(computeStatus(aimedTie([0, 4400, -4000]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    // on both axes, not just the vertical. Native: up is index 2.
+    expect(computeStatus(aimedTie([4000, 0, 4400]), s, rngSeed(1)) & Status.C_PV).toBe(0)
   })
 
   it('ports the ROM depth clamps: in view through 0x7F00, out past it and at ≤ 0x10', () => {
@@ -126,13 +126,13 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // Far clamp (CMPD #7F00 / LBHI): 0x7F00 = 32512 itself is still in view (BHI is
     // strictly-greater), one unit past is out. Deeper than the 0x7C00 spawn, so every
     // live approach starts visible.
-    expect(computeStatus(aimedTie([0, 0, -32512]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
-    expect(computeStatus(aimedTie([0, 0, -32513]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    expect(computeStatus(aimedTie([32512, 0, 0]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
+    expect(computeStatus(aimedTie([32513, 0, 0]), s, rngSeed(1)) & Status.C_PV).toBe(0)
     // Near clamp (CMPD #10 / LBLE): depth 0x10 = 16 is out (LE), 17 is in. Unreachable
     // through the §6 fire floor ($800) but it is the ROM's own law — pin it where it
-    // lives, in the status bit.
-    expect(computeStatus(aimedTie([0, 0, -17]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
-    expect(computeStatus(aimedTie([0, 0, -16]), s, rngSeed(1)) & Status.C_PV).toBe(0)
+    // lives, in the status bit. Native: depth is index 0.
+    expect(computeStatus(aimedTie([17, 0, 0]), s, rngSeed(1)) & Status.C_PV).toBe(Status.C_PV)
+    expect(computeStatus(aimedTie([16, 0, 0]), s, rngSeed(1)) & Status.C_PV).toBe(0)
   })
 
   it('measures the pyramid from the COCKPIT, and never drifts off it with the frame counter', () => {
@@ -151,8 +151,8 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     // (Fixture re-seated by sw10-1 for the authentic ±45° bound: 4620 sits just outside the
     // ORIGIN's pyramid at depth 4200 while still landing inside the moving eye's, which is
     // what keeps this a real discriminator rather than "outside from both eyes".)
-    const pos: Vec3 = [4620, 0, -4200]
-    expect(Math.abs(pos[0]), 'fixture guard: lateral sits OUTSIDE the pyramid').toBeGreaterThan(4200 * Math.tan(FOV_Y / 2))
+    const pos: Vec3 = [4200, 4620, 0] // native [depth, right, up]
+    expect(Math.abs(pos[1]), 'fixture guard: lateral sits OUTSIDE the pyramid').toBeGreaterThan(4200 * Math.tan(FOV_Y / 2))
     for (const frame of [0, 128]) {
       const s: GameState = { ...makeSpaceState(), frame }
       expect(
@@ -162,7 +162,7 @@ describe('sw7-24 T5b — C_PV: the view-pyramid status bit (WSMAIN.MAC:3824-3846
     }
     // ...and the mirror: a TIE inside the cockpit's pyramid is in view at both frames, so the
     // inversion above is a real constraint and not just "C_PV never sets".
-    const inside: Vec3 = [2400, 0, -4200]
+    const inside: Vec3 = [4200, 2400, 0] // native [depth, right, up]
     for (const frame of [0, 128]) {
       const s: GameState = { ...makeSpaceState(), frame }
       expect(
@@ -178,12 +178,12 @@ describe('sw7-24 T5b — §6 fire gate cond-1: no shooting guns if the player ca
     // Nose on the cockpit (C_AS set), past the $800 floor, no glow, no AIM_AHEAD,
     // 40 open windows at ~81% — every gate the clone tests today passes, so today it
     // FIRES from off screen. The ROM's first gate says it must not.
-    expect(countFires(oneTieState([0, 0, 4000]), 160)).toBe(0)
+    expect(countFires(oneTieState([-4000, 0, 0]), 160)).toBe(0)
   })
 
   it('a TIE far outside the view pyramid never fires either', () => {
     // Lateral 20000 at depth 5000 — miles off screen even at the eye's ±2048 extreme.
-    expect(countFires(oneTieState([20000, 0, -5000]), 160)).toBe(0)
+    expect(countFires(oneTieState([5000, 20000, 0]), 160)).toBe(0)
   })
 
   it('GUARD: the same TIE in view still fires — the gate filters, it does not silence', () => {
@@ -191,6 +191,6 @@ describe('sw7-24 T5b — §6 fire gate cond-1: no shooting guns if the player ca
     // the whole run (eye drift ≤ 2048 < 4000), so the §6 cadence must still produce
     // fire. Green today and green after the gate lands — this is what makes the two
     // never-fires above a VISIBILITY contract rather than a dead fire path.
-    expect(countFires(oneTieState([0, 0, -4000]), 160)).toBeGreaterThan(0)
+    expect(countFires(oneTieState([4000, 0, 0]), 160)).toBeGreaterThan(0)
   })
 })

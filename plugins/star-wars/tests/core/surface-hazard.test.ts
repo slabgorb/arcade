@@ -139,7 +139,7 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
   /** A lone armed bunker, cadence clock expired, ready to shoot this frame. */
   const armedBunker = (): GameState => ({
     ...surface(),
-    turrets: [ground([0, 0, -2000], 'bunker', TOWER_FIRE_GRACE + 1)],
+    turrets: [ground([2000, 0, 0], 'bunker', TOWER_FIRE_GRACE + 1)], // native [depth, right, up]: 2000 ahead
     surfaceMazeLaid: true,
     enemyFireCooldown: 0,
   })
@@ -159,10 +159,10 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
     const s1 = stepGame(armedBunker(), NO_INPUT, DT)
     const shot = s1.enemyShots[0]
     expect(shot).toBeDefined()
-    expect(shot.pos[1]).toBeLessThanOrEqual(BUNKER_BODY_TOP)
+    expect(shot.pos[2]).toBeLessThanOrEqual(BUNKER_BODY_TOP) // native: height (up) = index 2
     // Write the refutation into the test: the lazy port (tower-cap muzzle for
     // every kind) must stay dead.
-    expect(Math.abs(shot.pos[1] - TOWER_HEIGHT)).toBeGreaterThan(100)
+    expect(Math.abs(shot.pos[2] - TOWER_HEIGHT)).toBeGreaterThan(100)
     // House rule D-017: still the clone's homing fireball, aimed back at the
     // cockpit from that low muzzle.
     expect(dot(shot.vel, sub([0, 0, 0] as Vec3, shot.pos))).toBeGreaterThan(0)
@@ -173,7 +173,7 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
     // grace applies to them exactly as to towers.
     const s0: GameState = {
       ...surface(),
-      turrets: [ground([0, 0, -2000], 'bunker', 0)],
+      turrets: [ground([2000, 0, 0], 'bunker', 0)], // native: 2000 ahead
       surfaceMazeLaid: true,
       enemyFireCooldown: 0,
     }
@@ -185,14 +185,14 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
     // The sw2-3 contract must survive the armed-filter change untouched.
     const s0: GameState = {
       ...surface(),
-      turrets: [ground([0, 0, -2000], 'tower', TOWER_FIRE_GRACE + 1)],
+      turrets: [ground([2000, 0, 0], 'tower', TOWER_FIRE_GRACE + 1)], // native: 2000 ahead
       surfaceMazeLaid: true,
       enemyFireCooldown: 0,
     }
     const s1 = stepGame(s0, NO_INPUT, DT)
     const shot = s1.enemyShots[0]
     expect(shot).toBeDefined()
-    expect(shot.pos[1]).toBeCloseTo(TOWER_HEIGHT, 0)
+    expect(shot.pos[2]).toBeCloseTo(TOWER_HEIGHT, 0) // native: height (up) = index 2
   })
 
   it('a real ground-maze run eventually fires from a bunker body (RED: integration)', () => {
@@ -208,7 +208,7 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
     for (let i = 0; i < 2400 && !lowMuzzle && s.phase === 'surface'; i++) {
       s = stepGame(s, NO_INPUT, DT)
       for (const e of s.events) {
-        if (e.type === 'enemy-fire' && e.pos[1] <= BUNKER_BODY_TOP) lowMuzzle = true
+        if (e.type === 'enemy-fire' && e.pos[2] <= BUNKER_BODY_TOP) lowMuzzle = true // native: height (up) = index 2
       }
     }
     expect(lowMuzzle).toBe(true)
@@ -225,7 +225,7 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
    *  clear through the cockpit plane and past the cull. */
   const towerAhead = (extra: Partial<GameState> = {}): GameState => ({
     ...surface(),
-    turrets: [ground([0, 0, -300], 'tower')],
+    turrets: [ground([300, 0, 0], 'tower')], // native [depth, right, up]: 300 ahead
     surfaceMazeLaid: true,
     ...extra,
   })
@@ -258,7 +258,7 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
     // same nullish default as every other kind read, not throw or skip.
     const s0: GameState = {
       ...surface(),
-      turrets: [{ pos: [0, 0, -300] as Vec3 }],
+      turrets: [{ pos: [300, 0, 0] as Vec3 }], // native: 300 ahead
       surfaceMazeLaid: true,
     }
     const { s, types } = fly(s0, 40)
@@ -292,7 +292,7 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
     // frames, now centred), which is harmless and deliberately not worked around: the only object
     // on the stage is the one just killed, and `surfaceMazeLaid` stops a wave maze being laid
     // over it — so there is nothing left for the sweep to find, which is the guard's whole point.
-    const TOWER_SITE: Vec3 = [0, 0, -300]
+    const TOWER_SITE: Vec3 = [300, 0, 0] // native [depth, right, up]: 300 ahead
     const s0 = towerAhead()
     const first = stepGame(s0, fireAt(s0, TOWER_SITE), DT)
     // The kill EVENT, not an emptied list: a tower also leaves `turrets` by scrolling past the
@@ -311,7 +311,7 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
     // neighbouring lane would make whole mazes unsurvivable.
     const s0: GameState = {
       ...surface(),
-      turrets: [ground([2048, 0, -300], 'tower')],
+      turrets: [ground([300, 2048, 0], 'tower')], // native [depth, right, up]: 300 ahead, 2048 right (off-lane)
       surfaceMazeLaid: true,
     }
     const { s, types } = fly(s0, 40)
@@ -331,7 +331,7 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
 describe('sw7-5 / D-020 — a standing BUNKER is a LOW hazard: dive risks it, cruise clears it', () => {
   const bunkerAhead = (altitude: number): GameState => ({
     ...surface(),
-    turrets: [ground([0, 0, -300], 'bunker')],
+    turrets: [ground([300, 0, 0], 'bunker')], // native: 300 ahead
     surfaceMazeLaid: true,
     altitude,
   })

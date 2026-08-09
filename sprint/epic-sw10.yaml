@@ -22,3 +22,12 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: sw10-3
+    title: Migrate the trench phase to the ROM-native world basis — sim scroll/collision index+sign flips, channel/detail/obstacle/wedge generators to native output, and trench-furniture model bakes (sw10-1 AC#2 remaining phase)
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    depends_on: sw10-1
+    type: refactor

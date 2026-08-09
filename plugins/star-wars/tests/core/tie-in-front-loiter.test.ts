@@ -101,7 +101,7 @@ const SLOTS = [0, 1, 2, 3, 4, 5]
 const FLIGHT_FRAMES = 400
 
 const tieAt = (pos: Vec3): Enemy => ({ pos, kind: 'tie', orient: IDENTITY })
-const shotAt = (pos: Vec3): Projectile => ({ pos, vel: [0, 0, -1], ttl: PROJECTILE_TTL })
+const shotAt = (pos: Vec3): Projectile => ({ pos, vel: [1, 0, 0], ttl: PROJECTILE_TTL })
 
 /** A quiet space frame: the hero is the only thing that moves — spawner and enemy fire parked. */
 function quiet(over: Partial<GameState>, seed = SEED): GameState {
@@ -120,7 +120,7 @@ describe('sw8-9 AC-2 — the fire gate carries NO aim cone: the ROM tests only t
   // authentic and stochastic, so this steps a window and asserts the fighter fires AT ALL.
   const offAxis = (): GameState =>
     quiet({
-      enemies: [{ pos: [0, 0, -8000], kind: 'tie', orient: rotationY(Math.PI / 2) }],
+      enemies: [{ pos: [8000, 0, 0], kind: 'tie', orient: rotationY(Math.PI / 2) }],
       enemyFireCooldown: 0,
     })
 
@@ -130,7 +130,7 @@ describe('sw8-9 AC-2 — the fire gate carries NO aim cone: the ROM tests only t
     for (let f = 0; f < 400 && !fired; f++) {
       s = stepGame(s, NO_INPUT, TICK_DT)
       fired = s.events.some((e) => e.type === 'enemy-fire')
-      s = { ...s, enemies: [{ pos: [0, 0, -8000], kind: 'tie', orient: rotationY(Math.PI / 2) }] }
+      s = { ...s, enemies: [{ pos: [8000, 0, 0], kind: 'tie', orient: rotationY(Math.PI / 2) }] }
     }
     expect(fired, 'an off-axis TIE the pilot can plainly see never fired in 400 frames').toBe(true)
   })
@@ -140,14 +140,14 @@ describe('sw8-9 AC-2 — the fire gate carries NO aim cone: the ROM tests only t
     // fighter parked behind the eye is off-screen and must stay silent — this is the assertion
     // that keeps "no aim cone" from becoming "shoots from anywhere", including from behind you.
     let s = quiet({
-      enemies: [{ pos: [0, 0, 8000], kind: 'tie', orient: IDENTITY }],
+      enemies: [{ pos: [-8000, 0, 0], kind: 'tie', orient: IDENTITY }],
       enemyFireCooldown: 0,
     })
     let fired = false
     for (let f = 0; f < 400 && !fired; f++) {
       s = stepGame(s, NO_INPUT, TICK_DT)
       fired = s.events.some((e) => e.type === 'enemy-fire')
-      s = { ...s, enemies: [{ pos: [0, 0, 8000], kind: 'tie', orient: IDENTITY }] }
+      s = { ...s, enemies: [{ pos: [-8000, 0, 0], kind: 'tie', orient: IDENTITY }] }
     }
     expect(fired, 'a TIE BEHIND the pilot fired — C$PV is not gating').toBe(false)
   })
@@ -160,21 +160,22 @@ describe('sw8-9 AC-2 — the fire gate carries NO aim cone: the ROM tests only t
   // "no shots from behind" trivially.
   it('across full waves, EVERY enemy shot originates in front of the pilot — never from behind', () => {
     let totalShots = 0
-    const offenders: { seed: number; frame: number; shotZ: number; eyeZ: number }[] = []
+    const offenders: { seed: number; frame: number; shotX: number; eyeX: number }[] = []
 
     for (const seed of [1983, 7, 31337, 2024, 99]) {
       let s: GameState = initialState(seed)
       for (let f = 0; f < 1200; f++) {
         // The eye the C$PV test itself reads. sw8-8: the space eye IS the cockpit at the
-        // origin, so its z is 0 — read it from COCKPIT rather than hand-writing the literal,
-        // and keep sampling it per-frame so this stays honest if the seat ever moves again.
-        const eyeZ = COCKPIT[2]
+        // origin, so its depth is 0 — read it from COCKPIT[0] rather than hand-writing the
+        // literal, and keep sampling it per-frame so this stays honest if the seat ever moves.
+        const eyeX = COCKPIT[0]
         const next = stepGame(s, NO_INPUT, TICK_DT)
         for (const ev of next.events) {
           if (ev.type !== 'enemy-fire') continue
           totalShots++
-          // In front of the pilot is NEGATIVE z relative to the eye (spawnTie: -TIE_SPAWN_DISTANCE).
-          if (ev.pos[2] >= eyeZ) offenders.push({ seed, frame: f, shotZ: ev.pos[2], eyeZ })
+          // Native basis: in front of the pilot is POSITIVE depth pos[0] relative to the eye
+          // (spawnTie: +TIE_SPAWN_DISTANCE). An offender fired from at/behind the eye.
+          if (ev.pos[0] <= eyeX) offenders.push({ seed, frame: f, shotX: ev.pos[0], eyeX })
         }
         s = next
         if (s.phase !== 'space' || s.gameOver) break
@@ -187,14 +188,14 @@ describe('sw8-9 AC-2 — the fire gate carries NO aim cone: the ROM tests only t
 
   it('a fighter inside the $800 floor still never fires — the "TOO CLOSE" pin survives', () => {
     let s = quiet({
-      enemies: [{ pos: [0, 0, -0x400], kind: 'tie', orient: IDENTITY }],
+      enemies: [{ pos: [0x400, 0, 0], kind: 'tie', orient: IDENTITY }],
       enemyFireCooldown: 0,
     })
     let fired = false
     for (let f = 0; f < 400 && !fired; f++) {
       s = stepGame(s, NO_INPUT, TICK_DT)
       fired = s.events.some((e) => e.type === 'enemy-fire')
-      s = { ...s, enemies: [{ pos: [0, 0, -0x400], kind: 'tie', orient: IDENTITY }] }
+      s = { ...s, enemies: [{ pos: [0x400, 0, 0], kind: 'tie', orient: IDENTITY }] }
     }
     expect(fired, 'a TIE inside the $800 floor fired — the too-close pin is not gating').toBe(false)
   })
@@ -205,12 +206,12 @@ describe('sw8-9 — flight-path facts the ROM fixes in place (regression bounds,
     // Non-vacuity guard for this whole block: if a change parked TIEs at spawn or despawned them
     // on frame 1, the containment bound below would pass while nothing ever flew.
     let s = quiet({ enemies: [spawnTieForTest({ wave: 0, slot: 0, seed: SEED })] })
-    const spawnDepth = -s.enemies[0].pos[2]
+    const spawnDepth = s.enemies[0].pos[0] // native depth = pos[0], already +X ahead
     let closest = spawnDepth
     for (let f = 0; f < FLIGHT_FRAMES; f++) {
       const e = s.enemies[0]
       if (!e) break
-      closest = Math.min(closest, Math.abs(e.pos[2]))
+      closest = Math.min(closest, Math.abs(e.pos[0]))
       s = stepGame(s, NO_INPUT, TICK_DT)
     }
     expect(spawnDepth).toBeGreaterThan(30_000) // it really did start at the far edge
@@ -263,8 +264,8 @@ describe('sw8-9 AC-3 — no TIE-BODY collision: only fireballs damage the player
 
 describe('sw8-9 AC-4 — the surviving damage and kill paths are untouched (green guards)', () => {
   const AT_COCKPIT: Vec3 = [0, 0, 0]
-  /** Dead ahead, outside COCKPIT_HIT_RADIUS — a target, not a collision. */
-  const DOWNRANGE: Vec3 = [0, 0, -100]
+  /** Dead ahead (+X depth), outside COCKPIT_HIT_RADIUS — a target, not a collision. */
+  const DOWNRANGE: Vec3 = [100, 0, 0]
 
   it('a FIREBALL on the cockpit still costs a shield and is still removed', () => {
     const s0 = quiet({ enemyShots: [shotAt(AT_COCKPIT)], lives: 6 })

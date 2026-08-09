@@ -35,7 +35,8 @@ import { Status } from '../../src/core/tie-vm'
 import { NO_INPUT } from '../../src/core/input'
 import { makeTie, spawnTieForTest } from './helpers/space'
 import { createRng } from '@shared/rng'
-import { normalize, sub, scale, lookRotation, type Vec3 } from '@shared/math3d'
+import { normalize, sub, scale, type Vec3 } from '@shared/math3d'
+import { lookRotationNative } from '../../src/core/basis'
 
 // --- source helpers ---------------------------------------------------------
 //
@@ -102,7 +103,7 @@ describe('sw7-23 L1 — the dead peel-away cull is gone from the sim', () => {
     // never set the peel latch, so `!(peeling && range > EXIT)` kept it every frame;
     // deleting the filter must not change that. Distance hardcoded (14000 ≫ 8000) so the
     // guard survives even if TIE_EXIT_RANGE is retired alongside the filter.
-    const distant = makeTie({ pos: [0, 0, -14000] })
+    const distant = makeTie({ pos: [14000, 0, 0] }) // native depth 14000 ahead
     let s = { ...initialState(1983), enemies: [distant], spawnTimer: 1e9 }
     for (let i = 0; i < 5; i++) s = stepGame(s, NO_INPUT, 0.05)
     expect(s.enemies).toHaveLength(1)
@@ -176,10 +177,12 @@ describe('sw7-23 T4c — toCockpit is a single shared helper, not two copies', (
     // sign test (WSCPU.MAC:607-608) is what rules the second one out. Green before and
     // after — a regression net around the refactor.
     const st = initialState(1)
-    const pos: Vec3 = [0, 0, -5000]
+    const pos: Vec3 = [5000, 0, 0] // native depth 5000 ahead
     const towardCockpit = normalize(sub([0, 0, 0], pos)) // ROM/ref math, independent of the helper
-    const facing = makeTie({ pos, orient: lookRotation(towardCockpit) })
-    const facingAway = makeTie({ pos, orient: lookRotation(scale(towardCockpit, -1)) })
+    // sw10-1: the native nose is −col0 and `lookRotationNative` sets col0 = its arg, so the
+    // nose faces the cockpit when col0 = −towardCockpit (and away when col0 = towardCockpit).
+    const facing = makeTie({ pos, orient: lookRotationNative(scale(towardCockpit, -1)) })
+    const facingAway = makeTie({ pos, orient: lookRotationNative(towardCockpit) })
     expect(computeStatus(facing, st, createRng(1)) & Status.C_AS).toBeTruthy()
     expect(computeStatus(facingAway, st, createRng(1)) & Status.C_AS).toBeFalsy()
   })

@@ -222,7 +222,7 @@ describe('drawDebugOverlay(ctx, state, w, h)', () => {
 
   it('rings each on-screen model with a bounds circle and a name label', () => {
     const { ctx, arcs, texts } = makeCtx()
-    drawDebugOverlay(ctx, spaceScene([tieAt([0, 0, -1200])]), W, H)
+    drawDebugOverlay(ctx, spaceScene([tieAt([1200, 0, 0])]), W, H)
     // One TIE in view → at least one bounds circle (ctx.arc) and a label carrying
     // the model's name (reuses modelView.modelBounds + the Model3D.name).
     expect(arcs.length).toBeGreaterThanOrEqual(1)
@@ -231,14 +231,14 @@ describe('drawDebugOverlay(ctx, state, w, h)', () => {
 
   it('rings every on-screen model — more models, more bounds circles', () => {
     const one = makeCtx()
-    drawDebugOverlay(one.ctx, spaceScene([tieAt([0, 0, -1200])]), W, H)
+    drawDebugOverlay(one.ctx, spaceScene([tieAt([1200, 0, 0])]), W, H)
     const two = makeCtx()
-    drawDebugOverlay(two.ctx, spaceScene([tieAt([0, 0, -1200]), tieAt([300, 0, -1400])]), W, H)
+    drawDebugOverlay(two.ctx, spaceScene([tieAt([1200, 0, 0]), tieAt([1400, 300, 0])]), W, H)
     expect(two.arcs.length).toBeGreaterThan(one.arcs.length)
   })
 
   it('is a SEPARATE additive pass — it strokes strictly more than render() alone', () => {
-    const scene = spaceScene([tieAt([0, 0, -1200])])
+    const scene = spaceScene([tieAt([1200, 0, 0])])
     const base = makeCtx()
     render(base.ctx, scene, W, H)
     const withOverlay = makeCtx()
@@ -250,7 +250,7 @@ describe('drawDebugOverlay(ctx, state, w, h)', () => {
   })
 
   it('NEVER mutates the sim state (the overlay only reads — boundary + safety)', () => {
-    const scene = spaceScene([tieAt([0, 0, -1200])])
+    const scene = spaceScene([tieAt([1200, 0, 0])])
     const before = structuredClone(scene)
     const { ctx } = makeCtx()
     drawDebugOverlay(ctx, scene, W, H)
@@ -258,7 +258,7 @@ describe('drawDebugOverlay(ctx, state, w, h)', () => {
   })
 
   it('is deterministic — identical inputs produce identical overlay geometry', () => {
-    const scene = spaceScene([tieAt([0, 0, -1200])])
+    const scene = spaceScene([tieAt([1200, 0, 0])])
     const first = makeCtx()
     drawDebugOverlay(first.ctx, scene, W, H)
     const second = makeCtx()
@@ -275,7 +275,7 @@ describe('drawDebugOverlay(ctx, state, w, h)', () => {
     // exact bounds centre while still failing a garbage/fixed-position ring. The
     // exact pixel placement is eyeballed in dev.
     const { ctx, arcs } = makeCtx()
-    drawDebugOverlay(ctx, spaceScene([tieAt([0, 0, -1200])]), W, H)
+    drawDebugOverlay(ctx, spaceScene([tieAt([1200, 0, 0])]), W, H)
     expect(arcs.length).toBeGreaterThanOrEqual(1)
     const centred = arcs.some(
       (a) => Math.abs(a.x - W / 2) < W / 4 && Math.abs(a.y - H / 2) < H / 4,

@@ -52,7 +52,7 @@ describe('VM-driven TIE flight', () => {
   })
 
   it('AIM_PLAYER steers the nose toward the cockpit (homing), not a fixed rate', () => {
-    const before = noseErrorToCockpit(tieRunning('AIM_PLAYER', [3000, 0, -8000]))
+    const before = noseErrorToCockpit(tieRunning('AIM_PLAYER', [8000, 3000, 0]))
     const after = noseErrorToCockpit(stepManyFrames(before.state, 5))
     expect(after.err).toBeLessThan(before.err) // error shrinks toward zero
   })

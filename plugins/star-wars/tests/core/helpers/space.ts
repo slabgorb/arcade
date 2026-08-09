@@ -13,7 +13,8 @@
 // src/core it exercises is held to.
 
 import { createRng, type Rng } from '@shared/rng'
-import { lookRotation, normalize, scale, sub, dot, length, IDENTITY, type Vec3, type Mat4 } from '@shared/math3d'
+import { normalize, scale, sub, dot, length, IDENTITY, type Vec3, type Mat4 } from '@shared/math3d'
+import { lookRotationNative } from '../../../src/core/basis'
 import { initialState, TIE_SPAWN_DISTANCE, TICK_HZ, type GameState, type Enemy } from '../../../src/core/state'
 import { spawnTie, applyManeuver, stepGame } from '../../../src/core/sim'
 import { Twist, Move, type ChoreoVm } from '../../../src/core/tie-vm'
@@ -40,23 +41,25 @@ export function makeSpaceState(seed = 1983): GameState {
 /** A complete TIE fixture with sane defaults, overridden per test. */
 export function makeTie(overrides: Partial<Enemy> = {}): Enemy {
   return {
-    pos: [0, 0, -TIE_SPAWN_DISTANCE],
+    pos: [TIE_SPAWN_DISTANCE, 0, 0], // sw10-1 native [depth, right, up]: spawn depth ahead
     kind: 'tie',
     orient: IDENTITY,
     ...overrides,
   }
 }
 
-/** Orientation whose nose (model +Z, the codebase's forward convention) faces
- *  the cockpit from `pos` — the fighter has the player dead ahead. */
+/** Orientation whose nose faces the cockpit from `pos` — the fighter has the player
+ *  dead ahead. sw10-1: the native conjugate orient reads its nose as −col0 (tie-status),
+ *  and `lookRotationNative` sets col0 = its argument, so pass the AWAY direction to aim
+ *  −col0 (the nose) back at the cockpit. */
 export function lookAtOrigin(pos: Vec3): Mat4 {
-  return lookRotation(toCockpit(pos))
+  return lookRotationNative(scale(toCockpit(pos), -1))
 }
 
 /** Orientation whose nose faces directly AWAY from the cockpit — the fighter
  *  is aimed off, so the player is outside its fire-cone regardless of range. */
 export function lookAway(pos: Vec3): Mat4 {
-  return lookRotation(scale(toCockpit(pos), -1))
+  return lookRotationNative(toCockpit(pos))
 }
 
 /** A freshly seeded Rng — a one-word name for `createRng(seed)` at call sites
@@ -113,11 +116,12 @@ export function runScript(maneuver: string, frames: number, dt: number, start: P
 }
 
 /** The accumulated bank (roll about the nose), in radians, of a TIE that started
- *  from IDENTITY and only rolled: a pure Z-rotation, so the angle reads straight
- *  off the matrix as `atan2(m[4], m[0])`. Returned unsigned — the invariant is
- *  about MAGNITUDE (ROLL_L is negative, ROLL_R positive). */
+ *  from IDENTITY and only rolled. sw10-1: the native conjugate maps roll onto a
+ *  pure X-rotation (was Z), so the angle reads off the (Y,Z) block as
+ *  `atan2(m[9], m[5])`. Returned unsigned — the invariant is about MAGNITUDE
+ *  (ROLL_L is negative, ROLL_R positive). */
 export function accumulatedBank(e: Enemy): number {
-  return Math.abs(Math.atan2(e.orient[4], e.orient[0]))
+  return Math.abs(Math.atan2(e.orient[9], e.orient[5]))
 }
 
 /** A space state carrying exactly one TIE at `offset` whose VM holds `maneuver`
@@ -142,7 +146,7 @@ export function tieRunning(maneuver: string, offset: Vec3, seed = 1983): GameSta
  *  a `stepManyFrames` off `before.state`. */
 export function noseErrorToCockpit(state: GameState): { state: GameState; err: number } {
   const e = state.enemies[0]
-  const nose: Vec3 = [e.orient[2], e.orient[6], e.orient[10]]
+  const nose: Vec3 = [-e.orient[0], -e.orient[4], -e.orient[8]] // sw10-1 native nose = −col0
   const toCk = normalize(sub(COCKPIT, e.pos))
   const n = normalize(nose)
   const c = Math.max(-1, Math.min(1, dot(n, toCk) / (length(n) || 1)))

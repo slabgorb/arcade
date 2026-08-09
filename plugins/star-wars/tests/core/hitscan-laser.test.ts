@@ -192,7 +192,7 @@ describe('sw7-17 — the player laser resolves INSTANTLY (no travelling bolt)', 
     // A projectile needs 20000/12000 = 1.67 s to cover this. A hitscan beam needs no time at
     // all: it is drawn gun->site and resolved in the same frame it is fired. At DT the old
     // bolt has flown 200 units when this assertion runs — 1 % of the way.
-    const tower: Vec3 = [0, EYE_HIGH, -20000]
+    const tower: Vec3 = [20000, 0, EYE_HIGH] // native [depth, right, up]: 20,000 dead ahead, level with the eye
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     // Dead ahead AND level with the eye, so the yoke is at rest and dead-on at once.
@@ -216,7 +216,7 @@ describe('sw7-17 — the player laser resolves INSTANTLY (no travelling bolt)', 
     // lifetime in the laser module at all; on the ground path (CLGLZ) there is no forward clip
     // either — only the TRENCH clips, and that is section (f). Fire at the far edge of the
     // authored field ($7C00 = 31,744) and it must still land.
-    const tower: Vec3 = [0, EYE_HIGH, -31744]
+    const tower: Vec3 = [31744, 0, EYE_HIGH] // native: 31,744 dead ahead
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
     const s = stepGame(s0, trigger(), DT)
 
@@ -242,7 +242,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     // THE POINT OF THE STORY. The bolt crosses this tower's plane 331 units inside of it —
     // every frame, at every aim, for ever. Dead-on is not good enough for a travelling shot
     // when the world is closing; it is exactly good enough for a beam.
-    const tower: Vec3 = [6000, EYE_HIGH, -10000]
+    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right, level with the eye
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)
@@ -260,11 +260,11 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     // silently stop describing anything. Derive the miss from the constants themselves and fail
     // loudly here instead. sw7-18: the closing speed is now the accelerating surface pace; use
     // its SLOWEST value (the $100 seed) — the most conservative case — and the bolt still misses.
-    const eye: Vec3 = [0, EYE_HIGH, 0]
-    const tower: Vec3 = [6000, EYE_HIGH, -10000]
-    const d = -tower[2]
+    const eye: Vec3 = [0, 0, EYE_HIGH] // native: at the origin depth, level with the eye
+    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
+    const d = tower[0] // native depth
     const L = length(sub(tower, eye))
-    const miss = Math.abs(tower[0]) * ((L * SURFACE_SEED_SPEED) / (L * SURFACE_SEED_SPEED + PROJECTILE_SPEED * d))
+    const miss = Math.abs(tower[1]) * ((L * SURFACE_SEED_SPEED) / (L * SURFACE_SEED_SPEED + PROJECTILE_SPEED * d))
 
     expect(miss, 'the travelling bolt must genuinely miss, or (b) proves nothing').toBeGreaterThan(
       TURRET_HIT_RADIUS,
@@ -277,7 +277,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     // kills at t = 0.81 s given room to fly). It is red today only because it is measured on the
     // firing frame, i.e. for the instant-resolve reason every test in (a) is red. It is here so
     // that "dead-on hits" is asserted across the axis and not only at the offset that breaks.
-    const tower: Vec3 = [2000, EYE_HIGH, -10000]
+    const tower: Vec3 = [10000, 2000, EYE_HIGH] // native: depth 10,000, 2,000 to the right
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)
@@ -289,7 +289,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
   it('still misses what the crosshair is NOT on — the beam is not an auto-aim', () => {
     // The other half of WYSIWYG, and the thing a "nearest object anywhere ahead" resolver
     // would break. The tower is 6,000 off-axis; the yoke is centred, pointing at empty sky.
-    const tower: Vec3 = [6000, EYE_HIGH, -10000]
+    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const s = stepGame(s0, trigger(), DT)
@@ -311,8 +311,8 @@ describe('sw7-17 — the beam resolves against the NEAREST object under the site
     //
     // Its real work is forward. The list is written FAR FIRST, so a resolver that takes the
     // first match in list order — or the farthest — fails here, and both are easy to write.
-    const far: Vec3 = [0, EYE_HIGH, -8000]
-    const near: Vec3 = [0, EYE_HIGH, -3000]
+    const far: Vec3 = [8000, 0, EYE_HIGH] // native: 8,000 dead ahead
+    const near: Vec3 = [3000, 0, EYE_HIGH] // native: 3,000 dead ahead
     const s0 = surface({
       altitude: EYE_HIGH,
       turrets: [
@@ -328,8 +328,8 @@ describe('sw7-17 — the beam resolves against the NEAREST object under the site
 
     // Identify the survivor by depth rather than by index: the list is rebuilt each step.
     expect(s.turrets, 'the far tower must survive').toHaveLength(1)
-    expect(s.turrets[0].pos[2], 'the SURVIVOR is the far one — the near one took the beam').toBeLessThan(
-      -7000,
+    expect(s.turrets[0].pos[0], 'the SURVIVOR is the far one — the near one took the beam').toBeGreaterThan(
+      7000,
     )
   })
 })
@@ -355,7 +355,7 @@ describe('sw7-17 — the beam is cast from the ship point, not the world origin'
     // The fixture makes that distinction bite. Flying at the band ceiling (238) against a
     // tower 800 out on the floor, the aim ray from the EYE passes through the tower; the same
     // ray cast from the ORIGIN passes ~228 away — outside TURRET_HIT_RADIUS (200).
-    const tower: Vec3 = [0, 0, -800]
+    const tower: Vec3 = [800, 0, 0] // native: 800 dead ahead, on the floor (up 0)
     const s0 = surface({ altitude: MAX_SKIM_ALTITUDE, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)
@@ -379,7 +379,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
   // it does not.
 
   it('a tower fireball travels, frame over frame, at ENEMY_SHOT_SPEED', () => {
-    const tower: Vec3 = [0, 0, -2000]
+    const tower: Vec3 = [2000, 0, 0] // native: 2,000 dead ahead, on the floor
     const s0 = surface({
       altitude: SKIM_ALTITUDE,
       turrets: [{ pos: [...tower] as Vec3, age: 10 }], // long past TOWER_FIRE_GRACE
@@ -402,7 +402,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
   })
 
   it('the fireball still launches from the tower cap and flies AT the ship (sw7-16 stands)', () => {
-    const tower: Vec3 = [0, 0, -2000]
+    const tower: Vec3 = [2000, 0, 0] // native: 2,000 dead ahead, on the floor
     const s0 = surface({
       altitude: MAX_SKIM_ALTITUDE,
       turrets: [{ pos: [...tower] as Vec3, age: 10 }],
@@ -411,8 +411,8 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
     const s = stepGame(s0, trigger({ fire: false }), DT)
 
     expect(s.enemyShots).toHaveLength(1)
-    expect(s.enemyShots[0].pos[1], 'it leaves the white cap at TOWER_HEIGHT').toBeCloseTo(
-      tower[1] + TOWER_HEIGHT,
+    expect(s.enemyShots[0].pos[2], 'it leaves the white cap at TOWER_HEIGHT').toBeCloseTo(
+      tower[2] + TOWER_HEIGHT,
       6,
     )
 
@@ -430,7 +430,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
     expect(flown[0]).toBeCloseTo(toShip[0], 6)
     expect(flown[1]).toBeCloseTo(toShip[1], 6)
     expect(flown[2]).toBeCloseTo(toShip[2], 6)
-    expect(toShip[1], 'the cap stands ABOVE the pilot, so "at the ship" is downward').toBeLessThan(0)
+    expect(toShip[2], 'the cap stands ABOVE the pilot, so "at the ship" is downward (native up is index 2)').toBeLessThan(0)
   })
 
   it('a space TIE fireball still HOMES by the 7/8-per-tick decay (sw4-2 stands)', () => {
@@ -441,14 +441,14 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
       ...enterPhase(initialState(1983), 'space'),
       mode: 'playing',
       enemies: [],
-      enemyShots: [{ pos: [0, 0, -4000], vel: [0, 0, 0], ttl: 5 }],
+      enemyShots: [{ pos: [4000, 0, 0], vel: [0, 0, 0], ttl: 5 }], // native: 4,000 dead ahead
       fireCooldown: 0,
     }
     const s = stepGame(s0, trigger({ fire: false }), DT)
 
     expect(s.enemyShots, 'the incoming shot survives the frame').toHaveLength(1)
     const decay = Math.pow(7 / 8, DT * TICK_HZ)
-    expect(s.enemyShots[0].pos[2], 'it decays toward the cockpit, un-shot').toBeCloseTo(-4000 * decay, 6)
+    expect(s.enemyShots[0].pos[0], 'it decays toward the cockpit, un-shot (native depth is index 0)').toBeCloseTo(4000 * decay, 6)
   })
 })
 
@@ -483,10 +483,10 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
 
   it('destroys a square JUST INSIDE the clip, on the firing frame', () => {
     const s0 = trench({
-      trenchObstacles: [{ kind: 'square', pos: [0, 0, -(TRENCH_FAR - MARGIN)] }],
+      trenchObstacles: [{ kind: 'square', pos: [TRENCH_FAR - MARGIN, 0, 0] }], // native: depth just inside the clip
     })
     // The pilot's seat and the probe share a height, so dead-on is the yoke at rest.
-    const aim = aimAt([0, 0, -(TRENCH_FAR - MARGIN)], eyeOf(s0), 1)
+    const aim = aimAt([TRENCH_FAR - MARGIN, 0, 0], eyeOf(s0), 1)
     const s = stepGame(s0, trigger({ aimX: aim.aimX, aimY: aim.aimY }), DT)
 
     expect(obstacleDied(s), '28,272 is inside $7000 — the beam reaches it at once').toBe(true)
@@ -504,9 +504,9 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
     //
     // So this test is a pure FORWARD guard and claims nothing else: it goes red the moment the
     // beam lands without the clip, which is the one way this AC can be missed.
-    const startZ = -(TRENCH_FAR + MARGIN)
-    const s0 = trench({ trenchObstacles: [{ kind: 'square', pos: [0, 0, startZ] }] })
-    const aim = aimAt([0, 0, startZ], eyeOf(s0), 1)
+    const farDepth = TRENCH_FAR + MARGIN // native depth just OUTSIDE the clip
+    const s0 = trench({ trenchObstacles: [{ kind: 'square', pos: [farDepth, 0, 0] }] })
+    const aim = aimAt([farDepth, 0, 0], eyeOf(s0), 1)
 
     // One trigger frame, then coast with the trigger RELEASED for the WHOLE life of the probe
     // in the channel — comfortably past the LZ.EDG sweep, so "it never dies TO THE BEAM" is a
@@ -537,7 +537,7 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
 
 describe('sw7-17 — the hitscan gun is pure and deterministic', () => {
   it('the same shot from the same state resolves identically', () => {
-    const tower: Vec3 = [6000, EYE_HIGH, -10000]
+    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
     const build = (): GameState =>
       surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
     const aim = aimAt(tower, eyeOf(build()), 1)
@@ -552,7 +552,7 @@ describe('sw7-17 — the hitscan gun is pure and deterministic', () => {
   })
 
   it('does not mutate the state it was handed', () => {
-    const tower: Vec3 = [0, EYE_HIGH, -20000]
+    const tower: Vec3 = [20000, 0, EYE_HIGH] // native: 20,000 dead ahead
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
     const before = structuredClone(s0)
 
@@ -580,8 +580,7 @@ describe('sw7-17 — obstacles and the exhaust port compete for ONE beam, by dis
   // Both directions are pinned, because the naive fix for one is the bug in the other: rank the
   // port first and a NEAR obstacle stops stopping the beam.
 
-  const PORT_Z = -EXHAUST_PORT_DISTANCE
-  const port: Vec3 = [0, 0, PORT_Z]
+  const port: Vec3 = [EXHAUST_PORT_DISTANCE, 0, 0] // native: the port dead ahead at its spawn depth
 
   /** A trench with the port live at its spawn distance and whatever obstacles the test places. */
   const withPort = (obstacles: GameState['trenchObstacles']): GameState =>
