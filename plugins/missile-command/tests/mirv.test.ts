@@ -136,3 +136,26 @@ describe('mc5-1 AC2 — mirvSplit: <=3 children forking from the parent position
     expect(mirvSplit(at(150), [], createRng(3))).toEqual([])
   })
 })
+
+describe('mc5-3 task 6 — mirvEligible EXCLUDES cruise missiles (a MIRV never splits a cruise)', () => {
+  // Cruise missiles arrive in mc5-3 with an `Icbm.kind` discriminant. The ROM's
+  // MIRVER split path is ballistic-only, so an in-band CRUISE ICBM must NOT be
+  // MIRV-eligible. `mirvEligible` currently ignores `kind`, so a cruise in the band
+  // returns true today → RED until GREEN adds the `kind === 'cruise'` guard (plan task 6).
+  type CruiseIcbm = Icbm & { readonly kind?: 'ballistic' | 'cruise' }
+  const cruiseAt = (v: number): CruiseIcbm => ({ ...at(v), kind: 'cruise' })
+
+  it('a cruise ICBM in the MIRV band is NOT eligible — mid-band and on BOTH inclusive edges', async () => {
+    const { mirvEligible } = await loadMirv()
+    expect(mirvEligible(cruiseAt(144))).toBe(false) // interior of the band, but cruise ⇒ excluded
+    expect(mirvEligible(cruiseAt(128))).toBe(false) // low edge
+    expect(mirvEligible(cruiseAt(160))).toBe(false) // high edge
+  })
+
+  it('regression anchor: a BALLISTIC ICBM in the same band is STILL eligible', async () => {
+    const { mirvEligible } = await loadMirv()
+    // The guard must exclude ONLY cruise — a mutant that returns false for everything
+    // in the band (or checks the wrong kind) reddens here.
+    expect(mirvEligible(at(144))).toBe(true)
+  })
+})

@@ -38,6 +38,7 @@ import { NCITY, NMISBA, CITIES, BASES } from '../src/core/field.js'
 import { HMIN, HMAX, VMIN, VMAX } from '../src/core/cursor.js'
 import { EXDONE } from '../src/core/explosion.js'
 import { ICNORM_CAP } from '../src/core/spawn.js'
+import { CRUISE_SCORE_MULT } from '../src/core/score.js'
 import { loadClaims } from './helpers/claims.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -243,6 +244,13 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // (`CPX I,4`, W3MAIN.MAC:2475, "MAX AT 4") whose value 4 IS the immediate
     // operand — the EXPLCT shape. Pinned in the mc5-5 consistency block below.
     'ICNORM_CAP',
+    // mc5-3: the cruise-missile constants. CMKILL (MC-CRUISE-SCORE) is the ×5 kill
+    // routine's LDX I,4 → operand+1 = 5 (the SPUTKI/CITYBON inclusive-loop shape);
+    // CRMWAV is the per-wave budget `.BYTE` row (decimal counts); SLOPEH/SLOPEL are
+    // the 16-bit cruise-angle tangent `.BYTE` rows and ANGADD the quadrant-correction
+    // `.BYTE` row. All carry real numeric entries (not kind tags) and are pinned in
+    // the mc5-3 consistency block below.
+    'CMKILL', 'CRMWAV', 'SLOPEH', 'SLOPEL', 'ANGADD',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -425,6 +433,54 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // drifted spawn.ts ICNORM_CAP (e.g. 5) passes the whole citations suite and
     // only behavior tests catch it.
     expect(ICNORM_CAP, 'core export ICNORM_CAP must equal the claimed value').toBe(cap!.value)
+  })
+
+  // mc5-3: the cruise-missile constants — CMKILL (×5 kill, operand+1), CRMWAV (the
+  // per-wave budget `.BYTE` row), and the SLOPEH/SLOPEL/ANGADD cruise-angle `.BYTE`
+  // rows. The DERIVED exemption lets them carry real numerics; this block keeps that
+  // honest — each value must decode from its own cited line, so a fabricated cruise
+  // constant cannot ride into the un-cited-literal guard's claimedValues set.
+  it('mc5-3: the cruise claim values decode from their cited operand / .BYTE rows', () => {
+    const by = new Map(loadClaims().map((c) => [c.symbol, c]))
+    // Strip a trailing `;comment` (SLOPEH carries one) before splitting the `.BYTE` row.
+    const row = (verbatim: string): string =>
+      (verbatim.split('.BYTE')[1] ?? '')
+        .split(';')[0]
+        .split(',')
+        .map((t) => decodeRadix16(t.trim()))
+        .join(',')
+
+    const kill = by.get('CMKILL')
+    const budget = by.get('CRMWAV')
+    const slopeH = by.get('SLOPEH')
+    const slopeL = by.get('SLOPEL')
+    const angadd = by.get('ANGADD')
+    for (const [c, id] of [
+      [kill, 'MC-CRUISE-SCORE'],
+      [budget, 'MC-CRMWAV'],
+      [slopeH, 'MC-CMANGL-SLOPEH'],
+      [slopeL, 'MC-CMANGL-SLOPEL'],
+      [angadd, 'MC-CMANGL-ANGADD'],
+    ] as const) {
+      expect(c, `${id} must be committed`).toBeTruthy()
+    }
+
+    // CMKILL: `LDX I,4` counts X down through 0 (the shared multiple-score loop, GEKILL),
+    // so a cruise kill scores operand+1 = 5 units ("5X ICBM").
+    const m = kill!.source.verbatim.match(/\bI,([0-9A-F]+)\b/)
+    expect(m, `no immediate in "${kill!.source.verbatim}"`).not.toBeNull()
+    expect(decodeRadix16(m![1]) + 1, 'CRUISE-SCORE is LDX operand + 1').toBe(5)
+    expect(kill!.value, 'MC-CRUISE-SCORE value').toBe(5)
+    // Bind the SHIPPED export to the claim (the mc5-5 ICNORM_CAP pattern) so a drifted
+    // score.ts CRUISE_SCORE_MULT cannot pass the whole citations suite.
+    expect(CRUISE_SCORE_MULT, 'core export CRUISE_SCORE_MULT must equal the claimed value').toBe(kill!.value)
+
+    // CRMWAV / SLOPEH / SLOPEL / ANGADD: the claimed decimal row IS the `.BYTE` verbatim
+    // decoded byte-for-byte (SLOPEL/ANGADD mix hex + the decimal `12.`; SLOPEH carries a comment).
+    expect(row(budget!.source.verbatim), 'CRMWAV decimal row').toBe(budget!.value)
+    expect(row(slopeH!.source.verbatim), 'SLOPEH decimal row').toBe(slopeH!.value)
+    expect(row(slopeL!.source.verbatim), 'SLOPEL decimal row').toBe(slopeL!.value)
+    expect(row(angadd!.source.verbatim), 'ANGADD decimal row').toBe(angadd!.value)
   })
 
   // mc4-5: BONINL is a `.WORD` interval table read AS BCD (CHEKBO's SED divide) and

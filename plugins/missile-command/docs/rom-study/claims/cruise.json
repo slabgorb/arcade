@@ -1,0 +1,57 @@
+[
+  {
+    "id": "MC-CRMWAV",
+    "symbol": "CRMWAV",
+    "value": "0,0,0,0,0,1,1,2,3,4,4,5,5,6,6,7,7,7,7",
+    "meaning": "Per-wave cruise-missile budget (CRMTOL source), 1-based, clamped to the last row past the table. Zero for waves 1..5, first nonzero (1) at wave 6. Bytes are already decimal counts under .RADIX 16 (all <= 9). spawn.ts cruiseBudget(wave) indexes this table.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5723,
+      "verbatim": "CRMWAV:\t.BYTE 0,0,0,0,0,1,1,2,3,4,4,5,5,6,6,7,7,7,7"
+    }
+  },
+  {
+    "id": "MC-CRUISE-SCORE",
+    "symbol": "CMKILL",
+    "value": 5,
+    "meaning": "A downed cruise missile scores 5x the ICBM value. CMKILL loads X=4 and jumps into the shared multiple-score routine (GEKILL), which awards X+1 = 5 units — the line's own comment reads '5X ICBM'. Derived as the LDX I,4 immediate + 1, mirroring MC-SPUT-SCORE's LDX I,3 -> 4 and MC-MIRV-MAX's inclusive-loop derivation. Ported as score.ts CRUISE_SCORE_MULT.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 2113,
+      "verbatim": "\tLDX I,4\t\t\t;5X ICBM"
+    }
+  },
+  {
+    "id": "MC-CMANGL-SLOPEH",
+    "symbol": "SLOPEH",
+    "value": "0,0,0,1,5",
+    "meaning": "High bytes of the 16-bit tangent table for the cruise base angles 0,11,33,56,78 degrees (the ANGLE routine's slope search). Paired with SLOPEL (low bytes): tan16[i] = SLOPEH[i]<<8 | SLOPEL[i], read in 8.8 fixed point (/256). icbm.ts CM_SLOPE embeds the decoded fractions (0, 0.195, 0.668, 1.496, 5.023).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 6515,
+      "verbatim": "SLOPEH:\t.BYTE 0,0,0,1,5\t\t;TAN FOR ANGLES 0,11,33,56,78"
+    }
+  },
+  {
+    "id": "MC-CMANGL-SLOPEL",
+    "symbol": "SLOPEL",
+    "value": "0,50,171,127,6",
+    "meaning": "Low bytes of the 16-bit cruise-angle tangent table (hex 0,32,0AB,7F,6 = 0,50,171,127,6 decimal). Paired with SLOPEH: tan16[i] = SLOPEH[i]<<8 | SLOPEL[i] in 8.8 fixed point. idx3 = (1<<8|127)=383, idx4 = (5<<8|6)=1286; /256 gives the icbm.ts CM_SLOPE fractions.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 6519,
+      "verbatim": "SLOPEL:\t.BYTE 0,32,0AB,7F,6"
+    }
+  },
+  {
+    "id": "MC-CMANGL-ANGADD",
+    "symbol": "ANGADD",
+    "value": "12,8,0,4",
+    "meaning": "Quadrant correction added to the base slope index to form CMANGL in the ANGLE routine (CMANGL = ANGADD[quadrant] + slopeIndex). 12. is decimal (trailing dot), 8,0,4 are hex = 8,0,4 decimal. icbm.ts CM_ANGADD embeds this to recover the cruise-drift sign per angle.",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 6513,
+      "verbatim": "ANGADD:\t.BYTE 12.,8,0,4"
+    }
+  }
+]
