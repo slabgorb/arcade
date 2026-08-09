@@ -96,7 +96,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 8,
     listed: true,
     showcase: false,
-    version: '0.0.3',
+    version: '0.0.4',
   },
   {
     id: 'pac-man',
