@@ -13,6 +13,8 @@
 // The shell steps this once per frame, feeds it input, and paints the result.
 //
 // Frame order (the ROM's per-tick sequence; each step is one already-cited module):
+//   (0) planes fly/activate + fire   (sputnik.ts — BEFORE the spawner, so the
+//       planeActive slot reservation and budget priority hold; mc5-2 rework)
 //   (1) spawn against LIVE targets   (spawn.ts)
 //   (2) fly ICBMs                     (icbm.ts)
 //   (3) fly ABMs                      (abm.ts)
@@ -41,6 +43,7 @@ import {
   readyToFire,
   reload,
   sputnikActivationSep,
+  sputnikFireCadence,
   sputnikFireCount,
   sputnikLaunch,
   SPUTNIK_WAVE,
@@ -183,18 +186,66 @@ export function stepGame(state: GameState): GameState {
     }
   }
 
-  // (1) spawn — only ever against structures that are still alive. Each launch
-  // descends at THIS wave's schedule velocity (mc4-1), so the swarm ramps by wave.
+  // Live targets first — both the plane's salvo and the normal spawner aim only
+  // at structures that are still alive.
   const liveTargets = [
     ...state.cities.filter((c) => c.alive).map((c) => c.pos),
     ...state.bases.filter((b) => b.alive).map((b) => b.pos),
   ]
+
+  // SPUTNIK (mc5-2 rework): from SPUTWV a plane crosses the field on the WSPLAU
+  // activation cadence, fires ICBMs downward on the WSPFIR cadence (folded into
+  // the ICBM stream), and is worth SPUTNIK_SCORE_MULT× when a blast catches it.
+  // A distinct entity with its own array — cruise/MIRV are the ICBM family, this
+  // is not. Planes step + activate BEFORE the normal spawner so `planeActive` is
+  // accurate THIS frame, and a ready plane fires from the wave budget FIRST — the
+  // ROM's SPUTFIR/POTENT priority (JMP SPUTFIR, W3MAIN.MAC:2543) — so the plane
+  // reliably takes the NICBMS 8th slot the planeActive swarm cap reserves.
+  // Functional only (pixel-authentic motion is mc9): speed 1 makes the crossing
+  // (HMAX = 247 ticks) outlast the deepest WSPFIR reload (128), so the plane
+  // BECOMES fire-ready in flight — and at speed 1 the per-tick `fireTimer − 1`
+  // decrement equals distance travelled, the ROM's SPUTDS "DISTANCE SPUTNIK
+  // MUST GO BETWEEN FIRES" (W3MAIN.MAC:285).
+  const SPUTNIK_SPEED = 1 // cabinet units/tick — functional cross speed (mc9 pins the ROM velocity)
+  let planes = state.sputniks.map((p) => stepSputnik(p, SPUTNIK_SPEED)).filter((p) => !offscreen(p))
+  if (
+    state.wave >= SPUTNIK_WAVE &&
+    planes.length === 0 &&
+    state.frame > 0 &&
+    state.frame % sputnikActivationSep(state.wave) === 0
+  ) {
+    // The activation GATE above is WSPLAU; the fire timer seeds from the FIRE
+    // cadence — WSPFIR = SPUTDS, "DISTANCE BETWEEN SPUTNIK FIRES"
+    // (W3MAIN.MAC:285 decl, :4133 use) — the mc5-2 firing-rework root cause (a
+    // WSPLAU seed outlasted the crossing, so the shipped plane never became
+    // ready in play).
+    planes = [spawnSputnik(state.rng, sputnikFireCadence(state.wave))]
+  }
+  // A ready plane launches its clamped salvo (cruiseOnScreen is 0 until mc5-3)
+  // against the PRE-spawn on-screen count, drawing the budget down before the
+  // normal swarm sees it, and reloads.
+  let sputBudget = state.remaining
+  const sputnikShots: Icbm[] = []
+  planes = planes.map((p) => {
+    if (!readyToFire(p)) return p
+    const count = sputnikFireCount(0, state.icbms.length + sputnikShots.length, sputBudget)
+    const shots = sputnikLaunch(p, liveTargets, count, waveSchedule(state.wave).velocity, state.rng)
+    sputnikShots.push(...shots)
+    sputBudget -= shots.length
+    return reload(p, state.wave)
+  })
+
+  // (1) spawn — from the plane-reduced budget, with one launch slot reserved
+  // while a plane is aloft (spawn.ts' planeActive term caps the swarm at MXICON,
+  // keeping the 8th NICBMS slot for the plane's own shot). Each launch descends
+  // at THIS wave's schedule velocity (mc4-1), so the swarm ramps by wave.
   const spawned: SpawnResult = spawnIcbms(
     state.icbms,
     liveTargets,
-    state.remaining,
+    sputBudget,
     state.rng,
     waveSchedule(state.wave).velocity,
+    { planeActive: planes.length > 0 },
   )
 
   // (2)(3) fly the enemy warheads and the player missiles one tick each.
@@ -221,33 +272,7 @@ export function stepGame(state: GameState): GameState {
       ? flownIcbms
       : [...flownIcbms, ...mirvSplit(flownIcbms[mirvAt], liveTargets, state.rng).slice(0, openSlots)]
 
-  // SPUTNIK (mc5-2): from SPUTWV a plane crosses the field on the WSPLAU activation
-  // cadence, fires ICBMs downward on the WSPFIR cadence (folded into the ICBM stream),
-  // and is worth SPUTNIK_SCORE_MULT× when a blast catches it. A distinct entity with
-  // its own array — cruise/MIRV are the ICBM family, this is not. Functional only
-  // (pixel-authentic motion is mc9): the cross speed is a small fixed step, and
-  // activation is gated on the global frame counter against the WSPLAU separation.
-  const SPUTNIK_SPEED = 2 // cabinet units/tick — functional cross speed (mc9 pins the ROM velocity)
-  let planes = state.sputniks.map((p) => stepSputnik(p, SPUTNIK_SPEED)).filter((p) => !offscreen(p))
-  if (
-    state.wave >= SPUTNIK_WAVE &&
-    planes.length === 0 &&
-    state.frame > 0 &&
-    state.frame % sputnikActivationSep(state.wave) === 0
-  ) {
-    planes = [spawnSputnik(state.rng, sputnikActivationSep(state.wave))]
-  }
-  // A ready plane launches its clamped salvo (cruiseOnScreen is 0 until mc5-3) and reloads.
-  let sputBudget = spawned.remaining
-  const sputnikShots: Icbm[] = []
-  planes = planes.map((p) => {
-    if (!readyToFire(p)) return p
-    const count = sputnikFireCount(0, withMirvs.length + sputnikShots.length, sputBudget)
-    const shots = sputnikLaunch(p, liveTargets, count, waveSchedule(state.wave).velocity, state.rng)
-    sputnikShots.push(...shots)
-    sputBudget -= shots.length
-    return reload(p, state.wave)
-  })
+  // Fold the plane's salvo (fired above, before the spawn) into the ICBM stream.
   const withSputnikFire = [...withMirvs, ...sputnikShots]
 
   // (4) each ABM that arrived this frame detonates a fresh blast at its target.
@@ -295,7 +320,7 @@ export function stepGame(state: GameState): GameState {
   // a city destroyed by the wave's last ICBM is visibly dead before it regenerates. A
   // wave-end with every city dead is game-over (phase === 'over') and never enters the
   // beat — nextWavePhase returns 'over', the game ends, the wave is frozen.
-  if (phase !== 'over' && isWaveOver(sputBudget, impact.icbms)) {
+  if (phase !== 'over' && isWaveOver(spawned.remaining, impact.icbms)) {
     return {
       ...state,
       frame: state.frame + 1,
@@ -307,7 +332,7 @@ export function stepGame(state: GameState): GameState {
       bases: impact.bases,
       score,
       phase: nextWavePhase(impact.cities), // 'between' — a survivor keeps play going
-      remaining: sputBudget, // 0; the next wave's budget is seeded on resolve
+      remaining: spawned.remaining, // 0; the next wave's budget is seeded on resolve
       wave: state.wave, // not advanced yet
       multiplier: state.multiplier,
       citiesLost, // a city lost on the final frame still lowers the reserve
@@ -326,7 +351,7 @@ export function stepGame(state: GameState): GameState {
     bases: impact.bases,
     score,
     phase,
-    remaining: sputBudget,
+    remaining: spawned.remaining,
     wave: state.wave,
     multiplier: state.multiplier,
     citiesLost,

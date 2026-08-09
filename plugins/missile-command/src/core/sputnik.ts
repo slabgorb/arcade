@@ -23,13 +23,19 @@
 //   Activation-sep WSPLAU .BYTE 0F0,0A0,080,80,60,40,20 → 240,160,128,128,96,64,32
 //                                             (W3MAIN.MAC:5729)        claim MC-WSPLAU
 //     Both indexed table-SPUTWV, clamped to the last row for waves ≥ 8.
-//   Launch count = min(MXICON − 2·CRMONS − ICBONS − 1, 4, budget), ≥ 0
+//   Launch count = min(NICBMS − 2·CRMONS − ICBONS, 4, budget), ≥ 0
 //                                             (W3MAIN.MAC:2457-2479)   FIREMAX claim MC-SPUT-FIREMAX
-//     MXICON = 7 (W3COMN.MAC:193) is imported from spawn.ts (claim MC-MXICON, config.json).
+//     NICBMS = 8 (W3COMN.MAC:35) is imported from spawn.ts (claim MC-NICBMS, config.json).
+//     REWORK (mc5-2): mc5-6 established the true on-screen ceiling is NICBMS(8) —
+//     the ROM's LDA I,MXICON (7) is the count−1 operand whose INX lifts it back to
+//     8. MXICON caps the NORMAL swarm (spawn.ts' planeActive term) precisely to
+//     RESERVE the 8th slot, and the plane fires INTO it via the SPUTFIR/POTENT
+//     priority (SPUTFIR W3MAIN.MAC:2703, JMP SPUTFIR W3MAIN.MAC:2543) — so there
+//     is no −1 self-term here. The SPUTNIK_FIRE_MAX cap (4) is unchanged.
 
 import { launchIcbm, type Icbm, type Vec } from './icbm.js'
 import { HMAX } from './cursor.js'
-import { MXICON } from './spawn.js'
+import { NICBMS } from './spawn.js'
 import { type Rng, nextInt } from '@shared/rng'
 
 /** First wave a Sputnik can appear — SPUTWV (W3COMN.MAC:203). Every wave ≥ this. */
@@ -87,24 +93,27 @@ export function sputnikActivationSep(wave: number): number {
 
 /**
  * How many ICBMs a ready plane launches this frame — the ROM's clamped count
- * `min(MXICON − 2·cruiseOnScreen − icbmsOnScreen − 1, SPUTNIK_FIRE_MAX, budget)`,
- * floored at 0 so a saturated field never yields a negative launch. Pure.
+ * `min(NICBMS − 2·cruiseOnScreen − icbmsOnScreen, SPUTNIK_FIRE_MAX, budget)`,
+ * floored at 0 so a saturated field never yields a negative launch. No `−1`
+ * self-term: the normal swarm's planeActive cap (spawn.ts) reserves the 8th
+ * NICBMS slot, and the plane fires INTO it (see the header REWORK note). Pure.
  */
 export function sputnikFireCount(cruiseOnScreen: number, icbmsOnScreen: number, budgetRemaining: number): number {
-  const headroom = MXICON - 2 * cruiseOnScreen - icbmsOnScreen - 1
+  const headroom = NICBMS - 2 * cruiseOnScreen - icbmsOnScreen
   return Math.max(0, Math.min(headroom, SPUTNIK_FIRE_MAX, budgetRemaining))
 }
 
 /** Launch a plane at a random edge, heading inward, in an RNG-picked variant, its
- *  fire timer seeded to the activation separation. Vertical band starts at
- *  SPUTNIK_V_MIN. Pure but for the seeded `rng` (advanced in place — the sanctioned
- *  exception). */
-export function spawnSputnik(rng: Rng, activationSep: number): Sputnik {
+ *  fire timer seeded to the FIRE cadence (WSPFIR = SPUTDS, "DISTANCE BETWEEN
+ *  SPUTNIK FIRES" — the mc5-2 rework; the WSPLAU activation separation gates ACTIVATION
+ *  in game.ts, not this seed). Vertical band starts at SPUTNIK_V_MIN. Pure but
+ *  for the seeded `rng` (advanced in place — the sanctioned exception). */
+export function spawnSputnik(rng: Rng, fireCadence: number): Sputnik {
   const fromLeft = nextInt(rng, 2) === 0
   const dir: 1 | -1 = fromLeft ? 1 : -1
   const variant: SputnikVariant = nextInt(rng, 2) === 0 ? 'bomber' : 'satellite'
   const pos: Vec = { h: fromLeft ? 0 : HMAX, v: SPUTNIK_V_MIN }
-  return { pos, dir, variant, fireTimer: activationSep }
+  return { pos, dir, variant, fireTimer: fireCadence }
 }
 
 /** Advance a plane one tick: slide horizontally by `dir · speed`, altitude held,
