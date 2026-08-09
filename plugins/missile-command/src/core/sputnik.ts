@@ -23,19 +23,23 @@
 //   Activation-sep WSPLAU .BYTE 0F0,0A0,080,80,60,40,20 → 240,160,128,128,96,64,32
 //                                             (W3MAIN.MAC:5729)        claim MC-WSPLAU
 //     Both indexed table-SPUTWV, clamped to the last row for waves ≥ 8.
-//   Launch count = min(NICBMS − 2·CRMONS − ICBONS, 4, budget), ≥ 0
-//                                             (W3MAIN.MAC:2457-2479)   FIREMAX claim MC-SPUT-FIREMAX
-//     NICBMS = 8 (W3COMN.MAC:35) is imported from spawn.ts (claim MC-NICBMS, config.json).
-//     REWORK (mc5-2): mc5-6 established the true on-screen ceiling is NICBMS(8) —
-//     the ROM's LDA I,MXICON (7) is the count−1 operand whose INX lifts it back to
-//     8. MXICON caps the NORMAL swarm (spawn.ts' planeActive term) precisely to
-//     RESERVE the 8th slot, and the plane fires INTO it via the SPUTFIR/POTENT
-//     priority (SPUTFIR W3MAIN.MAC:2703, JMP SPUTFIR W3MAIN.MAC:2543) — so there
-//     is no −1 self-term here. The SPUTNIK_FIRE_MAX cap (4) is unchanged.
+//   Salvo count = min(MXICON − 2·CRMONS − ICBONS, 3, budget), ≥ 0
+//                                             (W3MAIN.MAC:2447-2479)   FIREMAX claim MC-SPUT-FIREMAX
+//     MXICON = 7 (W3COMN.MAC:193) is imported from spawn.ts (claim MC-MXICON, config.json).
+//     REWORK 2 (faithful): the SPUTFIR path is reached only with the plane aloft
+//     (PLCPV ≠ 0), and ICNORM's SEC / LDA A,PLCPV / IFNE / CLC (W3MAIN.MAC:
+//     2447-2453) then borrows an extra 1 in the first SBC — so the salvo headroom
+//     is NICBMS − ICBONS − 1 = 7 − ICBONS, and that −1 IS the plane's OWN
+//     reservation: it fires only when the swarm has dipped below MXICON(7), never
+//     into a full-at-7 swarm (round 1 misread the borrow as an 8th-slot grant).
+//     The on-screen ceiling stays NICBMS(8) for plane + swarm combined. And
+//     SPUTFIR (W3MAIN.MAC:2703) falls into MIRVER (:2705), whose CMP I,2 /
+//     IFCS / LDA I,2 / STA POTENT — "NO MORE THAN 3 SHOTS FROM A MIRV"
+//     (:2709-2717) — caps the salvo at 3, not ICNORM's 4.
 
 import { launchIcbm, type Icbm, type Vec } from './icbm.js'
 import { HMAX } from './cursor.js'
-import { NICBMS } from './spawn.js'
+import { MXICON } from './spawn.js'
 import { type Rng, nextInt } from '@shared/rng'
 
 /** First wave a Sputnik can appear — SPUTWV (W3COMN.MAC:203). Every wave ≥ this. */
@@ -49,9 +53,10 @@ export const SPUTNIK_V_MIN = 100
 /** A killed plane is worth this multiple of an ICBM (the SPUTKI kill routine).
  *  Header cite; claim MC-SPUT-SCORE. */
 export const SPUTNIK_SCORE_MULT = 4
-/** The per-activation launch-count cap (the ROM saturates the count). Header cite;
- *  claim MC-SPUT-FIREMAX. */
-export const SPUTNIK_FIRE_MAX = 4
+/** The per-salvo launch cap — SPUTFIR falls into MIRVER, whose POTENT clamp
+ *  saturates the shot budget ("NO MORE THAN 3 SHOTS FROM A MIRV"). Header
+ *  cite; claim MC-SPUT-FIREMAX. */
+export const SPUTNIK_FIRE_MAX = 3
 
 /** The two plane variants. `rand AND 1` picks between them at spawn (SOBJID). */
 export type SputnikVariant = 'bomber' | 'satellite'
@@ -92,14 +97,15 @@ export function sputnikActivationSep(wave: number): number {
 }
 
 /**
- * How many ICBMs a ready plane launches this frame — the ROM's clamped count
- * `min(NICBMS − 2·cruiseOnScreen − icbmsOnScreen, SPUTNIK_FIRE_MAX, budget)`,
- * floored at 0 so a saturated field never yields a negative launch. No `−1`
- * self-term: the normal swarm's planeActive cap (spawn.ts) reserves the 8th
- * NICBMS slot, and the plane fires INTO it (see the header REWORK note). Pure.
+ * How many ICBMs a ready plane launches this frame — the ROM's clamped salvo
+ * `min(MXICON − 2·cruiseOnScreen − icbmsOnScreen, SPUTNIK_FIRE_MAX, budget)`,
+ * floored at 0 so a saturated field never yields a negative launch. The base is
+ * MXICON, one below the NICBMS ceiling, because ICNORM's PLCPV borrow is the
+ * aloft plane's OWN reservation: it fires only when the swarm has dipped, never
+ * into a full-at-seven swarm (see the header REWORK note). Pure.
  */
 export function sputnikFireCount(cruiseOnScreen: number, icbmsOnScreen: number, budgetRemaining: number): number {
-  const headroom = NICBMS - 2 * cruiseOnScreen - icbmsOnScreen
+  const headroom = MXICON - 2 * cruiseOnScreen - icbmsOnScreen
   return Math.max(0, Math.min(headroom, SPUTNIK_FIRE_MAX, budgetRemaining))
 }
 

@@ -24,12 +24,12 @@
   {
     "id": "MC-SPUT-FIREMAX",
     "symbol": "SPUTFIRE_MAX",
-    "value": 4,
-    "meaning": "Per-activation Sputnik launch-count cap = 4. The launch-count clamp compares the computed headroom against 4 and saturates ('MAX AT 4'), so a plane never fires more than 4 ICBMs at once. Immediate operand of CPX/LDX I,4.",
+    "value": 3,
+    "meaning": "Per-salvo Sputnik launch cap = 3. SPUTFIR (W3MAIN.MAC:2703) falls into MIRVER, whose POTENT clamp CMP I,2 / IFCS / LDA I,2 / STA POTENT ('NO MORE THAN 3 SHOTS FROM A MIRV', W3MAIN.MAC:2717) saturates the shot budget at the immediate 2 — an inclusive 0..2 count, so operand+1 = 3 shots, the same derivation as MC-SPUT-SCORE's LDX I,3 → 4 and MC-MIRV-MAX's LDA I,2 → 3. The former cite (ICNORM's CPX I,4, :2475) is the NORMAL-swarm launch cap, not the SPUTFIR salvo's.",
     "source": {
       "file": "W3MAIN.MAC",
-      "line": 2475,
-      "verbatim": "\tCPX I,4"
+      "line": 2709,
+      "verbatim": "\tCMP I,2"
     }
   },
   {

@@ -233,7 +233,9 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     'POTENT', 'EXPLCT',
     // mc5-2: the Sputnik constants. SPUTKI (MC-SPUT-SCORE) is the ×4 kill routine's
     // LDX I,3 → operand+1 = 4 (like CITYBON/POTENT's inclusive loop); SPUTFIRE_MAX
-    // (MC-SPUT-FIREMAX) is the "MAX AT 4" launch cap = the CPX I,4 immediate; WSPFIR /
+    // (MC-SPUT-FIREMAX) is the MIRVER salvo cap ("NO MORE THAN 3 SHOTS FROM A MIRV",
+    // W3MAIN.MAC:2717) = the CMP I,2 immediate + 1 = 3 (the SPUTFIR path falls into
+    // MIRVER; the earlier CPX I,4 cite was ICNORM's normal-swarm cap); WSPFIR /
     // WSPLAU are `.BYTE` timing tables whose claim value is the full hex-decoded
     // decimal row. All four pinned in the mc5-2 consistency block below.
     'SPUTKI', 'SPUTFIRE_MAX', 'WSPFIR', 'WSPLAU',
@@ -397,9 +399,11 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // kill scores operand+1 = 4 units ("(4X ICBM)").
     expect(immediate(score!.source.verbatim) + 1, 'SPUT-SCORE is LDX operand + 1').toBe(4)
     expect(score!.value, 'MC-SPUT-SCORE value').toBe(4)
-    // SPUTFIRE_MAX: `CPX I,4` is the launch-count saturation ("MAX AT 4"); 4 IS the immediate.
-    expect(immediate(cap!.source.verbatim), 'SPUT-FIREMAX is the CPX I,4 immediate').toBe(4)
-    expect(cap!.value, 'MC-SPUT-FIREMAX value').toBe(4)
+    // SPUTFIRE_MAX: SPUTFIR falls into MIRVER, whose `CMP I,2` POTENT clamp saturates
+    // the salvo at operand+1 = 3 ("NO MORE THAN 3 SHOTS FROM A MIRV", W3MAIN.MAC:2717)
+    // — the inclusive-count convention of SPUTKI and MC-MIRV-MAX's LDA I,2.
+    expect(immediate(cap!.source.verbatim) + 1, 'SPUT-FIREMAX is the MIRVER CMP I,2 immediate + 1').toBe(3)
+    expect(cap!.value, 'MC-SPUT-FIREMAX value').toBe(3)
     // WSPFIR/WSPLAU: the claimed decimal row IS the hex `.BYTE` verbatim decoded byte-for-byte.
     expect(row(fire!.source.verbatim), 'WSPFIR decimal row = decoded hex bytes').toBe(fire!.value)
     expect(row(sep!.source.verbatim), 'WSPLAU decimal row = decoded hex bytes').toBe(sep!.value)
