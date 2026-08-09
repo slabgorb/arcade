@@ -38,6 +38,16 @@ function line(className: string, text: string): HTMLSpanElement {
 const SCORE_CLASS = 'tile-score'
 const GAME_ATTR = 'data-game'
 
+// A game is Work In Progress until it ships a 1.0. The design (1a) tags anything
+// under v1.0 with a WIP badge, and github.md pins the rule: "WIP status now derives
+// from version < 1.0". Derived here from the registry version — the single source of
+// truth — rather than carried as a second field a manifest could set out of step with
+// its own version. A pre-release is major 0 (0.x.y); 1.0.0 and up have shipped.
+function isWorkInProgress(version: string): boolean {
+  const major = Number.parseInt(version.split('.')[0] ?? '', 10)
+  return Number.isFinite(major) && major < 1
+}
+
 /**
  * One tile for one game. The per-game glow colour rides on the `--glow` custom
  * property, so every glowing part of the tile (border, title, score, controls)
@@ -56,6 +66,13 @@ export function buildTile(game: GameMeta, topScore: number | null): HTMLAnchorEl
   // Which game this tile speaks for. `refreshScores` needs to find the tile again long
   // after it was built, and the href is a path, not an id.
   tile.setAttribute(GAME_ATTR, game.id)
+
+  // The WIP badge, when the game is still pre-1.0. A separate element (not folded into
+  // the title) so CSS can pin it to the tile corner exactly as the design draws it, and
+  // so it is announced as its own token rather than run into the game's name.
+  if (isWorkInProgress(game.version)) {
+    tile.append(line('tile-wip', 'WIP'))
+  }
 
   tile.append(line('tile-title', game.title))
   tile.append(line(SCORE_CLASS, formatScoreLine(topScore)))
