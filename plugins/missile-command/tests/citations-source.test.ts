@@ -251,6 +251,12 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // `.BYTE` row. All carry real numeric entries (not kind tags) and are pinned in
     // the mc5-3 consistency block below.
     'CMKILL', 'CRMWAV', 'SLOPEH', 'SLOPEL', 'ANGADD',
+    // mc7-1: the high-score ladder. HSCORL (MC-HISCORE-DEPTH) is a `.BLKB 3*5`
+    // reservation whose numeric value 5 is the entry-count factor; SCOINI
+    // (MC-HISCORE-DEFAULT-*) is the seeded default-score `.BYTE` table whose claim
+    // values are little-endian BCD triples (7500..6950), not single bytes. Both
+    // carry real numerics (not kind tags) and are pinned in the mc7-1 block below.
+    'HSCORL', 'SCOINI',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -551,5 +557,54 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     const icspd = loadClaims().find((c) => c.symbol === 'ICSPDL')
     expect(Number(icspd?.value), 'ICSPDL fraction scale = 2^8 (a one-byte fraction of a frame)').toBe(256)
     expect(icspd?.source.verbatim, 'cited to the ICSPDL declaration that names it a FRACTION').toMatch(/ICSPDL:\s*\.BLKB.*FRACTION/)
+  })
+
+  // mc7-1: the high-score ladder depth + seeded defaults. The DERIVED exemption
+  // lets HSCORL carry the numeric 5 and SCOINI carry the decoded scores 7500..6950;
+  // this block is their teeth — depth re-derives from `.BLKB 3*5`, and every SCOINI
+  // claim value must be a genuine little-endian BCD triple of its cited `.BYTE` line,
+  // so no fabricated depth or score can ride into the un-cited-literal guard's set.
+  it('mc7-1: HSCORL depth and SCOINI default scores derive from their cited lines', () => {
+    const claims = loadClaims()
+
+    // HSCORL: .BLKB 3*5 → depth = the entry-count factor (the `*5`).
+    const depth = claims.find((c) => c.symbol === 'HSCORL')
+    expect(depth, 'MC-HISCORE-DEPTH must be committed').toBeTruthy()
+    const blk = depth!.source.verbatim.match(/\.BLKB\s+(\d+)\*(\d+)/)
+    expect(blk, 'HSCORL is a `.BLKB N*M` reservation').toBeTruthy()
+    expect(Number(depth!.value), 'depth is the M entry-count factor').toBe(Number(blk![2]))
+    expect(Number(depth!.value), 'the MC ladder is 5 deep').toBe(5)
+
+    // SCOINI: five little-endian BCD score triples. Decode and assert each SCOINI
+    // claim value is one of the decoded scores.
+    const bcd = (b: number): number => (b >> 4) * 10 + (b & 0x0f)
+    const scoiniClaims = claims.filter((c) => c.symbol === 'SCOINI')
+    expect(scoiniClaims.length, 'the five SCOINI default-score rungs must be claimed').toBe(5)
+    const bytes = (scoiniClaims[0].source.verbatim.split('.BYTE')[1] ?? '')
+      .split(',').map((t) => t.trim()).filter((t) => t.length > 0).map((t) => decodeRadix16(t))
+    const scores: number[] = []
+    for (let i = 0; i + 2 < bytes.length; i += 3) {
+      scores.push(bcd(bytes[i]) + bcd(bytes[i + 1]) * 100 + bcd(bytes[i + 2]) * 10000)
+    }
+    expect(scores, 'the five decoded SCOINI scores (ascending storage)').toEqual([6950, 7005, 7330, 7495, 7500])
+
+    // Per-rung IDENTITY, not bag membership: each SCOINI claim's value must be the
+    // score for ITS OWN rung. The rung↔score pairing is derived from the STRINI
+    // initials + SCOINI scores (both ascending, positionally paired by INIINI), so
+    // a claim cross-wired onto the wrong rung (e.g. DLS's value swapped with SRC's)
+    // reddens — a plain `.toContain` would pass it.
+    const strini = claims.find((c) => c.symbol === 'STRINI')
+    expect(strini, 'MC-HISCORE-INITIALS (STRINI) must be committed').toBeTruthy()
+    const initialsStr = (strini!.source.verbatim.match(/\/([^/]*)\//)?.[1] ?? '').slice(0, scores.length * 3)
+    const rungScore = new Map<string, number>()
+    for (let r = 0; r < scores.length; r++) rungScore.set(initialsStr.slice(r * 3, r * 3 + 3), scores[r])
+    expect([...rungScore.entries()], 'STRINI/SCOINI pairing, ascending').toEqual([
+      ['MJP', 6950], ['RDA', 7005], ['SRC', 7330], ['DLS', 7495], ['DFT', 7500],
+    ])
+    for (const c of scoiniClaims) {
+      const suffix = c.id.replace('MC-HISCORE-DEFAULT-', '')
+      expect(rungScore.has(suffix), `${c.id}: id suffix ${suffix} is a known rung`).toBe(true)
+      expect(Number(c.value), `${c.id}: value must be its OWN rung's score, not merely a valid one`).toBe(rungScore.get(suffix))
+    }
   })
 })

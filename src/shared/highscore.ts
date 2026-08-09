@@ -76,21 +76,28 @@ export type HighScoreTable<DomainKey extends string> = HighScoreEntry<DomainKey>
 // recording: a non-positive score never qualifies; while the board has open
 // slots any positive score makes it; once full the score must STRICTLY beat the
 // lowest entry to displace it (a tie does not). Reads only `.score`, so it is
-// domain-agnostic.
-export function qualifiesForHighScore(table: readonly HighScoreEntryBase[], score: number): boolean {
+// domain-agnostic. `depth` is the board size and defaults to MAX_HIGH_SCORES; a
+// game with a shorter ladder (Missile Command's 5-deep ROM table) passes its own.
+export function qualifiesForHighScore(
+  table: readonly HighScoreEntryBase[],
+  score: number,
+  depth: number = MAX_HIGH_SCORES,
+): boolean {
   if (score <= 0) return false
-  if (table.length < MAX_HIGH_SCORES) return true
+  if (table.length < depth) return true
   const lowest = table[table.length - 1].score
   return score > lowest
 }
 
 // Returns a NEW table with `entry` inserted in descending-score order, truncated
-// to MAX_HIGH_SCORES. Ties place the new entry AFTER existing equal-score entries
-// (existing holders keep the higher rank). The input table is not mutated.
-// Generic over the entry type, so the domain field rides through the sort.
+// to `depth` (default MAX_HIGH_SCORES; Missile Command passes its 5-deep ladder).
+// Ties place the new entry AFTER existing equal-score entries (existing holders
+// keep the higher rank). The input table is not mutated. Generic over the entry
+// type, so the domain field rides through the sort.
 export function insertHighScore<E extends HighScoreEntryBase>(
   table: readonly E[],
   entry: E,
+  depth: number = MAX_HIGH_SCORES,
 ): E[] {
   const out = table.slice()
   let i = out.length
@@ -101,7 +108,7 @@ export function insertHighScore<E extends HighScoreEntryBase>(
     }
   }
   out.splice(i, 0, entry)
-  return out.slice(0, MAX_HIGH_SCORES)
+  return out.slice(0, depth)
 }
 
 // --- the key + row guards (the lobby contract) -------------------------------

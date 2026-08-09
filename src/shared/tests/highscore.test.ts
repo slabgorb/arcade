@@ -229,6 +229,35 @@ describe('qualifiesForHighScore — full board (exactly MAX entries)', () => {
   })
 })
 
+// The optional `depth` arg (added for Missile Command's 5-deep ROM ladder, mc7-1):
+// every other consumer omits it and keeps the 10-deep default; a shorter ladder
+// passes its own size, and the full-board boundary then bites at that size.
+describe('qualifiesForHighScore — explicit depth (shorter ladder)', () => {
+  it('defaults to MAX_HIGH_SCORES when depth is omitted (a 5-row board still has room)', () => {
+    expect(qualifiesForHighScore(levelTableOf(5), 1)).toBe(true) // 5 < 10, room remains
+  })
+
+  it('treats a board of exactly `depth` rows as full', () => {
+    const five = levelTableOf(5) // scores 500..100, lowest = 100
+    expect(qualifiesForHighScore(five, 100, 5)).toBe(false) // tie with lowest — no
+    expect(qualifiesForHighScore(five, 99, 5)).toBe(false) // below — no
+    expect(qualifiesForHighScore(five, 101, 5)).toBe(true) // strictly beats — yes
+  })
+
+  it('still has room below `depth` rows', () => {
+    expect(qualifiesForHighScore(levelTableOf(4), 1, 5)).toBe(true)
+  })
+})
+
+describe('insertHighScore — explicit depth truncates to the shorter ladder', () => {
+  it('truncates to `depth`, dropping the overflow', () => {
+    const out = insertHighScore(levelTableOf(5), { name: 'TOP', score: 5000, level: 1 }, 5)
+    expect(out).toHaveLength(5) // NOT 6
+    expect(out[0]).toEqual({ name: 'TOP', score: 5000, level: 1 })
+    expect(out.at(-1)?.score).toBe(200) // the old lowest (100) fell off
+  })
+})
+
 describe('qualifiesForHighScore — generic over the domain field', () => {
   it('works on a WAVE board too (reads only .score, never the domain field)', () => {
     const waveBoard: WaveEntry[] = [
