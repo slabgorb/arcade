@@ -83,7 +83,7 @@ describe('mc8-2 — GameState.soundEvents is a pure per-frame channel', () => {
   })
 
   it('the spawn frame is SILENT — spawning/incoming makes no sound (spike §5 fidelity)', () => {
-    // The first step launches a full salvo of ICBMs (game.test pins MXICON) yet
+    // The first step launches a full ICNORM cycle of ICBMs (game.test pins the cap of 4) yet
     // nothing arrives, detonates or dies — so the frame must be silent. This is
     // the "no incoming-ICBM sound" fidelity guard: a threat appearing on screen
     // is not a sound event.

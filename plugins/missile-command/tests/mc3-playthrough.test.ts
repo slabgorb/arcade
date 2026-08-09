@@ -4,7 +4,7 @@
 // the whole mc3 combat loop is coherent AND fully deterministic. Two blocks:
 //
 //   1. THE ENEMY LOOP (pure stepGame). Enemies appear, the wave budget draws down,
-//      never more than MXICON on screen, structures only ever go alive→dead, the
+//      never more than NICBMS on screen (mc5-6), structures only ever go alive→dead, the
 //      phase is always {play,over}, and identical seeds replay identically while
 //      different seeds diverge. mc3-4 already composed this loop, so this block is
 //      GREEN ON ARRIVAL by design — it is the regression guard that keeps the render
@@ -17,11 +17,11 @@
 //      genuine end-to-end driver of this story.
 //
 // No wall clock, no entropy beyond the seeded Rng carried in state: every constant
-// (MXICON, NICBMS, the magazine size) is imported from core, never hardcoded here.
+// (NICBMS, the magazine size) is imported from core, never hardcoded here.
 
 import { describe, it, expect } from 'vitest'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
-import { MXICON, NICBMS } from '../src/core/spawn.js'
+import { NICBMS } from '../src/core/spawn.js'
 
 // ─── Block 2's fire seam, via the fleet @vite-ignore RED-import idiom ──────────
 interface FireModule {
@@ -67,9 +67,11 @@ describe('AC3 — the enemy loop runs coherently for a whole seeded wave', () =>
     expect(end.remaining, 'the budget never goes negative').toBeGreaterThanOrEqual(0)
   })
 
-  it('never more than MXICON ICBMs on screen, on any frame', () => {
+  it('never more than NICBMS ICBMs on screen, on any frame', () => {
+    // mc5-6: the concurrent ceiling is the 8-slot ICBM table (NICBMS,
+    // W3COMN.MAC:35), not MXICON(7) — ICNORM's count−1 operand.
     for (const s of run) {
-      expect(s.icbms.length, `frame ${s.frame}: MXICON exceeded`).toBeLessThanOrEqual(MXICON)
+      expect(s.icbms.length, `frame ${s.frame}: NICBMS exceeded`).toBeLessThanOrEqual(NICBMS)
     }
   })
 
