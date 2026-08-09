@@ -7,7 +7,7 @@
 // tempest/star-wars/asteroids run it byte-identically (fill the window); battlezone's
 // viewport.ts wraps the same math to letterbox the canvas ELEMENT to a fixed aspect,
 // and asteroids' margin.ts derives its drawn margin bars from the same aspect fit.
-// This module owns both halves once, for all of them:
+// This module owns those seams once, for all of them — three primitives:
 //
 //   resizeToDisplay(canvas, cssW, cssH, rawDpr)  — the DOM seam. Resolves the DPR
 //     (cap + guard), sizes the backing store to whole device pixels, sets the CSS
@@ -16,12 +16,17 @@
 //     `aspect`-ratio rectangle that fits inside canvasW×canvasH, centered. battlezone
 //     sizes its canvas element to this box; asteroids draws its margin bars as the
 //     container minus this box.
+//   fitIntegerScale(containerW, containerH, logicalW, logicalH) — PURE raster fit
+//     (SH4-3). The largest WHOLE-NUMBER scale of a logicalW×logicalH raster that fits
+//     the container, centred with integer offsets — crisp pixels, no resampling.
+//     centipede/pac-man/joust bind it to their own logical dims (share the VERB, keep
+//     the NUMBERS). Distinct from `letterbox`: whole scale, not fractional aspect.
 //
 // BROWSER subpath (ADR-0003): resizeToDisplay mutates a canvas element, so `view` is
 // EXEMPT from the pure-core purity guard. It references no DOM *global* — it only
 // touches the CanvasLike the caller hands in — but a subpath is classified by its
-// dirtiest export, and this one writes to a canvas. `letterbox` is nonetheless pure
-// arithmetic and is unit-tested in node.
+// dirtiest export, and this one writes to a canvas. `letterbox` and `fitIntegerScale`
+// are nonetheless pure arithmetic and are unit-tested in node.
 
 /** HiDPI backing-store cap. A 3×/4× display would otherwise blow the backing store
  *  up 9×/16×; 2× is the crispness/cost sweet spot every cabinet already used. */
