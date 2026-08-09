@@ -32,10 +32,10 @@
 
 import { INITIAL_CURSOR, type Cursor } from './cursor.js'
 import { stepAbm, type Abm } from './abm.js'
-import { stepIcbm, type Icbm } from './icbm.js'
+import { stepAnyIcbm, type Icbm } from './icbm.js'
 import { startExplosion, stepExplosion, isExplosionDone, type Explosion } from './explosion.js'
 import { createCities, createBases, START_CITIES, type City, type Base } from './field.js'
-import { spawnIcbms, NICBMS, type SpawnResult } from './spawn.js'
+import { spawnIcbms, spawnCruise, cruiseBudget, NICBMS, type SpawnResult } from './spawn.js'
 import { mirvEligible, mirvSplit, MIRV_EXPLOSION_SUPPRESS } from './mirv.js'
 import {
   spawnSputnik,
@@ -52,7 +52,7 @@ import {
   type Sputnik,
 } from './sputnik.js'
 import { killIcbmsInBlasts, resolveGroundImpacts, killSputniksInBlasts } from './damage.js'
-import { scoreKills, scoreMultiplier } from './score.js'
+import { scoreKills, scoreMultiplier, CRUISE_SCORE_MULT } from './score.js'
 import { nextPhase, nextWavePhase, resumePlay, type Phase } from './state.js'
 import {
   INITIAL_WAVE,
@@ -254,8 +254,21 @@ export function stepGame(state: GameState): GameState {
     { planeActive: planes.length > 0 },
   )
 
-  // (2)(3) fly the enemy warheads and the player missiles one tick each.
-  const flownIcbms = spawned.icbms.map(stepIcbm)
+  // CRUISE (mc5-3): from wave 6 the CRMWAV budget caps how many cruise missiles may
+  // be on screen; release one (into the ICBM-family roster) whenever the field is
+  // below that cap. A cruise descends along its CMANGL angle (stepAnyIcbm), not toward
+  // a target, and never MIRV-splits (mirvEligible excludes 'cruise'). Waves 1-5 have
+  // budget 0, so nothing releases and the rng is untouched (the mc5-3 wave-5 control).
+  const cruiseCap = cruiseBudget(state.wave)
+  const cruiseOnScreen = spawned.icbms.filter((i) => i.kind === 'cruise').length
+  const roster =
+    cruiseOnScreen < cruiseCap
+      ? [...spawned.icbms, spawnCruise(state.rng, waveSchedule(state.wave).velocity)]
+      : spawned.icbms
+
+  // (2)(3) fly the enemy warheads and the player missiles one tick each. stepAnyIcbm
+  // routes each warhead on its kind — ballistics home on target, cruise fly the angle.
+  const flownIcbms = roster.map(stepAnyIcbm)
   const flownAbms = state.abms.map(stepAbm)
 
   // MIRV (mc5-1): at most ONE in-band ballistic warhead MIRVs per frame — the ROM keeps a
@@ -299,9 +312,15 @@ export function stepGame(state: GameState): GameState {
 
   // (7) resolve the score and the phase from the frame's outcome. (state.phase is
   // 'play' here — 'over' froze and 'between' resolved in their own branches above.)
-  // A downed plane scores as SPUTNIK_SCORE_MULT ICBM-kills at this wave's multiplier.
-  const scoreAfterIcbms = scoreKills(state.score, killed.length, state.wave)
-  const score = scoreKills(scoreAfterIcbms, killedPlanes.length * SPUTNIK_SCORE_MULT, state.wave)
+  // A downed plane scores SPUTNIK_SCORE_MULT× and a downed cruise CRUISE_SCORE_MULT×
+  // the ICBM value at this wave's multiplier; ordinary (ballistic) kills score ×1. The
+  // three enemy classes ride the SAME scoreKills scorer with their per-enemy multiple
+  // {icbm:1, sputnik:4, cruise:5}, so the wave-multiplier math stays in one place.
+  const cruiseKilled = killed.filter((i) => i.kind === 'cruise').length
+  const ballisticKilled = killed.length - cruiseKilled
+  const scoreAfterIcbms = scoreKills(state.score, ballisticKilled, state.wave)
+  const scoreAfterPlanes = scoreKills(scoreAfterIcbms, killedPlanes.length * SPUTNIK_SCORE_MULT, state.wave)
+  const score = scoreKills(scoreAfterPlanes, cruiseKilled * CRUISE_SCORE_MULT, state.wave)
   const phase = nextPhase(state.phase, impact.cities)
 
   // Voice this frame's moments, in the frame's own order: each ABM that arrived

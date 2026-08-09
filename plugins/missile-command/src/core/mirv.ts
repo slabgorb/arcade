@@ -36,6 +36,7 @@ export const MIRV_EXPLOSION_SUPPRESS = 12
  *  literals in this JSDoc: the AC3 scanner's per-line stripper misses multi-line
  *  block comments, so a digit here would leak into the un-cited-literal set.) */
 export function mirvEligible(icbm: Icbm): boolean {
+  if (icbm.kind === 'cruise') return false // mc5-3: a MIRV never splits a cruise missile
   if (icbm.arrived) return false
   return icbm.pos.v >= MIRV_LO && icbm.pos.v <= MIRV_HI
 }

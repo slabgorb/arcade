@@ -18,7 +18,7 @@
 //   CRMWAV .BYTE 0,0,0,0,0,1,1,2,3,4,4,5,5,6,6,7,7,7,7  (W3MAIN.MAC:5723, → CRMTOL)
 //     — the per-wave cruise budget, 1-based; 0 for waves 1..5, 1 at wave 6, clamped
 //     to the last row (7) for waves ≥ 19. (claim MC-CRMWAV-*)
-//   CMKILL LDX I,4 → "5X ICBM"  (W3MAIN.MAC:2112, in the CMKILL routine :2105+).
+//   CMKILL LDX I,4 → "5X ICBM"  (W3MAIN.MAC:2113, in the CMKILL routine :2105+).
 //     A cruise kill is worth 5× the ICBM value at that wave. (claim MC-CRUISE-SCORE)
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ async function loadCruiseScore(): Promise<ScoreCruiseModule> {
   } catch (e) {
     throw new Error(
       'cruiseKillPoints not built yet — GREEN adds `cruiseKillPoints(wave)` = 5 × the ICBM kill ' +
-        'value at that wave to src/core/score.ts (CMKILL `LDX I,4` → ×5, W3MAIN.MAC:2112). ' +
+        'value at that wave to src/core/score.ts (CMKILL `LDX I,4` → ×5, W3MAIN.MAC:2113). ' +
         `(${(e as Error).message})`,
     )
   }

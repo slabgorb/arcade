@@ -27,7 +27,7 @@
 // — i.e. HOLD FIRE while ANY live ICBM is still above LAUHGT.
 import { type Rng, nextInt } from '@shared/rng'
 import { HMAX } from './cursor.js'
-import { launchIcbm, type Icbm, type Vec } from './icbm.js'
+import { launchIcbm, launchCruise, CM_ANGLE_COUNT, type Icbm, type Vec } from './icbm.js'
 
 export const NICBMS = 8
 export const MXICON = 7
@@ -102,4 +102,27 @@ export function spawnIcbms(
     spawned.push(launchIcbm(origin, target, velocity))
   }
   return { icbms: [...current, ...spawned], remaining: remaining - launches }
+}
+
+// ─── mc5-3: CRUISE missile release ────────────────────────────────────────────
+// CRMWAV — the per-wave cruise budget, .BYTE 0,0,0,0,0,1,1,2,3,4,4,5,5,6,6,7,7,7,7
+// (W3MAIN.MAC:5723 -> CRMTOL), 1-based, saturating at the last row for deep waves.
+// Stored as the decoded bytes in a string (the sputnik table idiom) so no loose
+// literal survives the AC3 scan; the .BYTE row is pinned by claim MC-CRMWAV.
+const CRMWAV: readonly number[] = '0,0,0,0,0,1,1,2,3,4,4,5,5,6,6,7,7,7,7'.split(',').map(Number)
+
+// The cruise budget at 1-based `wave` — CRMWAV[wave-1], clamped to the last row.
+// Zero for waves 1..5, first nonzero (one) at wave 6. game.ts uses it as the
+// on-screen cruise cap. Pure.
+export function cruiseBudget(wave: number): number {
+  const idx = Math.min(Math.max(wave, 1), CRMWAV.length) - 1
+  return CRMWAV[idx]
+}
+
+// Release one cruise missile from a random top-edge column along an RNG-picked
+// CMANGL direction, descending at `velocity` (this wave's schedule speed). Seeded
+// rng only (advanced in place — the sanctioned spawner exception).
+export function spawnCruise(rng: Rng, velocity = 1): Icbm {
+  const origin: Vec = { h: nextInt(rng, HMAX), v: TOPSCR } // random top-edge column
+  return launchCruise(origin, nextInt(rng, CM_ANGLE_COUNT), velocity)
 }
