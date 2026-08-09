@@ -53,7 +53,11 @@ export const INITIAL_CURSOR: Cursor = { h: (HMIN + HMAX) >> 1, v: (VMIN + VMAX) 
 // (W3COMN.MAC:107, decimal). Kept in core as a cabinet fact so the pure inverse
 // never imports the shell; render.ts holds its own LOGICAL_WIDTH/HEIGHT for the
 // forward map and the two must agree (place-cursor.test.ts anchors that they do).
-/** Logical field width — 0x100 columns (matches render.ts LOGICAL_WIDTH). */
+/** Logical field width. H is a full 8-bit cabinet byte — every H constant above
+ *  and the structure positions (MISB1H=0x14..MISB3H=0xF0) live in 0x00..0xFF — so
+ *  the field spans 0x100 = 256 columns. STRUCTURAL (2^8, the byte-space size), not
+ *  a ROM table entry: unlike LOGICAL_HEIGHT it names no W3COMN line because none
+ *  exists. Matches render.ts LOGICAL_WIDTH. */
 export const LOGICAL_WIDTH = 0x100 // 256
 /** Logical field height — TOPSCR=222. (W3COMN.MAC:107; matches render.ts LOGICAL_HEIGHT). */
 export const LOGICAL_HEIGHT = 222
@@ -86,8 +90,16 @@ export function moveCursor(cursor: Cursor, delta: Delta): Cursor {
  * pointer lock, 1px≈1unit). Referentially transparent: a fresh Cursor, no mutation.
  */
 export function placeCursor(x: number, y: number, width: number, height: number): Cursor {
+  // Guard the divisor: a degenerate canvas (width/height 0 — a hidden or not-yet-
+  // laid-out element) would make x/width Infinity or, for 0/0, NaN, and clamp lets
+  // NaN pass BOTH comparisons unchanged — so a raw ratio could return {h: NaN},
+  // breaking the Cursor invariant [HMIN,HMAX]x[VMIN,VMAX]. With no area to map into
+  // the fraction is 0, parking the crosshair at the low edge; the result is always
+  // finite and in range.
+  const fx = width > 0 ? x / width : 0
+  const fy = height > 0 ? y / height : 0
   return {
-    h: clamp((x / width) * LOGICAL_WIDTH, HMIN, HMAX),
-    v: clamp(LOGICAL_HEIGHT - (y / height) * LOGICAL_HEIGHT, VMIN, VMAX),
+    h: clamp(fx * LOGICAL_WIDTH, HMIN, HMAX),
+    v: clamp(LOGICAL_HEIGHT - fy * LOGICAL_HEIGHT, VMIN, VMAX),
   }
 }

@@ -172,6 +172,27 @@ describe('AC1 — placeCursor is absolute and referentially transparent', () => 
   })
 })
 
+// ─── AC1 — a degenerate canvas size never yields a NaN cursor ─────────────────
+// main.ts feeds placeCursor rect.width/rect.height from getBoundingClientRect(),
+// which is legitimately 0 for a hidden or not-yet-laid-out canvas. 0/0 = NaN, and
+// clamp lets NaN pass both comparisons — so an unguarded map would write {h: NaN}
+// into game state, breaking Cursor's documented [HMIN,HMAX]x[VMIN,VMAX] invariant.
+// (Reviewer mc10-1: rule 21 / edge + silent-failure.)
+
+describe('AC1 — placeCursor stays finite and in-range for a degenerate canvas', () => {
+  it('zero width/height (0/0 → NaN path) clamps to a valid in-range cursor', async () => {
+    const { placeCursor } = await loadPlaceCursor()
+    for (const c of [placeCursor(0, 0, 0, 0), placeCursor(50, 50, 0, 0), placeCursor(0, 0, 0, 222)]) {
+      expect(Number.isFinite(c.h), `h must be finite, got ${c.h}`).toBe(true)
+      expect(Number.isFinite(c.v), `v must be finite, got ${c.v}`).toBe(true)
+      expect(c.h).toBeGreaterThanOrEqual(8)
+      expect(c.h).toBeLessThanOrEqual(247)
+      expect(c.v).toBeGreaterThanOrEqual(45)
+      expect(c.v).toBeLessThanOrEqual(206)
+    }
+  })
+})
+
 // ─── AC4 — mc1-3's relative reducer is not removed by the new export ──────────
 
 describe('AC4 — moveCursor survives alongside placeCursor', () => {
@@ -213,14 +234,19 @@ describe('AC2 — main.ts is rewired from relative motion to absolute placement'
   })
 
   it('the shell places the cursor via core placeCursor', () => {
-    expect(shell).toMatch(/placeCursor/)
+    // Anchor to the actual assignment `cursor: placeCursor(` — a bare /placeCursor/
+    // is satisfied by the word appearing in a comment, so it cannot tell "wired into
+    // the handler" from "merely mentioned in prose". (Reviewer mc10-1: rules 15/25.)
+    expect(shell).toMatch(/cursor:\s*placeCursor\(/)
   })
 
   it('the shell maps an absolute canvas position (rect + clientX/clientY)', () => {
-    // Absolute placement needs the canvas rect to make clientX/clientY canvas-relative.
-    expect(shell).toMatch(/getBoundingClientRect/)
-    expect(shell).toMatch(/clientX/)
-    expect(shell).toMatch(/clientY/)
+    // Absolute placement needs the canvas rect to make the pointer canvas-relative.
+    // Anchor each to its CODE expression (`canvas.getBoundingClientRect()`,
+    // `event.clientX`, `event.clientY`) so comment prose cannot satisfy them.
+    expect(shell).toMatch(/canvas\.getBoundingClientRect\(\)/)
+    expect(shell).toMatch(/event\.clientX/)
+    expect(shell).toMatch(/event\.clientY/)
   })
 
   it('placeCursor is imported from core/cursor with the .js ESM extension (TS lang-review)', () => {

@@ -38,12 +38,13 @@ const drain = (): void => {
 }
 
 // Mouse → crosshair (mc1-3, made ABSOLUTE in mc10-1). The pointer's canvas
-// position is mapped straight to a cabinet coordinate via the pure core
-// placeCursor (the inverse of render.project), so the crosshair tracks the mouse
-// 1:1 instead of drifting on the per-move relative deltas of the old path.
-// clientX/clientY are made canvas-relative through the element rect, then divided
-// by the rect size — the same normalized space project maps into, so DPR and
-// buffer scaling cancel.
+// position maps straight to a cabinet coordinate via the pure core placeCursor
+// (the inverse of render.project), so the crosshair tracks the mouse 1:1 instead
+// of accumulating the per-move relative deltas the old path did. The pointer is
+// made canvas-relative through the element rect and divided by the rect size to
+// get the [0,1] fraction project works in; that is exact because the frame loop
+// keeps canvas.width/height equal to canvas.clientWidth/clientHeight (below), so
+// the rect size and the buffer size project was called with are the same number.
 canvas.addEventListener('pointermove', (event: PointerEvent): void => {
   const rect = canvas.getBoundingClientRect()
   game = {
