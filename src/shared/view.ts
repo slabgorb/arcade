@@ -74,6 +74,56 @@ export function letterbox(canvasW: number, canvasH: number, aspect: number): Let
   }
 }
 
+/** The integer-scale fit of a logical raster inside a container: the whole-number
+ *  `scale`, the fitted pixel `width`/`height`, and the centred integer offsets
+ *  `dx`/`dy`. Distinct from LetterboxRect — this is a RASTER fit (a whole scale for
+ *  crisp pixels), not a fractional aspect-fit. `dx`/`dy` are floored and MAY be
+ *  negative when the container is smaller than one logical frame. Origin top-left. */
+export interface Fit {
+  /** Largest whole-number scale that fits (>= 1). */
+  readonly scale: number
+  /** Left offset of the scaled raster inside the container (floored; may be < 0). */
+  readonly dx: number
+  /** Top offset of the scaled raster inside the container (floored; may be < 0). */
+  readonly dy: number
+  /** Scaled raster width (`logicalW * scale`). */
+  readonly width: number
+  /** Scaled raster height (`logicalH * scale`). */
+  readonly height: number
+}
+
+/**
+ * The largest WHOLE-NUMBER scale of a logicalW × logicalH raster that fits inside a
+ * containerW × containerH box, clamped to at least 1×, centred with FLOORED integer
+ * offsets. Pure — no DOM, no state, no time.
+ *
+ * Raster cabinets (centipede, pac-man, joust) blit at a whole scale so the 1980s
+ * pixels never resample into a blur — this is the crisp-pixel counterpart to the
+ * fractional `letterbox` above. The logical dimensions are the CALLER's: they differ
+ * per cabinet (centipede 240×256, pac-man 224×288, joust 292×240), so they are
+ * ARGUMENTS, not module constants — share the VERB, keep the NUMBERS (SH4-3).
+ *
+ * `dx`/`dy` may be negative when the container is smaller than one logical frame; a
+ * caller that wants a non-negative offset clamps at its own call site (joust does).
+ */
+export function fitIntegerScale(
+  containerW: number,
+  containerH: number,
+  logicalW: number,
+  logicalH: number,
+): Fit {
+  const scale = Math.max(1, Math.floor(Math.min(containerW / logicalW, containerH / logicalH)))
+  const width = logicalW * scale
+  const height = logicalH * scale
+  return {
+    scale,
+    dx: Math.floor((containerW - width) / 2),
+    dy: Math.floor((containerH - height) / 2),
+    width,
+    height,
+  }
+}
+
 /** The minimal HTMLCanvasElement surface resizeToDisplay mutates — duck-typed so the
  *  seam is testable with a plain object outside a DOM (Vitest's `node` env). */
 export interface CanvasLike {

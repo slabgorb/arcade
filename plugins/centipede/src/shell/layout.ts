@@ -30,33 +30,20 @@
 import { TILE_W, TILE_H, SPRITE_W, SPRITE_H, STAMPS } from '../core/pictures'
 import { PLYFLD_WIDTH, PLYFLD_HEIGHT, OBSTAC_ROW_ROUND } from '../core/playfield'
 import { OBSTAC_H_BASE } from '../core/player'
+import { fitIntegerScale as fitIntegerScaleShared, type Fit } from '@shared/view'
 
 export const LOGICAL_W = PLYFLD_WIDTH * TILE_W
 export const LOGICAL_H = PLYFLD_HEIGHT * TILE_H
 
-export interface Fit {
-  scale: number
-  dx: number
-  dy: number
-  width: number
-  height: number
-}
+export type { Fit }
 
-/** Largest whole-number scale that fits the logical resolution inside a
- *  containerW×containerH box — floored, never fractional (crisp pixels,
- *  AC-2), clamped to at least 1x, and centred with integer pillar/letterbox
- *  offsets. */
+/** Largest whole-number scale that fits centipede's logical resolution inside a
+ *  containerW×containerH box — floored, never fractional (crisp pixels, AC-2),
+ *  clamped to at least 1x, centred with integer offsets. SH4-3: the per-game binding
+ *  of `@shared/view.fitIntegerScale` to centipede's own 240×256 logical dims — the
+ *  math is shared, the NUMBERS stay here. */
 export function fitIntegerScale(containerW: number, containerH: number): Fit {
-  const scale = Math.max(1, Math.floor(Math.min(containerW / LOGICAL_W, containerH / LOGICAL_H)))
-  const width = LOGICAL_W * scale
-  const height = LOGICAL_H * scale
-  return {
-    scale,
-    dx: Math.floor((containerW - width) / 2),
-    dy: Math.floor((containerH - height) / 2),
-    width,
-    height,
-  }
+  return fitIntegerScaleShared(containerW, containerH, LOGICAL_W, LOGICAL_H)
 }
 
 /** Screen-x of playfield column `col` — column 0 is drawn at the LEFT edge, the
