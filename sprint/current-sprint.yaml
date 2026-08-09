@@ -11,6 +11,8 @@ epics:
   - jt10
   - mc8
   - mc5
+  - mc6
+  - mc7
   - sw10
   - SH3
   - SH4

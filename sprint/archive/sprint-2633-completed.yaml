@@ -98,4 +98,8 @@ completed_stories:
     epic: mc5
     title: 'Cruise missiles + droneRequest contract (UNBLOCKS mc8-5): Icbm.kind + angled flight (CRMWAV wave-6 budget, ANGLE/CMANGL), killed x5, and the cruise-count+sputnik-active -> DroneKind selector. REV-01 W3MAIN.MAC:2635'
     points: 5
+  - id: sw10-1
+    epic: sw10
+    title: Unify on the cabinet's authentic projection lens (symmetric ~90° FOV, divide-by-depth) and retire the per-model *_ORIENT axis hacks
+    points: 8
     completed: '2026-08-09'
