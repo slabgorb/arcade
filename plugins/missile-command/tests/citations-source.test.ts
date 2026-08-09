@@ -587,8 +587,24 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
       scores.push(bcd(bytes[i]) + bcd(bytes[i + 1]) * 100 + bcd(bytes[i + 2]) * 10000)
     }
     expect(scores, 'the five decoded SCOINI scores (ascending storage)').toEqual([6950, 7005, 7330, 7495, 7500])
+
+    // Per-rung IDENTITY, not bag membership: each SCOINI claim's value must be the
+    // score for ITS OWN rung. The rung↔score pairing is derived from the STRINI
+    // initials + SCOINI scores (both ascending, positionally paired by INIINI), so
+    // a claim cross-wired onto the wrong rung (e.g. DLS's value swapped with SRC's)
+    // reddens — a plain `.toContain` would pass it.
+    const strini = claims.find((c) => c.symbol === 'STRINI')
+    expect(strini, 'MC-HISCORE-INITIALS (STRINI) must be committed').toBeTruthy()
+    const initialsStr = (strini!.source.verbatim.match(/\/([^/]*)\//)?.[1] ?? '').slice(0, scores.length * 3)
+    const rungScore = new Map<string, number>()
+    for (let r = 0; r < scores.length; r++) rungScore.set(initialsStr.slice(r * 3, r * 3 + 3), scores[r])
+    expect([...rungScore.entries()], 'STRINI/SCOINI pairing, ascending').toEqual([
+      ['MJP', 6950], ['RDA', 7005], ['SRC', 7330], ['DLS', 7495], ['DFT', 7500],
+    ])
     for (const c of scoiniClaims) {
-      expect(scores, `${c.id}: value ${c.value} must be a decoded SCOINI score`).toContain(Number(c.value))
+      const suffix = c.id.replace('MC-HISCORE-DEFAULT-', '')
+      expect(rungScore.has(suffix), `${c.id}: id suffix ${suffix} is a known rung`).toBe(true)
+      expect(Number(c.value), `${c.id}: value must be its OWN rung's score, not merely a valid one`).toBe(rungScore.get(suffix))
     }
   })
 })

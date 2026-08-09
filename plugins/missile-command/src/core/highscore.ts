@@ -51,15 +51,18 @@ export const DEFAULT_HIGH_SCORES: readonly MissileCommandHighScore[] = [
 // ladder. Thin wrappers threading MC_HIGH_SCORE_DEPTH through the shared
 // primitives (search-then-insert: UPDATE HIGH SCORE LADDER, W3DSUP.MAC:3780).
 
-/** True when `score` is worth a rung on MC's 5-deep ladder: any positive score
- *  while a rung is open, else it must STRICTLY beat the lowest of five. Pure. */
+// True when `score` is worth a rung on MC's five-deep ladder: any positive score
+// while a rung is open, else it must STRICTLY beat the lowest of five. Pure.
+// (`//` line comments, not `/** */`: the AC3 un-cited-literal scanner strips `//`
+// per line but not a multi-line JSDoc, so a digit in a block comment would leak —
+// see the same guard in core/abm.ts and core/mirv.ts. [[mc-citations-jsdoc-leak]])
 export function qualifiesForHighScore(table: readonly MissileCommandHighScore[], score: number): boolean {
   return sharedQualifiesForHighScore(table, score, MC_HIGH_SCORE_DEPTH)
 }
 
-/** A NEW ladder with `entry` inserted in descending-score order, truncated to the
- *  five ROM rungs. Ties place the newcomer after the existing holder. Pure —
- *  neither argument is mutated. */
+// A NEW ladder with `entry` inserted in descending-score order, truncated to the
+// five ROM rungs. Ties place the newcomer after the existing holder. Pure —
+// neither argument is mutated.
 export function insertHighScore(
   table: readonly MissileCommandHighScore[],
   entry: MissileCommandHighScore,
