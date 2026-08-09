@@ -101,7 +101,7 @@ const FIRE: Input = FIRE_AT_PORT
  * reaches the wall while a missed one never resolves at all. So what decides these outcomes is
  * still, only, whether the shot was on the hole.
  */
-const SHOT_Z = -EXHAUST_PORT_DISTANCE
+const SHOT_DEPTH = EXHAUST_PORT_DISTANCE
 
 /**
  * The visible target's outer reach — the geometry sw3-15's WYSIWYG bound is pinned
@@ -203,9 +203,9 @@ describe('sw3-15 — the exhaust-port hit sphere is tightened to the visible tar
     // perpendicular to it, so 160 out reads as ~159.7 of miss distance against the 108 sphere.
     const GAP_OFFSET = BERM_HALF_WIDTH // 160: on the lip, off the hole
     expect(GAP_OFFSET).toBeGreaterThan(PORTHOLE_REACH) // genuinely off the visible hole
-    const base = trench(portAt([0, 0, SHOT_Z]), { trenchShotsFired: 2 })
-    expect(aimAt([GAP_OFFSET, 0, SHOT_Z], eyeOf(base)).reachable).toBe(true)
-    const s1 = stepGame(base, fireAt(base, [GAP_OFFSET, 0, SHOT_Z]), FRAME)
+    const base = trench(portAt([SHOT_DEPTH, 0, 0]), { trenchShotsFired: 2 })
+    expect(aimAt([SHOT_DEPTH, GAP_OFFSET, 0], eyeOf(base)).reachable).toBe(true)
+    const s1 = stepGame(base, fireAt(base, [SHOT_DEPTH, GAP_OFFSET, 0]), FRAME)
     expect(s1.portTorpedoArmed, 'the laser never got close enuf').toBe(false)
     expect(hit(s1.events)).toBe(false)
     expect(s1.exhaustPort).not.toBeNull() // still standing — the shot wasn't on target
@@ -219,8 +219,8 @@ describe('sw3-15 — the exhaust-port hit sphere is tightened to the visible tar
     // only in where the crosshair points — which is what makes the pair mean anything. It is flown
     // all the way out to the wall rather than asserted at the latch, so the file keeps one
     // end-to-end witness that a threaded shot really does blow the Death Star.
-    const base = trench(portAt([0, 0, SHOT_Z]), { trenchShotsFired: 2 })
-    expect(aimAt([0, 0, SHOT_Z], eyeOf(base)).reachable).toBe(true)
+    const base = trench(portAt([SHOT_DEPTH, 0, 0]), { trenchShotsFired: 2 })
+    expect(aimAt([SHOT_DEPTH, 0, 0], eyeOf(base)).reachable).toBe(true)
     const { state, events } = fireAndFollowPort(base, 320)
     expect(hit(events)).toBe(true)
     expect(state.exhaustPort).toBeNull()
@@ -233,7 +233,7 @@ describe('sw3-15 — the exhaust-port hit sphere is tightened to the visible tar
     // 120 sphere — but it keeps a sneaky GREEN from special-casing a dead-centre aim.)
     const HARD_OVER: Input = { aimX: 0.9, aimY: 0, fire: true, aspect: 1 }
     const events: GameEvent[] = []
-    let s = stepGame(trench(portAt([0, 0, -600])), HARD_OVER, FRAME)
+    let s = stepGame(trench(portAt([600, 0, 0])), HARD_OVER, FRAME)
     events.push(...s.events)
     for (let i = 0; i < 30 && s.phase === 'trench'; i++) {
       s = stepGame(s, NO_INPUT, FRAME)
@@ -274,7 +274,7 @@ describe('sw3-15 — the hit/miss decision is gated to the narrow approach windo
   it('an armed torpedo does NOT detonate until the port reaches the window ($800 gate holds)', () => {
     // sw3-15's real contract, under the ROM's real mechanism. The shot is threaded at entry — the
     // only range from which a floor-mounted porthole is reachable at all — and it must then WAIT.
-    let s = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]))
+    let s = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]))
     s = stepGame(s, FIRE, FRAME) // pull the trigger, crosshair on the hole
 
     // sw7-17: the latch closes on the FIRING FRAME. The old note here said it could not — "the
@@ -289,7 +289,7 @@ describe('sw3-15 — the hit/miss decision is gated to the narrow approach windo
     // step, so the step that carries it ACROSS the threshold is legitimately the winning one.
     const MARGIN = TRENCH_SCROLL_SPEED * FRAME
     let frames = 0
-    while (s.exhaustPort && s.exhaustPort.pos[2] < -PORT_APPROACH_WINDOW - MARGIN && frames < 400) {
+    while (s.exhaustPort && s.exhaustPort.pos[0] > PORT_APPROACH_WINDOW + MARGIN && frames < 400) {
       s = stepGame(s, NO_INPUT, FRAME)
       expect(s.phase, 'an armed run must not win before the window').toBe('trench')
       expect(hit(s.events), 'the $800 gate still holds the outcome').toBe(false)
@@ -317,7 +317,7 @@ describe('sw3-15 — the hit/miss decision is gated to the narrow approach windo
     // test at all: the whole point is that this aim is at empty sky, and firing at empty sky a
     // hundred times over would arm nothing either.
     const CENTRED: Input = { aimX: 0, aimY: 0, fire: true, aspect: 1 }
-    let s = trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]))
+    let s = trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]))
     const events: GameEvent[] = []
     for (let i = 0; i < 320 && s.phase === 'trench'; i++) {
       s = stepGame(s, CENTRED, FRAME)
@@ -340,7 +340,7 @@ describe('sw3-15 — the restored challenge preserves core purity & determinism'
     // The port stays dead-centre (the ROM porthole is a FIXED location) — the fix adds
     // no RNG. A naive entry-shot run must resolve bit-identically twice over. A wall
     // clock or Math.random in the new gate would diverge the terminal state here.
-    const mk = (): GameState => trench(portAt([0, 0, -EXHAUST_PORT_DISTANCE]), {}, 7)
+    const mk = (): GameState => trench(portAt([EXHAUST_PORT_DISTANCE, 0, 0]), {}, 7)
     const a = fireAndFollowPort(mk(), 320)
     const b = fireAndFollowPort(mk(), 320)
     expect(a.events).toEqual(b.events)
@@ -353,11 +353,11 @@ describe('sw3-15 — the restored challenge preserves core purity & determinism'
     // does nothing changes nothing. The `portTorpedoArmed` assertion is the proof of work: the
     // beam fired, connected, and set a latch on the way out, and the input state still did not
     // move an inch.
-    const s0 = trench(portAt([0, 0, SHOT_Z]), { trenchShotsFired: 2 })
+    const s0 = trench(portAt([SHOT_DEPTH, 0, 0]), { trenchShotsFired: 2 })
     const beforePort: Vec3 | null = s0.exhaustPort ? ([...s0.exhaustPort.pos] as Vec3) : null
     const beforeLives = s0.lives
     const beforeArmed = s0.portTorpedoArmed
-    const stepped = stepGame(s0, fireAt(s0, [0, 0, SHOT_Z]), FRAME)
+    const stepped = stepGame(s0, fireAt(s0, [SHOT_DEPTH, 0, 0]), FRAME)
     expect(stepped.portTorpedoArmed, 'the step really did resolve a shot').toBe(true)
     expect(s0.exhaustPort ? s0.exhaustPort.pos : null).toEqual(beforePort) // input untouched
     expect(s0.lives).toBe(beforeLives)

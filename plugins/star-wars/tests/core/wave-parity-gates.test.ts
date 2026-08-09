@@ -70,7 +70,7 @@ function trenchAtWave(seed: number, wave: number): GameState {
  *  is exactly what a real winning run carries on its killing frame. */
 function portKill(state: GameState): GameState {
   const p = state.exhaustPort!.pos
-  const port: typeof p = [p[0], p[1], -300] // sw3-15: seat it in the near-cockpit window
+  const port: typeof p = [300, p[1], p[2]] // sw3-15: seat it in the near-cockpit window
   return {
     ...state,
     exhaustPort: { pos: port },

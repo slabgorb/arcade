@@ -301,7 +301,7 @@ describe('a cue rides every return path — coexists with crash / port-kill even
     // clearRun frame, reached the way a pilot reaches it.
     const trench = enterPhase(initialState(1983), 'trench')
     const p = trench.exhaustPort!.pos
-    const port: typeof p = [p[0], p[1], -300] // seat it in the near-cockpit approach window
+    const port: typeof p = [300, p[1], p[2]] // seat it in the near-cockpit approach window
     const s0: GameState = {
       ...trench,
       mode: 'playing',
@@ -332,8 +332,8 @@ describe('a cue rides every return path — coexists with crash / port-kill even
       mode: 'playing',
       wave: ODD_WAVE,
       trenchTimer: F_AT16 - 0.1,
-      trenchObstacles: [{ kind: 'catwalk', pos: [-300, TRENCH_EYE_SEAT, -1] }],
-      trenchView: [-300, TRENCH_EYE_SEAT, 0],
+      trenchObstacles: [{ kind: 'catwalk', pos: [1, -300, TRENCH_EYE_SEAT] }],
+      trenchView: [0, -300, TRENCH_EYE_SEAT],
     }
     const out = stepGame(s0, NO_INPUT, DT)
     expect(spokenLines(out)).toContain('lukeTrustMe') // the cue survived the crash return
@@ -408,7 +408,7 @@ describe('sw8-22 — a voice cue on the GUN-death frame is silenced (PHEBS exits
   /** A wall-gun bolt parked on the pilot's eye (`trenchView` default), so the trench
    *  gun hit-test lands it this frame: one shield, cause 'turret', nothing else. */
   const bolt: Partial<GameState> = {
-    enemyShots: [{ pos: [0, TRENCH_EYE_SEAT, 0], vel: [0, 0, 0], ttl: 1 }],
+    enemyShots: [{ pos: [0, 0, TRENCH_EYE_SEAT], vel: [0, 0, 0], ttl: 1 }],
   }
 
   it('the fixture really crosses the @16 cue on step one (guards every test below)', () => {

@@ -24,11 +24,12 @@ describe('SCENE_PRESETS', () => {
   })
 
   it('orders the exhaust port from far (entry) to near (in-sight)', () => {
-    const first = SCENE_PRESETS[0].state.exhaustPort!.pos[2]
-    const last = SCENE_PRESETS[SCENE_PRESETS.length - 1].state.exhaustPort!.pos[2]
-    // z is negative down-range: the first frame's port is farther (more negative)
-    // than the last frame's, so the run reads front-to-back across the sheet.
-    expect(first).toBeLessThan(last)
+    const first = SCENE_PRESETS[0].state.exhaustPort!.pos[0]
+    const last = SCENE_PRESETS[SCENE_PRESETS.length - 1].state.exhaustPort!.pos[0]
+    // sw10-3 native basis: depth is index 0, POSITIVE down-range — the first frame's
+    // port is farther (larger depth) than the last frame's, so the run reads
+    // front-to-back across the sheet.
+    expect(first).toBeGreaterThan(last)
   })
 
   it('includes the turret-alley preset with obstacles in range (fidelity epic task 3)', () => {

@@ -96,8 +96,8 @@ describe('sw7-22 (R6d) — the trench streams force fields from the wedge grid o
     // trench carries the ONE stub catwalk at ~−3,248 and nothing beyond ~4,448.
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
     expect(ff.length, 'the grid streams tens of fields, not the single stub').toBeGreaterThan(40)
-    expect(ff.some((f) => -f.pos[2] > TRENCH_FAR), 'fields sit beyond the $7000 window').toBe(true)
-    expect(Math.max(...ff.map((f) => -f.pos[2])), 'fields reach deep down the full channel').toBeGreaterThan(200_000)
+    expect(ff.some((f) => f.pos[0] > TRENCH_FAR), 'fields sit beyond the $7000 window').toBe(true)
+    expect(Math.max(...ff.map((f) => f.pos[0])), 'fields reach deep down the full channel').toBeGreaterThan(200_000)
   })
 
   it('the stream is DATA-DRIVEN: a wave whose grid has no force fields (PIE1) streams none', () => {
@@ -114,8 +114,8 @@ describe('sw7-22 (R6d) — the trench streams force fields from the wedge grid o
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
     const grid = new Set(gridFields(WAVE_WITH_FIELDS).map((f) => `${f.sign}@${f.dist}`))
     for (const f of ff) {
-      const key = `${Math.sign(f.pos[0])}@${-f.pos[2]}`
-      expect(grid.has(key), `field at wall ${Math.sign(f.pos[0])}, −z ${-f.pos[2]} is a grid slot`).toBe(true)
+      const key = `${Math.sign(f.pos[1])}@${f.pos[0]}`
+      expect(grid.has(key), `field at wall ${Math.sign(f.pos[1])}, depth ${f.pos[0]} is a grid slot`).toBe(true)
     }
   })
 
@@ -124,8 +124,8 @@ describe('sw7-22 (R6d) — the trench streams force fields from the wedge grid o
     // so the sw7-19 sign-gated graze still fires on the correct side (both walls
     // present ⇒ a hardcoded "always left" placement cannot pass).
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
-    expect(ff.some((f) => f.pos[0] < 0), 'a left-wall field').toBe(true)
-    expect(ff.some((f) => f.pos[0] > 0), 'a right-wall field').toBe(true)
+    expect(ff.some((f) => f.pos[1] < 0), 'a left-wall field').toBe(true)
+    expect(ff.some((f) => f.pos[1] > 0), 'a right-wall field').toBe(true)
   })
 
   it('streamed fields are the force-field kind the B-012 collision reads (catwalk)', () => {

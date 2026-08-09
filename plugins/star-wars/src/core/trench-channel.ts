@@ -18,6 +18,7 @@
 
 import type { Vec3 } from '@shared/math3d'
 import type { Model3D } from './models'
+import { toNative } from './basis' // sw10-3: emit the channel in the native world basis (depth=+X, right=+Y, up=+Z)
 
 // --- The trench, pinned from WSBASE.MAC (story sw5-6) -----------------------
 //
@@ -176,5 +177,5 @@ export function trenchChannel(scroll: number): Model3D {
     edges.push([fr, tr])
   }
 
-  return { name: 'Trench Channel', vertices, edges }
+  return { name: 'Trench Channel', vertices: vertices.map(toNative), edges }
 }

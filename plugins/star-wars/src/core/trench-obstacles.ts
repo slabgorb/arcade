@@ -79,11 +79,11 @@ const W = TRENCH_HALF_W
 /** Wall square — it must stay INSIDE THE PILOT'S AIM CONE from its own
  *  station, or it is scenery he can see and never shoot.
  *
- *  The cone is the FOV: at range D the crosshair reaches ±D/f about the eye, with f = 1/tan(30°).
- *  The nearest square station is 1300 downrange, so it reaches 1300/1.732 = 750 above the seat —
- *  i.e. anything above ~1518 is UNAIMABLE the moment it appears. The old 3/8 (=1536) sat just past
- *  that line and the square could never be shot. 5/16 keeps the square high on the wall with real
- *  margin, and every station stays reachable (pinned in tests/core/trench-aim-wysiwyg.test.ts).
+ *  The cone is the authentic 90° FOV: at range D the crosshair reaches ±D·tan(45°) = ±D about the
+ *  eye (f = 1/tan(45°) = 1, aspect-independent since sw10-1). The nearest square station sits well
+ *  downrange, so the cone easily clears SQUARE_Y = 1280 — it stays high on the wall yet aimable
+ *  with wide margin, where the old 3/8 (=1536) predated the authentic lens. Every station stays
+ *  reachable (pinned in tests/core/trench-aim-wysiwyg.test.ts).
  *
  *  This is what "re-anchor the furniture" (AC-5) actually means: not just scaling it with the wall,
  *  but keeping it a TARGET. */
@@ -106,11 +106,11 @@ const SQUARE_Y = (TRENCH_WALL_H * 5) / 16 // 1280
 // pinned trench is ±1024, and a wall object 900 units downrange on a ±1024 wall subtends 48.7°
 // off-axis — outside the frustum entirely. It is not a hard shot, it is OFF SCREEN.
 //
-// The aim cone is the FOV: the crosshair reaches |x|/D ≤ tan(FOV_Y/2)·aspect. At the narrowest
-// aspect we support (1:1) that is 0.577, so a wall object is only aimable beyond
-// TRENCH_HALF_W / 0.577 ≈ 1774. Seating the nearest station at 2·TRENCH_HALF_W puts every wall
-// object at ≤ 26.6° — comfortably inside the cone at ANY aspect ≥ 1, which also closes the
-// aspect-dependent reachability hole the reviewer flagged. Spacing is unchanged.
+// The aim cone is the authentic 90° FOV: the crosshair reaches |x|/D ≤ tan(FOV_Y/2) = 1
+// (aspect-independent since sw10-1). A wall object at |x| = TRENCH_HALF_W is only aimable beyond
+// D = TRENCH_HALF_W ≈ 1024. Seating the nearest station at 2·TRENCH_HALF_W puts every wall
+// object at |x|/D ≤ 0.5, i.e. ≤ 26.6° — comfortably inside the cone at every aspect (the lens no
+// longer scales with aspect, so the reachability hole the reviewer flagged cannot recur). Spacing is unchanged.
 //
 // Still PROVISIONAL (the ROM's off_7CC0 records give no station coordinates) — re-anchored, not
 // pinned. tests/core/trench-aim-wysiwyg.test.ts holds them to the only contract that matters: the
@@ -118,10 +118,12 @@ const SQUARE_Y = (TRENCH_WALL_H * 5) / 16 // 1280
 const NEAR = 2 * TRENCH_HALF_W // 2048 — the closest a wall object may stand and still be aimable
 const GAP = 400
 
+// sw10-3 native basis: pos = [depth (index 0, +forward), right (index 1, ±W wall),
+// up (index 2, SQUARE_Y height above the floor)].
 export const TRENCH_OBSTACLE_STATIONS: readonly TrenchObstacle[] = [
-  { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + GAP)] },
-  { kind: 'square', pos: [-W, SQUARE_Y, -(NEAR + 4 * GAP)] },
-  { kind: 'square', pos: [W, SQUARE_Y, -(NEAR + 5 * GAP)] },
+  { kind: 'square', pos: [NEAR + GAP, W, SQUARE_Y] },
+  { kind: 'square', pos: [NEAR + 4 * GAP, -W, SQUARE_Y] },
+  { kind: 'square', pos: [NEAR + 5 * GAP, W, SQUARE_Y] },
 ]
 
 /**
@@ -175,7 +177,8 @@ function streamPanelSlots(baseWave: number, rng: Rng, slotType: number, kind: Tr
   let z = 0
   const scan = (col: PanelColumn, wallX: number) => {
     col.forEach((slot, i) => {
-      if (slot === slotType) out.push({ kind, pos: [wallX, WALL_SLOT_Y[i], -z] })
+      // sw10-3 native basis: [depth (index 0, +forward), right (±wall), up (slot height)].
+      if (slot === slotType) out.push({ kind, pos: [z, wallX, WALL_SLOT_Y[i]] })
     })
   }
   for (const w of buildTrench(baseWave, rng) as readonly Wedge[]) {

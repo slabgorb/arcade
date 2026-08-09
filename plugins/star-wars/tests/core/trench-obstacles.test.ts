@@ -69,16 +69,16 @@ describe('trench obstacles — spawn & scroll', () => {
 
   it('obstacles scroll toward the cockpit at TRENCH_SCROLL_SPEED, like the port', () => {
     const s0 = enterPhase(initialState(), 'trench')
-    const z0 = s0.trenchObstacles[0].pos[2]
+    const d0 = s0.trenchObstacles[0].pos[0]
     const s1 = stepGame(s0, NO_INPUT, 0.1)
-    expect(s1.trenchObstacles[0].pos[2]).toBeCloseTo(z0 + TRENCH_SCROLL_SPEED * 0.1)
+    expect(s1.trenchObstacles[0].pos[0]).toBeCloseTo(d0 - TRENCH_SCROLL_SPEED * 0.1)
   })
 
-  it('despawns obstacles that pass the cockpit (pos z > 0)', () => {
+  it('despawns obstacles that pass the cockpit (pos depth < 0)', () => {
     let s = enterPhase(initialState(), 'trench')
     const nearest: GameState = {
       ...s,
-      trenchObstacles: [{ ...s.trenchObstacles[0], pos: [s.trenchObstacles[0].pos[0], s.trenchObstacles[0].pos[1], -0.1] }],
+      trenchObstacles: [{ ...s.trenchObstacles[0], pos: [0.1, s.trenchObstacles[0].pos[1], s.trenchObstacles[0].pos[2]] }],
     }
     const stepped = stepGame(nearest, NO_INPUT, 1)
     expect(stepped.trenchObstacles.length).toBe(0)
@@ -115,7 +115,7 @@ describe('trench obstacles — shooting & scoring', () => {
     // $7000 = TRENCH_FAR reach — so the real spawn is no longer a shootable staging point.
     // Seat a WITHIN-REACH port and park the obstacle halfway along the beam to it, which
     // keeps this suite's "nearest object takes the one beam" intent directly testable.
-    const port: Vec3 = [0, 0, -TRENCH_FAR / 2]
+    const port: Vec3 = [TRENCH_FAR / 2, 0, 0]
     const pos: Vec3 = [(eye[0] + port[0]) / 2, (eye[1] + port[1]) / 2, (eye[2] + port[2]) / 2]
     return { s0: { ...s, exhaustPort: { pos: port }, trenchObstacles: [{ kind, pos }] }, yoke: fireAt(s, port), port }
   }
@@ -177,7 +177,7 @@ describe('trench obstacles — shooting & scoring', () => {
     // left side (`IFLE ;?ON LEFT SIDE?`) — so the field grazes him. sw5-6's height framing is
     // unchanged: trenchView is a height above the y=0 floor, seated at TRENCH_EYE_SEAT.
     const s1 = stepGame(
-      { ...s, mode: 'playing', trenchObstacles: [{ kind: 'catwalk', pos: [-TRENCH_HALF_W, TRENCH_EYE_SEAT, -1] }] },
+      { ...s, mode: 'playing', trenchObstacles: [{ kind: 'catwalk', pos: [1, -TRENCH_HALF_W, TRENCH_EYE_SEAT] }] },
       NO_INPUT,
       1 / 60,
     )
@@ -195,7 +195,7 @@ describe('trench obstacles — shooting & scoring', () => {
     expect(TRENCH_OBSTACLE_STATIONS.length).toBe(3)
     for (const o of TRENCH_OBSTACLE_STATIONS) {
       expect(o.kind).toBe('square')
-      expect(o.pos[2]).toBeLessThan(0) // all downrange
+      expect(o.pos[0]).toBeGreaterThan(0) // all downrange
     }
   })
 

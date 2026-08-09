@@ -63,7 +63,7 @@
 // documented below so a future port cannot re-introduce the out-of-range edge.
 
 import { describe, it, expect } from 'vitest'
-import { TRENCH_CATWALK } from '../../src/core/models'
+import { TRENCH_CATWALK, bakeTrench } from '../../src/core/models'
 import { ROM_MODELS } from '../../src/tools/romModels.generated'
 import { ROM_TO_PORT, pairOne, verdictFor } from '../../src/tools/romCompare'
 import type { Vec3 } from '@shared/math3d'
@@ -140,8 +140,9 @@ describe('sw7-19 / M-012 — TRENCH_CATWALK is the authentic `.WP WFF` wall forc
   it('carries the WFF vertex table, 1:1 in ROM order (deep-equal, like romCompare)', () => {
     // romCompare.verticesEqual is a DEEP, order-sensitive equality (sw5-5), and
     // ORIENTATION is the shell's job (render.ts), so the model holds raw ROM
-    // vertices. RED: TRENCH_CATWALK currently ships an 8-vertex horizontal girder.
-    expect(TRENCH_CATWALK.vertices).toEqual(WFF_TABLE)
+    // vertices. sw10-3: baked to the native world basis via `bakeTrench`;
+    // WFF_TABLE stays the raw `.WP WFF` oracle.
+    expect(TRENCH_CATWALK.vertices).toEqual(bakeTrench(WFF_TABLE))
   })
 
   it('strokes the `.WGD WFF` draw list, and nothing fabricated', () => {
@@ -153,8 +154,9 @@ describe('sw7-19 / M-012 — TRENCH_CATWALK is the authentic `.WP WFF` wall forc
     // The old girder is thin in y (y∈[-12,12] ⇒ height 24). WFF rises the full
     // 0x40*8 = 512 up the wall. This one number separates a wall barrier from a
     // floor cross-brace, and is why a centred pilot can no longer just dive it.
-    const ys = TRENCH_CATWALK.vertices.map((v) => v[1])
-    const height = Math.max(...ys) - Math.min(...ys)
+    // sw10-3 native basis: height is native UP (index 2).
+    const ups = TRENCH_CATWALK.vertices.map((v) => v[2])
+    const height = Math.max(...ups) - Math.min(...ups)
     expect(height).toBe(512)
     expect(height).not.toBe(24) // the fabricated girder's height — refuted
   })

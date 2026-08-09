@@ -6,7 +6,7 @@
 //
 // Dev tool. Never imported by src/core.
 
-import { MODELS, bakeTie, type Model3D } from '../core/models'
+import { MODELS, bakeTie, bakeTrench, bakePort, type Model3D } from '../core/models'
 import { ROM_MODELS, type RomModel } from './romModels.generated'
 import type { Vec3 } from '@shared/math3d'
 
@@ -25,6 +25,10 @@ const ROM_TO_BAKE: Readonly<Record<string, (vs: readonly Vec3[]) => Vec3[]>> = {
   TI1: bakeTie,
   TI2: bakeTie,
   TI3: bakeTie,
+  // sw10-3 — trench furniture baked native in lockstep with models.ts.
+  PORT: bakePort,
+  WFF: bakeTrench,
+  WGA: bakeTrench,
 }
 export const bakeRom = (name: string, vs: readonly Vec3[]): Vec3[] =>
   (ROM_TO_BAKE[name] ?? ((v: readonly Vec3[]) => v.map((p) => [...p] as Vec3)))(vs)

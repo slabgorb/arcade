@@ -102,7 +102,7 @@ describe("speech cue — R2 swears when you miss the port and live to retry (U-0
   })
 
   it('an ordinary trench frame with the port still ahead cues no scream', () => {
-    const s1 = stepGame(trench(portAt([0, 0, -2400]), { lives: 3 }), NO_INPUT, DT)
+    const s1 = stepGame(trench(portAt([2400, 0, 0]), { lives: 3 }), NO_INPUT, DT)
     expect(spokenLines(s1)).not.toContain('r2Scream')
   })
 })
@@ -192,7 +192,7 @@ describe('speech cue — the farewell speaks on EVERY game over (U-017, WSMAIN.M
     const s1 = stepGame(
       trench(portAt([0, 0, 0]), {
         lives: 1,
-        trenchObstacles: [{ kind: 'catwalk', pos: [0, TRENCH_EYE_SEAT, 0] }],
+        trenchObstacles: [{ kind: 'catwalk', pos: [0, 0, TRENCH_EYE_SEAT] }],
       }),
       NO_INPUT,
       DT,

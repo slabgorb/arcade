@@ -149,7 +149,7 @@ function portKill(state: GameState): GameState {
   const p = state.exhaustPort!.pos
   return {
     ...state,
-    exhaustPort: { pos: [p[0], p[1], -300] },
+    exhaustPort: { pos: [300, p[1], p[2]] },
     portTorpedoArmed: true,
   }
 }

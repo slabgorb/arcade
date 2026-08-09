@@ -65,47 +65,50 @@ import { TRENCH, type Model3D } from '../../src/core/models'
 
 const EPS = 1e-6
 
-/** Edges parallel to −Z (the rails): both endpoints share an x AND a y, differ in
- *  z. Returns the {x,y} each rail runs along. */
+/** Edges running along native DEPTH (the rails): both endpoints share RIGHT (v[1])
+ *  AND UP (v[2]), differ in depth (v[0]). Returns the {x:right, y:up} each rail
+ *  runs along. */
 function rails(m: Model3D): { x: number; y: number }[] {
   const out: { x: number; y: number }[] = []
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (va[0] === vb[0] && va[1] === vb[1] && va[2] !== vb[2]) out.push({ x: va[0], y: va[1] })
+    if (va[1] === vb[1] && va[2] === vb[2] && va[0] !== vb[0]) out.push({ x: va[1], y: va[2] })
   }
   return out
 }
 
-/** Distinct z carrying a LATERAL FLOOR rib (an edge across X on the y=0 floor:
- *  both endpoints at y=0, sharing a z, differing in x), sorted ascending. */
+/** Distinct DEPTH (v[0]) carrying a LATERAL FLOOR rib (an edge across RIGHT on the
+ *  up=0 floor: both endpoints at up=0 (v[2]), sharing a depth, differing in right),
+ *  sorted ascending. */
 function floorRibZs(m: Model3D): number[] {
   const zs = new Set<number>()
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (va[1] === 0 && vb[1] === 0 && va[2] === vb[2] && va[0] !== vb[0]) zs.add(va[2])
+    if (va[2] === 0 && vb[2] === 0 && va[0] === vb[0] && va[1] !== vb[1]) zs.add(va[0])
   }
   return [...zs].sort((p, q) => p - q)
 }
 
-/** Across-X floor edges (the lateral floor ribs) as endpoint-index pairs. */
+/** Across-RIGHT floor edges (the lateral floor ribs) as endpoint-index pairs. */
 function floorRibEdges(m: Model3D): [number, number][] {
   return m.edges.filter(([a, b]) => {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    return va[1] === 0 && vb[1] === 0 && va[2] === vb[2] && va[0] !== vb[0]
+    return va[2] === 0 && vb[2] === 0 && va[0] === vb[0] && va[1] !== vb[1]
   }) as [number, number][]
 }
 
-/** VERTICAL ribs: edges across Y (both endpoints share an x AND a z, differ in y).
- *  These rungs climb each wall from the floor rail to the top rail. */
+/** VERTICAL ribs: edges across UP (v[2]) — both endpoints share RIGHT (v[1]) AND
+ *  DEPTH (v[0]), differ in up. These rungs climb each wall from the floor rail to
+ *  the top rail. Returns {x:right, z:depth}. */
 function verticalRibs(m: Model3D): { x: number; z: number }[] {
   const out: { x: number; z: number }[] = []
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (va[0] === vb[0] && va[2] === vb[2] && va[1] !== vb[1]) out.push({ x: va[0], z: va[2] })
+    if (va[1] === vb[1] && va[0] === vb[0] && va[2] !== vb[2]) out.push({ x: va[1], z: va[0] })
   }
   return out
 }
@@ -115,7 +118,7 @@ function verticalRibEdges(m: Model3D): [number, number][] {
   return m.edges.filter(([a, b]) => {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    return va[0] === vb[0] && va[2] === vb[2] && va[1] !== vb[1]
+    return va[1] === vb[1] && va[0] === vb[0] && va[2] !== vb[2]
   }) as [number, number][]
 }
 
@@ -157,8 +160,8 @@ describe('Story 11-6 — trenchChannel: shape & a walled corridor (not a flat ti
   it('rises OFF the floor into walls: y spans 0 → TRENCH_WALL_H (NOT the old flat y=0 tile)', () => {
     // THE differentiator from the retired flat tile: that tile lay entirely on
     // y=0 (a sliver); this channel has standing side walls.
-    const ys = trenchChannel(0).vertices.map((v) => v[1])
-    expect(Math.min(...ys)).toBe(0) // floor on the y=0 plane
+    const ys = trenchChannel(0).vertices.map((v) => v[2]) // native UP = index 2
+    expect(Math.min(...ys)).toBe(0) // floor on the up=0 plane
     expect(Math.max(...ys)).toBeCloseTo(TRENCH_WALL_H) // walls rise to full height
   })
 
@@ -166,7 +169,7 @@ describe('Story 11-6 — trenchChannel: shape & a walled corridor (not a flat ti
     // The old flat tile projected to ~224×4px because it had no length. The
     // channel recedes the full TRENCH_FAR — much longer than it is wide.
     const vs = trenchChannel(0).vertices
-    const length = Math.max(...vs.map((v) => -v[2])) // depth receding down −Z
+    const length = Math.max(...vs.map((v) => v[0])) // native DEPTH receding forward +X
     const width = TRENCH_HALF_W * 2
     expect(length).toBeCloseTo(TRENCH_FAR)
     expect(length).toBeGreaterThan(width)
@@ -189,23 +192,24 @@ describe('Story 11-6 — trenchChannel is pure & deterministic', () => {
 
 describe('Story 11-6 — trenchChannel width, symmetry & the two side walls', () => {
   it('spans the channel width: rails and walls sit at x = ±TRENCH_HALF_W', () => {
-    const xs = trenchChannel(0).vertices.map((v) => v[0])
+    const xs = trenchChannel(0).vertices.map((v) => v[1]) // native RIGHT = index 1
     expect(Math.max(...xs)).toBeCloseTo(TRENCH_HALF_W)
     expect(Math.min(...xs)).toBeCloseTo(-TRENCH_HALF_W)
   })
 
-  it('is mirror-symmetric across x=0 (for every (x,y,z) there is a (−x,y,z))', () => {
+  it('is mirror-symmetric across the centreline (for every (d,r,u) there is a (d,−r,u))', () => {
     const c = trenchChannel(0)
     const present = new Set(c.vertices.map((v) => `${v[0]}|${v[1]}|${v[2]}`))
     for (const v of c.vertices) {
-      expect(present.has(`${-v[0]}|${v[1]}|${v[2]}`)).toBe(true)
+      // mirror the native RIGHT axis (index 1)
+      expect(present.has(`${v[0]}|${-v[1]}|${v[2]}`)).toBe(true)
     }
   })
 
-  it('raises BOTH side walls — vertices above the floor at each of x = ±TRENCH_HALF_W', () => {
+  it('raises BOTH side walls — vertices above the floor at each of right = ±TRENCH_HALF_W', () => {
     const c = trenchChannel(0)
-    const leftWall = c.vertices.some((v) => v[0] === -TRENCH_HALF_W && v[1] > 0)
-    const rightWall = c.vertices.some((v) => v[0] === TRENCH_HALF_W && v[1] > 0)
+    const leftWall = c.vertices.some((v) => v[1] === -TRENCH_HALF_W && v[2] > 0)
+    const rightWall = c.vertices.some((v) => v[1] === TRENCH_HALF_W && v[2] > 0)
     expect(leftWall).toBe(true)
     expect(rightWall).toBe(true)
   })
@@ -223,10 +227,10 @@ describe('Story 11-6 — trenchChannel rails: floor + top, both walls, full leng
     expect(has(TRENCH_HALF_W, TRENCH_WALL_H)).toBe(true) // right top rail
   })
 
-  it('recedes from the cockpit (z≈0) out to the far cutoff (z≈−TRENCH_FAR)', () => {
-    const zs = trenchChannel(0).vertices.map((v) => v[2])
-    expect(Math.min(...zs)).toBeCloseTo(-TRENCH_FAR) // far end at the cutoff
-    expect(Math.max(...zs)).toBeCloseTo(0) // near end at the cockpit
+  it('recedes from the cockpit (depth≈0) out to the far cutoff (depth≈+TRENCH_FAR)', () => {
+    const zs = trenchChannel(0).vertices.map((v) => v[0]) // native DEPTH = index 0
+    expect(Math.max(...zs)).toBeCloseTo(TRENCH_FAR) // far end at the cutoff
+    expect(Math.min(...zs)).toBeCloseTo(0) // near end at the cockpit
   })
 })
 
@@ -239,12 +243,12 @@ describe('Story 11-6 — trenchChannel ribs: lateral floor + vertical wall, ever
     for (let i = 1; i < zs.length; i++) {
       expect(zs[i] - zs[i - 1]).toBeCloseTo(RIB_Z)
     }
-    const nearest = zs[zs.length - 1] // least-negative z = closest to the cockpit
-    const farthest = zs[0] // most-negative z = the far cutoff
-    expect(nearest).toBeLessThanOrEqual(EPS) // at / just ahead of the cockpit
-    expect(nearest).toBeGreaterThanOrEqual(-RIB_Z - EPS) // within one cell of it
-    expect(farthest).toBeLessThanOrEqual(-(TRENCH_FAR - RIB_Z)) // recedes to ≈ the cutoff
-    expect(farthest).toBeGreaterThanOrEqual(-TRENCH_FAR - EPS) // but never overshoots it
+    const nearest = zs[0] // smallest depth = closest to the cockpit
+    const farthest = zs[zs.length - 1] // largest depth = the far cutoff
+    expect(nearest).toBeGreaterThanOrEqual(-EPS) // at / just ahead of the cockpit
+    expect(nearest).toBeLessThanOrEqual(RIB_Z + EPS) // within one cell of it
+    expect(farthest).toBeGreaterThanOrEqual(TRENCH_FAR - RIB_Z) // recedes to ≈ the cutoff
+    expect(farthest).toBeLessThanOrEqual(TRENCH_FAR + EPS) // but never overshoots it
   })
 
   it('each lateral floor rib spans the full channel width (−TRENCH_HALF_W → +TRENCH_HALF_W)', () => {
@@ -252,7 +256,7 @@ describe('Story 11-6 — trenchChannel ribs: lateral floor + vertical wall, ever
     const ribs = floorRibEdges(c)
     expect(ribs.length).toBeGreaterThan(0)
     for (const [a, b] of ribs) {
-      const xs = [c.vertices[a][0], c.vertices[b][0]].sort((p, q) => p - q)
+      const xs = [c.vertices[a][1], c.vertices[b][1]].sort((p, q) => p - q) // native RIGHT = index 1
       expect(xs[0]).toBeCloseTo(-TRENCH_HALF_W)
       expect(xs[1]).toBeCloseTo(TRENCH_HALF_W)
     }
@@ -266,7 +270,7 @@ describe('Story 11-6 — trenchChannel ribs: lateral floor + vertical wall, ever
     expect(left.length).toBeGreaterThanOrEqual(3)
     expect(left.length).toBe(right.length) // the two walls are ribbed identically
     for (const [a, b] of verticalRibEdges(c)) {
-      const ys = [c.vertices[a][1], c.vertices[b][1]].sort((p, q) => p - q)
+      const ys = [c.vertices[a][2], c.vertices[b][2]].sort((p, q) => p - q) // native UP = index 2
       expect(ys[0]).toBeCloseTo(0) // rises from the floor rail
       expect(ys[1]).toBeCloseTo(TRENCH_WALL_H) // to the top rail
     }
@@ -290,13 +294,14 @@ describe('Story 11-6 — trenchChannel scroll recycling & direction', () => {
     }
   })
 
-  it('scrolls the channel toward the camera as scroll grows (an interior floor rib advances +Z)', () => {
+  it('scrolls the channel toward the camera as scroll grows (an interior floor rib advances toward the cockpit, depth −)', () => {
     const base = floorRibZs(trenchChannel(0))
     // An INTERIOR rib — away from both ends, so a sub-cell scroll can't wrap it.
     const interior = base[Math.floor(base.length / 2)]
     const delta = RIB_Z * 0.3
     const shifted = floorRibZs(trenchChannel(delta))
-    expect(shifted.some((z) => Math.abs(z - (interior + delta)) < EPS)).toBe(true)
+    // Native: scrolling toward the cockpit DECREASES depth.
+    expect(shifted.some((z) => Math.abs(z - (interior - delta)) < EPS)).toBe(true)
     // …and it did NOT stay put (a genuine scroll, not a no-op).
     expect(shifted.some((z) => Math.abs(z - interior) < EPS)).toBe(false)
   })
@@ -308,7 +313,7 @@ describe('Story 11-6 — trenchChannel scroll recycling & direction', () => {
     const interior = base[Math.floor(base.length / 2)]
     const delta = RIB_Z * 0.3
     const wallZs = verticalRibs(trenchChannel(delta)).map((r) => r.z)
-    expect(wallZs.some((z) => Math.abs(z - (interior + delta)) < EPS)).toBe(true)
+    expect(wallZs.some((z) => Math.abs(z - (interior - delta)) < EPS)).toBe(true)
   })
 })
 
@@ -330,10 +335,10 @@ describe('Story 11-6 — trenchScrollZ accumulator', () => {
 
   it('rides the SAME rate as the exhaust port (channel and port advance by one delta)', () => {
     const s0 = enterPhase(initialState(), 'trench')
-    const startZ = s0.exhaustPort!.pos[2]
+    const startZ = s0.exhaustPort!.pos[0] // native DEPTH = index 0
     const dt = 0.1
     const s1 = stepGame(s0, NO_INPUT, dt)
-    const portAdvance = s1.exhaustPort!.pos[2] - startZ
+    const portAdvance = startZ - s1.exhaustPort!.pos[0] // native depth decreases toward the cockpit
     expect(portAdvance).toBeCloseTo(TRENCH_SCROLL_SPEED * dt)
     expect(s1.trenchScrollZ).toBeCloseTo(portAdvance)
   })

@@ -100,8 +100,9 @@ describe('sw7-6 B-009 — the run no longer opens with a fixed −2400 port', ()
     // Seam-tolerant behavioural spot-check at the default wave (BS.WAV 0 = PIE1).
     const s = enterPhase(initialState(1), 'trench')
     if (s.exhaustPort) {
-      expect(s.exhaustPort.pos[2]).not.toBe(-2400) // the old EXHAUST_PORT_DISTANCE
-      expect(-s.exhaustPort.pos[2]).toBeGreaterThan(2400) // far down −Z
+      // native DEPTH = index 0, positive going away down the channel
+      expect(s.exhaustPort.pos[0]).not.toBe(2400) // the old EXHAUST_PORT_DISTANCE
+      expect(s.exhaustPort.pos[0]).toBeGreaterThan(2400) // far down the channel
     }
   })
 })

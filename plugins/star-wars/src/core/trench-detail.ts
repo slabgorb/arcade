@@ -10,6 +10,7 @@
 import type { Vec3 } from '@shared/math3d'
 import type { Model3D } from './models'
 import { TRENCH_HALF_W, TRENCH_WALL_H, TRENCH_FAR } from './trench-channel'
+import { toNative } from './basis' // sw10-3: emit wall detail + far cap in the native world basis
 
 // True-up (docs/star-wars-1983-source-findings.md ## Trench geometry & limits):
 // no fixed panel/window grid is pinned in the ROM. The wall's actual detail is
@@ -55,7 +56,7 @@ export function trenchWallDetail(scroll: number): Model3D {
       edges.push([a, b], [b, c], [c, d], [d, a])
     }
   }
-  return { name: 'Trench Wall Detail', vertices, edges }
+  return { name: 'Trench Wall Detail', vertices: vertices.map(toNative), edges }
 }
 
 /**
@@ -104,5 +105,5 @@ export function trenchFarEnd(scroll: number): Model3D {
     [1, 2], // across the FLOOR (left → right)
     [2, 3], // up the RIGHT wall (floor → top)
   ]
-  return { name: 'Trench Far End', vertices, edges }
+  return { name: 'Trench Far End', vertices: vertices.map(toNative), edges }
 }

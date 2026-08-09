@@ -49,47 +49,47 @@ const shotAt = (pos: Vec3, view: Vec3) => ({ pos: [...pos] as Vec3, vel: trenchG
 
 describe('trench wall-gun fire rides the scroll (the bullets must not outrun the player)', () => {
   it('the fire velocity rides the scroll in depth and leads the ship laterally to hit it', () => {
-    // The fix contract, as a pure unit. A wall gun downrange at x=-300 firing at a
-    // centred pilot: its z-velocity IS the scroll (so it closes with the walls, not at
+    // The fix contract, as a pure unit. A wall gun downrange at right=-300 firing at a
+    // centred pilot: its depth-velocity IS the scroll (so it closes with the walls, not at
     // its own ~300 u/s creep), and integrating the whole velocity for the transit time
-    // lands it on the ship's x/y — a lead, so an off-wall gun still hits centre.
-    const gun: Vec3 = [-300, SEAT, -6000]
-    const ship: Vec3 = [0, SEAT, 0]
+    // lands it on the ship's right/up — a lead, so an off-wall gun still hits centre.
+    const gun: Vec3 = [6000, -300, SEAT]
+    const ship: Vec3 = [0, 0, SEAT]
     const vel = trenchGunFireVelocity(gun, ship)
 
-    expect(vel[2], 'depth closes at the world scroll rate, not the muzzle creep').toBeCloseTo(TRENCH_SCROLL_SPEED, 5)
-    expect(vel[2], 'i.e. far faster than the old bare muzzle speed').toBeGreaterThan(ENEMY_SHOT_SPEED * 5)
+    expect(vel[0], 'depth closes at the world scroll rate, not the muzzle creep').toBeCloseTo(-TRENCH_SCROLL_SPEED, 5)
+    expect(Math.abs(vel[0]), 'i.e. far faster than the old bare muzzle speed').toBeGreaterThan(ENEMY_SHOT_SPEED * 5)
 
-    const transit = (ship[2] - gun[2]) / TRENCH_SCROLL_SPEED
+    const transit = (gun[0] - ship[0]) / TRENCH_SCROLL_SPEED
     const arrival = add(gun, scale(vel, transit)) // where the shot is when its depth reaches the cockpit plane
-    expect(arrival[0], 'leads onto the ship x').toBeCloseTo(ship[0], 3)
-    expect(arrival[1], 'leads onto the ship y').toBeCloseTo(ship[1], 3)
-    expect(arrival[2], 'arrives exactly at the cockpit plane').toBeCloseTo(ship[2], 3)
+    expect(arrival[1], 'leads onto the ship right').toBeCloseTo(ship[1], 3)
+    expect(arrival[2], 'leads onto the ship up').toBeCloseTo(ship[2], 3)
+    expect(arrival[0], 'arrives exactly at the cockpit plane').toBeCloseTo(ship[0], 3)
   })
 
   it('a fired shot closes on the cockpit with the scroll, not its own muzzle creep', () => {
     // End to end: one incoming shot far downrange, dead-centre. After one step its
     // depth advances toward the cockpit by ~TRENCH_SCROLL_SPEED·dt (it rides the
     // world), NOT by ~ENEMY_SHOT_SPEED·dt (~5 u), which is what left it behind before.
-    const view: Vec3 = [0, SEAT, 0]
-    const z0 = -5000
-    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([0, SEAT, z0], view)] }
+    const view: Vec3 = [0, 0, SEAT]
+    const d0 = 5000 // native depth downrange
+    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([d0, 0, SEAT], view)] }
     const s1 = stepGame(s0, NO_INPUT, DT)
 
     expect(s1.enemyShots.length, 'the far shot is still alive').toBe(1)
-    const dz = s1.enemyShots[0].pos[2] - z0 // > 0 means it moved toward the cockpit (z→0)
-    expect(dz, 'the shot advances toward the cockpit with the scroll').toBeGreaterThan(TRENCH_SCROLL_SPEED * DT * 0.8)
-    expect(dz, 'i.e. far faster than its own muzzle creep — it is NOT left behind').toBeGreaterThan(ENEMY_SHOT_SPEED * DT * 5)
+    const advance = d0 - s1.enemyShots[0].pos[0] // > 0 means it moved toward the cockpit (depth→0)
+    expect(advance, 'the shot advances toward the cockpit with the scroll').toBeGreaterThan(TRENCH_SCROLL_SPEED * DT * 0.8)
+    expect(advance, 'i.e. far faster than its own muzzle creep — it is NOT left behind').toBeGreaterThan(ENEMY_SHOT_SPEED * DT * 5)
   })
 
   it('a dead-on shot that crosses the cockpit plane in one step still HITS (no tunnelling)', () => {
     // At scroll speed the shot leaps ~262 u/frame — more than the 160 u diameter of the
     // radius-80 cockpit sphere. A plain point-in-sphere test would let a dead-on shot
-    // jump clean over the cockpit between frames and never register. Seated at z ≈ -150
+    // jump clean over the cockpit between frames and never register. Seated at depth ≈ 150
     // it is >80 from the cockpit now and >80 past it next frame, so only a SWEPT test
     // over the segment catches it.
-    const view: Vec3 = [0, SEAT, 0]
-    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([0, SEAT, -150], view)] }
+    const view: Vec3 = [0, 0, SEAT]
+    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([150, 0, SEAT], view)] }
     const s1 = stepGame(s0, NO_INPUT, DT)
 
     expect(

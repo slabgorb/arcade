@@ -80,7 +80,7 @@
 // dropped) to the bake/port indexing.
 
 import { describe, it, expect } from 'vitest'
-import { TRENCH_TURRET } from '../../src/core/models'
+import { TRENCH_TURRET, bakeTrench } from '../../src/core/models'
 import { ROM_MODELS } from '../../src/tools/romModels.generated'
 import { ROM_TO_PORT, pairOne, verdictFor } from '../../src/tools/romCompare'
 import type { Vec3 } from '@shared/math3d'
@@ -167,8 +167,9 @@ describe('sw7-20 / M-011 — TRENCH_TURRET is the authentic `.WP WGA` wall gun',
   it('carries the WGA vertex table, 1:1 in ROM order (deep-equal, like romCompare)', () => {
     // romCompare.verticesEqual is a DEEP, order-sensitive equality (sw5-5), and
     // ORIENTATION is the shell's job (render.ts), so the model holds raw ROM
-    // vertices. RED: TRENCH_TURRET currently ships a 10-vertex hand-authored box.
-    expect(TRENCH_TURRET.vertices).toEqual(WGA_TABLE)
+    // vertices. sw10-3: the model is baked to the native world basis via
+    // `bakeTrench`; WGA_TABLE stays the raw `.WP WGA` oracle.
+    expect(TRENCH_TURRET.vertices).toEqual(bakeTrench(WGA_TABLE))
   })
 
   it('strokes the `.WGD WGA` draw list, and nothing fabricated (25 edges)', () => {
@@ -180,10 +181,11 @@ describe('sw7-20 / M-011 — TRENCH_TURRET is the authentic `.WP WGA` wall gun',
     // Two numbers separate WGA from the old stand-in. The old box base is a ±30
     // square (width 60) capped at y=72; WGA is a ±256 wall base (width 512) whose
     // gun body tops at y=96. Robust to vertex ORDER — reads the extremes.
-    const xs = TRENCH_TURRET.vertices.map((v) => v[0])
-    const ys = TRENCH_TURRET.vertices.map((v) => v[1])
-    expect(Math.max(...xs) - Math.min(...xs), 'WGA wall base spans ±256 (width 512)').toBe(512)
-    expect(Math.max(...ys), 'the gun body tops at y=96, not the box cap y=72').toBe(96)
+    // sw10-3 native basis: width is native RIGHT (index 1), height is native UP (index 2).
+    const rights = TRENCH_TURRET.vertices.map((v) => v[1])
+    const ups = TRENCH_TURRET.vertices.map((v) => v[2])
+    expect(Math.max(...rights) - Math.min(...rights), 'WGA wall base spans ±256 (width 512)').toBe(512)
+    expect(Math.max(...ups), 'the gun body tops at y=96, not the box cap y=72').toBe(96)
   })
 
   it('every port edge indexes a real vertex (no fabricated / out-of-range index)', () => {

@@ -67,7 +67,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { EXHAUST_PORT } from '../../src/core/models'
+import { EXHAUST_PORT, bakePort } from '../../src/core/models'
 import { ROM_MODELS } from '../../src/tools/romModels.generated'
 import type { Vec3 } from '@shared/math3d'
 
@@ -188,13 +188,15 @@ describe('sw5-4 — the ROM oracle (hand-transcribed from WSOBJ.MAC `.WP PORT` /
 // ---------------------------------------------------------------------------
 
 describe('sw5-4 AC-1/AC-2 — EXHAUST_PORT is ROM PORT', () => {
-  it('carries the ROM point table verbatim — all 12 points, in ROM order', () => {
+  it('carries the ROM point table (baked to the native world basis), all 12 points in ROM order', () => {
     // DEEP equality, not a count and not a set: edges are INDICES into this
     // array, so a reorder would silently repoint every edge while both arrays
     // still "look" right. It is also exactly what the contact sheet's vertex
     // guard demands before it will diff edges at all (AC-5, romCompare's
     // `verticesEqual` — an ordered deep compare).
-    expect(EXHAUST_PORT.vertices).toEqual(PORT_TABLE)
+    // sw10-3: the port is baked to the native world basis (a flat hole in the
+    // trench floor) via `bakePort`; PORT_TABLE stays the raw `.WP PORT` oracle.
+    expect(EXHAUST_PORT.vertices).toEqual(bakePort(PORT_TABLE))
   })
 
   it('is three CONCENTRIC SQUARES at ±96 / ±160 / ±256 — not an 8-point octagon', () => {

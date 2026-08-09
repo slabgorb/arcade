@@ -169,8 +169,9 @@ describe('sw5-6 AC-2 — the trench anchors are pinned from the ROM', () => {
 
 describe('sw5-6 — trenchChannel() builds the ROM trench', () => {
   const model = trenchChannel(0)
-  const xs = model.vertices.map((v) => v[0])
-  const ys = model.vertices.map((v) => v[1])
+  // sw10-3 native basis: width is native RIGHT (index 1), height is native UP (index 2).
+  const xs = model.vertices.map((v) => v[1])
+  const ys = model.vertices.map((v) => v[2])
 
   it('its walls stand at ±TRENCH_HALF_W', () => {
     expect(Math.min(...xs)).toBe(-TRENCH_HALF_W)

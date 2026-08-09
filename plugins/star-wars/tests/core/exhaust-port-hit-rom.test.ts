@@ -142,7 +142,8 @@ const trench = (
  *  reachability guard inside `shootAt` proves rather than assumes. The window never confounds the
  *  RADIUS question here either: an armed run always resolves at the wall, a missed one never does,
  *  so the sphere alone still decides every outcome in this file. */
-const SHOT_Z = -EXHAUST_PORT_DISTANCE
+// sw10-3 native basis: the shot depth rides native DEPTH (index 0), +forward.
+const SHOT_DEPTH = EXHAUST_PORT_DISTANCE
 
 /** One real 60fps frame. */
 const FRAME = 1 / 60
@@ -154,14 +155,15 @@ const hit = (events: readonly GameEvent[]): boolean =>
  *  to the $800 wall, and report whether the Death Star blew. `trenchShotsFired: 2` keeps the
  *  clean-run Force bonus out of the way — this suite is about the sphere, not the bonus. */
 function shootAt(x: number, y: number): boolean {
-  const port: Vec3 = [0, 0, SHOT_Z]
+  // native basis: [depth, right(x offset), up(y offset)].
+  const port: Vec3 = [SHOT_DEPTH, 0, 0]
   const s0 = trench(portAt(port), { trenchShotsFired: 2 })
   // ANTI-VACUOUS. `aimAt` deliberately does not clamp, so a test can ask for a yoke position no
   // player could hold (|NDC| > 1) and get a confident direction back. Every shot in this file is a
   // shot a pilot could actually take — which is exactly what the old -300 fixture was not.
-  const aim = aimAt([x, y, SHOT_Z], eyeOf(s0))
+  const aim = aimAt([SHOT_DEPTH, x, y], eyeOf(s0))
   expect(aim.reachable, `the yoke can point at (${x}, ${y}) from the trench mouth`).toBe(true)
-  let s = stepGame(s0, fireAt(s0, [x, y, SHOT_Z]), FRAME)
+  let s = stepGame(s0, fireAt(s0, [SHOT_DEPTH, x, y]), FRAME)
   // One pull is one shot (G-012), so the trigger comes up and the run coasts to the window; a
   // miss simply flies the whole trench and never resolves. The budget covers the full scroll from
   // the mouth to the cockpit with room to spare.

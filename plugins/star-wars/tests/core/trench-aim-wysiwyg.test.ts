@@ -101,10 +101,12 @@ const ASPECT = 16 / 9
  */
 function crosshairOn(p: Vec3, eye: Vec3): { aimX: number; aimY: number; reachable: boolean } {
   const f = 1 / Math.tan(FOV_Y / 2)
-  const [dx, dy, dz] = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]]
-  const depth = -dz
-  const aimX = (f * dx) / depth
-  const aimY = (f * dy) / depth
+  // sw10-3 native basis: a world point is [depth(+X), right(+Y), up(+Z)]. `aimDirection`
+  // is `normalize([1, aimX/f, aimY/f])`, so its inverse divides the right/up offsets by
+  // the DEPTH offset (index 0), never by −z.
+  const [dDepth, dRight, dUp] = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]]
+  const aimX = (f * dRight) / dDepth
+  const aimY = (f * dUp) / dDepth
   return { aimX, aimY, reachable: Math.abs(aimX) <= 1 && Math.abs(aimY) <= 1 }
 }
 
@@ -142,7 +144,7 @@ describe('sw5-6 — what you aim at is what you hit (trench obstacles)', () => {
     }
   })
 
-  it.each(shootable.map((o, i) => [`${o.kind} #${i} @ z=${o.pos[2]}`, o] as const))(
+  it.each(shootable.map((o, i) => [`${o.kind} #${i} @ depth=${o.pos[0]}`, o] as const))(
     'DESTROYS %s when the crosshair is on it and the trigger is pulled',
     (_label, o: TrenchObstacle) => {
       const s0 = trench({ trenchObstacles: [{ kind: o.kind, pos: [...o.pos] as Vec3 }] })
@@ -186,28 +188,28 @@ describe('sw5-6 — the exhaust port is winnable from the pilot\'s seat', () => 
    *
    * A single bolt, fired from the seat, has to actually be aimed. Now the claim is true.
    */
-  function run(yoke: Input, frames = 900): { won: boolean; portZatWin: number | null } {
-    let s = trench({ exhaustPort: { pos: [0, 0, -EXHAUST_PORT_DISTANCE] } })
+  function run(yoke: Input, frames = 900): { won: boolean; portDepthAtWin: number | null } {
+    let s = trench({ exhaustPort: { pos: [EXHAUST_PORT_DISTANCE, 0, 0] } })
     for (let i = 0; i < frames; i++) {
-      const portZ = s.exhaustPort?.pos[2] ?? null
+      const portDepth = s.exhaustPort?.pos[0] ?? null
       // frame 0 pulls the trigger; every frame after releases it. One shot.
       const next = stepGame(s, i === 0 ? yoke : { ...yoke, fire: false }, DT)
       // The run is WON when the port dies: the phase leaves the trench (clearRun) or the
       // death-star-destroyed beat fires.
       if (next.phase !== 'trench' || next.events.some((e) => e.type === 'death-star-destroyed')) {
-        return { won: true, portZatWin: portZ }
+        return { won: true, portDepthAtWin: portDepth }
       }
       s = next
     }
-    return { won: false, portZatWin: null }
+    return { won: false, portDepthAtWin: null }
   }
 
   it('aiming AT the port wins the run — with a yoke input the yoke can produce', () => {
     // The pilot's eye is 768 above the floor and the port lies IN the floor, so the port sits
     // below the crosshair's rest position. He must aim DOWN at it. At the port's spawn distance
     // that is ~17.7° — well inside the 30° cone — so a reachable shot exists. Fire it.
-    const s0 = trench({ exhaustPort: { pos: [0, 0, -EXHAUST_PORT_DISTANCE] } })
-    const aim = crosshairOn([0, 0, -EXHAUST_PORT_DISTANCE], seatedEye(s0))
+    const s0 = trench({ exhaustPort: { pos: [EXHAUST_PORT_DISTANCE, 0, 0] } })
+    const aim = crosshairOn([EXHAUST_PORT_DISTANCE, 0, 0], seatedEye(s0))
     expect(aim.reachable, `the port needs aim (${aim.aimX.toFixed(2)}, ${aim.aimY.toFixed(2)})`).toBe(true)
 
     const { won } = run({ aimX: aim.aimX, aimY: aim.aimY, fire: true, aspect: ASPECT })
@@ -224,20 +226,20 @@ describe('sw5-6 — the exhaust port is winnable from the pilot\'s seat', () => 
   })
 
   it('the winning shot lands INSIDE the ROM\'s approach window', () => {
-    // sw3-15 pinned the ROM's $800 end-wall window (`sim.ts`: `port[2] >= -PORT_APPROACH_WINDOW`):
+    // sw3-15 pinned the ROM's $800 end-wall window (`sim.ts`: `port[0] <= PORT_APPROACH_WINDOW`):
     // the entry-shot that used to win every run must not count. Moving the gun must not quietly
     // re-open it — nor may the fix "work" by winning the run from the trench mouth.
-    const s0 = trench({ exhaustPort: { pos: [0, 0, -EXHAUST_PORT_DISTANCE] } })
-    const aim = crosshairOn([0, 0, -EXHAUST_PORT_DISTANCE], seatedEye(s0))
-    const { won, portZatWin } = run({ aimX: aim.aimX, aimY: aim.aimY, fire: true, aspect: ASPECT })
+    const s0 = trench({ exhaustPort: { pos: [EXHAUST_PORT_DISTANCE, 0, 0] } })
+    const aim = crosshairOn([EXHAUST_PORT_DISTANCE, 0, 0], seatedEye(s0))
+    const { won, portDepthAtWin } = run({ aimX: aim.aimX, aimY: aim.aimY, fire: true, aspect: ASPECT })
 
     expect(won).toBe(true)
-    expect(portZatWin, 'the port was in play when it died').not.toBeNull()
+    expect(portDepthAtWin, 'the port was in play when it died').not.toBeNull()
     // One frame of float slop: the port advances TRENCH_SCROLL_SPEED*dt per step and the sum
-    // lands on -800.0000000000019, not -800. Assert the gate, not the arithmetic of doubles.
+    // lands on 800.0000000000019, not 800. Assert the gate, not the arithmetic of doubles.
     expect(
-      portZatWin!,
-      `the kill landed at z=${portZatWin} — outside the ROM's $800 approach gate`,
-    ).toBeGreaterThan(-PORT_APPROACH_WINDOW - TRENCH_SCROLL_SPEED * DT)
+      portDepthAtWin!,
+      `the kill landed at depth=${portDepthAtWin} — outside the ROM's $800 approach gate`,
+    ).toBeLessThan(PORT_APPROACH_WINDOW + TRENCH_SCROLL_SPEED * DT)
   })
 })

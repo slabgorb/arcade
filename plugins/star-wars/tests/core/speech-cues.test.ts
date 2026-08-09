@@ -76,7 +76,7 @@ function portKill(state: GameState): GameState {
   // armed earlier, resolving here. The laser's own arming is pinned in tune-cue.test.ts /
   // exhaust-port-challenge.test.ts; what this suite is about is the CUE on the kill frame.
   const p = state.exhaustPort!.pos
-  const port: typeof p = [p[0], p[1], -300]
+  const port: typeof p = [300, p[1], p[2]]
   return {
     ...state,
     mode: 'playing',

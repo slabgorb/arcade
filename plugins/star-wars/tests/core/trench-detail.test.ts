@@ -15,20 +15,22 @@ describe('trenchWallDetail — recessed wall panels (fidelity epic)', () => {
     }
   })
 
-  it('puts every vertex ON a wall plane (x = ±TRENCH_HALF_W), inside the wall band', () => {
+  it('puts every vertex ON a wall plane (right = ±TRENCH_HALF_W), inside the wall band', () => {
     for (const v of trenchWallDetail(0).vertices) {
-      expect(Math.abs(Math.abs(v[0]) - TRENCH_HALF_W)).toBeLessThan(1e-6)
-      expect(v[1]).toBeGreaterThan(0)
-      expect(v[1]).toBeLessThan(TRENCH_WALL_H)
-      expect(v[2]).toBeLessThanOrEqual(0 + PANEL_Z) // never behind the cockpit by more than one cell
-      expect(v[2]).toBeGreaterThanOrEqual(-TRENCH_FAR - PANEL_Z)
+      expect(Math.abs(Math.abs(v[1]) - TRENCH_HALF_W)).toBeLessThan(1e-6) // native RIGHT = index 1
+      expect(v[2]).toBeGreaterThan(0) // native UP = index 2
+      expect(v[2]).toBeLessThan(TRENCH_WALL_H)
+      // native DEPTH = index 0, positive going away; never behind the cockpit by more than one cell
+      expect(v[0]).toBeGreaterThanOrEqual(-PANEL_Z)
+      expect(v[0]).toBeLessThanOrEqual(TRENCH_FAR + PANEL_Z)
     }
   })
 
-  it('is mirror-symmetric across x=0', () => {
+  it('is mirror-symmetric across the centreline', () => {
     const d = trenchWallDetail(0)
     const present = new Set(d.vertices.map((v) => `${v[0]}|${v[1]}|${v[2]}`))
-    for (const v of d.vertices) expect(present.has(`${-v[0]}|${v[1]}|${v[2]}`)).toBe(true)
+    // mirror the native RIGHT axis (index 1)
+    for (const v of d.vertices) expect(present.has(`${v[0]}|${-v[1]}|${v[2]}`)).toBe(true)
   })
 
   it('is pure & deterministic, and recycles every PANEL_Z', () => {

@@ -71,32 +71,35 @@ import type { Model3D } from '../../src/core/models'
 
 const EPS = 1e-6
 
-/** Distinct z values in the model. A planar cross-section shares exactly one. */
+/** Distinct DEPTH values (native index 0) in the model. A planar cross-section
+ *  shares exactly one. */
 function zsOf(m: Model3D): number[] {
-  return [...new Set(m.vertices.map((v) => v[2]))]
+  return [...new Set(m.vertices.map((v) => v[0]))]
 }
 
-/** VERTICAL edges — the wall runs: both endpoints share x AND z, differ in y. */
+/** VERTICAL edges — the wall runs: both endpoints share RIGHT (v[1]) AND DEPTH
+ *  (v[0]), differ in UP (v[2]). Returns {x:right, z:depth, yLo/yHi:up span}. */
 function verticalEdges(m: Model3D): { x: number; z: number; yLo: number; yHi: number }[] {
   const out: { x: number; z: number; yLo: number; yHi: number }[] = []
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (Math.abs(va[0] - vb[0]) < EPS && Math.abs(va[2] - vb[2]) < EPS && Math.abs(va[1] - vb[1]) > EPS) {
-      out.push({ x: va[0], z: va[2], yLo: Math.min(va[1], vb[1]), yHi: Math.max(va[1], vb[1]) })
+    if (Math.abs(va[1] - vb[1]) < EPS && Math.abs(va[0] - vb[0]) < EPS && Math.abs(va[2] - vb[2]) > EPS) {
+      out.push({ x: va[1], z: va[0], yLo: Math.min(va[2], vb[2]), yHi: Math.max(va[2], vb[2]) })
     }
   }
   return out
 }
 
-/** LATERAL edges — runs across X at a constant height: share y AND z, differ in x. */
+/** LATERAL edges — runs across RIGHT (v[1]) at a constant height: share UP (v[2])
+ *  AND DEPTH (v[0]), differ in right. Returns {y:up, z:depth, xLo/xHi:right span}. */
 function lateralEdges(m: Model3D): { y: number; z: number; xLo: number; xHi: number }[] {
   const out: { y: number; z: number; xLo: number; xHi: number }[] = []
   for (const [a, b] of m.edges) {
     const va = m.vertices[a]
     const vb = m.vertices[b]
-    if (Math.abs(va[1] - vb[1]) < EPS && Math.abs(va[2] - vb[2]) < EPS && Math.abs(va[0] - vb[0]) > EPS) {
-      out.push({ y: va[1], z: va[2], xLo: Math.min(va[0], vb[0]), xHi: Math.max(va[0], vb[0]) })
+    if (Math.abs(va[2] - vb[2]) < EPS && Math.abs(va[0] - vb[0]) < EPS && Math.abs(va[1] - vb[1]) > EPS) {
+      out.push({ y: va[2], z: va[0], xLo: Math.min(va[1], vb[1]), xHi: Math.max(va[1], vb[1]) })
     }
   }
   return out
@@ -178,27 +181,28 @@ describe('sw8-4 — trenchFarEnd draws the TBSBF ∐ (down left wall · across f
 
   it('spans the full envelope: x = ±TRENCH_HALF_W, y = 0 → TRENCH_WALL_H, both walls cornered', () => {
     const m = trenchFarEnd(0)
-    const xs = m.vertices.map((v) => v[0])
-    const ys = m.vertices.map((v) => v[1])
+    const xs = m.vertices.map((v) => v[1]) // native RIGHT = index 1
+    const ys = m.vertices.map((v) => v[2]) // native UP = index 2
     expect(Math.min(...xs)).toBeCloseTo(-TRENCH_HALF_W)
     expect(Math.max(...xs)).toBeCloseTo(TRENCH_HALF_W)
     expect(Math.min(...ys)).toBeCloseTo(0) // floor
     expect(Math.max(...ys)).toBeCloseTo(TRENCH_WALL_H) // wall top
     // Both walls carry BOTH corners (floor + top) — the four TBSBF points.
     for (const x of [-TRENCH_HALF_W, TRENCH_HALF_W]) {
-      const floorCorner = m.vertices.some((v) => Math.abs(v[0] - x) < EPS && Math.abs(v[1]) < EPS)
-      const topCorner = m.vertices.some((v) => Math.abs(v[0] - x) < EPS && Math.abs(v[1] - TRENCH_WALL_H) < EPS)
+      const floorCorner = m.vertices.some((v) => Math.abs(v[1] - x) < EPS && Math.abs(v[2]) < EPS)
+      const topCorner = m.vertices.some((v) => Math.abs(v[1] - x) < EPS && Math.abs(v[2] - TRENCH_WALL_H) < EPS)
       expect(floorCorner, `floor corner present at x=${x}`).toBe(true)
       expect(topCorner, `top corner present at x=${x}`).toBe(true)
     }
   })
 
-  it('is mirror-symmetric across x=0 (for every (x,y,z) there is a (−x,y,z))', () => {
+  it('is mirror-symmetric across the centreline (for every (d,r,u) there is a (d,−r,u))', () => {
     const m = trenchFarEnd(0)
     const key = (v: readonly number[]) => `${v[0].toFixed(6)}|${v[1].toFixed(6)}|${v[2].toFixed(6)}`
     const present = new Set(m.vertices.map(key))
     for (const v of m.vertices) {
-      expect(present.has(key([-v[0], v[1], v[2]]))).toBe(true)
+      // mirror the native RIGHT axis (index 1)
+      expect(present.has(key([v[0], -v[1], v[2]]))).toBe(true)
     }
   })
 })
@@ -217,8 +221,8 @@ describe('sw8-4 — trenchFarEnd seats at the far reference depth −TRENCH_FAR'
     // clamp + AC1/AC5 that latitude is one-sided toward the cockpit — see the TEA
     // deviation. So the faithful window is [−TRENCH_FAR, −TRENCH_FAR + RIB_Z].
     const z = zsOf(trenchFarEnd(0))[0]
-    expect(z, 'never drawn beyond the ROM $7000 far cull').toBeGreaterThanOrEqual(-TRENCH_FAR - EPS)
-    expect(z, 'seated at the far end, within one rib of the cull').toBeLessThanOrEqual(-TRENCH_FAR + RIB_Z + EPS)
+    expect(z, 'never drawn beyond the ROM $7000 far cull').toBeLessThanOrEqual(TRENCH_FAR + EPS)
+    expect(z, 'seated at the far end, within one rib of the cull').toBeGreaterThanOrEqual(TRENCH_FAR - RIB_Z - EPS)
   })
 
   it('MID-RUN it stays pinned at the far reference (±RIB_Z) as the channel scrolls — it does NOT recycle toward the camera', () => {
@@ -230,8 +234,8 @@ describe('sw8-4 — trenchFarEnd seats at the far reference depth −TRENCH_FAR'
     for (const s of [0, RIB_Z / 3, RIB_Z * 2.25, 1.0, -RIB_Z * 1.5]) {
       const zs = zsOf(trenchFarEnd(s))
       expect(zs, `planar at scroll=${s}`).toHaveLength(1)
-      expect(zs[0], `at scroll=${s}: not beyond the $7000 cull`).toBeGreaterThanOrEqual(-TRENCH_FAR - EPS)
-      expect(zs[0], `at scroll=${s}: still pinned at the far end`).toBeLessThanOrEqual(-TRENCH_FAR + RIB_Z + EPS)
+      expect(zs[0], `at scroll=${s}: not beyond the $7000 cull`).toBeLessThanOrEqual(TRENCH_FAR + EPS)
+      expect(zs[0], `at scroll=${s}: still pinned at the far end`).toBeGreaterThanOrEqual(TRENCH_FAR - RIB_Z - EPS)
     }
   })
 })

@@ -137,8 +137,8 @@ describe('uf1-4 — trench wall guns stream from the wedge grid (B-017 closes th
     const want = gridCellCounts(1)
     const got = new Map<string, number>()
     for (const t of turrets(freshTrench(1))) {
-      expect(Math.abs(t.pos[0]), 'guns mount ON the wall').toBe(TRENCH_HALF_W)
-      const k = cellKey(Math.sign(t.pos[0]), -t.pos[2])
+      expect(Math.abs(t.pos[1]), 'guns mount ON the wall').toBe(TRENCH_HALF_W)
+      const k = cellKey(Math.sign(t.pos[1]), t.pos[0])
       got.set(k, (got.get(k) ?? 0) + 1)
     }
     // Multiset equality both ways: an invented station fails (key not in grid),
@@ -153,9 +153,9 @@ describe('uf1-4 — trench wall guns stream from the wedge grid (B-017 closes th
     const counts = gridCellCounts(1)
     const cell = guns.find((g) => g.side === -1 && !counts.has(cellKey(1, g.dist)))
     expect(cell, 'anchor: a left-only column exists in the data').toBeDefined()
-    const at = turrets(freshTrench(1)).filter((t) => -t.pos[2] === cell!.dist)
+    const at = turrets(freshTrench(1)).filter((t) => t.pos[0] === cell!.dist)
     expect(at.length, 'the column streams its left gun(s)').toBe(counts.get(cellKey(-1, cell!.dist)))
-    expect(at.every((t) => t.pos[0] < 0), 'and nothing on the right wall').toBe(true)
+    expect(at.every((t) => t.pos[1] < 0), 'and nothing on the right wall').toBe(true)
   })
 
   it('a column stacking two guns streams two turrets at distinct on-wall heights (AC-2: moving the gun in the DATA is what moves it on the wall)', () => {
@@ -164,12 +164,12 @@ describe('uf1-4 — trench wall guns stream from the wedge grid (B-017 closes th
     expect(stacked, 'anchor: a 2-gun column exists in the data').toBeDefined()
     const [key] = stacked!
     const [side, dist] = key.split('@').map(Number)
-    const at = turrets(freshTrench(1)).filter((t) => Math.sign(t.pos[0]) === side && -t.pos[2] === dist)
+    const at = turrets(freshTrench(1)).filter((t) => Math.sign(t.pos[1]) === side && t.pos[0] === dist)
     expect(at.length, 'both stacked guns stream').toBe(2)
-    expect(at[0].pos[1], 'distinct slot heights').not.toBe(at[1].pos[1])
+    expect(at[0].pos[2], 'distinct slot heights').not.toBe(at[1].pos[2])
     for (const t of at) {
-      expect(t.pos[1], 'height is on the wall').toBeGreaterThan(0)
-      expect(t.pos[1], 'height is on the wall').toBeLessThanOrEqual(TRENCH_WALL_H)
+      expect(t.pos[2], 'height is on the wall').toBeGreaterThan(0)
+      expect(t.pos[2], 'height is on the wall').toBeLessThanOrEqual(TRENCH_WALL_H)
     }
   })
 
@@ -185,9 +185,9 @@ describe('uf1-4 — trench wall guns stream from the wedge grid (B-017 closes th
     for (let slot = 0; slot < 4; slot++) {
       const g = guns.find((x) => x.slot === slot && counts.get(cellKey(x.side, x.dist)) === 1)
       expect(g, `lone slot-${slot} column`).toBeDefined()
-      const t = ts.find((x) => Math.sign(x.pos[0]) === g!.side && -x.pos[2] === g!.dist)
+      const t = ts.find((x) => Math.sign(x.pos[1]) === g!.side && x.pos[0] === g!.dist)
       expect(t, `its streamed gun`).toBeDefined()
-      slotY.push(t!.pos[1])
+      slotY.push(t!.pos[2])
     }
     expect(slotY.length, 'all four slots observed').toBe(4)
     for (let i = 1; i < 4; i++) {
