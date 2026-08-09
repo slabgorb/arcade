@@ -50,7 +50,7 @@ export function resumePlay(phase: Phase): Phase {
 // ─── mc6-1 (GREEN, Loki): the MAINLINE dispatch skeleton ─────────────────────
 // Grow mc3's phase seam toward the full cabinet lifecycle. Ground truth REV-01:
 // MAINLINE (W3MAIN.MAC:475) dispatches on the SIGN of the one-byte STATE var
-// (W3MAIN.MAC:131 ";GAME STATE (PLAY,PAUSE,OR SETUP)"), at W3MAIN.MAC:507-527:
+// (W3MAIN.MAC:131 ";GAME STATE (PLAY,PAUSE,OR SETUP)"), at W3MAIN.MAC:507-525:
 //   LDA STATE / IFEQ -> PLAY (==0) / IFMI -> PAUSE (high bit) / ELSE -> SETUP (>0).
 // 'attract', 'between' and 'over' are NOT peer states: attract runs SETUP->PLAY
 // gated by the orthogonal ATRACT flag (W3MAIN.MAC:135), and between/over are
@@ -64,8 +64,8 @@ export type Handler = 'play' | 'pause' | 'setup'
 
 // The three STATE codes, equates under W3COMN.MAC's `.RADIX 16` (a bare literal is
 // HEX). The hex reading is FORCED by the dispatch: only 0x80's high bit makes
-// PAUSE the IFMI (branch-on-minus) arm; a decimal 80 would be positive and alias
-// SETUP. JS has no signed byte, so the split below tests the high bit, not `< 0`.
+// PAUSE the IFMI (branch-on-minus) arm; a decimal 80 would still be positive and dispatch
+// down the SETUP branch. JS has no signed byte, so the split below tests the high bit, not `< 0`.
 export const S_PLAY = 0x00 // W3COMN.MAC:61  S.PLAY =0   — PLAY  (STATE == 0)
 export const S_PAUS = 0x80 // W3COMN.MAC:59  S.PAUS =80  — PAUSE (STATE < 0, hi bit)
 export const S_SETU = 0x40 // W3COMN.MAC:57  S.SETU =40  — SETUP (STATE > 0)
@@ -83,7 +83,7 @@ export function stateCode(phase: Phase): number {
   }
 }
 
-// MAINLINE dispatch (W3MAIN.MAC:507-527): pick the frame handler by the sign of
+// MAINLINE dispatch (W3MAIN.MAC:507-525): pick the frame handler by the sign of
 // the phase's STATE code, exactly as the 6502 does — IFEQ (==0) PLAY, IFMI (high
 // bit set) PAUSE, ELSE SETUP. Pure: no clock, no entropy. (ROM line numbers live
 // in // comments, never JSDoc — the citation scanner strips // but not /** */.)
