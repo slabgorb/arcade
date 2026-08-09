@@ -71,11 +71,14 @@ export const CAMERA_ORIENT: Mat4 = NATIVE_FROM_OPENGL
  * and local +Z → up. This is the native twin of the shared `lookRotation` (which
  * maps local +Z → forward, the OpenGL convention we no longer author models in).
  *
- * Columns are `[forward, right, up]` in row-major storage, so a TIE's nose reads
- * back as the FIRST column, `[m[0], m[4], m[8]]` (native forward), where the old
- * code read the third (`[m[2], m[6], m[10]]`, OpenGL forward). A zero `forward`
- * yields IDENTITY; `up` defaults to native world-up (+Z) and falls back when the
- * heading is (near-)parallel to it (gimbal lock).
+ * Columns are `[forward, right, up]` in row-major storage: the passed `forward`
+ * is planted on column 0, `[m[0], m[4], m[8]]`. NOTE this is THIS helper's own
+ * convention, not the TIE's live-orient convention — the flight orient in `sim`
+ * (`applyManeuver`/`aimOrient`) and `tie-status` (`computeStatus`) is the CONJUGATE
+ * `P·M_old·Pᵀ`, whose nose reads back as −column 0, `[-m[0], -m[4], -m[8]]`; a
+ * caller building a heading with THIS function passes the direction accordingly.
+ * A zero `forward` yields IDENTITY; `up` defaults to native world-up (+Z) and
+ * falls back when the heading is (near-)parallel to it (gimbal lock).
  */
 export function lookRotationNative(forward: Vec3, up: Vec3 = [0, 0, 1]): Mat4 {
   const f = normalize(forward)

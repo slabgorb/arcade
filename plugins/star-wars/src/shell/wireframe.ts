@@ -40,12 +40,25 @@ export const DEFAULT_GLOW = '#00e5ff'
 // The near plane the camera clips against, in world Z (looking down -Z).
 const NEAR_Z = -NEAR
 
+/** Map NDC → canvas pixels through the sw10-1 LETTERBOXED square viewport. The
+ * authentic cabinet lens is a symmetric ±45° SQUARE glass (aspect-independent),
+ * so the scene is drawn in a centered square of side min(w,h) and the long window
+ * axis gets symmetric bars. Scene geometry (toScreen/project), the crosshair and
+ * world fireballs all map through HERE, so the image never stretches AND the
+ * reticle sits exactly where a target at the same NDC is drawn, at any window
+ * shape — the aim↔render agreement Reviewer F1 required (both share one square).
+ * +y is up (flipped for the canvas). */
+export function ndcToScreen(nx: number, ny: number, w: number, h: number): [number, number] {
+  const s = Math.min(w, h)
+  return [w / 2 + nx * (s / 2), h / 2 - ny * (s / 2)]
+}
+
 /** Map a world point to screen pixels (no visibility guard). Shared by project()
  * and the near-plane clip, which must project a cut point sitting exactly on
  * z=-NEAR — a Z that project() itself rejects. */
 function toScreen(p: Vec3, proj: Mat4, w: number, h: number): [number, number] {
   const ndc = transform(proj, p)
-  return [(ndc[0] * 0.5 + 0.5) * w, (-ndc[1] * 0.5 + 0.5) * h]
+  return ndcToScreen(ndc[0], ndc[1], w, h)
 }
 
 /** Lerp the segment p→q to its crossing of the near plane (z=-NEAR), pinning the

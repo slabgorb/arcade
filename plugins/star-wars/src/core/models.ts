@@ -775,7 +775,7 @@ export const TRENCH_CATWALK: Model3D = {
  * pair-models.json): the 1983 cabinet does NOT draw a 3D sphere — it draws an
  * authentic 2D vector PICTURE ("DEATH STAR PICS", WSVROM.MAC:2449), a flat billboard
  * SCALED by the AVG multiplier `M.=32` as the player closes. It has three coloured
- * parts, ported here as three flat (z=0) picture models the shell strokes in their
+ * parts, ported here as three flat (native depth X=0) picture models the shell strokes in their
  * own colour: a GREEN disc (`BSCIR`, VGCGRN, radius 50), a WHITE equatorial trench
  * chord (`BSTRN`, VGCWHT), and a RED offset superlaser dish (`BSDSH`, VGCRED). This
  * replaces the story-11-7 procedural UV sphere (a stand-in whose doc comment wrongly
@@ -787,7 +787,7 @@ export const TRENCH_CATWALK: Model3D = {
  * no DOM/time/random.
  */
 
-/** A flat (z=0) picture model from a single polyline; `close` links last→first. */
+/** A flat (native depth X=0) picture model from a single polyline; `close` links last→first. */
 function picture(name: string, pts2d: readonly (readonly [number, number])[], close: boolean): Model3D {
   // sw10-1: a flat billboard in the NATIVE screen plane — depth X=0, right Y=x, up Z=y.
   const vertices: Vec3[] = pts2d.map(([x, y]) => [0, x, y])
@@ -797,7 +797,7 @@ function picture(name: string, pts2d: readonly (readonly [number, number])[], cl
   return { name, vertices, edges }
 }
 
-/** A flat (z=0) picture model from explicit disjoint segments (each [a,b] a line). */
+/** A flat (native depth X=0) picture model from explicit disjoint segments (each [a,b] a line). */
 function pictureSegments(name: string, pts2d: readonly (readonly [number, number])[], edges: readonly [number, number][]): Model3D {
   return { name, vertices: pts2d.map(([x, y]) => [0, x, y]), edges: edges.map(([a, b]) => [a, b]) } // sw10-1: native billboard plane
 }

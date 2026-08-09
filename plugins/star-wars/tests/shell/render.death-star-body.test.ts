@@ -25,6 +25,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../src/shell/wireframe', () => ({
   drawWireframe: vi.fn(),
   project: () => [0, 0] as [number, number],
+  ndcToScreen: () => [0, 0] as [number, number], // sw10-1 F1: render's crosshair maps through this now
+
   GLOW_FOR: {
     'TIE Fighter': '#30d158',
     'Darth Vader TIE': '#30d158',

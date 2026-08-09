@@ -341,13 +341,13 @@ export function computeStatus(e: Enemy, state: GameState, rng: Rng): number {
   //   WSMAIN.MAC:3840-3842  `LDD M.ZPS` / `SUBD M.XPS` / `LBHS RTS1`  the other ratio test
   //
   // Those four tests are the ROM's C_PV — the same near/far literals and the
-  // same per-axis ratio SHAPE our C_PV block above ports, re-sloped to our glass
-  // by uf1-14. Read that as an analogue, not an identity: the cabinet's ratio
-  // tests are a fixed ±45° square pyramid, ours is the RENDERED frustum (30°
-  // vertical, horizontal swinging with the canvas), and that deviation is
-  // deliberate and disclosed fifty lines up — a bit that claims "the player can
-  // see it" has to use the player's actual glass. Do NOT "restore fidelity" by
-  // putting ±45° back here; that undoes uf1-14. What transcribes exactly is the
+  // same per-axis ratio SHAPE our C_PV block above ports. Since sw10-1 unified the
+  // render onto the cabinet's authentic symmetric ~90° lens, our slope IS the
+  // cabinet's ±45° again (the C_PV note fifty lines up: TAN_HALF_FOV = tan 45° =
+  // 1), so this is now an IDENTITY, not the uf1-14 analogue it once was — the
+  // cabinet's fixed ±45° square pyramid and ours are the same shape, aspect-
+  // independent. (History: uf1-14 once re-sloped our C_PV to a 30°/aspect RENDERED
+  // frustum; sw10-1 retired that skew — do not reintroduce it.) What transcribes exactly is the
   // CONTROL FLOW below, which is what this gate ports. `CHSET C$PV` is
   // WSMAIN.MAC:3846 and the sole `CHSET C$PS` is WSMAIN.MAC:3930, and between
   // those two lines there is NO label at all — so nothing can branch into the

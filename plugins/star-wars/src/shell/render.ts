@@ -74,7 +74,7 @@ import {
   type Mat4,
   type Vec3,
 } from '@shared/math3d'
-import { project, drawWireframe, GLOW_FOR, NEAR, FAR } from './wireframe'
+import { project, drawWireframe, ndcToScreen, GLOW_FOR, NEAR, FAR } from './wireframe'
 import { layoutText, CELL_H } from './font'
 import { glowPolyline } from './glow'
 
@@ -144,9 +144,15 @@ const TRENCH_GLOW = '#22e600' // PROVISIONAL(findings ## Colors & intensities) �
 // point, then gone, not a glow trailing the bolt down its whole 6s flight.
 const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 
-// Display orientation per surface model (story 8-4). The authentic object-space
-// axes do not match the in-game view, so each model is rotated into place before
-// it is drawn (the vertex data in core/models.ts stays untouched).
+// Display orientation per surface model (story 8-4). RETIRED by sw10-1 for
+// SURFACE / PORT / TIE — the world now runs in the ROM-native basis (basis.ts),
+// so those models drop in under the ONE camera remap and their constants below
+// are `IDENTITY`. The paragraphs that follow describe the PRE-sw10-1 per-model
+// rotations as HISTORY (why each const existed), not current behaviour; only
+// TOWER_ORIENT remains a live rotation (it carries real display geometry, not a
+// basis conversion — see its own note). The authentic object-space axes did not
+// match the old view, so each model WAS rotated into place before it was drawn
+// (the vertex data in core/models.ts stayed untouched).
 //
 //   SURFACE — the cross-sections stand in the X/Y plane in object space; a -90°
 //   roll about Z lays them down so the relief rises in +Y from the y=0 floor.
@@ -233,17 +239,17 @@ export const TOWER_ORIENT: Mat4 = multiply(
   multiply(translation(0, GD_HEIGHT_OFFSET * GROUND_MODEL_SCALE, 0), rotationX(-Math.PI / 2)),
 )
 
-// TIE display correction (story 8-13). The authentic model stacks its two
-// hexagonal solar panels along the object-space Y axis (panels at y=±208, lying
-// flat in X/Z) — a TIE on its side. A +90° roll about Z stands them upright so
-// they sit left/right of the cockpit pod, with the model's depth axis on +Z.
-// This FIXED correction is composed with each enemy's DYNAMIC look-at-cockpit
-// `orient` (computed in core) so the upright TIE then banks at the player.
+// TIE display correction (story 8-13) — RETIRED by sw10-1 (history only). The
+// authentic model stacks its two hexagonal solar panels along the object-space Y
+// axis (panels at y=±208, lying flat in X/Z) — a TIE on its side. Pre-sw10-1 a
+// +90° roll about Z stood them upright, composed with each enemy's DYNAMIC
+// look-at-cockpit `orient`. sw10-1 baked that roll into the vertex data (via
+// `bakeTie`), so TIE_ORIENT is now IDENTITY and composing it at the draw call is
+// a no-op; the panels read upright straight from the baked model data.
 //
-// NOTE: like the surface orients, the exact correction escapes structural tests
-// (the render guard only asserts `orient` is APPLIED) and MUST be eyeballed in
-// the dev server (port 5274) — confirm the panels read upright and the ship
-// faces the cockpit before sign-off.
+// NOTE: the upright posture escapes structural tests (the render guard only
+// asserts `orient` is APPLIED) and is eyeballed in the dev server (port 5270) —
+// confirm the panels read upright and the ship faces the cockpit before sign-off.
 export const TIE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
 // TRENCH_SKIM (a fixed 60-unit cockpit skim, added to the eye here) is GONE (sw5-6). It
@@ -390,6 +396,21 @@ function drawDeathStar(ctx: CanvasRenderingContext2D, seat: { pos: Vec3; scale: 
  * world-shift constants (`SKIM_OFFSET` and the per-entity altitude drops): instead
  * of shoving the world down, we raise the camera. Pure core math; the boundary holds.
  */
+/**
+ * The scene projection matrix (sw10-1 rework, Reviewer F1). The cabinet lens is
+ * the authentic SYMMETRIC ±45° square glass — aspect-INDEPENDENT — so it projects
+ * with `aspect = 1` regardless of the canvas shape; the non-square window is
+ * absorbed by the LETTERBOX in `ndcToScreen` (a centered square viewport), not by
+ * skewing the frustum. This is the single projection BOTH `render()` and
+ * `drawDebugOverlay()` draw with, retiring the old duplicated
+ * `perspective(FOV_Y, w/h)` whose aspect term made the fired ray and the crosshair
+ * disagree horizontally (the 8-16 kill-loop, F1). `w`/`h` are accepted for the
+ * seam contract but do not skew the lens — aspect independence is the point.
+ */
+export function sceneProjection(_w: number, _h: number): Mat4 {
+  return perspective(FOV_Y, 1, NEAR, FAR)
+}
+
 export function cameraView(state: GameState): Mat4 {
   // The surface eye IS the core's ship point, not a copy of it (sw7-16): the camera and the gun
   // read the same function, so they cannot drift apart.
@@ -497,7 +518,7 @@ export function render(
   // the field in flight too, WSMAIN.MAC:2525-2528).
   drawStarfield(ctx, state.starfield, w, h)
 
-  const proj = perspective(FOV_Y, w / h, NEAR, FAR)
+  const proj = sceneProjection(w, h)
   // The cockpit IS the camera (story 11-2): one view matrix from sim state places
   // every model via MVP = projection × view × model, retiring the per-entity
   // world-shift glue. Space → origin; surface/trench → eye lifted to skim height.
@@ -571,9 +592,9 @@ export function render(
     // the player closes on it (deathStarPlacement). Draw it FIRST so it sits BEHIND
     // the TIEs (painter's order) and never intrudes on a fighter's hit-test.
     drawDeathStar(ctx, deathStarSeat(state), view, proj, w, h)
-    // Each TIE banks at the player: its per-enemy look-at `orient` (core) turned
-    // upright by the fixed TIE_ORIENT display correction (display first, then look
-    // => multiply(orient, TIE_ORIENT)), placed in the world by its model matrix.
+    // Each TIE banks at the player: its per-enemy look-at `orient` (core), placed
+    // in the world by its model matrix. The `multiply(e.orient, TIE_ORIENT)` is a
+    // no-op post-sw10-1 (TIE_ORIENT is IDENTITY); the upright posture is baked in.
     for (const e of state.enemies)
       drawWireframe(ctx, TIE_FIGHTER, multiply(view, modelMatrix(e.pos, multiply(e.orient, TIE_ORIENT))), proj, w, h, TIE_GLOW)
     // A destroyed TIE breaks into three ROM pieces (story sw3-8), each with its OWN
@@ -581,8 +602,9 @@ export function render(
     // 1.170 s) while the centre globe pops FIRST at TIE_GLOBE_LIFE_SECONDS (0x10 = 16f ≈
     // 0.780 s). Each piece colours itself from its OWN remaining ROM timer via the
     // shared TVWCLE ramp (sw7-7 X-003) — never the white VJFLS flash, which is a
-    // ground-object path. The split direction is a render tell (TIE_ORIENT), and the
-    // fly-apart spread stays age-driven (no per-piece velocity state — finding X-004,
+    // ground-object path. The split direction rides the baked fragment models
+    // (TIE_ORIENT is now IDENTITY post-sw10-1), and the fly-apart spread stays
+    // age-driven (no per-piece velocity state — finding X-004,
     // an accepted structural gap).
     for (const d of state.dyingTies) {
       const at = (dx: number, dy: number, dz: number): Mat4 =>
@@ -692,9 +714,10 @@ function drawPlayerLaserToSite(
   h: number,
 ): void {
   const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
-  // The same NDC→screen mapping `drawCrosshair` and `project` use (Y flipped for the canvas),
-  // so the beams converge exactly on the reticle rather than near it.
-  const tip: readonly [number, number] = [(nx * 0.5 + 0.5) * w, (-ny * 0.5 + 0.5) * h]
+  // The same letterboxed NDC→screen mapping `drawCrosshair` and `project` use (the
+  // shared `ndcToScreen`), so the beams converge exactly on the reticle — and, since
+  // the scene shares that square, on whatever the crosshair covers (sw10-1 F1).
+  const tip: readonly [number, number] = ndcToScreen(nx, ny, w, h)
   const cannons: ReadonlyArray<readonly [number, number]> = [
     [0, 0],
     [w, 0],
@@ -1135,10 +1158,10 @@ function drawCockpitFrame(ctx: CanvasRenderingContext2D, w: number, h: number): 
  */
 function drawCrosshair(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
   const [nx, ny] = crosshairNdc(state.aimX, state.aimY)
-  const cx = (nx * 0.5 + 0.5) * w
-  // Match project()'s NDC→screen mapping (which flips Y for the canvas), so the
-  // reticle sits exactly where a target at the same NDC is drawn: +aimY → top.
-  const cy = (-ny * 0.5 + 0.5) * h
+  // Match project()'s letterboxed NDC→screen mapping (the shared `ndcToScreen`, Y
+  // flipped for the canvas), so the reticle sits exactly where a target at the same
+  // NDC is drawn: +aimY → top, and no horizontal drift at any window shape (sw10-1 F1).
+  const [cx, cy] = ndcToScreen(nx, ny, w, h)
   const r = 16
   ctx.lineWidth = 2
   ctx.strokeStyle = GLOW
