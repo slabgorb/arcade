@@ -92,7 +92,8 @@ export interface GameState {
   readonly score: number
   /** Coarse phase: `'play'` until every city is dead, then terminal `'over'` (mc3-3). */
   readonly phase: Phase
-  /** ICBMs still to launch this wave — the NICBMS budget, drawn down by spawns. */
+  /** ICBMs still to launch this wave — this wave's ICBWAV launch budget
+   *  (`waveSchedule(wave).count`), drawn down by spawns. NOT the NICBMS on-screen cap. */
   readonly remaining: number
   /** 1-based wave number (mc4-4). Seeds the mc4-1 difficulty schedule (ICBM count +
    *  descent velocity) and the mc4-3 score multiplier; advanced at each wave-end. */
@@ -129,7 +130,7 @@ export function createGame(seed = 1): GameState {
     bases: createBases(),
     score: 0,
     phase: 'play',
-    remaining: NICBMS,
+    remaining: waveSchedule(INITIAL_WAVE).count,
     wave: INITIAL_WAVE,
     multiplier: scoreMultiplier(INITIAL_WAVE),
     citiesLost: 0,
