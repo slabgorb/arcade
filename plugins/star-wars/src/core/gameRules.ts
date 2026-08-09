@@ -66,26 +66,30 @@ export function crosshairNdc(aimX: number, aimY: number): readonly [number, numb
 }
 
 /**
- * The velocity of a trench wall-gun shot, in the trench's scrolling world frame.
+ * The velocity of a scroll-riding enemy gun shot, in a phase's scrolling world frame.
  *
- * The pilot flies FORWARD, which the trench models as the world scrolling toward the
- * (fixed) cockpit at `TRENCH_SCROLL_SPEED` — the walls, obstacles and exhaust port all
- * ride it. A shot must ride the same flow in DEPTH, or it creeps at its own ~300 u/s
- * muzzle speed while the world rushes past 50× faster and the player "outruns the
+ * The pilot flies FORWARD, which the depth phases model as the world scrolling toward the
+ * (fixed) cockpit at `scrollSpeed` — walls/obstacles/port in the trench, towers/bunkers on
+ * the surface, all ride it. A shot must ride the same flow in DEPTH, or it creeps at its own
+ * ~300 u/s muzzle speed while the world rushes past 50× faster and the player "outruns the
  * bullet" (it reads on screen as receding downrange). So the depth (X) component IS the
- * scroll (negative — closing on the cockpit exactly as the walls do) and the right/up
+ * scroll (negative — closing on the cockpit exactly as the world does) and the right/up
  * components LEAD the ship: sized so the shot arrives at the ship's y/z at the same
  * instant its depth reaches the cockpit plane. Aimed at the ship point (sw7-16), never
  * a detached floor origin.
  *
+ * `scrollSpeed` defaults to the trench's constant `TRENCH_SCROLL_SPEED` (its callers pass
+ * nothing). The surface (sw10-2) passes THIS FRAME's ramped `scrollSpeed`, because its scroll
+ * accelerates ($100→$400) rather than holding a constant.
+ *
  * Degenerate guard: a gun already at or past the cockpit plane (`depth <= 0`) has no
  * lead time, so it fires straight at the ship at the scroll speed.
  */
-export function trenchGunFireVelocity(gunPos: Vec3, shipPos: Vec3): Vec3 {
+export function trenchGunFireVelocity(gunPos: Vec3, shipPos: Vec3, scrollSpeed = TRENCH_SCROLL_SPEED): Vec3 {
   const depth = gunPos[0] - shipPos[0] // > 0 while the gun is downrange (gunPos.x > shipPos.x)
-  if (depth <= 0) return scale(normalize(sub(shipPos, gunPos)), TRENCH_SCROLL_SPEED)
-  const t = depth / TRENCH_SCROLL_SPEED // transit time riding the scroll to the cockpit plane
-  return [-TRENCH_SCROLL_SPEED, (shipPos[1] - gunPos[1]) / t, (shipPos[2] - gunPos[2]) / t]
+  if (depth <= 0) return scale(normalize(sub(shipPos, gunPos)), scrollSpeed)
+  const t = depth / scrollSpeed // transit time riding the scroll to the cockpit plane
+  return [-scrollSpeed, (shipPos[1] - gunPos[1]) / t, (shipPos[2] - gunPos[2]) / t]
 }
 
 /**

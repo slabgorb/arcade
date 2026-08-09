@@ -378,7 +378,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
   // is a CALLER deletion — the function itself must survive. These are the tests that notice if
   // it does not.
 
-  it('a tower fireball travels, frame over frame, at ENEMY_SHOT_SPEED', () => {
+  it('a tower fireball travels frame over frame — still a real object, now riding the scroll (sw10-2)', () => {
     const tower: Vec3 = [2000, 0, 0] // native: 2,000 dead ahead, on the floor
     const s0 = surface({
       altitude: SKIM_ALTITUDE,
@@ -393,11 +393,13 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
     expect(s2.enemyShots, 'and the shot is still in the air a frame later').toHaveLength(1)
     const p1 = s2.enemyShots[0].pos
 
-    // It MOVED — a hitscan conversion that swept up enemy fire would leave it parked.
-    expect(length(sub(p1, p0)), 'the fireball flies; it does not resolve instantly').toBeCloseTo(
-      ENEMY_SHOT_SPEED * DT,
-      3,
-    )
+    // It MOVED — a hitscan conversion that swept up enemy fire would leave it parked. That the
+    // fire is a real travelling object is this describe block's charge, and it still holds.
+    const step = length(sub(p1, p0))
+    expect(step, 'the fireball flies; it does not resolve instantly').toBeGreaterThan(0)
+    // sw10-2: it now closes in depth WITH the world scroll, not at its own bare ~300 u/s muzzle
+    // creep — far more than the old ENEMY_SHOT_SPEED*DT (~5 u) this test used to pin.
+    expect(step, 'it rides the scroll, not the muzzle creep the player outran').toBeGreaterThan(ENEMY_SHOT_SPEED * DT * 5)
     expect(s2.enemyShots[0].ttl, 'and it still burns a lifetime down').toBeLessThan(s1.enemyShots[0].ttl)
   })
 

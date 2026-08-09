@@ -24,7 +24,6 @@ import {
   LASER_SWEEP_SECONDS,
   SPAWN_DISTANCE,
   TIE_SPAWN_DISTANCE,
-  ENEMY_SHOT_SPEED,
   ENEMY_SHOT_TTL,
   ENEMY_SHOT_HIT_RADIUS,
   TICK_HZ,
@@ -97,7 +96,6 @@ import {
   add,
   scale,
   sub,
-  normalize,
   length,
   dot,
   transform,
@@ -361,8 +359,10 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
 
   // Enemy fire advances & expires each step. SPACE-phase TIE fireballs HOME on the
   // cockpit (ROM sub_A875, story sw4-2 / spec §B): their position decays 7/8 per
-  // cabinet tick toward the origin, so an un-shot shot ALWAYS arrives. Surface/trench
-  // fire still flies straight (out of sw4-2's scope; the trench carries no fire).
+  // cabinet tick toward the origin, so an un-shot shot ALWAYS arrives. Surface and
+  // trench fire instead RIDES THE SCROLL — spawned with a closing velocity that leads
+  // the ship (trenchGunFireVelocity: trench sw7-16, surface sw10-2) — and is carried
+  // straight here by `advance` (the lead was baked into the muzzle velocity).
   const enemyShots =
     state.phase === 'space'
       ? homeShots(state.enemyShots, dt)
@@ -1138,10 +1138,11 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
     const muzzle: Vec3 = [shooter.pos[0], shooter.pos[1], shooter.pos[2] + muzzleY] // sw10-1 up = +Z
     enemyShots.push({
       pos: muzzle,
-      // At the SHIP, not at the origin (sw7-16): the pilot is flying `altitude` above the floor,
-      // so fire laid on the origin passes harmlessly under him. Deliberately not `toCockpit` —
-      // that one is space's, and belongs to the TIE flight model.
-      vel: scale(normalize(sub(ship, muzzle)), ENEMY_SHOT_SPEED),
+      // Rides the scroll + leads the ship (sw10-2), the surface twin of the trench wall-gun fix:
+      // the depth component IS this frame's ramped `scrollSpeed` (so the shot closes WITH the
+      // tower that fired it, not at its own ~300 u/s creep the world outruns 17-70×), and the
+      // lateral/vertical lead lands it on the flying SHIP — never the floor origin (sw7-16).
+      vel: trenchGunFireVelocity(muzzle, ship, scrollSpeed),
       ttl: ENEMY_SHOT_TTL,
     })
     enemyFireCooldown = ENEMY_FIRE_INTERVAL
@@ -1194,8 +1195,11 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // --- Cockpit damage: any turret bolt that lands (cause 'turret') ----------
   // Centred on the SHIP, not the origin (sw7-16): the hit sphere flies with the pilot. Left at the
   // origin it both missed fire that reached him and "hit" him with fire that passed under.
+  // SWEPT over the frame step (sw10-2, as the trench's is): the shots now ride the scroll and leap
+  // up to SURFACE_MAX_SPEED·dt ≈ 350 u/frame — more than the 160 u cockpit diameter — so a plain
+  // point test would let a dead-on bolt jump clean over the cockpit between frames and never register.
   const liveShots = enemyShots.filter((s) => {
-    if (collides(s.pos, ship, COCKPIT_HIT_RADIUS)) {
+    if (sweptCollides(ship, sub(s.pos, scale(s.vel ?? ZERO, dt)), s.pos, COCKPIT_HIT_RADIUS)) {
       damage++
       events.push({ type: 'player-death', cause: 'turret' })
       return false
