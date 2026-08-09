@@ -39,6 +39,10 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+// joust's REAL shell viewport — imported, not re-derived. Its `render.ts` references
+// CanvasRenderingContext2D only as an erased TYPE, so it loads and runs in the node
+// vitest env (verified). This pins joust's actual offset clamp on the shipped code path.
+import { viewport as joustViewport } from '../../../plugins/joust/src/shell/render'
 
 const load = () => import('../view')
 
@@ -181,6 +185,24 @@ describe('SH4-3 fitIntegerScale — degenerate viewport does not leak NaN (TS la
     }
     expect(f.width).toBe(240) // clamped to 1× logical, never collapses to 0
   })
+
+  // CONTRACT: unlike the container (a runtime viewport size — guarded above), the LOGICAL
+  // dimensions are TRUSTED per-game constants (centipede 240×256, pac-man from MAZE, joust
+  // 292×240) — never outside-world input. The function does NOT guard a non-positive
+  // logical dim, exactly as each game's pre-extraction body did not. These tests PIN that
+  // current behaviour so a future guard (throw/clamp) is a deliberate, visible change here,
+  // not a silent one. (TS lang-review #21 — degenerate input, scoped to the reachable case.)
+  it('does NOT guard a zero logical dimension — 0/0 propagates NaN (trusted-constant contract)', async () => {
+    const { fitIntegerScale } = await load()
+    const f = fitIntegerScale(0, 800, 0, 256) // containerW 0 AND logicalW 0 → 0/0
+    expect(Number.isNaN(f.scale), 'a zero logical dim is unguarded by design').toBe(true)
+  })
+
+  it('does NOT guard a negative logical dimension — yields a negative width (trusted-constant contract)', async () => {
+    const { fitIntegerScale } = await load()
+    const f = fitIntegerScale(500, 500, -240, 256)
+    expect(f.width, 'a negative logical dim is unguarded by design').toBeLessThan(0)
+  })
 })
 
 // ── The centipede/pac-man offset contract: dx/dy MAY be negative (this is where joust
@@ -198,66 +220,78 @@ describe('SH4-3 fitIntegerScale — allows NEGATIVE centring offsets on a sub-lo
   })
 })
 
-// ── AC-3 (adoption): the byte-identical body LEAVES the two games ─────────────────
-// The lifted scale computation `Math.max(1, Math.floor(Math.min(...)))` must live ONLY
-// in @shared/view after extraction — neither game's layout.ts may still carry its own
-// copy (whether the game keeps a thin per-game binding or updates its call sites is
-// Dev's choice; either way the nested max/floor/min is gone). Negative source guards
-// over a whole file are sound (absence is absence — TS lang-review #25).
+// ── AC-3 (adoption): the byte-identical body LEAVES the games AND they delegate ───────
+// Two halves, both required: (1) NEGATIVE guard — the lifted scale computation
+// `Math.max(1, Math.floor(Math.min(...)))` no longer appears in either game's layout.ts;
+// (2) POSITIVE anchor — each game IMPORTS from @shared/view and still EXPORTS
+// fitIntegerScale (proving it is a delegating binding, not a re-implementation or a
+// deleted export). The negative half alone is mutation-unsound: a 2-statement rewrite
+// (`const raw = Math.floor(Math.min(...)); const scale = Math.max(1, raw)`) re-duplicates
+// the math while evading the shape regex — the positive delegation anchor closes that.
 
-describe('SH4-3 de-duplication — the lifted integer-scale body leaves the games (AC-3)', () => {
+describe('SH4-3 de-duplication — the lifted math leaves the games and they delegate (AC-3)', () => {
   const NESTED_SCALE = /Math\.max\(\s*1\s*,\s*Math\.floor\(\s*Math\.min\(/
+  const IMPORTS_SHARED_VIEW = /from\s+['"]@shared\/view['"]/
+  const EXPORTS_FIT = /export\s+function\s+fitIntegerScale\b/
   const gameLayout = (game: string) =>
     stripComments(readFileSync(fileURLToPath(new URL(`../../../plugins/${game}/src/shell/layout.ts`, import.meta.url)), 'utf8'))
 
-  it('centipede/src/shell/layout.ts no longer re-implements the integer-scale math', () => {
-    expect(NESTED_SCALE.test(gameLayout('centipede')), 'centipede must delegate to @shared/view').toBe(false)
-  })
+  for (const game of ['centipede', 'pac-man']) {
+    it(`${game}/src/shell/layout.ts no longer re-implements the integer-scale math`, () => {
+      expect(NESTED_SCALE.test(gameLayout(game)), `${game} must not re-implement the scale math`).toBe(false)
+    })
 
-  it('pac-man/src/shell/layout.ts no longer re-implements the integer-scale math', () => {
-    expect(NESTED_SCALE.test(gameLayout('pac-man')), 'pac-man must delegate to @shared/view').toBe(false)
-  })
+    it(`${game}/src/shell/layout.ts delegates: imports @shared/view AND re-exports fitIntegerScale`, () => {
+      const src = gameLayout(game)
+      expect(IMPORTS_SHARED_VIEW.test(src), `${game} must import from @shared/view`).toBe(true)
+      expect(EXPORTS_FIT.test(src), `${game} must keep a fitIntegerScale binding (delegate, not delete)`).toBe(true)
+    })
+  }
 
-  it('the lifted math now lives in @shared/view (the single home)', () => {
+  it('the lifted math lives INSIDE @shared/view.fitIntegerScale (bounded slice, not whole-file)', () => {
     const view = stripComments(readFileSync(fileURLToPath(new URL('../view.ts', import.meta.url)), 'utf8'))
-    expect(/export\s+function\s+fitIntegerScale\b/.test(view), 'view.ts must export fitIntegerScale').toBe(true)
-    expect(NESTED_SCALE.test(view), 'the integer-scale math must live in view.ts').toBe(true)
+    // Bound the search to the fitIntegerScale declaration slice — CODE on both sides (the
+    // declaration, and the next top-level export) — so this pins the math to THIS function,
+    // not merely "somewhere in a file that compiles" (TS lang-review #25).
+    const decl = view.indexOf('export function fitIntegerScale')
+    expect(decl, 'view.ts must declare fitIntegerScale').toBeGreaterThanOrEqual(0)
+    const nextExport = view.indexOf('\nexport ', decl + 'export function fitIntegerScale'.length)
+    const fnSlice = view.slice(decl, nextExport === -1 ? view.length : nextExport)
+    expect(NESTED_SCALE.test(fnSlice), 'the integer-scale math must live inside fitIntegerScale').toBe(true)
   })
 })
 
-// ── AC-4 (advisory): joust fold feasibility + the divergence that makes it non-trivial ─
-// NOT a mandate to fold joust — AC-4 permits an explicit descope. These two tests make
-// SH4-3 Fact 6 executable so Dev/Architect decide from measured numbers: the SCALE
-// reconciles (joust's Math.min(floor,floor) === floor(min) for positive reals), but
-// joust CLAMPS its offsets to >= 0 (render.ts:78-79, jt1-6 addendum) where the shared
-// fn allows negative. Folding joust therefore needs the clamp preserved at joust's call
-// site (or a clamp option), or it is a render regression per the epic bar.
+// ── AC-4: joust adopted the shared fn — pinned against joust's REAL viewport() ────────
+// joust's `viewport()` was folded onto `fitIntegerScale` (render.ts) and re-applies its
+// own `Math.max(0, …)` clamp. These tests exercise joust's ACTUAL shipped viewport() (the
+// real function, imported above — not a re-derived copy) so a future edit that drops or
+// inverts the clamp reddens here. The shared fn's raw output is reconciled alongside to
+// show WHY joust needs the clamp: the scale reconciles (joust's Math.min(floor,floor) ===
+// floor(min) for positive reals) but the shared fn allows NEGATIVE offsets where joust
+// clamps to >= 0 (jt1-6 addendum, render.ts).
 
-describe('SH4-3 joust fold feasibility (AC-4 — advisory, design decision)', () => {
+describe('SH4-3 joust fold — pinned against joust real viewport() (AC-4)', () => {
   const JW = 292
   const JH = 240
-  // joust's own offset rule, re-derived from render.ts (NOT imported — render.ts is a
-  // DOM shell module): offset = max(0, floor((container - logical*scale) / 2)).
-  const joustOffset = (container: number, logical: number, scale: number) =>
-    Math.max(0, Math.floor((container - logical * scale) / 2))
 
-  it('reproduces joust scale + offsets on a super-logical viewport (clamp is a no-op there)', async () => {
+  it("joust's real viewport() matches the shared fn on a super-logical viewport (clamp is a no-op)", async () => {
     const { fitIntegerScale } = await load()
-    const f = fitIntegerScale(1000, 800, JW, JH) // 1000/292=3.42, 800/240=3.33 → 3×
-    expect(f.scale).toBe(3)
-    expect(f.dx).toBe(62) // (1000 - 292*3)/2 = 62, already >= 0
-    expect(f.dy).toBe(40) // (800 - 240*3)/2 = 40
-    expect(f.dx).toBe(joustOffset(1000, JW, f.scale))
-    expect(f.dy).toBe(joustOffset(800, JH, f.scale))
+    const shared = fitIntegerScale(1000, 800, JW, JH) // 1000/292=3.42, 800/240=3.33 → 3×
+    const real = joustViewport(1000, 800)
+    expect(shared).toMatchObject({ scale: 3, dx: 62, dy: 40 }) // dx/dy already >= 0 here
+    // joust's real output is derived from the shared fn + its own clamp; clamp is inert here.
+    expect(real).toEqual({ scale: shared.scale, offsetX: shared.dx, offsetY: shared.dy })
   })
 
-  it('DIVERGES from joust on a sub-logical viewport — the shared fn allows negative, joust clamps to 0', async () => {
+  it("joust's real viewport() CLAMPS sub-logical offsets to 0 where the shared fn goes negative", async () => {
     const { fitIntegerScale } = await load()
-    const f = fitIntegerScale(200, 200, JW, JH) // below one logical frame → 1×
-    expect(f.scale).toBe(1)
-    expect(f.dx).toBe(-46) // shared: floor((200-292)/2) = -46
-    expect(f.dx).toBeLessThan(0)
-    expect(joustOffset(200, JW, f.scale), 'joust would clamp the same offset to 0').toBe(0)
-    // → a naive fold changes joust's sub-logical offset from 0 to -46: preserve the clamp.
+    const shared = fitIntegerScale(100, 100, JW, JH) // below one logical frame → 1×
+    expect(shared.scale).toBe(1)
+    expect(shared.dx, 'shared fn allows a negative offset').toBeLessThan(0) // floor((100-292)/2) = -96
+    // THE PIN: joust's shipped viewport() re-applies Math.max(0, …). If that clamp were
+    // dropped, offsetX/offsetY would go negative and this reddens.
+    const real = joustViewport(100, 100)
+    expect(real).toEqual({ scale: 1, offsetX: 0, offsetY: 0 })
+    expect(real.offsetX, 'joust clamps the negative shared dx to 0').toBe(Math.max(0, shared.dx))
   })
 })
