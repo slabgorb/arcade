@@ -108,13 +108,12 @@ import {
   SKIM_ALTITUDE,
   MIN_SKIM_ALTITUDE,
   MAX_SKIM_ALTITUDE,
-  ENEMY_SHOT_SPEED,
   COCKPIT_HIT_RADIUS,
   PROJECTILE_TTL,
   type GameState,
 } from '../../src/core/state'
 import { aimAt, eyeOf } from '../support/aim'
-import { sub, scale, normalize, type Vec3 } from '@shared/math3d'
+import { scale, add, type Vec3 } from '@shared/math3d'
 import type { Input } from '../../src/core/input'
 
 const DT = 1 / 60
@@ -388,18 +387,23 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     const fired = s.events.find((e) => e.type === 'enemy-fire') as { pos: Vec3 } | undefined
     expect(fired, 'the fire event carries the muzzle launch point').toBeDefined()
     const muzzle: Vec3 = fired!.pos
-    const atShip = scale(normalize(sub(eyeOf(s), muzzle)), ENEMY_SHOT_SPEED)
-    const atOrigin = scale(normalize(sub(ORIGIN, muzzle)), ENEMY_SHOT_SPEED)
+    expect(muzzle, 'the fire event still carries the cap launch point').toBeDefined()
 
-    const vel = s.enemyShots[0].vel
-    expect(vel[0]).toBeCloseTo(atShip[0], 6)
-    expect(vel[1]).toBeCloseTo(atShip[1], 6)
-    expect(vel[2]).toBeCloseTo(atShip[2], 6)
+    // sw10-2: the shot no longer creeps STRAIGHT at the ship at its own ~300 u/s muzzle speed. It
+    // RIDES the surface scroll in depth and LEADS the ship, arriving on the pilot as its depth
+    // reaches the cockpit plane — the trench fire-frame fix, mirrored onto the surface
+    // (`surface-fire-scroll-carry.test.ts` owns that contract in full). The discrimination this
+    // test was written for still stands: the lead targets the flying SHIP, not the floor origin.
+    const shot = s.enemyShots[0]
+    expect(shot.vel[0], 'depth rides the scroll, not the ~300 u/s muzzle creep').toBeCloseTo(-s.surfaceScrollSpeed, 2)
 
-    // Belt and braces: the two targets must be genuinely distinguishable at this altitude,
-    // or the assertion above proves nothing. (The cap is 352 up, the ship 238 up — the
-    // fireball's climb differs by a wide margin.)
-    expect(atShip[2]).not.toBeCloseTo(atOrigin[2], 3) // native up (climb) is index 2
+    const transit = shot.pos[0] / s.surfaceScrollSpeed
+    const arrival = add(shot.pos, scale(shot.vel, transit)) // the shot when its depth reaches the cockpit plane
+    expect(arrival[2], 'leads onto the ship UP, not the floor origin (native up is index 2)').toBeCloseTo(eyeOf(s)[2], 1)
+
+    // Belt and braces: the ship and the origin are genuinely distinguishable in up, or the lead
+    // proves nothing. (The pilot flies at 238; the origin is the floor at 0.)
+    expect(Math.abs(eyeOf(s)[2] - ORIGIN[2]), 'the ship flies far above the origin').toBeGreaterThan(COCKPIT_HIT_RADIUS)
   })
 
   it('costs a shield when a fireball reaches the ship point', () => {

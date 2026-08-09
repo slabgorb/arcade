@@ -378,7 +378,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
   // is a CALLER deletion — the function itself must survive. These are the tests that notice if
   // it does not.
 
-  it('a tower fireball travels, frame over frame, at ENEMY_SHOT_SPEED', () => {
+  it('a tower fireball travels frame over frame — still a real object, now riding the scroll (sw10-2)', () => {
     const tower: Vec3 = [2000, 0, 0] // native: 2,000 dead ahead, on the floor
     const s0 = surface({
       altitude: SKIM_ALTITUDE,
@@ -393,11 +393,13 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
     expect(s2.enemyShots, 'and the shot is still in the air a frame later').toHaveLength(1)
     const p1 = s2.enemyShots[0].pos
 
-    // It MOVED — a hitscan conversion that swept up enemy fire would leave it parked.
-    expect(length(sub(p1, p0)), 'the fireball flies; it does not resolve instantly').toBeCloseTo(
-      ENEMY_SHOT_SPEED * DT,
-      3,
-    )
+    // It MOVED — a hitscan conversion that swept up enemy fire would leave it parked. That the
+    // fire is a real travelling object is this describe block's charge, and it still holds.
+    const step = length(sub(p1, p0))
+    expect(step, 'the fireball flies; it does not resolve instantly').toBeGreaterThan(0)
+    // sw10-2: it now closes in depth WITH the world scroll, not at its own bare ~300 u/s muzzle
+    // creep — far more than the old ENEMY_SHOT_SPEED*DT (~5 u) this test used to pin.
+    expect(step, 'it rides the scroll, not the muzzle creep the player outran').toBeGreaterThan(ENEMY_SHOT_SPEED * DT * 5)
     expect(s2.enemyShots[0].ttl, 'and it still burns a lifetime down').toBeLessThan(s1.enemyShots[0].ttl)
   })
 
@@ -416,21 +418,21 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
       6,
     )
 
-    // Aimed at the SHIP — which here means aimed DOWNWARD. The white cap stands at TOWER_HEIGHT
-    // (352) and the pilot cruises at MAX_SKIM_ALTITUDE (238), so the tower shoots down at him.
-    // Assert the DIRECTION rather than a sign: "it climbs toward the pilot" is simply false at
-    // this altitude, and a sign test would also pass for a shot aimed at the floor.
-    // Read the launch point from the fire event — the surface scroll is the accelerating pace
-    // now (sw7-18 / D-022), so the cap's advanced z is whatever the sim scrolled it to.
-    const fired = s.events.find((e) => e.type === 'enemy-fire') as { pos: Vec3 } | undefined
-    expect(fired, 'the fire event carries the muzzle launch point').toBeDefined()
-    const muzzle: Vec3 = fired!.pos
-    const toShip = normalize(sub(eyeOf(s), muzzle))
-    const flown = normalize(s.enemyShots[0].vel)
-    expect(flown[0]).toBeCloseTo(toShip[0], 6)
-    expect(flown[1]).toBeCloseTo(toShip[1], 6)
-    expect(flown[2]).toBeCloseTo(toShip[2], 6)
-    expect(toShip[2], 'the cap stands ABOVE the pilot, so "at the ship" is downward (native up is index 2)').toBeLessThan(0)
+    // sw10-2: "flies AT the ship" now means the shot LEADS the ship while RIDING the surface scroll
+    // in depth — it converges on the pilot as its depth reaches the cockpit plane — rather than
+    // creeping straight at him at its own ~300 u/s muzzle speed (`surface-fire-scroll-carry.test.ts`
+    // owns that contract). sw7-16's guard still stands under the corrected fire model: the shot leaves
+    // the cap (asserted above) and targets the flying SHIP, and reaching him is DOWNWARD — the cap
+    // stands at TOWER_HEIGHT (352) while the pilot cruises at MAX_SKIM_ALTITUDE (238).
+    const shot = s.enemyShots[0]
+    expect(shot.vel[0], 'depth rides the scroll toward the cockpit, not the muzzle creep').toBeCloseTo(
+      -s.surfaceScrollSpeed,
+      2,
+    )
+    const transit = shot.pos[0] / s.surfaceScrollSpeed
+    const arrival = add(shot.pos, scale(shot.vel, transit)) // the shot when its depth reaches the cockpit plane
+    expect(arrival[2], 'the shot descends onto the pilot (native up is index 2)').toBeCloseTo(eyeOf(s)[2], 1)
+    expect(eyeOf(s)[2], 'the cap stands ABOVE the pilot, so reaching him is downward').toBeLessThan(tower[2] + TOWER_HEIGHT)
   })
 
   it('a space TIE fireball still HOMES by the 7/8-per-tick decay (sw4-2 stands)', () => {

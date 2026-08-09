@@ -128,3 +128,8 @@ completed_stories:
     title: "Wave-1 ICBM budget fidelity: createGame seeds remaining=NICBMS(8) but the ROM wave-1 budget is ICBWAV[0]=12 (W3MAIN.MAC:5713; loaded LDA AY,ICBWAV-1 / STA ICBTOL :3937). Seed wave 1 from waveSchedule(INITIAL_WAVE).count and re-pin game.test.ts:67; also sweep stale 'max ICBMs on screen' MXICON prose in docs/rom-study/glossary.md + brief.md. REV-01"
     points: 2
     completed: '2026-08-09'
+  - id: mc8-3
+    epic: mc8
+    title: 'Verify audio live and close the asset loop'
+    points: 2
+    completed: '2026-08-09'
