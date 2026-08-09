@@ -28,6 +28,8 @@ does. Provenance for the collapse itself: [`migration-manifest.md`](./migration-
 | red-baron  | `https://arcade.slabgorb.com/red-baron/`  | `red-baron/`                 |
 | centipede  | `https://arcade.slabgorb.com/centipede/`  | `centipede/`                 |
 | joust      | `https://arcade.slabgorb.com/joust/`      | `joust/`                     |
+| missile-command | `https://arcade.slabgorb.com/missile-command/` | `missile-command/`     |
+| pac-man    | `https://arcade.slabgorb.com/pac-man/`    | `pac-man/`                   |
 
 - **One origin, so no Origin Rules and no Worker.** R2 custom domains are strictly one
   hostname : one bucket, and path→*multi-bucket* routing would need Enterprise-only

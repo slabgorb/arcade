@@ -18,9 +18,13 @@ deleted** — remain the only place pre-migration per-file blame survives.
 
 **Type:** monorepo — application code (`plugins/`, `lobby/`, `src/`) and its tooling
 (`scripts/`, `tests/`) live together.
-**Games:** seven faithful clones — five vector: `tempest` (1981), `star-wars` (1983),
-`asteroids` (1979), `battlezone` (1980), `red-baron` (1980) — and two raster:
-`centipede` (1981) and the first Williams title, `joust` (1982).
+**Games:** nine faithful clones — five vector: `tempest` (1981), `star-wars` (1983),
+`asteroids` (1979), `battlezone` (1980), `red-baron` (1980) — and four raster:
+`centipede` (1981), the first Williams title `joust` (1982), `missile-command` (1980)
+and `pac-man` (1980). (The last two were built as native plugins *after* the
+2026-07-30 collapse, so — unlike the original seven — they were never independent repos
+and have no `arcade-<game>` legacy bucket; each deploys straight to its `<id>/` key
+prefix under `arcade-lobby`.)
 
 ## Repository Structure
 
@@ -37,7 +41,8 @@ arcade/                      # ONE repo, ONE history, ONE npm install
 ├── lobby/                   # The arcade's front door — served at the ROOT of the origin
 ├── plugins/                 # One directory per game: plugin.ts, index.html, src/, tests/
 │   ├── tempest/  star-wars/  asteroids/  battlezone/
-│   └── red-baron/  centipede/  joust/
+│   ├── red-baron/  centipede/  joust/
+│   └── missile-command/  pac-man/
 ├── scripts/                 # build-app.mjs · release.mjs · deploy-r2.mjs · gen-registry.mjs
 ├── tests/                   # The ORCHESTRATOR suite (node:test) — vitest never sees these
 ├── vite.config.ts           # ONE config factory, parameterised by app id
@@ -199,6 +204,8 @@ it the front door at `/` — and each game owns its own **`<id>/` key prefix**.
 | red-baron  | `https://arcade.slabgorb.com/red-baron/`         | `red-baron/`      |
 | centipede  | `https://arcade.slabgorb.com/centipede/`         | `centipede/`      |
 | joust      | `https://arcade.slabgorb.com/joust/`             | `joust/`          |
+| missile-command | `https://arcade.slabgorb.com/missile-command/` | `missile-command/` |
+| pac-man    | `https://arcade.slabgorb.com/pac-man/`           | `pac-man/`        |
 
 One origin means the lobby and every game share `localStorage`, which is what retires
 the cross-origin high-score cookie of ADR-0004 (see that ADR's 2026-07-30 amendment).

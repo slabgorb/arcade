@@ -124,7 +124,7 @@ Details and runbook: [`docs/ops/hosting.md`](docs/ops/hosting.md).
 just serve                # the ONE dev server: lobby at /, each game at /<id>/
 just test-all             # every project's tests, in one vitest process
 just test-one tempest     # one app's tests — what the release gate runs
-just build-all            # build every app (seven games + the lobby) into dist/
+just build-all            # build every app (nine games + the lobby) into dist/
 git status                # one repo, one history — `just status` is retired
 ```
 
