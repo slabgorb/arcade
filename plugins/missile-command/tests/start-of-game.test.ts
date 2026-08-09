@@ -45,7 +45,7 @@ import { describe, it, expect } from 'vitest'
 import { createGame, type GameState } from '../src/core/game.js'
 import { createCities, createBases, MAXMIS } from '../src/core/field.js'
 import { NICBMS } from '../src/core/spawn.js'
-import { INITIAL_WAVE } from '../src/core/wave.js'
+import { INITIAL_WAVE, waveSchedule } from '../src/core/wave.js'
 import { fireFromKey } from '../src/shell/input.js'
 import { type Icbm } from '../src/core/icbm.js'
 import { type Phase } from '../src/core/state.js'
@@ -129,7 +129,12 @@ function expectFreshPlayGame(g: GameState): void {
   expect(g.sputniks).toEqual([])
   expect(g.score).toBe(0)
   expect(g.wave).toBe(INITIAL_WAVE)
-  expect(g.remaining).toBe(NICBMS)
+  // mc5-9: a fresh game starts at wave 1, so `remaining` is the wave-1 ICBWAV
+  // LAUNCH budget (waveSchedule(INITIAL_WAVE).count = 12), NOT the NICBMS(8)
+  // on-screen cap. mc5-7 changed createGame's seed to the schedule budget and
+  // updated game.test.ts; this sibling test had lagged (mirrors game.test.ts:75-77).
+  expect(g.remaining).toBe(waveSchedule(INITIAL_WAVE).count)
+  expect(g.remaining).not.toBe(NICBMS)
   expect(g.frame).toBe(0)
 }
 
@@ -160,7 +165,8 @@ describe('mc6-2 AC1 — startGame from a game-over state reseeds a fresh field',
     const g = startGame(dirty('over'))
     expect(g.wave).toBe(INITIAL_WAVE)
     expect(g.score).toBe(0)
-    expect(g.remaining).toBe(NICBMS)
+    // mc5-9: the wave-1 launch budget (waveSchedule(INITIAL_WAVE).count = 12), not NICBMS(8).
+    expect(g.remaining).toBe(waveSchedule(INITIAL_WAVE).count)
   })
 })
 
