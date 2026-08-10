@@ -8,39 +8,21 @@
 // — this cabinet has no attract mode / trackball, so it is a smaller wiring
 // than centipede's, not a re-invention of it).
 
-import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, type GhostRenderMode } from './shell/render'
+import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
 import { createWsg } from './shell/wsg'
 import { createAudioDriver, type AudioDriver } from './shell/audio'
 import { createOverlays } from './shell/overlays'
 import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameState } from './core/game'
-import { FRIGHT_FLASHES } from './core/mode'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { mountCanvas } from '@shared/host-helpers'
 import { resizeToDisplay } from '@shared/view'
 
-// pm3-5: the frightened body flashes white as it wears off — the FLASH
-// COUNT (FRIGHT_FLASHES = 5) is Dossier-cited (core/mode.ts), but the exact
-// per-frame flash CADENCE is explicitly left to the shell (that file's own
-// header: "a rendering detail decoded in the shell"), so FLASH_HALF_PERIOD
-// is an authored, un-cited render-timing choice, not a ROM literal — chosen
-// only to be visibly distinct from a solid blue body at 60fps.
-const FLASH_HALF_PERIOD = 14 // frames per flash half-cycle
-const FLASH_WINDOW = FLASH_HALF_PERIOD * 2 * FRIGHT_FLASHES // frames before expiry the flash starts
-
-/** The ghost-render mode for this frame, derived purely from `GameState` —
- *  never a clock read (render.ts's core-purity spirit). 'eaten' is not
- *  reachable yet: `core/game.ts` teleports an eaten ghost straight back to
- *  its house spawn in the same frame it is eaten (no eyes-in-transit state
- *  to render) — see render.ts's `GhostRenderMode` doc. */
-function ghostRenderMode(game: GameState): GhostRenderMode {
-  const timer = game.mode.frightenedTimer
-  if (timer <= 0) return 'chase'
-  if (timer <= FLASH_WINDOW && Math.floor(timer / FLASH_HALF_PERIOD) % 2 === 0) return 'flash'
-  return 'frightened'
-}
+// pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
+// eyes-only 'eaten' body for a returning ghost) moved into render.ts as the
+// exported `ghostRenderMode` — see its doc. main.ts calls it per ghost id.
 
 // SH3-4: the checked mount replaces the hand-rolled querySelector('#game') +
 // getContext('2d') + null-throws — mountCanvas owns the lookup and the guards.
@@ -208,9 +190,12 @@ const frame = (now: number): void => {
   }
 
   drawMaze(logicalCtx, game.pac.eaten)
-  const mode = ghostRenderMode(game)
   for (const id of ['blinky', 'pinky', 'inky', 'clyde'] as const) {
-    if (game.house.released[id]) drawGhost(logicalCtx, game.ghosts[id], mode, game.ghostFrame[id])
+    // pm4-3: also draw a returning ghost (eyes / regenerating body), which is
+    // not `released` while in transit but must still appear on screen.
+    if (game.house.released[id] || game.returning[id] !== null) {
+      drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), game.ghostFrame[id])
+    }
   }
   drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, game.pac.frame)
   if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)

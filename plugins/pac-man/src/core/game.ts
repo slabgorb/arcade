@@ -56,7 +56,7 @@ import { tileAt, isWalkable, DOT_COUNT, type Tile } from './maze'
 import { TILE_PX, DIR_DELTA, speedPattern, type Dir } from './actor'
 import { createPacmanState, stepPacman, type PacmanState } from './pacman'
 import { type GhostId, type Ghost, stepGhost } from './ghost'
-import { createHouseState, releaseFromHouse, type HouseState } from './house'
+import { createHouseState, releaseFromHouse, forceLeaveHouse, type HouseState } from './house'
 import { targetTile, SCATTER_CORNER } from './targeting'
 import {
   createModeState,
@@ -117,6 +117,19 @@ const GHOST_START_DIR: Readonly<Record<GhostId, Dir>> = {
 }
 const FRUIT_TILE: Tile = { x: 13, y: 20 } // just below the ghost house gate
 
+// pm4-3: an eaten ghost's eyes travel home, regenerate a body, and leave.
+// `'eyes'` = the eyes-only body descending to `EYES_HOME_TILE`; `'regenerated'`
+// = a re-formed body climbing back out through the gate to `EYES_EXIT_TILE`.
+// `null` = an ordinary in-play ghost. Eyes move fast (Dossier ch.4 "Ghosts";
+// no isolable pacman.asm literal — glossary "Citation status"). Home/exit tiles
+// read straight off the current maze geometry (gate row 15, interior 16-18,
+// from pm4-4): `EYES_HOME_TILE` is a house-interior tile, `EYES_EXIT_TILE` the
+// corridor tile just above the gate.
+type ReturnPhase = 'eyes' | 'regenerated'
+const EYES_SPEED_PCT = 100 // eyes are not speed-throttled — they move every frame
+const EYES_HOME_TILE: Tile = { x: 13, y: 17 } // inside the house (rows 16-18)
+const EYES_EXIT_TILE: Tile = { x: 13, y: 14 } // corridor just above the gate
+
 const HIGH_SCORE_DOMAIN = 'level' as const
 export type PacHighScoreTable = HighScoreTable<typeof HIGH_SCORE_DOMAIN>
 
@@ -158,6 +171,10 @@ export interface GameState {
    *  makes a turn decision, matching the ROM's "the reversal takes effect at
    *  the next turn decision" behaviour. */
   pendingReverse: Record<GhostId, boolean>
+  /** pm4-3: per-ghost eyes-return phase. `null` for an ordinary in-play ghost;
+   *  `'eyes'`/`'regenerated'` while an eaten ghost is returning home and coming
+   *  back out. The shell renders the eyes-only `'eaten'` body while `'eyes'`. */
+  returning: Record<GhostId, ReturnPhase | null>
   house: HouseState
   mode: ModeState
   dotsEaten: number
@@ -180,6 +197,45 @@ export interface GameInput {
 
 function atTileCentre(xPx: number, yPx: number): boolean {
   return xPx % TILE_PX === 0 && yPx % TILE_PX === 0
+}
+
+/** pm4-3: is this ghost currently returning home (eyes in transit, or a
+ *  regenerated body climbing back out)? True from the moment it is eaten until
+ *  it is fully back in play outside the house. The shell uses it to render the
+ *  eyes-only `'eaten'` body and to keep drawing the ghost while it is not
+ *  `released`. */
+export function isReturningHome(state: GameState, id: GhostId): boolean {
+  return state.returning[id] !== null
+}
+
+/** pm4-3: advance one eyes-returning ghost by a single step. `'eyes'` descend
+ *  to `EYES_HOME_TILE` inside the house; on arrival the ghost REGENERATES (a
+ *  body, facing up) and is forced out of the house — NOT dot-gated
+ *  (`forceLeaveHouse`). The `'regenerated'` body then climbs to
+ *  `EYES_EXIT_TILE`; once it stands on a tile that is neither house nor gate it
+ *  is fully back in play and its return phase clears. Reuses `stepGhost`'s
+ *  kinematics — pure and deterministic, no random walk. */
+function stepEyes(state: GameState, id: GhostId): void {
+  const ghost = state.ghosts[id]
+  if (state.returning[id] === 'eyes') {
+    stepGhost(ghost, EYES_HOME_TILE, {})
+    const tx = Math.round(ghost.actor.xPx / TILE_PX)
+    const ty = Math.round(ghost.actor.yPx / TILE_PX)
+    if (atTileCentre(ghost.actor.xPx, ghost.actor.yPx) && tx === EYES_HOME_TILE.x && ty === EYES_HOME_TILE.y) {
+      state.returning[id] = 'regenerated'
+      ghost.actor.dir = 'up' // re-formed body heads straight up and out the gate
+      forceLeaveHouse(state.house, id)
+    }
+    return
+  }
+  // 'regenerated': climb back out through the gate.
+  stepGhost(ghost, EYES_EXIT_TILE, {})
+  const tx = Math.round(ghost.actor.xPx / TILE_PX)
+  const ty = Math.round(ghost.actor.yPx / TILE_PX)
+  const kind = tileAt(tx, ty)
+  if (atTileCentre(ghost.actor.xPx, ghost.actor.yPx) && kind !== 'house' && kind !== 'gate') {
+    state.returning[id] = null
+  }
 }
 
 function tileKey(tx: number, ty: number): string {
@@ -239,6 +295,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     ghosts: createGhosts(),
     ghostFrame: { blinky: 0, pinky: 0, inky: 0, clyde: 0 },
     pendingReverse: { blinky: false, pinky: false, inky: false, clyde: false },
+    returning: { blinky: null, pinky: null, inky: null, clyde: null },
     house: createHouseState(),
     mode: createModeState(level, seed),
     dotsEaten: spawnEat.dots,
@@ -270,6 +327,7 @@ function respawnAfterDeath(state: GameState): void {
   resetGhostPositions(state.ghosts)
   state.ghostFrame = { blinky: 0, pinky: 0, inky: 0, clyde: 0 }
   state.pendingReverse = { blinky: false, pinky: false, inky: false, clyde: false }
+  state.returning = { blinky: null, pinky: null, inky: null, clyde: null }
   // glossary.md §Ghost house: a life lost mid-level switches release checks
   // to the GLOBAL dot counter for the rest of the level.
   state.house = { ...createHouseState(), useGlobalCounter: true }
@@ -289,6 +347,7 @@ function advanceLevel(state: GameState): void {
   state.ghosts = createGhosts()
   state.ghostFrame = { blinky: 0, pinky: 0, inky: 0, clyde: 0 }
   state.pendingReverse = { blinky: false, pinky: false, inky: false, clyde: false }
+  state.returning = { blinky: null, pinky: null, inky: null, clyde: null }
   state.house = createHouseState()
   state.mode = createModeState(level, state.seed + level * 13)
   state.dotsEaten = spawnEat.dots
@@ -443,8 +502,20 @@ export function stepGame(state: GameState, input: GameInput): void {
   // scope (deferred to pm2); a threshold-based bump is the deliverable here.
   const blinkyElroyStage = computeElroyStage(dotsRemaining, state.level)
   for (const id of GHOST_IDS) {
-    if (!state.house.released[id]) continue
+    // pm4-3: eyes-returning ghosts move even though they are not `released`.
+    if (!state.house.released[id] && state.returning[id] === null) continue
     const ghost = state.ghosts[id]
+
+    // pm4-3: an eaten ghost's eyes travel home and its regenerated body climbs
+    // back out — its own fast, deterministic path, independent of chase/scatter
+    // targeting and the dot-gated release.
+    if (state.returning[id] !== null) {
+      const eyesPattern = speedPattern(EYES_SPEED_PCT)
+      state.ghostFrame[id] += 1
+      if (eyesPattern[state.ghostFrame[id] % eyesPattern.length]) stepEyes(state, id)
+      continue
+    }
+
     let pct: number
     if (modeStep.mode === 'frightened') {
       pct = FRIGHTENED_GHOST_SPEED_PCT
@@ -508,6 +579,9 @@ export function stepGame(state: GameState, input: GameInput): void {
   const pty = Math.floor(state.pac.actor.yPx / TILE_PX)
   for (const id of GHOST_IDS) {
     if (!state.house.released[id]) continue
+    // pm4-3: a returning ghost (eyes, or a regenerated body still in the house)
+    // cannot eat or be eaten — it is out of play until it fully re-exits.
+    if (state.returning[id] !== null) continue
     const ghost = state.ghosts[id]
     const gtx = Math.floor(ghost.actor.xPx / TILE_PX)
     const gty = Math.floor(ghost.actor.yPx / TILE_PX)
@@ -519,12 +593,11 @@ export function stepGame(state: GameState, input: GameInput): void {
       awardScore(state, points)
       state.ghostChainIndex = Math.min(chainIndex + 1, GHOST_CHAIN_SCORES.length - 1)
       state.events.push({ type: 'ghost-eaten', ghost: id, chainIndex, score: points })
-      // Send the eaten ghost back to the house; releaseFromHouse re-admits
-      // it once the (unchanged) counter condition is met again.
-      const spawn = GHOST_SPAWN[id]
-      ghost.actor.xPx = spawn.x * TILE_PX
-      ghost.actor.yPx = spawn.y * TILE_PX
-      ghost.actor.dir = GHOST_START_DIR[id]
+      // pm4-3: the ghost becomes EYES that travel home from HERE (no instant
+      // teleport). It leaves play (`released=false`, so it can neither be
+      // re-eaten nor catch Pac-Man in transit) and regenerates at the house,
+      // then leaves forcibly — see the eyes branch in the movement loop.
+      state.returning[id] = 'eyes'
       state.house.released[id] = false
     } else {
       state.lives -= 1

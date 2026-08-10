@@ -89,3 +89,15 @@ export function releaseFromHouse(state: HouseState): void {
     }
   }
 }
+
+/** Force one ghost out of the house REGARDLESS of either dot counter — the
+ *  regenerate-and-leave path an eaten ghost takes once its eyes reach home
+ *  (pm4-3). Unlike `releaseFromHouse` (the dot-gated INITIAL release), this is
+ *  unconditional and touches no counter: a just-regenerated ghost leaves
+ *  immediately, never waiting on the personal/global gate that only governs a
+ *  ghost that has not yet left. glossary.md §Ghost movement, Dossier ch.4
+ *  "Ghosts" (the eyes-return behaviour has no isolable `pacman.asm` literal —
+ *  see glossary "Citation status"). Only the named ghost leaves. */
+export function forceLeaveHouse(state: HouseState, id: GhostId): void {
+  state.released[id] = true
+}
