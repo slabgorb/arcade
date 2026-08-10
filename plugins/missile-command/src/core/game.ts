@@ -143,9 +143,12 @@ export function createPlayGame(seed = 1): GameState {
   }
 }
 
-// Ground truth: cold start writes S.SETU with ATRACT set — state.ts INITIAL_PHASE,
-// the MC-STATE-INIT claim (W3MAIN.MAC:491). ROM line numbers live in // comments,
-// never JSDoc — the un-cited-literal scanner strips // but not /** */.
+// Ground truth: cold start writes S.SETU and CLEARS ATRACT to attract mode — the
+// ATRACT byte is ";ATTRACT (0)/GAME (-1) FLAG" (W3MAIN.MAC:135), and PREGM1 enters
+// attract by zeroing it (:3761 LDA I,0 / STA ATRACT); INITIAL_PHASE (state.ts) is our
+// boolean-true = attract reading. The MC-STATE-INIT claim pins the boot (W3MAIN.MAC:491).
+// ROM line numbers live in // comments, never JSDoc — the un-cited-literal scanner
+// strips // but not /** */.
 /** The cabinet COLD START (mc6-4): the same fully-defended field but in phase
  *  `'attract'` (INITIAL_PHASE), where the AUTCUR smart cursor plays the field by
  *  itself until a player presses anything. Only the phase differs from
@@ -322,7 +325,7 @@ export function stepGame(state: GameState): GameState {
 // knob is `suppressMirv` (the ROM disables MIRVs in attract, W3MAIN.MAC:1519). The
 // caller owns the coarse phase: play lets nextPhase decide, attract forces 'attract'.
 // over/pause/setup/between are handled by stepGame and never reach here.
-function stepCombat(state: GameState, opts: { suppressMirv?: boolean } = {}): GameState {
+function stepCombat(state: GameState, opts: { readonly suppressMirv?: boolean } = {}): GameState {
   // Live targets first — both the plane's salvo and the normal spawner aim only
   // at structures that are still alive.
   const liveTargets = [

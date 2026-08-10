@@ -107,12 +107,14 @@ export function fireFromKey(key: string, state: GameState): GameState {
   }
 }
 
+// Ground truth: a start in attract writes S.SETU (W3MAIN.MAC:740-757). ROM line
+// numbers live in // comments, never JSDoc — matching the game.ts convention.
 /**
  * mc6-4 "any input leaves the demo": when the cabinet is showing the ATTRACT demo,
- * ANY input begins SETUP — the ROM writes S.SETU on a start (W3MAIN.MAC:740-757).
- * Every other phase is returned UNCHANGED (this transition only fires from attract).
- * Pure — the input state is never mutated. Both fireOrStart (keydowns) and main.ts
- * (pointer input) route through here so keyboard and mouse leave the demo alike.
+ * ANY input begins SETUP. Every other phase is returned UNCHANGED (this transition
+ * only fires from attract). Pure — the input state is never mutated. Both fireOrStart
+ * (keydowns) and main.ts (pointer input) route through here so keyboard and mouse
+ * leave the demo alike.
  */
 export function beginSetupOnInput(state: GameState): GameState {
   return state.phase === 'attract' ? { ...state, phase: 'setup' } : state

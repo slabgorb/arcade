@@ -271,18 +271,36 @@ describe('mc6-4 AC3 — the smart cursor fires from the nearest base', () => {
     expect(fired.abms[0].origin).toEqual(BASES[0]) // nearest base to the left cursor
   })
 
-  it('does NOT fire a 3rd ABM while 2 are already on screen (the AUTCUR < 2 gate)', async () => {
+  // ISOLATE the "< 2 ABMs" gate clause. The full gate is
+  //   onTarget && abms.length < 2 && abms.length + explosions.length < icbms.length.
+  // With THREE active ICBMs the SECOND clause stays open for up to 2 ABMs aloft
+  // (2 + 0 < 3), so the "< 2 ABMs" clause is the ONLY thing that can close the gate —
+  // a single-ICBM fixture would close it via the second clause regardless, hiding a
+  // deleted "< 2" clause (test-analyzer round-1 finding).
+  const threeIcbms = (): Icbm[] => [activeIcbm(240, 130), activeIcbm(60, 120), activeIcbm(180, 110)]
+  const oneAbmAloft = (): Abm[] => [
+    { origin: BASES[0], target: { h: 240, v: 130 }, pos: { h: 100, v: 60 }, arrived: false },
+  ]
+
+  it('does NOT fire a 3rd ABM while 2 are already aloft — the "< 2 ABMs" gate (2nd clause held open by 3 ICBMs)', async () => {
     const attractDriver = await loadAttractDriver()
-    // Same convergence that fires above, but two ABMs are already aloft: the gate
-    // must hold the launch closed. Without the gate this loop would add a 3rd.
-    const aloft: Abm[] = [
-      { origin: BASES[0], target: { h: 240, v: 130 }, pos: { h: 100, v: 60 }, arrived: false },
-      { origin: BASES[1], target: { h: 240, v: 130 }, pos: { h: 120, v: 70 }, arrived: false },
-    ]
-    const s = attract({ cursor: { h: 200, v: 130 }, icbms: [activeIcbm(240, 130)], abms: aloft })
+    const aloft: Abm[] = [...oneAbmAloft(), { origin: BASES[1], target: { h: 240, v: 130 }, pos: { h: 120, v: 70 }, arrived: false }]
+    const s = attract({ cursor: { h: 200, v: 130 }, icbms: threeIcbms(), abms: aloft })
     let d = s
     for (let i = 0; i < 60; i++) d = attractDriver(d)
-    expect(d.abms.length).toBe(2) // no new launch — the fire gate failed CLOSED
+    // 2 aloft → the "< 2" clause closes the gate; removing that clause would fire a 3rd
+    // (2 + 0 < 3 leaves the second clause open), so this bites the clause it names.
+    expect(d.abms.length).toBe(2)
+  })
+
+  it('DOES fire when only 1 ABM is aloft on the SAME 3-ICBM field (the gate opens under the cap)', async () => {
+    const attractDriver = await loadAttractDriver()
+    // 1 aloft (< 2) with the second clause open → the driver converges and launches a
+    // 2nd. This pins the boundary at exactly 2: it fires at 1 aloft, refuses at 2.
+    const s = attract({ cursor: { h: 200, v: 130 }, icbms: threeIcbms(), abms: oneAbmAloft() })
+    let d = s
+    for (let i = 0; i < 60 && d.abms.length < 2; i++) d = attractDriver(d)
+    expect(d.abms.length).toBe(2) // fired one more (1 → 2)
   })
 })
 
@@ -368,7 +386,11 @@ describe('mc6-4 AC5 — any input -> setup, and setup auto-advances to a fresh p
   })
 
   it("the setup->play reseed clears the sound channel (no stale cue leaks — check #14)", () => {
-    expect(stepGame(dirty('setup')).soundEvents).toEqual([])
+    // The fixture must carry a REAL stale cue, else this passes whether the reseed
+    // clears the channel or ignores it (dirty()'s soundEvents is [] by default).
+    const withStaleCue: GameState = { ...dirty('setup'), soundEvents: [{ type: 'detonated' }] }
+    expect(withStaleCue.soundEvents.length).toBe(1) // the input really carries a leftover cue
+    expect(stepGame(withStaleCue).soundEvents).toEqual([]) // the reseed drops it
   })
 
   it('end-to-end: createGame (attract) -> input -> setup -> step -> fresh play', () => {

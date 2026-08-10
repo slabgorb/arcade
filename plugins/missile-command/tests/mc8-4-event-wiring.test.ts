@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { playEdgeCues } from '../src/shell/audio-dispatch.js'
-import { createGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, type GameState } from '../src/core/game.js'
 import { bonusInterval } from '../src/core/wave.js'
 import { droneSweep, type DroneKind } from '../src/core/drone.js'
 
@@ -47,7 +47,7 @@ function recorder() {
   }
 }
 
-const play = (): GameState => createGame(1) // phase 'play', wave 1, score 0
+const play = (): GameState => createPlayGame(1) // phase 'play', wave 1, score 0
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AC1 — WHOOP on wave advance (WP, SNEWAV, W3MAIN:3911; edge: wave++)

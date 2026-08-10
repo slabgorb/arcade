@@ -21,10 +21,10 @@
 // not exist. `loadDrone()` dynamic-imports the selector (string specifier +
 // /* @vite-ignore */ so `tsc --noEmit` stays green while it is absent) and throws a
 // self-describing "not built — RED"; the wave-6 run never produces a cruise until
-// GREEN wires the release. game.js already ships (createGame/stepGame/GameState).
+// GREEN wires the release. game.js already ships (createPlayGame/stepGame/GameState).
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 
 // Icbm has no `kind` field until GREEN; read it defensively so `tsc --noEmit` stays
 // green at RED. A ballistic ICBM (absent kind) is never counted as cruise.
@@ -52,7 +52,7 @@ describe('mc5-3 task 8 — cruise released in stepGame (observed in play)', () =
   it('CONTROL: a game held at wave 5 never spawns a cruise missile (CRMWAV[5]=0)', () => {
     // Re-pin wave 5 every tick so a wave-end cannot advance into wave 6 and leak a
     // cruise — the guard must observe the case it names (mc5-2 sputnik-control idiom).
-    let s: GameState = { ...createGame(1984), wave: 5 }
+    let s: GameState = { ...createPlayGame(1984), wave: 5 }
     let sawCruise = false
     for (let i = 0; i < FRAMES; i++) {
       s = { ...stepGame(s), wave: 5 }
@@ -62,7 +62,7 @@ describe('mc5-3 task 8 — cruise released in stepGame (observed in play)', () =
   })
 
   it('LIVENESS: a game playing wave 6 releases at least one cruise missile', () => {
-    let s: GameState = { ...createGame(1984), wave: 6 }
+    let s: GameState = { ...createPlayGame(1984), wave: 6 }
     let sawCruise = false
     for (let i = 0; i < FRAMES; i++) {
       s = { ...stepGame(s), wave: 6 } // hold wave 6 so the cruise budget keeps refilling
@@ -76,7 +76,7 @@ describe('mc5-3 task 8 — cruise released in stepGame (observed in play)', () =
 
   it('LIVENESS: droneRequest reads the REAL state — returns a cruise-inclusive kind once a cruise is aloft', async () => {
     const { droneRequest } = await loadDrone()
-    let s: GameState = { ...createGame(1984), wave: 6 }
+    let s: GameState = { ...createPlayGame(1984), wave: 6 }
     let sawCruiseSignal = false
     for (let i = 0; i < FRAMES; i++) {
       s = { ...stepGame(s), wave: 6 }
