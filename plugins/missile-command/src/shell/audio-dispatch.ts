@@ -16,7 +16,6 @@
 
 import type { SoundEvent } from '../core/sound-events.js'
 import type { GameState } from '../core/game.js'
-import { bonusCitiesEarned, bonusInterval } from '../core/wave.js'
 import { droneRequest } from '../core/drone-trigger.js'
 import type { AudioEngine } from './audio.js'
 
@@ -112,10 +111,15 @@ export function playEdgeCues(audio: SoundSurface, prev: GameState, curr: GameSta
   // END-GAME — XX "THE END", SENDGA (W3MAIN:4647): the play field just went terminal.
   if (prev.phase !== 'over' && curr.phase === 'over') audio.play('end-game')
 
-  // BONUS CITY — BN, SBONUS (W3MAIN:4845): the cumulative bonus-city count (mc4-5's
-  // bonusCitiesEarned at the shipped default DIP) crossed another threshold this frame.
-  const interval = bonusInterval(0)
-  if (bonusCitiesEarned(curr.score, interval) > bonusCitiesEarned(prev.score, interval)) {
-    audio.play('bonus-city')
-  }
+  // BONUS CITY — BN, SBONUS (W3MAIN:4845): the ROM sounds this when the city is GRANTED
+  // at the wave-end REGEN step, not when the running score crosses a bonus threshold
+  // mid-play. mc8-4 keyed it to the score crossing (`bonusCitiesEarned++`), which sounds
+  // the cue the instant a kill banks the points — up to a whole wave early. mc8-7 moves
+  // it to the grant: a bonus city becomes visible only when REGEN tops the board up from
+  // the reserve (START_CITIES − citiesLost + bonusCitiesEarned) at the between→play beat.
+  // Dead cities never revive within a wave (the mc3-4 invariant), so a rise in the
+  // alive-city count IS a wave-end grant — read off the pure (prev, curr) pair, so this
+  // stays in the shell and core carries no audio concern.
+  const alive = (s: GameState): number => s.cities.reduce((n, c) => (c.alive ? n + 1 : n), 0)
+  if (alive(curr) > alive(prev)) audio.play('bonus-city')
 }
