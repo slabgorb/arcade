@@ -19,10 +19,12 @@ stories:
     title: "Name-entry 'entry' phase + initials buffer in core, reusing @shared/name-entry: a qualifying score on phase over routes to entry; stepNameEntry drives the 3-char initials buffer over the ROM charset; commit inserts into the table then returns to attract/over. Slots into mc6-1's phase machine. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
+    review_verdict: approved
   - id: mc7-3
     title: "Persistence via one-origin localStorage: shell reads on boot and writes on commit under highScoreKey('missile-command'); core stays pure (owns table/qualifies/initials), shell holds only the storage + save trigger. Reuse the asteroids/joust @shared/highscore consumer pattern."
     points: 3
