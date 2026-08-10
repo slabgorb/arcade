@@ -150,6 +150,11 @@ completed_stories:
     title: 'Sputnik fire arbitration + authentic motion (mc9-coupled): the plane fires EITHER/OR vs the normal swarm per launch cycle (ROM JMP SPUTFIR replaces ICNORM launch, W3MAIN.MAC:2543), gated by an in-bounds check (PLCPH within +/-48 of the edges, :2529-2537), and the fire timer is DISTANCE-based (HORFIR vs SPUTDS, :2523-2527) not a frame countdown. Deferred from mc5-2 review F3; couples to mc9 authentic plane velocity (functional speed=1 today). REV-01'
     points: 3
     completed: '2026-08-09'
+  - id: mc10-1
+    epic: mc10
+    title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
+    points: 2
+    completed: '2026-08-09'
   - id: mc8-8
     epic: mc8
     title: "just serve is silent: the POKEY worklet fails to load in Vite dev (@fs URL -> AbortError 'Unable to load a worklet's module'), so MC audio is inaudible under 'just serve' -> /missile-command/ even though the production BUILD is fully audible (mc8-3 verified worklet resolves same-origin + POKEY output peak 0.157). Make the dev server load the vendored worklet (e.g. Vite ?worker/?url or public/ placement) without regressing star-wars, which shares plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Filed by mc8-3."

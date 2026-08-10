@@ -23,9 +23,10 @@ stories:
     title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
     points: 2
     priority: p1
-    status: in_review
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: bug
     branch: feat/mc10-1-absolute-aim-cursor
     assignee: Keith Avery
