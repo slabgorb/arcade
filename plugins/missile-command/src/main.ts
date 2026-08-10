@@ -8,8 +8,9 @@
 // POKEY engine. The shell owns the clock — core never reads the time.
 
 import { createGame, stepGame, type GameState } from './core/game.js'
+import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
-import { applyPointerMotion, fireOrStart } from './shell/input.js'
+import { fireOrStart } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
@@ -36,10 +37,20 @@ const drain = (): void => {
   game = { ...game, soundEvents: [] }
 }
 
-// Mouse/trackball → crosshair (mc1-3). Each pointer move feeds its relative
-// motion through the core clamp; the crosshair follows and stops at the edge.
+// Mouse → crosshair (mc1-3, made ABSOLUTE in mc10-1). The pointer's canvas
+// position maps straight to a cabinet coordinate via the pure core placeCursor
+// (the inverse of render.project), so the crosshair tracks the mouse 1:1 instead
+// of accumulating the per-move relative deltas the old path did. The pointer is
+// made canvas-relative through the element rect and divided by the rect size to
+// get the [0,1] fraction project works in; that is exact because the frame loop
+// keeps canvas.width/height equal to canvas.clientWidth/clientHeight (below), so
+// the rect size and the buffer size project was called with are the same number.
 canvas.addEventListener('pointermove', (event: PointerEvent): void => {
-  game = { ...game, cursor: applyPointerMotion(game.cursor, event.movementX, event.movementY) }
+  const rect = canvas.getBoundingClientRect()
+  game = {
+    ...game,
+    cursor: placeCursor(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height),
+  }
 })
 
 // Fire keys (mc1-4, ammo-gated in mc3-5; mc6-2 "press fire to start"). Z/X/C

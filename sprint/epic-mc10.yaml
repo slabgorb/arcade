@@ -23,10 +23,12 @@ stories:
     title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
     points: 2
     priority: p1
-    status: backlog
+    status: in_review
     repos: arcade
     workflow: tdd
     type: bug
+    branch: feat/mc10-1-absolute-aim-cursor
+    assignee: Keith Avery
   - id: mc10-2
     title: Draw the GROUND (COL001) yellow terrain landmass at the field bottom so cities/bases sit on it instead of floating on black — render.ts currently skips the GROUND slot; colour already correct (wave-1 CYELLO), no palette change needed
     points: 2
@@ -56,3 +58,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: mc10-6
+    title: "Harden the mc citations AC3 un-cited-literal gate: it currently checks only global value-membership across ALL claims, so an un-cited core literal passes whenever ANY unrelated claim shares its number (e.g. cursor.ts LOGICAL_WIDTH=0x100 passes only via the ICBM-speed-scale claim value 256). Require a symbol/line-anchored citation (claimCovers on the literal's own file:line), not bare value membership, in citations.test.ts"
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
