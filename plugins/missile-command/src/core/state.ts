@@ -10,9 +10,11 @@ import { type City } from './field.js'
 /** The game's coarse phase. mc3 had the two combat-relevant states; mc4-2 adds the
  *  `'between'` wave-end beat (bonus tally → REGEN → next wave); mc6-1 grows the
  *  union toward the full cabinet lifecycle with `'attract'`, `'setup'` and
- *  `'pause'` (the MAINLINE dispatch below). `'between'`/`'over'` stay for now and
- *  fold into SETUP tasks in mc6-2..6, so mc3/mc4 keep their transitions. */
-export type Phase = 'attract' | 'setup' | 'play' | 'pause' | 'between' | 'over'
+ *  `'pause'` (the MAINLINE dispatch below). mc7-2 adds `'entry'`, the ROM's
+ *  post-game-over TAKE INITIALS task a qualifying score routes to (cited in game.ts).
+ *  `'between'`/`'over'` stay for now and fold into SETUP tasks in mc6-2..6, so
+ *  mc3/mc4 keep their transitions; `'entry'` is SETUP-family too (stateCode below). */
+export type Phase = 'attract' | 'setup' | 'play' | 'pause' | 'between' | 'over' | 'entry'
 
 /** True once cities EXISTED and every one is dead. An empty list is NOT game-over
  *  — a zero-city input is degenerate, never terminal (a bare `[].every()` reads
@@ -70,15 +72,15 @@ export const S_PLAY = 0x00 // W3COMN.MAC:61  S.PLAY =0   — PLAY  (STATE == 0)
 export const S_PAUS = 0x80 // W3COMN.MAC:59  S.PAUS =80  — PAUSE (STATE < 0, hi bit)
 export const S_SETU = 0x40 // W3COMN.MAC:57  S.SETU =40  — SETUP (STATE > 0)
 
-/** The ROM STATE byte a phase runs under. `'attract'`/`'between'`/`'over'` are
- *  SETUP-family (they run inside SETUP), so they share `S_SETU`. */
+/** The ROM STATE byte a phase runs under. `'attract'`/`'between'`/`'over'`/`'entry'`
+ *  are SETUP-family (they run inside SETUP), so they share `S_SETU`. */
 export function stateCode(phase: Phase): number {
   switch (phase) {
     case 'play':
       return S_PLAY
     case 'pause':
       return S_PAUS
-    default: // 'setup' | 'attract' | 'between' | 'over' — all SETUP-family
+    default: // 'setup' | 'attract' | 'between' | 'over' | 'entry' — all SETUP-family
       return S_SETU
   }
 }

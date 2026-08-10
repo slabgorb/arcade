@@ -30,8 +30,8 @@
 // cited sub-module (NICBMS, ICBM_KILL_POINTS, …); the citation sweep stays
 // green.
 
-import { INITIAL_CURSOR, type Cursor } from './cursor.js'
-import { stepAbm, type Abm } from './abm.js'
+import { INITIAL_CURSOR, moveCursor, type Cursor } from './cursor.js'
+import { stepAbm, launchAbm, type Abm } from './abm.js'
 import { stepAnyIcbm, type Icbm } from './icbm.js'
 import { startExplosion, stepExplosion, isExplosionDone, type Explosion } from './explosion.js'
 import { createCities, createBases, START_CITIES, type City, type Base } from './field.js'
@@ -54,7 +54,14 @@ import {
 } from './sputnik.js'
 import { killIcbmsInBlasts, resolveGroundImpacts, killSputniksInBlasts } from './damage.js'
 import { scoreKills, scoreMultiplier, CRUISE_SCORE_MULT } from './score.js'
-import { nextPhase, nextWavePhase, resumePlay, type Phase } from './state.js'
+import { nextPhase, nextWavePhase, resumePlay, INITIAL_PHASE, type Phase } from './state.js'
+import {
+  DEFAULT_HIGH_SCORES,
+  qualifiesForHighScore,
+  insertHighScore,
+  type MissileCommandHighScore,
+} from './highscore.js'
+import { stepNameEntry } from '@shared/name-entry'
 import {
   INITIAL_WAVE,
   waveSchedule,
@@ -91,8 +98,15 @@ export interface GameState {
   readonly bases: readonly Base[]
   /** Running score; +ICBM_KILL_POINTS per downed ICBM (mc3-3). */
   readonly score: number
-  /** Coarse phase: `'play'` until every city is dead, then terminal `'over'` (mc3-3). */
+  /** Coarse phase: `'play'` until every city is dead, then terminal `'over'`; a
+   *  qualifying game-over routes to `'entry'` for the initials buffer (mc7-2). */
   readonly phase: Phase
+  /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
+   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
+  readonly highScores: readonly MissileCommandHighScore[]
+  /** The in-flight initials buffer collected during `'entry'` (mc7-2). Empty except
+   *  while entering a new high score; driven by @shared/name-entry.stepNameEntry. */
+  readonly initials: string
   /** ICBMs still to launch this wave — this wave's ICBWAV launch budget
    *  (`waveSchedule(wave).count`), drawn down by spawns. NOT the NICBMS on-screen cap. */
   readonly remaining: number
@@ -116,10 +130,13 @@ export interface GameState {
   readonly soundEvents: readonly SoundEvent[]
 }
 
-/** A fresh game: 6 live cities, 3 live bases at full ammo, no enemies, phase 'play',
- *  score 0, the full per-wave budget, the opening wave and its multiplier, and a PRNG
- *  seeded from `seed` (default 1). */
-export function createGame(seed = 1): GameState {
+/** A fresh, fully-defended game in phase `'play'`: 6 live cities, 3 live bases at
+ *  full ammo, no enemies, score 0, the full per-wave budget, the opening wave and
+ *  its multiplier, and a PRNG seeded from `seed` (default 1). This is the playable
+ *  board — createGame's OLD contract. The SETUP NEWGAM reseed (startGame) and the
+ *  attract demo's setup->play auto-advance both build a fresh game HERE, the one
+ *  place the field is defined, so the demo board and the playable board never drift. */
+export function createPlayGame(seed = 1): GameState {
   return {
     frame: 0,
     cursor: INITIAL_CURSOR,
@@ -131,6 +148,8 @@ export function createGame(seed = 1): GameState {
     bases: createBases(),
     score: 0,
     phase: 'play',
+    highScores: DEFAULT_HIGH_SCORES,
+    initials: '',
     remaining: waveSchedule(INITIAL_WAVE).count,
     wave: INITIAL_WAVE,
     multiplier: scoreMultiplier(INITIAL_WAVE),
@@ -140,29 +159,171 @@ export function createGame(seed = 1): GameState {
   }
 }
 
-// mc6-2: the SETUP -> PLAY start-of-game edge. A start action (press fire) taken
-// while the cabinet is in attract or after game over runs the SETUP task chain
-// that begins at NEWGAM — SETUP1: .WORD NEWGAM-1 (W3MAIN.MAC:583) -> NEWGAM
-// (:3835), which sets the skill/lives and wave 1 then requests the next task
-// NEWWV1 (:3903); NEWWV1 refills the magazines (:4021 LDA I,MAXMIS) and seeds the
-// wave-1 ICBM schedule. So NEWGAM begins the reseed and NEWWV1 completes it. We
-// reuse createGame, the one place that whole field is defined, so the reseed and
-// the boot field can never drift. From any other phase (a running/paused/between/
-// setup game) a stray start is a NO-OP: it must not wipe the board. Pure — no
-// clock, no entropy; the incoming seed is threaded through so the reseed stays
-// deterministic.
+// Ground truth: cold start writes S.SETU and CLEARS ATRACT to attract mode — the
+// ATRACT byte is ";ATTRACT (0)/GAME (-1) FLAG" (W3MAIN.MAC:135), and PREGM1 enters
+// attract by zeroing it (:3761 LDA I,0 / STA ATRACT); INITIAL_PHASE (state.ts) is our
+// boolean-true = attract reading. The MC-STATE-INIT claim pins the boot (W3MAIN.MAC:491).
+// ROM line numbers live in // comments, never JSDoc — the un-cited-literal scanner
+// strips // but not /** */.
+/** The cabinet COLD START (mc6-4): the same fully-defended field but in phase
+ *  `'attract'` (INITIAL_PHASE), where the AUTCUR smart cursor plays the field by
+ *  itself until a player presses anything. Only the phase differs from
+ *  createPlayGame, so the demo board is byte-for-byte a real game board. */
+export function createGame(seed = 1): GameState {
+  return { ...createPlayGame(seed), phase: INITIAL_PHASE }
+}
+
+// mc6-2/mc6-4: the SETUP -> PLAY reseed. The SETUP task chain that begins at NEWGAM
+// — SETUP1: .WORD NEWGAM-1 (W3MAIN.MAC:583) -> NEWGAM (:3835), which sets the
+// skill/lives and wave 1 then requests NEWWV1 (:3903); NEWWV1 refills the magazines
+// (:4021 LDA I,MAXMIS) and seeds the wave-1 ICBM schedule. We reuse createPlayGame,
+// the one place that whole field is defined, so the reseed and the boot field can
+// never drift.
+//
+// mc6-4 REPOINT: this reseed now fires from `'over'` (restart after game over —
+// mc6-2's reachable edge) and from `'setup'` (the attract demo's auto-advance:
+// attract -(any input)-> setup -(stepGame)-> this reseed -> play). `'attract'` is
+// NO LONGER a start phase for startGame — the demo leaves via input to SETUP first
+// (shell/input.beginSetupOnInput; the ROM writes S.SETU on start, W3MAIN.MAC:740-757),
+// not by a direct attract->play jump. Every other phase (a running/paused/between
+// game) is a NO-OP: a stray start must not wipe the board. Pure — no clock, no
+// entropy; the incoming seed is threaded through so the reseed stays deterministic.
 /**
- * Start a new game from a start action: when `state.phase` is `'attract'` or
- * `'over'`, return a fresh, fully-defended game in `'play'` — the reseed the
- * NEWGAM->NEWWV1 SETUP chain performs, reusing createGame so the field matches a
- * cold boot exactly: every city and base live, magazines full, no enemies in
- * flight, a cleared score, the opening wave (INITIAL_WAVE) and its full ICBM
- * budget, a zeroed frame counter. For every other phase return `state` unchanged.
+ * Reseed a fresh, fully-defended game in `'play'` when `state.phase` is `'over'` or
+ * `'setup'` (the NEWGAM->NEWWV1 SETUP chain), reusing createPlayGame so the field
+ * matches a cold boot exactly: every city and base live, magazines full, no enemies
+ * in flight, a cleared score, the opening wave and its full ICBM budget, a zeroed
+ * frame counter. For every other phase return `state` unchanged.
  */
 export function startGame(state: GameState): GameState {
-  return state.phase === 'attract' || state.phase === 'over'
-    ? createGame(state.rng.seed)
+  // mc7-2: the high-score ladder is cabinet-persistent — a restart reseeds the
+  // battle but CARRIES the ladder forward (createPlayGame's default is only the
+  // boot seed; mc7-3's shell reload overwrites it on boot). The initials buffer
+  // resets (createPlayGame seeds it empty).
+  return state.phase === 'over' || state.phase === 'setup'
+    ? { ...createPlayGame(state.rng.seed), highScores: state.highScores }
     : state
+}
+
+// ─── mc7-2 (GREEN, Yoda): the name-entry 'entry' phase + initials buffer ──────
+// The ROM's TAKE INITIALS FOR NEW HIGH SCORE task (W3DSUP.MAC:4064): after game
+// over, IF the final score qualifies for the ladder the machine takes the player's
+// initials, INSERTs and returns to attract. A start-switch press or a 30-second
+// timeout ABORTS with no insert (W3DSUP.MAC:4076 ";ABORT IF EITHER START SWITCH
+// PRESS" / :4086-:4088 ";TOO MUCH TIME?" -> "ABORT INITIALS"; the timeout seed is
+// UCVTAB = 0x84, ":RESET TIMEOUT TO 30 SEC", :4180). The 3-char buffer is the
+// cabinet-wide @shared/name-entry verb (A-Z uppercased, Backspace); the ROM's
+// trackball letter cursor over its 26-letter charset (LDA I,26., :4128; ASCII
+// offset ADC I,41, :4158) is DELIBERATELY not ported — the fleet keyboard ruling
+// (joust jt10-7, asteroids …). MC owns only the buffer field + these transitions.
+// All pure: no clock, no entropy. (// line cites, never /** */ — the AC3 un-cited-
+// literal scanner strips // per line but leaks a digit inside a multi-line JSDoc.)
+
+// MC-INITIALS-LEN — three initials. INTLHS holds the horiz display coord of each of
+// the three initials being entered (W3DSUP.MAC:4060 .BYTE 82,78,6E — three coords).
+// Claim MC-INITIALS-LEN.
+export const MC_INITIALS_LEN = 3
+
+/** Route a finished game into name entry: from `'over'`, when the final score
+ *  qualifies for the ladder, enter `'entry'` with an empty initials buffer. A
+ *  non-qualifying score — or any non-`'over'` phase — is returned unchanged (the
+ *  `'over'`->`'attract'` timeout is mc6's edge). Pure. */
+export function enterNameEntry(state: GameState): GameState {
+  if (state.phase !== 'over' || !qualifiesForHighScore(state.highScores, state.score)) return state
+  return { ...state, phase: 'entry', initials: '' }
+}
+
+/** One initials keydown during `'entry'`: advance the buffer via
+ *  @shared/name-entry.stepNameEntry (A-Z uppercased, Backspace, capped at
+ *  MC_INITIALS_LEN). A no-op key returns the SAME state; any non-`'entry'` phase is
+ *  returned unchanged. Pure — reuse, not a re-implemented buffer. */
+export function stepInitials(state: GameState, key: string): GameState {
+  if (state.phase !== 'entry') return state
+  const initials = stepNameEntry(state.initials, key, MC_INITIALS_LEN)
+  return initials === state.initials ? state : { ...state, initials }
+}
+
+/** Commit a completed entry: with a FULL MC_INITIALS_LEN buffer during `'entry'`,
+ *  insert `{ name, score }` into the ladder via the mc7-1 insert, clear the buffer
+ *  and return to attract. An incomplete buffer or any non-`'entry'` phase is
+ *  returned unchanged. Pure — neither the state nor the table is mutated. */
+export function commitNameEntry(state: GameState): GameState {
+  if (state.phase !== 'entry' || state.initials.length !== MC_INITIALS_LEN) return state
+  return {
+    ...state,
+    highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
+    initials: '',
+    phase: 'attract',
+  }
+}
+
+// abortNameEntry — the shared result of BOTH ROM abort triggers (a start-switch
+// press, W3DSUP.MAC:4076; or the timeout, :4086-:4088): return to attract with the
+// buffer cleared and the ladder UNCHANGED. The shell decides WHEN to call it; the
+// per-frame countdown wiring is the deferred O-7b input-mapping item.
+/** Abort name entry: return to attract, clear the buffer, and leave the ladder
+ *  UNCHANGED — no insert, even from a full buffer (a timeout on the last letter
+ *  discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
+export function abortNameEntry(state: GameState): GameState {
+  if (state.phase !== 'entry') return state
+  return { ...state, initials: '', phase: 'attract' }
+}
+
+// mc6-4: the SMART CURSOR MOVER (ATTRACT) — AUTCUR, W3MAIN.MAC:895 (.SBTTL :891,
+// the MC-ANCH-W3MAIN-891 anchor). During the attract demo a pure, DETERMINISTIC
+// auto-player drives the crosshair: it targets an active (descending) ICBM, chases
+// it, and — once on target with the AUTCUR fire gate open — launches an ABM from the
+// nearest loaded base. No entropy of its own (the "seeded" demo is deterministic
+// because the ICBM SPAWNS draw state.rng); no clock. The exact ROM lead (a ~0x0E-dot
+// V offset and an Hvel>>4 H prediction) and its fixed-point AUTSPD*ADCURS step are
+// mc9-level pixel fidelity; here the cursor chases the warhead directly at AUTSPD.
+//
+// AUTSPD — the attract cursor's per-frame step, =2 (W3COMN.MAC:233). Like abm.ts's
+// ABM_SPEED base, 2 is trivial-exempt from the un-cited-literal guard; pinned here by
+// comment (// lines, not JSDoc — the citation scanner strips // but not /** */).
+const AUTSPD = 2
+
+/**
+ * Advance the attract auto-player one frame: when `state.phase` is `'attract'` and a
+ * descending ICBM exists, step the crosshair toward the nearest one by at most AUTSPD
+ * per axis (clamped to the play area), and when the crosshair is within one step of
+ * that warhead — with fewer than 2 ABMs aloft AND (ABMs + explosions) below the
+ * incoming-ICBM count (the AUTCUR gate) — launch one ABM from the nearest live,
+ * loaded base and spend a round. With no active target the crosshair holds; outside
+ * `'attract'` the state is returned unchanged. Pure and deterministic.
+ */
+export function attractDriver(state: GameState): GameState {
+  if (state.phase !== 'attract') return state
+  const targets = state.icbms.filter((i) => !i.arrived) // NEWTAR: active warheads only
+  if (targets.length === 0) return state // no target -> the crosshair holds
+
+  const { cursor } = state
+  const dist = (i: Icbm): number => Math.hypot(i.pos.h - cursor.h, i.pos.v - cursor.v)
+  const target = targets.reduce((best, i) => (dist(i) < dist(best) ? i : best))
+
+  // Chase the warhead by at most AUTSPD/axis — a gradual step, snapping onto it when
+  // already within one step (no overshoot). moveCursor clamps to the play area.
+  const stepToward = (from: number, to: number): number => {
+    const d = to - from
+    return Math.abs(d) <= AUTSPD ? d : Math.sign(d) * AUTSPD
+  }
+  const moved = moveCursor(cursor, { dh: stepToward(cursor.h, target.pos.h), dv: stepToward(cursor.v, target.pos.v) })
+
+  // The AUTCUR fire gate: on target (within one step in both axes) AND < 2 ABMs on
+  // screen AND ABMONS+EXPLCT < ICBONS (W3MAIN.MAC:1035-1047). Fire from the base
+  // nearest the crosshair that is alive and loaded, spending one round (LAUABM).
+  const onTarget =
+    Math.abs(target.pos.h - cursor.h) <= AUTSPD && Math.abs(target.pos.v - cursor.v) <= AUTSPD
+  const gateOpen =
+    onTarget && state.abms.length < 2 && state.abms.length + state.explosions.length < state.icbms.length
+  if (!gateOpen) return { ...state, cursor: moved }
+
+  const loaded = state.bases.map((b, idx) => ({ b, idx })).filter(({ b }) => b.alive && b.ammo > 0)
+  if (loaded.length === 0) return { ...state, cursor: moved } // no base can fire
+  const best = loaded.reduce((a, c) => (Math.abs(c.b.pos.h - moved.h) < Math.abs(a.b.pos.h - moved.h) ? c : a))
+  const abm = launchAbm(best.b.pos, moved)
+  const bases = state.bases.map((b, i) => (i === best.idx ? { ...b, ammo: b.ammo - 1 } : b))
+  return { ...state, cursor: moved, abms: [...state.abms, abm], bases }
 }
 
 /**
@@ -187,6 +348,12 @@ export function stepGame(state: GameState): GameState {
   // player control; mc6-3 repurposes the slot for a player toggle (see state.ts
   // togglePause). Guarded BEFORE the combat path (else nextPhase flips 'pause' to 'play').
   if (state.phase === 'pause') return { ...state, frame: state.frame + 1, soundEvents: [] }
+
+  // mc6-4: SETUP auto-advances to a fresh, fully-defended PLAY game — the NEWGAM
+  // reseed (startGame). The attract demo reaches 'setup' on any input; one frame
+  // later the real game begins. (mc6-5 replaces this instant beat with the rendered
+  // PLAYER-select/countdown SETUP screen.) Guarded before the combat path.
+  if (state.phase === 'setup') return startGame(state)
 
   // END OF WAVE, phase 2 (mc4-2): the previous frame entered the 'between' beat with
   // the wave's final damage on screen. Now resolve it — tally the surviving-city +
@@ -224,6 +391,25 @@ export function stepGame(state: GameState): GameState {
     }
   }
 
+  // mc6-4: the ATTRACT demo. The AUTCUR smart cursor plays the field first, then the
+  // SAME combat sim runs (MIRVs suppressed — the ROM disables them in attract,
+  // W3MAIN.MAC:1519). The demo NEVER leaves 'attract' on its own; only input
+  // (shell/input.beginSetupOnInput -> 'setup') does — so whatever coarse phase the
+  // combat produces ('play'/'over'/'between'), force it back to 'attract'.
+  if (state.phase === 'attract') {
+    return { ...stepCombat(attractDriver(state), { suppressMirv: true }), phase: 'attract' }
+  }
+
+  // PLAY: run the battle and let nextPhase decide the outcome ('play'/'over'/'between').
+  return stepCombat(state, {})
+}
+
+// mc6-4: the per-frame combat simulation — the seven-step order above. Extracted
+// from stepGame so BOTH play and the attract demo run the IDENTICAL battle; the only
+// knob is `suppressMirv` (the ROM disables MIRVs in attract, W3MAIN.MAC:1519). The
+// caller owns the coarse phase: play lets nextPhase decide, attract forces 'attract'.
+// over/pause/setup/between are handled by stepGame and never reach here.
+function stepCombat(state: GameState, opts: { readonly suppressMirv?: boolean } = {}): GameState {
   // Live targets first — both the plane's salvo and the normal spawner aim only
   // at structures that are still alive.
   const liveTargets = [
@@ -326,7 +512,7 @@ export function stepGame(state: GameState): GameState {
   // read BEFORE this frame's new blasts, so it keys off state.explosions (pre-aging count).
   const openSlots = Math.max(0, NICBMS - flownIcbms.length)
   let mirvAt = -1
-  if (state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
+  if (!opts.suppressMirv && state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
     for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // one per frame
   }
   const withMirvs =

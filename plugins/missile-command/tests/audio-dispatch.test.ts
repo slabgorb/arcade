@@ -39,7 +39,7 @@
 import { describe, it, expect } from 'vitest'
 import { playEventSounds, updateSustainedSounds } from '../src/shell/audio-dispatch.js'
 import type { SoundEvent } from '../src/core/sound-events.js'
-import { createGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, type GameState } from '../src/core/game.js'
 import type { Icbm } from '../src/core/icbm.js'
 import type { DroneKind } from '../src/core/drone.js'
 
@@ -174,7 +174,7 @@ describe('playEventSounds — the event→POKEY map (spike §5)', () => {
 // drone's LIFECYCLE; its parametric sweep is mc8-3.
 describe('updateSustainedSounds — the drone does not ring through game over', () => {
   const over = (): GameState => {
-    const g = createGame(1)
+    const g = createPlayGame(1)
     return { ...g, phase: 'over', cities: g.cities.map((c) => ({ ...c, alive: false })) }
   }
 
@@ -217,7 +217,7 @@ describe('updateSustainedSounds — the drone does not ring through game over', 
     const cruise: Icbm = { origin: V0, target: V0, pos: V0, arrived: false, kind: 'cruise' }
     const r = recorder()
     r.audio.startLoop('drone')
-    updateSustainedSounds(r.audio, { ...createGame(1), icbms: [cruise] }) // phase 'play', threat present
+    updateSustainedSounds(r.audio, { ...createPlayGame(1), icbms: [cruise] }) // phase 'play', threat present
     expect(r.calls).not.toContain('stopLoop:drone')
   })
 })
@@ -254,7 +254,7 @@ describe('mc8-5 — the drone LIVE TRIGGER starts/stops from on-screen threats',
   const ballistic: Icbm = { origin: V0, target: V0, pos: V0, arrived: false, kind: 'ballistic' }
   const plane = {} as GameState['sputniks'][number]
 
-  const play = (over: Partial<GameState>): GameState => ({ ...createGame(1), ...over })
+  const play = (over: Partial<GameState>): GameState => ({ ...createPlayGame(1), ...over })
   // Net running state of the drone after a run of calls (last start/stop wins).
   const droneRunning = (calls: readonly string[]): boolean => {
     let on = false

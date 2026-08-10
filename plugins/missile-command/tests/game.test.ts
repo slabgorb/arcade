@@ -14,12 +14,12 @@
 // AC allows it — a seed-dependent "icbms[0] exists" assertion is exactly the kind
 // of flake this suite refuses.
 //
-// RED today: game.ts is still the mc1-4 stub — `createGame` takes no seed and
+// RED today: game.ts is still the mc1-4 stub — `createPlayGame` takes no seed and
 // `GameState` has no icbms/cities/bases/score/phase/remaining/rng, so this file
 // fails to type-check and to run until GREEN grows game.ts.
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS } from '../src/core/spawn.js'
 import { waveSchedule, INITIAL_WAVE } from '../src/core/wave.js'
 import { type Icbm } from '../src/core/icbm.js'
@@ -50,9 +50,9 @@ const run = (s: GameState, n: number): GameState => {
 }
 
 // ─── AC1: a fresh game starts defended and at rest ───────────────────────────
-describe('mc3-4 AC1 — createGame(seed) returns a fresh, fully-defended game', () => {
+describe('mc3-4 AC1 — createPlayGame(seed) returns a fresh, fully-defended game', () => {
   it('has 6 live cities, 3 live bases at ammo 10, no enemies, score 0, phase play', () => {
-    const g = createGame(1)
+    const g = createPlayGame(1)
     expect(g.cities.length).toBe(6)
     expect(g.cities.every((c) => c.alive)).toBe(true)
     expect(g.bases.length).toBe(3)
@@ -66,8 +66,8 @@ describe('mc3-4 AC1 — createGame(seed) returns a fresh, fully-defended game', 
   })
 
   it('seeds the per-wave ICBM budget to the wave-1 ICBWAV budget (12), NOT the NICBMS(8) on-screen cap, and carries a seeded rng', () => {
-    const g = createGame(1)
-    // mc5-7 (REV-01 bug): createGame must seed `remaining` from the wave-1 launch
+    const g = createPlayGame(1)
+    // mc5-7 (REV-01 bug): createPlayGame must seed `remaining` from the wave-1 launch
     // BUDGET — waveSchedule(INITIAL_WAVE).count = ICBWAV[0] = 12 (W3MAIN.MAC:5713;
     // loaded LDA AY,ICBWAV-1 / STA ICBTOL) — not NICBMS(8). NICBMS is the
     // max-ICBMs-ON-SCREEN-at-once ceiling (a different constant); the wave budget is
@@ -79,8 +79,8 @@ describe('mc3-4 AC1 — createGame(seed) returns a fresh, fully-defended game', 
     expect(g.rng.seed).toBe(1)
   })
 
-  it('defaults the seed to 1 (createGame() === createGame(1))', () => {
-    expect(createGame()).toEqual(createGame(1))
+  it('defaults the seed to 1 (createPlayGame() === createPlayGame(1))', () => {
+    expect(createPlayGame()).toEqual(createPlayGame(1))
   })
 })
 
@@ -93,7 +93,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
     // conservation in one step: launched + remaining === the wave-1 budget
     // (waveSchedule(INITIAL_WAVE).count = ICBWAV[0] = 12; mc5-7), NOT NICBMS(8).
     const wave1Budget = waveSchedule(INITIAL_WAVE).count
-    const g1 = stepGame(createGame(1))
+    const g1 = stepGame(createPlayGame(1))
     expect(g1.icbms.length).toBe(4)
     expect(g1.remaining).toBe(wave1Budget - 4)
     expect(g1.icbms.length + g1.remaining).toBe(wave1Budget)
@@ -101,7 +101,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
   })
 
   it('never exceeds the on-screen cap and never over-spends the budget over a long run', () => {
-    let g = createGame(2)
+    let g = createPlayGame(2)
     let prevRemaining = g.remaining
     for (let k = 0; k < 120; k++) {
       g = stepGame(g)
@@ -118,7 +118,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
     const victim: Icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 20 }, pos: { h: 100, v: 100 }, arrived: false }
     const bystander: Icbm = { origin: { h: 5, v: 222 }, target: { h: 5, v: 20 }, pos: { h: 5, v: 100 }, arrived: false }
     const blast = peakBlast(100, 99) // peak radius covers the victim's flown head; far from the bystander
-    const g: GameState = { ...createGame(1), remaining: 0, icbms: [victim, bystander], explosions: [blast] }
+    const g: GameState = { ...createPlayGame(1), remaining: 0, icbms: [victim, bystander], explosions: [blast] }
 
     const next = stepGame(g)
     expect(next.icbms.length).toBe(1) // only the victim removed
@@ -128,7 +128,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
   it('spawns only against LIVE structures (dead cities/bases are never targeted)', () => {
     // Kill every structure but city 0, keep the game in 'play', and force a spawn:
     // every launched ICBM must aim at the one surviving structure.
-    const base = createGame(1)
+    const base = createPlayGame(1)
     const survivor = base.cities[0]
     const g: GameState = {
       ...base,
@@ -147,7 +147,7 @@ describe('mc3-4 AC2 — stepGame launches the wave within its caps', () => {
 // ─── AC3: structures only die, and losing every city ends the game ────────────
 describe('mc3-4 AC3 — an arrived ICBM kills its target, and the dead never resurrect', () => {
   it('an arrived ICBM at a city destroys that city, removes the warhead, and leaves the rest', () => {
-    const base = createGame(1)
+    const base = createPlayGame(1)
     const target = base.cities[0].pos
     const arrived: Icbm = { origin: { h: target.h, v: 222 }, target, pos: target, arrived: true }
     // A second ICBM still high in its descent keeps the WAVE open (the screen is not
@@ -178,7 +178,7 @@ describe('mc3-4 AC3 — an arrived ICBM kills its target, and the dead never res
   })
 
   it('flips to phase over once every city is dead, then only advances the frame', () => {
-    const g: GameState = { ...createGame(9), cities: createGame(9).cities.map((c) => ({ ...c, alive: false })) }
+    const g: GameState = { ...createPlayGame(9), cities: createPlayGame(9).cities.map((c) => ({ ...c, alive: false })) }
 
     const over = stepGame(g)
     expect(over.phase).toBe('over') // all cities dead → resolve to over
@@ -195,7 +195,7 @@ describe('mc3-4 AC3 — an arrived ICBM kills its target, and the dead never res
   })
 
   it('never resurrects a structure across a full attack (monotonic alive)', () => {
-    let g = createGame(4)
+    let g = createPlayGame(4)
     let cityAlive = g.cities.map((c) => c.alive)
     let baseAlive = g.bases.map((b) => b.alive)
     for (let k = 0; k < 260; k++) {
@@ -215,15 +215,15 @@ describe('mc3-4 AC3 — an arrived ICBM kills its target, and the dead never res
 // ─── AC4: the sim is deterministic for a seed ────────────────────────────────
 describe('mc3-4 AC4 — same seed is identical, and the seed actually matters', () => {
   it('two runs from the same seed produce identical multi-hundred-frame states', () => {
-    expect(run(createGame(7), 250)).toEqual(run(createGame(7), 250))
+    expect(run(createPlayGame(7), 250)).toEqual(run(createPlayGame(7), 250))
   })
 
   it('a step advances the seeded rng (randomness is threaded through state)', () => {
     // The first step spawns, consuming the rng — the durable seed word must move.
-    expect(stepGame(createGame(1)).rng.seed).not.toBe(1)
+    expect(stepGame(createPlayGame(1)).rng.seed).not.toBe(1)
   })
 
   it('different seeds diverge (the seed is not ignored)', () => {
-    expect(run(createGame(7), 50)).not.toEqual(run(createGame(11), 50))
+    expect(run(createPlayGame(7), 50)).not.toEqual(run(createPlayGame(11), 50))
   })
 })

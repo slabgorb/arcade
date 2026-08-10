@@ -11,7 +11,7 @@
 //   • mc4-3  scoreMultiplier(wave) = min((wave+1)>>1, MAXMUL)      (score.ts)         — pinned by score-multiplier.test.ts
 //
 // mc4-4's job (epic mc4, story mc4-4):
-//   (a) src/core/game.ts   — createGame seeds wave 1 + its multiplier; GameState
+//   (a) src/core/game.ts   — createPlayGame seeds wave 1 + its multiplier; GameState
 //       gains `wave` and `multiplier`; stepGame runs the wave-end resolution in its
 //       resolve step (bonus → regen → refill → advance) and freezes on game-over.
 //   (b) src/shell/render.ts — the HUD draws the wave number and current multiplier;
@@ -38,7 +38,7 @@
 // (the mc4-1 review lesson: relative-only assertions let two wrong formulae ship).
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 // (mc4-4's HUD render block — "the HUD draws the wave number and current multiplier",
 //  asserted via the drawn fillText string — moved to render-hud.test.ts when mc9-4
 //  retired the monospace fillText HUD. Its guarantees are re-pinned there
@@ -71,7 +71,7 @@ const totalAmmo = (s: GameState): number => s.bases.reduce((n, b) => n + b.ammo,
 
 /** The pure enemy-loop trajectory: fresh seeded game, then `n` frames of stepGame. */
 function trajectory(seed: number, n: number): GameState[] {
-  const out: GameState[] = [createGame(seed)]
+  const out: GameState[] = [createPlayGame(seed)]
   for (let k = 0; k < n; k++) out.push(stepGame(out[out.length - 1]))
   return out
 }
@@ -92,9 +92,9 @@ function crossWave(start: WaveState, maxFrames = 12): WaveState {
 
 /** An end-of-wave state at wave 1: budget spent, screen clear, ONE city lost (to
  *  make regeneration observable) and magazines part-spent (to make the refill and a
- *  non-zero unused-missile bonus observable). Built from the real createGame model. */
+ *  non-zero unused-missile bonus observable). Built from the real createPlayGame model. */
 function endOfWaveOne(seed: number): WaveState {
-  const base = createGame(seed)
+  const base = createPlayGame(seed)
   return withFields(base, {
     remaining: 0,
     icbms: [],
@@ -105,22 +105,22 @@ function endOfWaveOne(seed: number): WaveState {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC1 — createGame seeds the opening wave and its multiplier onto GameState.
+// AC1 — createPlayGame seeds the opening wave and its multiplier onto GameState.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('mc4-4 AC1 — createGame seeds wave 1 and its multiplier', () => {
+describe('mc4-4 AC1 — createPlayGame seeds wave 1 and its multiplier', () => {
   it('a fresh game starts on the opening wave (INITIAL_WAVE)', () => {
-    expect(waveOf(createGame(SEED)), 'createGame must seed GameState.wave = INITIAL_WAVE').toBe(INITIAL_WAVE)
+    expect(waveOf(createPlayGame(SEED)), 'createPlayGame must seed GameState.wave = INITIAL_WAVE').toBe(INITIAL_WAVE)
   })
 
   it("the opening multiplier is wave 1's score multiplier (the base ×1)", () => {
-    expect(multOf(createGame(SEED)), 'createGame must seed GameState.multiplier = scoreMultiplier(wave)').toBe(
+    expect(multOf(createPlayGame(SEED)), 'createPlayGame must seed GameState.multiplier = scoreMultiplier(wave)').toBe(
       scoreMultiplier(INITIAL_WAVE),
     )
   })
 
   it('the seeded wave/multiplier are independent of the RNG seed (same opening for any seed)', () => {
-    expect(waveOf(createGame(OTHER_SEED))).toBe(INITIAL_WAVE)
-    expect(multOf(createGame(OTHER_SEED))).toBe(scoreMultiplier(INITIAL_WAVE))
+    expect(waveOf(createPlayGame(OTHER_SEED))).toBe(INITIAL_WAVE)
+    expect(multOf(createPlayGame(OTHER_SEED))).toBe(scoreMultiplier(INITIAL_WAVE))
   })
 })
 
@@ -182,7 +182,7 @@ describe('mc4-4 AC1/AC3 — a winnable wave-end advances the wave and resolves i
 describe('mc4-4 AC1 — game-over wins at wave-end (no advance, frozen)', () => {
   // Spent, cleared, and every city dead — with empty magazines so no bonus can be
   // banked on ANY resolve ordering (waveEndBonus(0, 0) === 0), isolating the freeze.
-  const base = createGame(SEED)
+  const base = createPlayGame(SEED)
   const eowDead = withFields(base, {
     remaining: 0,
     icbms: [],
@@ -258,7 +258,7 @@ describe('mc4-4 AC3 — ICBM descent ramps: slower on wave 1 than on wave 2', ()
 // SMULTI steps every two waves, so wave 1 → ×1 and wave 3 → ×2).
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc4-4 AC3 — the multiplier tracks the wave and climbs across waves', () => {
-  const w1 = createGame(SEED)
+  const w1 = createPlayGame(SEED)
   const w2 = crossWave(endOfWaveOne(SEED))
   // End wave 2 as well (budget spent, screen clear) to reach wave 3, where SMULTI steps.
   const eow2 = withFields(w2, { remaining: 0, icbms: [] })
@@ -302,7 +302,7 @@ describe('mc4-4 AC3 — an ICBM kill is scored at the wave multiplier, not the b
   function scoreForOneKillAtWave(wave: number): number {
     const victim: Icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 20 }, pos: { h: 100, v: 100 }, arrived: false }
     const bystander: Icbm = { origin: { h: 5, v: 222 }, target: { h: 5, v: 20 }, pos: { h: 5, v: 100 }, arrived: false }
-    const g = withFields(createGame(SEED), {
+    const g = withFields(createPlayGame(SEED), {
       wave,
       multiplier: scoreMultiplier(wave),
       score: 0,
