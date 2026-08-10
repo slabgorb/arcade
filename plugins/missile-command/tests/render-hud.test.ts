@@ -425,8 +425,9 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     // (esp. a glyph/font one for the HUD); reusing an ALREADY-EXTRACTED shared VERB is
     // fine. Allowed pre-existing modules: @shared/font (mc9-4's HUD note), and — added
     // by mc6-3 — @shared/pause (the pause-key VERB, SH2-12) and @shared/esc-overlay
-    // (the pause overlay, SH2-12), both reused by battlezone/tempest already; mc6-3's
-    // AC explicitly reuses them for the pause key + overlay rather than reinventing them.
+    // (the pause overlay, SH2-12), already the fleet-wide pause pattern (reused by
+    // asteroids, battlezone, centipede, red-baron, star-wars, tempest); mc6-3's AC
+    // explicitly reuses them for the pause key + overlay rather than reinventing them.
     const ALLOWED = new Set(['@shared/font', '@shared/pause', '@shared/esc-overlay'])
     const disallowed: string[] = []
     for (const f of readdirSync(shellDir).filter((f) => f.endsWith('.ts'))) {

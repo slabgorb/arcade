@@ -275,8 +275,9 @@ export function drawFrame(
 // viewport dim panel + a centred keybind card from the shared vector font) that
 // battlezone's drawPauseOverlay established (SH2-12). MC supplies its own card copy,
 // colour and dim — per-cabinet NUMBERS, playtest-tunable. drawFrame calls this while
-// the phase is 'pause' (the PAUSE STATE, W3MAIN.MAC:615); the sim behind it is held
-// frozen by stepGame's pause branch.
+// the phase is 'pause'; the sim behind it is held frozen by stepGame's pause branch.
+// (This is the overlay's shell-side rationale — the ROM-provenance of the pause STATE
+// itself is discussed in core/state.ts togglePause, not re-claimed here.)
 const PAUSE_LINES = ['PAUSED', '', 'PRESS ESC TO RESUME'] as const
 const PAUSE_COLOR = '#fff' // functional HUD white (the crosshair/HUD are not palette registers)
 const PAUSE_DIM = 0.72 // dim-panel alpha over the frozen field

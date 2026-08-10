@@ -97,9 +97,15 @@ export function mainline(phase: Phase): Handler {
 // mc6-3 (GREEN, Loki): the play<->pause toggle. A pause action flips a live game
 // into PAUSE and a paused game back to PLAY; every other phase is not pausable and
 // is returned unchanged (you cannot pause the attract demo, a between-wave beat, a
-// setup step, or a finished game). PAUSE is its own MAINLINE handler — .SBTTL PAUSE
-// STATE (W3MAIN.MAC:615), reached via IFMI -> JSR PAUSE when STATE is S.PAUS (:517).
-// Pure: no clock, no entropy.
+// setup step, or a finished game). Pure: no clock, no entropy.
+//
+// FIDELITY NOTE: the ROM's PAUSE STATE (.SBTTL PAUSE STATE, W3MAIN.MAC:615; PAUSE:,
+// :617) is NOT a player pause — it is an automatic, self-timed PAUST countdown the
+// game code enters ITSELF for scripted delays (pre-game countdown, end-of-wave bonus
+// tally, post-game-over hold) and self-resumes; no player pause control exists in the
+// ROM. mc6-3 REPURPOSES the MAINLINE PAUSE dispatch slot mc6-1 left vacant (IFMI ->
+// JSR PAUSE when STATE is S.PAUS, :517) for an Escape-driven player toggle — an
+// emulator convenience with no player-pause precedent in the original machine.
 export function togglePause(phase: Phase): Phase {
   if (phase === 'play') return 'pause'
   if (phase === 'pause') return 'play'

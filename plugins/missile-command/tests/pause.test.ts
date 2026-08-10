@@ -330,7 +330,11 @@ describe('mc6-3 AC3 — pauseFromKey binds the pause key (reuses @shared/pause)'
     expect(after.bases).toEqual(play.bases) // no ammo spent
   })
 
-  it.each(['attract', 'over'] as const)("the pause key is a no-op in '%s' (you cannot pause the demo or a dead game)", async (phase) => {
+  // Every non-pausable phase, not just attract/over: a pauseFromKey that re-rolled
+  // its own phase check (instead of delegating to togglePause) could force
+  // 'setup'/'between' into 'play' and stay invisible to a two-phase list. Mirror
+  // AC1's NON_TOGGLE_PHASES coverage. (Heimdall round-1 test-gap finding.)
+  it.each(NON_TOGGLE_PHASES)("the pause key is a no-op in '%s' (only a live or paused game toggles)", async (phase) => {
     const pauseFromKey = await loadPauseFromKey()
     const s: GameState = { ...createGame(1), phase }
     expect(pauseFromKey('Escape', s)).toEqual(s)

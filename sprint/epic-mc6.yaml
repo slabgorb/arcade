@@ -33,7 +33,7 @@ stories:
     title: 'PAUSE toggle: phase play <-> pause freezes enemy motion, ABM flight, scoring and spawn (stepGame no-op but the clock) while paused; shell binds the pause key and reuses @shared/pause for the overlay. REV-01 W3MAIN.MAC:615 PAUSE'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
@@ -58,3 +58,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: mc6-7
+    title: "Block player fire/input while phase is 'pause': pressing Z/X/C during pause must not spend ammo, queue an ABM, or sound a launch — fireOrStart/fireFromKey should no-op when state.phase==='pause', matching the ROM PAUSE handler (MAINLINE JSRs PAUSE not PLAY, so ABMLAU never runs). Found in mc6-3 review (Heimdall); the stepGame freeze is correct but shell input is ungated."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: bug
