@@ -73,7 +73,8 @@ stories:
     title: "Test-hygiene for mc10-2 GROUND tests: detense the RED-phase comments (header quotes render.ts's DELETED 'not drawn' sentence as verbatim; it() title '— today none does' is false on a passing test; wiring-rationale comment says the header 'explains it is NOT drawn') AND harden/drop the decoy-defeatable wiring guard — the 'references SLOT.GROUND' whole-file positive anchor (#25) passed on a 'const _decoy = SLOT.GROUND' while the real draw was hue(SLOT.SKY); anchor it to the paint expression or drop it as redundant with the behavioural tests. render-ground.test.ts only; no production code change"
     points: 1
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: trivial
     type: chore
