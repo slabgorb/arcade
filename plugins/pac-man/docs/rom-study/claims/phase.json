@@ -1,0 +1,34 @@
+[
+  {
+    "id": "MAINLINE-STATE-DISPATCH",
+    "symbol": "MASTER_STATE_DISPATCH",
+    "value": "4e00",
+    "meaning": "The mainline reads the master-state byte at (#4e00) and branches on it — the cabinet's whole attract/ready/play/dying/level-clear/game-over lifecycle is dispatched from this one byte. This is the ROM analogue of src/core/phase.ts's advancePhase (the pure MAINLINE dispatch). #4e00 is read at several mainline sites (0195/01ad/01c6/032d/03c8); this claim pins the first, canonical read.",
+    "addr": "0195",
+    "source": { "file": "pacman.asm", "line": 251, "verbatim": "0195  3a004e    ld      a,(#4e00)" }
+  },
+  {
+    "id": "MASTER-STATE-WRITE-0984",
+    "symbol": "MASTER_STATE_WRITE_A",
+    "value": "4e00",
+    "meaning": "A master-state transition: the mainline WRITES the new state into byte (#4e00) with `ld (#4e00),a`. One of the three state-write sites (0984/269a/318c) — the ROM analogue of advancePhase returning a new GamePhase. This claim pins the 0984 write.",
+    "addr": "0984",
+    "source": { "file": "pacman.asm", "line": 1498, "verbatim": "0984  32004e    ld      (#4e00),a" }
+  },
+  {
+    "id": "MASTER-STATE-WRITE-269A",
+    "symbol": "MASTER_STATE_WRITE_B",
+    "value": "4e00",
+    "meaning": "A master-state transition: `ld (#4e00),a` stores a new lifecycle state into #4e00. The second of the three state-write sites (0984/269a/318c). ROM analogue of a GamePhase transition in advancePhase.",
+    "addr": "269a",
+    "source": { "file": "pacman.asm", "line": 5336, "verbatim": "269a  32004e    ld      (#4e00),a" }
+  },
+  {
+    "id": "MASTER-STATE-WRITE-318C",
+    "symbol": "MASTER_STATE_WRITE_C",
+    "value": "4e00",
+    "meaning": "A master-state transition: `ld (#4e00),a` stores a new lifecycle state into #4e00. The third of the three state-write sites (0984/269a/318c). ROM analogue of a GamePhase transition in advancePhase.",
+    "addr": "318c",
+    "source": { "file": "pacman.asm", "line": 6961, "verbatim": "318c  32004e    ld      (#4e00),a" }
+  }
+]

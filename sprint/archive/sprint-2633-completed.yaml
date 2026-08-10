@@ -289,3 +289,8 @@ completed_stories:
     title: "Wire the per-wave palette: pass game.wave as drawFrame's 5th arg in main.ts (currently defaults to INITIAL_WAVE, freezing wave-1 colours forever) + a regression test that a later-wave sky differs from wave 1. paletteForWave already built (mc9-2)"
     points: 1
     completed: '2026-08-10'
+  - id: mc7-3
+    epic: mc7
+    title: "Wire name entry end-to-end (KEYBOARD): add the stepGame 'entry' freeze branch (+freeze test) so a step during 'entry' no longer falls through to stepCombat/nextPhase; reach enterNameEntry from a qualifying game-over in the frame loop; shell feeds KeyboardEvent.key to core stepInitials and commits on Enter via @shared/name-entry (keyboard like asteroids/joust — NO trackball, NO ROM timeout); and persist via one-origin localStorage under highScoreKey('missile-command') — shell reads on boot, writes on commit; core stays pure (owns table/qualifies/initials). Reuse the asteroids/joust @shared/highscore + name-entry consumer pattern. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
+    points: 5
+    completed: '2026-08-10'

@@ -107,7 +107,8 @@ export interface GameState {
    *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
   readonly overFrames: number
   /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
-   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
+   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (mc7-3 —
+   *  src/main.ts + shell/highscore.ts, one-origin localStorage). */
   readonly highScores: readonly MissileCommandHighScore[]
   /** The in-flight initials buffer collected during `'entry'` (mc7-2). Empty except
    *  while entering a new high score; driven by @shared/name-entry.stepNameEntry. */
@@ -357,6 +358,15 @@ export function stepGame(state: GameState): GameState {
     return { ...state, frame: state.frame + 1, overFrames, soundEvents: [] }
   }
 
+  // mc7-3: FREEZE the name-entry screen exactly as 'over' does. mc7-2 landed the
+  // 'entry' phase pure but unreachable; now that the PLAY branch below routes a
+  // qualifying game-over into 'entry', a step during entry must NOT fall through to
+  // stepCombat (which would run the battle and let nextPhase flip 'entry' away,
+  // dropping the screen + initials buffer). Advance only the clock, keep the sound
+  // channel quiet, and hold every game field — including the initials buffer —
+  // byte-identical while the shell drives stepInitials/commitNameEntry over it.
+  if (state.phase === 'entry') return { ...state, frame: state.frame + 1, soundEvents: [] }
+
   // mc6-3: while paused, freeze the battle exactly as 'over' does — advance only the
   // clock, keep the sound channel quiet, hold every game field byte-identical, and
   // resume from the exact frozen state. This mirrors the MECHANISM of the ROM's PAUSE
@@ -419,7 +429,12 @@ export function stepGame(state: GameState): GameState {
   }
 
   // PLAY: run the battle and let nextPhase decide the outcome ('play'/'over'/'between').
-  return stepCombat(state, {})
+  // mc7-3: on the play->over transition (all cities dead), route a QUALIFYING final
+  // score into name entry (W3DSUP.MAC:4064 TAKE INITIALS) instead of stopping at
+  // 'over'. enterNameEntry is a no-op for a non-qualifying score, so it stays 'over';
+  // it only acts on phase 'over', so a between/still-play frame is untouched.
+  const stepped = stepCombat(state, {})
+  return stepped.phase === 'over' ? enterNameEntry(stepped) : stepped
 }
 
 // mc6-4: the per-frame combat simulation — the seven-step order above. Extracted

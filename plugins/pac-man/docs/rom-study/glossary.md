@@ -645,3 +645,26 @@ placeholders.
 The clone's transcription is `src/shell/tune.ts` (streams baked byte-for-byte, decoder
 per the handler above, ticked per 60 Hz sim frame by `audio.ts`), unit-locked to the
 claims by `tests/shell/tune.test.ts`.
+
+## Cabinet state machine (`pacman.asm:0195`)
+
+The whole cabinet lifecycle (attract → ready → play → dying/level-clear →
+game-over → attract) keys off the one-byte **master state** at `#4e00`. The
+mainline READS it and branches; each transition WRITES a new state into it. This
+is the ROM dispatch `src/core/phase.ts` (`advancePhase`) mirrors — the pure
+frame-count-driven `GamePhase` machine pm4-5 introduces. The clone stores no ROM
+STATE byte value (its phases are the six named `GamePhase` strings); these
+citations pin the DISPATCH mechanism, not a decoded numeric constant.
+
+| Symbol | Citation | Role |
+|--------|----------|------|
+| `MASTER_STATE_DISPATCH` | `pacman.asm:0195` | Mainline reads `(#4e00)` and branches — the MAINLINE dispatch (also read at 01ad/01c6/032d/03c8). |
+| `MASTER_STATE_WRITE_A`  | `pacman.asm:0984` | `ld (#4e00),a` — a state-write (transition). |
+| `MASTER_STATE_WRITE_B`  | `pacman.asm:269a` | `ld (#4e00),a` — a state-write (transition). |
+| `MASTER_STATE_WRITE_C`  | `pacman.asm:318c` | `ld (#4e00),a` — a state-write (transition). |
+
+Each `pacman.asm:<addr>` above is byte-verified by `docs/rom-study/claims/phase.json`
+against the vendored source (`tests/audit/citations.test.ts`). The pure machine's
+edges carry NO frame constants — the cited cadences that drive them belong to the
+dependent stories (ready → pm4-6, dying/level-clear → pm4-7, game-over timeout →
+pm4-10).

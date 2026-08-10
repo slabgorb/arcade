@@ -133,7 +133,14 @@ const EYES_EXIT_TILE: Tile = { x: 13, y: 14 } // corridor just above the gate
 const HIGH_SCORE_DOMAIN = 'level' as const
 export type PacHighScoreTable = HighScoreTable<typeof HIGH_SCORE_DOMAIN>
 
-export type GamePhase = 'playing' | 'game-over'
+// pm4-5: the full cabinet lifecycle (was `'playing' | 'game-over'`). The pure
+// transition machine over these phases lives in ./phase.ts (`advancePhase`),
+// mirroring the ROM master-state byte #4e00 dispatch (pacman.asm:0195 read;
+// :0984/:269a/:318c writes). `createGameState` still starts at `'playing'`;
+// pm4-6 flips the start to `'attract'` and wires the start-input reseed, and
+// pm4-7 wires the `dying`/`level-clear` freeze — this story only widens the type
+// and provides the machine.
+export type GamePhase = 'attract' | 'ready' | 'playing' | 'dying' | 'level-clear' | 'game-over'
 
 export interface FruitState {
   readonly fruit: LevelFruit
