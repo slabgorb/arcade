@@ -65,10 +65,13 @@ stories:
     title: "START/coin -> READY -> PLAY (core+shell): a start/coin action advances attract|game-over -> ready -> playing and reseeds createGameState; a READY! freeze (timer) runs the intro BEFORE the sim moves — fixes 'the game begins before the intro plays'. Blinky must NOT move during attract/ready (today house.released.blinky=true from frame 0). Shell binds the start key. Cite pacman.asm:061e start/player-select, :36a7 READY?/PUSH START text."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+    completed: '2026-08-10'
+    review_verdict: approved
   - id: pm4-7
     title: "Freeze pauses — level-clear + dying (core): on level-cleared, enter level-clear (freeze sim, hold a static frame, then advanceLevel -> ready); on pac-died with lives>0, enter dying (freeze, death-anim window, then respawn -> ready). Replaces today's INSTANT advance/respawn. This realises the boss's 'freeze + no flash' level-clear (builds on pm4-1's strobe removal — MUST NOT reintroduce any full-screen flash). Anchor the READY!/death-delay + level-complete cadence citations at RED."
     points: 5
