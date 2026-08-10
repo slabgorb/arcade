@@ -62,7 +62,8 @@ stories:
     title: 'Preserve field aspect ratio: letterbox the logical 256x222 (~1.15:1) field centered with black bars instead of stretching to the ~2:1 window (index.html 100%x100%), removing the horizontal smear and empty middle'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
   - id: mc10-6
