@@ -99,7 +99,10 @@ export const FRUIT_VISIBLE_FRAMES = 9 * 60
  *  melody 248), so 256 frames ≈ 4.2 s @ 60 Hz matches the jingle. Honest-uncited
  *  cadence — no isolable ROM duration literal, same policy as FRUIT_VISIBLE_FRAMES;
  *  it derives from the §Music-cited intro length, not a fabricated `pacman.asm`
- *  address. (pm4-7 owns the SHORTER post-death READY when it wires dying->ready.) */
+ *  address. (pm4-7 REUSES this hold for the post-death / post-level-clear READY
+ *  it hands off to; a distinct, shorter post-death READY is deferred — the
+ *  arcade's post-death delay is shorter than the full opening jingle, but no test
+ *  requires it and adding a second cadence is out of pm4-7's minimal scope.) */
 export const READY_HOLD_FRAMES = 256
 
 /** pm4-7: how long the DYING freeze holds before Pac respawns, in frames. The
