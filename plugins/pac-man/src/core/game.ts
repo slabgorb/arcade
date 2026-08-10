@@ -102,6 +102,20 @@ export const FRUIT_VISIBLE_FRAMES = 9 * 60
  *  address. (pm4-7 owns the SHORTER post-death READY when it wires dying->ready.) */
 export const READY_HOLD_FRAMES = 256
 
+/** pm4-7: how long the DYING freeze holds before Pac respawns, in frames. The
+ *  death animation (Pac collapses) plays over a still sim, then the round
+ *  restarts. Honest-uncited cadence — the quarry carries no isolable death-delay
+ *  literal (glossary §-, no docs/rom-study/claims timing entry; TEA confirmed at
+ *  pm4-7 RED), same policy as READY_HOLD_FRAMES / FRUIT_VISIBLE_FRAMES. ~2s @ 60Hz. */
+export const DYING_HOLD_FRAMES = 120
+
+/** pm4-7: how long the LEVEL-CLEAR freeze holds before advancing, in frames.
+ *  The board freezes on a static frame (accessibility: NO full-screen flash —
+ *  pm4-1 removed the strobe and this MUST NOT reintroduce it), then the next
+ *  maze loads. Honest-uncited cadence, same policy/reason as DYING_HOLD_FRAMES.
+ *  ~2s @ 60Hz. */
+export const LEVEL_CLEAR_HOLD_FRAMES = 120
+
 const GHOST_IDS: readonly GhostId[] = ['blinky', 'pinky', 'inky', 'clyde']
 const DIR_LIST: readonly Dir[] = ['up', 'left', 'down', 'right']
 const REVERSE_DIR: Readonly<Record<Dir, Dir>> = {
@@ -209,6 +223,12 @@ export interface GameState {
    *  and releases the sim once it reaches `READY_HOLD_FRAMES`. Meaningless (and
    *  untouched) outside `ready`. */
   readyFrames: number
+  /** pm4-7: frames elapsed in the current freeze pause (`dying` or `level-clear`,
+   *  never both — they are mutually exclusive phases). Reset to 0 on entry to
+   *  either; counts up while frozen and releases (respawn / advanceLevel, then
+   *  `ready`) once it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES.
+   *  Meaningless (and untouched) outside those two phases. */
+  freezeFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
   events: GameEvent[]
@@ -342,6 +362,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     // attract maze.
     phase: 'attract',
     readyFrames: 0,
+    freezeFrames: 0,
     highScoreTable,
     nameEntry: null,
     events: [],
@@ -484,6 +505,33 @@ export function stepGame(state: GameState, input: GameInput): void {
     // then advance ready -> playing. The intro runs BEFORE the sim moves.
     state.readyFrames += 1
     state.phase = advancePhase('ready', { readyExpired: state.readyFrames >= READY_HOLD_FRAMES })
+    return
+  }
+  if (state.phase === 'dying') {
+    // pm4-7: the death-anim freeze. Hold the WHOLE sim for DYING_HOLD_FRAMES (a
+    // static frame — nothing moves), then respawn Pac and hand off to the READY
+    // hold. Replaces the old instant respawnAfterDeath: the reset is DEFERRED to
+    // this dying -> ready edge, so the death window is visible before the round
+    // restarts. Feeds the pure pm4-5 machine the one signal it owns.
+    state.freezeFrames += 1
+    state.phase = advancePhase('dying', { deathExpired: state.freezeFrames >= DYING_HOLD_FRAMES })
+    if (state.phase === 'ready') {
+      respawnAfterDeath(state)
+      state.readyFrames = 0
+    }
+    return
+  }
+  if (state.phase === 'level-clear') {
+    // pm4-7: the level-clear freeze. Hold a STATIC frame for
+    // LEVEL_CLEAR_HOLD_FRAMES — the accessibility-critical "freeze, NO flash"
+    // (pm4-1 deleted the full-screen strobe; this must not bring it back) — then
+    // run the DEFERRED advanceLevel and hand off to READY on the next level.
+    state.freezeFrames += 1
+    state.phase = advancePhase('level-clear', { clearExpired: state.freezeFrames >= LEVEL_CLEAR_HOLD_FRAMES })
+    if (state.phase === 'ready') {
+      advanceLevel(state)
+      state.readyFrames = 0
+    }
     return
   }
 
@@ -676,16 +724,29 @@ export function stepGame(state: GameState, input: GameInput): void {
           state.events.push({ type: 'high-score-qualified' })
         }
       } else {
-        respawnAfterDeath(state)
+        // pm4-7: enter the DYING freeze (death-anim window) instead of the old
+        // instant respawn — the respawn is DEFERRED to the dying -> ready edge in
+        // the sim gate above. The lives<=0 vs >0 split here IS the pm4-5 machine's
+        // decision (advancePhase('playing',{pacDied,livesRemaining}) → game-over
+        // vs dying), so this branch is exactly its `> 0 → dying` arm.
+        state.phase = 'dying'
+        state.freezeFrames = 0
       }
     }
     break // one collision resolved per frame — see file header.
   }
 
   // ── Level clear ────────────────────────────────────────────────────
+  // pm4-7: enter the LEVEL-CLEAR freeze instead of advancing instantly — the
+  // static-frame hold runs first (sim gate) and advanceLevel is DEFERRED to the
+  // level-clear -> ready edge. STILL gated on `playing`, which is what makes a
+  // same-frame death win the tie: the collision above already set phase='dying',
+  // so this block is skipped and no advance / level-cleared fires (lang-review
+  // #14 — the edge is taken at the single exit where both triggers are visible).
   if (state.phase === 'playing' && state.dotsEaten >= DOT_COUNT) {
     state.events.push({ type: 'level-cleared', level: state.level })
-    advanceLevel(state)
+    state.phase = advancePhase('playing', { allDotsEaten: true })
+    state.freezeFrames = 0
   }
 }
 
