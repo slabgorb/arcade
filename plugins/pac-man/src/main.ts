@@ -8,7 +8,7 @@
 // — this cabinet has no attract mode / trackball, so it is a smaller wiring
 // than centipede's, not a re-invention of it).
 
-import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode } from './shell/render'
+import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode, heldAnimPhase } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
 import { createWsg } from './shell/wsg'
@@ -152,6 +152,13 @@ window.addEventListener('keyup', (e) => {
 let acc = 0
 let last = 0
 let started = false
+// pm4-2: a shell-owned monotonic SIM-frame counter for sprite animation.
+// Incremented once per fixed sim sub-step below (NOT per rAF, so animation
+// runs at sim rate regardless of the display's refresh), then divided by
+// ANIM_HOLD via `heldAnimPhase`. Deliberately its OWN counter, not either
+// core cursor: `game.pac.frame` pauses on eat frames, and the per-ghost core
+// speed-pattern index is a move/skip cursor, never an animation one.
+let animClock = 0
 
 const frame = (now: number): void => {
   if (!started) {
@@ -169,6 +176,7 @@ const frame = (now: number): void => {
         if (game.phase === 'game-over') return
         const boardBefore = game.highScoreTable
         stepGame(game, input)
+        animClock++ // pm4-2: one tick per sim sub-step drives the animation hold
         // Voice this step's cues, then poll the ambient siren. Both run PER sub-
         // step (not per rAF): a catch-up frame may run several steps and each
         // clears `state.events`, so onEvents must consume them before the next.
@@ -194,10 +202,10 @@ const frame = (now: number): void => {
     // pm4-3: also draw a returning ghost (eyes / regenerating body), which is
     // not `released` while in transit but must still appear on screen.
     if (game.house.released[id] || game.returning[id] !== null) {
-      drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), game.ghostFrame[id])
+      drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), heldAnimPhase(animClock))
     }
   }
-  drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, game.pac.frame)
+  drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, heldAnimPhase(animClock))
   if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   drawHud(logicalCtx, game.score, game.lives, game.level)
   overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
