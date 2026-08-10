@@ -84,7 +84,8 @@ stories:
     title: "Bonus-city cue timing: sound BN/SBONUS when the bonus city is GRANTED at wave-end regen (W3MAIN:4845), not at the mid-play score-threshold crossing. mc8-4's playEdgeCues fires on bonusCitiesEarned++ (the ruled mechanism), which can sound ~a wave early when a kill crosses the threshold during play. Faithful fix keys the cue to the between-wave city grant."
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: refactor
