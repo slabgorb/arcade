@@ -34,10 +34,11 @@ stories:
     title: Draw the GROUND (COL001) yellow terrain landmass at the field bottom so cities/bases sit on it instead of floating on black — render.ts currently skips the GROUND slot; colour already correct (wave-1 CYELLO), no palette change needed
     points: 2
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
   - id: mc10-3
     title: "Rebuild the HUD to authentic layout: centered numeric score + high score, delete the top-left SCORE/AMMO/WAVE labels and X1 text, move multiplier to bottom-center as 'nX', fix oversized scale (gp=height/120). Keep the byte-exact ROM font (glyphs.ts) UNCHANGED; ammo already shown by base stacks"
     points: 3
