@@ -23,7 +23,7 @@
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
-import { startGame, type GameState } from '../core/game.js'
+import { startGame, stepInitials, commitNameEntry, type GameState } from '../core/game.js'
 import { togglePause } from '../core/state.js'
 import { isPauseKey } from '@shared/pause'
 
@@ -128,9 +128,49 @@ export function beginSetupOnInput(state: GameState): GameState {
  * nothing. Pure — the input state is never mutated.
  */
 export function fireOrStart(key: string, state: GameState): GameState {
+  // mc7-3: while entering initials the fire keys are INERT. Z/X/C double as valid
+  // initials letters, so a keystroke that types an initial must not also launch an
+  // ABM, spend a round, or sound a launch/klaxon cue under the entry screen. Guarded
+  // before every fire path; nameEntryFromKey (below) owns the keystroke during entry.
+  if (state.phase === 'entry') return state
   if (state.phase === 'attract') return beginSetupOnInput(state) // any input -> setup
   if (fireKeyToBase(key) !== null && state.phase === 'over') return startGame(state)
   return fireFromKey(key, state)
+}
+
+/**
+ * mc7-3 the KEYBOARD name-entry reducer (fleet-consistent — NOT the ROM trackball).
+ * During `'entry'`, ENTER commits the buffer via core `commitNameEntry` (inserts the
+ * initials into the ladder and returns to attract when the buffer is full; a partial
+ * buffer is inert); every other key feeds core `stepInitials` (A-Z uppercased up to
+ * MC_INITIALS_LEN, Backspace deletes, anything else a no-op — the @shared/name-entry
+ * verb). Outside `'entry'` the state is returned unchanged. Pure — the core decides
+ * what a key MEANS; this shell only decides WHEN to feed it. main.ts drives this on
+ * each keydown alongside `pauseFromKey`/`fireOrStart`.
+ */
+export function nameEntryFromKey(key: string, state: GameState): GameState {
+  if (state.phase !== 'entry') return state
+  return key === 'Enter' ? commitNameEntry(state) : stepInitials(state, key)
+}
+
+/**
+ * mc7-3 the composed keydown reducer main.ts drives on EVERY keystroke:
+ * `pauseFromKey → nameEntryFromKey → fireOrStart`. The order matters and the last
+ * step needs the PRE-keystroke phase, not the running one: a full-buffer Enter makes
+ * `nameEntryFromKey` commit and flip `'entry'`→`'attract'`, and an unguarded
+ * `fireOrStart` would then read that `'attract'` and `beginSetupOnInput` → `'setup'`,
+ * dumping the player who just signed the board into an unrequested new game. So
+ * `fireOrStart` is skipped for any keystroke that BEGAN in `'entry'` (its own
+ * `phase === 'entry'` guard can't help — the phase has already left `'entry'`).
+ * Pure — the input state is never mutated. main.ts owns only the persistence side
+ * effect (save on a changed `highScores` reference) around this reducer.
+ */
+export function keydownReducer(key: string, state: GameState): GameState {
+  const wasEntry = state.phase === 'entry'
+  let next = pauseFromKey(key, state)
+  next = nameEntryFromKey(key, next)
+  if (!wasEntry) next = fireOrStart(key, next)
+  return next
 }
 
 /**
