@@ -12,7 +12,7 @@
 // — since mc10-2 — a GROUND band along the bottom. These tests pin that band:
 //   • a fillRect carries the GROUND-slot colour            (the "drawn" tests)
 //   • a wide mark spans the bottom band                    (the extent test)
-//   • render.ts paints via hue(SLOT.GROUND), not a decoy   (the wiring guard)
+//   • render.ts calls hue(SLOT.GROUND) in real code        (the wiring guard)
 // No signature change and no palette change are involved — drawFrame is already
 // wave-aware and SLOT.GROUND already resolves — so this file imports the real
 // symbols and asserts on BEHAVIOUR, never on types.
@@ -186,7 +186,7 @@ describe('mc10-2 — render.ts is actually wired to the GROUND slot (not just co
   // real CODE only.
   const code = renderSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
-  it('paints via hue(SLOT.GROUND) on the fill path (a real expression, not a comment or a decoy)', () => {
-    expect(code, 'render.ts must set the fill from hue(SLOT.GROUND) to draw the landmass').toMatch(/\bhue\(\s*SLOT\.GROUND\s*\)/)
+  it('references the GROUND colour via a hue(SLOT.GROUND) call in real code (not a comment or a bare-name decoy)', () => {
+    expect(code, 'render.ts must read the GROUND colour via a hue(SLOT.GROUND) call to draw the landmass').toMatch(/\bhue\(\s*SLOT\.GROUND\s*\)/)
   })
 })
