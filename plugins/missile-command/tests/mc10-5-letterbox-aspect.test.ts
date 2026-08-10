@@ -272,9 +272,8 @@ describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stre
   const W = 2000
   const H = 1000
   const box = computeLetterbox(W, H, 1) // cssWidth ≈ 1153.15 (bars L/R), cssHeight = 1000
-  // The canvas is centered (index.html flexbox), so its left/top bar offsets are:
+  // The canvas is centered (index.html flexbox), so its left bar offset is:
   const left = (W - box.cssWidth) / 2 // ≈ 423.42
-  const top = (H - box.cssHeight) / 2 // 0 (height-constrained window)
 
   it('a click at the center of the letterboxed canvas maps to the field center', () => {
     const c = placeCursor(box.cssWidth / 2, box.cssHeight / 2, box.cssWidth, box.cssHeight)
@@ -305,7 +304,7 @@ describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stre
     expect(tl.v).toBe(VMAX) // 206 — top (V-flip: y=0 → v=222 clamps to VMAX)
   })
 
-  it('a click in the black-bar region clamps to the field edge (does not wrap into the field)', () => {
+  it('a click in the LEFT/RIGHT bar of a wide window clamps to the field H-edge (does not wrap)', () => {
     // A window click at x=100 is LEFT of the centered canvas (left ≈ 423), so its
     // canvas-relative x is negative → the crosshair parks at the field's left edge,
     // never leaking to a mid-field column. This is why the bars are dead zones.
@@ -313,7 +312,21 @@ describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stre
     const c = placeCursor(canvasRelX, H / 2, box.cssWidth, box.cssHeight)
     expect(canvasRelX).toBeLessThan(0)
     expect(c.h).toBe(HMIN) // clamped to the left edge, not wrapped
-    void top // documented offset; top === 0 for this height-constrained window
+  })
+
+  it('a click in the TOP/BOTTOM bar of a tall window clamps to the field V-edge (does not wrap)', () => {
+    // The mirror case on the other axis: a PORTRAIT window (600×1000) is width-
+    // constrained, so the bars are top/bottom and the vertical centering offset is
+    // real (top ≈ 239.8, not 0). A window click at y=50 sits ABOVE the canvas, so its
+    // canvas-relative y is negative → with the V-flip that maps to the field's TOP,
+    // clamped to VMAX. Proves the vertical bar is a dead zone too.
+    const tallBox = computeLetterbox(600, 1000, 1) // cssWidth 600, cssHeight ≈ 520.31
+    const topOffset = (1000 - tallBox.cssHeight) / 2 // ≈ 239.84 (> 0 — the top bar)
+    expect(topOffset).toBeGreaterThan(0)
+    const canvasRelY = 50 - topOffset // negative — above the canvas
+    const c = placeCursor(tallBox.cssWidth / 2, canvasRelY, tallBox.cssWidth, tallBox.cssHeight)
+    expect(canvasRelY).toBeLessThan(0)
+    expect(c.v).toBe(VMAX) // clamped to the top edge (V-flip), not wrapped
   })
 })
 
