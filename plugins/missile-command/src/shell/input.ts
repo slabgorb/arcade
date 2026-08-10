@@ -154,6 +154,26 @@ export function nameEntryFromKey(key: string, state: GameState): GameState {
 }
 
 /**
+ * mc7-3 the composed keydown reducer main.ts drives on EVERY keystroke:
+ * `pauseFromKey → nameEntryFromKey → fireOrStart`. The order matters and the last
+ * step needs the PRE-keystroke phase, not the running one: a full-buffer Enter makes
+ * `nameEntryFromKey` commit and flip `'entry'`→`'attract'`, and an unguarded
+ * `fireOrStart` would then read that `'attract'` and `beginSetupOnInput` → `'setup'`,
+ * dumping the player who just signed the board into an unrequested new game. So
+ * `fireOrStart` is skipped for any keystroke that BEGAN in `'entry'` (its own
+ * `phase === 'entry'` guard can't help — the phase has already left `'entry'`).
+ * Pure — the input state is never mutated. main.ts owns only the persistence side
+ * effect (save on a changed `highScores` reference) around this reducer.
+ */
+export function keydownReducer(key: string, state: GameState): GameState {
+  const wasEntry = state.phase === 'entry'
+  let next = pauseFromKey(key, state)
+  next = nameEntryFromKey(key, next)
+  if (!wasEntry) next = fireOrStart(key, next)
+  return next
+}
+
+/**
  * mc6-3 PAUSE toggle: when `key` is the pause key, flip the phase play<->pause via
  * core `togglePause`; otherwise return the state unchanged. The pause key is the
  * shared @shared/pause VERB (`isPauseKey`, which matches lowercased 'escape') — the

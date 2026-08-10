@@ -10,7 +10,7 @@
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
-import { fireOrStart, pauseFromKey, beginSetupOnInput, nameEntryFromKey } from './shell/input.js'
+import { keydownReducer, beginSetupOnInput } from './shell/input.js'
 import { makeMcHighScoreStorage, loadHighScores } from './shell/highscore.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
@@ -75,13 +75,11 @@ canvas.addEventListener('pointermove', (event: PointerEvent): void => {
 // `ammoEmpty` on a refused shot) to the sound channel, which we voice at once.
 window.addEventListener('keydown', (event: KeyboardEvent): void => {
   const prevScores = game.highScores
-  // mc6-3: the pause key (Escape) toggles play<->pause; it is not a fire key, so
-  // fireOrStart is a no-op for it and the two reducers compose cleanly.
-  game = pauseFromKey(event.key, game)
-  // mc7-3: during 'entry' the keystroke types an initial / commits on Enter; both
-  // pauseFromKey and fireOrStart are no-ops in that phase, so the three compose.
-  game = nameEntryFromKey(event.key, game)
-  game = fireOrStart(event.key, game)
+  // mc7-3: the composed keydown reducer (pauseFromKey → nameEntryFromKey → fireOrStart).
+  // It gates fireOrStart on the PRE-keystroke phase so a full-buffer Enter that commits
+  // (entry→attract) does NOT then fall into fireOrStart's attract→setup path and start
+  // an unrequested new game — see keydownReducer's contract in shell/input.ts.
+  game = keydownReducer(event.key, game)
   // Persist the moment a commit changes the ladder: commitNameEntry's insert returns
   // a NEW array, so a changed reference is the save signal (the asteroids pattern).
   if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)

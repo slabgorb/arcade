@@ -107,7 +107,8 @@ export interface GameState {
    *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
   readonly overFrames: number
   /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
-   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
+   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (mc7-3 —
+   *  src/main.ts + shell/highscore.ts, one-origin localStorage). */
   readonly highScores: readonly MissileCommandHighScore[]
   /** The in-flight initials buffer collected during `'entry'` (mc7-2). Empty except
    *  while entering a new high score; driven by @shared/name-entry.stepNameEntry. */

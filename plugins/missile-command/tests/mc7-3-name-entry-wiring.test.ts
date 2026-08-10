@@ -284,6 +284,54 @@ describe('mc7-3 AC-C — nameEntryFromKey drives the buffer and commits on Enter
   })
 })
 
+// ─── AC-C (composed) — the REAL keydown seam main.ts drives ───────────────────────
+// Reviewer regression (mc7-3): the AC-C tests above exercise `nameEntryFromKey` in
+// ISOLATION, but main.ts composes `pauseFromKey → nameEntryFromKey → fireOrStart` on
+// EVERY keystroke. A full-buffer Enter commits (`'entry'`→`'attract'`); an UNGUARDED
+// `fireOrStart` then reads that `'attract'` and runs `beginSetupOnInput` → `'setup'`,
+// dumping the player who just signed the board into an unrequested fresh game. The
+// per-reducer `phase === 'entry'` guard can't catch this — the phase already left
+// `'entry'` by the time `fireOrStart` runs. `keydownReducer` is the pure composition
+// main.ts drives; it MUST gate `fireOrStart` on the PRE-keystroke phase.
+describe('mc7-3 AC-C (composed) — the keydown seam commits an entry to attract, never setup', () => {
+  let keydownReducer: NameEntryFromKey
+  beforeAll(async () => {
+    keydownReducer = await loadExport<NameEntryFromKey>(INPUT_SHELL_SPEC, 'keydownReducer')
+  })
+
+  const fullEntry = (): GameState => ({
+    ...createGame(),
+    phase: 'entry',
+    initials: 'ZZZ',
+    score: QUALIFY,
+    highScores: DEFAULT_HIGH_SCORES,
+  })
+
+  it('a full-buffer Enter lands on attract (never setup / an unrequested new game)', () => {
+    const after = keydownReducer('Enter', fullEntry())
+    expect(after.phase, "the committing Enter must land on 'attract', not 'setup'").toBe('attract')
+    expect(after.initials, 'the buffer clears on commit').toBe('')
+    expect(after.highScores[0]).toEqual({ name: 'ZZZ', score: QUALIFY })
+  })
+
+  it('typing a fire-key initial (z) during entry never launches an ABM (composed path)', () => {
+    const before: GameState = { ...createGame(), phase: 'entry', initials: '' }
+    const after = keydownReducer('z', before)
+    expect(after.phase, 'stays in entry').toBe('entry')
+    expect(after.initials, 'the fire key types its initial').toBe('Z')
+    expect(after.abms, 'no ABM launches under the entry screen').toEqual(before.abms)
+    expect(after.bases, 'no round is spent').toEqual(before.bases)
+    expect(after.soundEvents, 'no launch/klaxon cue').toEqual(before.soundEvents)
+  })
+
+  it('still leaves the attract demo for setup on a keystroke (composition preserved)', () => {
+    const attract: GameState = { ...createGame(), phase: 'attract' }
+    expect(keydownReducer('z', attract).phase, 'a keystroke in attract still begins setup').toBe(
+      'setup',
+    )
+  })
+})
+
 // ─── AC-D: one-origin localStorage persistence ───────────────────────────────────
 describe('mc7-3 AC-D — the ladder persists under the one-origin cabinet key', () => {
   beforeAll(async () => {
