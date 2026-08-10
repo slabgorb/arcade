@@ -1,0 +1,35 @@
+[
+  {
+    "id": "MC-INITIALS-LEN",
+    "symbol": "INTLHS",
+    "value": 3,
+    "meaning": "The name-entry buffer is three initials. INTLHS holds the horizontal display coord of each of the three initials being entered during TAKE INITIALS (W3DSUP.MAC:4064); its .BYTE lists exactly three coords, one per initial. Reused by the port as MC_INITIALS_LEN over @shared/name-entry.",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 4060,
+      "verbatim": "INTLHS:\t.BYTE 82,78,6E\t\t;HORIZ COORD OF 3 INITIALS BEING ENTERED"
+    }
+  },
+  {
+    "id": "MC-INITIALS-CHARSET",
+    "symbol": "INITCSET",
+    "value": 26,
+    "meaning": "The initials charset is the 26 letters A-Z. GETINI's trackball cursor cycles 27 codes (0-25 = A-Z, 26 = a blank slot): when the index UNDERFLOWS below 0 the IFMI (branch-on-minus) arm loads LDA I,26. to wrap it UP to 26 (W3DSUP.MAC:4128), and when it reaches 27 the ELSE arm CMP I,27./IFCS/LDA I,0 wraps it back DOWN to 0 (:4132-:4136); the glyph is formed by adding the ASCII 'A' offset (ADC I,41 = 0x41, :4158/:4172). The ROM trackball cursor cycler and its blank 27th slot are DELIBERATELY not ported (the fleet keyboard ruling, joust jt10-7); the port takes the 26 letters A-Z via @shared/name-entry.stepNameEntry. The claim value 26 is that letter count (= the LDA I,26. wrap-up immediate).",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 4128,
+      "verbatim": "\tLDA I,26."
+    }
+  },
+  {
+    "id": "MC-ENTRY-ABORT",
+    "symbol": "ABORT",
+    "value": "cite",
+    "meaning": "Name entry aborts on EITHER trigger, discarding the entry with no ladder insert: a start-switch press (BNE ABORT, W3DSUP.MAC:4076) or a timeout (IFEQ ;TOO MUCH TIME? -> JMP ABORT, :4086-:4088; the countdown seeds UCVTAB = 0x84, :RESET TIMEOUT TO 30 SEC, :4180). The port models both as abortNameEntry -> attract, buffer cleared, table unchanged.",
+    "source": {
+      "file": "W3DSUP.MAC",
+      "line": 4076,
+      "verbatim": "\tBNE ABORT\t\t;ABORT IF EITHER START SWITCH PRESS"
+    }
+  }
+]

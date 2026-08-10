@@ -251,8 +251,17 @@ completed_stories:
     title: SLAM/tilt blip (SLMSND, W3SOUN:262) — the cabinet tilt-switch sound. No tilt input exists in the browser clone (no source), so this is filed for completeness and may be won't-do; needs a tilt/slam input decision first.
     points: 1
     completed: '2026-08-10'
+  - id: pm4-4
+    epic: pm4
+    title: "[INVESTIGATION] Ghost-house wall/traversal audit: the reported 'wall Pac-Man cannot cross' is likely the AUTHENTIC gate/house bar (maze.ts isWalkable(..,'pac-man') correctly returns false for house/gate). Visual playtest (Playwright headless, per the arcade playtest memo; STATIC screenshots only — boss has epilepsy) to decide whether it is that rule (close as no-op with evidence) or a maze-authoring artifact in maze.ts's row table (fix the table only). May close without a code change."
+    points: 2
   - id: mc6-4
     epic: mc6
     title: 'Self-playing attract (smart-cursor demo): a deterministic seeded auto-player drives cursor + fire during phase attract so the field plays itself; any input -> setup. Pure attract driver in src/core (seeded RNG, no clock). REV-01 W3MAIN.MAC:891 / 5277 / 5331 attract'
+    points: 5
+    completed: '2026-08-10'
+  - id: mc7-2
+    epic: mc7
+    title: "Name-entry 'entry' phase + initials buffer in core, reusing @shared/name-entry: a qualifying score on phase over routes to entry; stepNameEntry drives the 3-char initials buffer over the ROM charset; commit inserts into the table then returns to attract/over. Slots into mc6-1's phase machine. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
     points: 5
     completed: '2026-08-10'

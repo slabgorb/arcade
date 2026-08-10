@@ -56,6 +56,13 @@ import { killIcbmsInBlasts, resolveGroundImpacts, killSputniksInBlasts } from '.
 import { scoreKills, scoreMultiplier, CRUISE_SCORE_MULT } from './score.js'
 import { nextPhase, nextWavePhase, resumePlay, advanceOverTimeout, INITIAL_PHASE, type Phase } from './state.js'
 import {
+  DEFAULT_HIGH_SCORES,
+  qualifiesForHighScore,
+  insertHighScore,
+  type MissileCommandHighScore,
+} from './highscore.js'
+import { stepNameEntry } from '@shared/name-entry'
+import {
   INITIAL_WAVE,
   waveSchedule,
   isWaveOver,
@@ -91,13 +98,20 @@ export interface GameState {
   readonly bases: readonly Base[]
   /** Running score; +ICBM_KILL_POINTS per downed ICBM (mc3-3). */
   readonly score: number
-  /** Coarse phase: `'play'` until every city is dead, then `'over'` (mc3-3) — which
-   *  mc6-6 auto-returns to `'attract'` after the game-over hold (see `overFrames`). */
+  /** Coarse phase: `'play'` until every city is dead, then `'over'`; a qualifying
+   *  game-over routes to `'entry'` for the initials buffer (mc7-2), and mc6-6
+   *  auto-returns `'over'` to `'attract'` after the game-over hold (see `overFrames`). */
   readonly phase: Phase
   /** Frames elapsed in phase `'over'` (mc6-6). Counts up while frozen at game-over; at
    *  `OVER_TIMEOUT_FRAMES` the MAINLINE loop closes back to the attract demo. Held at 0
    *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
   readonly overFrames: number
+  /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
+   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
+  readonly highScores: readonly MissileCommandHighScore[]
+  /** The in-flight initials buffer collected during `'entry'` (mc7-2). Empty except
+   *  while entering a new high score; driven by @shared/name-entry.stepNameEntry. */
+  readonly initials: string
   /** ICBMs still to launch this wave — this wave's ICBWAV launch budget
    *  (`waveSchedule(wave).count`), drawn down by spawns. NOT the NICBMS on-screen cap. */
   readonly remaining: number
@@ -140,6 +154,8 @@ export function createPlayGame(seed = 1): GameState {
     score: 0,
     phase: 'play',
     overFrames: 0,
+    highScores: DEFAULT_HIGH_SCORES,
+    initials: '',
     remaining: waveSchedule(INITIAL_WAVE).count,
     wave: INITIAL_WAVE,
     multiplier: scoreMultiplier(INITIAL_WAVE),
@@ -186,9 +202,77 @@ export function createGame(seed = 1): GameState {
  * frame counter. For every other phase return `state` unchanged.
  */
 export function startGame(state: GameState): GameState {
+  // mc7-2: the high-score ladder is cabinet-persistent — a restart reseeds the
+  // battle but CARRIES the ladder forward (createPlayGame's default is only the
+  // boot seed; mc7-3's shell reload overwrites it on boot). The initials buffer
+  // resets (createPlayGame seeds it empty).
   return state.phase === 'over' || state.phase === 'setup'
-    ? createPlayGame(state.rng.seed)
+    ? { ...createPlayGame(state.rng.seed), highScores: state.highScores }
     : state
+}
+
+// ─── mc7-2 (GREEN, Yoda): the name-entry 'entry' phase + initials buffer ──────
+// The ROM's TAKE INITIALS FOR NEW HIGH SCORE task (W3DSUP.MAC:4064): after game
+// over, IF the final score qualifies for the ladder the machine takes the player's
+// initials, INSERTs and returns to attract. A start-switch press or a 30-second
+// timeout ABORTS with no insert (W3DSUP.MAC:4076 ";ABORT IF EITHER START SWITCH
+// PRESS" / :4086-:4088 ";TOO MUCH TIME?" -> "ABORT INITIALS"; the timeout seed is
+// UCVTAB = 0x84, ":RESET TIMEOUT TO 30 SEC", :4180). The 3-char buffer is the
+// cabinet-wide @shared/name-entry verb (A-Z uppercased, Backspace); the ROM's
+// trackball letter cursor over its 26-letter charset (LDA I,26., :4128; ASCII
+// offset ADC I,41, :4158) is DELIBERATELY not ported — the fleet keyboard ruling
+// (joust jt10-7, asteroids …). MC owns only the buffer field + these transitions.
+// All pure: no clock, no entropy. (// line cites, never /** */ — the AC3 un-cited-
+// literal scanner strips // per line but leaks a digit inside a multi-line JSDoc.)
+
+// MC-INITIALS-LEN — three initials. INTLHS holds the horiz display coord of each of
+// the three initials being entered (W3DSUP.MAC:4060 .BYTE 82,78,6E — three coords).
+// Claim MC-INITIALS-LEN.
+export const MC_INITIALS_LEN = 3
+
+/** Route a finished game into name entry: from `'over'`, when the final score
+ *  qualifies for the ladder, enter `'entry'` with an empty initials buffer. A
+ *  non-qualifying score — or any non-`'over'` phase — is returned unchanged (the
+ *  `'over'`->`'attract'` timeout is mc6's edge). Pure. */
+export function enterNameEntry(state: GameState): GameState {
+  if (state.phase !== 'over' || !qualifiesForHighScore(state.highScores, state.score)) return state
+  return { ...state, phase: 'entry', initials: '' }
+}
+
+/** One initials keydown during `'entry'`: advance the buffer via
+ *  @shared/name-entry.stepNameEntry (A-Z uppercased, Backspace, capped at
+ *  MC_INITIALS_LEN). A no-op key returns the SAME state; any non-`'entry'` phase is
+ *  returned unchanged. Pure — reuse, not a re-implemented buffer. */
+export function stepInitials(state: GameState, key: string): GameState {
+  if (state.phase !== 'entry') return state
+  const initials = stepNameEntry(state.initials, key, MC_INITIALS_LEN)
+  return initials === state.initials ? state : { ...state, initials }
+}
+
+/** Commit a completed entry: with a FULL MC_INITIALS_LEN buffer during `'entry'`,
+ *  insert `{ name, score }` into the ladder via the mc7-1 insert, clear the buffer
+ *  and return to attract. An incomplete buffer or any non-`'entry'` phase is
+ *  returned unchanged. Pure — neither the state nor the table is mutated. */
+export function commitNameEntry(state: GameState): GameState {
+  if (state.phase !== 'entry' || state.initials.length !== MC_INITIALS_LEN) return state
+  return {
+    ...state,
+    highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
+    initials: '',
+    phase: 'attract',
+  }
+}
+
+// abortNameEntry — the shared result of BOTH ROM abort triggers (a start-switch
+// press, W3DSUP.MAC:4076; or the timeout, :4086-:4088): return to attract with the
+// buffer cleared and the ladder UNCHANGED. The shell decides WHEN to call it; the
+// per-frame countdown wiring is the deferred O-7b input-mapping item.
+/** Abort name entry: return to attract, clear the buffer, and leave the ladder
+ *  UNCHANGED — no insert, even from a full buffer (a timeout on the last letter
+ *  discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
+export function abortNameEntry(state: GameState): GameState {
+  if (state.phase !== 'entry') return state
+  return { ...state, initials: '', phase: 'attract' }
 }
 
 // mc6-4: the SMART CURSOR MOVER (ATTRACT) — AUTCUR, W3MAIN.MAC:895 (.SBTTL :891,
@@ -262,10 +346,14 @@ export function stepGame(state: GameState): GameState {
   // voice). After the ENDGM2 final-bang hold (OVER_TIMEOUT_FRAMES frames), the MAINLINE
   // loop returns to the attract demo — the ROM's ENDGM1 flips ATRACT and ENDGM2 hands to
   // SETUPC=CDLADR, i.e. a fresh cold-start attract board (createGame), continuing the
-  // seed stream so the demo stays deterministic.
+  // seed stream so the demo stays deterministic. The high-score ladder (mc7-1/mc7-2)
+  // PERSISTS across the loop-back — the ROM's HSTD table survives the return to attract,
+  // so a non-qualifying game timing out must not wipe a score committed earlier this session.
   if (state.phase === 'over') {
     const overFrames = state.overFrames + 1
-    if (advanceOverTimeout('over', overFrames) === 'attract') return createGame(state.rng.seed)
+    if (advanceOverTimeout('over', overFrames) === 'attract') {
+      return { ...createGame(state.rng.seed), highScores: state.highScores }
+    }
     return { ...state, frame: state.frame + 1, overFrames, soundEvents: [] }
   }
 
