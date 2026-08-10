@@ -62,6 +62,7 @@ stories:
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: mc6-7
     title: "Block player fire/input while phase is 'pause': pressing Z/X/C during pause must not spend ammo, queue an ABM, or sound a launch — fireOrStart/fireFromKey should no-op when state.phase==='pause', matching the ROM PAUSE handler (MAINLINE JSRs PAUSE not PLAY, so ABMLAU never runs). Found in mc6-3 review (Heimdall); the stepGame freeze is correct but shell input is ungated."
     points: 2
