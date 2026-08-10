@@ -40,6 +40,17 @@
 // yet, and the MC-STATE-INIT / MC-SETUP-NEWGAM claims are unfiled. Both surfaces
 // are reached through self-describing dynamic-import loaders (the fleet idiom), so
 // each test reddens for the FEATURE's absence rather than a raw resolution stack.
+//
+// ─── mc6-4 AMENDMENT (user ruling, this session) ──────────────────────────────
+// mc6-4 chose the FAITHFUL attract shape, superseding mc6-2's collapse where it
+// conflicts (self-playing-attract.test.ts is the primary file):
+//   • createGame now BOOTS to 'attract'; the fresh 'play' field is createPlayGame.
+//     Fixtures here that need a play game build it inline as
+//     { ...createGame(1), phase: 'play' } so they hold under both boots.
+//   • ATTRACT leaves via INPUT -> 'setup' (any key), NOT via startGame. So startGame
+//     reseeds to fresh 'play' from {'over','setup'} (setup auto-advances a frame
+//     later); 'attract' is now a startGame NO-OP. The AC2/AC3/AC5 blocks below are
+//     repointed accordingly.
 
 import { describe, it, expect } from 'vitest'
 import { createGame, type GameState } from '../src/core/game.js'
@@ -65,9 +76,10 @@ async function loadStartGame(): Promise<StartGame> {
   if (typeof mod.startGame !== 'function') {
     throw new Error(
       'startGame not built yet — GREEN (Loki) adds a PURE `startGame(state): GameState` to ' +
-        "src/core/game.ts: when state.phase is 'attract' or 'over', return a fresh, fully-defended " +
-        "game in phase 'play' (reuse createGame's field — the SETUP NEWGAM task, W3MAIN.MAC:583/:3835); " +
-        'for every other phase return state UNCHANGED. No clock, no Math.random — a pure transition.',
+        "src/core/game.ts: when state.phase is 'over' or 'setup', return a fresh, fully-defended " +
+        "game in phase 'play' (reuse createPlayGame's field — the SETUP NEWGAM task, W3MAIN.MAC:583/:3835); " +
+        "for every other phase (incl. 'attract', which exits via input->setup) return state UNCHANGED. " +
+        'No clock, no Math.random — a pure transition.',
     )
   }
   return mod.startGame as StartGame
@@ -139,9 +151,11 @@ function expectFreshPlayGame(g: GameState): void {
 }
 
 const FIRE_KEYS = ['z', 'x', 'c'] as const
-/** Phases from which a start action must NOT begin a new game (the game is
- *  running, paused, transitioning between waves, or already setting up). */
-const NON_START_PHASES: readonly Phase[] = ['play', 'pause', 'between', 'setup']
+/** Phases from which `startGame` must NOT reseed (the game is running, paused,
+ *  transitioning between waves, or showing the attract demo). mc6-4: 'setup' MOVED
+ *  OUT (startGame now reseeds it — the auto-advance) and 'attract' MOVED IN (attract
+ *  leaves via input->setup, so startGame is a no-op on it). */
+const NON_START_PHASES: readonly Phase[] = ['play', 'pause', 'between', 'attract']
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC1 — `'over'` -> start reseeds a fresh PLAY game (the reachable-today path:
@@ -171,20 +185,27 @@ describe('mc6-2 AC1 — startGame from a game-over state reseeds a fresh field',
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC2 — `'attract'` -> start reseeds a fresh PLAY game (future-facing: mc6-4 wires
-//        the boot, but the edge is pinned now so mc6-4 inherits it working).
+// AC2 (mc6-4 repoint) — `'setup'` -> reseed a fresh PLAY game. mc6-4 makes 'setup'
+//        the auto-advance beat: attract -(input)-> setup -(startGame)-> play. The
+//        old attract->play direct reseed is retired (attract now exits via input).
 // ═════════════════════════════════════════════════════════════════════════════
-describe('mc6-2 AC2 — startGame from attract reseeds a fresh field', () => {
-  it("turns an 'attract' state into a fresh, fully-defended 'play' game", async () => {
+describe('mc6-2/mc6-4 AC2 — startGame from setup reseeds a fresh field', () => {
+  it("turns a 'setup' state into a fresh, fully-defended 'play' game", async () => {
     const startGame = await loadStartGame()
-    expectFreshPlayGame(startGame(dirty('attract')))
+    expectFreshPlayGame(startGame(dirty('setup')))
   })
 
-  it('the fresh game is identical whether the start came from attract or from over', async () => {
+  it('the fresh game is identical whether the start came from setup or from over', async () => {
     const startGame = await loadStartGame()
     // Both fixtures share createGame(1)'s rng word, so a pure reseed yields byte-
     // identical states — the start disposition must not leak the prior phase.
-    expect(startGame(dirty('attract'))).toEqual(startGame(dirty('over')))
+    expect(startGame(dirty('setup'))).toEqual(startGame(dirty('over')))
+  })
+
+  it("is a NO-OP on 'attract' — the demo leaves via input->setup, not startGame", async () => {
+    const startGame = await loadStartGame()
+    const demo = dirty('attract')
+    expect(startGame(demo)).toEqual(demo) // startGame no longer reseeds attract
   })
 })
 
@@ -203,7 +224,8 @@ describe('mc6-2 AC3 — startGame changes nothing outside attract/over', () => {
 
   it('does not reset a LIVE, healthy play game (the common accidental-fire case)', async () => {
     const startGame = await loadStartGame()
-    const live = createGame(1) // phase 'play', full board, wave 1
+    // mc6-4: createGame now boots 'attract', so build the live PLAY game explicitly.
+    const live: GameState = { ...createGame(1), phase: 'play' } // full board, wave 1
     const advanced: GameState = { ...live, score: 1234, wave: 3, frame: 500 }
     expect(startGame(advanced)).toEqual(advanced)
   })
@@ -241,15 +263,17 @@ describe('mc6-2 AC5 — fireOrStart wires "press fire to start"', () => {
     expectFreshPlayGame(fireOrStart(key, over))
   })
 
-  it("a fire key in attract starts a new game", async () => {
-    const [fireOrStart, startGame] = await Promise.all([loadFireOrStart(), loadStartGame()])
-    const attract = dirty('attract')
-    expect(fireOrStart('z', attract)).toEqual(startGame(attract))
+  it("ANY key in attract begins setup (mc6-4 broadened the trigger; it no longer reseeds to play)", async () => {
+    const fireOrStart = await loadFireOrStart()
+    // mc6-4 ruling: attract exits to 'setup' on any input, not to 'play' on a fire key.
+    expect(fireOrStart('z', dirty('attract')).phase).toBe('setup') // a fire key
+    expect(fireOrStart('a', dirty('attract')).phase).toBe('setup') // a non-fire key
   })
 
   it('a fire key during PLAY launches an ABM — it delegates to fireFromKey and does NOT reset the board', async () => {
     const fireOrStart = await loadFireOrStart()
-    const play = createGame(1) // full magazines, phase 'play'
+    // mc6-4: createGame boots 'attract', so build the play game explicitly.
+    const play: GameState = { ...createGame(1), phase: 'play' } // full magazines
     // Same result as firing today: an ABM launches, ammo drops — the board is not wiped.
     expect(fireOrStart('z', play)).toEqual(fireFromKey('z', play))
     expect(fireOrStart('z', play).abms.length).toBe(1)
