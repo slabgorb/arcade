@@ -178,6 +178,16 @@ export function stepGame(state: GameState): GameState {
   // channel goes quiet (no spawn/flight/damage happens, so nothing to voice).
   if (state.phase === 'over') return { ...state, frame: state.frame + 1, soundEvents: [] }
 
+  // mc6-3: while paused, freeze the battle exactly as 'over' does — advance only the
+  // clock, keep the sound channel quiet, hold every game field byte-identical, and
+  // resume from the exact frozen state. This mirrors the MECHANISM of the ROM's PAUSE
+  // handler, which (dispatched by MAINLINE's IFMI -> JSR PAUSE when STATE is S.PAUS,
+  // W3MAIN.MAC:517; .SBTTL PAUSE STATE, :615) steps NO simulation, only a PAUST display
+  // timer. NB the ROM enters that state automatically for scripted delays, never by a
+  // player control; mc6-3 repurposes the slot for a player toggle (see state.ts
+  // togglePause). Guarded BEFORE the combat path (else nextPhase flips 'pause' to 'play').
+  if (state.phase === 'pause') return { ...state, frame: state.frame + 1, soundEvents: [] }
+
   // END OF WAVE, phase 2 (mc4-2): the previous frame entered the 'between' beat with
   // the wave's final damage on screen. Now resolve it — tally the surviving-city +
   // unused-missile bonus (at this wave's base rate; the ×-multiplier bonus ramp is
