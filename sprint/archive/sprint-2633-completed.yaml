@@ -205,3 +205,8 @@ completed_stories:
     title: Retire jt9-39's stale live-sprint control in difficulty-wiring.test.ts — hardcoded jt9-39/jt9-11 (both archived) fail liveSprintStoryIds(); derive the positive control from the live set so it can't rot
     points: 1
     completed: '2026-08-09'
+  - id: mc10-2
+    epic: mc10
+    title: Draw the GROUND (COL001) yellow terrain landmass at the field bottom so cities/bases sit on it instead of floating on black — render.ts currently skips the GROUND slot; colour already correct (wave-1 CYELLO), no palette change needed
+    points: 2
+    completed: '2026-08-10'
