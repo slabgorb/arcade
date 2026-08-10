@@ -19,7 +19,8 @@ stories:
     title: "Name-entry 'entry' phase + initials buffer in core, reusing @shared/name-entry: a qualifying score on phase over routes to entry; stepNameEntry drives the 3-char initials buffer over the ROM charset; commit inserts into the table then returns to attract/over. Slots into mc6-1's phase machine. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
   - id: mc7-3
