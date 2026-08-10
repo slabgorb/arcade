@@ -51,14 +51,23 @@ grid[TUNNEL][0] = 'T'
 grid[TUNNEL][COLS - 1] = 'T'
 
 // 3) ghost house + gate — ROM geometry stamped over the attract-contaminated
-//    center. Rectangle interior => 'H', two-tile door at its top => '='.
-//    (Dossier ch.3: the house is a central rectangle, ghosts inside, one
-//    two-tile door pac-man may not cross.) Anchors verified against the oracle
-//    + gameplay in Task 2/3; adjust HOUSE_* here if the oracle demands it.
-const HOUSE_TOP = 15, HOUSE_BOT = 18, HOUSE_L = 11, HOUSE_R = 16
-const GATE_ROW = 14, GATE_L = 13, GATE_R = 14
+//    center. Rectangle interior => 'H'; the two-tile door is RECESSED into the
+//    house's TOP WALL => '='. (Dossier ch.3: the house is a central rectangle,
+//    ghosts inside, one two-tile door pac-man may not cross.)
+//    pm4-4: the gate used to be stamped at row 14 — the OPEN lateral corridor
+//    ABOVE the house, with no wall around it — so it barred pac-man's left<->right
+//    passage across that corridor (the boss playtest bug). The authentic gate is
+//    a door in the house's top wall (GATE_ROW = HOUSE_TOP - 1 = 15), leaving row
+//    14 the captured open corridor it always was. Interior is the 3 rows 16-18,
+//    the middle one aligned to the tunnel/warp row (17).
+const HOUSE_TOP = 16, HOUSE_BOT = 18, HOUSE_L = 11, HOUSE_R = 16
+const GATE_ROW = 15, GATE_L = 13, GATE_R = 14
 for (let y = HOUSE_TOP; y <= HOUSE_BOT; y++)
   for (let x = HOUSE_L; x <= HOUSE_R; x++) grid[y][x] = 'H'
+// The top wall spans the full house width; the gate is the two-tile door punched
+// through it. Stamp wall first, then the door, so the gate is flanked by wall
+// (never open path) and the corridor directly above stays a through-lane.
+for (let x = HOUSE_L - 1; x <= HOUSE_R + 1; x++) grid[GATE_ROW][x] = '#'
 grid[GATE_ROW][GATE_L] = '='
 grid[GATE_ROW][GATE_R] = '='
 

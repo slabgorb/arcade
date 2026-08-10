@@ -156,8 +156,8 @@ shape and not a tile-by-tile ROM transcription, this port locates the rule on
 the two tiles this reconstruction unambiguously has an analogue for: the feet
 of the two vertical shafts immediately flanking the house, `{x:12,y:14}` and
 `{x:15,y:14}` (`src/core/ghost.ts`'s `RED_ZONE_TILES`) — at each, 'up' is
-genuinely walkable (unlike the tiles directly over the gate itself, which are
-walled above), so the rule has real work to do. The Dossier documents
+genuinely walkable (unlike the two gate columns 13-14 between them, whose
+up-neighbour in row 13 is a wall), so the rule has real work to do. The Dossier documents
 additional red-zone tiles elsewhere in the original maze (near the upper
 tunnel corners); this reconstruction has no byte-cited, tile-identical
 analogue for those, so implementing them would be inventing coordinates
