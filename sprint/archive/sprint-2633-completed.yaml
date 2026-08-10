@@ -10,6 +10,7 @@ completed_epics:
   - mc9
   - sw10
   - jt10
+  - mc8
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -223,5 +224,30 @@ completed_stories:
   - id: mc10-7
     epic: mc10
     title: "Test-hygiene for mc10-2 GROUND tests: detense the RED-phase comments (header quotes render.ts's DELETED 'not drawn' sentence as verbatim; it() title '— today none does' is false on a passing test; wiring-rationale comment says the header 'explains it is NOT drawn') AND harden/drop the decoy-defeatable wiring guard — the 'references SLOT.GROUND' whole-file positive anchor (#25) passed on a 'const _decoy = SLOT.GROUND' while the real draw was hue(SLOT.SKY); anchor it to the paint expression or drop it as redundant with the behavioural tests. render-ground.test.ts only; no production code change"
+    points: 1
+    completed: '2026-08-10'
+  - id: mc8-7
+    epic: mc8
+    title: "Bonus-city cue timing: sound BN/SBONUS when the bonus city is GRANTED at wave-end regen (W3MAIN:4845), not at the mid-play score-threshold crossing. mc8-4's playEdgeCues fires on bonusCitiesEarned++ (the ruled mechanism), which can sound ~a wave early when a kill crosses the threshold during play. Faithful fix keys the cue to the between-wave city grant."
+    points: 2
+    completed: '2026-08-10'
+  - id: mc8-1
+    epic: mc8
+    title: 'Spike: decode the W3SOUN sound-command tables and choose the driver path (runtime-synth vs baked asset)'
+    points: 3
+    completed: '2026-08-07'
+  - id: mc8-2
+    epic: mc8
+    title: 'Audio shell: the POKEY driver and the core-event -> sound mapping'
+    points: 5
+    completed: '2026-08-07'
+  - id: mc8-4
+    epic: mc8
+    title: Parametric drones + full event wiring (bonusTick, whoop, end-game, bonus-city, low-ammo, cruise/Sputnik drone sweep)
+    points: 5
+    completed: '2026-08-08'
+  - id: mc8-6
+    epic: mc8
+    title: SLAM/tilt blip (SLMSND, W3SOUN:262) — the cabinet tilt-switch sound. No tilt input exists in the browser clone (no source), so this is filed for completeness and may be won't-do; needs a tilt/slam input decision first.
     points: 1
     completed: '2026-08-10'
