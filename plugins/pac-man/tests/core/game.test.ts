@@ -21,7 +21,24 @@ import {
   GHOST_CHAIN_SCORES,
   SCORE_DOT,
   type GameState,
+  type PacHighScoreTable,
 } from '../../src/core/game'
+
+// pm4-6 made `createGameState` boot into `attract` (the cabinet lifecycle:
+// attract -> ready -> playing), so `stepGame` now freezes the sim until a
+// start/coin runs the READY! hold out. The gameplay-mechanic suites below assert
+// on the SIM (movement, scoring, collisions, RNG) and do not exercise the
+// attract/ready front end, so they start from a board already in `playing` —
+// exactly the precondition they had before the flip. The lifecycle itself
+// (attract boot, the start reseed, the READY freeze) is covered by
+// tests/core/lifecycle.test.ts. The two `createGameState`-specific suites (the
+// spawn-tile carry and the ghost-house geometry) keep `createGameState`: they
+// assert on the fresh state, not on a step.
+function playingGame(seed: number, table?: PacHighScoreTable): GameState {
+  const state = table === undefined ? createGameState(seed) : createGameState(seed, table)
+  state.phase = 'playing'
+  return state
+}
 
 // ─── pm4-4: ghost-house geometry fix must not strand the ghosts ─────────────
 // Regression guard for the maze-geometry shift (the gate/house stamp in
@@ -96,7 +113,7 @@ describe('createGameState — the spawn-tile-arrival dot-eaten carry', () => {
 
 describe('stepGame — real movement eats real dots (not just counter bookkeeping)', () => {
   it('moving right from spawn eats the next dots it crosses', () => {
-    const state = createGameState(2)
+    const state = playingGame(2)
     const before = state.dotsEaten
     // Row 23 (the spawn row) is open dots to the right of (9,23) — glossary.md
     // maze row table, confirmed live via tileAt above the fold.
@@ -108,7 +125,7 @@ describe('stepGame — real movement eats real dots (not just counter bookkeepin
 
 describe('level advance at DOT_COUNT (240 regular dots — maze.ts, honouring the task\'s own wording)', () => {
   it('crossing DOT_COUNT dots-eaten advances the level and resets the count', () => {
-    const state = createGameState(3)
+    const state = playingGame(3)
     state.dotsEaten = DOT_COUNT // simulate "every dot eaten" via the real counter
     stepGame(state, { dir: 'none' })
     expect(state.level).toBe(2)
@@ -137,7 +154,7 @@ function overlapPacAndBlinky(state: GameState): void {
 
 describe('ghost contact — not frightened costs a life, never scores', () => {
   it('loses exactly one life and does not score on contact', () => {
-    const state = createGameState(4)
+    const state = playingGame(4)
     overlapPacAndBlinky(state)
     state.ghostFrame.blinky = noMoveFrameIndex(levelRow(state.level).ghostSpeedPct)
     const scoreBefore = state.score
@@ -149,7 +166,7 @@ describe('ghost contact — not frightened costs a life, never scores', () => {
   })
 
   it('game-over fires once lives reach 0', () => {
-    const state = createGameState(5)
+    const state = playingGame(5)
     state.lives = 1
     overlapPacAndBlinky(state)
     state.ghostFrame.blinky = noMoveFrameIndex(levelRow(state.level).ghostSpeedPct)
@@ -162,7 +179,7 @@ describe('ghost contact — not frightened costs a life, never scores', () => {
 
 describe('ghost contact — frightened is eaten for the chain score, never a life', () => {
   it('scores 200/400/800/1600 in order across successive eaten ghosts, no life lost', () => {
-    const state = createGameState(6)
+    const state = playingGame(6)
     state.mode.frightenedTimer = 120 // force frightened without needing an energizer
     const livesBefore = state.lives
 
@@ -185,7 +202,7 @@ describe('ghost contact — frightened is eaten for the chain score, never a lif
   })
 
   it('eating a real energizer resets the chain back to 0 (next ghost scores 200 again)', () => {
-    const state = createGameState(7)
+    const state = playingGame(7)
     state.ghostChainIndex = 2 // pretend two ghosts were already eaten this energizer
     // Real energizer tile (1,6) — maze.ts's ENERGIZER_TILES. Approach from
     // directly above (1,5), a genuine dot tile, moving down into it.
@@ -203,7 +220,7 @@ describe('ghost contact — frightened is eaten for the chain score, never a lif
 
 describe('extra life at EXTRA_LIFE_SCORE (10 000, Dossier default, honest-uncited)', () => {
   it('is awarded exactly once when score crosses the threshold', () => {
-    const state = createGameState(8)
+    const state = playingGame(8)
     state.score = EXTRA_LIFE_SCORE - SCORE_DOT
     const livesBefore = state.lives
     for (let i = 0; i < 20 && state.score < EXTRA_LIFE_SCORE; i++) stepGame(state, { dir: 'right' })
@@ -222,7 +239,7 @@ describe('extra life at EXTRA_LIFE_SCORE (10 000, Dossier default, honest-uncite
 
 describe('fruit spawns at 70 and 170 pellets eaten (pacman.asm:0eba/0ebe)', () => {
   it('spawns the level fruit the instant pelletsEaten reaches 70', () => {
-    const state = createGameState(9)
+    const state = playingGame(9)
     state.pelletsEaten = FRUIT_SPAWN_DOTS[0]
     stepGame(state, { dir: 'none' })
     expect(state.fruit).not.toBeNull()
@@ -231,7 +248,7 @@ describe('fruit spawns at 70 and 170 pellets eaten (pacman.asm:0eba/0ebe)', () =
   })
 
   it('spawns a second time at 170, independent of the first', () => {
-    const state = createGameState(10)
+    const state = playingGame(10)
     state.pelletsEaten = FRUIT_SPAWN_DOTS[0]
     stepGame(state, { dir: 'none' })
     state.fruit = null // simulate it having expired/eaten already
@@ -242,7 +259,7 @@ describe('fruit spawns at 70 and 170 pellets eaten (pacman.asm:0eba/0ebe)', () =
   })
 
   it('never spawns a third time (only two thresholds exist)', () => {
-    const state = createGameState(11)
+    const state = playingGame(11)
     state.pelletsEaten = 300
     stepGame(state, { dir: 'none' })
     expect(state.fruitSpawned).toEqual([true, true])
@@ -256,7 +273,7 @@ describe('fruit spawns at 70 and 170 pellets eaten (pacman.asm:0eba/0ebe)', () =
 
 describe('the game RNG path is deterministic for a fixed seed', () => {
   function run(seed: number): unknown {
-    const state = createGameState(seed)
+    const state = playingGame(seed)
     state.mode.frightenedTimer = 90 // forces frightenedTurn draws along the way
     for (let i = 0; i < 40; i++) stepGame(state, { dir: 'none' })
     return {
@@ -300,7 +317,7 @@ describe('the game RNG path is deterministic for a fixed seed', () => {
 // ghost actually reaches a centre.
 describe('mode-change reversal is latched to each ghost\'s NEXT tile centre', () => {
   it('a ghost mid-tile on the reversal frame does not flip immediately, but does at its next centre', () => {
-    const state = createGameState(13)
+    const state = playingGame(13)
     // Blinky, released by default, placed 3px off a tile centre (13,14),
     // heading left — genuinely NOT at a tile centre on the pulse frame.
     state.ghosts.blinky.actor.xPx = 13 * 8 + 3
@@ -337,7 +354,7 @@ describe('mode-change reversal is latched to each ghost\'s NEXT tile centre', ()
   })
 
   it('a ghost already centred AND due to move on the pulse frame reverses that same frame', () => {
-    const state = createGameState(14)
+    const state = playingGame(14)
     state.ghosts.blinky.actor.xPx = 13 * 8
     state.ghosts.blinky.actor.yPx = 14 * 8
     state.ghosts.blinky.actor.dir = 'left'
@@ -379,7 +396,7 @@ describe('mode-change reversal is latched to each ghost\'s NEXT tile centre', ()
 // a free, organic simulation from a fresh spawn.
 describe('a fresh level-1 game survives its opening scatter phase with no input', () => {
   it('does not lose a single life in 400 frames (< the 420-frame/7s scatter window) of no-op input', () => {
-    const state = createGameState(1) // the exact seed from the controller's repro URL
+    const state = playingGame(1) // the exact seed from the controller's repro URL
     for (let i = 0; i < 400; i++) {
       stepGame(state, { dir: 'none' })
       // Fail at the FIRST frame that drops a life, not just at the end —
@@ -406,7 +423,7 @@ describe('a fresh level-1 game survives its opening scatter phase with no input'
 // difference that could pass by coincidence.
 describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
   it('Blinky moves at ghostSpeedPct above the Elroy-1 threshold, elroy1SpeedPct at/below it, elroy2SpeedPct at/below Elroy-2', () => {
-    const state = createGameState(20)
+    const state = playingGame(20)
     const lvl = levelRow(1)
     state.pac.actor.xPx = 0
     state.pac.actor.yPx = 0 // parked well away — no collision/eating noise
@@ -452,7 +469,7 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
   })
 
   it('does NOT bump Pinky/Inky/Clyde — Elroy is Blinky-only', () => {
-    const state = createGameState(21)
+    const state = playingGame(21)
     state.pac.actor.xPx = 0
     state.pac.actor.yPx = 0
     state.house.released = { blinky: true, pinky: true, inky: true, clyde: true }
@@ -478,7 +495,7 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
 
 describe('ghost tunnel slowdown (pm3-2, Dossier Table A.1)', () => {
   it('a ghost on a tunnel tile moves at the tunnel speed, not the normal ghost speed', () => {
-    const g = createGameState(1, [])
+    const g = playingGame(1, [])
     const ghost = g.ghosts.blinky
     g.house.released.blinky = true
     // Park Blinky on a tunnel-kind tile (left tunnel mouth on TUNNEL_ROW).

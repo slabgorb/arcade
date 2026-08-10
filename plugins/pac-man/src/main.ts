@@ -116,6 +116,21 @@ function currentDir(): Dir {
   return 'none'
 }
 
+// pm4-6: the start/coin latch. Set on a start-key press, consumed by the sim
+// input below on the next sub-step, so exactly one `start: true` reaches
+// `stepGame` per press. Space / 1 (1-player) / 5 (coin) — Enter stays the
+// game-over restart it already was. The core only acts on it in `attract`
+// (advance -> ready + reseed); it is inert everywhere else, so no phase logic
+// lives here.
+const START_KEYS: ReadonlySet<string> = new Set([' ', 'spacebar', '1', '5'])
+let startPressed = false
+/** Read and clear the start/coin latch — one `start: true` per key press. */
+const consumeStart = (): boolean => {
+  const pressed = startPressed
+  startPressed = false
+  return pressed
+}
+
 let audioStarted = false
 window.addEventListener('keydown', (e) => {
   // WebAudio autoplay policy: the context stays suspended until a user gesture.
@@ -127,6 +142,7 @@ window.addEventListener('keydown', (e) => {
 
   const key = e.key.toLowerCase()
   if (key in DIR_KEYS) held.add(key)
+  if (START_KEYS.has(key)) startPressed = true
 
   // Initials entry rides its own edge event, same as centipede's
   // enterInitial — it is not part of the held-direction sampling above.
@@ -171,7 +187,9 @@ const frame = (now: number): void => {
     acc = pumpFrame(
       acc,
       elapsed,
-      () => ({ dir: currentDir() }),
+      // pm4-6: fold the start/coin latch into the sim input (consumed each
+      // sub-step) so START/coin reaches stepGame (attract -> ready) once per press.
+      () => ({ dir: currentDir(), start: consumeStart() }),
       (input) => {
         if (game.phase === 'game-over') return
         const boardBefore = game.highScoreTable

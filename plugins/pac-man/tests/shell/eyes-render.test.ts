@@ -27,6 +27,9 @@ function noMoveFrameIndex(pct: number): number {
 // Eat Blinky so it enters the eyes/returning state.
 function eatBlinky(seed: number) {
   const state = createGameState(seed)
+  // pm4-6: createGameState boots into `attract` now; this eyes test steps the
+  // SIM, so start from `playing` (see tests/core/lifecycle.test.ts).
+  state.phase = 'playing'
   state.mode.frightenedTimer = 600
   const g = state.ghosts.blinky
   state.pac.actor.xPx = g.actor.xPx

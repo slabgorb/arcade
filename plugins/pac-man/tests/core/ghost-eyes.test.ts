@@ -61,6 +61,11 @@ const tileOf = (state: GameState, id: GhostId) => ({
 // the (released) ghost, and freeze the ghost on a no-move frame so it is still
 // on Pac-Man's tile when the collision check runs.
 function eatGhost(state: GameState, id: GhostId): void {
+  // pm4-6: createGameState now boots into `attract` (the cabinet lifecycle), so
+  // stepGame freezes the sim until play begins. These pm4-3 eyes tests exercise
+  // the SIM, so start from `playing`; the attract/ready front end is covered by
+  // tests/core/lifecycle.test.ts.
+  state.phase = 'playing'
   state.mode.frightenedTimer = 600
   const g = state.ghosts[id]
   state.pac.actor.xPx = g.actor.xPx
