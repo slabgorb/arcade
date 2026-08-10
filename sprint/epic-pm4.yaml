@@ -76,7 +76,8 @@ stories:
     title: "Freeze pauses — level-clear + dying (core): on level-cleared, enter level-clear (freeze sim, hold a static frame, then advanceLevel -> ready); on pac-died with lives>0, enter dying (freeze, death-anim window, then respawn -> ready). Replaces today's INSTANT advance/respawn. This realises the boss's 'freeze + no flash' level-clear (builds on pm4-1's strobe removal — MUST NOT reintroduce any full-screen flash). Anchor the READY!/death-delay + level-complete cadence citations at RED."
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
