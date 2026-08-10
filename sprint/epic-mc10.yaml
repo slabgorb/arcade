@@ -62,10 +62,11 @@ stories:
     title: 'Preserve field aspect ratio: letterbox the logical 256x222 (~1.15:1) field centered with black bars instead of stretching to the ~2:1 window (index.html 100%x100%), removing the horizontal smear and empty middle'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     review_findings: 'APPROVED round 3. All findings closed: F1 (comment) F2 (AC4 behavioral test) F3 (attribution) resolved round 2; F4 (void top dead local) resolved round 3. Faithful battlezone letterbox port over @shared/view; 1249 vitest, tsc clean, build OK. computeLetterbox-unused-in-prod accepted (adapter parity).'
     review_verdict: approved
   - id: mc10-6

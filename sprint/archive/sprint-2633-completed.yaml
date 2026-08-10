@@ -294,3 +294,8 @@ completed_stories:
     title: "Wire name entry end-to-end (KEYBOARD): add the stepGame 'entry' freeze branch (+freeze test) so a step during 'entry' no longer falls through to stepCombat/nextPhase; reach enterNameEntry from a qualifying game-over in the frame loop; shell feeds KeyboardEvent.key to core stepInitials and commits on Enter via @shared/name-entry (keyboard like asteroids/joust — NO trackball, NO ROM timeout); and persist via one-origin localStorage under highScoreKey('missile-command') — shell reads on boot, writes on commit; core stays pure (owns table/qualifies/initials). Reuse the asteroids/joust @shared/highscore + name-entry consumer pattern. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
     points: 5
     completed: '2026-08-10'
+  - id: mc10-5
+    epic: mc10
+    title: 'Preserve field aspect ratio: letterbox the logical 256x222 (~1.15:1) field centered with black bars instead of stretching to the ~2:1 window (index.html 100%x100%), removing the horizontal smear and empty middle'
+    points: 3
+    completed: '2026-08-10'
