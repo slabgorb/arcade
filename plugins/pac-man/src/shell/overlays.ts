@@ -6,8 +6,10 @@
 // into a latched visual overlay, painted on top of the playfield each frame.
 // Where the audio driver maps an event to a WSG voice call, this module maps
 // an event to a bounded on-screen state: a ghost/fruit-eaten score popup
-// (`drawScorePopup`, pm3-6/pm3-7), a level-clear flash over the maze, and the
-// READY!/GAME OVER banners. All timing is FRAME-COUNT — `onEvents` only
+// (`drawScorePopup`, pm3-6/pm3-7) and the READY!/GAME OVER banners. (pm4-1
+// removed the level-clear flash for photosensitivity safety — see the note by
+// POPUP_FRAMES; the authentic level-clear pause is core work in pm4-7.) All
+// timing is FRAME-COUNT — `onEvents` only
 // latches state, `draw` is the sole place a counter is ever decremented —
 // there is no Date/performance/requestAnimationFrame read anywhere in this
 // file (the same core-purity spirit `render.ts` already follows: a pure
@@ -24,7 +26,7 @@
 import type { GameEvent } from '../core/events'
 import type { GameState } from '../core/game'
 import { TILE_PX } from '../core/actor'
-import { LOGICAL_W, LOGICAL_H } from './layout'
+import { LOGICAL_W } from './layout'
 import { drawScorePopup } from './render'
 
 export interface Overlays {
@@ -42,13 +44,11 @@ export interface Overlays {
 // main.ts's own FLASH_HALF_PERIOD comment), chosen only to be clearly
 // readable at 60fps without lingering into the next moment of play.
 const POPUP_FRAMES = 45
-// The level-clear flash: the maze alternates between its normal look and a
-// bright flash colour a handful of times before the next level's fresh maze
-// draws over it — same authored-timing posture as POPUP_FRAMES.
-const FLASH_HALF_PERIOD = 8
-const FLASH_CYCLES = 6
-const FLASH_FRAMES = FLASH_HALF_PERIOD * 2 * FLASH_CYCLES
-const FLASH_COLOR = '#ffffff'
+// pm4-1 [SAFETY]: the level-clear effect used to be a full-screen white strobe
+// (fillRect over the whole logical buffer, ~3.75 Hz for 96 frames) painted over
+// live play. The boss has photosensitive epilepsy, so it is removed outright —
+// the overlay no longer reacts to `level-cleared`. The authentic level-clear
+// pause (a sim freeze, no strobe) lands in core in pm4-7.
 
 const BANNER_COLOR = '#ffff00'
 
@@ -66,7 +66,6 @@ type QueuedPopup =
 export function createOverlays(): Overlays {
   const queued: QueuedPopup[] = []
   let active: ActivePopup[] = []
-  let flashFramesLeft = 0
   let banner: 'game-over' | null = null
   let readyCleared = false
   // pm3-7 review fix (CRITICAL 2): `overlays` is constructed ONCE in main.ts
@@ -87,7 +86,6 @@ export function createOverlays(): Overlays {
   function resetForNewGame(): void {
     queued.length = 0
     active = []
-    flashFramesLeft = 0
     banner = null
     readyCleared = false
   }
@@ -104,16 +102,13 @@ export function createOverlays(): Overlays {
         case 'fruit-eaten':
           queued.push({ kind: 'fruit', points: event.points })
           break
-        case 'level-cleared':
-          flashFramesLeft = FLASH_FRAMES
-          break
         case 'game-over':
           banner = 'game-over'
           break
-        // energizer-eaten/fruit-spawned/fruit-expired/pac-died/extra-life/
-        // high-score-qualified have no overlay in this story's scope (score/
-        // lives already render every frame via drawHud; a future story can
-        // layer a pause/flash on pac-died if the brief ever asks for one).
+        // level-cleared/energizer-eaten/fruit-spawned/fruit-expired/pac-died/
+        // extra-life/high-score-qualified have no overlay: score/lives render
+        // every frame via drawHud, and the level-clear pause (a sim freeze, no
+        // strobe) is core work in pm4-7 — see the pm4-1 note by POPUP_FRAMES.
         default:
           break
       }
@@ -154,15 +149,6 @@ export function createOverlays(): Overlays {
       popup.framesLeft--
     }
     active = active.filter((popup) => popup.framesLeft > 0)
-
-    if (flashFramesLeft > 0) {
-      const cycle = Math.floor(flashFramesLeft / FLASH_HALF_PERIOD) % 2
-      if (cycle === 0) {
-        ctx.fillStyle = FLASH_COLOR
-        ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
-      }
-      flashFramesLeft--
-    }
 
     if (banner === 'game-over') {
       drawBanner(ctx, 'GAME OVER')
