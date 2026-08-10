@@ -284,6 +284,22 @@ export type GhostRenderMode = Mode | 'flash' | 'eaten'
 const FLASH_HALF_PERIOD = 14 // frames per flash half-cycle (shell rendering detail)
 const FLASH_WINDOW = FLASH_HALF_PERIOD * 2 * FRIGHT_FLASHES // frames before expiry the flash starts
 
+// pm4-2: sprite-animation hold. Pac-Man's chomp and the ghosts' legs must not
+// cycle every single sim frame (~60 Hz) — the cabinet holds each animation
+// frame for several frames. This divisor advances the animation index once
+// every ANIM_HOLD sim frames. Like FLASH_HALF_PERIOD above it is an
+// HONEST-UNCITED shell-timing choice — a presentation cadence, not a ported
+// ROM value (so it carries no citations.test claim and lives here, not in core).
+export const ANIM_HOLD = 6 // sim frames each animation frame is held (shell rendering detail)
+
+/** Map a monotonic sim-frame counter to a held animation index: the sprite
+ *  frame advances once every `ANIM_HOLD` sim frames instead of every frame.
+ *  Pure — main.ts owns the counter and passes the result as `animPhase` to
+ *  drawPacman/drawGhost (which still take an already-held index). */
+export function heldAnimPhase(frame: number): number {
+  return Math.floor(frame / ANIM_HOLD)
+}
+
 /** The render mode for ONE ghost this frame, derived purely from `GameState`
  *  (no clock read — render.ts's core-purity spirit). An eyes-returning ghost
  *  (pm4-3) renders as 'eaten'; otherwise the frightened body flashes white as
@@ -341,9 +357,9 @@ function spriteImageData(
 }
 
 /** Pac-Man: a real 16x16 sprite blit (pacman.5f), picking the chomp frame
- *  for `dir` at `animPhase % PAC_FRAMES[dir].length` — `animPhase` is a
- *  frame-count-derived index the caller (main.ts) advances from `GameState`
- *  (`game.pac.frame`), never a clock read here (core-purity spirit: this
+ *  for `dir` at `animPhase % PAC_FRAMES[dir].length` — `animPhase` is an
+ *  already-HELD animation index the caller (main.ts) derives via
+ *  `heldAnimPhase` (pm4-2), never a clock read here (core-purity spirit: this
  *  function stays a pure function of its arguments). Centred on the same
  *  tile-centre point the old TILE_PX circle used, just a 16x16 sprite
  *  instead of an 8x8 disc (SPRITE_PX/2 - TILE_PX/2 additional offset). */
@@ -360,9 +376,9 @@ export function drawPacman(ctx: CanvasRenderingContext2D, xPx: number, yPx: numb
  *  facing body with its body-ink pixel value ALSO made transparent (colour 0
  *  already is, per the task's sprite-transparency rule) so only the eyes
  *  paint — otherwise the normal per-ghost-id coloured body facing
- *  `ghost.actor.dir`. `animPhase` (main.ts's `game.ghostFrame[id]`) picks
- *  which of the 2 leg-animation frames to blit, same purity note as
- *  drawPacman. */
+ *  `ghost.actor.dir`. `animPhase` (main.ts's `heldAnimPhase` index, pm4-2 —
+ *  NOT the `game.ghostFrame` speed cursor) picks which of the 2 leg-animation
+ *  frames to blit, same purity note as drawPacman. */
 export function drawGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, mode: GhostRenderMode, animPhase: number): void {
   const px = ghost.actor.xPx + TILE_PX / 2 - SPRITE_PX / 2
   const py = ghost.actor.yPx + TILE_PX / 2 - SPRITE_PX / 2

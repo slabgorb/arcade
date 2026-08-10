@@ -20,10 +20,12 @@ stories:
     title: 'Animation-hold divisor (shell render): Pac-Man chomp + ghost legs cycle at 60 Hz because render.ts indexes the raw per-sim-frame counter (game.pac.frame / game.ghostFrame[id]; the latter is the SPEED-PATTERN cursor, not an animation one). Add a render-side animation-hold so sprites advance every N sim frames. render.ts + main.ts only, core untouched. Hold cadence is an honest-uncited shell-timing choice (same posture as the existing FLASH_HALF_PERIOD).'
     points: 2
     priority: p1
-    status: backlog
+    status: in_review
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: pm4-3
     title: "Eaten-ghost eyes-return + forced house exit (core): today an eaten ghost teleports to its spawn tile with released=false (game.ts:525-529) and re-release is gated on the same dot counter as initial release, so it loiters. Implement eyes -> return to house -> regenerate -> forcibly leave (NOT dot-gated). Touches game.ts (eaten branch), house.ts (an exit/regenerate path distinct from initial release), ghost.ts (eyes traversal), and wires the 'eaten' render mode render.ts already implements but never receives. Anchor the eyes-return ROM routine citation at RED — do not fabricate a line."
     points: 5
