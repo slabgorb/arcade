@@ -410,12 +410,17 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     // (the pause overlay, SH2-12), already the fleet-wide pause pattern (reused by
     // asteroids, battlezone, centipede, red-baron, star-wars, tempest); mc6-3's AC
     // explicitly reuses them for the pause key + overlay rather than reinventing them.
+    // mc10-5 adds @shared/view (the pure `letterbox`/`resizeToDisplay` aspect-fit VERB,
+    // SH2-10) — an ALREADY-EXTRACTED shared module the sibling cabinets already consume:
+    // battlezone `shell/viewport.ts` (letterbox + resizeToDisplay) and asteroids
+    // `shell/margin.ts` (letterbox). MC's shell/viewport.ts reuses it to letterbox the
+    // field, NOT a fresh extraction. Same category as the above.
     // Added by mc7-3: @shared/highscore — the fleet-wide high-score STORAGE/qualify/
     // insert VERB (consumed by asteroids, battlezone, joust, …), reused by the shell's
     // one-origin load-on-boot / save-on-commit seam (shell/highscore.ts). Reuse of this
     // already-extracted library is exactly what this guard permits; the teeth still
     // bite a NEW src/shared extraction (esp. a glyph/HUD one).
-    const ALLOWED = new Set(['@shared/font', '@shared/pause', '@shared/esc-overlay', '@shared/highscore'])
+    const ALLOWED = new Set(['@shared/font', '@shared/pause', '@shared/esc-overlay', '@shared/view', '@shared/highscore'])
     const disallowed: string[] = []
     for (const f of readdirSync(shellDir).filter((f) => f.endsWith('.ts'))) {
       const src = readFileSync(join(shellDir, f), 'utf8')
@@ -427,7 +432,7 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     expect(
       disallowed,
       'a NEW missile-command shared library belongs in src/shell, not a fresh src/shared extraction; only ' +
-        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay, highscore) may be reused',
+        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay, view, highscore) may be reused',
     ).toEqual([])
   })
 })

@@ -10,6 +10,7 @@
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
+import { applyLetterbox } from './shell/viewport.js'
 import { keydownReducer, beginSetupOnInput } from './shell/input.js'
 import { makeMcHighScoreStorage, loadHighScores } from './shell/highscore.js'
 import { createAudioEngine } from './shell/audio.js'
@@ -19,6 +20,21 @@ const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
 const context = canvas.getContext('2d')
 if (!context) throw new Error('2d canvas context unavailable')
+
+// mc10-5: pin the canvas to the fixed 256:222 field ratio and letterbox it, instead
+// of stretching to the full ~2:1 window. The fit math + HiDPI clamp live in the pure,
+// unit-tested shell/viewport module (over @shared/view); index.html centers the
+// smaller canvas so the black page shows through as the letterbox/pillarbox bars.
+// This runs on resize and once at boot — NOT per frame, so the frame loop no longer
+// slams the backing store back to the full client size (the old smear).
+// A const arrow (created after the null-check above) so `canvas` stays narrowed to
+// HTMLCanvasElement — a hoisted `function` declaration would sit above the throw and
+// widen it back to `| null`. Matches the file's other closures (drain/frame).
+const resize = (): void => {
+  applyLetterbox(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
+}
+window.addEventListener('resize', resize)
+resize()
 
 // mc7-3: the one-origin high-score board. Load the persisted ladder on boot (falling
 // back to the seeded ROM defaults) and thread it into the fresh game where the core's
@@ -55,10 +71,14 @@ const drain = (): void => {
 // position maps straight to a cabinet coordinate via the pure core placeCursor
 // (the inverse of render.project), so the crosshair tracks the mouse 1:1 instead
 // of accumulating the per-move relative deltas the old path did. The pointer is
-// made canvas-relative through the element rect and divided by the rect size to
-// get the [0,1] fraction project works in; that is exact because the frame loop
-// keeps canvas.width/height equal to canvas.clientWidth/clientHeight (below), so
-// the rect size and the buffer size project was called with are the same number.
+// made canvas-relative through the element rect and divided by the rect SIZE to
+// get the [0,1] fraction placeCursor works in. This is dpr-INVARIANT: both the
+// event's clientX/Y and rect.width/height are CSS pixels, so the fraction is
+// correct regardless of the HiDPI backing store. (mc10-5 removed the old per-frame
+// `canvas.width = canvas.clientWidth`, so `canvas.width/height` is now the
+// letterboxed device buffer = CSS × dpr — larger than the rect on HiDPI. That does
+// NOT matter here: placeCursor never sees the buffer, only the CSS rect; and on the
+// render side project() reads the same fraction out of the buffer, so the two agree.)
 canvas.addEventListener('pointermove', (event: PointerEvent): void => {
   const rect = canvas.getBoundingClientRect()
   game = {
@@ -98,9 +118,8 @@ const frame = (): void => {
   updateSustainedSounds(audio, game)
   game = { ...game, soundEvents: [] }
 
-  // Match the drawing buffer to the displayed size so the field fills the cabinet.
-  canvas.width = canvas.clientWidth
-  canvas.height = canvas.clientHeight
+  // The backing store is the letterboxed buffer set by resize() (mc10-5) — the frame
+  // loop no longer resizes it, so drawFrame paints into the pinned 256:222 canvas.
   // mc10-4: feed the LIVE wave so the per-wave palette (paletteForWave, mc9-2) follows
   // the game. Without this 5th arg drawFrame falls back to its wave=INITIAL_WAVE default
   // and every frame renders the wave-1 colours forever, no matter how far play advances.

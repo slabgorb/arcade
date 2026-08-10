@@ -62,9 +62,12 @@ stories:
     title: 'Preserve field aspect ratio: letterbox the logical 256x222 (~1.15:1) field centered with black bars instead of stretching to the ~2:1 window (index.html 100%x100%), removing the horizontal smear and empty middle'
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    review_findings: 'APPROVED round 3. All findings closed: F1 (comment) F2 (AC4 behavioral test) F3 (attribution) resolved round 2; F4 (void top dead local) resolved round 3. Faithful battlezone letterbox port over @shared/view; 1249 vitest, tsc clean, build OK. computeLetterbox-unused-in-prod accepted (adapter parity).'
+    review_verdict: approved
   - id: mc10-6
     title: "Harden the mc citations AC3 un-cited-literal gate: it currently checks only global value-membership across ALL claims, so an un-cited core literal passes whenever ANY unrelated claim shares its number (e.g. cursor.ts LOGICAL_WIDTH=0x100 passes only via the ICBM-speed-scale claim value 256). Require a symbol/line-anchored citation (claimCovers on the literal's own file:line), not bare value membership, in citations.test.ts"
     points: 3
