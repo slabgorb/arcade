@@ -52,7 +52,7 @@
 //   distance model in sputnik.test.ts by this same story.)
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import {
   spawnSputnik,
   stepSputnik,
@@ -79,7 +79,7 @@ const topShots = (s: GameState) => s.icbms.filter((m) => m.origin.v === TOPSCR_V
  *  cruise pollution) and no in-band ballistic (icbms empty → no MIRV). */
 function armedGame(plane: Sputnik): GameState {
   return {
-    ...createGame(2),
+    ...createPlayGame(2),
     wave: 3,
     remaining: 20, // budget for BOTH a plane salvo and a full swarm cycle — so suppression is visible
     icbms: [], // empty ⇒ clear-to-launch (spawn.ts) AND every resulting ICBM is new this frame

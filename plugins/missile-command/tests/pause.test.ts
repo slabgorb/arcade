@@ -56,7 +56,7 @@
 // drives no Dev work. Dev writes NO claim for mc6-3.
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import { S_PLAY, S_PAUS, stateCode, mainline, type Phase } from '../src/core/state.js'
 import { drawFrame } from '../src/shell/render.js'
 import { isPauseKey } from '@shared/pause'
@@ -146,9 +146,9 @@ const anExplosion = (): Explosion => ({ h: 120, v: 180, t: 0 })
  *  aging blast, a partial score, and an unspent ICBM budget over live targets — so a
  *  LIVE `stepGame` (phase 'play') would move enemies, fly missiles, age blasts, and
  *  spawn. `soundEvents` is [] so a correct paused step differs from the input ONLY in
- *  `frame`. All derive from createGame(1), so the rng word is fixed. */
+ *  `frame`. All derive from createPlayGame(1), so the rng word is fixed. */
 const midBattle = (phase: Phase): GameState => ({
-  ...createGame(1),
+  ...createPlayGame(1),
   phase,
   score: 500,
   icbms: [anIcbm()],
@@ -296,18 +296,18 @@ describe('mc6-3 AC3 — pauseFromKey binds the pause key (reuses @shared/pause)'
     const pauseFromKey = await loadPauseFromKey()
     // event.key is 'Escape' — the reducer must lowercase before isPauseKey, or the
     // real keydown never pauses.
-    expect(pauseFromKey('Escape', createGame(1)).phase).toBe('pause')
+    expect(pauseFromKey('Escape', createPlayGame(1)).phase).toBe('pause')
   })
 
   it("lowercase 'escape' pauses too, and toggles a paused game back to play", async () => {
     const pauseFromKey = await loadPauseFromKey()
-    expect(pauseFromKey('escape', createGame(1)).phase).toBe('pause')
+    expect(pauseFromKey('escape', createPlayGame(1)).phase).toBe('pause')
     expect(pauseFromKey('Escape', midBattle('pause')).phase).toBe('play')
   })
 
   it('toggles the phase for EXACTLY the keys @shared/pause calls pause keys, and no others', async () => {
     const pauseFromKey = await loadPauseFromKey()
-    const play = createGame(1)
+    const play = createPlayGame(1)
     for (const key of ['Escape', 'escape', 'z', 'x', 'c', 'q', ' ', 'Enter']) {
       const expectedToggles = isPauseKey(key.toLowerCase()) // the reuse point
       const changed = pauseFromKey(key, play).phase !== play.phase
@@ -317,14 +317,14 @@ describe('mc6-3 AC3 — pauseFromKey binds the pause key (reuses @shared/pause)'
 
   it('a pause keypress flips ONLY the phase — no other field changes', async () => {
     const pauseFromKey = await loadPauseFromKey()
-    const play = createGame(1)
+    const play = createPlayGame(1)
     const after = pauseFromKey('Escape', play)
     expect({ ...after, phase: play.phase }).toEqual(play)
   })
 
   it('launches no ABM and spends no ammo (it is not a fire key)', async () => {
     const pauseFromKey = await loadPauseFromKey()
-    const play = createGame(1)
+    const play = createPlayGame(1)
     const after = pauseFromKey('Escape', play)
     expect(after.abms).toEqual([]) // no missile launched
     expect(after.bases).toEqual(play.bases) // no ammo spent
@@ -336,13 +336,13 @@ describe('mc6-3 AC3 — pauseFromKey binds the pause key (reuses @shared/pause)'
   // AC1's NON_TOGGLE_PHASES coverage. (Heimdall round-1 test-gap finding.)
   it.each(NON_TOGGLE_PHASES)("the pause key is a no-op in '%s' (only a live or paused game toggles)", async (phase) => {
     const pauseFromKey = await loadPauseFromKey()
-    const s: GameState = { ...createGame(1), phase }
+    const s: GameState = { ...createPlayGame(1), phase }
     expect(pauseFromKey('Escape', s)).toEqual(s)
   })
 
   it('a non-pause key returns the state unchanged (no accidental toggle)', async () => {
     const pauseFromKey = await loadPauseFromKey()
-    const play = createGame(1)
+    const play = createPlayGame(1)
     expect(pauseFromKey('q', play)).toEqual(play)
   })
 })

@@ -10,9 +10,11 @@
 // topology shifted with it): (12,8) stopped being a 4-way junction (its
 // down-neighbour (12,9) is now a wall), so the junction fixture moved to
 // (6,8), which the authentic table confirms is still open on all four
-// sides. (12,14) is unchanged as a RED_ZONE_TILES entry, but its
-// down-neighbour (12,15) is now a walkable house tile (not a wall) in the
-// authentic layout — the fixture below reflects that.
+// sides. (12,14) is unchanged as a RED_ZONE_TILES entry. Its down-neighbour
+// (12,15) WAS a walkable house tile in the old 4-row-tall house; pm4-4 recessed
+// the gate into a proper house TOP WALL (gate moved row 14 -> 15, interior 15-18
+// -> 16-18), so (12,15) is now that top wall (impassable) and (12,14) is a
+// T-junction: up/left/right open, down walled. The fixture below reflects that.
 
 import { describe, it, expect } from 'vitest'
 import { isWalkable } from '../../src/core/maze'
@@ -38,10 +40,10 @@ describe('fixture sanity — the junction and red-zone tiles are real maze geome
   })
 
   it('(12,14) genuinely has a walkable up-neighbour (the red-zone rule has real work to do)', () => {
-    expect(isWalkable(12, 13, 'ghost')).toBe(true)
-    expect(isWalkable(12, 15, 'ghost')).toBe(true) // house interior, not a wall — see file header
-    expect(isWalkable(11, 14, 'ghost')).toBe(true)
-    expect(isWalkable(13, 14, 'ghost')).toBe(true)
+    expect(isWalkable(12, 13, 'ghost')).toBe(true) // up: the vertical shaft — the red-zone rule's real target
+    expect(isWalkable(12, 15, 'ghost')).toBe(false) // down: pm4-4 house TOP WALL now — see file header
+    expect(isWalkable(11, 14, 'ghost')).toBe(true) // left: open corridor
+    expect(isWalkable(13, 14, 'ghost')).toBe(true) // right: open corridor (formerly the mis-placed gate)
   })
 })
 
@@ -80,8 +82,8 @@ describe('stepGhost — target-seeking turn choice (glossary.md §Ghost movement
     const g = ghostAt(12, 14, 'none')
     stepGhost(g, { x: 12, y: 0 }, {}) // straight up: 'up' would otherwise win easily
     expect(g.actor.dir).not.toBe('up')
-    // down leads into the ghost house (farther from (12,0)); left/right tie
-    // on distance and left wins the up>left>down>right preference.
+    // down (12,15) is now the house top wall (pm4-4) — not a candidate at all;
+    // left/right tie on distance and left wins the up>left>down>right preference.
     expect(g.actor.dir).toBe('left')
   })
 

@@ -107,18 +107,30 @@ export function fireFromKey(key: string, state: GameState): GameState {
   }
 }
 
+// Ground truth: a start in attract writes S.SETU (W3MAIN.MAC:740-757). ROM line
+// numbers live in // comments, never JSDoc — matching the game.ts convention.
 /**
- * mc6-2 "press fire to start": route a fire key to `startGame` when the game is
- * NOT running (attract or over), otherwise delegate to `fireFromKey`. So a fire
- * key at the title/game-over screen begins a fresh game (the NEWGAM->NEWWV1 SETUP reseed),
- * a fire key in play still launches an ABM and never wipes the board, and a
- * non-fire key changes nothing. Pure — the input state is never mutated. This is
- * the reducer main.ts drives on each keydown, replacing the bare fireFromKey call.
+ * mc6-4 "any input leaves the demo": when the cabinet is showing the ATTRACT demo,
+ * ANY input begins SETUP. Every other phase is returned UNCHANGED (this transition
+ * only fires from attract). Pure — the input state is never mutated. Both fireOrStart
+ * (keydowns) and main.ts (pointer input) route through here so keyboard and mouse
+ * leave the demo alike.
+ */
+export function beginSetupOnInput(state: GameState): GameState {
+  return state.phase === 'attract' ? { ...state, phase: 'setup' } : state
+}
+
+/**
+ * The keydown reducer main.ts drives. mc6-4: in ATTRACT, ANY key leaves the demo for
+ * SETUP (beginSetupOnInput — broadened from mc6-2's fire-keys-only). After GAME OVER
+ * a fire key restarts (startGame -> a fresh play game; the mc6-2 reachable edge). In
+ * PLAY a fire key launches an ABM and never wipes the board; a non-fire key changes
+ * nothing. Pure — the input state is never mutated.
  */
 export function fireOrStart(key: string, state: GameState): GameState {
-  return fireKeyToBase(key) !== null && (state.phase === 'attract' || state.phase === 'over')
-    ? startGame(state)
-    : fireFromKey(key, state)
+  if (state.phase === 'attract') return beginSetupOnInput(state) // any input -> setup
+  if (fireKeyToBase(key) !== null && state.phase === 'over') return startGame(state)
+  return fireFromKey(key, state)
 }
 
 /**

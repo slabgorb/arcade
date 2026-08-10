@@ -9,7 +9,7 @@
 // energizers; see glossary.md and docs/rom-study/claims/maze.json).
 
 import { describe, it, expect } from 'vitest'
-import { MAZE, tileAt, isWalkable, DOT_COUNT, ENERGIZER_TILES, TUNNEL_ROW, wrapThroughTunnel } from '../../src/core/maze'
+import { MAZE, tileAt, isWalkable, DOT_COUNT, ENERGIZER_TILES, TUNNEL_ROW, wrapThroughTunnel, type Tile } from '../../src/core/maze'
 import { TILE_PX } from '../../src/core/actor'
 
 describe('maze (glossary.md §Maze)', () => {
@@ -84,6 +84,64 @@ describe('maze (glossary.md §Maze)', () => {
       }
     }
     expect(count).toBe(DOT_COUNT)
+  })
+})
+
+describe('pm4-4: the ghost-house gate is a door set in a wall, not a barrier across a corridor', () => {
+  // The reported bug (boss playtest; static reference screenshots in
+  // sprint/demos/pm4-4/reference/): the gate is stamped one row too high — into
+  // the OPEN lateral corridor above the house, with NO house-top wall flanking
+  // it — so it bars Pac-Man's left<->right passage across that corridor. Blocking
+  // Pac-Man from *entering* the house is correct and stays (covered above); it is
+  // the lateral block that is the bug.
+  //
+  // Authentic Pac-Man (Dossier ch.3 "The Maze") recesses the 2-tile gate into the
+  // house's TOP WALL, with a clear lateral lane directly above it. This maze is a
+  // faithful *reconstruction*, not a byte-cited tile-by-tile transcription
+  // (glossary.md §Maze; src/core/maze.ts header), so these assertions pin the
+  // gate's STRUCTURE relative to its own neighbours — derived from the table, no
+  // hardcoded row numbers — rather than an invented absolute coordinate.
+  const gateTiles: Tile[] = []
+  for (let y = 0; y < MAZE.rows; y++) {
+    for (let x = 0; x < MAZE.cols; x++) {
+      if (tileAt(x, y) === 'gate') gateTiles.push({ x, y })
+    }
+  }
+  const gateRow = Math.min(...gateTiles.map((t) => t.y))
+  const gateColL = Math.min(...gateTiles.map((t) => t.x))
+  const gateColR = Math.max(...gateTiles.map((t) => t.x))
+
+  it('is a contiguous run of gate tiles on one row (premise for the door/corridor checks)', () => {
+    expect(gateTiles.length).toBeGreaterThanOrEqual(1)
+    expect(new Set(gateTiles.map((t) => t.y)).size, 'all gate tiles must share one row').toBe(1)
+    // contiguous columns, no gaps
+    expect(gateColR - gateColL + 1).toBe(gateTiles.length)
+  })
+
+  it('is flanked left and right by tiles Pac-Man cannot enter (a door in a wall, not a lane)', () => {
+    // If the tiles immediately beside the gate are open path, the gate is a
+    // barrier dropped into a corridor and blocks lateral travel — the bug.
+    expect(
+      isWalkable(gateColL - 1, gateRow, 'pac-man'),
+      `the tile left of the gate (${gateColL - 1},${gateRow}) must be an impassable wall, not open path`,
+    ).toBe(false)
+    expect(
+      isWalkable(gateColR + 1, gateRow, 'pac-man'),
+      `the tile right of the gate (${gateColR + 1},${gateRow}) must be an impassable wall, not open path`,
+    ).toBe(false)
+  })
+
+  it('has an open lateral corridor directly above it that Pac-Man can traverse left<->right', () => {
+    // The row directly above the gate is the lane Pac-Man crosses. Across the
+    // gate's own columns AND the flanking shaft columns it must be continuously
+    // walkable — Pac-Man passes over the top of the house, never into the gate.
+    const corridorRow = gateRow - 1
+    for (let x = gateColL - 1; x <= gateColR + 1; x++) {
+      expect(
+        isWalkable(x, corridorRow, 'pac-man'),
+        `corridor tile (${x},${corridorRow}) above the gate must be walkable so Pac-Man can pass laterally`,
+      ).toBe(true)
+    }
   })
 })
 
