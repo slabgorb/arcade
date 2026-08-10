@@ -98,11 +98,11 @@ export interface GameState {
   readonly bases: readonly Base[]
   /** Running score; +ICBM_KILL_POINTS per downed ICBM (mc3-3). */
   readonly score: number
-  /** Coarse phase: `'play'` until every city is dead, then terminal `'over'` (mc3-3);
-   *  a qualifying game-over routes to `'entry'` for initials (mc7-2). */
+  /** Coarse phase: `'play'` until every city is dead, then terminal `'over'`; a
+   *  qualifying game-over routes to `'entry'` for the initials buffer (mc7-2). */
   readonly phase: Phase
-  /** The cabinet high-score ladder (mc7-1 depth-5 table). Seeded to the ROM default
-   *  at boot; commit inserts into it; the shell loads/saves it on boot/commit (mc7-3). */
+  /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
+   *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
   readonly highScores: readonly MissileCommandHighScore[]
   /** The in-flight initials buffer collected during `'entry'` (mc7-2). Empty except
    *  while entering a new high score; driven by @shared/name-entry.stepNameEntry. */
@@ -206,7 +206,7 @@ export const MC_INITIALS_LEN = 3
 /** Route a finished game into name entry: from `'over'`, when the final score
  *  qualifies for the ladder, enter `'entry'` with an empty initials buffer. A
  *  non-qualifying score — or any non-`'over'` phase — is returned unchanged (the
- *  `'over'`->`'attract'` timeout is mc6-6's edge). Pure. */
+ *  `'over'`->`'attract'` timeout is mc6's edge). Pure. */
 export function enterNameEntry(state: GameState): GameState {
   if (state.phase !== 'over' || !qualifiesForHighScore(state.highScores, state.score)) return state
   return { ...state, phase: 'entry', initials: '' }
@@ -223,7 +223,7 @@ export function stepInitials(state: GameState, key: string): GameState {
 }
 
 /** Commit a completed entry: with a FULL MC_INITIALS_LEN buffer during `'entry'`,
- *  insert `{ name, score }` into the ladder (mc7-1 depth-5 insert), clear the buffer
+ *  insert `{ name, score }` into the ladder via the mc7-1 insert, clear the buffer
  *  and return to attract. An incomplete buffer or any non-`'entry'` phase is
  *  returned unchanged. Pure — neither the state nor the table is mutated. */
 export function commitNameEntry(state: GameState): GameState {

@@ -14,7 +14,7 @@
     "id": "MC-INITIALS-CHARSET",
     "symbol": "INITCSET",
     "value": 26,
-    "meaning": "The initials charset is the 26 letters A-Z. GETINI cycles the current letter over 26 codes (LDA I,26. wraps the index at 0, W3DSUP.MAC:4128; CMP I,27. wraps at the top, :4132) and forms the glyph by adding the ASCII A offset (ADC I,41 = 0x41 = A, :4158/:4172). The ROM trackball cursor cycler and its blank 27th slot are DELIBERATELY not ported (the fleet keyboard ruling, joust jt10-7); the port takes A-Z via @shared/name-entry.stepNameEntry.",
+    "meaning": "The initials charset is the 26 letters A-Z. GETINI's trackball cursor cycles 27 codes (0-25 = A-Z, 26 = a blank slot): when the index UNDERFLOWS below 0 the IFMI (branch-on-minus) arm loads LDA I,26. to wrap it UP to 26 (W3DSUP.MAC:4128), and when it reaches 27 the ELSE arm CMP I,27./IFCS/LDA I,0 wraps it back DOWN to 0 (:4132-:4136); the glyph is formed by adding the ASCII 'A' offset (ADC I,41 = 0x41, :4158/:4172). The ROM trackball cursor cycler and its blank 27th slot are DELIBERATELY not ported (the fleet keyboard ruling, joust jt10-7); the port takes the 26 letters A-Z via @shared/name-entry.stepNameEntry. The claim value 26 is that letter count (= the LDA I,26. wrap-up immediate).",
     "source": {
       "file": "W3DSUP.MAC",
       "line": 4128,

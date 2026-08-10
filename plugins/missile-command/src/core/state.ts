@@ -72,15 +72,15 @@ export const S_PLAY = 0x00 // W3COMN.MAC:61  S.PLAY =0   — PLAY  (STATE == 0)
 export const S_PAUS = 0x80 // W3COMN.MAC:59  S.PAUS =80  — PAUSE (STATE < 0, hi bit)
 export const S_SETU = 0x40 // W3COMN.MAC:57  S.SETU =40  — SETUP (STATE > 0)
 
-/** The ROM STATE byte a phase runs under. `'attract'`/`'between'`/`'over'` are
- *  SETUP-family (they run inside SETUP), so they share `S_SETU`. */
+/** The ROM STATE byte a phase runs under. `'attract'`/`'between'`/`'over'`/`'entry'`
+ *  are SETUP-family (they run inside SETUP), so they share `S_SETU`. */
 export function stateCode(phase: Phase): number {
   switch (phase) {
     case 'play':
       return S_PLAY
     case 'pause':
       return S_PAUS
-    default: // 'setup' | 'attract' | 'between' | 'over' — all SETUP-family
+    default: // 'setup' | 'attract' | 'between' | 'over' | 'entry' — all SETUP-family
       return S_SETU
   }
 }

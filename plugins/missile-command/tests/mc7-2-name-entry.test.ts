@@ -118,8 +118,9 @@ async function loadNameEntry(): Promise<NameEntryApi> {
 // ─── fixtures ─────────────────────────────────────────────────────────────────────
 // A game state carrying the mc7-2 fields. Built from createGame(1) (so the rng word
 // and every combat field are the canonical boot values) with `highScores`/`initials`
-// layered on — the fields GREEN adds to GameState + createGame. Cast through unknown
-// because the current GameState type has neither field nor the 'entry' phase yet.
+// layered on. A single `as St` is enough: St (above) deliberately widens `phase` to
+// `string`, so building/comparing arbitrary phase strings (incl. 'entry') type-checks
+// without a double-cast — GameState already carries highScores/initials post-GREEN.
 const stateWith = (over: Partial<{ phase: string; score: number; initials: string; highScores: readonly MissileCommandHighScore[] }>): St =>
   ({
     ...createGame(1),
