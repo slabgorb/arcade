@@ -55,7 +55,8 @@ stories:
     title: 'Phase machine (core game.ts): extend GamePhase from playing|game-over to add attract|ready|dying|level-clear, plus a pure MAINLINE dispatch over frame-count timers — seeded, no clock (mc6-1 contract). Loop: attract ->(start/coin) ready ->(ready timer) playing; playing ->(pac-died,lives>0) dying ->(death timer) ready; playing ->(pac-died,lives=0) game-over; playing ->(all dots) level-clear ->(clear timer) ready(level+1); game-over ->(timeout) attract. Cite pacman.asm:0195 master-state dispatch + :0984/:269a/:318c writes; purity.test.ts green; every new constant citations.test.ts-gated.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
   - id: pm4-6
