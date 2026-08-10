@@ -279,40 +279,21 @@ describe('mc9-4 AC1 — the score readout is drawn in the TOP band (authentic la
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// D. AC1 — every readout survives the font swap and is drawn from its STATE value.
-//    Ammo and wave grow with their digit count; each per-base ammo is isolated (vary one
-//    base, hold the rest). The multiplier is capped at one digit (min((wave+1)>>1,6)) so
-//    a mark-COUNT test cannot see it — but a POSITION-SET test can: different multiplier
-//    digits light different pixels, which reddens a mutant that hardcodes `X4` and drops
+// D. AC1 — the multiplier readout is drawn from its STATE value.
+//    The multiplier is capped at one digit (min((wave+1)>>1,6)) so a mark-COUNT test
+//    cannot see it — but a POSITION-SET test can: different multiplier digits light
+//    different pixels, which reddens a mutant that hardcodes `X4` and drops
 //    state.multiplier (a bare `/multiplier/` source scan does NOT — the word survives in
 //    comments; checklist rule #15).
+//
+//    NOTE (mc10-3): mc9-4's per-base AMMO readout and WAVE readout tests were RETIRED
+//    here — mc10-3 rebuilds the HUD to the authentic layout, DELETING the top-left AMMO
+//    line (ammo is shown by the mc9-1 base stacks) and the WAVE readout, and relocating
+//    the multiplier to the bottom-center as `nX`. Those readouts' new INERT behaviour is
+//    now pinned by render-hud-layout.test.ts. The multiplier is still value-driven, so
+//    the position-set test below survives the relayout (it asserts identity, not place).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('mc9-4 AC1 — ammo, wave and multiplier readouts are each drawn from state', () => {
-  it('each per-base ammo readout is content-driven independently (not just base 0)', () => {
-    // Bases are DEAD in `quiet`, so the mc9-1 base pyramid draws ammo-independent rubble;
-    // the only ammo-sensitive marks left are the HUD ammo readout. Varying ONE base at a
-    // time (the other two fixed) reddens a mutant that reads only bases[0] and hardcodes
-    // the rest — the aggregate "[1,1,1] vs [10,10,10]" grows even for such a mutant.
-    const base = total(quiet({ ammo: [1, 1, 1] })) // "1 1 1"
-    for (let i = 0; i < 3; i++) {
-      const bumped = [1, 1, 1]
-      bumped[i] = 10 // that base alone gains a digit
-      expect(
-        total(quiet({ ammo: bumped })),
-        `the HUD must draw base ${i}'s ammo — growing only base ${i} to a 2-digit value must add marks`,
-      ).toBeGreaterThan(base)
-    }
-  })
-
-  it('the wave readout is content-driven and tracks state.wave', () => {
-    const w1 = total(quiet({ wave: 1 })) //  "WAVE 1"  — 1 digit
-    const w17 = total(quiet({ wave: 17 })) // "WAVE 17" — 2 digits
-    expect(
-      w17,
-      'the HUD wave readout must be drawn from state.wave — a 2-digit wave paints more marks than a 1-digit one',
-    ).toBeGreaterThan(w1)
-  })
-
+describe('mc9-4 AC1 — the multiplier readout is drawn from state', () => {
   it('the multiplier readout is drawn from state.multiplier (different multipliers light different pixels)', () => {
     // Hold score/wave/ammo fixed; toggle ONLY state.multiplier between two values whose
     // glyphs differ. Everything else in the frame is identical, so the POSITION SET
