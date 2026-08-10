@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
 import { fireFromKey } from '../src/shell/input.js'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import type { SoundEvent } from '../src/core/sound-events.js'
 import { MAXMIS } from '../src/core/field.js'
 
@@ -35,7 +35,7 @@ function recorder() {
   }
 }
 
-const play = (): GameState => createGame(1)
+const play = (): GameState => createPlayGame(1)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AC4 — the LOW-on-ABMs launch cue (LO, SLOABM). W3MAIN:1385-1393:

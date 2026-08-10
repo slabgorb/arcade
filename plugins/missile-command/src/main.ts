@@ -10,7 +10,7 @@
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
-import { fireOrStart, pauseFromKey } from './shell/input.js'
+import { fireOrStart, pauseFromKey, beginSetupOnInput } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
@@ -28,6 +28,15 @@ const audio = createAudioEngine()
 const unlock = (): void => audio.resume()
 canvas.addEventListener('pointerdown', unlock)
 window.addEventListener('keydown', unlock)
+
+// mc6-4: a pointer CLICK leaves the ATTRACT demo for SETUP, so the demo ends on a
+// click as well as a keydown (keydowns leave via fireOrStart below). Only pointerdown
+// does this — a bare pointermove keeps tracking the crosshair without ending the demo,
+// so a stray mouse jitter can't cut the attract screen short. A no-op outside attract,
+// so it never disturbs a live game's aim.
+canvas.addEventListener('pointerdown', () => {
+  game = beginSetupOnInput(game)
+})
 
 // Voice whatever sound moments are queued on the state, then clear the channel so
 // nothing is re-voiced next frame (stepGame rebuilds it fresh each step, but a
@@ -53,12 +62,12 @@ canvas.addEventListener('pointermove', (event: PointerEvent): void => {
   }
 })
 
-// Fire keys (mc1-4, ammo-gated in mc3-5; mc6-2 "press fire to start"). Z/X/C
-// launch an ABM from the left/centre/right base toward the current crosshair —
-// but only from a live base with ammo, spending one round per shot. When the game
-// is not running (attract or over), a fire key instead begins a fresh game
-// (fireOrStart). The reducer appends `launched` (or `ammoEmpty` on a refused shot)
-// to the sound channel, which we voice at once.
+// Fire keys (mc1-4, ammo-gated in mc3-5; mc6-2/mc6-4). Z/X/C launch an ABM from the
+// left/centre/right base toward the current crosshair — but only from a live base with
+// ammo, spending one round per shot. mc6-4: in ATTRACT any key leaves the demo for
+// SETUP (not a direct fresh game — setup auto-advances to play a frame later); after
+// GAME OVER a fire key restarts (fireOrStart). The reducer appends `launched` (or
+// `ammoEmpty` on a refused shot) to the sound channel, which we voice at once.
 window.addEventListener('keydown', (event: KeyboardEvent): void => {
   // mc6-3: the pause key (Escape) toggles play<->pause; it is not a fire key, so
   // fireOrStart is a no-op for it and the two reducers compose cleanly.

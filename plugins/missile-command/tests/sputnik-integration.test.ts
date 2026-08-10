@@ -32,7 +32,7 @@
 //   not Dev also folds in the wave multiplier — the assertion is robust to that.
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import { launchIcbm } from '../src/core/icbm.js'
 import { startExplosion, stepExplosion, type Explosion } from '../src/core/explosion.js'
 import { ICBM_KILL_POINTS } from '../src/core/score.js'
@@ -59,11 +59,11 @@ function peakBlastAt(h: number): Explosion {
 
 describe('mc5-2 Task 5 — sputniks activate in stepGame (the SPUTWV gate)', () => {
   it('a fresh game starts with an empty plane roster', () => {
-    expect(planesOf(createGame(4))).toEqual([])
+    expect(planesOf(createPlayGame(4))).toEqual([])
   })
 
   it('never activates a plane before wave 2 (the SPUTWV gate)', () => {
-    let s: GameState = { ...createGame(4), wave: 1 }
+    let s: GameState = { ...createPlayGame(4), wave: 1 }
     let sawPlane = false
     for (let i = 0; i < 500; i++) {
       // Re-pin wave 1 each tick: a wave-end transition would otherwise advance the
@@ -76,7 +76,7 @@ describe('mc5-2 Task 5 — sputniks activate in stepGame (the SPUTWV gate)', () 
   })
 
   it('activates a plane from wave 2 onward', () => {
-    let s: GameState = { ...createGame(4), wave: 2 }
+    let s: GameState = { ...createPlayGame(4), wave: 2 }
     let sawPlane = false
     for (let i = 0; i < 800; i++) {
       s = stepGame(s)
@@ -93,7 +93,7 @@ describe('mc5-2 Task 5 — a killed plane scores ×4 and is removed', () => {
     // fireTimer far from 0 so the plane does NOT launch an ICBM this frame — the only
     // scoring event is its own death, so the delta is exactly the ×4 kill value.
     const fixture: GameState = {
-      ...createGame(2),
+      ...createPlayGame(2),
       wave: 2, // scoreMultiplier(2) === 1, so the ×4 kill is a clean 4·ICBM_KILL_POINTS
       remaining: 0, // no spawns — the roster is exactly what we injected
       icbms: [farIcbm()], // keeps the wave from ending; never caught by the blast
@@ -109,7 +109,7 @@ describe('mc5-2 Task 5 — a killed plane scores ×4 and is removed', () => {
   it('a plane that flies off the far edge is dropped with no penalty and no points', () => {
     const offscreenPlane: Sputnik = { pos: { h: HMAX + 5, v: 100 }, dir: 1, variant: 'satellite', fireTimer: 999 }
     const fixture: GameState = {
-      ...createGame(2),
+      ...createPlayGame(2),
       wave: 2,
       remaining: 0,
       icbms: [farIcbm()], // wave stays live; nothing to score
@@ -125,7 +125,7 @@ describe('mc5-2 Task 5 — a killed plane scores ×4 and is removed', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // mc5-2 FIRING REWORK — the plane fires IN PLAY (the missing "observed in play"
 // proof), and the NICBMS on-screen ceiling holds while it does. Play is a
-// createGame(seed) → stepGame loop — no hand-injected enemies, no input — with
+// createPlayGame(seed) → stepGame loop — no hand-injected enemies, no input — with
 // ONE survivability concession: a headless run has no defending player, so the
 // wave is PINNED and a spent budget REFILLED each frame (see playCell). A
 // plane's shot is detected by its launch altitude — `origin.v ===
@@ -162,7 +162,7 @@ describe('mc5-2 rework — the bomber launches ICBMs in natural play', () => {
    *  cadence can be observed. Deterministic — no entropy is added, and every
    *  enemy is spawned by stepGame itself. */
   function playCell(seed: number, wave: number, frames: number): CellResult {
-    let s: GameState = { ...createGame(seed), wave }
+    let s: GameState = { ...createPlayGame(seed), wave }
     const shots = new Set<string>()
     let maxConcurrent = 0
     for (let i = 0; i < frames && s.phase !== 'over'; i++) {

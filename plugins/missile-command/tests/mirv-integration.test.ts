@@ -15,7 +15,7 @@
 // suppression boundary does not exist.
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS } from '../src/core/spawn.js'
 import { launchIcbm } from '../src/core/icbm.js'
 import { launchAbm } from '../src/core/abm.js'
@@ -32,7 +32,7 @@ const liveBlasts = (n: number): Explosion[] => Array.from({ length: n }, (_, i) 
 
 // A play-phase game with the band ICBM, no pending spawns, and `n` live explosions.
 function fixture(n: number): GameState {
-  return { ...createGame(11), icbms: [bandIcbm()], explosions: liveBlasts(n), remaining: 0 }
+  return { ...createPlayGame(11), icbms: [bandIcbm()], explosions: liveBlasts(n), remaining: 0 }
 }
 
 describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
@@ -53,7 +53,7 @@ describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
     // so the ONE split this frame adds exactly two children (its third is sliced off):
     // the roster lands on NICBMS, not 9.
     // Removing the cap (.slice(0, openSlots)) makes this 9 — the guard the mutation proved missing.
-    const six = { ...createGame(5), icbms: Array.from({ length: 6 }, (_, i) => bandIcbmAt(20 + i * 12)), remaining: 0 }
+    const six = { ...createPlayGame(5), icbms: Array.from({ length: 6 }, (_, i) => bandIcbmAt(20 + i * 12)), remaining: 0 }
     let s = stepGame(six)
     expect(s.icbms.length).toBe(NICBMS) // === NICBMS(8)
     for (let i = 0; i < 6; i++) {
@@ -66,7 +66,7 @@ describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
     // Two in-band ICBMs, openSlots = NICBMS(8) − 2 = 6. One-per-frame → exactly one splits
     // (+3 children) → 5 total. If BOTH split it would be 2 + 6 = 8 — so === 5
     // is the one-per-frame guard the tie-break mutation proved missing.
-    const two = { ...createGame(5), icbms: [bandIcbmAt(60), bandIcbmAt(180)], remaining: 0 }
+    const two = { ...createPlayGame(5), icbms: [bandIcbmAt(60), bandIcbmAt(180)], remaining: 0 }
     expect(stepGame(two).icbms.length).toBe(5)
   })
 
@@ -76,7 +76,7 @@ describe('mc5-1 AC3 — MIRV split wired into stepGame', () => {
     // array, so the band ICBM still splits → 4. Guards against a future reordering that moved
     // the explosion-aging ahead of the MIRV gate.
     const arriving = { ...launchAbm({ h: 210, v: 16 }, { h: 210, v: 100 }), pos: { h: 210, v: 100 } }
-    const s = { ...createGame(5), icbms: [bandIcbm()], abms: [arriving], explosions: liveBlasts(11), remaining: 0 }
+    const s = { ...createPlayGame(5), icbms: [bandIcbm()], abms: [arriving], explosions: liveBlasts(11), remaining: 0 }
     expect(stepGame(s).icbms.length).toBe(4)
   })
 })
