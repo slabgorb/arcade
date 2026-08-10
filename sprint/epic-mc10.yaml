@@ -73,10 +73,11 @@ stories:
     title: "Test-hygiene for mc10-2 GROUND tests: detense the RED-phase comments (header quotes render.ts's DELETED 'not drawn' sentence as verbatim; it() title '— today none does' is false on a passing test; wiring-rationale comment says the header 'explains it is NOT drawn') AND harden/drop the decoy-defeatable wiring guard — the 'references SLOT.GROUND' whole-file positive anchor (#25) passed on a 'const _decoy = SLOT.GROUND' while the real draw was hue(SLOT.SKY); anchor it to the paint expression or drop it as redundant with the behavioural tests. render-ground.test.ts only; no production code change"
     points: 1
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: trivial
+    completed: '2026-08-10'
     type: chore
     review_findings: "Round 1 REJECTED on one [DOC] finding: the hardened wiring guard's it() title/message overclaimed 'on the fill path'/'set the fill from', asserting a fillStyle assignment the regex /hue(SLOT.GROUND)/ does not verify. RESOLVED in round 2 (commit 81efeff9): reworded to claim only that render.ts calls hue(SLOT.GROUND) in real code; comment-analyzer re-review CLEAN. Round 2 APPROVED — 1087/1087 GREEN, lint clean, guard non-vacuity mutation-proven, no production code changed."
     review_verdict: approved
