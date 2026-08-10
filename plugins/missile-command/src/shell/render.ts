@@ -18,9 +18,15 @@
 // functional hexes. drawFrame takes the current `wave` and draws each element from
 // its legend slot (W3DSUP.MAC:1706): sky, ICBMs, city bottom/top and ABMs all pull
 // from paletteForWave(wave); explosions use a flash slot (a rendering choice, see
-// below). The legend's GROUND slot (COL001) has no on-screen element in this clone,
-// so it is not drawn. Dead-structure rubble and the crosshair/HUD stay functional
-// (they are not palette registers).
+// below). Dead-structure rubble and the crosshair/HUD stay functional (they are not
+// palette registers).
+//
+// mc10-2 (GREEN, Yoda): the GROUND legend slot (COL001) — previously skipped — is now
+// drawn as the yellow terrain landmass along the field bottom, so the cities and bases
+// sit ON the land instead of floating on the black backdrop. It is painted from the
+// wave's GROUND register (hue(SLOT.GROUND)) right after the sky clear and BEFORE the
+// structures; its top edge is the topmost structure baseline (GROUND_V). No new colour
+// literal and no palette change — the register already held the right code (wave-1 CYELLO).
 
 import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
@@ -37,6 +43,11 @@ import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 // decimal). Both are CITED constants, not magic numbers.
 const LOGICAL_WIDTH = 0x100 // 256
 const LOGICAL_HEIGHT = 222 // TOPSCR=222. (W3COMN.MAC:107)
+
+// The GROUND surface (mc10-2) sits at the topmost structure baseline, so every city
+// and base rests on the land. Cabinet V grows upward, so `max` is the highest baseline
+// (the bases, MISBnV=0x16); the ground fills from there down to the field bottom.
+const GROUND_V = Math.max(...CITIES.map((c) => c.v), ...BASES.map((b) => b.v))
 
 /** Clear the whole context to the field background. Defaults to the cabinet's
  *  black, or takes the wave's sky colour (COL000) from drawFrame. */
@@ -70,6 +81,15 @@ export function drawFrame(
   const hue = (slot: number): string => rgbCss(pal[slot])
 
   clearField(ctx, width, height, hue(SLOT.SKY)) // sky = COL000
+
+  // GROUND (mc10-2) — the COL001 terrain landmass along the field bottom (GROUND legend
+  // slot, W3DSUP.MAC:1706). Painted after the sky clear and BEFORE the structures so the
+  // cities and bases sit ON the land rather than floating on the backdrop. Its top edge is
+  // the topmost structure baseline (GROUND_V), extended to the field bottom; the fill is the
+  // wave's GROUND register — no new literal, no palette change (wave-1 = CYELLO).
+  const groundTopY = project({ h: 0, v: GROUND_V }, width, height).y
+  ctx.fillStyle = hue(SLOT.GROUND)
+  ctx.fillRect(0, groundTopY, width, height - groundTopY)
 
   // Cities — authentic four-stamp DACITY geometry (mc9-1). Each live city is the
   // 2x2 grid of W3DSUP quadrant stamps (DRAW ALL LIVING CITIES, W3DSUP.MAC:1067;
