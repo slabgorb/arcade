@@ -275,3 +275,8 @@ completed_stories:
     title: "Eaten-ghost eyes-return + forced house exit (core): today an eaten ghost teleports to its spawn tile with released=false (game.ts:525-529) and re-release is gated on the same dot counter as initial release, so it loiters. Implement eyes -> return to house -> regenerate -> forcibly leave (NOT dot-gated). Touches game.ts (eaten branch), house.ts (an exit/regenerate path distinct from initial release), ghost.ts (eyes traversal), and wires the 'eaten' render mode render.ts already implements but never receives. Anchor the eyes-return ROM routine citation at RED — do not fabricate a line."
     points: 5
     completed: '2026-08-10'
+  - id: mc10-3
+    epic: mc10
+    title: "Rebuild the HUD to authentic layout: centered numeric score + high score, delete the top-left SCORE/AMMO/WAVE labels and X1 text, move multiplier to bottom-center as 'nX', fix oversized scale (gp=height/120). Keep the byte-exact ROM font (glyphs.ts) UNCHANGED; ammo already shown by base stacks"
+    points: 3
+    completed: '2026-08-10'
