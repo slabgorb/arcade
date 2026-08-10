@@ -36,23 +36,27 @@ export const PHASES: readonly GamePhase[] = [
  *  bag means "nothing happened, hold this phase". A caller computes these from
  *  the frame-count timers and the sim (`livesRemaining` is the life count AFTER
  *  the death is applied). Timer booleans are named for the phase they end. */
+// `readonly` fields make the "advancePhase mutates nothing" contract (see the
+// function docstring below) a COMPILE-TIME guarantee, not just the runtime one
+// the frozen-input test in phase.test.ts checks — a pure-input DTO is never
+// written.
 export interface PhaseSignals {
   /** attract/game-over: a start or coin was pressed (pm4-6 feeds the real input). */
-  startRequested?: boolean
+  readonly startRequested?: boolean
   /** ready: the READY! hold has elapsed (pm4-6 owns the frame constant). */
-  readyExpired?: boolean
+  readonly readyExpired?: boolean
   /** dying: the death-animation hold has elapsed (pm4-7 owns the window). */
-  deathExpired?: boolean
+  readonly deathExpired?: boolean
   /** level-clear: the clear/freeze hold has elapsed (pm4-7 owns the cadence). */
-  clearExpired?: boolean
+  readonly clearExpired?: boolean
   /** game-over: the attract-return timeout has elapsed (pm4-10 owns the constant). */
-  overExpired?: boolean
+  readonly overExpired?: boolean
   /** playing: Pac-Man was caught this frame. */
-  pacDied?: boolean
+  readonly pacDied?: boolean
   /** playing: the last dot was eaten this frame. */
-  allDotsEaten?: boolean
+  readonly allDotsEaten?: boolean
   /** playing: lives remaining AFTER the death is applied (decides dying vs game-over). */
-  livesRemaining?: number
+  readonly livesRemaining?: number
 }
 
 /** The MAINLINE dispatch: given the current phase and this frame's signals,
