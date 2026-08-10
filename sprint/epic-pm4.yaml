@@ -36,10 +36,13 @@ stories:
     title: "[INVESTIGATION] Ghost-house wall/traversal audit: the reported 'wall Pac-Man cannot cross' is likely the AUTHENTIC gate/house bar (maze.ts isWalkable(..,'pac-man') correctly returns false for house/gate). Visual playtest (Playwright headless, per the arcade playtest memo; STATIC screenshots only — boss has epilepsy) to decide whether it is that rule (close as no-op with evidence) or a maze-authoring artifact in maze.ts's row table (fix the table only). May close without a code change."
     points: 2
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: chore
+    review_findings: "Fix is correct+verified, but the geometry retirement was partially swept: stale 'walled above the gate' claim in glossary.md:159-160 and ghost.ts:53-56 (identical claim WAS updated in ghost.test.ts header). Doc/comment-only -> green rework."
+    review_verdict: approved
   - id: pm4-5
     title: 'Phase machine (core game.ts): extend GamePhase from playing|game-over to add attract|ready|dying|level-clear, plus a pure MAINLINE dispatch over frame-count timers — seeded, no clock (mc6-1 contract). Loop: attract ->(start/coin) ready ->(ready timer) playing; playing ->(pac-died,lives>0) dying ->(death timer) ready; playing ->(pac-died,lives=0) game-over; playing ->(all dots) level-clear ->(clear timer) ready(level+1); game-over ->(timeout) attract. Cite pacman.asm:0195 master-state dispatch + :0984/:269a/:318c writes; purity.test.ts green; every new constant citations.test.ts-gated.'
     points: 5

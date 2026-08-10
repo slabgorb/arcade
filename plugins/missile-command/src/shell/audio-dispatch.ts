@@ -16,7 +16,6 @@
 
 import type { SoundEvent } from '../core/sound-events.js'
 import type { GameState } from '../core/game.js'
-import { bonusCitiesEarned, bonusInterval } from '../core/wave.js'
 import { droneRequest } from '../core/drone-trigger.js'
 import type { AudioEngine } from './audio.js'
 
@@ -112,10 +111,19 @@ export function playEdgeCues(audio: SoundSurface, prev: GameState, curr: GameSta
   // END-GAME — XX "THE END", SENDGA (W3MAIN:4647): the play field just went terminal.
   if (prev.phase !== 'over' && curr.phase === 'over') audio.play('end-game')
 
-  // BONUS CITY — BN, SBONUS (W3MAIN:4845): the cumulative bonus-city count (mc4-5's
-  // bonusCitiesEarned at the shipped default DIP) crossed another threshold this frame.
-  const interval = bonusInterval(0)
-  if (bonusCitiesEarned(curr.score, interval) > bonusCitiesEarned(prev.score, interval)) {
-    audio.play('bonus-city')
-  }
+  // BONUS CITY — BN, SBONUS (W3MAIN:4845): the ROM sounds this when the city is GRANTED
+  // at the wave-end REGEN step, not when the running score crosses a bonus threshold
+  // mid-play. mc8-4 keyed it to the score crossing (`bonusCitiesEarned++`), which sounds
+  // the cue the instant a kill banks the points — up to a whole wave early. mc8-7 moves
+  // it to the grant: REGEN tops the board up from the reserve (START_CITIES − citiesLost
+  // + bonusCitiesEarned) only in the between→play beat, which ALWAYS advances the wave
+  // (`resumePlay`, game.ts). So the faithful signal is a wave-advance frame whose alive-
+  // city count also rose. The wave gate (matching WHOOP above) is what makes this correct
+  // off ANY (prev, curr) pair, not just the ones main.ts happens to feed: a new-game
+  // restart (`startGame`, 'over'/'attract' → fresh 'play') also raises the alive count but
+  // RESETS the wave to 1, so `curr.wave > prev.wave` excludes it — no spurious cue on a
+  // fresh game. Read off the pure state pair, so this stays in the shell and core carries
+  // no audio concern.
+  const alive = (s: GameState): number => s.cities.reduce((n, c) => (c.alive ? n + 1 : n), 0)
+  if (curr.wave > prev.wave && alive(curr) > alive(prev)) audio.play('bonus-city')
 }

@@ -3,7 +3,7 @@ type: epic
 title: Missile Command — authentic audio (W3SOUN + POKEY)
 description: "Eighth Missile Command epic — the cabinet is silent today (there is no audio module at all in plugins/missile-command/src/shell). This epic gives it the real POKEY voice. The sound-control ROM is already vendored and decoded: A35820.1C is W3SOUN, the WW3 POKEY sound-system control ROM, and it is ASCII ASSEMBLER SOURCE, not an opaque image (docs/rom-study/brief.md O-1 RESOLVED; header '.TITLE W3SOUN-(WAS T2SOUN)', POKEY content AUDCTL/AUDF1). So this is a lift-and-port, NOT a sound-board emulation — the exact pattern star-wars used for speech: read the sound-command tables from the source and drive a POKEY core in JS. Reuse before building (contract 4): @shared/audio, @shared/synth, and the already-vendored plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Executes the Architect roadmap slice for mc8 in docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md; mc8 may begin any time after mc3 since it layers on events the core already emits. May begin in parallel with mc4/mc9. The core/shell boundary holds (contract 2): sound lives in src/shell; if the core must surface game events for the shell to voice, they are pure data on GameState, never a callback or a clock read. ASSETS ARE VERIFIED LIVE, NOT ASSUMED (contract 5 + the sidecar gotcha): @shared/audio degrades SILENTLY at every failure path, so a green vitest is not proof of sound — a 404 is indistinguishable from working code. If any sound is baked to a file, it is uploaded to the R2 bucket 'arcade' (there is NO automated upload path — CI deploys each app's dist/ only) and proven with a live 200, and any 'asset follows later' finding is filed as a story BEFORE the epic finishes. Primary anchors: A35820.1C decodes to W3SOUN (brief.md, PROVENANCE.md); reuse star-wars/tools/pokey-bake. OUT OF SCOPE: the visual work of mc4/mc9."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc8-1
@@ -84,10 +84,14 @@ stories:
     title: "Bonus-city cue timing: sound BN/SBONUS when the bonus city is GRANTED at wave-end regen (W3MAIN:4845), not at the mid-play score-threshold crossing. mc8-4's playEdgeCues fires on bonusCitiesEarned++ (the ruled mechanism), which can sound ~a wave early when a kill crosses the threshold during play. Faithful fix keys the cue to the between-wave city grant."
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     type: refactor
+    review_findings: "APPROVED (round 2). Round-1 #14 (HIGH, missing wave guard on the bonus-city edge) and #17 (comment overstatement) both RESOLVED by commit 2e092865: the cue is now wave-gated (curr.wave>prev.wave && alive(curr)>alive(prev)), matching the sibling whoop edge; comment corrected; restart-guard regression test added and mutation-verified by rule-checker. Suite 1119/1119, lint clean. One LOW non-blocking citation nit deferred (comment attributes wave advance to resumePlay; substantive claim true)."
+    review_verdict: approved
   - id: mc8-8
     title: "just serve is silent: the POKEY worklet fails to load in Vite dev (@fs URL -> AbortError 'Unable to load a worklet's module'), so MC audio is inaudible under 'just serve' -> /missile-command/ even though the production BUILD is fully audible (mc8-3 verified worklet resolves same-origin + POKEY output peak 0.157). Make the dev server load the vendored worklet (e.g. Vite ?worker/?url or public/ placement) without regressing star-wars, which shares plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Filed by mc8-3."
     points: 3
@@ -99,3 +103,4 @@ stories:
     completed: '2026-08-09'
     type: bug
     review_verdict: approved
+completed: '2026-08-10'

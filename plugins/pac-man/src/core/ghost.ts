@@ -52,9 +52,9 @@ const TILE_PREFERENCE: readonly Dir[] = ['up', 'left', 'down', 'right']
  *  house, one tile left and one tile right of the house wall, in the row
  *  directly above the house (`src/core/maze.ts`'s row table). Each is the
  *  foot of the narrow vertical shaft a ghost could otherwise use to cut
- *  straight up past the house — 'up' is walkable there (unlike the tiles
- *  directly over the gate itself, which are walled above), so the rule has
- *  real work to do. glossary.md §Ghost movement "Red-zone tiles" explains
+ *  straight up past the house — 'up' is walkable there (unlike the two gate
+ *  columns 13-14 between them, whose up-neighbour in row 13 is a wall), so the
+ *  rule has real work to do. glossary.md §Ghost movement "Red-zone tiles" explains
  *  why only this pair (of the Dossier's larger documented set) has an
  *  unambiguous analogue in this reconstructed maze. */
 export const RED_ZONE_TILES: readonly Tile[] = [
