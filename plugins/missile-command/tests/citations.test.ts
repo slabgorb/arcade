@@ -450,18 +450,25 @@ describe('mc2-6 — the sweep machinery itself (synthetic input; the mutation pr
 //    USER RULING 2026-08-10 (AskUserQuestion) — "anchor + exempt" (NARROW), see
 //    the session's Design Deviations. A core literal is COVERED iff:
 //      • its value ∈ STRUCTURAL (documented, value→reason) or ∈ TRIVIAL, OR
-//      • a committed claim is anchored (claimCovers) to an inline FILE.MAC:NNN on
-//        its own line/doc-block, OR
-//      • its line/doc-block carries a well-formed inline source citation
-//        (self-documenting — this keeps the sound-tables' `W3SOUN.MAC:*` cites
-//        and the city/base tables green without authoring a claim per byte).
-//    The retired `claimedValues.has(v)` bare value-membership is NOT coverage.
+//      • a committed claim WHOSE VALUE EQUALS the literal is named by a STRUCTURED
+//        anchor in the literal's context — its distinctive claim `id` (MC-…/SOUND-…)
+//        or its `FILE.MAC:NNN` cite. A bare `symbol` match is NOT sufficient (round-2
+//        R1: ROM symbols like TOP/MAX/MIN are English words that coincide with prose
+//        in the shared file header — that reintroduces coincidental coverage), OR
+//      • its OWN line carries a well-formed inline source citation (self-documenting,
+//        own-line-scoped — keeps the sound-table/city/base rows green without a claim
+//        per byte; a cite in the shared header/preceding block must NOT vouch for a
+//        bare magic number, round-2 R2).
+//    The retired `claimedValues.has(v)` bare value-membership is NOT coverage, and
+//    neither is a bare-symbol coincidence.
 //
 //    GREEN (Dev) builds tests/helpers/core-literals.ts exporting:
 //      • STRUCTURAL: ReadonlyMap<number,string>   — value → why it needs no cite
 //      • literalCovered(claims, docText, value)   — the anchored predicate above
 //      • uncitedCoreLiterals(claims, coreDir)     — the real-tree sweep ("f:l=v")
-//    Reuse the dossier-sweep citation grammar; do NOT hand-roll a second parser.
+//    A small, purpose-built anchor parser is fine here (dossier-sweep's grammar
+//    requires backtick-wrapped `.MAC`/`.cpp` cites and cannot read the bare `:NNN`
+//    and header forms core source uses) — but it must NOT admit bare-symbol matches.
 //    Then rewire section 4's guard body to delegate to `literalCovered` so the
 //    value-membership loophole cannot regress. `LOGICAL_WIDTH=0x100` is the
 //    canonical STRUCTURAL exemption (the code already documents "no W3COMN line
@@ -473,11 +480,17 @@ interface CoreLiteral {
   value: number
   docText: string
 }
+interface CoreAnchor {
+  file: string | null
+  start: number
+  end: number
+}
 interface CoreLiteralsModule {
   STRUCTURAL: ReadonlyMap<number, string>
   literalCovered(claims: readonly CommittedClaim[], docText: string, value: number): boolean
   uncitedCoreLiterals(claims: readonly CommittedClaim[], coreDir: string): string[]
   extractCoreLiterals(src: string, file: string): CoreLiteral[]
+  parseAnchors(text: string): CoreAnchor[]
 }
 const CORE_LITERALS_SPECIFIER = './helpers/core-literals.js'
 async function loadCoreLiterals(): Promise<CoreLiteralsModule> {
@@ -497,7 +510,7 @@ async function loadCoreLiterals(): Promise<CoreLiteralsModule> {
       'mc10-6 not built yet — GREEN (Dev) creates tests/helpers/core-literals.ts with ' +
         'STRUCTURAL (value→reason Map), literalCovered(claims,docText,value) and ' +
         'uncitedCoreLiterals(claims,coreDir). ' +
-        `(${(e as Error).message})`,
+        `(${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -540,6 +553,101 @@ describe('mc10-6 — the AC3 core-literal guard is line-anchored (synthetic; the
     expect(literalCovered([], '// structural byte-space size, no citation', 256)).toBe(true)
     // teeth: a non-structural, un-cited magic number is still rejected
     expect(literalCovered([], '// no citation, not structural', 31337)).toBe(false)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6b. mc10-6 ROUND 2 — the anchor must be STRUCTURED, not a bare-symbol/prose
+//     coincidence, and its scope boundaries are pinned. Reviewer round 1 (Heimdall)
+//     rejected: `referencesClaim` matched a claim `symbol` as a bare substring over
+//     the whole file header, so ROM symbols that are English words (TOP/MAX/MIN…)
+//     admitted coincidental coverage — the exact class this story retires. These
+//     pin the tightened contract on synthetic input.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mc10-6 round 2 — the anchor is structured (id/cite), never a bare-symbol prose coincidence', () => {
+  // R1 (the round-1 defect, now RED until Dev drops the bare-symbol arm):
+  it('a value-matched claim named ONLY by an English-word symbol in prose does NOT cover', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    // The claim's value matches, but nothing structured ties it to this literal:
+    // its distinctive id (MC-UNREL) and its FILE.MAC:NNN cite appear NOWHERE in the
+    // docText — only its `symbol` ('TOP'), which is an ordinary English word, shows
+    // up in unrelated prose. That is a coincidence, not an anchor.
+    const coincidental: CommittedClaim = {
+      id: 'MC-UNREL', symbol: 'TOP', value: 4242, meaning: 'unrelated constant',
+      source: { file: 'W3MAIN.MAC', line: 999, verbatim: 'TOP\t=4242.' },
+    }
+    const docText = 'export const CAP = 4242\n// walks from the top of the loop back to the top of its range'
+    expect(literalCovered([coincidental], docText, 4242)).toBe(false)
+  })
+
+  // R1 positive — a STRUCTURED reference (distinctive id, or the FILE.MAC:NNN cite)
+  // IS coverage, so the fix does not over-remove genuinely-cited constants:
+  it('a value-matched claim named by its distinctive id IS covered', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    const c: CommittedClaim = {
+      id: 'MC-NICBMS', symbol: 'NICBMS', value: 4242, meaning: 'x',
+      source: { file: 'W3COMN.MAC', line: 35, verbatim: 'x' },
+    }
+    // id lives in the doc-block, not the own line — the id arm searches the context.
+    expect(literalCovered([c], 'export const N = 4242\n// … (claim MC-NICBMS)', 4242)).toBe(true)
+  })
+
+  it('a value-matched claim named by its FILE.MAC:NNN cite IS covered', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    const c: CommittedClaim = {
+      id: 'MC-FOO', symbol: 'FOO', value: 4242, meaning: 'x',
+      source: { file: 'W3COMN.MAC', line: 39, verbatim: 'x' },
+    }
+    // cite in the preceding block (not the own line) — the cite arm searches context.
+    expect(literalCovered([c], 'export const X = 4242\n// backed by W3COMN.MAC:39', 4242)).toBe(true)
+  })
+
+  // R2 — the self-documenting arm is OWN-LINE-SCOPED. A citation that sits only in
+  // the preceding block/header, for a value NO claim matches, must NOT vouch for the
+  // literal (this is precisely what stops a shared header cite covering LOGICAL_WIDTH).
+  it('a citation only in the preceding block (not the own line), with no matching claim, does NOT cover', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    // 91237 matches no claim; the only citation is in the block, not the own line.
+    expect(literalCovered([], 'export const Y = 91237\n// see W3COMN.MAC:39', 91237)).toBe(false)
+    // …and when the SAME citation is on the own line, it IS self-documenting.
+    expect(literalCovered([], 'export const Y = 91237 // W3COMN.MAC:39', 91237)).toBe(true)
+  })
+
+  // R3 — STRUCTURAL is a small, documented, bounded exemption set (not an open
+  // value allowlist). Its value-global nature is deliberate but must stay narrow.
+  it('STRUCTURAL is a small, documented set; an unlisted value is not exempt', async () => {
+    const { literalCovered, STRUCTURAL } = await loadCoreLiterals()
+    expect(STRUCTURAL.size, 'STRUCTURAL must stay a short, hand-audited list').toBeLessThanOrEqual(4)
+    for (const [v, reason] of STRUCTURAL) {
+      expect(typeof reason === 'string' && reason.length > 0, `STRUCTURAL ${v} needs a human reason`).toBe(true)
+    }
+    // A near-miss value is not exempt (257 ≠ 256), proving the set is not "any number".
+    expect(literalCovered([], '// no citation', 257)).toBe(false)
+  })
+
+  // R7 — direct synthetic pins for the extractor and the anchor parser, so a
+  // comment-stripping / decode regression is caught without depending on whatever
+  // the real src/core tree happens to contain today.
+  it('extractCoreLiterals reads code literals and strips //, block, JSDoc and strings', async () => {
+    const { extractCoreLiterals } = await loadCoreLiterals()
+    const src = [
+      '// header cite W3X.MAC:1 and the number 111 in a line comment',
+      'export const A = 42 // W3X.MAC:2',
+      '/** JSDoc mentioning 999 and story mc5-3 must not leak as literals */',
+      'export const B = 0x5f',
+      "export const C = 'a string with 777 inside'",
+    ].join('\n')
+    const lits = extractCoreLiterals(src, 'x.ts')
+    // Only the two real CODE literals (42 decimal, 0x5f=95) — not 111/999/3/777.
+    expect(lits.map((l) => l.value).sort((a, b) => a - b)).toEqual([42, 95])
+    expect(lits.find((l) => l.value === 42)?.line).toBe(2)
+  })
+
+  it('parseAnchors reads FILE.MAC:N, N-M ranges, extensionless FILE:N and bare :N', async () => {
+    const { parseAnchors } = await loadCoreLiterals()
+    const got = parseAnchors('see `W3COMN.MAC:39`, `W3MAIN.MAC:100-200`, `W3INT:5` and a bare :77')
+      .map((a) => `${a.file ?? '(bare)'}:${a.start}-${a.end}`)
+    expect(got).toEqual(['W3COMN.MAC:39-39', 'W3MAIN.MAC:100-200', 'W3INT.MAC:5-5', '(bare):77-77'])
   })
 })
 
