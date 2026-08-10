@@ -11,8 +11,9 @@
 //
 // This is the fleet letterbox verb the sibling cabinets already ship: battlezone
 // (bz2-1 `shell/viewport.ts` → `plugins/battlezone/tests/shell/viewport.test.ts`)
-// and asteroids (A2-1 `shell/margin.ts`) both delegate the fit to @shared/view's
-// pure `letterbox` + `resizeToDisplay`. mc10-5 ports the SAME mechanism to
+// delegates to @shared/view's `letterbox` + `resizeToDisplay`, and asteroids (A2-1)
+// consumes `letterbox` in `shell/margin.ts` (with `resizeToDisplay` in its `main.ts`).
+// mc10-5 ports the SAME mechanism to
 // missile-command, keeping MC's OWN number (aspect = 256/222, not 4/3). Epic
 // mc10's rule, and SH2's before it: share the mechanism, keep the numbers
 // per-cabinet.
@@ -53,6 +54,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { computeLetterbox, applyLetterbox, TARGET_ASPECT, MAX_DPR } from '../src/shell/viewport.js'
+import { placeCursor, HMIN, HMAX, VMIN, VMAX } from '../src/core/cursor.js'
 
 /** The logical field ratio the story pins — LOGICAL_WIDTH / LOGICAL_HEIGHT. */
 const FIELD_ASPECT = 256 / 222
@@ -254,6 +256,64 @@ describe('mc10-5 — applyLetterbox writes the fit onto the canvas element', () 
     expect(box.bufferHeight).toBe(c.height)
     expect(c.style.width).toBe(`${box.cssWidth}px`)
     expect(c.style.height).toBe(`${box.cssHeight}px`)
+  })
+})
+
+describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stretched window', () => {
+  // Round 1 review (F2): the buffer-aspect corollary did NOT actually exercise the
+  // cursor path. This composes the real seam: main.ts sizes the canvas ELEMENT to the
+  // letterbox box (applyLetterbox writes canvas.style — pinned above), so pointermove's
+  // `getBoundingClientRect()` returns cssWidth×cssHeight and it feeds
+  // `placeCursor(clientX-left, clientY-top, rect.width, rect.height)`. These tests drive
+  // that exact composition — computeLetterbox → placeCursor(box dims) — with a wide ~2:1
+  // window, and prove the mapping follows the letterboxed field, not the full window.
+  // (The DOM step itself — getBoundingClientRect returning the centered rect — is node-
+  // unobservable and remains the reviewer's screenshot.)
+  const W = 2000
+  const H = 1000
+  const box = computeLetterbox(W, H, 1) // cssWidth ≈ 1153.15 (bars L/R), cssHeight = 1000
+  // The canvas is centered (index.html flexbox), so its left/top bar offsets are:
+  const left = (W - box.cssWidth) / 2 // ≈ 423.42
+  const top = (H - box.cssHeight) / 2 // 0 (height-constrained window)
+
+  it('a click at the center of the letterboxed canvas maps to the field center', () => {
+    const c = placeCursor(box.cssWidth / 2, box.cssHeight / 2, box.cssWidth, box.cssHeight)
+    expect(c.h).toBeCloseTo(128, 5) // LOGICAL_WIDTH / 2
+    expect(c.v).toBeCloseTo(111, 5) // LOGICAL_HEIGHT / 2
+  })
+
+  it('an off-center click follows the letterbox box, NOT the full-window stretch', () => {
+    // A click ¾ across the FIELD. Through the letterbox box it is h = 0.75×256 = 192.
+    // If the code wrongly fed the full WINDOW width (the pre-letterbox smear), the same
+    // canvas-space x would read h ≈ 110.7 — a different, wrong cabinet column.
+    const canvasX = 0.75 * box.cssWidth
+    const correct = placeCursor(canvasX, box.cssHeight / 2, box.cssWidth, box.cssHeight)
+    const stretchBug = placeCursor(canvasX, box.cssHeight / 2, W, H)
+    expect(correct.h).toBeCloseTo(192, 5)
+    expect(stretchBug.h).toBeCloseTo((canvasX / W) * 256, 5) // ≈ 110.7
+    expect(correct.h).not.toBeCloseTo(stretchBug.h, 1) // the two interpretations DIFFER
+  })
+
+  it('the field edges map to the clamped cabinet bounds through the box', () => {
+    // Right/bottom corner of the canvas → field right/bottom, clamped to HMAX/VMIN.
+    const br = placeCursor(box.cssWidth, box.cssHeight, box.cssWidth, box.cssHeight)
+    expect(br.h).toBe(HMAX) // 247 — right edge (256 clamps to HMAX)
+    expect(br.v).toBe(VMIN) // 45  — bottom edge (V-flip: y=height → v=0 clamps to VMIN)
+    // Top-left corner → field left/top, clamped to HMIN/VMAX.
+    const tl = placeCursor(0, 0, box.cssWidth, box.cssHeight)
+    expect(tl.h).toBe(HMIN) // 8
+    expect(tl.v).toBe(VMAX) // 206 — top (V-flip: y=0 → v=222 clamps to VMAX)
+  })
+
+  it('a click in the black-bar region clamps to the field edge (does not wrap into the field)', () => {
+    // A window click at x=100 is LEFT of the centered canvas (left ≈ 423), so its
+    // canvas-relative x is negative → the crosshair parks at the field's left edge,
+    // never leaking to a mid-field column. This is why the bars are dead zones.
+    const canvasRelX = 100 - left // negative
+    const c = placeCursor(canvasRelX, H / 2, box.cssWidth, box.cssHeight)
+    expect(canvasRelX).toBeLessThan(0)
+    expect(c.h).toBe(HMIN) // clamped to the left edge, not wrapped
+    void top // documented offset; top === 0 for this height-constrained window
   })
 })
 

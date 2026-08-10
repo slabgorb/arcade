@@ -66,10 +66,14 @@ const drain = (): void => {
 // position maps straight to a cabinet coordinate via the pure core placeCursor
 // (the inverse of render.project), so the crosshair tracks the mouse 1:1 instead
 // of accumulating the per-move relative deltas the old path did. The pointer is
-// made canvas-relative through the element rect and divided by the rect size to
-// get the [0,1] fraction project works in; that is exact because the frame loop
-// keeps canvas.width/height equal to canvas.clientWidth/clientHeight (below), so
-// the rect size and the buffer size project was called with are the same number.
+// made canvas-relative through the element rect and divided by the rect SIZE to
+// get the [0,1] fraction placeCursor works in. This is dpr-INVARIANT: both the
+// event's clientX/Y and rect.width/height are CSS pixels, so the fraction is
+// correct regardless of the HiDPI backing store. (mc10-5 removed the old per-frame
+// `canvas.width = canvas.clientWidth`, so `canvas.width/height` is now the
+// letterboxed device buffer = CSS × dpr — larger than the rect on HiDPI. That does
+// NOT matter here: placeCursor never sees the buffer, only the CSS rect; and on the
+// render side project() reads the same fraction out of the buffer, so the two agree.)
 canvas.addEventListener('pointermove', (event: PointerEvent): void => {
   const rect = canvas.getBoundingClientRect()
   game = {
