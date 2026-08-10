@@ -270,3 +270,8 @@ completed_stories:
     title: 'Game-over -> attract timeout: after phase over, a cited ROM cadence auto-returns to attract, closing the MAINLINE loop. Pin the timeout constant at RED. REV-01 W3MAIN.MAC:475 MAINLINE'
     points: 2
     completed: '2026-08-10'
+  - id: pm4-3
+    epic: pm4
+    title: "Eaten-ghost eyes-return + forced house exit (core): today an eaten ghost teleports to its spawn tile with released=false (game.ts:525-529) and re-release is gated on the same dot counter as initial release, so it loiters. Implement eyes -> return to house -> regenerate -> forcibly leave (NOT dot-gated). Touches game.ts (eaten branch), house.ts (an exit/regenerate path distinct from initial release), ghost.ts (eyes traversal), and wires the 'eaten' render mode render.ts already implements but never receives. Anchor the eyes-return ROM routine citation at RED — do not fabricate a line."
+    points: 5
+    completed: '2026-08-10'
