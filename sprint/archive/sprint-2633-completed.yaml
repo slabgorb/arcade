@@ -251,3 +251,8 @@ completed_stories:
     title: SLAM/tilt blip (SLMSND, W3SOUN:262) — the cabinet tilt-switch sound. No tilt input exists in the browser clone (no source), so this is filed for completeness and may be won't-do; needs a tilt/slam input decision first.
     points: 1
     completed: '2026-08-10'
+  - id: mc6-4
+    epic: mc6
+    title: 'Self-playing attract (smart-cursor demo): a deterministic seeded auto-player drives cursor + fire during phase attract so the field plays itself; any input -> setup. Pure attract driver in src/core (seeded RNG, no clock). REV-01 W3MAIN.MAC:891 / 5277 / 5331 attract'
+    points: 5
+    completed: '2026-08-10'
