@@ -55,10 +55,11 @@ stories:
     title: 'Phase machine (core game.ts): extend GamePhase from playing|game-over to add attract|ready|dying|level-clear, plus a pure MAINLINE dispatch over frame-count timers — seeded, no clock (mc6-1 contract). Loop: attract ->(start/coin) ready ->(ready timer) playing; playing ->(pac-died,lives>0) dying ->(death timer) ready; playing ->(pac-died,lives=0) game-over; playing ->(all dots) level-clear ->(clear timer) ready(level+1); game-over ->(timeout) attract. Cite pacman.asm:0195 master-state dispatch + :0984/:269a/:318c writes; purity.test.ts green; every new constant citations.test.ts-gated.'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     review_verdict: approved
   - id: pm4-6
     title: "START/coin -> READY -> PLAY (core+shell): a start/coin action advances attract|game-over -> ready -> playing and reseeds createGameState; a READY! freeze (timer) runs the intro BEFORE the sim moves — fixes 'the game begins before the intro plays'. Blinky must NOT move during attract/ready (today house.released.blinky=true from frame 0). Shell binds the start key. Cite pacman.asm:061e start/player-select, :36a7 READY?/PUSH START text."
