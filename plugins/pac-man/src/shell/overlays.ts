@@ -6,8 +6,10 @@
 // into a latched visual overlay, painted on top of the playfield each frame.
 // Where the audio driver maps an event to a WSG voice call, this module maps
 // an event to a bounded on-screen state: a ghost/fruit-eaten score popup
-// (`drawScorePopup`, pm3-6/pm3-7), a level-clear flash over the maze, and the
-// READY!/GAME OVER banners. All timing is FRAME-COUNT — `onEvents` only
+// (`drawScorePopup`, pm3-6/pm3-7) and the READY!/GAME OVER banners. (pm4-1
+// removed the level-clear flash for photosensitivity safety — see the note by
+// POPUP_FRAMES; the authentic level-clear pause is core work in pm4-7.) All
+// timing is FRAME-COUNT — `onEvents` only
 // latches state, `draw` is the sole place a counter is ever decremented —
 // there is no Date/performance/requestAnimationFrame read anywhere in this
 // file (the same core-purity spirit `render.ts` already follows: a pure

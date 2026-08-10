@@ -3,9 +3,10 @@
 // Story pm3-7 — pins `createOverlays()`, the presentation-overlay driver that
 // mirrors `createAudioDriver` (audio.ts): a stateful factory consuming the
 // SAME `events.ts` seam pm2's audio driver reads, latching transient
-// overlays (ghost/fruit score popups, the level-clear flash, the READY!/
-// GAME OVER banners) purely off events + elapsed `draw` calls — no clock
-// read anywhere in this file or in overlays.ts (core-purity spirit).
+// overlays (ghost/fruit score popups and the READY!/GAME OVER banners)
+// purely off events + elapsed `draw` calls — no clock read anywhere in this
+// file or in overlays.ts (core-purity spirit). pm4-1 removed the level-clear
+// flash for photosensitivity safety; AC1/AC2 below assert it stays ABSENT.
 
 import { describe, it, expect } from 'vitest'
 import { createOverlays } from '../../src/shell/overlays'
