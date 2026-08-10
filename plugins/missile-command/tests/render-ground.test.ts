@@ -1,24 +1,21 @@
 // plugins/missile-command/tests/render-ground.test.ts
 //
-// Story mc10-2 — RED phase (Han Solo / TEA). The shell (src/shell/render.ts,
-// drawFrame) must draw the GROUND landmass — the yellow terrain band along the
-// field bottom that cities and bases sit ON — instead of leaving them floating
-// on the black backdrop. The GROUND legend slot is COL001 (W3DSUP.MAC:1706),
-// already present in the per-wave palette (SLOT.GROUND, palette.ts); wave 1's
-// GROUND code is CYELLO. render.ts CURRENTLY SKIPS this slot — its module header
-// says so verbatim ("The legend's GROUND slot (COL001) has no on-screen element
-// in this clone, so it is not drawn").
+// Story mc10-2 (shipped, Yoda / Dev). The shell (src/shell/render.ts, drawFrame)
+// draws the GROUND landmass — the terrain band along the field bottom that cities
+// and bases sit ON — instead of leaving them floating on the black backdrop. The
+// GROUND legend slot is COL001 (W3DSUP.MAC:1706), sourced from the per-wave palette
+// (SLOT.GROUND, palette.ts); wave 1's GROUND code is CYELLO. render.ts paints it from
+// hue(SLOT.GROUND) right after the sky clear and BEHIND the structures.
 //
-// ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// drawFrame paints sky, cities, bases, ICBMs, ABMs, blasts, crosshair and HUD,
-// but nothing in the GROUND colour and nothing as a bottom-of-field band. So:
-//   • no fillRect carries the GROUND-slot colour            → the "drawn" tests redden
-//   • no wide mark spans the bottom band                    → the extent test reddens
-//   • render.ts (code, comments stripped) never names SLOT.GROUND → the wiring guard reddens
-// All go green when Dev draws the GROUND band from hue(SLOT.GROUND), behind the
-// structures. NO signature change and NO palette change are needed — drawFrame is
-// already wave-aware and SLOT.GROUND already resolves — so this file imports the
-// real symbols and fails on BEHAVIOUR, never on types (tsc stays green in RED).
+// ─── WHAT THESE TESTS PIN ────────────────────────────────────────────────────
+// drawFrame paints sky, cities, bases, ICBMs, ABMs, blasts, crosshair and HUD, and
+// — since mc10-2 — a GROUND band along the bottom. These tests pin that band:
+//   • a fillRect carries the GROUND-slot colour            (the "drawn" tests)
+//   • a wide mark spans the bottom band                    (the extent test)
+//   • render.ts calls hue(SLOT.GROUND) in real code        (the wiring guard)
+// No signature change and no palette change are involved — drawFrame is already
+// wave-aware and SLOT.GROUND already resolves — so this file imports the real
+// symbols and asserts on BEHAVIOUR, never on types.
 //
 // ─── WHAT WE PIN vs WHAT WE DON'T ────────────────────────────────────────────
 // Pixel-exact terrain shape is the Reviewer's screenshot at /missile-command/, not
@@ -113,9 +110,9 @@ const withCursor = (s: GameState): GameState => ({ ...s, cursor: AWAY })
 const freshField = (): GameState => withCursor(createGame(1)) // all six cities + three bases alive
 
 describe('mc10-2 — the GROUND landmass is drawn along the field bottom in the GROUND-slot colour', () => {
-  it('wave 1: at least one fillRect carries the GROUND (COL001) colour — today none does', () => {
+  it('wave 1: at least one fillRect carries the GROUND (COL001) colour', () => {
     const g = groundMarks(paintAtWave(freshField(), 1), 1)
-    expect(g.length, 'drawFrame must paint the GROUND band (render.ts currently skips COL001)').toBeGreaterThan(0)
+    expect(g.length, 'drawFrame must paint the GROUND band in the COL001 colour').toBeGreaterThan(0)
   })
 
   it('wave 1: the GROUND colour is CYELLO, taken from the existing palette (no palette change)', () => {
@@ -183,11 +180,13 @@ describe('mc10-2 — cities and bases sit ON the ground: the GROUND is painted U
 describe('mc10-2 — render.ts is actually wired to the GROUND slot (not just commented about)', () => {
   const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
   // Strip comments first (mc9-2 review precedent): the module header NAMES the GROUND
-  // slot in prose ("COL001", "GROUND slot") while explaining it is NOT drawn, so a
-  // whole-file match would pass on that comment alone. Anchor to real CODE only.
+  // slot in prose ("COL001", "GROUND slot"), so a whole-file match would pass on that
+  // comment alone — and a bare name match would even pass on a decoy such as
+  // `const _decoy = SLOT.GROUND`. Anchor to the paint expression hue(SLOT.GROUND) in
+  // real CODE only.
   const code = renderSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 
-  it('references SLOT.GROUND on the paint path (a real expression, not a comment)', () => {
-    expect(code, 'render.ts must read the GROUND colour via SLOT.GROUND to draw the landmass').toMatch(/\bSLOT\.GROUND\b/)
+  it('references the GROUND colour via a hue(SLOT.GROUND) call in real code (not a comment or a bare-name decoy)', () => {
+    expect(code, 'render.ts must read the GROUND colour via a hue(SLOT.GROUND) call to draw the landmass').toMatch(/\bhue\(\s*SLOT\.GROUND\s*\)/)
   })
 })
