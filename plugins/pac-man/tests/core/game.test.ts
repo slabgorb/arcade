@@ -9,8 +9,9 @@
 // speedPattern), never invented — same discipline pm1-5/6/7's tests used.
 
 import { describe, it, expect } from 'vitest'
-import { tileAt, DOT_COUNT, TUNNEL_ROW } from '../../src/core/maze'
+import { tileAt, isWalkable, DOT_COUNT, TUNNEL_ROW } from '../../src/core/maze'
 import { speedPattern, TILE_PX } from '../../src/core/actor'
+import type { GhostId } from '../../src/core/ghost'
 import { LEVELS, levelRow, FRUIT_SPAWN_DOTS } from '../../src/core/level'
 import {
   createGameState,
@@ -21,6 +22,31 @@ import {
   SCORE_DOT,
   type GameState,
 } from '../../src/core/game'
+
+// ─── pm4-4: ghost-house geometry fix must not strand the ghosts ─────────────
+// Regression guard for the maze-geometry shift (the gate/house stamp in
+// tools/bake-core-maze.mjs). The lateral-passage fix moves the gate down into a
+// house-top wall; if the house interior shifts without the ghost spawn tiles
+// moving in lockstep, a housed ghost lands in a wall / outside, or Blinky lands
+// inside. These pin the invariant, not the absolute coordinates.
+describe('pm4-4: ghost-house geometry — ghosts still spawn where they belong', () => {
+  const g = createGameState(1)
+  const spawnTile = (id: GhostId) => ({
+    tx: g.ghosts[id].actor.xPx / TILE_PX,
+    ty: g.ghosts[id].actor.yPx / TILE_PX,
+  })
+
+  it.each(['pinky', 'inky', 'clyde'] as const)('houses %s inside the ghost house', (id) => {
+    const { tx, ty } = spawnTile(id)
+    expect(tileAt(tx, ty), `${id} must spawn on a house tile (${tx},${ty})`).toBe('house')
+  })
+
+  it('spawns Blinky OUTSIDE the house, on a tile a ghost can occupy', () => {
+    const { tx, ty } = spawnTile('blinky')
+    expect(tileAt(tx, ty), `Blinky starts outside the house (${tx},${ty})`).not.toBe('house')
+    expect(isWalkable(tx, ty, 'ghost'), 'Blinky must spawn on a ghost-walkable tile').toBe(true)
+  })
+})
 
 // ─── level table ────────────────────────────────────────────────────────────
 
