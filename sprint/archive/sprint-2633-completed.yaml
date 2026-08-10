@@ -215,3 +215,8 @@ completed_stories:
     title: '[SAFETY] Remove the full-screen white level-clear strobe (shell overlays.ts): delete the fillRect(0,0,LOGICAL_W,LOGICAL_H) white fill; hold a brief static frame instead. Zero full-screen luminance flashing (boss has photosensitive epilepsy). Shell-only, independent of the state machine, shippable immediately. pm4-4 later builds the proper freeze on top and MUST NOT reintroduce the strobe.'
     points: 2
     completed: '2026-08-10'
+  - id: mc6-3
+    epic: mc6
+    title: 'PAUSE toggle: phase play <-> pause freezes enemy motion, ABM flight, scoring and spawn (stepGame no-op but the clock) while paused; shell binds the pause key and reuses @shared/pause for the overlay. REV-01 W3MAIN.MAC:615 PAUSE'
+    points: 3
+    completed: '2026-08-10'
