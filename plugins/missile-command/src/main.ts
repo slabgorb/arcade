@@ -91,7 +91,10 @@ const frame = (): void => {
   // Match the drawing buffer to the displayed size so the field fills the cabinet.
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  drawFrame(context, game, canvas.width, canvas.height)
+  // mc10-4: feed the LIVE wave so the per-wave palette (paletteForWave, mc9-2) follows
+  // the game. Without this 5th arg drawFrame falls back to its wave=INITIAL_WAVE default
+  // and every frame renders the wave-1 colours forever, no matter how far play advances.
+  drawFrame(context, game, canvas.width, canvas.height, game.wave)
 
   requestAnimationFrame(frame)
 }
