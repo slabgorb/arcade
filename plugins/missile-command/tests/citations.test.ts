@@ -449,3 +449,119 @@ describe('mc2-6 — the sweep machinery itself (synthetic input; the mutation pr
     expect(uncoveredCitations([at(3896)], cites)).toEqual(['W3MAIN.MAC:3877-3895'])
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. mc10-6 — THE AC3 CORE-LITERAL GUARD IS LINE-ANCHORED, NOT VALUE-COLLISION.
+//    Section 4 above accepts a core literal whenever ANY claim shares its value
+//    (`claimedValues.has(v)`), so an un-cited literal rides in on an unrelated
+//    claim's number — e.g. cursor.ts:61 `LOGICAL_WIDTH = 0x100 // 256` passes
+//    ONLY because an ICBM-speed-scale claim also decodes to 256, not because any
+//    claim is anchored to cursor.ts. This section hardens coverage to the
+//    literal's OWN citation, with an explicit, documented STRUCTURAL exempt set
+//    for cabinet/byte-space facts that name no ROM line.
+//
+//    USER RULING 2026-08-10 (AskUserQuestion) — "anchor + exempt" (NARROW), see
+//    the session's Design Deviations. A core literal is COVERED iff:
+//      • its value ∈ STRUCTURAL (documented, value→reason) or ∈ TRIVIAL, OR
+//      • a committed claim is anchored (claimCovers) to an inline FILE.MAC:NNN on
+//        its own line/doc-block, OR
+//      • its line/doc-block carries a well-formed inline source citation
+//        (self-documenting — this keeps the sound-tables' `W3SOUN.MAC:*` cites
+//        and the city/base tables green without authoring a claim per byte).
+//    The retired `claimedValues.has(v)` bare value-membership is NOT coverage.
+//
+//    GREEN (Dev) builds tests/helpers/core-literals.ts exporting:
+//      • STRUCTURAL: ReadonlyMap<number,string>   — value → why it needs no cite
+//      • literalCovered(claims, docText, value)   — the anchored predicate above
+//      • uncitedCoreLiterals(claims, coreDir)     — the real-tree sweep ("f:l=v")
+//    Reuse the dossier-sweep citation grammar; do NOT hand-roll a second parser.
+//    Then rewire section 4's guard body to delegate to `literalCovered` so the
+//    value-membership loophole cannot regress. `LOGICAL_WIDTH=0x100` is the
+//    canonical STRUCTURAL exemption (the code already documents "no W3COMN line
+//    exists"); other genuinely un-cited literals get a citation or an exemption.
+// ─────────────────────────────────────────────────────────────────────────────
+interface CoreLiteralsModule {
+  STRUCTURAL: ReadonlyMap<number, string>
+  literalCovered(claims: readonly CommittedClaim[], docText: string, value: number): boolean
+  uncitedCoreLiterals(claims: readonly CommittedClaim[], coreDir: string): string[]
+}
+const CORE_LITERALS_SPECIFIER = './helpers/core-literals.js'
+async function loadCoreLiterals(): Promise<CoreLiteralsModule> {
+  try {
+    const mod = (await import(/* @vite-ignore */ CORE_LITERALS_SPECIFIER)) as Partial<CoreLiteralsModule>
+    if (
+      typeof mod.literalCovered !== 'function' ||
+      typeof mod.uncitedCoreLiterals !== 'function' ||
+      !(mod.STRUCTURAL instanceof Map)
+    ) {
+      throw new Error('module lacks STRUCTURAL / literalCovered / uncitedCoreLiterals')
+    }
+    return mod as CoreLiteralsModule
+  } catch (e) {
+    throw new Error(
+      'mc10-6 not built yet — GREEN (Dev) creates tests/helpers/core-literals.ts with ' +
+        'STRUCTURAL (value→reason Map), literalCovered(claims,docText,value) and ' +
+        'uncitedCoreLiterals(claims,coreDir). ' +
+        `(${(e as Error).message})`,
+    )
+  }
+}
+
+const coreDirPath = join(root, 'src', 'core')
+
+describe('mc10-6 — the AC3 core-literal guard is line-anchored (synthetic; the mutation proof)', () => {
+  // Pin the SEMANTIC on synthetic input, independent of the real tree — the way
+  // section 5 proves the sweep has teeth without touching the committed sources.
+
+  it('a bare magic number with NO inline citation is NOT covered by a value-only claim match', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    // 4242 is neither structural nor trivial. A claim decodes to 4242 but at an
+    // UNRELATED ROM location, and the literal's doc carries no citation. The old
+    // `claimedValues.has(v)` accepted exactly this; the anchored guard must reject it.
+    const foreign: CommittedClaim = {
+      id: 'SYN-FOREIGN', symbol: 'UNRELATED', value: 4242, meaning: 'some other constant',
+      source: { file: 'W3MAIN.MAC', line: 999, verbatim: 'UNRELATED\t=4242.' },
+    }
+    expect(literalCovered([foreign], '/** just a raw number, no source cite */', 4242)).toBe(false)
+  })
+
+  it('a literal IS covered when a committed claim is anchored to its OWN inline citation, but not by value alone', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    const own: CommittedClaim = {
+      id: 'SYN-OWN', symbol: 'FOO', value: 4242, meaning: 'a cited constant',
+      source: { file: 'W3COMN.MAC', line: 39, verbatim: 'FOO\t=4242.' },
+    }
+    // doc-block carries the literal's own citation W3COMN.MAC:39 → anchored → covered
+    expect(literalCovered([own], '/** Foo — `W3COMN.MAC:39` (`FOO=4242`). */', 4242)).toBe(true)
+    // …the SAME value, but NO citation on the literal's line, is NOT covered by that claim
+    expect(literalCovered([own], '/** bare 4242, no cite */', 4242)).toBe(false)
+  })
+
+  it('a documented STRUCTURAL value needs no citation; an undocumented, un-cited number still fails', async () => {
+    const { literalCovered, STRUCTURAL } = await loadCoreLiterals()
+    // 0x100 = 256 (LOGICAL_WIDTH, byte-space size) is the canonical exemption.
+    expect(STRUCTURAL.has(256), 'GREEN must exempt 256 (0x100) as STRUCTURAL — it names no ROM line').toBe(true)
+    expect((STRUCTURAL.get(256) ?? '').length, 'the STRUCTURAL exemption must carry a human reason').toBeGreaterThan(0)
+    expect(literalCovered([], '// structural byte-space size, no citation', 256)).toBe(true)
+    // teeth: a non-structural, un-cited magic number is still rejected
+    expect(literalCovered([], '// no citation, not structural', 31337)).toBe(false)
+  })
+})
+
+describe('mc10-6 — every real src/core literal is line-anchored or exempt (AC3 real-tree gate)', () => {
+  it('src/core exists so the gate has teeth', () => {
+    expect(existsSync(coreDirPath), 'src/core must exist for the anchored gate to bite').toBe(true)
+  })
+
+  it('no un-cited value-collision literal survives in src/core', async () => {
+    const { uncitedCoreLiterals } = await loadCoreLiterals()
+    const uncited = uncitedCoreLiterals(loadCommittedClaims(), coreDirPath)
+    expect(
+      uncited,
+      `${uncited.length} src/core literal(s) pass only by bare value-collision — each needs an ` +
+        `inline FILE.MAC:NNN citation on its own line/doc-block (claim-anchored or self-documenting), ` +
+        `or a documented STRUCTURAL exemption:\n  ` +
+        uncited.join('\n  '),
+    ).toEqual([])
+  })
+})
