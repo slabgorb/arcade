@@ -27,7 +27,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { playEdgeCues } from '../src/shell/audio-dispatch.js'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createGame, stepGame, startGame, type GameState } from '../src/core/game.js'
 import { bonusInterval } from '../src/core/wave.js'
 import { START_CITIES } from '../src/core/field.js'
 
@@ -143,5 +143,34 @@ describe('mc8-7 — a bonus-free wave-end is silent (not keyed on wave++ alone)'
     playEdgeCues(r.audio, prev, curr)
     expect(bonusCalls(r.calls), 'a wave advance is not a grant — only whoop fires').toHaveLength(0)
     expect(r.calls.filter((c) => c === 'play:whoop'), 'whoop still rides the wave edge').toHaveLength(1)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Regression guard (Reviewer #14) — a NEW-GAME RESTART also raises the alive-city count
+// (0 → 6) but is NOT a wave-end grant. `startGame` resets to a fresh wave-1 game, so the
+// cue must stay silent. This makes playEdgeCues self-correct off ANY (prev, curr) pair,
+// not merely the ones main.ts's frame loop happens to feed — matching the WHOOP edge,
+// which is already wave-gated. RED before the mc8-7 wave-gate landed (the bare alive-delta
+// fired here); GREEN after.
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('mc8-7 — a new-game restart is silent (not a wave-end grant)', () => {
+  it('restarting from game-over (all cities dead) into a fresh game plays NO bonus-city cue', () => {
+    const r = recorder()
+    // A terminal state at a later wave with every city destroyed (alive 0).
+    const over: GameState = {
+      ...createGame(1),
+      phase: 'over',
+      wave: 3,
+      cities: createGame(1).cities.map((c) => ({ ...c, alive: false })),
+    }
+    const fresh = startGame(over) // the real restart path: fresh wave-1 game, 6 alive
+    // Guard the fixture: the alive count really jumps up, but the wave resets DOWN.
+    expect(aliveCities(fresh), 'fixture: a fresh game brings the board back to full').toBeGreaterThan(
+      aliveCities(over),
+    )
+    expect(fresh.wave, 'fixture: restart resets the wave (no wave advance)').toBeLessThan(over.wave)
+    playEdgeCues(r.audio, over, fresh)
+    expect(bonusCalls(r.calls), 'a new game is not a bonus grant — stay silent').toHaveLength(0)
   })
 })
