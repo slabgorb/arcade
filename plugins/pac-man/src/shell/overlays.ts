@@ -69,18 +69,16 @@ export function createOverlays(): Overlays {
   let banner: 'game-over' | null = null
   let readyCleared = false
   // pm3-7 review fix (CRITICAL 2): `overlays` is constructed ONCE in main.ts
-  // and outlives every individual GameState — main.ts:156 builds a fresh
-  // GameState on Enter-after-game-over, but never a fresh Overlays, so
-  // without this the GAME OVER banner would latch forever and READY! would
-  // never return. `createAudioDriver` (audio.ts) self-heals the same way:
-  // it POLLS `state.phase` every `onFrame` and re-arms on the game-over ->
-  // playing edge (see its `themeArmed` handling) rather than relying on a
-  // dedicated "new game" event — `events.ts` has none, and adding one would
-  // be a core change, out of this driver's scope. `phase` only ever flips
-  // 'game-over' -> 'playing' when main.ts hands `draw` a BRAND NEW GameState
-  // (a fresh game never starts already in 'game-over'), so that specific
-  // edge, tracked here across `draw` calls, is an unambiguous "new game"
-  // signal without reading anything but the GameState already passed in.
+  // and outlives every individual GameState — main.ts builds a fresh GameState
+  // on Enter-after-game-over, but never a fresh Overlays, so without this the
+  // GAME OVER banner would latch forever and READY! would never return.
+  // `createAudioDriver` (audio.ts) self-heals the same way, polling `state.phase`
+  // every `onFrame` rather than relying on a dedicated "new game" event
+  // (`events.ts` has none). pm4-6 UPDATE: since the cabinet now boots into
+  // 'attract' (createGameState), a restart flips 'game-over' -> 'attract', not
+  // -> 'playing'. So the un-latch fires on 'game-over' -> ANY other phase — a
+  // fresh game never starts already in 'game-over', so that edge is still an
+  // unambiguous "new game" signal, read entirely from the GameState passed in.
   let prevPhase: GameState['phase'] | null = null
 
   function resetForNewGame(): void {
@@ -131,7 +129,7 @@ export function createOverlays(): Overlays {
   }
 
   function draw(ctx: CanvasRenderingContext2D, game: GameState): void {
-    if (prevPhase === 'game-over' && game.phase === 'playing') {
+    if (prevPhase === 'game-over' && game.phase !== 'game-over') {
       resetForNewGame()
     }
     prevPhase = game.phase

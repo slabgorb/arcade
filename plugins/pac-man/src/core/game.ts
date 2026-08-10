@@ -66,6 +66,7 @@ import {
   type ModeState,
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
+import { advancePhase } from './phase'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
@@ -90,6 +91,16 @@ export const EXTRA_LIFE_SCORE = 10_000
  *  Dossier-documented as roughly 9-10 seconds; no isolable ROM literal
  *  (honest-uncited, same policy as level.ts's speed table). 9s @ 60Hz. */
 export const FRUIT_VISIBLE_FRAMES = 9 * 60
+
+/** pm4-6: how long the READY! freeze holds before the sim moves, in frames.
+ *  The ROM plays the start jingle over READY! and only releases the actors when
+ *  it ends — so the freeze IS the intro's length. The intro streams are baked
+ *  byte-for-byte in `src/shell/tune.ts` (glossary.md §Music: bass 256 frames,
+ *  melody 248), so 256 frames ≈ 4.2 s @ 60 Hz matches the jingle. Honest-uncited
+ *  cadence — no isolable ROM duration literal, same policy as FRUIT_VISIBLE_FRAMES;
+ *  it derives from the §Music-cited intro length, not a fabricated `pacman.asm`
+ *  address. (pm4-7 owns the SHORTER post-death READY when it wires dying->ready.) */
+export const READY_HOLD_FRAMES = 256
 
 const GHOST_IDS: readonly GhostId[] = ['blinky', 'pinky', 'inky', 'clyde']
 const DIR_LIST: readonly Dir[] = ['up', 'left', 'down', 'right']
@@ -193,6 +204,11 @@ export interface GameState {
   fruit: FruitState | null
   ghostChainIndex: number
   phase: GamePhase
+  /** pm4-6: frames elapsed in the current READY! hold. Reset to 0 each time the
+   *  cabinet enters `ready` (a start/coin from attract); counts up while `ready`
+   *  and releases the sim once it reaches `READY_HOLD_FRAMES`. Meaningless (and
+   *  untouched) outside `ready`. */
+  readyFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
   events: GameEvent[]
@@ -200,6 +216,12 @@ export interface GameState {
 
 export interface GameInput {
   dir: Dir
+  /** pm4-6: a start/coin was pressed this frame. Advances `attract -> ready`
+   *  (reseeding a fresh board); inert in every other phase — the ROM gates the
+   *  start on the credit count (`pacman.asm:061e` reads `(#4e6e)` Credits) and
+   *  shows the credit/PUSH-START message table on the attract screen
+   *  (`pacman.asm:36a7`, the "1 CREDIT" entry, siblings FREE PLAY / PLAYER ONE). */
+  start?: boolean
 }
 
 function atTileCentre(xPx: number, yPx: number): boolean {
@@ -313,11 +335,27 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     fruitSpawned: [false, false],
     fruit: null,
     ghostChainIndex: 0,
-    phase: 'playing',
+    // pm4-6: the cabinet boots into ATTRACT (was 'playing'). A start/coin then
+    // reseeds and enters READY before play — the ROM master-state dispatch
+    // (phase.ts, glossary.md §Cabinet state machine). Until then the whole sim
+    // is frozen, so Blinky (released from frame 0, house.ts) does NOT wander the
+    // attract maze.
+    phase: 'attract',
+    readyFrames: 0,
     highScoreTable,
     nameEntry: null,
     events: [],
   }
+}
+
+/** pm4-6: a start/coin from `attract` — reseed a fresh board (createGameState,
+ *  keeping the persisted high-score table and the seed) and enter the READY!
+ *  hold. This is the reseed AC2 asks for; the freeze that follows runs the intro
+ *  before the sim moves. */
+function startCabinet(state: GameState): void {
+  Object.assign(state, createGameState(state.seed, state.highScoreTable))
+  state.phase = 'ready'
+  state.readyFrames = 0
 }
 
 /** Reset actor positions and per-life bookkeeping after Pac-Man is caught —
@@ -427,7 +465,27 @@ function stepGhostFrightened(ghost: Ghost, mode: ModeState, forceReverse: boolea
 export function stepGame(state: GameState, input: GameInput): void {
   state.events = []
 
+  // ── pm4-6: the cabinet MAINLINE — START/coin -> READY -> PLAY ────────────
+  // The sim proper runs ONLY in `playing`. `game-over`, `attract` and `ready`
+  // freeze it: nothing moves — not Pac, not the ghosts (Blinky is released from
+  // frame 0), not the dot count. Each edge here feeds the pure pm4-5 machine
+  // (`advancePhase`, phase.ts) the one signal it owns and applies that edge's
+  // side effect. `dying`/`level-clear` (their freeze + advanceLevel) are pm4-7;
+  // `game-over -> attract` (the timeout) is pm4-10.
   if (state.phase === 'game-over') return
+  if (state.phase === 'attract') {
+    // A start/coin advances attract -> ready AND reseeds a fresh board; no start
+    // holds attract. (advancePhase ignores `start` in every other phase.)
+    if (advancePhase('attract', { startRequested: !!input.start }) === 'ready') startCabinet(state)
+    return
+  }
+  if (state.phase === 'ready') {
+    // The READY! freeze: hold the sim for READY_HOLD_FRAMES (the intro plays),
+    // then advance ready -> playing. The intro runs BEFORE the sim moves.
+    state.readyFrames += 1
+    state.phase = advancePhase('ready', { readyExpired: state.readyFrames >= READY_HOLD_FRAMES })
+    return
+  }
 
   // ── Pac-Man movement + dot/energizer eating ──────────────────────────
   const prevEaten = state.pac.eaten.size

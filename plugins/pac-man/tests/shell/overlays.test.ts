@@ -218,11 +218,11 @@ describe('createOverlays (pm3-7)', () => {
     // Review fix (CRITICAL 2): `overlays` is a single long-lived driver
     // across main.ts's whole session (never recreated on restart, unlike
     // GameState). Drive it to game-over, then simulate main.ts's own
-    // restart path (`game = createGameState(...)`, a fresh GameState whose
-    // `phase` starts 'playing') and confirm the banner un-latches and
-    // READY! reappears — the same phase-poll self-heal `createAudioDriver`
-    // already relies on (audio.ts's `themeArmed` re-arming on the
-    // game-over -> playing edge).
+    // restart path (`game = createGameState(...)`, a fresh GameState) and
+    // confirm the banner un-latches and READY! reappears — the same phase-poll
+    // self-heal the driver relies on. pm4-6 UPDATE: createGameState now boots
+    // into 'attract', so the restart edge is 'game-over' -> 'attract' (not
+    // -> 'playing'); the self-heal fires on 'game-over' -> ANY other phase.
     const ov = createOverlays()
     const gameOverState = createGameState(1)
     gameOverState.phase = 'game-over'
@@ -232,7 +232,8 @@ describe('createOverlays (pm3-7)', () => {
     expect(textCalls(duringGameOver)).toContain('GAME OVER')
 
     // main.ts's restart: `game = createGameState(Date.now(), highScoreTable)`
-    // — a brand-new GameState, phase 'playing', never touching `overlays`.
+    // — a brand-new GameState, which now boots into 'attract', never touching
+    // `overlays`. The un-latch fires on leaving 'game-over'.
     const freshGame = createGameState(2)
     const afterRestart = fakeCtx()
     ov.draw(afterRestart, freshGame)
