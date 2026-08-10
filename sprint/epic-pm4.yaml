@@ -10,10 +10,11 @@ stories:
     title: '[SAFETY] Remove the full-screen white level-clear strobe (shell overlays.ts): delete the fillRect(0,0,LOGICAL_W,LOGICAL_H) white fill; hold a brief static frame instead. Zero full-screen luminance flashing (boss has photosensitive epilepsy). Shell-only, independent of the state machine, shippable immediately. pm4-4 later builds the proper freeze on top and MUST NOT reintroduce the strobe.'
     points: 2
     priority: p0
-    status: in_review
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     type: bug
   - id: pm4-2
     title: 'Animation-hold divisor (shell render): Pac-Man chomp + ghost legs cycle at 60 Hz because render.ts indexes the raw per-sim-frame counter (game.pac.frame / game.ghostFrame[id]; the latter is the SPEED-PATTERN cursor, not an animation one). Add a render-side animation-hold so sprites advance every N sim frames. render.ts + main.ts only, core untouched. Hold cadence is an honest-uncited shell-timing choice (same posture as the existing FLASH_HALF_PERIOD).'
