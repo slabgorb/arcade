@@ -1,0 +1,68 @@
+[
+ {
+  "id": "MC-ATTRACT-MSG-PRESS-START",
+  "symbol": "EPRESS",
+  "value": "cite",
+  "meaning": "Attract scroll message 'PRESS START' (the free-play start prompt). English literal EPRESS; rendered scrolling across the attract screen bottom by SCROLL (W3MAIN.MAC:5331).",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3328,
+   "verbatim": "EPRESS:\t.ASCIN /PRESS START/"
+  }
+ },
+ {
+  "id": "MC-ATTRACT-MSG-THE-END",
+  "symbol": "ETHEEND",
+  "value": "cite",
+  "meaning": "The 'THE END' string, displayed in the game-over explosion (W3MAIN.MAC:4719 LDA I,MTHEEND ;DISPLAY \"THE END\" IN EXPLOSION) — i.e. during phase 'over'. English literal ETHEEND.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3338,
+   "verbatim": "ETHEEND:.ASCIN /THE END/"
+  }
+ },
+ {
+  "id": "MC-ATTRACT-TITLE-MISSILE",
+  "symbol": "EMISIL",
+  "value": "cite",
+  "meaning": "Attract title line 1 'MISSILE' (English literal EMISIL). With ECOMAN forms the 'MISSILE COMMAND' title on the attract screen.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3384,
+   "verbatim": "EMISIL:\t.ASCIN\t/MISSILE/"
+  }
+ },
+ {
+  "id": "MC-ATTRACT-TITLE-COMMAND",
+  "symbol": "ECOMAN",
+  "value": "cite",
+  "meaning": "Attract title line 2 'COMMAND' (English literal ECOMAN). With EMISIL forms the 'MISSILE COMMAND' title on the attract screen.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3386,
+   "verbatim": "ECOMAN:\t.ASCIN\t/COMMAND/"
+  }
+ },
+ {
+  "id": "MC-ATTRACT-HIGH-SCORES",
+  "symbol": "EHISCR",
+  "value": "cite",
+  "meaning": "The 'HIGH SCORES' header (English literal EHISCR) labelling the high-score display slot on the attract screen — the container story mc7-4 fills with the ladder.",
+  "source": {
+   "file": "W3DSUP.MAC",
+   "line": 3368,
+   "verbatim": "EHISCR:\t.ASCIN\t/HIGH SCORES/"
+  }
+ },
+ {
+  "id": "MC-ATTRACT-SCROLL-CADENCE",
+  "symbol": "FRAME",
+  "value": "cite",
+  "meaning": "Attract-message scroll cadence: REFRESH gates SCROLL on LDA FRAME / LSR / IFCC (W3MAIN.MAC:5313-5319), firing SCROLL only when FRAME bit 0 is clear — one scroll step every 2 video frames. SCROLL_FRAMES_PER_STEP = 2.",
+  "source": {
+   "file": "W3MAIN.MAC",
+   "line": 5313,
+   "verbatim": "\tLDA FRAME"
+  }
+ }
+]

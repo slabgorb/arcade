@@ -51,7 +51,8 @@ stories:
     title: 'Attract presentation: scrolling attract messages + THE END screen, rendered in shell, plus the high-score display slot mc7 fills with the ladder. Pin the ROM message strings + cadence at RED. REV-01 W3MAIN.MAC:891 / 5277 / 5331 attract'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
   - id: mc6-6

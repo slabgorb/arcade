@@ -36,6 +36,15 @@ import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './sta
 import { glyphRows } from './glyphs.js'
 import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import {
+  TITLE_LINE_1,
+  TITLE_LINE_2,
+  MSG_HIGH_SCORES,
+  MSG_THE_END,
+  ATTRACT_SCROLL_MESSAGES,
+  scrollStepsAt,
+  highScoreSlot,
+} from './attract.js'
 
 // ─── The cabinet's logical coordinate space (settled here, mc1-1 deferred it) ─
 // H is an 8-bit cabinet coordinate (the structures span MISB1H=0x14..MISB3H=0xF0,
@@ -288,8 +297,89 @@ export function drawFrame(
   // Bottom-centre: the score multiplier as `nX` (e.g. `2X`) — the digit, then the X.
   drawCentered(`${String(state.multiplier)}X`, height - lineH - pad)
 
+  // mc6-5: attract-mode presentation (title + scrolling PRESS START + the HIGH SCORES
+  // slot) rides on top of the self-playing demo (mc6-4). THE END rides the game-over
+  // explosion. Painted last so they sit over the field. Pause wins over everything.
+  if (state.phase === 'attract') drawAttract(ctx, state, width, height)
+  if (state.phase === 'over') drawTheEnd(ctx, width, height)
+
   // mc6-3: while paused, dim the frozen scene and show the resume card on top.
   if (state.phase === 'pause') drawPauseOverlay(ctx, width, height)
+}
+
+// ─── mc6-5: attract presentation (shell render of the attract-message layer) ─────────
+// The cabinet's ALPHANUMERIC STAMP font (glyphs.ts) — the same engine the HUD/cities use —
+// paints the attract text. Strings + cadence + slot come from the cited attract.ts module;
+// nothing here re-derives a ROM value or reads a clock (the scroll's only clock is
+// state.frame). The high-score SLOT is drawn as a header + reserved box ONLY — its rung
+// contents are story mc7-4's job, so nothing here reads state.highScores beyond the HUD BEST.
+const ATTRACT_INK = '#fff' // functional HUD white (the attract text is not a palette register)
+
+/** One glyph-pixel scale, matching the HUD (height/240). */
+function glyphScale(height: number): number {
+  return Math.max(1, Math.round(height / 240))
+}
+
+/** Blit stamp-font text with its top-left at (x, y), clipped to the canvas
+ *  horizontal extent [0, width) so a marquee slides in/out at the edges (and
+ *  never paints off-canvas — the field-in-bounds invariant, render-field.test). */
+function drawGlyphText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  gp: number,
+  width: number,
+): void {
+  const advance = (STAMP_W + 1) * gp
+  let cx = x
+  for (const ch of text) {
+    for (const { col, row } of stampPixels(glyphRows(ch))) {
+      const px = cx + col * gp
+      if (px >= 0 && px + gp <= width) ctx.fillRect(px, y + row * gp, gp, gp)
+    }
+    cx += advance
+  }
+}
+
+/** Width of stamp-font text in canvas px (1-pixel inter-glyph gap). */
+function glyphTextWidth(text: string, gp: number): number {
+  if (text.length === 0) return 0
+  return (text.length - 1) * (STAMP_W + 1) * gp + STAMP_W * gp
+}
+
+/** Blit stamp-font text horizontally centred at the given baseline y. */
+function drawCenteredGlyphs(ctx: CanvasRenderingContext2D, text: string, y: number, width: number, gp: number): void {
+  drawGlyphText(ctx, text, (width - glyphTextWidth(text, gp)) / 2, y, gp, width)
+}
+
+export function drawAttract(ctx: CanvasRenderingContext2D, state: GameState, width: number, height: number): void {
+  const gp = glyphScale(height)
+  const lineH = (STAMP_H + 2) * gp
+  ctx.fillStyle = ATTRACT_INK
+
+  // MISSILE / COMMAND title, upper field.
+  const titleY = Math.round(height * 0.22)
+  drawCenteredGlyphs(ctx, TITLE_LINE_1, titleY, width, gp)
+  drawCenteredGlyphs(ctx, TITLE_LINE_2, titleY + lineH, width, gp)
+
+  // HIGH SCORES header above the reserved slot (the slot's rungs are mc7-4's to fill).
+  const slot = highScoreSlot(width, height)
+  drawCenteredGlyphs(ctx, MSG_HIGH_SCORES, Math.max(0, slot.y - lineH), width, gp)
+
+  // Scrolling message across the bottom band — enters from the right, driven by the
+  // frame counter through scrollStepsAt (SCROLL every 2nd frame).
+  const banner = ATTRACT_SCROLL_MESSAGES.join('   ')
+  const bannerW = glyphTextWidth(banner, gp)
+  const total = width + bannerW
+  const scrollX = width - ((scrollStepsAt(state.frame) * gp) % total)
+  drawGlyphText(ctx, banner, scrollX, height - Math.round(height * 0.1), gp, width)
+}
+
+export function drawTheEnd(ctx: CanvasRenderingContext2D, width: number, height: number): void {
+  const gp = glyphScale(height)
+  ctx.fillStyle = ATTRACT_INK
+  drawCenteredGlyphs(ctx, MSG_THE_END, Math.round(height / 2), width, gp)
 }
 
 // mc6-3: the pause overlay. Reuses the shared @shared/esc-overlay VERB (a full-
