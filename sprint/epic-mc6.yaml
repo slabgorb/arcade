@@ -33,7 +33,8 @@ stories:
     title: 'PAUSE toggle: phase play <-> pause freezes enemy motion, ABM flight, scoring and spawn (stepGame no-op but the clock) while paused; shell binds the pause key and reuses @shared/pause for the overlay. REV-01 W3MAIN.MAC:615 PAUSE'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
   - id: mc6-4
