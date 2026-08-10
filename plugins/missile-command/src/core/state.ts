@@ -130,7 +130,7 @@ export const INITIAL_ATTRACT = true
 // timeout that CLOSES the loop: attract -> setup -> play -> over -> attract.
 //
 // ENDMAX=6D is HEX 0x6D=109 under W3COMN.MAC's inherited .RADIX 16 — the hex reading
-// is FORCED, not chosen: "THE END" displays at CMP I,62 (:4713), which must be < ENDMAX
+// is FORCED, not chosen: "THE END" displays at CMP I,62 (:4715), which must be < ENDMAX
 // to ever fire (0x62=98 < 109); a decimal ENDMAX=6 makes "THE END" unreachable. ENDUPD=1
 // (:4677). The hold = grow (ENDUPD..ENDMAX) + shrink (ENDMAX..0) at ENDUPD/frame =
 // 2*ENDMAX/ENDUPD frames. (ROM line numbers in // comments, never JSDoc — the

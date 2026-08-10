@@ -16,7 +16,7 @@
 //     SETUPC=CDLADR (the attract / DISPLAY-5-HI screen). That grow+shrink span IS the
 //     post-game-over hold before the machine is visibly in the attract demo.
 //   • Equates (W3MAIN.MAC:4675/:4677), under .RADIX 16 inherited from W3COMN.MAC —
-//     the hex reading is FORCED because "THE END" displays at `CMP I,62` (:4713),
+//     the hex reading is FORCED because "THE END" displays at `CMP I,62` (:4715),
 //     which must be < ENDMAX for that branch to ever fire: 0x62=98 < 0x6D=109. A
 //     decimal ENDMAX=6 would make "THE END" unreachable, self-refuting the decode.
 //         ENDMAX =6D   -> 0x6D = 109   ";MAXIMUM EXPLOSION RADIUS"
@@ -202,5 +202,29 @@ describe('mc6-6 AC5 — the assembled stepGame loop closes over -> attract', () 
     const next = stepGame(s)
     expect(next.phase).toBe('attract')
     expect(next.frame).toBeGreaterThan(s.frame)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// AC5 (review hardening, Heimdall) — the hold counts OVER-frames, not BOOT-frames
+// ═════════════════════════════════════════════════════════════════════════════
+// Every test above enters 'over' from a fresh createPlayGame (frame 0), so `frame` and
+// `overFrames` advance in lockstep and a wiring bug that counted state.frame instead of
+// state.overFrames would be invisible. A REAL game lasts thousands of frames before the
+// last city dies, so it enters 'over' with frame >> OVER_TIMEOUT_FRAMES — the normal
+// case, not an edge. Pin that the game-over hold is measured from over-entry, not boot.
+describe('mc6-6 AC5 (hardening) — the hold is measured in over-frames, not boot-frames', () => {
+  it('holds the full timeout even when the game reached over at a high frame count', async () => {
+    const { OVER_TIMEOUT_FRAMES } = await loadTimeout()
+    // Enter 'over' with frame already an order of magnitude past the timeout. If stepGame
+    // counted state.frame (not overFrames), the FIRST over frame would flip to attract.
+    let s: GameState = { ...allDeadPlay(1), frame: OVER_TIMEOUT_FRAMES * 10 }
+    s = stepGame(s)
+    expect(s.phase, 'a long game still enters over, not attract').toBe('over')
+    // Step to one frame short of the hold: still 'over' — impossible if counting boot frames.
+    for (let i = 0; i < OVER_TIMEOUT_FRAMES - 2; i++) s = stepGame(s)
+    expect(s.phase, 'the hold runs on over-frames, so a high boot-frame count does not shorten it').toBe(
+      'over',
+    )
   })
 })

@@ -58,7 +58,7 @@
     "id": "MC-STATE-ENDMAX",
     "symbol": "ENDMAX",
     "value": 109,
-    "meaning": "Maximum radius of the game-over 'final bang' explosion (ENDGM2, W3MAIN.MAC:4683, reached via the .WORD ENDGM2-1 SETUP entry :601). ENDGM2 grows the death explosion from ENDUPD up to ENDMAX and shrinks it back to 0 at ENDUPD dots/frame before handing to the attract/DISPLAY-5-HI screen (SETUPC=CDLADR), so that grow+shrink span (2*ENDMAX/ENDUPD frames) is the post-game-over hold. mc6-6 derives OVER_TIMEOUT_FRAMES (state.ts) from it — the over->attract MAINLINE-loop timeout. Hex forced: 'THE END' displays at CMP I,62 (:4713), which must be < ENDMAX to ever fire — 0x62=98 < 0x6D=109; a decimal 6 makes 'THE END' unreachable. Hex 6D=109 under W3COMN.MAC's inherited .RADIX 16.",
+    "meaning": "Maximum radius of the game-over 'final bang' explosion (ENDGM2, W3MAIN.MAC:4683, reached via the .WORD ENDGM2-1 SETUP entry :601). ENDGM2 grows the death explosion from ENDUPD up to ENDMAX and shrinks it back to 0 at ENDUPD dots/frame before handing to the attract/DISPLAY-5-HI screen (SETUPC=CDLADR), so that grow+shrink span (2*ENDMAX/ENDUPD frames) is the post-game-over hold. mc6-6 derives OVER_TIMEOUT_FRAMES (state.ts) from it — the over->attract MAINLINE-loop timeout. Hex forced: 'THE END' displays at CMP I,62 (:4715), which must be < ENDMAX to ever fire — 0x62=98 < 0x6D=109; a decimal 6 makes 'THE END' unreachable. Hex 6D=109 under W3COMN.MAC's inherited .RADIX 16.",
     "source": {
       "file": "W3MAIN.MAC",
       "line": 4675,
