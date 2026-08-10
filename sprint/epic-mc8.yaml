@@ -92,7 +92,10 @@ stories:
     title: "just serve is silent: the POKEY worklet fails to load in Vite dev (@fs URL -> AbortError 'Unable to load a worklet's module'), so MC audio is inaudible under 'just serve' -> /missile-command/ even though the production BUILD is fully audible (mc8-3 verified worklet resolves same-origin + POKEY output peak 0.157). Make the dev server load the vendored worklet (e.g. Vite ?worker/?url or public/ placement) without regressing star-wars, which shares plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Filed by mc8-3."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-09'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-09'
     type: bug
+    review_verdict: approved
