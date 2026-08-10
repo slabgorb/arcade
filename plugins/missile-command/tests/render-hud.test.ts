@@ -418,22 +418,28 @@ describe.skipIf(!sourceAvailable)('mc9-4 AC2 — the cited ROM lines really are 
 //    @shared glyph module.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('mc9-4 AC2 — no premature src/shared extraction', () => {
-  it('no src/shell module imports a @shared module other than the pre-existing @shared/font', () => {
+  it('no src/shell module imports a @shared module other than the sanctioned pre-existing ones', () => {
     // Scan the WHOLE shell dir, not just render.ts — a premature @shared glyph library
     // could hide in glyphs.ts (the file this story adds), which a render.ts-only scan
-    // would miss. Only the existing @shared/font may be reused.
+    // would miss. The guard's teeth are against MINTING A NEW src/shared library
+    // (esp. a glyph/font one for the HUD); reusing an ALREADY-EXTRACTED shared VERB is
+    // fine. Allowed pre-existing modules: @shared/font (mc9-4's HUD note), and — added
+    // by mc6-3 — @shared/pause (the pause-key VERB, SH2-12) and @shared/esc-overlay
+    // (the pause overlay, SH2-12), both reused by battlezone/tempest already; mc6-3's
+    // AC explicitly reuses them for the pause key + overlay rather than reinventing them.
+    const ALLOWED = new Set(['@shared/font', '@shared/pause', '@shared/esc-overlay'])
     const disallowed: string[] = []
     for (const f of readdirSync(shellDir).filter((f) => f.endsWith('.ts'))) {
       const src = readFileSync(join(shellDir, f), 'utf8')
       for (const m of src.matchAll(/from ['"](@shared\/[^'"]+)['"]/g)) {
         const mod = m[1].replace(/\.js$/, '')
-        if (mod !== '@shared/font') disallowed.push(`${f}: ${mod}`)
+        if (!ALLOWED.has(mod)) disallowed.push(`${f}: ${mod}`)
       }
     }
     expect(
       disallowed,
-      'a new missile-command glyph module belongs in src/shell, not a fresh src/shared library; only the ' +
-        'existing @shared/font may be reused',
+      'a NEW missile-command shared library belongs in src/shell, not a fresh src/shared extraction; only ' +
+        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay) may be reused',
     ).toEqual([])
   })
 })

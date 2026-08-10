@@ -10,7 +10,7 @@
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
-import { fireOrStart } from './shell/input.js'
+import { fireOrStart, pauseFromKey } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
@@ -60,6 +60,9 @@ canvas.addEventListener('pointermove', (event: PointerEvent): void => {
 // (fireOrStart). The reducer appends `launched` (or `ammoEmpty` on a refused shot)
 // to the sound channel, which we voice at once.
 window.addEventListener('keydown', (event: KeyboardEvent): void => {
+  // mc6-3: the pause key (Escape) toggles play<->pause; it is not a fire key, so
+  // fireOrStart is a no-op for it and the two reducers compose cleanly.
+  game = pauseFromKey(event.key, game)
   game = fireOrStart(event.key, game)
   drain()
 })

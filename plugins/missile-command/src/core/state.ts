@@ -94,6 +94,18 @@ export function mainline(phase: Phase): Handler {
   return 'setup'
 }
 
+// mc6-3 (GREEN, Loki): the play<->pause toggle. A pause action flips a live game
+// into PAUSE and a paused game back to PLAY; every other phase is not pausable and
+// is returned unchanged (you cannot pause the attract demo, a between-wave beat, a
+// setup step, or a finished game). PAUSE is its own MAINLINE handler — .SBTTL PAUSE
+// STATE (W3MAIN.MAC:615), reached via IFMI -> JSR PAUSE when STATE is S.PAUS (:517).
+// Pure: no clock, no entropy.
+export function togglePause(phase: Phase): Phase {
+  if (phase === 'play') return 'pause'
+  if (phase === 'pause') return 'play'
+  return phase
+}
+
 // The cabinet cold-starts on the attract demo: STATE = S.SETU with ATRACT set
 // (W3MAIN.MAC:491 LDA I,S.SETU / :493 STA STATE; ATRACT W3MAIN.MAC:135). The ROM
 // ATRACT polarity is 0=attract / -1=game; our boolean reads true = attract.

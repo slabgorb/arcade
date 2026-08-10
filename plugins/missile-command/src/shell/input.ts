@@ -24,6 +24,8 @@
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm, type Abm, type Vec } from '../core/abm.js'
 import { startGame, type GameState } from '../core/game.js'
+import { togglePause } from '../core/state.js'
+import { isPauseKey } from '@shared/pause'
 
 // mc8-4: the base-ammo count at which a launch sounds the "LOW" warning cue (LO) instead
 // of the normal launch (LA). ABMLAU: `LDA NMMISB / CMP I,4 / IFEQ` (W3MAIN.MAC:1385) — the
@@ -117,4 +119,18 @@ export function fireOrStart(key: string, state: GameState): GameState {
   return fireKeyToBase(key) !== null && (state.phase === 'attract' || state.phase === 'over')
     ? startGame(state)
     : fireFromKey(key, state)
+}
+
+/**
+ * mc6-3 PAUSE toggle: when `key` is the pause key, flip the phase play<->pause via
+ * core `togglePause`; otherwise return the state unchanged. The pause key is the
+ * shared @shared/pause VERB (`isPauseKey`, which matches lowercased 'escape') — the
+ * DOM `event.key` is 'Escape' (capital), so we lowercase first, exactly as
+ * `fireKeyToBase` does. This ONLY flips the phase — no ABM launches and no ammo is
+ * spent (that is fireFromKey's job), and a non-pausable phase (togglePause's no-op)
+ * leaves the state untouched. Pure — the input state is never mutated. main.ts drives
+ * this on each keydown alongside `fireOrStart`.
+ */
+export function pauseFromKey(key: string, state: GameState): GameState {
+  return isPauseKey(key.toLowerCase()) ? { ...state, phase: togglePause(state.phase) } : state
 }

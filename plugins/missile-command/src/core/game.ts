@@ -178,6 +178,14 @@ export function stepGame(state: GameState): GameState {
   // channel goes quiet (no spawn/flight/damage happens, so nothing to voice).
   if (state.phase === 'over') return { ...state, frame: state.frame + 1, soundEvents: [] }
 
+  // mc6-3: PAUSE freezes the battle the same way. MAINLINE dispatches STATE=S.PAUS
+  // to JSR PAUSE, not PLAY (W3MAIN.MAC:517), and the PAUSE handler (.SBTTL PAUSE
+  // STATE, :615) steps no simulation — it only advances a display timer. So, like
+  // 'over', only the clock advances and the sound channel is quiet; every game field
+  // is held byte-identical, and resume continues from the exact frozen state. Guarded
+  // BEFORE the combat path (otherwise nextPhase would flip 'pause' straight to 'play').
+  if (state.phase === 'pause') return { ...state, frame: state.frame + 1, soundEvents: [] }
+
   // END OF WAVE, phase 2 (mc4-2): the previous frame entered the 'between' beat with
   // the wave's final damage on screen. Now resolve it — tally the surviving-city +
   // unused-missile bonus (at this wave's base rate; the ×-multiplier bonus ramp is
