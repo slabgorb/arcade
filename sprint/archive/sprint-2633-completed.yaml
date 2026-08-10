@@ -275,6 +275,10 @@ completed_stories:
     title: "Eaten-ghost eyes-return + forced house exit (core): today an eaten ghost teleports to its spawn tile with released=false (game.ts:525-529) and re-release is gated on the same dot counter as initial release, so it loiters. Implement eyes -> return to house -> regenerate -> forcibly leave (NOT dot-gated). Touches game.ts (eaten branch), house.ts (an exit/regenerate path distinct from initial release), ghost.ts (eyes traversal), and wires the 'eaten' render mode render.ts already implements but never receives. Anchor the eyes-return ROM routine citation at RED — do not fabricate a line."
     points: 5
     completed: '2026-08-10'
+  - id: pm4-2
+    epic: pm4
+    title: 'Animation-hold divisor (shell render): Pac-Man chomp + ghost legs cycle at 60 Hz because render.ts indexes the raw per-sim-frame counter (game.pac.frame / game.ghostFrame[id]; the latter is the SPEED-PATTERN cursor, not an animation one). Add a render-side animation-hold so sprites advance every N sim frames. render.ts + main.ts only, core untouched. Hold cadence is an honest-uncited shell-timing choice (same posture as the existing FLASH_HALF_PERIOD).'
+    points: 2
   - id: mc10-3
     epic: mc10
     title: "Rebuild the HUD to authentic layout: centered numeric score + high score, delete the top-left SCORE/AMMO/WAVE labels and X1 text, move multiplier to bottom-center as 'nX', fix oversized scale (gp=height/120). Keep the byte-exact ROM font (glyphs.ts) UNCHANGED; ammo already shown by base stacks"
