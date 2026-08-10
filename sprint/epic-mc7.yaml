@@ -29,11 +29,13 @@ stories:
     title: "Wire name entry end-to-end (KEYBOARD): add the stepGame 'entry' freeze branch (+freeze test) so a step during 'entry' no longer falls through to stepCombat/nextPhase; reach enterNameEntry from a qualifying game-over in the frame loop; shell feeds KeyboardEvent.key to core stepInitials and commits on Enter via @shared/name-entry (keyboard like asteroids/joust — NO trackball, NO ROM timeout); and persist via one-origin localStorage under highScoreKey('missile-command') — shell reads on boot, writes on commit; core stays pure (owns table/qualifies/initials). Reuse the asteroids/joust @shared/highscore + name-entry consumer pattern. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     review_findings: "HIGH: main.ts composed keydown lands Enter-commit on 'setup' not 'attract' (fireOrStart consumes the just-committed attract phase) -> finishing initials starts an unrequested game; fix = gate fireOrStart on pre-keystroke phase + add composed-path regression test. LOW: stale GameState.highScores JSDoc (game.ts:110)."
-    review_verdict: rejected
+    review_verdict: approved
   - id: mc7-4
     title: 'ROM-faithful ladder display + seeded default table: seed the initial ladder from the cited W3DSUP INIT HI SCORE defaults and render the ladder on the attract high-score screen (the mc6-5 slot). Pin default names/scores at RED. REV-01 W3DSUP.MAC:3724 INIT HI SCORE'
     points: 3
