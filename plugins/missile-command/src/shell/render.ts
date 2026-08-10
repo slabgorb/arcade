@@ -279,7 +279,9 @@ export function drawFrame(
   const drawCentered = (text: string, y: number): void => drawGlyphs(text, (width - textWidth(text)) / 2, y)
 
   // Top band: the running score, then the high-score (ladder BEST) beneath it — both centred.
-  const hiScore = state.highScores.reduce((best, h) => Math.max(best, h.score), 0)
+  // The ladder is maintained sorted descending (@shared/highscore insertHighScore), so the
+  // BEST is highScores[0].score — read VERBATIM (the HUD-figure rule), not re-derived.
+  const hiScore = state.highScores[0]?.score ?? 0
   drawCentered(String(state.score), pad)
   drawCentered(String(hiScore), pad + lineH)
 

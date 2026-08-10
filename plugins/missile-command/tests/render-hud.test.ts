@@ -35,9 +35,10 @@
 //      the verbatim / HUD-figure linkage. (Assumes DSPNUM's leading-zero suppression;
 //      a zero-PADDED readout would keep the count constant and is correctly reddened.)
 //   C. the score readout lives in the TOP band (authentic score-at-top layout);
-//   D. the ammo and wave readouts are each content-driven; the multiplier readout is
-//      guarded structurally (a value capped at one digit exposes no mark-count signal a
-//      stamp font could carry);
+//   D. the multiplier readout is drawn from state and guarded structurally (a value capped
+//      at one digit exposes no mark-count signal a stamp font could carry). (mc10-3 DELETED
+//      the ammo and wave readouts entirely — their inertness is pinned in
+//      render-hud-layout.test.ts, not here — so this file no longer asserts them.)
 //   E. the text path CITES the real ROM routines, verified against the vendored source
 //      (byte-gated — skips on CI, the mc1 degradation pattern);
 //   F. no premature src/shared extraction, and no glyph geometry leaks into src/core.
