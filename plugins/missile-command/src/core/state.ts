@@ -10,9 +10,11 @@ import { type City } from './field.js'
 /** The game's coarse phase. mc3 had the two combat-relevant states; mc4-2 adds the
  *  `'between'` wave-end beat (bonus tally → REGEN → next wave); mc6-1 grows the
  *  union toward the full cabinet lifecycle with `'attract'`, `'setup'` and
- *  `'pause'` (the MAINLINE dispatch below). `'between'`/`'over'` stay for now and
- *  fold into SETUP tasks in mc6-2..6, so mc3/mc4 keep their transitions. */
-export type Phase = 'attract' | 'setup' | 'play' | 'pause' | 'between' | 'over'
+ *  `'pause'` (the MAINLINE dispatch below). mc7-2 adds `'entry'`, the ROM's
+ *  post-game-over TAKE INITIALS task a qualifying score routes to (cited in game.ts).
+ *  `'between'`/`'over'` stay for now and fold into SETUP tasks in mc6-2..6, so
+ *  mc3/mc4 keep their transitions; `'entry'` is SETUP-family too (stateCode below). */
+export type Phase = 'attract' | 'setup' | 'play' | 'pause' | 'between' | 'over' | 'entry'
 
 /** True once cities EXISTED and every one is dead. An empty list is NOT game-over
  *  — a zero-city input is degenerate, never terminal (a bare `[].every()` reads

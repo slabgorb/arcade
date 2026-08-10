@@ -261,6 +261,12 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // values are little-endian BCD triples (7500..6950), not single bytes. Both
     // carry real numerics (not kind tags) and are pinned in the mc7-1 block below.
     'HSCORL', 'SCOINI',
+    // mc7-2: the name-entry buffer facts. INTLHS (MC-INITIALS-LEN) is a `.BYTE`
+    // coord table whose value 3 is its entry COUNT (three initials — one coord each);
+    // INITCSET (MC-INITIALS-CHARSET) is the GETINI cursor-wrap instruction whose
+    // value 26 IS the `LDA I,26.` immediate (the A-Z letter count). Both real
+    // numerics (not kind tags), pinned in the mc7-2 block below.
+    'INTLHS', 'INITCSET',
   ])
 
   // mc2-6: this loop applies to EQU-style CONSTANT claims — a verbatim with an
@@ -628,5 +634,31 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
       expect(rungScore.has(suffix), `${c.id}: id suffix ${suffix} is a known rung`).toBe(true)
       expect(Number(c.value), `${c.id}: value must be its OWN rung's score, not merely a valid one`).toBe(rungScore.get(suffix))
     }
+  })
+
+  // mc7-2: the name-entry buffer facts. The DERIVED exemption lets INTLHS carry the
+  // numeric 3 and INITCSET the numeric 26; this block is their teeth — the length
+  // re-derives from INTLHS's `.BYTE` operand COUNT, and the charset size from the
+  // `LDA I,26.` immediate, so no fabricated length or charset can ride into the
+  // un-cited-literal guard's value set.
+  it('mc7-2: MC-INITIALS-LEN (3) and MC-INITIALS-CHARSET (26) derive from their cited lines', () => {
+    const claims = loadClaims()
+
+    // INTLHS: .BYTE 82,78,6E → the initials count is the number of coord operands.
+    const len = claims.find((c) => c.symbol === 'INTLHS')
+    expect(len, 'MC-INITIALS-LEN must be committed').toBeTruthy()
+    const coords = (len!.source.verbatim.split('.BYTE')[1] ?? '')
+      .split(';')[0] // drop the trailing comment
+      .split(',').map((t) => t.trim()).filter((t) => t.length > 0)
+    expect(coords.length, 'three INTLHS coords → three initials').toBe(3)
+    expect(Number(len!.value), 'MC_INITIALS_LEN is the coord count').toBe(coords.length)
+
+    // GETINI cursor wrap: LDA I,26. → the charset is the 26 letters A-Z.
+    const cset = claims.find((c) => c.symbol === 'INITCSET')
+    expect(cset, 'MC-INITIALS-CHARSET must be committed').toBeTruthy()
+    const imm = cset!.source.verbatim.match(/LDA\s+I,(\d+\.?)/)
+    expect(imm, 'INITCSET is the `LDA I,26.` cursor-wrap immediate').toBeTruthy()
+    expect(Number(cset!.value), 'the charset is 26 letters A-Z').toBe(decodeRadix16(imm![1]))
+    expect(Number(cset!.value)).toBe(26)
   })
 })
