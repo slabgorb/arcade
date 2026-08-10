@@ -198,3 +198,85 @@ describe('pm4-3: a returning ghost (eyes) does not cost Pac-Man a life', () => {
     expect(state.events.some((e) => e.type === 'pac-died'), 'no pac-died from eyes contact').toBe(false)
   })
 })
+
+// ─── game.ts: the REGENERATED body is also harmless while it climbs out ───────
+//
+// "Harmless in transit" spans TWO phases. The test above covers only `'eyes'`,
+// where the ghost is `released=false` and the PRE-EXISTING `if (!released)
+// continue` in the collision loop already excludes it — so it never exercises
+// the pm4-3 guard `if (state.returning[id] !== null) continue` (game.ts:584).
+// The OTHER phase, `'regenerated'`, is `released=TRUE` (forceLeaveHouse ran) as
+// the re-formed body climbs the gate back into play; there the `!released` check
+// lets it through and ONLY the returning-state guard keeps it from killing (or
+// being re-eaten by) Pac-Man. This pins that guard: without it a regenerated
+// body sharing Pac-Man's tile mid-climb kills him.
+describe('pm4-3: a regenerated body climbing out of the house is harmless in transit', () => {
+  it('costs no life when the regenerated body climbs through Pac-Man on the gate, until it fully re-exits', () => {
+    const state = createGameState(4205)
+
+    // Keep the three housed ghosts gated for the whole run so none can leave and
+    // collide with a Pac-Man parked on their exit path: under the global counter
+    // (limits pinky 7 / inky 17 / clyde 32) held at 0, none releases. Set BEFORE
+    // the eat so the eat-frame's release check uses the global gate too.
+    state.house.useGlobalCounter = true
+    state.house.globalDotsEaten = 0
+
+    // Eat blinky; it becomes eyes and heads home to regenerate.
+    eatGhost(state, 'blinky')
+
+    // Specifically NOT frightened during the climb, so an UNGUARDED collision
+    // takes the kill branch (the sharp mutation) rather than merely re-eating.
+    state.mode.frightenedTimer = 0
+    state.house.globalDotsEaten = 0 // re-assert: nothing must release during the climb
+
+    // The gate {13,15} sits on the regen climb-out ({13,17}→{13,14}); being a
+    // gate it never clears the returning phase (that happens at the {13,14}
+    // corridor), so a Pac parked here meets the body strictly while it is still
+    // 'regenerated'. Read the tile kind from the live maze, per pm4-4 geometry.
+    expect(tileAt(13, 15), 'parking tile must be the gate on the climb-out path').toBe('gate')
+    state.pac.actor.xPx = 13 * TILE_PX
+    state.pac.actor.yPx = 15 * TILE_PX
+    state.pac.actor.dir = 'none'
+    state.pac.actor.pending = 'none'
+    const livesBefore = state.lives
+
+    let sawRegeneratedOnPacTile = false
+    let reExited = false
+    for (let f = 0; f < 4000; f++) {
+      stepGame(state, { dir: 'none' })
+
+      // Match the collision loop exactly: it floors both positions.
+      const gtx = Math.floor(state.ghosts.blinky.actor.xPx / TILE_PX)
+      const gty = Math.floor(state.ghosts.blinky.actor.yPx / TILE_PX)
+      // 'regenerated' is the returning phase with the body already released.
+      const regenerated = isReturningHome(state, 'blinky') && state.house.released.blinky
+      if (regenerated && gtx === 13 && gty === 15) sawRegeneratedOnPacTile = true
+
+      // The guard must hold on every frame of the climb-out.
+      expect(state.lives, `regenerated body must not kill Pac-Man (frame ${f})`).toBe(livesBefore)
+      expect(
+        state.events.some((e) => e.type === 'pac-died'),
+        `no pac-died while the body climbs out (frame ${f})`,
+      ).toBe(false)
+      expect(
+        state.events.some((e) => e.type === 'ghost-eaten'),
+        `the returning body cannot be re-eaten mid-climb (frame ${f})`,
+      ).toBe(false)
+
+      // Stop the moment blinky is fully back in play, before it can chase Pac
+      // back onto the gate and collide legitimately.
+      if (!isReturningHome(state, 'blinky') && state.house.released.blinky) {
+        reExited = true
+        break
+      }
+    }
+    expect(reExited, 'the regenerated body must finish climbing out').toBe(true)
+    // Non-vacuity witness: the body genuinely shared Pac-Man's tile while
+    // 'regenerated', so the guard was actually reached (delete it → this test
+    // must go RED, not merely stay green because the actors never met).
+    expect(
+      sawRegeneratedOnPacTile,
+      'the regenerated body must share Pac-Man’s tile mid-climb, or the guard is untested',
+    ).toBe(true)
+  })
+})
