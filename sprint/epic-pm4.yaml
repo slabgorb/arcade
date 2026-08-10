@@ -28,11 +28,14 @@ stories:
     title: "Eaten-ghost eyes-return + forced house exit (core): today an eaten ghost teleports to its spawn tile with released=false (game.ts:525-529) and re-release is gated on the same dot counter as initial release, so it loiters. Implement eyes -> return to house -> regenerate -> forcibly leave (NOT dot-gated). Touches game.ts (eaten branch), house.ts (an exit/regenerate path distinct from initial release), ghost.ts (eyes traversal), and wires the 'eaten' render mode render.ts already implements but never receives. Anchor the eyes-return ROM routine citation at RED — do not fabricate a line."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-10'
     type: bug
+    review_findings: 'MEDIUM [TEST][RULE #15]: collision guard game.ts:584 (if returning!==null continue) is load-bearing but un-mutation-tested — deleting it keeps 296/296 green, yet without it a regenerated-phase ghost kills a parked Pac at the exit corridor {13,14} (both mutation-verified). Code correct; add a regenerated-phase collision test. Test-only rework.'
+    review_verdict: approved
   - id: pm4-4
     title: "[INVESTIGATION] Ghost-house wall/traversal audit: the reported 'wall Pac-Man cannot cross' is likely the AUTHENTIC gate/house bar (maze.ts isWalkable(..,'pac-man') correctly returns false for house/gate). Visual playtest (Playwright headless, per the arcade playtest memo; STATIC screenshots only — boss has epilepsy) to decide whether it is that rule (close as no-op with evidence) or a maze-authoring artifact in maze.ts's row table (fix the table only). May close without a code change."
     points: 2
