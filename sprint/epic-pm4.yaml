@@ -20,7 +20,8 @@ stories:
     title: 'Animation-hold divisor (shell render): Pac-Man chomp + ghost legs cycle at 60 Hz because render.ts indexes the raw per-sim-frame counter (game.pac.frame / game.ghostFrame[id]; the latter is the SPEED-PATTERN cursor, not an animation one). Add a render-side animation-hold so sprites advance every N sim frames. render.ts + main.ts only, core untouched. Hold cadence is an honest-uncited shell-timing choice (same posture as the existing FLASH_HALF_PERIOD).'
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: bug
