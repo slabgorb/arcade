@@ -199,7 +199,11 @@ describe('pm4-7 AC2: all dots eaten enters `level-clear` (freeze) and DEFERS adv
       frames++
     }
     expect(state.level, 'the deferred advanceLevel eventually runs — level 2').toBe(2)
-    expect(state.dotsEaten, 'the new level starts with a fresh (near-empty) dot count').toBeLessThan(DOT_COUNT)
+    // Pin the EXACT fresh-board count (the spawn-tile-eat baseline, = 1), not a
+    // 240x-loose `< DOT_COUNT` bound that a broken advanceLevel leaving 239 dots
+    // would still pass. advanceLevel resets to the same spawn-eat a fresh level-1
+    // board has, so compare against one directly.
+    expect(state.dotsEaten, 'the new level resets to the fresh spawn-eat baseline').toBe(createGameState(3).dotsEaten)
     expect(state.phase, 'level-clear hands off to ready before the next round plays').toBe('ready')
   })
 })

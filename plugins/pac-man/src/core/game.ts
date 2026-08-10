@@ -718,8 +718,13 @@ export function stepGame(state: GameState, input: GameInput): void {
     } else {
       state.lives -= 1
       state.events.push({ type: 'pac-died' })
-      if (state.lives <= 0) {
-        state.phase = 'game-over'
+      // pm4-7: route the death edge through the pure pm4-5 machine (same as the
+      // level-clear entry below) — advancePhase picks game-over (last life) vs
+      // dying (a life left) from livesRemaining, mirroring the ROM master-state
+      // dispatch. game-over ends the run; dying begins the death-anim freeze and
+      // DEFERS the respawn to the dying -> ready edge in the sim gate above.
+      state.phase = advancePhase('playing', { pacDied: true, livesRemaining: state.lives })
+      if (state.phase === 'game-over') {
         state.events.push({ type: 'game-over' })
         const qualifies = qualifiesForHighScore(state.highScoreTable, state.score)
         if (qualifies) {
@@ -727,12 +732,6 @@ export function stepGame(state: GameState, input: GameInput): void {
           state.events.push({ type: 'high-score-qualified' })
         }
       } else {
-        // pm4-7: enter the DYING freeze (death-anim window) instead of the old
-        // instant respawn — the respawn is DEFERRED to the dying -> ready edge in
-        // the sim gate above. The lives<=0 vs >0 split here IS the pm4-5 machine's
-        // decision (advancePhase('playing',{pacDied,livesRemaining}) → game-over
-        // vs dying), so this branch is exactly its `> 0 → dying` arm.
-        state.phase = 'dying'
         state.freezeFrames = 0
       }
     }
