@@ -235,24 +235,36 @@ export function drawFrame(
   ctx.lineTo(x, y + arm)
   ctx.stroke()
 
-  // HUD (mc9-4) — the running score, each base's remaining ammo, and the wave + score
-  // multiplier, drawn in the cabinet's authentic ALPHANUMERIC STAMPS (its raster font),
-  // retiring the mc3-5 browser-font fillText HUD. Missile Command is a raster
-  // machine: each character is an 8x8 stamp mapped from ASCII by CONVERT AN ASCII VALUE
-  // TO ITS STAMP ADDRESS (W3DSUP.MAC:1754) and blitted by WRITE A STAMP (W3DSUP.MAC:587)
-  // — the same stamp engine the cities/bases use. Glyph data lives in the cited shell
-  // module src/shell/glyphs.ts (NUMBER/LETTER tables); no premature src/shared font.
+  // HUD (mc10-3) — the AUTHENTIC cabinet layout: a CENTERED numeric score with the high
+  // score beneath it, and the score multiplier at the BOTTOM-CENTER as `nX`. mc9-4 shipped
+  // the byte-exact ROM stamp font (glyphs.ts) but wired it into invented top-LEFT clutter —
+  // SCORE / AMMO / WAVE labels + an `X1`, all oversized (gp = height/120). mc10-3 strips
+  // that: the AMMO readout is GONE (ammo is already shown by the mc9-1 base stacks) and so
+  // is the WAVE readout; only the authentic score / high-score / multiplier figures remain.
+  //
+  // Still the cabinet's ALPHANUMERIC STAMPS (its raster font), not a browser font: each
+  // character is an 8x8 stamp mapped from ASCII by CONVERT AN ASCII VALUE TO ITS STAMP
+  // ADDRESS (W3DSUP.MAC:1754) and blitted by WRITE A STAMP (W3DSUP.MAC:587) — the same
+  // stamp engine the cities/bases use. Glyph data lives in the cited shell module
+  // src/shell/glyphs.ts (NUMBER/LETTER tables), kept UNCHANGED by this layout story.
   //
   // The score is DISPLAY 6 DIGITS / DSPNUM (W3DSUP.MAC:2202), leading zeros suppressed:
   // drawn as `String(state.score)` — the core's `state.score` VERBATIM (the HUD-figure
-  // rule, never a re-derived copy). The ammo, wave and multiplier are likewise verbatim
-  // from state (`state.bases[i].ammo`, `state.wave`, `state.multiplier`). The HUD sits
-  // in the top band on the field the frame just cleared (CLEAR SCREEN, W3DSUP.MAC:1712).
-  // Functional white ink; the per-wave HUD colour is out of this story's scope.
-  const gp = Math.max(1, Math.round(height / 120)) // canvas px per glyph pixel
+  // rule, never a re-derived copy). The high score is the ladder BEST (the max over
+  // state.highScores) and the multiplier is `state.multiplier` verbatim. The figures sit on
+  // the field the frame just cleared (CLEAR SCREEN, W3DSUP.MAC:1712). Functional white ink;
+  // the per-wave HUD colour is out of this story's scope. Exact placement/appearance is the
+  // owner screenshot at /missile-command/ (a node test cannot read the drawn glyphs); the
+  // mc10-3 tests pin the layout BEHAVIOUR — centred, banded, scaled.
+  //
+  // Scale: half the mc9-4 gp — height/120 was oversized against the cabinet; height/240
+  // reads as the small authentic figure. A display-scale choice, not a cited ROM constant.
+  const gp = Math.max(1, Math.round(height / 240)) // canvas px per glyph pixel (mc10-3: was height/120)
   const advance = (STAMP_W + 1) * gp // per-character step (1-pixel inter-glyph gap)
-  const lineH = (STAMP_H + 2) * gp // vertical pitch between HUD rows
+  const glyphW = STAMP_W * gp // one glyph's drawn width
+  const lineH = (STAMP_H + 2) * gp // vertical pitch between stacked HUD rows
   const pad = 2 * gp
+  const textWidth = (text: string): number => (text.length === 0 ? 0 : (text.length - 1) * advance + glyphW)
   ctx.fillStyle = '#fff'
   const drawGlyphs = (text: string, x: number, y: number): void => {
     let cx = x
@@ -263,9 +275,16 @@ export function drawFrame(
       cx += advance
     }
   }
-  drawGlyphs(`SCORE ${String(state.score)}`, pad, pad)
-  drawGlyphs(`AMMO ${state.bases.map((b) => b.ammo).join(' ')}`, pad, pad + lineH)
-  drawGlyphs(`WAVE ${String(state.wave)}  X${String(state.multiplier)}`, pad, pad + lineH * 2)
+  // Horizontally centred on the field's mid-line — the authentic centred score column.
+  const drawCentered = (text: string, y: number): void => drawGlyphs(text, (width - textWidth(text)) / 2, y)
+
+  // Top band: the running score, then the high-score (ladder BEST) beneath it — both centred.
+  const hiScore = state.highScores.reduce((best, h) => Math.max(best, h.score), 0)
+  drawCentered(String(state.score), pad)
+  drawCentered(String(hiScore), pad + lineH)
+
+  // Bottom-centre: the score multiplier as `nX` (e.g. `2X`) — the digit, then the X.
+  drawCentered(`${String(state.multiplier)}X`, height - lineH - pad)
 
   // mc6-3: while paused, dim the frozen scene and show the resume card on top.
   if (state.phase === 'pause') drawPauseOverlay(ctx, width, height)
