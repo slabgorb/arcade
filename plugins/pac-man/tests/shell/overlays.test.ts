@@ -10,12 +10,19 @@
 import { describe, it, expect } from 'vitest'
 import { createOverlays } from '../../src/shell/overlays'
 import { createGameState, type GameState } from '../../src/core/game'
+import { LOGICAL_W, LOGICAL_H } from '../../src/shell/layout'
 
 interface RecordedCall {
   method: 'putImageData' | 'fillText' | 'fillRect'
   x: number
   y: number
   text?: string
+  // pm4-1: fillRect now records its full geometry + the fillStyle in effect at
+  // call time, so a test can distinguish a small/dim overlay draw from a
+  // full-screen high-luminance flash (the accessibility hazard being removed).
+  w?: number
+  h?: number
+  fillStyle?: string
 }
 
 interface FakeCtx {
@@ -24,13 +31,14 @@ interface FakeCtx {
 
 function fakeCtx(): CanvasRenderingContext2D & FakeCtx {
   const calls: RecordedCall[] = []
-  return {
+  const ctx = {
     calls,
     fillStyle: '',
     font: '',
     textBaseline: 'alphabetic',
     textAlign: 'start',
-    fillRect: (x: number, y: number) => calls.push({ method: 'fillRect', x, y }),
+    fillRect: (x: number, y: number, w: number, h: number) =>
+      calls.push({ method: 'fillRect', x, y, w, h, fillStyle: String(ctx.fillStyle) }),
     fillText: (text: string, x: number, y: number) => calls.push({ method: 'fillText', x, y, text }),
     putImageData: (img: { width: number; height: number; data: Uint8ClampedArray }, dx: number, dy: number) =>
       calls.push({ method: 'putImageData', x: dx, y: dy }),
@@ -44,6 +52,32 @@ function fakeCtx(): CanvasRenderingContext2D & FakeCtx {
     save: () => {},
     restore: () => {},
   } as unknown as CanvasRenderingContext2D & FakeCtx
+  return ctx
+}
+
+/** fillRect calls that cover (at least) the whole 224×288 logical buffer — i.e.
+ *  a full-screen fill. The level-clear strobe pm4-1 removes was exactly this:
+ *  `fillRect(0, 0, LOGICAL_W, LOGICAL_H)`. A bounded score-popup or banner never
+ *  produces one. */
+function fullScreenFills(ctx: ReturnType<typeof fakeCtx>): RecordedCall[] {
+  return ctx.calls.filter(
+    (c) => c.method === 'fillRect' && c.x <= 0 && c.y <= 0 && (c.w ?? 0) >= LOGICAL_W && (c.h ?? 0) >= LOGICAL_H,
+  )
+}
+
+/** A hex colour is "bright" (high luminance) if its Rec.601 luma is high — the
+ *  white strobe (#ffffff) is luma 255; a dim/dark hold colour is not. Any
+ *  #RGB/#RRGGBB string parses; anything unparseable is treated as not-bright. */
+function isHighLuminance(fillStyle: string | undefined): boolean {
+  if (!fillStyle) return false
+  const hex = fillStyle.trim().replace(/^#/, '')
+  const full = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return false
+  const r = parseInt(full.slice(0, 2), 16)
+  const g = parseInt(full.slice(2, 4), 16)
+  const b = parseInt(full.slice(4, 6), 16)
+  const luma = 0.299 * r + 0.587 * g + 0.114 * b
+  return luma >= 128
 }
 
 function stubGame(): GameState {
@@ -128,19 +162,43 @@ describe('createOverlays (pm3-7)', () => {
     expect(textCalls(ctx2)).not.toContain('READY!')
   })
 
-  it('level-cleared triggers a flash state that paints and eventually stops', () => {
+  // ── pm4-1 [SAFETY]: the level-clear effect must never full-screen flash ──
+  // The boss has photosensitive epilepsy. overlays.ts used to answer a
+  // `level-cleared` event with `fillRect(0,0,LOGICAL_W,LOGICAL_H)` in solid
+  // white, strobing ~3.75 Hz for ~96 frames. These tests pin its removal: a
+  // level clear must produce NO full-screen fill (AC1) and NO high-luminance
+  // full-screen transition at any frame of the window (AC2). Dev may remove the
+  // effect entirely or keep a bounded, non-flashing hold — either satisfies
+  // both, so this constrains the hazard, not the implementation.
+  it('AC1: a level-cleared event paints no full-screen fill at all across the whole window', () => {
     const ov = createOverlays()
-    ov.onEvents([{ type: 'dot-eaten', score: 10 }]) // clear READY! — isolate the flash window
+    ov.onEvents([{ type: 'dot-eaten', score: 10 }]) // clear READY! — isolate the level-clear window
     ov.onEvents([{ type: 'level-cleared', level: 1 }])
     const ctx = fakeCtx()
-    ov.draw(ctx, stubGame())
-    expect(ctx.calls.some((c) => c.method === 'fillRect')).toBe(true)
-
-    // Run enough draws for the flash window to elapse.
+    // Draw far past any plausible hold window; a full-screen fill on ANY frame is the hazard.
     for (let i = 0; i < 300; i++) ov.draw(ctx, stubGame())
-    const after = ctx.calls.filter((c) => c.method === 'fillRect').length
-    ov.draw(ctx, stubGame())
-    expect(ctx.calls.filter((c) => c.method === 'fillRect').length).toBe(after)
+    expect(fullScreenFills(ctx)).toEqual([])
+  })
+
+  it('AC2: no high-luminance full-screen transition (strobe) survives after level-cleared', () => {
+    const ov = createOverlays()
+    ov.onEvents([{ type: 'dot-eaten', score: 10 }])
+    ov.onEvents([{ type: 'level-cleared', level: 1 }])
+    const ctx = fakeCtx()
+    for (let i = 0; i < 300; i++) ov.draw(ctx, stubGame())
+    const brightFullScreen = fullScreenFills(ctx).filter((c) => isHighLuminance(c.fillStyle))
+    expect(brightFullScreen.length).toBe(0)
+  })
+
+  it('AC1 negative-control: the mock DOES catch a full-screen white fill (guards against a vacuous pass)', () => {
+    // Proves the assertion above is not vacuous: a real full-screen white fill
+    // is detected by both helpers. If overlays.ts ever reintroduced the strobe,
+    // the two tests above would fire — this pins that they CAN.
+    const ctx = fakeCtx()
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+    expect(fullScreenFills(ctx).length).toBe(1)
+    expect(isHighLuminance(fullScreenFills(ctx)[0].fillStyle)).toBe(true)
   })
 
   it('game-over latches the GAME OVER banner permanently', () => {
