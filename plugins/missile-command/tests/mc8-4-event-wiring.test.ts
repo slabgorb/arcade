@@ -9,8 +9,9 @@
 //
 // Authoritative scope = spike doc §8 + §5 map (not the story title):
 //   docs/superpowers/specs/2026-08-07-missile-command-mc8-audio-driver-spike.md
-//   WP whoop (edge wave++) · XX end-game (edge phase→over) · BN bonus-city (edge
-//   bonusCitiesEarned++) · drone AUDF1+6 sweep (VOICE here; LIVE TRIGGER → mc8-5/mc5).
+//   WP whoop (edge wave++) · XX end-game (edge phase→over) · BN bonus-city (the
+//   wave-end city GRANT, W3MAIN:4845 — timing corrected by mc8-7) · drone AUDF1+6
+//   sweep (VOICE here; LIVE TRIGGER → mc8-5/mc5).
 //
 // The 'between' and 'over' branches of stepGame BOTH hardcode soundEvents:[], so
 // whoop/end-game/bonus-city cannot ride a per-frame SoundEvent — they are read off the
@@ -23,7 +24,6 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { playEdgeCues } from '../src/shell/audio-dispatch.js'
 import { createGame, type GameState } from '../src/core/game.js'
-import { bonusInterval } from '../src/core/wave.js'
 import { droneSweep, type DroneKind } from '../src/core/drone.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -101,25 +101,15 @@ describe('mc8-4 AC2 — END-GAME on the game-over edge', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AC3 — BONUS-CITY on award (BN, SBONUS, W3MAIN:4845; edge: bonusCitiesEarned++)
+// AC3 — BONUS-CITY on award (BN, SBONUS, W3MAIN:4845).
+//
+// mc8-4 originally keyed this cue to the mid-play score-threshold crossing
+// (`bonusCitiesEarned(curr) > bonusCitiesEarned(prev)` every frame), which can sound
+// the cue ~a wave early. mc8-7 corrected the timing to the wave-end GRANT (W3MAIN:4845).
+// The authoritative bonus-city cue-timing contract now lives in
+// mc8-7-bonus-city-grant-timing.test.ts; the refuted "crossing fires" tests were
+// retired there rather than left asserting behaviour the ROM does not exhibit.
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('mc8-4 AC3 — BONUS-CITY on award', () => {
-  const interval = bonusInterval(0) // shipped default DIP: 10,000 pts / city (mc4-5)
-
-  it('crossing a bonus threshold plays the bonus-city cue once', () => {
-    const r = recorder()
-    const prev = { ...play(), score: interval - 1 }
-    playEdgeCues(r.audio, prev, { ...prev, score: interval + 1 })
-    expect(r.calls.filter((c) => c === 'play:bonus-city')).toHaveLength(1)
-  })
-
-  it('a score gain WITHIN the same bucket plays NO bonus-city cue (mutation guard)', () => {
-    const r = recorder()
-    const prev = { ...play(), score: interval + 1 }
-    playEdgeCues(r.audio, prev, { ...prev, score: interval + 500 })
-    expect(r.calls).not.toContain('play:bonus-city')
-  })
-})
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // AC5 — the PARAMETRIC drone VOICE. W3SOUN PMRBIL (§2.4): sweep AUDF1+6 between per-
