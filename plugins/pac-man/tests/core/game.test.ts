@@ -168,6 +168,11 @@ describe('ghost contact — frightened is eaten for the chain score, never a lif
 
     for (let i = 0; i < GHOST_CHAIN_SCORES.length; i++) {
       overlapPacAndBlinky(state)
+      // Re-admit Blinky as an ordinary ghost each iteration: since pm4-3 an
+      // eaten ghost becomes eyes (returning !== null) and cannot be re-eaten
+      // until it regenerates, so clearing that state is what makes this
+      // chain-scoring fixture able to eat the same ghost four times in a row.
+      state.returning.blinky = null
       state.house.released.blinky = true
       state.ghostFrame.blinky = noMoveFrameIndex(50) // frightened ghost speed pct
       const scoreBefore = state.score

@@ -60,7 +60,8 @@
 import { MAZE, tileAt } from '../core/maze'
 import { TILE_PX as CORE_TILE_PX, type Dir } from '../core/actor'
 import type { Ghost, GhostId } from '../core/ghost'
-import type { Mode } from '../core/mode'
+import { FRIGHT_FLASHES, type Mode } from '../core/mode'
+import type { GameState } from '../core/game'
 import type { FruitType } from '../core/level'
 import { TILES } from './tile-data'
 import { SPRITES } from './sprite-data'
@@ -274,14 +275,27 @@ export function drawMaze(ctx: CanvasRenderingContext2D, eaten: ReadonlySet<strin
  *  ('scatter'/'chase'/'frightened', mode.ts) plus two shell-only render
  *  states: 'flash' (the frightened body's end-of-timer white flash — a
  *  colour swap, not a mode the core engine tracks) and 'eaten' (the eyes-
- *  only body). NOTE (scope): `core/game.ts` does not yet model an eaten
- *  ghost's eyes-in-transit-to-the-house state — an eaten ghost is teleported
- *  straight back to its spawn tile and un-released in the same frame (see
- *  that file's Pac-Man/ghost collision handling) — so `main.ts` never
- *  currently passes 'eaten' to drawGhost. The render path is implemented and
- *  unit-tested here regardless (this story's brief scope), ready for a
- *  future story to wire an actual eyes-in-transit core state into it. */
+ *  only body). Since pm4-3 the core DOES model an eaten ghost's eyes-in-transit
+ *  state (`game.ts` `isReturningHome`), and `ghostRenderMode` below dispatches
+ *  'eaten' for it — so 'eaten' is now reached in ordinary play, not just
+ *  unit-tested in isolation. */
 export type GhostRenderMode = Mode | 'flash' | 'eaten'
+
+const FLASH_HALF_PERIOD = 14 // frames per flash half-cycle (shell rendering detail)
+const FLASH_WINDOW = FLASH_HALF_PERIOD * 2 * FRIGHT_FLASHES // frames before expiry the flash starts
+
+/** The render mode for ONE ghost this frame, derived purely from `GameState`
+ *  (no clock read — render.ts's core-purity spirit). An eyes-returning ghost
+ *  (pm4-3) renders as 'eaten'; otherwise the frightened body flashes white as
+ *  its timer runs out, then reads as a normal body ('chase'; scatter and chase
+ *  share the same body art). `main.ts` calls this per ghost id. */
+export function ghostRenderMode(game: GameState, id: GhostId): GhostRenderMode {
+  if (game.returning[id] === 'eyes') return 'eaten'
+  const timer = game.mode.frightenedTimer
+  if (timer <= 0) return 'chase'
+  if (timer <= FLASH_WINDOW && Math.floor(timer / FLASH_HALF_PERIOD) % 2 === 0) return 'flash'
+  return 'frightened'
+}
 
 /** Per-(spriteIndex,colorCode,flipX,flipY,transparentValues) ImageData
  *  cache — same shape as pm3-4's tileImageData cache, extended with the
