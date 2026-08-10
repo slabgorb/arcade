@@ -52,7 +52,8 @@ stories:
     title: "Wire the per-wave palette: pass game.wave as drawFrame's 5th arg in main.ts (currently defaults to INITIAL_WAVE, freezing wave-1 colours forever) + a regression test that a later-wave sky differs from wave 1. paletteForWave already built (mc9-2)"
     points: 1
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: bug
