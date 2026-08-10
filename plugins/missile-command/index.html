@@ -6,7 +6,10 @@
     <title>Missile Command</title>
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-      canvas { display: block; width: 100%; height: 100%; }
+      /* mc10-5: center the letterboxed canvas so the black page shows through as the
+         aspect-ratio bars (canvas is sized to a pinned 256:222 by shell/viewport). */
+      body { display: flex; align-items: center; justify-content: center; }
+      canvas { display: block; }
     </style>
   </head>
   <body>
