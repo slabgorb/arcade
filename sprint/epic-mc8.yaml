@@ -84,11 +84,13 @@ stories:
     title: "Bonus-city cue timing: sound BN/SBONUS when the bonus city is GRANTED at wave-end regen (W3MAIN:4845), not at the mid-play score-threshold crossing. mc8-4's playEdgeCues fires on bonusCitiesEarned++ (the ruled mechanism), which can sound ~a wave early when a kill crosses the threshold during play. Faithful fix keys the cue to the between-wave city grant."
     points: 2
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: refactor
+    review_findings: "APPROVED (round 2). Round-1 #14 (HIGH, missing wave guard on the bonus-city edge) and #17 (comment overstatement) both RESOLVED by commit 2e092865: the cue is now wave-gated (curr.wave>prev.wave && alive(curr)>alive(prev)), matching the sibling whoop edge; comment corrected; restart-guard regression test added and mutation-verified by rule-checker. Suite 1119/1119, lint clean. One LOW non-blocking citation nit deferred (comment attributes wave advance to resumePlay; substantive claim true)."
+    review_verdict: approved
   - id: mc8-8
     title: "just serve is silent: the POKEY worklet fails to load in Vite dev (@fs URL -> AbortError 'Unable to load a worklet's module'), so MC audio is inaudible under 'just serve' -> /missile-command/ even though the production BUILD is fully audible (mc8-3 verified worklet resolves same-origin + POKEY output peak 0.157). Make the dev server load the vendored worklet (e.g. Vite ?worker/?url or public/ placement) without regressing star-wars, which shares plugins/star-wars/tools/pokey-bake/vendor/pokey.js. Filed by mc8-3."
     points: 3
