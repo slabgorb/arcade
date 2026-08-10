@@ -226,48 +226,35 @@ describe.skipIf(!sourceAvailable)('the checker byte-verifies claims against the 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. NO UN-CITED NUMERIC LITERAL SURVIVES IN src/core (AC3 guard).
-//    Every non-trivial numeric literal in a core module must sit on a line that
-//    carries a source citation (W3xxx:NNN) AND be backed by a committed claim.
-//    RED: the claims do not exist yet, so the "backed by a claim" half fails.
+//    Every non-trivial numeric literal in a core module must be LINE-ANCHORED:
+//    covered by a committed claim referenced at the literal's OWN citation, a
+//    self-documenting inline `FILE.MAC:NNN` on its own line, or a documented
+//    STRUCTURAL/TRIVIAL exemption. mc10-6 RETIRED the former
+//    `claimedValues.has(v)` bare value-membership check here — that accepted an
+//    un-cited literal whenever ANY unrelated claim shared its number (e.g.
+//    cursor.ts `LOGICAL_WIDTH = 0x100` riding in on a 256-valued speed claim).
+//    The coverage decision now lives in tests/helpers/core-literals.ts
+//    (`literalCovered`), whose semantics are pinned on synthetic input in
+//    section 6; this block is the real-tree, per-module application.
 // ─────────────────────────────────────────────────────────────────────────────
-const TRIVIAL = new Set([0, 1, 2, -1]) // indices, halving, sign — not game constants
 const coreFiles = existsSync(join(root, 'src', 'core'))
   ? readdirSync(join(root, 'src', 'core')).filter((f) => f.endsWith('.ts'))
   : []
-
-/**
- * Game-constant numeric literals on a code line (comments/strings stripped),
- * with the raw line. Reads BOTH hex (`0x5f`) and decimal so a coordinate literal
- * cannot slip past as a mis-parsed `0`; trivial values (indices, halving, sign)
- * are dropped so the guard flags only magic game constants.
- */
-function gameLiterals(src: string): Array<{ n: number; line: string; nums: number[] }> {
-  return src.split('\n').map((raw, i) => {
-    const code = raw.replace(/\/\/.*$/, '').replace(/\/\*.*?\*\//g, '').replace(/(['"`]).*?\1/g, '')
-    const nums = [...code.matchAll(/(?<![\w.])(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)/g)]
-      .map((m) => Number(m[1]))
-      .filter((v) => Number.isFinite(v) && !TRIVIAL.has(v))
-    return { n: i + 1, line: raw, nums }
-  }).filter((r) => r.nums.length > 0)
-}
 
 describe('src/core carries no un-cited numeric literal (AC3 guard)', () => {
   it('the core has modules to scan (the guard must have teeth)', () => {
     expect(coreFiles.length, 'src/core must exist for the guard to bite').toBeGreaterThan(0)
   })
 
-  it.each(coreFiles)('%s: every game-constant literal is backed by a committed claim', async (file) => {
+  it.each(coreFiles)('%s: every game-constant literal is line-anchored or exempt', async (file) => {
     const src = readFileSync(join(root, 'src', 'core', file), 'utf8')
-    const { loadClaims } = await loadClaimsModule()
-    const claimedValues = new Set(loadClaims().map((c) => Number(c.value)).filter(Number.isFinite))
-
-    for (const { n, line, nums } of gameLiterals(src)) {
-      for (const v of nums) {
-        expect(
-          claimedValues.has(v),
-          `core/${file}:${n} has un-cited game-constant literal ${v} — no committed claim carries that value.\n  ${line.trim()}`,
-        ).toBe(true)
-      }
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const claims = loadCommittedClaims()
+    for (const lit of extractCoreLiterals(src, file)) {
+      expect(
+        literalCovered(claims, lit.docText, lit.value),
+        `core/${file}:${lit.line} has un-cited game-constant literal ${lit.value} — no committed claim is anchored to its own citation, and it is not STRUCTURAL/TRIVIAL. Add an inline FILE.MAC:NNN cite on its line/doc-block, or a documented STRUCTURAL exemption.`,
+      ).toBe(true)
     }
   })
 })
@@ -480,10 +467,17 @@ describe('mc2-6 — the sweep machinery itself (synthetic input; the mutation pr
 //    canonical STRUCTURAL exemption (the code already documents "no W3COMN line
 //    exists"); other genuinely un-cited literals get a citation or an exemption.
 // ─────────────────────────────────────────────────────────────────────────────
+interface CoreLiteral {
+  file: string
+  line: number
+  value: number
+  docText: string
+}
 interface CoreLiteralsModule {
   STRUCTURAL: ReadonlyMap<number, string>
   literalCovered(claims: readonly CommittedClaim[], docText: string, value: number): boolean
   uncitedCoreLiterals(claims: readonly CommittedClaim[], coreDir: string): string[]
+  extractCoreLiterals(src: string, file: string): CoreLiteral[]
 }
 const CORE_LITERALS_SPECIFIER = './helpers/core-literals.js'
 async function loadCoreLiterals(): Promise<CoreLiteralsModule> {
@@ -492,9 +486,10 @@ async function loadCoreLiterals(): Promise<CoreLiteralsModule> {
     if (
       typeof mod.literalCovered !== 'function' ||
       typeof mod.uncitedCoreLiterals !== 'function' ||
+      typeof mod.extractCoreLiterals !== 'function' ||
       !(mod.STRUCTURAL instanceof Map)
     ) {
-      throw new Error('module lacks STRUCTURAL / literalCovered / uncitedCoreLiterals')
+      throw new Error('module lacks STRUCTURAL / literalCovered / uncitedCoreLiterals / extractCoreLiterals')
     }
     return mod as CoreLiteralsModule
   } catch (e) {
