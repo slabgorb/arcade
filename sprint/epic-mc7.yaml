@@ -26,8 +26,8 @@ stories:
     completed: '2026-08-10'
     review_verdict: approved
   - id: mc7-3
-    title: "Persistence via one-origin localStorage: shell reads on boot and writes on commit under highScoreKey('missile-command'); core stays pure (owns table/qualifies/initials), shell holds only the storage + save trigger. Reuse the asteroids/joust @shared/highscore consumer pattern."
-    points: 3
+    title: "Wire name entry end-to-end (KEYBOARD): add the stepGame 'entry' freeze branch (+freeze test) so a step during 'entry' no longer falls through to stepCombat/nextPhase; reach enterNameEntry from a qualifying game-over in the frame loop; shell feeds KeyboardEvent.key to core stepInitials and commits on Enter via @shared/name-entry (keyboard like asteroids/joust — NO trackball, NO ROM timeout); and persist via one-origin localStorage under highScoreKey('missile-command') — shell reads on boot, writes on commit; core stays pure (owns table/qualifies/initials). Reuse the asteroids/joust @shared/highscore + name-entry consumer pattern. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
+    points: 5
     priority: p2
     status: backlog
     repos: arcade
