@@ -9,6 +9,7 @@ completed_epics:
   - mc4
   - mc9
   - sw10
+  - jt10
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -148,4 +149,54 @@ completed_stories:
     epic: mc5
     title: 'Sputnik fire arbitration + authentic motion (mc9-coupled): the plane fires EITHER/OR vs the normal swarm per launch cycle (ROM JMP SPUTFIR replaces ICNORM launch, W3MAIN.MAC:2543), gated by an in-bounds check (PLCPH within +/-48 of the edges, :2529-2537), and the fire timer is DISTANCE-based (HORFIR vs SPUTDS, :2523-2527) not a frame countdown. Deferred from mc5-2 review F3; couples to mc9 authentic plane velocity (functional speed=1 today). REV-01'
     points: 3
+    completed: '2026-08-09'
+  - id: mc10-1
+    epic: mc10
+    title: 'Absolute-aim cursor: map mouse canvas-position -> cabinet coord (inverse of render.project) via a new pure core placeCursor + clamp, keeping the V-flip; replace main.ts relative movementX/movementY. Fixes twitchy aim that never tracks the mouse (no pointer lock, 1px=1unit over a 2000px canvas)'
+    points: 2
+    completed: '2026-08-09'
+  - id: jt10-1
+    epic: jt10
+    title: 'Font port: transcribe FONT35 (3x5) + FONT57 (5x7) from MESSAGE.SRC into pure core data, add a shell raster text renderer'
+    points: 5
+    completed: '2026-08-07'
+  - id: jt10-2
+    epic: jt10
+    title: 'Cabinet state machine: new core cabinet.ts (attract/title/select/playing/gameover/highscore) wrapping the session, hinged on GOVER'
+    points: 3
+    completed: '2026-08-07'
+  - id: jt10-3
+    epic: jt10
+    title: 'Title screen (MARQUE): transcribe the JOUST vector logo + (C)1982 copyright + EXTRA-MOUNT lines in FONT57, with the ATT.SRC colour cycle'
+    points: 5
+    completed: '2026-08-08'
+  - id: jt10-4
+    epic: jt10
+    title: 'Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4'
+    points: 5
+    completed: '2026-08-08'
+  - id: jt10-5
+    epic: jt10
+    title: '1P/2P start select: ONE PLAYER START / TWO PLAYER START ($1D/$1E) + a static CREDITS row, transitioning attract->select->playing'
+    points: 3
+    completed: '2026-08-07'
+  - id: jt10-6
+    epic: jt10
+    title: 'Game-over screen: wire GOVER_OVER/settleGameOver to a GAME OVER overlay and the transition to highscore-or-attract'
+    points: 2
+    completed: '2026-08-07'
+  - id: jt10-8
+    epic: jt10
+    title: Extend the font source double-entry gate to ALL ~102 glyphs (font35+font57), not just the 10 jt10-1 pinned
+    points: 2
+    completed: '2026-08-07'
+  - id: jt10-9
+    epic: jt10
+    title: DAILY BUZZARDS daily-reset high-score table (TXHSP $0F) — second table + daily reset timer, alongside jt10-7's all-time JOUST CHAMPIONS
+    points: 3
+    completed: '2026-08-09'
+  - id: jt10-10
+    epic: jt10
+    title: Retire jt9-39's stale live-sprint control in difficulty-wiring.test.ts — hardcoded jt9-39/jt9-11 (both archived) fail liveSprintStoryIds(); derive the positive control from the live set so it can't rot
+    points: 1
     completed: '2026-08-09'
