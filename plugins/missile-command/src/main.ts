@@ -10,7 +10,7 @@
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
-import { fireOrStart, pauseFromKey } from './shell/input.js'
+import { fireOrStart, pauseFromKey, beginSetupOnInput } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
@@ -28,6 +28,13 @@ const audio = createAudioEngine()
 const unlock = (): void => audio.resume()
 canvas.addEventListener('pointerdown', unlock)
 window.addEventListener('keydown', unlock)
+
+// mc6-4: pointer input leaves the ATTRACT demo for SETUP too, so the demo ends on a
+// click/move as well as a keydown (keydowns leave via fireOrStart below). A no-op
+// outside attract, so it never disturbs a live game's aim.
+canvas.addEventListener('pointerdown', () => {
+  game = beginSetupOnInput(game)
+})
 
 // Voice whatever sound moments are queued on the state, then clear the channel so
 // nothing is re-voiced next frame (stepGame rebuilds it fresh each step, but a

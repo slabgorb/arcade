@@ -20,7 +20,7 @@
 // (NICBMS, the magazine size) is imported from core, never hardcoded here.
 
 import { describe, it, expect } from 'vitest'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import { NICBMS } from '../src/core/spawn.js'
 import { waveSchedule, INITIAL_WAVE } from '../src/core/wave.js'
 
@@ -44,7 +44,7 @@ async function loadFire(): Promise<FireModule> {
 
 /** The state after `n` frames of the pure enemy loop from a fresh seeded game. */
 function trajectory(seed: number, n: number): GameState[] {
-  const out: GameState[] = [createGame(seed)]
+  const out: GameState[] = [createPlayGame(seed)]
   for (let k = 0; k < n; k++) out.push(stepGame(out[out.length - 1]))
   return out
 }
@@ -116,7 +116,7 @@ describe('AC3 — end to end through the fire seam: the magazine economy is spen
   /** A scripted seeded run that fires a cycling key each frame, then steps. */
   async function playFiring(seed: number, frames: number): Promise<GameState[]> {
     const { fireFromKey } = await loadFire()
-    const out: GameState[] = [{ ...createGame(seed), cursor: AIM }]
+    const out: GameState[] = [{ ...createPlayGame(seed), cursor: AIM }]
     for (let k = 0; k < frames; k++) {
       const fired = fireFromKey(KEYS[k % KEYS.length], out[out.length - 1])
       out.push(stepGame(fired))
@@ -125,7 +125,7 @@ describe('AC3 — end to end through the fire seam: the magazine economy is spen
   }
 
   it('firing every frame draws the total magazine down below its full load', () => {
-    const start = liveAmmo(createGame(3))
+    const start = liveAmmo(createPlayGame(3))
     return playFiring(3, 60).then((run) => {
       const end = run[run.length - 1]
       expect(liveAmmo(end), 'sustained firing must spend ammo').toBeLessThan(start)
