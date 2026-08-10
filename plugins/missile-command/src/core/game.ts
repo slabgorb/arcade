@@ -54,7 +54,7 @@ import {
 } from './sputnik.js'
 import { killIcbmsInBlasts, resolveGroundImpacts, killSputniksInBlasts } from './damage.js'
 import { scoreKills, scoreMultiplier, CRUISE_SCORE_MULT } from './score.js'
-import { nextPhase, nextWavePhase, resumePlay, INITIAL_PHASE, type Phase } from './state.js'
+import { nextPhase, nextWavePhase, resumePlay, advanceOverTimeout, INITIAL_PHASE, type Phase } from './state.js'
 import {
   DEFAULT_HIGH_SCORES,
   qualifiesForHighScore,
@@ -98,9 +98,14 @@ export interface GameState {
   readonly bases: readonly Base[]
   /** Running score; +ICBM_KILL_POINTS per downed ICBM (mc3-3). */
   readonly score: number
-  /** Coarse phase: `'play'` until every city is dead, then terminal `'over'`; a
-   *  qualifying game-over routes to `'entry'` for the initials buffer (mc7-2). */
+  /** Coarse phase: `'play'` until every city is dead, then `'over'`; a qualifying
+   *  game-over routes to `'entry'` for the initials buffer (mc7-2), and mc6-6
+   *  auto-returns `'over'` to `'attract'` after the game-over hold (see `overFrames`). */
   readonly phase: Phase
+  /** Frames elapsed in phase `'over'` (mc6-6). Counts up while frozen at game-over; at
+   *  `OVER_TIMEOUT_FRAMES` the MAINLINE loop closes back to the attract demo. Held at 0
+   *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
+  readonly overFrames: number
   /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
    *  boot; commit inserts into it; the shell loads/saves it on boot/commit (later story). */
   readonly highScores: readonly MissileCommandHighScore[]
@@ -148,6 +153,7 @@ export function createPlayGame(seed = 1): GameState {
     bases: createBases(),
     score: 0,
     phase: 'play',
+    overFrames: 0,
     highScores: DEFAULT_HIGH_SCORES,
     initials: '',
     remaining: waveSchedule(INITIAL_WAVE).count,
@@ -335,9 +341,21 @@ export function attractDriver(state: GameState): GameState {
  * cursor advance is the sanctioned exception; determinism holds per-seed).
  */
 export function stepGame(state: GameState): GameState {
-  // Terminal phase: freeze the battle, only the clock ticks on — and the sound
-  // channel goes quiet (no spawn/flight/damage happens, so nothing to voice).
-  if (state.phase === 'over') return { ...state, frame: state.frame + 1, soundEvents: [] }
+  // GAME-OVER, then CLOSE THE LOOP (mc6-6): freeze the battle — only the clock and the
+  // over-frame counter tick on, the sound channel stays quiet (no spawn/flight/damage to
+  // voice). After the ENDGM2 final-bang hold (OVER_TIMEOUT_FRAMES frames), the MAINLINE
+  // loop returns to the attract demo — the ROM's ENDGM1 flips ATRACT and ENDGM2 hands to
+  // SETUPC=CDLADR, i.e. a fresh cold-start attract board (createGame), continuing the
+  // seed stream so the demo stays deterministic. The high-score ladder (mc7-1/mc7-2)
+  // PERSISTS across the loop-back — the ROM's HSTD table survives the return to attract,
+  // so a non-qualifying game timing out must not wipe a score committed earlier this session.
+  if (state.phase === 'over') {
+    const overFrames = state.overFrames + 1
+    if (advanceOverTimeout('over', overFrames) === 'attract') {
+      return { ...createGame(state.rng.seed), highScores: state.highScores }
+    }
+    return { ...state, frame: state.frame + 1, overFrames, soundEvents: [] }
+  }
 
   // mc6-3: while paused, freeze the battle exactly as 'over' does — advance only the
   // clock, keep the sound channel quiet, hold every game field byte-identical, and

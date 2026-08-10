@@ -119,3 +119,39 @@ export function togglePause(phase: Phase): Phase {
 // ATRACT polarity is 0=attract / -1=game; our boolean reads true = attract.
 export const INITIAL_PHASE: Phase = 'attract'
 export const INITIAL_ATTRACT = true
+
+// ─── mc6-6 (GREEN, Loki): close the MAINLINE loop — game-over -> attract ──────
+// The cabinet does not sit on the game-over screen forever. Game-over is the
+// two-phase SETUP jump-table entry ENDGM1/ENDGM2 (.WORD ENDGM1-1 / ENDGM2-1,
+// W3MAIN.MAC:589/:601): ENDGM1 (:4617) flips ATRACT straight back to attract mode
+// (STY ATRACT, Y=0; ATRACT is ";ATTRACT (0)/GAME (-1) FLAG", :135), then ENDGM2
+// (:4683) runs the "final bang" — it grows the death explosion from ENDUPD up to
+// ENDMAX and shrinks it back to 0 at ENDUPD dots/frame, THEN hands to the attract /
+// DISPLAY-5-HI screen (SETUPC=CDLADR). That grow+shrink span IS the post-game-over
+// hold before the attract demo resumes, so mc6-6 uses it as the over->attract
+// timeout that CLOSES the loop: attract -> setup -> play -> over -> attract.
+//
+// ENDMAX=6D is HEX 0x6D=109 under W3COMN.MAC's inherited .RADIX 16 — the hex reading
+// is FORCED, not chosen: "THE END" displays at CMP I,62 (:4715), which must be < ENDMAX
+// to ever fire (0x62=98 < 109); a decimal ENDMAX=6 makes "THE END" unreachable. ENDUPD=1
+// (:4677). The hold = grow (ENDUPD..ENDMAX) + shrink (ENDMAX..0) at ENDUPD/frame =
+// 2*ENDMAX/ENDUPD frames. (ROM line numbers in // comments, never JSDoc — the
+// un-cited-literal scanner strips // but not /** */. ENDMAX(109) is pinned by claim
+// MC-STATE-ENDMAX; ENDUPD=1 and the 2 are trivial-exempt.)
+const ENDMAX = 0x6d // W3MAIN.MAC:4675  ENDMAX =6D  — MAX final-bang radius (109)
+const ENDUPD = 1 // W3MAIN.MAC:4677  ENDUPD =1   — dots the bang grows/shrinks per frame
+
+/** The post-game-over hold, in video frames: the ENDGM2 final-bang grow+shrink span
+ *  (`2*ENDMAX/ENDUPD`). After this many frames in `'over'` the cabinet returns to the
+ *  attract demo (see `advanceOverTimeout`), closing the MAINLINE loop. */
+// = 218 frames (~3.6s @60fps). The value literal lives here in a // comment, not the
+// JSDoc above — the un-cited-literal scanner strips // but not /** */ (mc project rule).
+export const OVER_TIMEOUT_FRAMES = (2 * ENDMAX) / ENDUPD
+
+/** Close the MAINLINE loop: once `'over'` has held for `OVER_TIMEOUT_FRAMES` frames,
+ *  return `'attract'`; any smaller over-frame count, and every non-over phase, is
+ *  returned UNCHANGED. Pure — no clock, no entropy; the caller counts the frames
+ *  spent in `'over'` (game.ts threads them through `GameState.overFrames`). */
+export function advanceOverTimeout(phase: Phase, framesInOver: number): Phase {
+  return phase === 'over' && framesInOver >= OVER_TIMEOUT_FRAMES ? 'attract' : phase
+}
