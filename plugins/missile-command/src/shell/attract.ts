@@ -14,9 +14,10 @@
 // claim in docs/rom-study/claims/attract.json (byte-verified by check-citations).
 //
 // ─── FREE-PLAY (Design Deviation, TEA) ───────────────────────────────────────
-// The arcade fleet is free-play / browser (no coins — CLAUDE.md), so the coin-op
-// scroll table (INSERT COINS / CREDITS:) is inapplicable; the faithful free-play
-// attract shows PRESS START + the MISSILE COMMAND title + the HIGH SCORES slot.
+// The arcade fleet is browser-based with no backend (CLAUDE.md) — there is no coin
+// mechanism — so the coin-op scroll table (INSERT COINS / CREDITS:) is inapplicable;
+// the faithful free-play attract shows PRESS START + the MISSILE COMMAND title + the
+// HIGH SCORES slot.
 
 import { MC_HIGH_SCORE_DEPTH } from '../core/highscore.js'
 
@@ -25,8 +26,6 @@ export const MSG_PRESS_START = 'PRESS START'
 /** "THE END" — ETHEEND, W3DSUP.MAC:3338. Shown in the game-over explosion
  *  (W3MAIN.MAC:4719 `LDA I,MTHEEND ;DISPLAY "THE END" IN EXPLOSION`), phase 'over'. */
 export const MSG_THE_END = 'THE END'
-/** "GAME OVER" — EGAMOV, W3DSUP.MAC:3326. */
-export const MSG_GAME_OVER = 'GAME OVER'
 /** Title line 1 "MISSILE" — EMISIL, W3DSUP.MAC:3384. */
 export const TITLE_LINE_1 = 'MISSILE'
 /** Title line 2 "COMMAND" — ECOMAN, W3DSUP.MAC:3386. */

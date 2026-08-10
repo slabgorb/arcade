@@ -22,7 +22,7 @@
 // MTHEEND ;DISPLAY "THE END" IN EXPLOSION`), i.e. during phase 'over'.
 //
 // ─── FREE-PLAY DECISION (TEA, recorded as a Design Deviation) ─────────────────
-// The arcade fleet is FREE-PLAY / browser (no coins, no backend — CLAUDE.md).
+// The arcade fleet is browser-based with no backend (CLAUDE.md) — no coin mechanism.
 // The coin-op scroll table (W3DSUP.MAC MESDAT: INSERT COINS / CREDITS: / coin
 // mode) is therefore inapplicable; the faithful free-play attract shows PRESS
 // START + the MISSILE COMMAND title + the HIGH SCORES slot. This story pins the

@@ -22,17 +22,6 @@
   }
  },
  {
-  "id": "MC-ATTRACT-MSG-GAME-OVER",
-  "symbol": "EGAMOV",
-  "value": "cite",
-  "meaning": "The 'GAME OVER' string (English literal EGAMOV). One of the coin-op scroll messages (MESDAT NOCRED list); shown at game end.",
-  "source": {
-   "file": "W3DSUP.MAC",
-   "line": 3326,
-   "verbatim": "EGAMOV:\t.ASCIN /GAME OVER/"
-  }
- },
- {
   "id": "MC-ATTRACT-TITLE-MISSILE",
   "symbol": "EMISIL",
   "value": "cite",
