@@ -11,6 +11,6 @@ export const meta: GameMeta = {
   // design doc said 7 — corrected here per the TEA design deviation.
   order: 8,
   listed: true,
-  showcase: false,
+  showcase: true,
   version,
 }

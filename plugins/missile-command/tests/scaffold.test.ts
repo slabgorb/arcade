@@ -84,7 +84,10 @@ describe('scaffold — plugin.ts meta (the registry is generated from this)', ()
     // Design Deviation. tempest..red-baron are orders 1..7.
     expect(src, 'order must be 8 (7 is red-baron)').toMatch(/order:\s*8\b/)
     expect(src).toMatch(/listed:\s*true/)
-    expect(src).toMatch(/showcase:\s*false/)
+    // showcase: true since MC joined the lobby showcase carousel — its self-playing
+    // attract demo (mc6-4) earns a slot alongside tempest/asteroids/battlezone/
+    // centipede/pac-man. Was `false`; the flip is pinned in src/host/registry.test.ts.
+    expect(src).toMatch(/showcase:\s*true/)
     // version is imported from package.json, not hardcoded (mirrors the siblings).
     expect(src, 'version must come from package.json, not a literal').toMatch(/version[,\s]/)
     expect(src, 'plugin.ts must not hardcode a version literal in meta').not.toMatch(/version:\s*'[0-9]/)

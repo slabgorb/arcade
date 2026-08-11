@@ -79,11 +79,15 @@ test('showcaseLivenessTargets() defaults to the live registry roster and paths',
   // Membership sanity against the census — and, crucially, the exclusions.
   // ad1-3 added asteroids: its attract mode now self-plays (a ship steering and
   // shooting the drifting field, plugins/asteroids/tests/attract-demo.test.ts)
-  // and its manifest flipped showcase:true, so it MUST now be probed.
-  for (const id of ['tempest', 'asteroids', 'battlezone', 'centipede']) {
+  // and its manifest flipped showcase:true, so it MUST now be probed. missile-command
+  // (boots into 'attract' with a skilled AUTCUR self-play, mc6-4) and joust (main.ts
+  // now boots into its jt10-4 attract cycle instead of 'select') joined the carousel
+  // too, so both MUST now be probed.
+  for (const id of ['tempest', 'asteroids', 'battlezone', 'centipede', 'joust', 'missile-command']) {
     assert.ok(ids.includes(id), `${id} is showcase:true and must be probed`);
   }
-  for (const id of ['joust', 'red-baron']) {
+  // red-baron stays out: listed:false (not production-ready), so showcase:false.
+  for (const id of ['red-baron']) {
     assert.ok(!ids.includes(id), `${id} is showcase:false and must NOT be probed`);
   }
 });
