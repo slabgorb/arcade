@@ -30,3 +30,4 @@ can change the audited bytes underneath the fidelity oracles.
 | battlezone | historicalsource/battlezone | 38d0b07 | ~/Projects/battlezone-source | reference/atari-source/battlezone | 2026-07-12 |
 | centipede | historicalsource/centipede | dbbe6de | ~/Projects/centipede-source | ~/Projects/a-1/reference/atari-source/centipede | 2026-07-18 |
 | defender | historicalsource/defender | 3fae9d3 | ~/Projects/defender-source | ~/Projects/a-2/reference/atari-source/defender | 2026-08-11 |
+| millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/atari-source/millipede | 2026-08-11 |

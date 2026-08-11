@@ -1,0 +1,86 @@
+
+
+
+
+Project #:  368X1			Project Programmer:  ED LOGG			Project Leader:  ED LOGG
+
+Documentation Disk(s):  48A		Project Name:  MILLIPEDE			Date:  Sept. 29, 1982		Version:  1
+
+
+Verification control filename:  013X1.DAT		Verification file:  MILLI.LDA
+
+
+Part #		PCB Loc.	Description		Start		Generic 	Part 		Bits		Checksum 
+							Addr		Name		Size		Used
+------		--------	-----------		-----		-------		----		----		--------
+
+136013-101	H1		PROGRAM EPROM'S		7000		2532		4KX8		ALL		176F
+136013-102	J/K1		PROGRAM EPROM'S		6000		2532		4KX8		ALL		7A4B
+136013-103	L1		PROGRAM EPROM'S		5000		2532		4KX8		ALL		1203
+136013-104	M/N1		PROGRAM EPROM'S		4000		2532		4KX8		ALL		CE95
+
+136013-106	N/P5		PICTURE EPROM'S		800		2716		2KX8		ALL		D37D
+136013-107	R5		PICTURE EPROM'S		0		2716		2KX8		ALL		004F
+
+General Information:  MILLI.COM
+
+Assembler used:  MAC65
+
+Main program source files:
+	Includes:  MLCPY.MAC, MLDEF.MAC, COIN65.MAC, HLL65F.MAC
+	Files:  MILLI.MAC, MLSUB.MAC, MLATR.MAC, CONWAY.MAC, MLCOIN.MAC, MLIRQ.MAC, MLTST.MAC
+
+Linker used:  LINKM
+
+Linker command:  MILLI
+
+Command files:  MILLI.LNK
+
+Documentation file:  MILLI.DOC
+
+Picture file:  368XX.SB2
+
+Assembler used:
+
+	File/s:
+
+Linker used:
+
+	Command:
+
+General Roms/Proms:	Part #		Source file		Part #	Source file
+
+			136013-106	368XX.SB2
+			136013-107	368XX.SB2
+
+SIGN-OFF:
+
+	The Project Leader will verify the correctness of this document by verifying that,
+
+1.  All part #'s and their rev levels are correct
+
+2.  Part #'s match PCB locations & start addresses according to the appropriate assembly drawing &
+    assembly parts list.
+
+5.  Sign this document the indicate that the above conditions have been met
+
+	Project Leader: ______________________________  Date: __________
+
+
+
+	The Components engineer will,
+
+1.  verify the part #'s
+
+2.  verify the part #'s on the parts given him by the project leader
+
+
+3.  verify the contents of the parts against the file, using the DATA I/O
+
+4.  generate a new set of parts and verify them against the file
+
+5.  send the new parts to manufacturing and/or rom vendor
+
+6.  sign this document to indicate that the above steps have been completed.
+
+	Components Engineer: ______________________________  Date: _______________
