@@ -148,7 +148,12 @@ export function createOverlays(): Overlays {
     }
     active = active.filter((popup) => popup.framesLeft > 0)
 
-    if (banner === 'game-over') {
+    // pm4-9: while the pm4-8 demo plays itself in attract, paint the cabinet's
+    // attract screen on top of it (never READY! — that belongs to the pre-play
+    // 'ready' phase). Everywhere else keep the pm3-7/pm4-6 banner behaviour.
+    if (game.phase === 'attract') {
+      drawAttractScreen(ctx)
+    } else if (banner === 'game-over') {
       drawBanner(ctx, 'GAME OVER')
     } else if (!readyCleared) {
       drawBanner(ctx, 'READY!')
@@ -156,6 +161,25 @@ export function createOverlays(): Overlays {
   }
 
   return { onEvents, draw }
+}
+
+// pm4-9: the attract-only prompt, painted over the pm4-8 self-playing demo while
+// `phase === 'attract'`. ROM-authentic text from Pac-Man's attract string-pointer
+// table: "PUSH START BUTTON" (pacman.asm:36b3), sitting in the play area the way the
+// cabinet shows it. The HIGH SCORE readout is NOT here — it is a permanent HUD element
+// (drawHud, top-centre, all phases), so this draws only the attract-specific prompt.
+//
+// pm4-1 [SAFETY]: plain `fillText` only — never a `fillRect` over the buffer. The
+// boss has photosensitive epilepsy, so the attract screen must never full-screen
+// flash. The prompt is drawn steadily (no blink) — the authentic blink is optional
+// and deliberately omitted as the simplest non-flashing render.
+function drawAttractScreen(ctx: CanvasRenderingContext2D): void {
+  ctx.fillStyle = BANNER_COLOR
+  ctx.font = '8px monospace'
+  ctx.textBaseline = 'middle'
+  ctx.textAlign = 'center'
+  ctx.fillText('PUSH START BUTTON', LOGICAL_W / 2, 180) // pacman.asm:36b3
+  ctx.textAlign = 'start'
 }
 
 /** Centred banner text over the 224x288 logical playfield — same plain

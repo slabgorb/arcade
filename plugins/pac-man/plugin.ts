@@ -9,6 +9,6 @@ export const meta: GameMeta = {
   controls: ['Joystick — ←↑↓→ / WASD'],
   order: 9,
   listed: true,
-  showcase: false,
+  showcase: true,
   version,
 }

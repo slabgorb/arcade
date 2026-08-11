@@ -165,10 +165,10 @@ export type PacHighScoreTable = HighScoreTable<typeof HIGH_SCORE_DOMAIN>
 // pm4-5: the full cabinet lifecycle (was `'playing' | 'game-over'`). The pure
 // transition machine over these phases lives in ./phase.ts (`advancePhase`),
 // mirroring the ROM master-state byte #4e00 dispatch (pacman.asm:0195 read;
-// :0984/:269a/:318c writes). `createGameState` still starts at `'playing'`;
-// pm4-6 flips the start to `'attract'` and wires the start-input reseed, and
-// pm4-7 wires the `dying`/`level-clear` freeze — this story only widens the type
-// and provides the machine.
+// :0984/:269a/:318c writes). `createGameState` now boots into `'attract'` (pm4-6
+// flipped the start and wired the start-input reseed; pm4-8 made attract self-play;
+// pm4-9 paints the attract screen), and pm4-7 wired the `dying`/`level-clear`
+// freeze. pm4-5 widened the type and provided the machine.
 export type GamePhase = 'attract' | 'ready' | 'playing' | 'dying' | 'level-clear' | 'game-over'
 
 export interface FruitState {

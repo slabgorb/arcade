@@ -81,8 +81,15 @@ function isHighLuminance(fillStyle: string | undefined): boolean {
   return luma >= 128
 }
 
+// pm4-9: `createGameState` boots into 'attract', and overlays now paints the
+// attract SCREEN there (not READY!/popups). These tests exercise the popup and
+// READY!/GAME OVER banner mechanics, which live in the 'playing'/'game-over'
+// phases — so the stub is a PLAYING game. (The attract screen has its own suite,
+// tests/shell/attract-screen.test.ts.)
 function stubGame(): GameState {
-  return createGameState(1)
+  const g = createGameState(1)
+  g.phase = 'playing'
+  return g
 }
 
 function textCalls(ctx: ReturnType<typeof fakeCtx>): string[] {
@@ -233,11 +240,13 @@ describe('createOverlays (pm3-7)', () => {
 
     // main.ts's restart: `game = createGameState(Date.now(), highScoreTable)`
     // — a brand-new GameState, which now boots into 'attract', never touching
-    // `overlays`. The un-latch fires on leaving 'game-over'.
+    // `overlays`. The un-latch fires on leaving 'game-over'. pm4-9: a restart lands
+    // in ATTRACT (the self-playing demo), so the driver shows the ATTRACT SCREEN
+    // (PUSH START BUTTON), not READY! — READY! belongs to the pre-play 'ready' phase.
     const freshGame = createGameState(2)
     const afterRestart = fakeCtx()
     ov.draw(afterRestart, freshGame)
     expect(textCalls(afterRestart)).not.toContain('GAME OVER')
-    expect(textCalls(afterRestart)).toContain('READY!')
+    expect(textCalls(afterRestart)).toContain('PUSH START BUTTON')
   })
 })

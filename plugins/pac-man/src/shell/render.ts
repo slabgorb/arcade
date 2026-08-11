@@ -533,13 +533,35 @@ export function drawScorePopup(ctx: CanvasRenderingContext2D, xPx: number, yPx: 
   drawScoreText(ctx, xPx, yPx, points)
 }
 
-/** The score/lives/level HUD, drawn into the reserved top HUD rows
- *  (`maze.ts`'s rows 0-2 — always 'wall'/no gameplay tile, per that file's
- *  header) so it never overlaps the playfield. */
-export function drawHud(ctx: CanvasRenderingContext2D, score: number, lives: number, level: number): void {
+/** The HUD, drawn into the RESERVED HUD bands so it never overlaps the playfield
+ *  (`maze.ts` rows 0-2 at the top and rows 33-35 at the bottom — always 'wall'/no
+ *  gameplay tile, per that file's header; `isHudRow` keeps them black). pm4-9 moved
+ *  the layout to the ROM-authentic arrangement: SCORE top-left, HIGH SCORE top-centre
+ *  (pacman.asm:36a5 — the persisted top score, or 0), and LIVES/LEVEL in the BOTTOM
+ *  band (lives left, level right) where Pac-Man puts them, instead of stacking every
+ *  readout at the top. `highScore` is `game.highScoreTable[0]?.score ?? 0`. */
+export function drawHud(
+  ctx: CanvasRenderingContext2D,
+  score: number,
+  highScore: number,
+  lives: number,
+  level: number,
+): void {
+  const W = MAZE.cols * TILE_PX
+  const BOTTOM = (MAZE.rows - 2) * TILE_PX // row 34 of 0-35, inside the bottom band (rows 33-35)
   ctx.fillStyle = HUD_COLOR
   ctx.font = '8px monospace'
   ctx.textBaseline = 'top'
+  // Top band (rows 0-2, y < 24): score at the left, HIGH SCORE centred.
+  ctx.textAlign = 'start'
   ctx.fillText(`SCORE ${score}`, 4, 4)
-  ctx.fillText(`LIVES ${lives}  LEVEL ${level}`, 4, 14)
+  ctx.textAlign = 'center'
+  ctx.fillText('HIGH SCORE', W / 2, 4) // pacman.asm:36a5
+  ctx.fillText(String(highScore), W / 2, 14)
+  // Bottom band (rows 33-35, y >= 264): lives at the left, level at the right.
+  ctx.textAlign = 'start'
+  ctx.fillText(`LIVES ${lives}`, 4, BOTTOM)
+  ctx.textAlign = 'end'
+  ctx.fillText(`LEVEL ${level}`, W - 4, BOTTOM)
+  ctx.textAlign = 'start'
 }

@@ -5,8 +5,9 @@
 // scaled 224x288 backbuffer this file already had (pm1-3), plus keyboard
 // direction input, name entry and the persisted high-score board
 // (`@shared/name-entry` + `@shared/highscore`, the centipede pattern, adapted
-// — this cabinet has no attract mode / trackball, so it is a smaller wiring
-// than centipede's, not a re-invention of it).
+// — this cabinet's attract mode is the pm4-8 self-playing demo with the pm4-9
+// attract screen (no trackball), a smaller wiring than centipede's, not a
+// re-invention of it).
 
 import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode, heldAnimPhase } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
@@ -227,7 +228,7 @@ const frame = (now: number): void => {
   }
   drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, heldAnimPhase(animClock))
   if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
-  drawHud(logicalCtx, game.score, game.lives, game.level)
+  drawHud(logicalCtx, game.score, game.highScoreTable[0]?.score ?? 0, game.lives, game.level)
   overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
