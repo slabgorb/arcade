@@ -372,12 +372,6 @@ export interface Enemy {
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
-// NaN totality: the shared `clamp` is guarded (NaN -> lo; see @shared/clamp). Bare Math.min/max
-// PROPAGATE NaN, and a NaN that ever reaches x/y would persist across every later frame (state is
-// fed back through step), so the guard floors it. Unreachable from spawn today. rb4-16 corrects the
-// old overclaim that this floor was "the total answer" for a degenerate fixture: this `clamp`
-// guards only the Y altitude band, while PLONSN's own clamp sinks a NaN X (plonsnClamp returns the
-// pilot). The two together keep step() total on a hand-built NaN fixture (rb4-6 R3 totality pin).
 /** Clamp a GMLEVL to a valid table index (0 .. .LEVLS-1). */
 const levelIndex = (level: number): number => clamp(Math.floor(level) || 0, 0, P_OLIM.length - 1)
 
@@ -701,6 +695,11 @@ export function step(enemy: Enemy, level = 0, eye: Vec3 = BORESIGHT): Enemy {
   // (the ROM's `LDX I,2 … DEX/DEX/BPL` loop, :2905-2934); Y then also takes UPDPLN's absolute
   // altitude band (:2595-2611), applied LAST so [PLANE_ALT_MIN, PLANE_ALT_MAX] stays a hard invariant
   // (PLONSN-Y is a practical no-op inside it — the window dwarfs the band at every live depth).
+  // NaN totality: `clamp` is guarded (NaN -> lo; see @shared/clamp) and bare Math.min/max would
+  // PROPAGATE a NaN across every later frame (state feeds back through step). The Y `clamp` below
+  // floors a NaN altitude, while plonsnClamp sinks a NaN X (returns the pilot eye) — the two
+  // together keep step() total on a hand-built NaN fixture (rb4-6 R3 totality pin). Unreachable
+  // from spawn today; rb4-16 corrected the old overclaim that this floor was "the total answer".
   const limit = plonsnLimit(positionZ)
   const x = plonsnClamp(xi, eye[0], limit)
   const y = clamp(plonsnClamp(yi, eye[1], limit), PLANE_ALT_MIN, PLANE_ALT_MAX)

@@ -90,11 +90,12 @@ export function moveCursor(cursor: Cursor, delta: Delta): Cursor {
  */
 export function placeCursor(x: number, y: number, width: number, height: number): Cursor {
   // Guard the divisor: a degenerate canvas (width/height 0 — a hidden or not-yet-
-  // laid-out element) would make x/width Infinity or, for 0/0, NaN, and clamp lets
-  // NaN pass BOTH comparisons unchanged — so a raw ratio could return {h: NaN},
-  // breaking the Cursor invariant [HMIN,HMAX]x[VMIN,VMAX]. With no area to map into
-  // the fraction is 0, parking the crosshair at the low edge; the result is always
-  // finite and in range.
+  // laid-out element) would make x/width Infinity or, for 0/0, NaN. With no area to
+  // map into, the fraction is 0, parking the crosshair at the low edge. (The shared
+  // clamp is NaN-guarded and would itself floor a NaN ratio to HMIN/VMIN, but
+  // guarding the divisor here keeps the ratio finite and the intent explicit rather
+  // than leaning on clamp's NaN policy.) The result is always finite and in range
+  // [HMIN,HMAX]x[VMIN,VMAX].
   const fx = width > 0 ? x / width : 0
   const fy = height > 0 ? y / height : 0
   return {

@@ -30,10 +30,12 @@ const stripComments = (src: string) =>
 
 // A local generic clamp DEFINITION — the symbol named exactly `clamp` (word
 // boundary excludes clampVel/clamp01/clampAxis/clampIndex) declared as a
-// function or arrow const.
+// function, or a const/let/var binding (typed `clamp:` or assigned `clamp =`).
 const definesLocalClamp = (src: string) =>
-  /\bfunction\s+clamp\s*\(/.test(src) || /\bconst\s+clamp\s*=/.test(src)
+  /\bfunction\s+clamp\s*\(/.test(src) || /\b(?:const|let|var)\s+clamp\s*[:=]/.test(src)
 
+// Detects a REAL import (call on comment-stripped source, or a commented-out
+// `// import { clamp } from '@shared/clamp'` line satisfies it — see callers).
 const importsSharedClamp = (src: string) =>
   /import\s*(?:type\s*)?\{[^}]*\bclamp\b[^}]*\}\s*from\s*['"]@shared\/clamp['"]/.test(src)
 
@@ -56,7 +58,7 @@ describe('SH4-4 adoption — the shared clamp exists and exports only the generi
   })
 
   it('does NOT fold the out-of-scope variants into the shared module (AC-5)', () => {
-    const shared = read('src/shared/clamp.ts')
+    const shared = stripComments(read('src/shared/clamp.ts'))
     for (const variant of ['clampVel', 'clamp01', 'clampIndex', 'clampAxis']) {
       expect(shared.includes(variant), `${variant} must stay local, not in @shared/clamp`).toBe(false)
     }
@@ -66,7 +68,7 @@ describe('SH4-4 adoption — the shared clamp exists and exports only the generi
 describe('SH4-4 adoption — each site imports @shared/clamp and drops its local copy (AC-2)', () => {
   for (const site of ADOPTING_SITES) {
     it(`${site} imports the shared clamp`, () => {
-      expect(importsSharedClamp(read(site)), `${site} must import clamp from @shared/clamp`).toBe(true)
+      expect(importsSharedClamp(stripComments(read(site))), `${site} must import clamp from @shared/clamp`).toBe(true)
     })
 
     it(`${site} no longer defines its own generic clamp`, () => {

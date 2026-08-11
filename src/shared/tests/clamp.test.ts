@@ -106,6 +106,19 @@ describe('clamp — NaN policy is the design gate: NaN -> lo (AC-1, AC-4)', () =
   })
 })
 
+describe('clamp — inverted range (lo > hi) collapses to lo (documented precondition)', () => {
+  // The three pre-extraction spellings did NOT all agree here: min-max returns hi, while the
+  // nest and ternary forms return lo. The shared clamp is the nest form, so lo > hi always
+  // yields lo regardless of v. No adopted call site passes an inverted range (every range is an
+  // ordered MIN/MAX constant or [0,1]/[-1,1]), but the behavior is pinned so a future refactor
+  // toward the min-max spelling can't silently flip it.
+  it('returns lo for any v when lo > hi', () => {
+    expect(clamp(5, 10, 0)).toBe(10)
+    expect(clamp(-5, 10, 0)).toBe(10)
+    expect(clamp(0, 10, 0)).toBe(10)
+  })
+})
+
 describe('clamp — equivalent to all three unguarded spellings on finite inputs, diverges ONLY on NaN', () => {
   // lo <= hi for every triple, so the three spellings are mutually equal.
   const FINITE: ReadonlyArray<readonly [number, number, number]> = [
