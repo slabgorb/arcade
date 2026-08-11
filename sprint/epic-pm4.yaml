@@ -122,3 +122,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: pm4-12
+    title: "[BUG] Maze bottom border wall is invisible — the maze looks open at the bottom. Root cause: isHudRow (plugins/pac-man/src/shell/render.ts:87) blanks 3 bottom rows (`ty >= MAZE.rows-3` = rows 33-35), but the maze's bottom border wall is row 33 (maze-topology.generated.ts row 33 = all '#'), while the top border (row 3) renders fine — an asymmetry. Authentic Pac-Man is 3 top HUD rows + 2 bottom rows. Fix: change the bottom band to `ty >= MAZE.rows-2` (blank only rows 34-35) so row 33 renders as the bottom border. Verify LIVES/LEVEL (drawHud BOTTOM=row 34) still sit in the 2-row band and add a maze-scan/render test pinning that row 33 paints wall art. No full-screen flash."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
