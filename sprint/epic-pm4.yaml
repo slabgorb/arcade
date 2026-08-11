@@ -121,9 +121,11 @@ stories:
     title: "Authentic HUD icons (shell): render lives as Pac-life sprites bottom-left and the level indicator as fruit sprites bottom-right, replacing pm4-9's procedural LIVES/LEVEL text in the bottom HUD band. Reuse drawPacman/drawFruit; leave the top band (SCORE, HIGH SCORE) unchanged. Pin the ROM life-icon cap + fruit-per-level sequence at RED. Accessibility: no full-screen flash (pm4-1)."
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
+    started: '2026-08-11'
+    branch: feat/pm4-11-authentic-hud-icons
   - id: pm4-12
     title: "[BUG] Maze bottom border wall is invisible — the maze looks open at the bottom. Root cause: isHudRow blanked 3 bottom rows (33-35), but the maze's bottom border wall is row 33 (full '#' row), the mirror of the top border at row 3. Fix: bottom band -> rows 34-35 (MAZE.rows-2) so row 33 renders. Fixed in this PR + maze-border.test.ts."
     points: 2
