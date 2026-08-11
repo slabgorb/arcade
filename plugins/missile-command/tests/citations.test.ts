@@ -875,6 +875,83 @@ describe('mc10-6 round 4 — the header/blank leak and the stale-enclosing-symbo
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 6e. mc10-6 ROUND 5 — CLOSE THE CLASS STRUCTURALLY (AST). Reviewer round 4
+//     (Heimdall) REJECTED: the line-based extractor still leaked on sibling shapes of
+//     the same mechanism, and round 4 introduced a NEW unbounded leak with its own
+//     bracket-depth counter. USER RULING 2026-08-11 (AskUserQuestion): re-implement
+//     `extractCoreLiterals` on the TypeScript compiler API so the enclosing declaration
+//     (AST parent-chain) and the literal's leading comments (getLeadingCommentRanges)
+//     are derived from real syntax — making these edge shapes STRUCTURALLY impossible.
+//     The coverage predicate (`literalCovered`) is unchanged; only DERIVATION changes.
+//     These pin the three shapes that survived round 4, on synthetic input.
+//       R4-A: a CODE line carrying an inline block comment must not be mistaken for a
+//         comment the back-scan can walk THROUGH into the header.
+//       R4-B: a multi-line template literal must not desync the enclosing symbol.
+//       R4-C: a literal inside a function body must not inherit the FUNCTION's name.
+//     Every earlier synthetic pin (sections 6/6b/6c/6d) plus the real-tree gate must
+//     ALSO stay green against the AST implementation — they are the regression battery.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mc10-6 round 5 — the extractor is AST-derived; header/template/nesting shapes cannot leak', () => {
+  // R4-A (RED against the line-based precedingBlock's `*/`/`/*` text heuristic):
+  it('a code line carrying an inline block comment does not let the header vouch', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // `foo(1) /* noop */` is a CODE statement, not a comment — it must not be a bridge
+    // the back-scan crosses to reach the header. BAR's only leading comment is (none).
+    const src = [
+      '// SOURCE OF TRUTH: ICBWAV (W3MAIN.MAC:5713) — unrelated table; claim MC-ICBWAV-16',
+      'foo(1) /* noop */',
+      'export const BAR = 16',
+    ].join('\n')
+    const icbwav: CommittedClaim = {
+      id: 'MC-ICBWAV-16', symbol: 'ICBWAV', value: 16, meaning: 'unrelated per-wave ICBM budget',
+      source: { file: 'W3MAIN.MAC', line: 5713, verbatim: 'ICBWAV\t.BYTE 12.,...' },
+    }
+    const bar = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 16)
+    expect(bar, 'extractor must surface BAR=16').toBeDefined()
+    expect(literalCovered([icbwav], bar!.docText, 16, bar!.enclosingSymbol)).toBe(false)
+  })
+
+  // R4-B (RED against the bracket-depth counter's missing cross-line string state):
+  it('a multi-line template literal does not desync the enclosing symbol of a later declaration', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // The `[` inside the multi-line template must NOT be counted as real nesting; TARGET
+    // gets ITS OWN enclosing symbol, not a stale one carried forward.
+    const src = ['export const WICSPL = 999', 'export const TPL = `', '[oops`', 'export const TARGET = 4242'].join('\n')
+    const target = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(target, 'extractor must surface 4242').toBeDefined()
+    expect(target!.enclosingSymbol, 'TARGET owns its literal, no stale carry').toBe('TARGET')
+    const tpl: CommittedClaim = {
+      id: 'MC-TPL', symbol: 'TPL', value: 4242, meaning: 'unrelated earlier declaration',
+      source: { file: 'W3X.MAC', line: 1, verbatim: 'x' },
+    }
+    expect(literalCovered([tpl], target!.docText, 4242, target!.enclosingSymbol)).toBe(false)
+  })
+
+  // R4-C-a (RED): a bare literal in a function body must NOT inherit the function name.
+  it('a bare literal in a function body does not inherit the enclosing function symbol', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const src = ['export function computeFoo() {', '  return 4242', '}'].join('\n')
+    const lit = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(lit, 'extractor must surface 4242').toBeDefined()
+    expect(lit!.enclosingSymbol, 'a bare function-body literal has no enclosing constant').toBe('')
+    const fn: CommittedClaim = {
+      id: 'MC-FN', symbol: 'computeFoo', value: 4242, meaning: 'a routine, not a constant',
+      source: { file: 'W3X.MAC', line: 1, verbatim: 'x' },
+    }
+    expect(literalCovered([fn], lit!.docText, 4242, lit!.enclosingSymbol)).toBe(false)
+  })
+
+  // R4-C-b (RED): a nested `const` literal is attributed to ITS OWN declaration, not the function.
+  it('a const declared inside a function body is attributed to that const, not the function', async () => {
+    const { extractCoreLiterals } = await loadCoreLiterals()
+    const src = ['export function wrap() {', '  const inner = 4242', '  return inner', '}'].join('\n')
+    const lit = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(lit, 'extractor must surface 4242').toBeDefined()
+    expect(lit!.enclosingSymbol).toBe('inner')
+  })
+})
+
 describe('mc10-6 — every real src/core literal is line-anchored or exempt (AC3 real-tree gate)', () => {
   it('src/core exists so the gate has teeth', () => {
     expect(existsSync(coreDirPath), 'src/core must exist for the anchored gate to bite').toBe(true)
