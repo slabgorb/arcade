@@ -43,7 +43,13 @@
 // the TGNBS table exactly.
 
 import { describe, it, expect } from 'vitest'
-import { initialState, type GameState, type TrenchObstacle } from '../../src/core/state'
+import {
+  initialState,
+  type GameState,
+  type TrenchObstacle,
+  TRENCH_GUN_FIRE_BAND,
+  TRENCH_GUN_MIN_FIRE_DEPTH,
+} from '../../src/core/state'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
 import { wvHrd } from '../../src/core/gameRules'
@@ -174,10 +180,17 @@ describe('sw11-1 — trench base guns do not lead the ship (PANLIN/MOVPL, WSGUNS
 })
 
 // ---------------------------------------------------------------------------
-// (3) ELIGIBILITY — the vertical gate: fire only at a player ABOVE the gun; never a
-//     player BELOW it; and never point-blank.
+// (3) ELIGIBILITY — the vertical gate and the too-close skip.
+//     NOTE ON POLARITY: BSGUN's real test is SIGNED (`IFGE ?PLAYER ABOVE BUNKER?` —
+//     fire only at a player ABOVE the gun; a player below it is silent at any
+//     magnitude). The clone ships a SYMMETRIC vertical-GAP magnitude gate instead
+//     (`Math.abs(trenchView[2] - gunHeight)`, matching the force-field band), because
+//     our seat sits below the wall slots and a signed test would silence every
+//     streamed gun (Dev Deviation #1; the exact polarity is a documented follow-up).
+//     These tests therefore pin the SHIPPED magnitude behaviour — band cutoff + the
+//     divergence — not the ROM's signed rule.
 // ---------------------------------------------------------------------------
-describe('sw11-1 — trench base guns fire only the aligned subset (BSGUN, WSBASE.MAC:1236-1341)', () => {
+describe('sw11-1 — trench base guns fire only the vertically-aligned subset (BSGUN, WSBASE.MAC:1236-1341)', () => {
   const gunLine = (h: number): TrenchObstacle[] =>
     Array.from({ length: 12 }, (_, i) => gun(i % 2 === 0 ? -300 : 300, 800 + i * 1800, h))
 
@@ -191,29 +204,36 @@ describe('sw11-1 — trench base guns fire only the aligned subset (BSGUN, WSBAS
     return fires
   }
 
-  it('a gun the player sits well BELOW never fires; a level/below gun does (the vertical gate)', () => {
-    // The ROM's `IFGE ?PLAYER ABOVE BUNKER?` — a bunker mounted a full wall-height
-    // ABOVE the pilot can not depress its gun onto him. RED: `stepTrench` ignores
-    // height entirely, so the high guns fire just as often as the level ones.
-    let abovePlayerFires = 0 // guns mounted above the pilot ⇒ player is below ⇒ silent
-    let levelFires = 0 // guns at the seat ⇒ player level/above ⇒ fire
+  it('fires within one vertical band, silent beyond two — the symmetric magnitude gate', () => {
+    // Three gun heights vs a pilot at SEAT. `level` (dz 0) and `belowBand` (dz < band)
+    // both fire; `farOff` (dz > 2·band) is silent. `belowBand` is the DIVERGENCE case:
+    // the gun sits ABOVE the pilot (player below it) yet fires, because the gate is
+    // |dz| — the ROM's signed rule would silence it. RED (pre-sw11-1): height ignored,
+    // so `farOff` fired as often as `level`. A mutant that dropped the band check
+    // reddens `farOff`; one that made the gate SIGNED (player-above only) reddens
+    // `belowBand`.
+    const near = SEAT + Math.floor(TRENCH_GUN_FIRE_BAND * 0.75) // dz < one band, gun ABOVE pilot
+    const far = SEAT + 2 * TRENCH_GUN_FIRE_BAND + 0x100 // dz > two bands
+    let level = 0
+    let belowBand = 0
+    let farOff = 0
     for (const seed of SEEDS) {
-      abovePlayerFires += fireCount(trench(gunLine(SEAT + 0x1000), [0, 0, SEAT], { wave: 8, seed }))
-      levelFires += fireCount(trench(gunLine(SEAT), [0, 0, SEAT], { wave: 8, seed }))
+      level += fireCount(trench(gunLine(SEAT), [0, 0, SEAT], { wave: 8, seed }))
+      belowBand += fireCount(trench(gunLine(near), [0, 0, SEAT], { wave: 8, seed }))
+      farOff += fireCount(trench(gunLine(far), [0, 0, SEAT], { wave: 8, seed }))
     }
-    expect(levelFires, 'the aligned (level/below) guns fire — positive control').toBeGreaterThan(0)
-    expect(abovePlayerFires, 'a gun the player is a full wall-height below never fires').toBe(0)
+    expect(level, 'a gun at the pilot height (dz 0) fires — positive control').toBeGreaterThan(0)
+    expect(belowBand, 'a gun one band from the pilot fires — symmetric |dz| gate (ROM would silence it)').toBeGreaterThan(0)
+    expect(farOff, 'a gun more than two bands off never fires — out of vertical reach').toBe(0)
   })
 
   it('a point-blank gun never fires (DONT SHOOT IF TOO CLOSE)', () => {
     // Firing bunkers begin one panel out; the panel at the cockpit is skipped. RED:
-    // the only depth gate is the FAR range (`pos[0] > 0x6000`), so a gun scrolling
-    // through the cockpit zone fires point-blank. A dense channel guarantees the
-    // near zone is sampled at openings. Assert the closest a gun ever fires from is
-    // not point-blank — a conservative half-panel floor (0x400) well inside the
-    // ROM's ~one-panel (#800) firing start; the exact too-close depth is Dev's to
-    // pin in GREEN from BSGUN.
-    const TOO_CLOSE = 0x400 // 1024, half a wall panel
+    // the only depth gate was the FAR range (`pos[0] > 0x6000`), so a gun scrolling
+    // through the cockpit zone fired point-blank. A dense channel guarantees the near
+    // zone is sampled at openings. Assert the closest a gun ever fires from is the
+    // EXACT shipped too-close depth — imported from production, so a regression that
+    // loosened the gate reddens this (TEA finding: pin the exact boundary in GREEN).
     const dense = Array.from({ length: 24 }, (_, i) => gun(i % 2 === 0 ? -300 : 300, 400 + i * 700))
     let minFireDepth = Infinity
     let fires = 0
@@ -230,6 +250,6 @@ describe('sw11-1 — trench base guns fire only the aligned subset (BSGUN, WSBAS
       }
     }
     expect(fires, 'the dense channel fires (the too-close gate is exercised)').toBeGreaterThan(0)
-    expect(minFireDepth, 'no gun fires from point-blank range').toBeGreaterThanOrEqual(TOO_CLOSE)
+    expect(minFireDepth, 'no gun fires nearer than the shipped too-close depth').toBeGreaterThanOrEqual(TRENCH_GUN_MIN_FIRE_DEPTH)
   })
 })

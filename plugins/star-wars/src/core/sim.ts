@@ -1499,10 +1499,12 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
   // approach fires only when the ROM's THREE mechanisms agree (sw11-1) —
   //   CONCURRENCY: at most `TGNBS[gunDiff]` base shells airborne at once (GNBSAVAIL), not
   //     the flat MAX_FIREBALL_SLOTS; wave-1 allows exactly one.
-  //   ELIGIBILITY: never too close (`DONT SHOOT IF TOO CLOSE`, one panel skipped), never a
-  //     player BELOW the gun (`IFGE ?PLAYER ABOVE BUNKER?`); full TGPROB within one
-  //     panel-height band above, the SQUARED prob `P.RND1*P.RND1` one band lower, silent
-  //     beyond two bands.
+  //   ELIGIBILITY: never too close (`DONT SHOOT IF TOO CLOSE`, one panel skipped), and only
+  //     within a vertical band of the pilot — full TGPROB within one panel-height (`#400`),
+  //     the SQUARED prob `P.RND1*P.RND1` one band lower, silent beyond two bands. The ROM's
+  //     test is SIGNED (`IFGE ?PLAYER ABOVE BUNKER?` — fire only at a player above); the
+  //     clone uses the vertical GAP magnitude instead (see the `dz` note below and the
+  //     unresolved-polarity disclosure), so it also fires at a player just below the gun.
   //   AIM: the shell launches at the gun with NO lead — it rides the scroll and
   //     damped-heat-seeks the player in `seekShots` (PANLIN/MOVPL), so it scatters.
   const baseGunCap = TGNBS[gunDiff]
@@ -2136,8 +2138,9 @@ function advance(bolts: readonly Projectile[], dt: number): Projectile[] {
  * ONLY in the shell's own `seek` direction (a left-wall shell right, a right-wall shell
  * left). Frame-rate independent like `homeShots`: the per-tick 1/16 close is
  * `1 - (15/16)^(dt·TICK_HZ)`. The result scatters — an authentic shell usually MISSES and
- * never leads (sw11-1). A shell with no `seek` (there are none in the trench) is carried
- * straight, so the law degrades to `advance`.
+ * never leads (sw11-1). Only the LATERAL close is gated on `seek`; a shell with no `seek`
+ * (there are none in the trench — every `firedShots` push sets it) still rides the scroll
+ * and still vertically heat-seeks, but never moves laterally.
  */
 function seekShots(shots: readonly Projectile[], view: Vec3, wvHrd: number, dt: number): Projectile[] {
   const close = 1 - Math.pow(15 / 16, dt * TICK_HZ)

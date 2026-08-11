@@ -72,7 +72,7 @@ export interface Projectile {
    *  direction this shell is allowed to heat-seek — `+1` (a LEFT-wall shell may only
    *  move right), `-1` (a RIGHT-wall shell only left). Absent on straight-line
    *  (`advance`) and space-homing (`homeShots`) shots, which do not heat-seek. */
-  seek?: number
+  seek?: 1 | -1
 }
 
 /** A live enemy fighter bearing down on the cockpit. World space. */

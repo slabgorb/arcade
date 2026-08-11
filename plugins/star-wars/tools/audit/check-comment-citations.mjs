@@ -506,7 +506,7 @@ export const UNCATCHABLE = [
   'text for the wrong reason. Read a green run as "cited spans resolve and their adjacent',
   'quotes are still inside them", never as "the citations are true".',
   'THE TWO BIGGEST LIMITS ARE NOT ON THAT LIST, and they are much larger than it.',
-  'Measured over the scanned tree, 73.4% of line-span citations get existence and range',
+  'Measured over the scanned tree, 75.0% of line-span citations get existence and range',
   'checking ONLY — no verbatim is ever compared, because no usable quote sits adjacent to',
   'them. So three quarters of a green run means "the file exists and the number is inside',
   'it", nothing more. The single-token case is a SUBSET of that same population rather',
