@@ -123,13 +123,18 @@ describe('stepGame — real movement eats real dots (not just counter bookkeepin
   })
 })
 
-describe('level advance at DOT_COUNT (240 regular dots — maze.ts, honouring the task\'s own wording)', () => {
-  it('crossing DOT_COUNT dots-eaten advances the level and resets the count', () => {
+describe('level clear at DOT_COUNT (240 regular dots — maze.ts, honouring the task\'s own wording)', () => {
+  // pm4-7 replaced today's INSTANT advance with a FREEZE: crossing DOT_COUNT now
+  // enters the `level-clear` phase and DEFERS advanceLevel behind a static-frame
+  // hold (accessibility: the boss's photosensitive-epilepsy "freeze, no flash").
+  // This pins only the entry edge + the still-fired event; the freeze window and
+  // the eventual advance-to-`ready(level+1)` live in freeze-pauses.test.ts.
+  it('crossing DOT_COUNT enters level-clear and fires the event, deferring the advance', () => {
     const state = playingGame(3)
     state.dotsEaten = DOT_COUNT // simulate "every dot eaten" via the real counter
     stepGame(state, { dir: 'none' })
-    expect(state.level).toBe(2)
-    expect(state.dotsEaten).toBeLessThan(DOT_COUNT)
+    expect(state.phase, 'the board clear freezes into level-clear, not an instant advance').toBe('level-clear')
+    expect(state.level, 'the advance is deferred behind the freeze — still level 1 this frame').toBe(1)
     expect(state.events.some((e) => e.type === 'level-cleared' && e.level === 1)).toBe(true)
   })
 })

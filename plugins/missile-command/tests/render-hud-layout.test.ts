@@ -126,6 +126,12 @@ function field(over: FieldOver = {}): GameState {
   const g = createGame(1)
   return {
     ...g,
+    // Pin the PLAY phase: createGame boots into 'attract' (INITIAL_PHASE), and since
+    // mc7-4 the attract screen paints the 5-rung high-score LADDER into the mid-field
+    // slot — high-score glyphs that are not the top-band HUD readout these tests probe.
+    // The HUD (score / BEST / multiplier) draws every phase, so 'play' isolates it from
+    // the attract ladder without changing what any assertion here measures.
+    phase: 'play',
     score: over.score ?? 0,
     wave: over.wave ?? g.wave,
     multiplier: over.multiplier ?? g.multiplier,

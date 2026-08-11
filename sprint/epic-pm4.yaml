@@ -76,18 +76,24 @@ stories:
     title: "Freeze pauses — level-clear + dying (core): on level-cleared, enter level-clear (freeze sim, hold a static frame, then advanceLevel -> ready); on pac-died with lives>0, enter dying (freeze, death-anim window, then respawn -> ready). Replaces today's INSTANT advance/respawn. This realises the boss's 'freeze + no flash' level-clear (builds on pm4-1's strobe removal — MUST NOT reintroduce any full-screen flash). Anchor the READY!/death-delay + level-complete cadence citations at RED."
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+    completed: '2026-08-11'
+    review_findings: 'REJECTED (green rework, no Critical/High; core logic mutation-verified correct). F1 [MEDIUM #14] dying-entry hardcodes state.phase instead of advancePhase like its level-clear sibling (game.ts:729-737). F2 [MEDIUM #17] adjacent comment overstates the mechanism (game.ts:730-734) — fix with F1. F3 [MEDIUM #15] loose test bound toBeLessThan(DOT_COUNT) survives a DOT_COUNT-1 mutant (freeze-pauses.test.ts:327) — pin to the real spawn-eat count. Non-blocking/documented: F4 unpinned freeze magnitude (working-as-designed, honest-uncited), F5 stale audio.ts:47 comment (deferred to shell follow-up).'
+    review_verdict: approved
   - id: pm4-8
     title: 'Self-playing attract demo (core): a deterministic seeded auto-player drives Pac-Man during phase attract so the maze plays itself (ghost AI already runs); any input -> ready. Pure attract driver in src/core, seeded RNG, no clock (mirrors mc6-4). purity.test.ts green.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+    review_verdict: approved
   - id: pm4-9
     title: 'Attract presentation + high-score ladder display + default table (shell+core): render the attract screen — title + the already-built high-score ladder + ROM attract text — over the pm4-8 demo, and SEED a default ladder (the mc7-4 tail). Pin the ROM strings/cadence at RED (pacman.asm:36a7 table).'
     points: 3

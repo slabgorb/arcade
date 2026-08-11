@@ -18,66 +18,74 @@
 // the game); the :5276 eyeball check covers the firing feel.
 
 import type { Input } from '../core/input'
+import { installHeldKeys, type HeldKeysHandle } from '@shared/held-keys'
 
-export class KeyboardTreads {
-  private readonly down = new Set<string>()
-  private pendingStart = false
-
-  constructor(target: Window = window) {
-    target.addEventListener('keydown', (e) => {
-      const key = e.key.toLowerCase()
-      // Edge, not level: only a fresh press (not a key-repeat) arms start.
-      if ((key === 'enter' || key === '1') && !e.repeat) this.pendingStart = true
-      this.down.add(key)
-    })
-    target.addEventListener('keyup', (e) => this.down.delete(e.key.toLowerCase()))
-  }
-
-  private held(...keys: string[]): boolean {
-    return keys.some((k) => this.down.has(k))
-  }
-
+export interface KeyboardTreads {
   /** The current tread axes, clamped to [-1, 1]. */
-  read(): Input {
-    let left = 0
-    let right = 0
+  read(): Input
+}
 
-    // Arcade dual-tread: E/D left tread, I/K right tread.
-    if (this.held('e')) left += 1
-    if (this.held('d')) left -= 1
-    if (this.held('i')) right += 1
-    if (this.held('k')) right -= 1
+// SH4-2: this was a class owning its own `down` Set + keydown/keyup. Unwrapped
+// to a factory (the host-helpers idiom) over the shared held-keys tracker. idOf
+// is e.key.toLowerCase() — the cabinet keys on characters, not physical codes.
+// `target` is now a REQUIRED seam: the old `= window` default was the mg1-5
+// "fails OPEN" hazard (an optional injection point degrading to the real
+// global). Blur now clears the held keys (new — the hand-rolled version never
+// reset). The retained keydown keeps ONLY the start EDGE latch (one keydown =
+// one start frame). `keys.uninstall()` is the disposer this closes over.
+export function createKeyboardTreads(target: Window): KeyboardTreads {
+  const keys: HeldKeysHandle = installHeldKeys(target, { idOf: (e) => e.key.toLowerCase() })
+  let pendingStart = false
+  target.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase()
+    // Edge, not level: only a fresh press (not a key-repeat) arms start.
+    if ((key === 'enter' || key === '1') && !e.repeat) pendingStart = true
+  })
 
-    // Friendly arrow "drive": Up/Down both treads, Left/Right pivot.
-    if (this.held('arrowup')) {
-      left += 1
-      right += 1
-    }
-    if (this.held('arrowdown')) {
-      left -= 1
-      right -= 1
-    }
-    if (this.held('arrowleft')) {
-      left -= 1
-      right += 1
-    }
-    if (this.held('arrowright')) {
-      left += 1
-      right -= 1
-    }
+  const held = (...ks: string[]): boolean => keys.any(ks)
 
-    // Space (' ') or F fires the cannon; the latched start edge is consumed
-    // here — true for exactly this one frame. Shift held = fine-aim (bz2-4),
-    // a level read like the treads.
-    const start = this.pendingStart
-    this.pendingStart = false
-    return {
-      leftTread: clamp(left),
-      rightTread: clamp(right),
-      fire: this.held(' ', 'f'),
-      start,
-      fineAim: this.held('shift'),
-    }
+  return {
+    read(): Input {
+      let left = 0
+      let right = 0
+
+      // Arcade dual-tread: E/D left tread, I/K right tread.
+      if (held('e')) left += 1
+      if (held('d')) left -= 1
+      if (held('i')) right += 1
+      if (held('k')) right -= 1
+
+      // Friendly arrow "drive": Up/Down both treads, Left/Right pivot.
+      if (held('arrowup')) {
+        left += 1
+        right += 1
+      }
+      if (held('arrowdown')) {
+        left -= 1
+        right -= 1
+      }
+      if (held('arrowleft')) {
+        left -= 1
+        right += 1
+      }
+      if (held('arrowright')) {
+        left += 1
+        right -= 1
+      }
+
+      // Space (' ') or F fires the cannon; the latched start edge is consumed
+      // here — true for exactly this one frame. Shift held = fine-aim (bz2-4),
+      // a level read like the treads.
+      const start = pendingStart
+      pendingStart = false
+      return {
+        leftTread: clamp(left),
+        rightTread: clamp(right),
+        fire: held(' ', 'f'),
+        start,
+        fineAim: held('shift'),
+      }
+    },
   }
 }
 

@@ -38,6 +38,7 @@ import {
   type JoustHighScore,
 } from './core/highscore.js'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
+import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
@@ -409,7 +410,7 @@ function beginHighScoreEntry(game: GameState): void {
 }
 
 /** The player's start-button intent this frame: the 1P / 2P start keys (1 / 2). */
-function readSelectInput(keys: Set<string>): SelectInput {
+function readSelectInput(keys: KeyMembership): SelectInput {
   if (keys.has('Digit1')) return 'one-player'
   if (keys.has('Digit2')) return 'two-player'
   return null
@@ -423,18 +424,20 @@ function readSelectInput(keys: Set<string>): SelectInput {
 // and joust stays quiet, because a failed fetch degrades silently by design.
 const audio = createAudioEngine()
 
-const held = new Set<string>()
+// SH4-2: the shared held-keys tracker owns the Set + keydown/keyup and adds a
+// blur reset (new — a held key no longer sticks across an alt-tab). Default idOf
+// is e.code, which is what joust keys on; Space preventDefault keeps it from
+// scrolling. The keydown below keeps only its SIDE effects (audio unlock, the
+// highscore-screen initials edge). `held.uninstall()` is the disposer.
+const held = installHeldKeys(window, { preventDefaultFor: new Set(['Space']) })
 window.addEventListener('keydown', (e) => {
   audio.resume()
-  held.add(e.code)
-  if (e.code === 'Space') e.preventDefault()
   // jt10-7 — initials entry is the shared keyboard verb: a letter/Backspace keydown
   // steps the buffer while the cabinet is on the 'highscore' screen. `e.key` (the
   // character) is what stepNameEntry consumes; every non-letter (incl. the Space
   // confirm) is inert here and handled by the pump's flap-confirm instead.
   if (cabinet.mode === 'highscore') entry = enterInitial(entry, e.key)
 })
-window.addEventListener('keyup', (e) => held.delete(e.code))
 
 const MAX_CATCHUP_SECONDS = 0.25
 let accumulator = 0

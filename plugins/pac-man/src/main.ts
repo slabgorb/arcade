@@ -18,6 +18,7 @@ import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameSta
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { mountCanvas } from '@shared/host-helpers'
+import { installHeldKeys } from '@shared/held-keys'
 import { resizeToDisplay } from '@shared/view'
 
 // pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
@@ -93,7 +94,12 @@ try {
 const overlays = createOverlays()
 
 // ── Keyboard: held-direction sampling + name-entry edge events ───────────
-const held = new Set<string>()
+// SH4-2: the shared held-keys tracker owns the Set + keydown/keyup + a blur
+// reset (new — a direction key no longer sticks across an alt-tab). idOf is
+// `e.key.toLowerCase()` so DIR_KEYS' lower-case names match. The keydown below
+// keeps only its SIDE effects (audio unlock, the start/coin latch, name entry);
+// membership is read through `keys`. `keys.uninstall()` is the disposer.
+const keys = installHeldKeys(window, { idOf: (e) => e.key.toLowerCase() })
 const DIR_KEYS: Readonly<Record<string, Dir>> = {
   arrowup: 'up',
   arrowdown: 'down',
@@ -111,7 +117,7 @@ function currentDir(): Dir {
   // (a real joystick reports one direction at a time anyway; pacman.ts's own
   // `pending` latch is what makes an early turn "stick" until it opens).
   for (const key of ['arrowup', 'w', 'arrowdown', 's', 'arrowleft', 'a', 'arrowright', 'd']) {
-    if (held.has(key) && DIR_KEYS[key]) return DIR_KEYS[key]
+    if (keys.has(key) && DIR_KEYS[key]) return DIR_KEYS[key]
   }
   return 'none'
 }
@@ -141,7 +147,6 @@ window.addEventListener('keydown', (e) => {
   audioStarted = true
 
   const key = e.key.toLowerCase()
-  if (key in DIR_KEYS) held.add(key)
   if (START_KEYS.has(key)) startPressed = true
 
   // Initials entry rides its own edge event, same as centipede's
@@ -160,9 +165,6 @@ window.addEventListener('keydown', (e) => {
   if (game.phase === 'game-over' && (!game.nameEntry || game.nameEntry.confirmed) && e.key === 'Enter') {
     game = createGameState(Date.now(), game.highScoreTable)
   }
-})
-window.addEventListener('keyup', (e) => {
-  held.delete(e.key.toLowerCase())
 })
 
 let acc = 0

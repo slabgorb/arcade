@@ -127,7 +127,12 @@ const AWAY = { h: 5, v: 210 }
 const withCursor = (s: GameState): GameState => ({ ...s, cursor: AWAY })
 
 describe('AC1 — drawFrame paints incoming ICBM heads and trails', () => {
-  const bare = withCursor(createGame(1))
+  // PLAY phase: createGame boots into 'attract' (INITIAL_PHASE), and since mc7-4 the
+  // attract screen paints the high-score ladder into the mid-field slot — glyphs that
+  // land in this bare-field's probed region. These are play-field render tests (ICBM
+  // heads/trails on an empty field), so 'play' gives the clean field they assume; the
+  // ICBMs and HUD draw every phase, only the attract overlay is suppressed.
+  const bare = withCursor({ ...createGame(1), phase: 'play' })
   // One ICBM mid-descent: launched top-edge, heading for a ground target, head
   // currently mid-canvas. Its head projects to (100, ~106) — a region the empty
   // field (structures bottom, crosshair top-left) never draws in.

@@ -311,8 +311,8 @@ export function drawFrame(
 // The cabinet's ALPHANUMERIC STAMP font (glyphs.ts) — the same engine the HUD/cities use —
 // paints the attract text. Strings + cadence + slot come from the cited attract.ts module;
 // nothing here re-derives a ROM value or reads a clock (the scroll's only clock is
-// state.frame). The high-score SLOT is drawn as a header + reserved box ONLY — its rung
-// contents are story mc7-4's job, so nothing here reads state.highScores beyond the HUD BEST.
+// state.frame). The high-score SLOT is a HIGH SCORES header above the five-rung ladder
+// (mc7-4): drawAttract reads state.highScores and paints each rung's score + initials.
 const ATTRACT_INK = '#fff' // functional HUD white (the attract text is not a palette register)
 
 /** One glyph-pixel scale, matching the HUD (height/240). */
@@ -363,9 +363,25 @@ export function drawAttract(ctx: CanvasRenderingContext2D, state: GameState, wid
   drawCenteredGlyphs(ctx, TITLE_LINE_1, titleY, width, gp)
   drawCenteredGlyphs(ctx, TITLE_LINE_2, titleY + lineH, width, gp)
 
-  // HIGH SCORES header above the reserved slot (the slot's rungs are mc7-4's to fill).
+  // HIGH SCORES header above the reserved slot.
   const slot = highScoreSlot(width, height)
   drawCenteredGlyphs(ctx, MSG_HIGH_SCORES, Math.max(0, slot.y - lineH), width, gp)
+
+  // mc7-4: the five-rung ladder fills the reserved slot — a SCORE column (left) beside
+  // an INITIALS column (right), best-first. The ROM paints a score ladder (SCLDRV/SCLDRH)
+  // next to an initials ladder (INTLV), five deep (CDLADR "DISPLAY 5 HI LADDER",
+  // W3COMN.MAC:97). state.highScores is read VERBATIM in array order — @shared/highscore
+  // keeps it sorted descending, so entry 0 is BEST — never re-sorted, re-seeded or
+  // re-derived here (the seeded defaults are core's, mc7-1). Capped at slot.rows (the
+  // authentic five) and iterated (not indexed [0..4]), so a shorter table paints fewer
+  // rungs and a longer/corrupted one can't overspill the slot. Rows are laid out in the
+  // reserved region at the HUD line pitch — a free-play/aspect display choice, not the
+  // ROM's absolute px.
+  state.highScores.slice(0, slot.rows).forEach((entry, i) => {
+    const rowY = slot.y + i * lineH
+    drawGlyphText(ctx, String(entry.score), slot.x, rowY, gp, width)
+    drawGlyphText(ctx, entry.name, slot.x + slot.w - glyphTextWidth(entry.name, gp), rowY, gp, width)
+  })
 
   // Scrolling message across the bottom band — enters from the right, driven by the
   // frame counter through scrollStepsAt (SCROLL every 2nd frame).

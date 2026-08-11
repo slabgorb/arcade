@@ -34,7 +34,7 @@ import { enterInitial } from './core/sim'
 import { attractLines, gameOverLines, entryLines } from './core/screens'
 import { inGameAlert, alertFlashOn } from './core/alerts'
 import { MESSAGES } from './core/text'
-import { KeyboardTreads } from './shell/input'
+import { createKeyboardTreads } from './shell/input'
 import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from './shell/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
@@ -96,7 +96,7 @@ function resize(): void {
 window.addEventListener('resize', resize)
 resize()
 
-const treads = new KeyboardTreads()
+const treads = createKeyboardTreads(window)
 
 // bz1-11: the sound engine. The context is built ONLY inside resume() —
 // never at bootstrap (autoplay policy) — so unlockAudio is safe to wire to

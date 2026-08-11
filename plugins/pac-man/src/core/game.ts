@@ -67,6 +67,7 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
+import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
@@ -99,8 +100,25 @@ export const FRUIT_VISIBLE_FRAMES = 9 * 60
  *  melody 248), so 256 frames ≈ 4.2 s @ 60 Hz matches the jingle. Honest-uncited
  *  cadence — no isolable ROM duration literal, same policy as FRUIT_VISIBLE_FRAMES;
  *  it derives from the §Music-cited intro length, not a fabricated `pacman.asm`
- *  address. (pm4-7 owns the SHORTER post-death READY when it wires dying->ready.) */
+ *  address. (pm4-7 REUSES this hold for the post-death / post-level-clear READY
+ *  it hands off to; a distinct, shorter post-death READY is deferred — the
+ *  arcade's post-death delay is shorter than the full opening jingle, but no test
+ *  requires it and adding a second cadence is out of pm4-7's minimal scope.) */
 export const READY_HOLD_FRAMES = 256
+
+/** pm4-7: how long the DYING freeze holds before Pac respawns, in frames. The
+ *  death animation (Pac collapses) plays over a still sim, then the round
+ *  restarts. Honest-uncited cadence — the quarry carries no isolable death-delay
+ *  literal (glossary §-, no docs/rom-study/claims timing entry; TEA confirmed at
+ *  pm4-7 RED), same policy as READY_HOLD_FRAMES / FRUIT_VISIBLE_FRAMES. ~2s @ 60Hz. */
+export const DYING_HOLD_FRAMES = 120
+
+/** pm4-7: how long the LEVEL-CLEAR freeze holds before advancing, in frames.
+ *  The board freezes on a static frame (accessibility: NO full-screen flash —
+ *  pm4-1 removed the strobe and this MUST NOT reintroduce it), then the next
+ *  maze loads. Honest-uncited cadence, same policy/reason as DYING_HOLD_FRAMES.
+ *  ~2s @ 60Hz. */
+export const LEVEL_CLEAR_HOLD_FRAMES = 120
 
 const GHOST_IDS: readonly GhostId[] = ['blinky', 'pinky', 'inky', 'clyde']
 const DIR_LIST: readonly Dir[] = ['up', 'left', 'down', 'right']
@@ -209,6 +227,12 @@ export interface GameState {
    *  and releases the sim once it reaches `READY_HOLD_FRAMES`. Meaningless (and
    *  untouched) outside `ready`. */
   readyFrames: number
+  /** pm4-7: frames elapsed in the current freeze pause (`dying` or `level-clear`,
+   *  never both — they are mutually exclusive phases). Reset to 0 on entry to
+   *  either; counts up while frozen and releases (respawn / advanceLevel, then
+   *  `ready`) once it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES.
+   *  Meaningless (and untouched) outside those two phases. */
+  freezeFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
   events: GameEvent[]
@@ -342,6 +366,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     // attract maze.
     phase: 'attract',
     readyFrames: 0,
+    freezeFrames: 0,
     highScoreTable,
     nameEntry: null,
     events: [],
@@ -466,17 +491,33 @@ export function stepGame(state: GameState, input: GameInput): void {
   state.events = []
 
   // ── pm4-6: the cabinet MAINLINE — START/coin -> READY -> PLAY ────────────
-  // The sim proper runs ONLY in `playing`. `game-over`, `attract` and `ready`
-  // freeze it: nothing moves — not Pac, not the ghosts (Blinky is released from
-  // frame 0), not the dot count. Each edge here feeds the pure pm4-5 machine
+  // The real-player sim runs in `playing`. `game-over`, `ready`, `dying` and
+  // `level-clear` freeze it: nothing moves — not Pac, not the ghosts (Blinky is
+  // released from frame 0), not the dot count. `attract` used to freeze too, but
+  // pm4-8 runs the SELF-PLAYING DEMO there — the auto-player drives the SAME sim
+  // (see the attract branch below). Each edge here feeds the pure pm4-5 machine
   // (`advancePhase`, phase.ts) the one signal it owns and applies that edge's
   // side effect. `dying`/`level-clear` (their freeze + advanceLevel) are pm4-7;
   // `game-over -> attract` (the timeout) is pm4-10.
   if (state.phase === 'game-over') return
   if (state.phase === 'attract') {
-    // A start/coin advances attract -> ready AND reseeds a fresh board; no start
-    // holds attract. (advancePhase ignores `start` in every other phase.)
-    if (advancePhase('attract', { startRequested: !!input.start }) === 'ready') startCabinet(state)
+    // A start/coin advances attract -> ready AND reseeds a fresh board (pm4-6).
+    // The joystick does NOT: the ROM gates the exit on the credit count
+    // (pacman.asm:061e reads (#4e6e) Credits), so a bare direction press is inert.
+    if (advancePhase('attract', { startRequested: !!input.start }) === 'ready') {
+      startCabinet(state)
+      return
+    }
+    // pm4-8: no coin -> the SELF-PLAYING DEMO. The seeded auto-player drives Pac
+    // (input.dir is ignored — the stick is inert in attract) and the SAME sim runs,
+    // reusing stepGhost for the ghost AI. Like mc6-4 (missile-command game.ts:428)
+    // the demo is PINNED to attract: if the auto-player's Pac is caught the sim
+    // would flip to dying/game-over, so on any such flip we reseed a fresh demo
+    // board — the attract loop plays on forever and never self-exits to real play.
+    stepPlayingSim(state, { dir: autoPlayDir(state.pac) })
+    if (state.phase !== 'attract') {
+      Object.assign(state, createGameState(state.seed, state.highScoreTable))
+    }
     return
   }
   if (state.phase === 'ready') {
@@ -486,7 +527,46 @@ export function stepGame(state: GameState, input: GameInput): void {
     state.phase = advancePhase('ready', { readyExpired: state.readyFrames >= READY_HOLD_FRAMES })
     return
   }
+  if (state.phase === 'dying') {
+    // pm4-7: the death-anim freeze. Hold the WHOLE sim for DYING_HOLD_FRAMES (a
+    // static frame — nothing moves), then respawn Pac and hand off to the READY
+    // hold. Replaces the old instant respawnAfterDeath: the reset is DEFERRED to
+    // this dying -> ready edge, so the death window is visible before the round
+    // restarts. Feeds the pure pm4-5 machine the one signal it owns.
+    state.freezeFrames += 1
+    state.phase = advancePhase('dying', { deathExpired: state.freezeFrames >= DYING_HOLD_FRAMES })
+    if (state.phase === 'ready') {
+      respawnAfterDeath(state)
+      state.readyFrames = 0
+    }
+    return
+  }
+  if (state.phase === 'level-clear') {
+    // pm4-7: the level-clear freeze. Hold a STATIC frame for
+    // LEVEL_CLEAR_HOLD_FRAMES — the accessibility-critical "freeze, NO flash"
+    // (pm4-1 deleted the full-screen strobe; this must not bring it back) — then
+    // run the DEFERRED advanceLevel and hand off to READY on the next level.
+    state.freezeFrames += 1
+    state.phase = advancePhase('level-clear', { clearExpired: state.freezeFrames >= LEVEL_CLEAR_HOLD_FRAMES })
+    if (state.phase === 'ready') {
+      advanceLevel(state)
+      state.readyFrames = 0
+    }
+    return
+  }
 
+  // pm4-6/pm4-8: past the phase gate, the sim proper runs. In `playing` it runs
+  // once on the real input; in `attract` the demo drove it above (same body), so
+  // the attract demo can never drift from real play.
+  stepPlayingSim(state, input)
+}
+
+/** The PLAYING sim proper: Pac movement + eating, fruit, the mode engine, the
+ *  ghost movement loop (reusing `stepGhost`), Pac/ghost collision, and the
+ *  level-clear edge. Extracted from `stepGame` (pm4-8) so the attract auto-player
+ *  can run the IDENTICAL simulation without duplicating it. `input.dir` drives
+ *  Pac — the real joystick in `playing`, the auto-player's route in `attract`. */
+function stepPlayingSim(state: GameState, input: GameInput): void {
   // ── Pac-Man movement + dot/energizer eating ──────────────────────────
   const prevEaten = state.pac.eaten.size
   stepPacman(state.pac, { dir: input.dir })
@@ -667,8 +747,13 @@ export function stepGame(state: GameState, input: GameInput): void {
     } else {
       state.lives -= 1
       state.events.push({ type: 'pac-died' })
-      if (state.lives <= 0) {
-        state.phase = 'game-over'
+      // pm4-7: route the death edge through the pure pm4-5 machine (same as the
+      // level-clear entry below) — advancePhase picks game-over (last life) vs
+      // dying (a life left) from livesRemaining, mirroring the ROM master-state
+      // dispatch. game-over ends the run; dying begins the death-anim freeze and
+      // DEFERS the respawn to the dying -> ready edge in the sim gate above.
+      state.phase = advancePhase('playing', { pacDied: true, livesRemaining: state.lives })
+      if (state.phase === 'game-over') {
         state.events.push({ type: 'game-over' })
         const qualifies = qualifiesForHighScore(state.highScoreTable, state.score)
         if (qualifies) {
@@ -676,16 +761,23 @@ export function stepGame(state: GameState, input: GameInput): void {
           state.events.push({ type: 'high-score-qualified' })
         }
       } else {
-        respawnAfterDeath(state)
+        state.freezeFrames = 0
       }
     }
     break // one collision resolved per frame — see file header.
   }
 
   // ── Level clear ────────────────────────────────────────────────────
+  // pm4-7: enter the LEVEL-CLEAR freeze instead of advancing instantly — the
+  // static-frame hold runs first (sim gate) and advanceLevel is DEFERRED to the
+  // level-clear -> ready edge. STILL gated on `playing`, which is what makes a
+  // same-frame death win the tie: the collision above already set phase='dying',
+  // so this block is skipped and no advance / level-cleared fires (lang-review
+  // #14 — the edge is taken at the single exit where both triggers are visible).
   if (state.phase === 'playing' && state.dotsEaten >= DOT_COUNT) {
     state.events.push({ type: 'level-cleared', level: state.level })
-    advanceLevel(state)
+    state.phase = advancePhase('playing', { allDotsEaten: true })
+    state.freezeFrames = 0
   }
 }
 
