@@ -52,3 +52,11 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: SH3-7
+    title: "joust — correct the README @shared-consumption paragraph that SH3-1 falsified: the mulberry32 is no longer 'lifted byte-for-byte into src/core/frame.ts rather than imported' (it now imports @shared/rng via src/core/rng.ts), and joust consumes several @shared subpaths, not 'exactly one: @shared/audio' (measure: grep -rhoE '@shared/[a-z0-9-]+' plugins/joust/src | sort -u). The paragraph is pinned by the jt9-28 AC2 guard in tests/audio-seam-scope.test.ts (anchor 'zero-consumption outlier' + indicative/measured stamp), so the guard prose must move with it. Adjacent, out-of-scope note: a THIRD inlined mulberry32 (0x6d2b79f5) still lives in tools/sample-bake/bake-samples.mjs:66."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore

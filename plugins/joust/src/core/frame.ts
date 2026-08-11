@@ -74,6 +74,7 @@ import type { EggState } from './egg.js'
 // leaf cores (ptero → wave/flight/joust, dissolve → nothing), so no import cycle back.
 import { stepPteroFlight } from './ptero.js'
 import { stepDissolve, type DissolveState } from './dissolve.js'
+import { rngNext } from './rng.js'
 
 export type { EntityState, PlayerInput, EnemyState, IntelBudget }
 
@@ -187,24 +188,12 @@ export interface Draw {
   readonly state: GameState
 }
 
-// ─── RNG: mulberry32, inlined pure ──────────────────────────────────────────
+// ─── RNG ─────────────────────────────────────────────────────────────────────
 //
-// Lifted BYTE-FOR-BYTE from @arcade/shared/src/rng.ts (SH-3, ADR-0001), the
-// same mulberry32 four arcade games ship. joust does not yet pin @arcade/shared,
-// and the generator is three pure lines, so it is inlined here rather than
-// pulling a git-URL dependency for it — the durable word `rng` is carried in
-// GameState and this advance is a pure transform of it, producing the identical
-// float sequence as the shared module's `nextFloat` for any seed.
-
-/** Advance the durable word once, returning the float and the next word. */
-function rngNext(word: number): { value: number; next: number } {
-  const next = (word + 0x6d2b79f5) >>> 0
-  let t = next
-  t = Math.imul(t ^ (t >>> 15), t | 1)
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-  const value = ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  return { value, next }
-}
+// SH3-1 retired the inlined mulberry32 that used to live here (a byte-for-byte
+// copy of the shared generator). The durable word `rng` still lives in GameState
+// and is advanced FUNCTIONALLY by `rngNext` (./rng.ts), which now sources the
+// generator from @shared/rng — the identical float sequence for any seed.
 
 // ─── The scheduler ──────────────────────────────────────────────────────────
 

@@ -26,6 +26,7 @@
 import type { PlayerInput } from './flight.js'
 import type { Facing } from './joust.js'
 import type { WaveRow } from './wave.js'
+import { rngNext } from './rng.js'
 
 // ─── Pads by tier ────────────────────────────────────────────────────────────
 
@@ -250,16 +251,9 @@ export function waveEnemyComplement(row: WaveRow): number {
   return row.bounders + row.hunters + row.lords + row.pterodactyls
 }
 
-// mulberry32, inlined pure — byte-for-byte the generator src/core/frame.ts and
-// @arcade/shared/rng ship. The seed is the only input; core mints no entropy.
-function rngNext(word: number): { value: number; next: number } {
-  const next = (word + 0x6d2b79f5) >>> 0
-  let t = next
-  t = Math.imul(t ^ (t >>> 15), t | 1)
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-  const value = ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  return { value, next }
-}
+// SH3-1 retired the inlined mulberry32 that used to sit here; the seeded draw now
+// comes from `rngNext` (./rng.ts), sourced from @shared/rng. The seed is the only
+// input; core mints no entropy.
 
 /**
  * Assign each of `count` entering enemies a pad, deterministically under `seed`:
