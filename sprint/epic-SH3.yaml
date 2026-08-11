@@ -10,9 +10,11 @@ stories:
     title: 'joust — retire the inlined mulberry32 (core/frame.ts:200 + core/transporter.ts:255 rngNext, byte-for-byte copies behind a stale git-URL comment) and import @shared/rng; pin a test asserting the float sequence is identical for any seed so demos/replays do not drift'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-11'
   - id: SH3-2
     title: 'joust — route the bespoke canvas mount + audio-unlock lifecycle in src/main.ts through @shared/host-helpers (mountCanvas / installAudioUnlock), retiring the hand-rolled shell wiring; keep joust''s own ROM timebase but document why @shared/loop''s 60Hz accumulator is or is not adoptable'
     points: 3
