@@ -10,10 +10,12 @@ stories:
     title: 'Citation gate + src/core purity test FIRST (TDD): port centipede tools/audit/check-citations.mjs to a single-sided millipede checker (drop the ours side) + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    review_findings: "REJECTED (round 1): [HIGH][SEC] S1 bare-'..' source.file bypasses resolveInTree containment and crashes checker with uncaught EISDIR (check-citations.mjs:91-105) — reproduced; guard comment falsely claims escapes are refused. Bundled MEDIUM coverage gaps: R2 purity scanner hardening-ban tests (globalThis/eval/new Function/dynamic import/Date-aliasing) not ported; R1 counts machinery ships untested (port test OR remove); R3 containment accept-branch untested. LOW: R5 tautological Array.isArray(coreFiles), M1 brittle allProseCitations().length===0. Deferred fleet: S2 symlink/realpath, S3 ReDoS, R4 doc, R6 readonly."
+    review_verdict: rejected
   - id: ml1-2
     title: "brief.md — the five rom-source-study preflight answers, each cited to millipede/<FILE>.MAC:<line>: (0) revision/shipped set from 368X1.DOC ledger (program EPROMs 136013-101..104, picture -106/107) + link MILLI.LNK; (2) radix .RADIX 16 set MLDEF.MAC:2 inherited via .INCLUDE, trailing-period=decimal; (3) timebase architecture MLDEF.MAC:31 IRQ 4 PER FRAME (1 IN VBLANK), VBLANK D6 MLDEF.MAC:117, BIT VBLANK/BVS MLIRQ.MAC:708-709 — logic once/frame, exact rate left to ml1-4; (4) the MILLI.DOC/368XX.SB2 gap analysis. Sibling reuse of COIN65.MAC cited by diff as identical to centipede."
     points: 5

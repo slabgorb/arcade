@@ -44,7 +44,8 @@ export interface Claim {
    * number, so it rots silently when the source drifts. Each entry RE-DERIVES a
    * tally from the vendored tree and compares it to `expected` — shape-checked
    * always, re-run only when `vendoredRoot` is present (schema-only on CI, exactly
-   * like the byte gate). A mismatch is one error, per claim.
+   * like the byte gate). Each mismatched entry is one error, so a claim with two
+   * bad `counts` produces two errors (not one per claim).
    */
   counts?: CountAssertion[]
 }
