@@ -152,6 +152,8 @@ The study yields a dossier, written into the new game repo at `docs/rom-study/`:
 - `glossary.md` — the author's names → plain English (BUG=spider, ANT=flea).
 - `open-questions.md` — primary/secondary disagreements, missing artifacts
   (a documented PROM revision with no vendored binary), undecoded macros.
+- `roadmap.md` — the **complete multi-epic build sequence** the game will be
+  built along, not just the study epic. See "The roadmap is a deliverable" below.
 - `claims/*.json` — machine-checkable citations, single-sided schema:
   `{id, claim, source: {file, line, verbatim}, corroboration?}`. Build the
   citation checker FIRST (TDD), reusing the audit's checker shape with the

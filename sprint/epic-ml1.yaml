@@ -1,0 +1,43 @@
+id: ml1
+type: epic
+title: 'Millipede — ROM source study + scaffold + fidelity harness (phase 1): the ground-truth dossier every later ml* story cites'
+description: "First Millipede epic and phase 1 of the raster-cabinet build (docs/playbooks/next-sprite-game.md). Produces plugins/millipede/docs/rom-study/ — the single-sided ground-truth dossier (brief/glossary/subsystems/open-questions + claims/*.json) — plus the boot-stable four-file scaffold and the citation gate + src/core purity test, folded into one epic as pac-man's pm1 did. Millipede (Ed Logg, Sept 1982) is a revised-Centipede board assembled with the SAME toolchain (MAC65, .MAC, .RADIX 16), so this is a rom-source-study SIBLING case: COIN65.MAC is byte-identical to centipede (verified by diff — cite, don't re-study), radix + timebase ARCHITECTURE transfer with re-verification, but the exact refresh, the CONWAY Life field (Mark Cerny's Game-of-Life mushroom/DDT growth — no centipede analog), the richer bestiary (beetle/spider/dragonfly/mosquito/earwig/inchworm/bee/DDT), and RAM-driven colour (no colour/sync PROM in the ledger; MLIRQ.MAC:242 CLRCH COLOR RAM INITIALIZATION) are genuinely new and get fresh study. Source ALREADY vendored: reference/original-source/millipede/ @ historicalsource/millipede 29f3e05 (docs/reference-sources.md). Gaps found by checking INSIDE other files, not just the file list: MILLI.DOC design doc is absent AND not embedded (a secondary-doc gap, NOT a ground-truth gap — scoring is the source table PTS MLDEF.MAC:398, difficulty MLDEF.MAC:88,91); 368XX.SB2 picture source absent AND not embedded (MILLI.LDA is the CPU program image only — picture pixels come from the MAME milliped set 136013-106/107). Citation vocabulary fixed: millipede/<FILE>.MAC:<line> into the vendored tree; nothing downstream introduces a src/core constant without a claim gated by citations.test.ts, and purity stays green. Secondary source MAME milliped.cpp wins ONLY on board facts the source never states (master clock, exact refresh, geometry, colour wiring) — cited in prose, never copied (GPL). Design + full cabinet roadmap: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md. Sibling oracle: plugins/centipede/docs/rom-study/ (copy its layout + tools/audit/check-citations.mjs, drop the ours side). OUT OF SCOPE: graphics-ROM decode (ml2), core sim incl. the CONWAY Life field (ml3), sound (ml4), phase machine/wiring/HUD (ml5), hardening (ml6+)."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: ml1-1
+    title: 'Citation gate + src/core purity test FIRST (TDD): port centipede tools/audit/check-citations.mjs to a single-sided millipede checker (drop the ours side) + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml1-2
+    title: "brief.md — the five rom-source-study preflight answers, each cited to millipede/<FILE>.MAC:<line>: (0) revision/shipped set from 368X1.DOC ledger (program EPROMs 136013-101..104, picture -106/107) + link MILLI.LNK; (2) radix .RADIX 16 set MLDEF.MAC:2 inherited via .INCLUDE, trailing-period=decimal; (3) timebase architecture MLDEF.MAC:31 IRQ 4 PER FRAME (1 IN VBLANK), VBLANK D6 MLDEF.MAC:117, BIT VBLANK/BVS MLIRQ.MAC:708-709 — logic once/frame, exact rate left to ml1-4; (4) the MILLI.DOC/368XX.SB2 gap analysis. Sibling reuse of COIN65.MAC cited by diff as identical to centipede."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml1-3
+    title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (beetle/spider/earwig/inchworm/mosquito/dragonfly/DDT/poison-mushroom); subsystem -> owning file + .SBTTL line (MILLI.MAC BEEMV/BEETL/EARWIG/FLYMV/MOSQT/SPDMV/WRMMV/SHOOT/MOVE/MOTION/EXPLOD/CENTPC, MLIRQ SOUNDS/CLRCH/IRQ/JOYS, MLATR MODE FE/FF, CONWAY INICON/MASTER); OQ-1..OQ-4 (exact refresh, MILLI.DOC, graphics+RAM-colour, trackball-vs-joystick input MLIRQ.MAC:897).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml1-4
+    title: 'Secondary source MAME milliped.cpp board facts as claims: master clock, EXACT refresh (resolve OQ-1 vs centipede 59.88593 Hz and record any /263-vs-/262 hedge verbatim), screen geometry, cabinet rotation, COLOR-RAM/palette wiring, picture-ROM part numbers 136013-106/107. MAME cited in prose only, never copied into the repo (GPL). Locate the milliped driver dir first (atari/).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml1-5
+    title: 'Four-file scaffold + three registrations -> boots black canvas at /millipede/: copy plugins/joust/ (index.html, plugin.ts, package.json, tsconfig.json extends ../../tsconfig.json); add millipede to justfile games and vitest.config.ts GAMES; npm run gen:registry. Green npx vitest run --project millipede + npm run lint; visual boot check at http://127.0.0.1:5270/millipede/ (compare against a nonsense control path, not just a 200).'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
