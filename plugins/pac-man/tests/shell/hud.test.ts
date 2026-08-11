@@ -45,7 +45,6 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; texts: TextCall[] } {
 }
 
 const inTopBand = (c: TextCall): boolean => c.y < TOP_BAND_MAX_Y
-const inBottomBand = (c: TextCall): boolean => c.y >= BOTTOM_BAND_MIN_Y
 const inPlayfield = (c: TextCall): boolean => c.y >= TOP_BAND_MAX_Y && c.y < BOTTOM_BAND_MIN_Y
 
 describe('pm4-9 HUD layout (drawHud)', () => {
