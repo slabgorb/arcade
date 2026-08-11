@@ -170,6 +170,30 @@ const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 export const SURFACE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 export const TRENCH_ORIENT: Mat4 = IDENTITY
 
+// The per-wall seating for trench wall FURNITURE — turrets, squares, catwalks
+// (story sw11-2). These ride BOTH side walls (`streamPanelSlots` mounts them at
+// `pos[1] = ±W`, the native RIGHT axis), but `.WP WGA`/`.WP WPN`/`.WP WFF` author
+// their base as a plate in the HORIZONTAL plane with a single barrel direction —
+// "ORIENTATION is the shell's job" (models.ts). Drawn under the retired
+// `TRENCH_ORIENT = IDENTITY` the base cantilevers off the vertical wall and the
+// barrel points into the channel on ONE wall and into the WALL on the other.
+//
+// A 90° roll about the DEPTH axis (`rotationX`, which fixes native depth and swaps
+// right↔up) stands the horizontal base plate UP flush against the vertical wall;
+// the SIGN of `pos[1]` mirrors it per wall so the barrel points INTO the channel on
+// both. That is the ROM's own handling: it mounts the barrel `M.Y0 = -380 ;GUN
+// BARREL ON LEFT WALL` (FRPLGN) vs `M.Y0 = +380 ;GUN BARREL ON RIGHT WALL` (FRPRGN,
+// WSBASE.MAC:1251/1295), and PANLIN feeds the shell MOV$PL vs MOV$PR — left/right
+// guns are mirror images throughout.
+//
+// ⚠ render.ts:168 — structural tests can't catch orientation; the exact barrel
+// angle and how each model reads MUST be eyeballed on the dev server (/star-wars/,
+// trench phase). The tests pin the mechanism (flush + mirror + barrel inboard); the
+// look is the human gate.
+export function trenchWallOrient(pos: Vec3): Mat4 {
+  return rotationX(Math.sign(pos[1]) * (Math.PI / 2))
+}
+
 // The exhaust port's placement basis (story sw5-6).
 //
 // sw5-4 drew the port under TRENCH_ORIENT = IDENTITY, believing `.WP PORT`'s twelve
@@ -582,7 +606,7 @@ export function render(
     for (const o of state.trenchObstacles) {
       const model =
         o.kind === 'turret' ? TRENCH_TURRET : o.kind === 'square' ? TRENCH_SQUARE : TRENCH_CATWALK
-      drawWireframe(ctx, model, multiply(view, modelMatrix(o.pos, TRENCH_ORIENT)), proj, w, h, TURRET_GLOW)
+      drawWireframe(ctx, model, multiply(view, modelMatrix(o.pos, trenchWallOrient(o.pos))), proj, w, h, TURRET_GLOW)
     }
     // The exhaust port still rides up the channel at its true sim world position.
     const { port } = trenchPlacement(state)
