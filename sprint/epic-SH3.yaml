@@ -49,14 +49,14 @@ stories:
     title: 'Orchestrator guard (tests/) — a topology test that fails when a plugin re-declares a shared primitive outside src/shared (the mulberry32 magic 0x6d2b79f5, and the canvas-mount/audio-unlock boilerplate host-helpers owns), so a future straggler cannot silently fork extracted code again'
     points: 2
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: SH3-6
     title: Harden SH3-4's main-host-adoption source-wiring assertions — call-anchor the fitIntegerScale/pumpFrame positives, assert the mountCanvas destructure + full resizeToDisplay signature, broaden the querySelector/clientWidth retirement guards, and fix the stale 'Today main.ts:43' comment + tp1-39 citation
     points: 1
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: trivial
     type: chore
