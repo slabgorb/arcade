@@ -577,6 +577,13 @@ in-repo now.
 Copy the shape from an existing plugin rather than typing it: `plugins/joust/` is the
 smallest complete example of all four files.
 
+This section is the *mechanical* setup — the files, the registrations, the deploy. For a
+**sprite/raster** cabinet, the build order that worked (ROM study → scaffold + fidelity
+gate → graphics-ROM decode → core sim → sound → wiring → HUD → hardening), the seams
+unique to raster hardware (tile/sprite ROM decode, resistor-DAC colour PROM, WSG sweeps,
+the bake step) and the traps that shipped green tests while being wrong are in the
+[**next-sprite-game playbook**](../playbooks/next-sprite-game.md).
+
 ## History
 
 Design + implementation records: the monorepo collapse

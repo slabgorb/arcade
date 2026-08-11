@@ -140,3 +140,12 @@ Unknown paths (`/banana/`) still fall through to the lobby's SPA fallback, so an
 sweep of known paths proves nothing about whether the games are really wired in — until
 mg1-2 that fallback answered every path with identical lobby HTML. Check with a nonsense
 control and assert a game path DIFFERS from it, as `tests/canonical-serve.test.mjs` does.
+
+## Adding a game
+
+A new cabinet is a `plugins/<id>/` directory of four files plus three registrations —
+the mechanical runbook is [`docs/ops/hosting.md`](docs/ops/hosting.md) → _Adding a new
+game_. For a **sprite/raster** game there is also a sequenced field guide distilled from
+the joust, missile-command and pac-man builds — the epic order, the raster-only seams
+(tile/sprite ROM decode, colour PROM, WSG sound, the bake step) and the traps that
+shipped green tests while being wrong: [`docs/playbooks/next-sprite-game.md`](docs/playbooks/next-sprite-game.md).

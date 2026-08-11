@@ -86,6 +86,10 @@ to `games` in the `justfile` and to `GAMES` in `vitest.config.ts`, and run
 neither needs editing. Copy the shape from `plugins/joust/` rather than typing it —
 omitting either of the last two files fails, and not at the step you were on.
 Runbook detail: [`docs/ops/hosting.md`](./docs/ops/hosting.md) → *Adding a new game*.
+For a **sprite/raster** game (tile & sprite ROMs, a colour PROM, a WSG/POKEY sound chip)
+the sequenced build order and the raster-only seams and traps — distilled from the joust,
+missile-command and pac-man builds — are in
+[`docs/playbooks/next-sprite-game.md`](./docs/playbooks/next-sprite-game.md).
 
 ## Commands
 

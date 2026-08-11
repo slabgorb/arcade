@@ -37,7 +37,11 @@ arcade/                      # Orchestrator (this repo)
     └── sprint/              # tempest's own sprint tracking
 ```
 
-New games are added as sibling subrepos and registered in `repos.yaml`.
+New games are added as a `plugins/<id>/` directory (four files + three registrations),
+not as subrepos — the mechanical runbook is `docs/ops/hosting.md` → *Adding a new game*,
+and the sequenced field guide for a sprite/raster cabinet is
+`docs/playbooks/next-sprite-game.md`. (NOTE: the subrepo/`repos.yaml` layout described
+elsewhere in this file predates the 2026-07-30 monorepo collapse and is stale.)
 
 ## Git Branch Strategy
 
