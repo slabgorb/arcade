@@ -968,6 +968,114 @@ describe('mc10-6 round 5 — the extractor is AST-derived; header/template/nesti
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 6f. mc10-6 ROUND 6 — FINISH CLOSING THE CLASS. Reviewer round 5 (Heimdall)
+//     ACCEPTED the AST rewrite in principle (R4-A/B/C structurally closed) but
+//     REJECTED: the "close the class" ruling is not fully met on three literal
+//     shapes the AST derivation is still blind to or wrong about. These pin them,
+//     on synthetic input; the coverage predicate is unchanged, only DERIVATION /
+//     the header-exclusion mechanism change.
+//       R5-A [HIGH] the detached-comment filter fires only on a BLANK line (>=2
+//         newlines), so the exclusion of the shared file header is a spacing
+//         HEURISTIC, not structural: a header with NO blank line above the FIRST
+//         declaration attaches as its leading comment and vouches — R2-A reopened
+//         for the zero-blank shape. The header must be excluded by POSITION (the
+//         SourceFile's own leading-comment preamble, before the first statement),
+//         regardless of blank lines. Control: a LOCAL comment on a LATER decl (not
+//         the preamble) must still vouch at zero blank lines — the fix excludes the
+//         preamble, not all zero-blank attachments.
+//       R5-B [MED] a BigInt literal (`100n`) is a `BigIntLiteral`, not a
+//         `NumericLiteral`, so the visitor skips it entirely — an un-cited BigInt
+//         game constant sails through the gate invisibly (a regression vs the old
+//         regex, which surfaced the digits). It must be surfaced (value = the
+//         numeric part) so the gate can see it.
+//       R5-C [MED] a negative literal is `PrefixUnaryExpression(-, NumericLiteral)`;
+//         the visitor sees only the inner literal, so `-5000` is extracted as
+//         `5000` and coverage is decided against the WRONG value. The extracted
+//         value must be signed, so a `-5000` claim covers and a `5000` claim does
+//         not (today it is exactly inverted).
+//     Every earlier synthetic pin plus the real-tree gate must ALSO stay green —
+//     the regression battery. (No core file carries a bigint or a non-trivial
+//     negative today — only `-1`, TRIVIAL — so the real-tree gate is unaffected.)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mc10-6 round 6 — the header exclusion is structural, and bigint / negative literals are handled', () => {
+  // R5-A (RED against round-5's blank-line detach heuristic):
+  it('a file-header cite with NO blank line above the first declaration does NOT vouch', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // The file preamble (position-0 leading-comment run) is the header. With NO blank line
+    // before the first statement, round-5 attaches it as BARE's leading comment and the
+    // header's MC-HDR-999 cite vouches — the exclusion must be STRUCTURAL (by position),
+    // not a spacing heuristic. BARE has no own-line cite and enclosing symbol BARE (≠ the
+    // claim's symbol), so the ONLY path to coverage is the header leak.
+    const src = [
+      '// SOURCE OF TRUTH: header table (W3X.MAC:5713) — unrelated; claim MC-HDR-999',
+      'export const BARE = 999',
+    ].join('\n')
+    const hdr: CommittedClaim = {
+      id: 'MC-HDR-999', symbol: 'HDRSYM', value: 999, meaning: 'unrelated header-cited constant',
+      source: { file: 'W3X.MAC', line: 5713, verbatim: 'x' },
+    }
+    const bare = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 999)
+    expect(bare, 'extractor must surface BARE=999').toBeDefined()
+    expect(bare!.enclosingSymbol).toBe('BARE')
+    expect(literalCovered([hdr], bare!.docText, 999, bare!.enclosingSymbol)).toBe(false)
+  })
+
+  // R5-A control (must stay GREEN): only the position-0 preamble is the header. A comment
+  // directly above a LATER declaration is genuine LOCAL context and must still vouch even
+  // with zero blank lines — guards against an over-broad "drop all zero-blank leading
+  // comments" fix.
+  it('a local leading comment on a NON-first declaration still vouches with no blank line', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const src = [
+      '// SOURCE OF TRUTH: file header — unrelated preamble',
+      'export const FIRST = 2',
+      '// BAR is the wave-1 ICBM budget — W3X.MAC:42 (claim MC-BAR-4242)',
+      'export const BAR = 4242',
+    ].join('\n')
+    const c: CommittedClaim = {
+      id: 'MC-BAR-4242', symbol: 'BAR', value: 4242, meaning: 'a real local-cited constant',
+      source: { file: 'W3X.MAC', line: 42, verbatim: 'x' },
+    }
+    const bar = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(bar, 'extractor must surface BAR=4242').toBeDefined()
+    expect(bar!.docText, 'the local comment above BAR is attached, header is not').toContain('MC-BAR-4242')
+    expect(literalCovered([c], bar!.docText, 4242, bar!.enclosingSymbol)).toBe(true)
+  })
+
+  // R5-B (RED against the NumericLiteral-only visitor):
+  it('a BigInt game constant is surfaced (its numeric value), not skipped', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const lits = extractCoreLiterals('export const BIG = 100n', 'x.ts')
+    const big = lits.find((l) => l.value === 100)
+    expect(big, 'a bigint literal must be surfaced with its numeric value so the gate can see it').toBeDefined()
+    expect(big!.enclosingSymbol).toBe('BIG')
+    // An un-cited bigint must be FLAGGED, not sail through invisibly.
+    expect(literalCovered([], big!.docText, 100, big!.enclosingSymbol)).toBe(false)
+  })
+
+  // R5-C (RED against the unary-minus blindness — value extracted unsigned):
+  it('a negative literal is extracted as its SIGNED value, and coverage is decided against it', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const lits = extractCoreLiterals('export const NEG = -5000', 'x.ts')
+    expect(lits.find((l) => l.value === -5000), 'the signed value -5000 must be surfaced').toBeDefined()
+    expect(lits.find((l) => l.value === 5000), 'the unsigned 5000 must NOT be surfaced').toBeUndefined()
+    const neg = lits.find((l) => l.value === -5000)!
+    expect(neg.enclosingSymbol).toBe('NEG')
+    // Coverage is decided against the SIGNED value: a -5000 claim covers, a 5000 claim does not.
+    const signed: CommittedClaim = {
+      id: 'MC-NEG', symbol: 'NEG', value: -5000, meaning: 'a real negative constant',
+      source: { file: 'W3X.MAC', line: 1, verbatim: 'x' },
+    }
+    const unsigned: CommittedClaim = {
+      id: 'MC-POS', symbol: 'NEG', value: 5000, meaning: 'wrong-sign collision',
+      source: { file: 'W3X.MAC', line: 2, verbatim: 'x' },
+    }
+    expect(literalCovered([signed], neg.docText, -5000, neg.enclosingSymbol)).toBe(true)
+    expect(literalCovered([unsigned], neg.docText, -5000, neg.enclosingSymbol)).toBe(false)
+  })
+})
+
 describe('mc10-6 — every real src/core literal is line-anchored or exempt (AC3 real-tree gate)', () => {
   it('src/core exists so the gate has teeth', () => {
     expect(existsSync(coreDirPath), 'src/core must exist for the anchored gate to bite').toBe(true)
