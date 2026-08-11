@@ -120,6 +120,18 @@ export const DYING_HOLD_FRAMES = 120
  *  ~2s @ 60Hz. */
 export const LEVEL_CLEAR_HOLD_FRAMES = 120
 
+/** pm4-10: how long GAME OVER holds on screen before the cabinet times out back
+ *  to attract, in frames — closing the MAINLINE loop (attract -> ready -> play ->
+ *  game-over -> attract) and replacing main.ts's old manual Enter-to-restart. The
+ *  ROM master-state dispatch at #4e00 pins the game-over -> attract MECHANISM
+ *  (glossary.md §Cabinet state machine; pacman.asm:0195 read / :0984,:269a,:318c
+ *  writes), NOT an isolable duration literal — so, exactly like READY_HOLD_FRAMES /
+ *  DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES, this is an honest-uncited shell-timing
+ *  choice, not a fabricated pacman.asm address. If the run qualified, the name-entry
+ *  screen PAUSES this hold until the initials are confirmed (stepGame's game-over
+ *  branch), so it counts only from a null or confirmed entry. ~3s @ 60Hz. */
+export const GAME_OVER_HOLD_FRAMES = 180
+
 const GHOST_IDS: readonly GhostId[] = ['blinky', 'pinky', 'inky', 'clyde']
 const DIR_LIST: readonly Dir[] = ['up', 'left', 'down', 'right']
 const REVERSE_DIR: Readonly<Record<Dir, Dir>> = {
@@ -233,6 +245,12 @@ export interface GameState {
    *  `ready`) once it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES.
    *  Meaningless (and untouched) outside those two phases. */
   freezeFrames: number
+  /** pm4-10: frames elapsed in the current GAME OVER hold. Reset to 0 on entry to
+   *  `game-over`; counts up ONLY while the name-entry screen is null or confirmed
+   *  (an open, unconfirmed initials screen pauses it), and times out to attract
+   *  once it reaches GAME_OVER_HOLD_FRAMES. Meaningless (and untouched) outside
+   *  `game-over`. Mirrors `readyFrames`/`freezeFrames`. */
+  gameOverFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
   events: GameEvent[]
@@ -367,6 +385,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     phase: 'attract',
     readyFrames: 0,
     freezeFrames: 0,
+    gameOverFrames: 0,
     highScoreTable,
     nameEntry: null,
     events: [],
@@ -499,7 +518,29 @@ export function stepGame(state: GameState, input: GameInput): void {
   // (`advancePhase`, phase.ts) the one signal it owns and applies that edge's
   // side effect. `dying`/`level-clear` (their freeze + advanceLevel) are pm4-7;
   // `game-over -> attract` (the timeout) is pm4-10.
-  if (state.phase === 'game-over') return
+  if (state.phase === 'game-over') {
+    // pm4-10: the GAME OVER hold, then the TIMEOUT back to attract — the last
+    // unhooked edge of the pm4-5 machine, closing the MAINLINE loop (main.ts's
+    // manual Enter-to-restart is retired). The sim stays FROZEN (no
+    // stepPlayingSim): the final board holds still under the GAME OVER text.
+    //
+    // Name-entry gate ("name-entry done, THEN timeout", design §3): while a
+    // qualifying run's initials screen is OPEN and unconfirmed the timeout is
+    // PAUSED indefinitely — the cabinet waits for the player. Only a null or
+    // CONFIRMED entry counts, so pre-confirm frames never bank and the full
+    // window runs FROM confirmation. On expiry, reseed a fresh attract board
+    // (keeping seed + the persisted high-score table) — the same reseed idiom as
+    // startCabinet / the attract self-exit above.
+    const entryOpen = state.nameEntry !== null && !state.nameEntry.confirmed
+    if (!entryOpen) {
+      state.gameOverFrames += 1
+      state.phase = advancePhase('game-over', { overExpired: state.gameOverFrames >= GAME_OVER_HOLD_FRAMES })
+      if (state.phase === 'attract') {
+        Object.assign(state, createGameState(state.seed, state.highScoreTable))
+      }
+    }
+    return
+  }
   if (state.phase === 'attract') {
     // A start/coin advances attract -> ready AND reseeds a fresh board (pm4-6).
     // The joystick does NOT: the ROM gates the exit on the credit count
@@ -755,6 +796,7 @@ function stepPlayingSim(state: GameState, input: GameInput): void {
       state.phase = advancePhase('playing', { pacDied: true, livesRemaining: state.lives })
       if (state.phase === 'game-over') {
         state.events.push({ type: 'game-over' })
+        state.gameOverFrames = 0 // pm4-10: start the GAME OVER hold clean (mirrors dying's freezeFrames reset)
         const qualifies = qualifiesForHighScore(state.highScoreTable, state.score)
         if (qualifies) {
           state.nameEntry = { qualifies: true, buffer: '', confirmed: false }
