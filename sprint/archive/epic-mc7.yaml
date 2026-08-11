@@ -1,0 +1,48 @@
+id: mc7
+type: epic
+title: 'Missile Command — high-score ladder + name entry (REV-01): reuse @shared/highscore + @shared/name-entry'
+description: "Seventh Missile Command epic — the high-score ladder and initials entry, ported from the ROM display processor and wired onto the one-origin localStorage. Follows the arcade's standing rule (and the asteroids/joust consumers) that the table, the qualifies check and the initials buffer live in src/core (pure), while the shell holds only load-on-boot and save-on-commit. Reuses @shared/highscore (qualifiesForHighScore, insertHighScore, highScoreKey) and @shared/name-entry (stepNameEntry) rather than re-implementing either. ROM ground truth: W3DSUP.MAC:3724 INIT HI SCORE (default ladder + depth), :3780 UPDATE LADDER (insert-on-qualify), :4064 TAKE INITIALS (the 3-char entry + charset). The 'entry' phase slots into mc6's state machine, so mc7 is best sequenced after mc6-1; mc7-1 (table) and mc7-3 (persistence) are mc6-independent. Dependency: mc7 -> mc4 (done). Ground truth is REV-01 (035820-01); ladder depth and the default table are pinned to their cited W3DSUP symbols, never hard-coded uncited; every new src/core constant carries a claim gated by citations.test.ts and purity.test.ts stays green. Per the roadmap fidelity contract, catalogue the REV-01 <-> REV-03 ladder delta (default names/scores, depth) in the epic design + claim notes. Design: docs/superpowers/specs/2026-08-09-missile-command-mc7-highscore-name-entry-design.md; plan: to be authored at epic kickoff; roadmap: docs/superpowers/specs/2026-08-07-missile-command-full-cabinet-roadmap.md. OUT OF SCOPE: attract/state machine (mc6, which owns the phase seam mc7-2 extends), authentic audio (mc8), palette/stamps (mc9)."
+priority: p2
+status: done
+repos: arcade
+stories:
+  - id: mc7-1
+    title: 'High-score table in core (pure), reusing @shared/highscore: qualifiesForHighScore + insertHighScore over MC GameState; ladder depth pinned to the ROM default table (verify vs W3DSUP INIT HI SCORE, not hard-coded 10). REV-01 W3DSUP.MAC:3724 INIT HI SCORE / :3780 UPDATE LADDER'
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-09'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-09'
+  - id: mc7-2
+    title: "Name-entry 'entry' phase + initials buffer in core, reusing @shared/name-entry: a qualifying score on phase over routes to entry; stepNameEntry drives the 3-char initials buffer over the ROM charset; commit inserts into the table then returns to attract/over. Slots into mc6-1's phase machine. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-10'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-10'
+    review_verdict: approved
+  - id: mc7-3
+    title: "Wire name entry end-to-end (KEYBOARD): add the stepGame 'entry' freeze branch (+freeze test) so a step during 'entry' no longer falls through to stepCombat/nextPhase; reach enterNameEntry from a qualifying game-over in the frame loop; shell feeds KeyboardEvent.key to core stepInitials and commits on Enter via @shared/name-entry (keyboard like asteroids/joust — NO trackball, NO ROM timeout); and persist via one-origin localStorage under highScoreKey('missile-command') — shell reads on boot, writes on commit; core stays pure (owns table/qualifies/initials). Reuse the asteroids/joust @shared/highscore + name-entry consumer pattern. REV-01 W3DSUP.MAC:4064 TAKE INITIALS"
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-10'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-10'
+    review_findings: "HIGH: main.ts composed keydown lands Enter-commit on 'setup' not 'attract' (fireOrStart consumes the just-committed attract phase) -> finishing initials starts an unrequested game; fix = gate fireOrStart on pre-keystroke phase + add composed-path regression test. LOW: stale GameState.highScores JSDoc (game.ts:110)."
+    review_verdict: approved
+  - id: mc7-4
+    title: 'ROM-faithful ladder display + seeded default table: seed the initial ladder from the cited W3DSUP INIT HI SCORE defaults and render the ladder on the attract high-score screen (the mc6-5 slot). Pin default names/scores at RED. REV-01 W3DSUP.MAC:3724 INIT HI SCORE'
+    points: 3
+    priority: p3
+    status: done
+    started: '2026-08-10'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-11'
+completed: '2026-08-11'

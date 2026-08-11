@@ -10,7 +10,6 @@ sprint:
 epics:
   - mc5
   - mc6
-  - mc7
   - SH3
   - SH4
   - mc10
