@@ -85,7 +85,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 7,
     listed: false,
     showcase: false,
-    version: '0.0.30',
+    version: '0.0.31',
   },
   {
     id: 'missile-command',
