@@ -10,10 +10,11 @@ stories:
     title: 'Lift the 3-D model/sheet dev-tool helpers into a new pure @shared/model-view: cellRects (byte-identical x3 — red-baron tools/sheetLayout.ts, star-wars + tempest core/modelView.ts; the source itself calls it "the THIRD copy... a genuine candidate for extraction"), fitDistance (x2) and modelBounds (near-identical x2, take red-baron''s readonly Vec3[] signature). Pure, dev-tool-only (contact sheets / model viewers), on no game''s render path'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-11'
   - id: SH4-2
     title: 'Extract the held-keys input tracker (Set<string> + keydown-add/keyup-remove + any(keys) membership) duplicated across 6 games (asteroids, battlezone, centipede, joust, pac-man, red-baron) into a shell helper beside @shared/host-helpers. Parameterize the only real diffs: idOf (default e.code; games pass an e.key.toLowerCase() variant) and preventDefaultFor; ship blur-reset + dispose so the 4 leaky sites (all but centipede) stop leaking listeners'
     points: 5
