@@ -1,11 +1,11 @@
 sprint:
-  name: TO Sprint 2633
-  jira_sprint_id: 4
-  jira_sprint_name: TO Sprint 2633
-  goal: Shared modules to the shared library
-  start_date: '2026-08-08'
-  end_date: '2026-08-22'
+  name: TO Sprint 2634
+  jira_sprint_id: 5
+  jira_sprint_name: TO Sprint 2634
+  goal: Smoothing out the game factory (Millipede ml1)
+  start_date: '2026-08-11'
+  end_date: '2026-08-25'
   status: active
-  number: 2633
+  number: 2634
 epics:
   - ml1
