@@ -14,6 +14,7 @@ completed_epics:
   - mc10
   - mc7
   - mc6
+  - mc5
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -346,3 +347,18 @@ completed_stories:
     title: "Block player fire/input while phase is 'pause': pressing Z/X/C during pause must not spend ammo, queue an ABM, or sound a launch — fireOrStart/fireFromKey should no-op when state.phase==='pause', matching the ROM PAUSE handler (MAINLINE JSRs PAUSE not PLAY, so ABMLAU never runs). Found in mc6-3 review (Heimdall); the stepGame freeze is correct but shell input is ungated."
     points: 2
     completed: '2026-08-11'
+  - id: pm4-9
+    epic: pm4
+    title: 'Attract presentation + high-score ladder display + default table (shell+core): render the attract screen — title + the already-built high-score ladder + ROM attract text — over the pm4-8 demo, and SEED a default ladder (the mc7-4 tail). Pin the ROM strings/cadence at RED (pacman.asm:36a7 table).'
+    points: 3
+    completed: '2026-08-11'
+  - id: mc5-4
+    epic: mc5
+    title: 'Smart bomb (blast-dodging enemy) — REV-03 port. BLOCKED: absent from vendored REV-01 (035820-01); needs just vendor-source of REV-03 + rom-source-study before any RED'
+    points: 3
+    completed: '2026-08-11'
+  - id: mc5-9
+    epic: mc5
+    title: 'develop RED: mc5-7 reseeded the wave-1 ICBM budget to waveSchedule(INITIAL_WAVE).count=ICBWAV[0]=12 and updated its own game.test.ts, but left the SIBLING start-of-game.test.ts (mc6-2) asserting remaining===NICBMS(8) in expectFreshPlayGame + the AC1 budget test — 6 failures on develop. Update start-of-game.test.ts to expect waveSchedule(INITIAL_WAVE).count (mirror game.test.ts:68-77). Found at mc8-3 finish trial-merge.'
+    points: 1
+    completed: '2026-08-09'
