@@ -68,6 +68,11 @@ export interface Projectile {
   vel: Vec3
   /** Remaining lifetime in seconds; the bolt is dropped once it reaches 0. */
   ttl: number
+  /** Trench base-gun shells ONLY (PANLIN/MOVPL, WSGUNS.MAC:788-846): the lateral
+   *  direction this shell is allowed to heat-seek — `+1` (a LEFT-wall shell may only
+   *  move right), `-1` (a RIGHT-wall shell only left). Absent on straight-line
+   *  (`advance`) and space-homing (`homeShots`) shots, which do not heat-seek. */
+  seek?: 1 | -1
 }
 
 /** A live enemy fighter bearing down on the cockpit. World space. */
@@ -486,6 +491,23 @@ export const TRENCH_GUN_FIRE_THRESHOLD: readonly number[] = [
  *  gun scrolls through this approach range and fires while inside it; its slow
  *  (ENEMY_SHOT_SPEED) shot only reaches the cockpit when fired near abreast. */
 export const TRENCH_GUN_FIRE_RANGE = 0x6000
+/** BSGUN base-gun concurrency cap (GNBSAVAIL, WSGUNS.MAC:210-244): the `TGNBS` table
+ *  limits how many base-gun shells may be AIRBORNE at once, by difficulty `WV.HRD`
+ *  clamped 0..7 (`GUNZ-<N*G$IZE>`, N below). Wave-1 (WV.HRD 0) allows exactly ONE —
+ *  this is what the flat MAX_FIREBALL_SLOTS(6) the port shipped with over-permitted 6×. */
+export const TGNBS: readonly number[] = [1, 1, 2, 2, 3, 3, 3, 4]
+/** BSGUN vertical-alignment band (WSBASE.MAC:1236-1341): the ROM fires a gun only at a
+ *  player within `#400` — one wall-panel height (`M.Z0` walks down by `#400` per panel) —
+ *  at full TGPROB, or one band lower (`#400..#800`) at the SQUARED probability
+ *  `P.RND1*P.RND1` (two uniforms, skewed low); past two bands it is out of reach. The sim
+ *  is 1:1 with ROM units, so `#400` ports unscaled. The clone measures the band as the
+ *  vertical GAP magnitude (the ROM's signed "player above bunker" polarity is unresolved
+ *  against our seat-below-slots geometry — see the sw11-1 gate in `sim.ts`). */
+export const TRENCH_GUN_FIRE_BAND = 0x400
+/** BSGUN too-close exclusion (`ADDA #20+4 ;(DONT SHOOT IF TOO CLOSE)`): the panel at the
+ *  cockpit is skipped, so firing bunkers begin one panel (`#800`) downrange. A gun nearer
+ *  than this is scrolling past, not aiming, and never fires. */
+export const TRENCH_GUN_MIN_FIRE_DEPTH = 0x800
 /** Hit sphere around an enemy fireball for player bolts. A LARGE target (story
  * sw2-2): the fireball renders as a big glowing orb, so it must be a big thing to
  * shoot — what you see is what you shoot. Sized at 0.6× the TIE sphere — smaller

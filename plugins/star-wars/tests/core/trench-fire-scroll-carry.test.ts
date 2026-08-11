@@ -4,27 +4,28 @@
 //
 // The trench models the player's forward flight as the WORLD scrolling toward a
 // (near-)fixed cockpit at TRENCH_SCROLL_SPEED (~15,750 u/s): the walls, obstacles and
-// exhaust port all get `pos.z += TRENCH_SCROLL_SPEED*dt` each frame (sim.ts stepTrench
-// — obstacles at :1424, port at :1388). The old wall-gun shot did NOT: it was fired at
-// a bare ENEMY_SHOT_SPEED (~300 u/s) toward the ship, so it crept forward while the
-// world rushed past 50× faster — the player outran the bullet and it read on screen as
-// receding downrange ("firing the wrong way").
+// exhaust port all get `pos.z += TRENCH_SCROLL_SPEED*dt` each frame (sim.ts stepTrench).
+// The old wall-gun shot did NOT: it was fired at a bare ENEMY_SHOT_SPEED (~300 u/s)
+// toward the ship, so it crept forward while the world rushed past 50× faster — the
+// player outran the bullet and it read on screen as receding downrange.
 //
-// The fix gives the shot a closing velocity that RIDES the scroll in depth and LEADS
-// the ship laterally (gameRules.trenchGunFireVelocity), so it approaches the cockpit
-// with the world AND still arrives at an off-centre pilot. That closing is fast
-// (~262 u per 60 fps frame >> the 160 u cockpit sphere), so the cockpit hit is a SWEPT
-// test over the shot's per-frame step (gameRules.sweptCollides), not a point-in-sphere
-// that a single leap would tunnel through.
+// The fix gives every trench base-gun shell a depth velocity that RIDES the scroll
+// (`vel = [-TRENCH_SCROLL_SPEED, 0, 0]`), so it closes with the walls. It does NOT lead
+// the ship — sw11-1 retired the closed-form `trenchGunFireVelocity` lead for trench
+// base guns (that model now serves only the SURFACE turrets, sw10-2); the shell launches
+// straight down the scroll and the damped per-frame heat-seek (`seekShots`) does all the
+// lateral/vertical steering, so authentic shells scatter and usually miss. The scroll
+// closing is fast (~262 u per 60 fps frame >> the 160 u cockpit sphere), so the cockpit
+// hit is a SWEPT test over the shot's per-frame step (gameRules.sweptCollides), not a
+// point-in-sphere that a single leap would tunnel through.
 
 import { describe, it, expect } from 'vitest'
-import { initialState, type GameState } from '../../src/core/state'
+import { initialState, type GameState, type Projectile } from '../../src/core/state'
 import { ENEMY_SHOT_SPEED, ENEMY_SHOT_TTL, TRENCH_SCROLL_SPEED } from '../../src/core/state'
-import { trenchGunFireVelocity } from '../../src/core/gameRules'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
 import { TRENCH_EYE_SEAT } from '../../src/core/trench-channel'
-import { add, scale, type Vec3 } from '@shared/math3d'
+import type { Vec3 } from '@shared/math3d'
 
 const SEAT = TRENCH_EYE_SEAT
 const DT = 1 / 60
@@ -43,28 +44,29 @@ function bareTrench(view: Vec3, seed = 1): GameState {
   }
 }
 
-/** A fireball fired from `pos` at the ship point `view`, exactly as the wall guns
- *  spawn it (sim.ts fire loop → the shared trenchGunFireVelocity). */
-const shotAt = (pos: Vec3, view: Vec3) => ({ pos: [...pos] as Vec3, vel: trenchGunFireVelocity(pos, view), ttl: ENEMY_SHOT_TTL })
+/** A base-gun shell built exactly as `stepTrench` now spawns it (sim.ts fire loop):
+ *  riding the scroll in depth with NO lead, carrying its wall's `seek` direction. */
+const shotAt = (pos: Vec3): Projectile => ({
+  pos: [...pos] as Vec3,
+  vel: [-TRENCH_SCROLL_SPEED, 0, 0] as Vec3,
+  seek: pos[1] < 0 ? 1 : -1,
+  ttl: ENEMY_SHOT_TTL,
+})
 
 describe('trench wall-gun fire rides the scroll (the bullets must not outrun the player)', () => {
-  it('the fire velocity rides the scroll in depth and leads the ship laterally to hit it', () => {
-    // The fix contract, as a pure unit. A wall gun downrange at right=-300 firing at a
-    // centred pilot: its depth-velocity IS the scroll (so it closes with the walls, not at
-    // its own ~300 u/s creep), and integrating the whole velocity for the transit time
-    // lands it on the ship's right/up — a lead, so an off-wall gun still hits centre.
+  it('the launch rides the scroll in depth with NO lateral/vertical lead (sw11-1)', () => {
+    // The fix contract as a pure unit. A downrange wall gun spawns its shell riding the
+    // world scroll in depth (so it closes with the walls, not at its own ~300 u/s creep)
+    // and with ZERO lateral/vertical launch — the ROM never leads (sw11-1). An off-wall
+    // gun therefore does NOT auto-arrive on an off-centre pilot the way the retired
+    // closed-form lead did; the damped heat-seek (seekShots) handles the approach.
     const gun: Vec3 = [6000, -300, SEAT]
-    const ship: Vec3 = [0, 0, SEAT]
-    const vel = trenchGunFireVelocity(gun, ship)
+    const { vel } = shotAt(gun)
 
     expect(vel[0], 'depth closes at the world scroll rate, not the muzzle creep').toBeCloseTo(-TRENCH_SCROLL_SPEED, 5)
     expect(Math.abs(vel[0]), 'i.e. far faster than the old bare muzzle speed').toBeGreaterThan(ENEMY_SHOT_SPEED * 5)
-
-    const transit = (gun[0] - ship[0]) / TRENCH_SCROLL_SPEED
-    const arrival = add(gun, scale(vel, transit)) // where the shot is when its depth reaches the cockpit plane
-    expect(arrival[1], 'leads onto the ship right').toBeCloseTo(ship[1], 3)
-    expect(arrival[2], 'leads onto the ship up').toBeCloseTo(ship[2], 3)
-    expect(arrival[0], 'arrives exactly at the cockpit plane').toBeCloseTo(ship[0], 3)
+    expect(vel[1], 'no lateral lead — the ROM does not aim ahead of the ship').toBe(0)
+    expect(vel[2], 'no vertical lead').toBe(0)
   })
 
   it('a fired shot closes on the cockpit with the scroll, not its own muzzle creep', () => {
@@ -73,7 +75,7 @@ describe('trench wall-gun fire rides the scroll (the bullets must not outrun the
     // world), NOT by ~ENEMY_SHOT_SPEED·dt (~5 u), which is what left it behind before.
     const view: Vec3 = [0, 0, SEAT]
     const d0 = 5000 // native depth downrange
-    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([d0, 0, SEAT], view)] }
+    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([d0, 0, SEAT])] }
     const s1 = stepGame(s0, NO_INPUT, DT)
 
     expect(s1.enemyShots.length, 'the far shot is still alive').toBe(1)
@@ -87,9 +89,10 @@ describe('trench wall-gun fire rides the scroll (the bullets must not outrun the
     // radius-80 cockpit sphere. A plain point-in-sphere test would let a dead-on shot
     // jump clean over the cockpit between frames and never register. Seated at depth ≈ 150
     // it is >80 from the cockpit now and >80 past it next frame, so only a SWEPT test
-    // over the segment catches it.
+    // over the segment catches it. (A centred pilot leaves the heat-seek inert — dz 0 and
+    // lateral delta 0 — so the shell holds dead-centre and the sweep lands it.)
     const view: Vec3 = [0, 0, SEAT]
-    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([150, 0, SEAT], view)] }
+    const s0: GameState = { ...bareTrench(view), enemyShots: [shotAt([150, 0, SEAT])] }
     const s1 = stepGame(s0, NO_INPUT, DT)
 
     expect(
