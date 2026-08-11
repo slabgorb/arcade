@@ -11,6 +11,34 @@ Read an arcade machine's original source and produce the ground-truth dossier a 
 
 **REQUIRED BACKGROUND:** `rom-fidelity-audit` — its preflight traps (link maps, dead conditionals, CRLF copies, unit/BCD errors), citation rule, and refutation discipline all apply here unchanged. This skill covers only what differs when there is no "ours" side yet.
 
+<acquire>
+Step 0 — get the source into the repo as the greppable byte-of-record, BEFORE the preflight.
+
+Most machines have a preserved tree at `historicalsource/<game>`. One command clones it,
+LF/ASCII-transcribes the text (upstream is CR-terminated non-UTF8 — grep flags it binary
+and returns nothing), passes ROM/binary dumps through VERBATIM (so the tree is also the
+byte-of-record the fidelity oracles read), and records repo + pinned SHA in
+`docs/reference-sources.md`:
+
+```bash
+just vendor-source historicalsource/<game> <sha>   # ref is POSITIONAL via just; PIN it — HEAD drifts
+# (raw script form: node scripts/vendor-source.mjs historicalsource/<game> --ref <sha>)
+# → reference/atari-source/<game>/   ← this is $SRC in the preflight below.
+```
+
+The `atari-source/` path is a fleet-wide legacy name, not a claim of manufacturer — Williams'
+Defender vendors there too (`just vendor-source historicalsource/defender 3fae9d3`). A
+pristine clone is cached at `~/Projects/<game>-source`; no tool reads it.
+
+**No historicalsource repo?** (hand-vendored disassembly, e.g. a cubeman.org listing.) Place
+the tree under `plugins/<id>/reference/source/` and hand-write `plugins/<id>/reference/PROVENANCE.md`
+— origin URL, what proves it is the arcade machine (embedded ROM text/copyright string), and
+the radix/encoding traps — the convention pac-man and missile-command follow.
+
+Either layout MUST be committed, never gitignored: the citation gate byte-verifies against the
+in-repo tree, so a CI checkout has to contain it.
+</acquire>
+
 <run>
 Preflight — FIVE questions, answered in order, before any subsystem reading:
 
@@ -69,11 +97,24 @@ The study yields a dossier, written into the new game repo at `docs/rom-study/`:
   citation checker FIRST (TDD), reusing the audit's checker shape with the
   `ours` side dropped. The checker prints one error per bad claim and exits
   non-zero; a claim that fails is DELETED, not repaired.
+
+Every claim's `source.file` resolves into the vendored tree from Step 0
+(`reference/atari-source/<game>/` or `plugins/<id>/reference/source/`), whose
+provenance row lives in `docs/reference-sources.md`. The dossier is the prose;
+that tree is the bytes it cites — the study produces both.
 </output>
 
 ## Secondary source — the emulator driver
 
-Sparse MAME clone at `~/Projects/mame/src/mame/atari/` (`git clone --depth 1 --filter=blob:none --sparse https://github.com/mamedev/mame.git && git sparse-checkout set src/mame/atari`). Read the machine config for board-level facts the source assumes silently: master clock, exact refresh, screen geometry, IRQ scanline generation, palette wiring, memory map, input polling rates.
+MAME's driver holds board-level facts the source assumes silently: master clock, exact refresh, screen geometry, IRQ scanline generation, palette/PROM wiring, memory map, input polling rates. Find the machine's driver dir FIRST — it is per-manufacturer and **NOT always `atari/`**. Williams games (Defender, Joust, Robotron) live in `src/mame/williams/`; Namco/Midway Pac-Man in `src/mame/pacman/`. Locate by machine name, then sparse-checkout just that dir:
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/mamedev/mame.git
+cd mame && git grep -l -i "<machine>" -- 'src/mame/**/*.cpp'   # which driver owns it
+git sparse-checkout set src/mame/<manufacturer>                # e.g. williams, atari, pacman
+```
+
+Read the machine config — the `<machine>_state` class, its `_main_map`/`_sound_map`, the `ROM_START` and `MACHINE_CONFIG` — for the silent hardware facts (Defender's is `defender_state` + `defender_main_map` in `src/mame/williams/williams.cpp`, which also documents its 1-vs-2 video-decoder PROM variants).
 
 **Hierarchy:** the assembler source wins on game logic; MAME wins on hardware the source never states. A disagreement is a recorded open question, never a silent pick — and MAME hedges too (centipede's driver says "263 ?? could be /262"); record the hedge. **License wall:** never copy MAME code into the repo (GPL), same as the Atari source (copyright) — cite both externally.
 
