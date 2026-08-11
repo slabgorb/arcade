@@ -64,7 +64,10 @@ const params = new URLSearchParams(window.location.search)
 const rawSeed = Number.parseInt(params.get('seed') ?? '', 10)
 const seed = Number.isFinite(rawSeed) ? rawSeed : Date.now()
 
-let game: GameState = createGameState(seed, highScoreStorage.load())
+// pm4-10: reseeds happen in-place inside the core now (the attract self-exit and
+// the game-over timeout both Object.assign a fresh board onto `game`), so the
+// shell never reassigns this binding — hence `const`, not the old `let`.
+const game: GameState = createGameState(seed, highScoreStorage.load())
 
 // ── Audio: the WSG voice + the events→cue driver (pm2-3) ─────────────────
 // pm1 built the `events.ts` seam and left it idle; this consumes it. All of it
@@ -152,6 +155,10 @@ window.addEventListener('keydown', (e) => {
 
   // Initials entry rides its own edge event, same as centipede's
   // enterInitial — it is not part of the held-direction sampling above.
+  // pm4-10: this is the ONLY remaining game-over key path. Confirming the
+  // initials releases the core timeout (stepGame's game-over branch), which
+  // returns the cabinet to attract on its own — the old manual Enter-to-restart
+  // is retired; a START/coin (pm4-6) begins the next game from attract.
   if (game.phase === 'game-over' && game.nameEntry && !game.nameEntry.confirmed) {
     if (e.key === 'Enter') {
       confirmNameEntry(game)
@@ -160,11 +167,6 @@ window.addEventListener('keydown', (e) => {
       enterInitial(game, e.key)
     }
     return
-  }
-
-  // Restart once game-over is fully resolved (no open, unconfirmed entry).
-  if (game.phase === 'game-over' && (!game.nameEntry || game.nameEntry.confirmed) && e.key === 'Enter') {
-    game = createGameState(Date.now(), game.highScoreTable)
   }
 })
 
@@ -194,7 +196,9 @@ const frame = (now: number): void => {
       // sub-step) so START/coin reaches stepGame (attract -> ready) once per press.
       () => ({ dir: currentDir(), start: consumeStart() }),
       (input) => {
-        if (game.phase === 'game-over') return
+        // pm4-10: the sim now runs in EVERY phase — game-over included — so the
+        // core GAME OVER hold can tick down and time out back to attract on its
+        // own (was: an early-return here that skipped stepGame in game-over).
         const boardBefore = game.highScoreTable
         stepGame(game, input)
         animClock++ // pm4-2: one tick per sim sub-step drives the animation hold
