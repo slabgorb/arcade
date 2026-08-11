@@ -1,13 +1,17 @@
 // tests/shell/hud.test.ts
 //
 // Story pm4-9 — the HUD layout. `maze.ts` reserves two black HUD bands the playfield
-// never uses: the TOP band (rows 0-2, y < 24) and the BOTTOM band (rows 33-35,
-// y >= 264). pm4-9 moved the readouts to the ROM-authentic arrangement so no HUD text
-// bleeds onto the maze and the bottom band carries lives/level (where Pac-Man shows
-// them):
+// never uses: the TOP band (rows 0-2, y < 24) and the reserved BOTTOM band (rows 34-35,
+// y >= 272 per render.ts's `BOTTOM`). pm4-9 moved the readouts to the ROM-authentic
+// arrangement so no HUD text bleeds onto the maze:
 //   • SCORE       — top band, left
 //   • HIGH SCORE  — top band, centre (pacman.asm:36a5), value = persisted top (or 0)
-//   • LIVES/LEVEL — BOTTOM band (lives left, level right)
+//
+// pm4-11 SUPERSEDES pm4-9's bottom band: the LIVES/LEVEL *text* is retired and replaced
+// by sprite icons (reserve-life icons left, a fruit-row level indicator right) — that
+// sprite behaviour is pinned in hud-icons.test.ts. The two bottom-band tests below are
+// re-baselined to guard that the text is now GONE; the top-band and bleed-guard tests
+// remain pm4-9's.
 //
 // These tests pin the BAND each readout lands in (a y-coordinate assertion), which is
 // exactly the regression the playtest caught: HIGH SCORE was bleeding onto the
@@ -19,7 +23,10 @@ import { LOGICAL_H } from '../../src/shell/layout'
 
 // The reserved bands, in logical pixels (TILE_PX = 8; maze rows 0-35).
 const TOP_BAND_MAX_Y = 24 // rows 0-2
-const BOTTOM_BAND_MIN_Y = LOGICAL_H - 24 // rows 33-35 (264)
+// y=264 (top of row 33): the lower edge of the playfield used by the bleed guard below.
+// The reserved bottom HUD band proper is rows 34-35 (y >= 272 per render.ts's BOTTOM);
+// 264 leaves row 33 as slack so the guard never false-flags a HUD glyph near the edge.
+const BOTTOM_BAND_MIN_Y = LOGICAL_H - 24
 
 interface TextCall {
   text: string
@@ -36,12 +43,15 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; texts: TextCall[] } {
     textAlign: 'start',
     fillText: (text: string, x: number, y: number) => texts.push({ text, x, y }),
     fillRect: () => {},
+    // pm4-11 makes drawHud blit sprites (lives + fruit) into the bottom band via
+    // drawPacman/drawFruit; the ctx must answer these or the top-band tests crash.
+    createImageData: (w: number, h: number) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+    putImageData: () => {},
   } as unknown as CanvasRenderingContext2D
   return { ctx, texts }
 }
 
 const inTopBand = (c: TextCall): boolean => c.y < TOP_BAND_MAX_Y
-const inBottomBand = (c: TextCall): boolean => c.y >= BOTTOM_BAND_MIN_Y
 const inPlayfield = (c: TextCall): boolean => c.y >= TOP_BAND_MAX_Y && c.y < BOTTOM_BAND_MIN_Y
 
 describe('pm4-9 HUD layout (drawHud)', () => {
@@ -75,22 +85,20 @@ describe('pm4-9 HUD layout (drawHud)', () => {
     expect(inTopBand(score as TextCall)).toBe(true)
   })
 
-  it('draws LIVES in the BOTTOM band (where the playtest showed it belongs)', () => {
+  // pm4-9 drew LIVES/LEVEL as text in the bottom band. pm4-11 replaces both with
+  // real sprites (life icons + a fruit row) — so the bottom band carries NO text
+  // any more. The sprite behaviour itself is pinned in hud-icons.test.ts; here we
+  // re-baseline pm4-9's two text guards to the new spec: the text must be gone.
+  it('no longer draws LIVES as text — pm4-11 renders lives as Pac-life sprites (see hud-icons.test.ts)', () => {
     const { ctx, texts } = fakeCtx()
     drawHud(ctx, 1440, 0, 3, 1)
-    const lives = texts.find((c) => c.text.includes('LIVES'))
-    expect(lives, 'LIVES readout must be drawn').toBeDefined()
-    expect(lives?.text).toContain('3')
-    expect(inBottomBand(lives as TextCall), 'LIVES must sit in the bottom band (y >= 264)').toBe(true)
+    expect(texts.some((c) => c.text.includes('LIVES')), 'the procedural "LIVES n" text is retired').toBe(false)
   })
 
-  it('draws LEVEL in the BOTTOM band', () => {
+  it('no longer draws LEVEL as text — pm4-11 renders the level as a fruit row (see hud-icons.test.ts)', () => {
     const { ctx, texts } = fakeCtx()
     drawHud(ctx, 1440, 0, 3, 7)
-    const level = texts.find((c) => c.text.includes('LEVEL'))
-    expect(level, 'LEVEL readout must be drawn').toBeDefined()
-    expect(level?.text).toContain('7')
-    expect(inBottomBand(level as TextCall), 'LEVEL must sit in the bottom band (y >= 264)').toBe(true)
+    expect(texts.some((c) => c.text.includes('LEVEL')), 'the procedural "LEVEL n" text is retired').toBe(false)
   })
 
   it('bleed guard: NO HUD text is drawn in the playfield band (24 <= y < 264)', () => {
