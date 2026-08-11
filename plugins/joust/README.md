@@ -135,26 +135,33 @@ checkout-local `reference/` for scratch work, which is a different directory.
   no `Math.random`. 18 modules (`flight`, `arena`, `enemy`, `egg`, `wave`,
   `target`, `pictures`, …), guarded by `tests/purity.test.ts`.
 - `src/shell/` — render / input / timebase / audio (manifest + dispatch). Five
-  modules since jt5-1; **no storage**, deliberately.
+  modules since jt5-1; no storage module — high-score persistence lives at the
+  host layer in `main.ts` (jt10-7), not in the shell.
 
 That boundary is the single most important rule in this repo, as in every
 sibling.
 
-### What joust does NOT do (said plainly, so nobody "fixes" it)
+### What joust does and does NOT do (said plainly, so nobody "fixes" it)
 
-- **It persists no high scores.** No `localStorage`, no storage module, no
-  `@shared/highscore` — like red-baron, unlike centipede. This is not an
-  oversight.
-- **It consumes exactly one `@shared` subpath: `@shared/audio`.** jt5-1 landed
-  it, ending joust's run as the fleet's zero-consumption outlier — the others
+- **It persists high scores.** jt10-7 added the JOUST CHAMPIONS table:
+  `main.ts` keeps one `localStorage` key, `joust-high-scores`, through
+  `makeHighScoreStorage` from `@shared/highscore` — single-origin, so the lobby
+  and every cabinet share it. Like centipede, unlike red-baron (which persists
+  nothing).
+- **It consumes nine `@shared` subpaths:** `@shared/audio`, `@shared/font`,
+  `@shared/held-keys`, `@shared/highscore`, `@shared/host-helpers`,
+  `@shared/loop`, `@shared/name-entry`, `@shared/rng` and `@shared/view`. The SH3
+  epic retired joust's per-game re-implementations (SH3-1 the rng, SH3-2 the
+  `mountCanvas` host helper), and jt5-1 had already ended joust's original run as
+  the fleet's zero-consumption outlier — the others
   take between nine and fourteen subpaths (centipede 9, red-baron 9, asteroids
   and tempest 11, star-wars 12, battlezone 14 — **indicative, measured
   2026-08-06**, and nothing guards them: the whole fleet churns this figure
   every time any cabinet adopts a shared module, so re-measure with `grep -rhoE
   '@shared/[a-z0-9-]+' plugins/<game>/src | sort -u | wc -l` before quoting).
-  Its mulberry32 is still lifted
-  **byte-for-byte** into `src/core/frame.ts` rather than imported (the comments
-  there naming `@arcade/shared/rng` are provenance, not a dependency). There was
+  Its mulberry32 is no longer inlined: `src/core/frame.ts` sources the seeded
+  draw from `@shared/rng` through `src/core/rng.ts` (SH3-1 retired the
+  byte-for-byte copy that used to live in `frame.ts`). There was
   no adoption ruling left to make: the 2026-07-30 monorepo collapse put
   `src/shared/` in-tree behind the `@shared/*` alias, so an import costs a line
   and nothing is pinned, git-URL'd or version-bumped.

@@ -713,12 +713,13 @@ describe('jt9-28 AC4 — the derived file-count’s contributor cost is written 
 //     audio, font, held-keys, highscore, host-helpers, loop, name-entry, rng, view.
 //   · "Its mulberry32 is still lifted **byte-for-byte** into `src/core/frame.ts`
 //     rather than imported … provenance, not a dependency"           (:155-157)
-//     FALSE — SH3-1 routed it through `src/core/rng.ts:19` → `import … from
-//     '@shared/rng'`; the inline copy is gone (frame.ts:193-196).
+//     FALSE — SH3-1 routed it through `src/core/rng.ts`'s `import { createRng,
+//     nextFloat } from '@shared/rng'`; the inline copy is gone — `frame.ts`
+//     carries only a provenance comment now.
 //   · "It persists no high scores. No `localStorage`, … no `@shared/highscore`" (:145)
 //     and the shell's "**no storage**, deliberately"                 (:138)
-//     FALSE — jt10-7 added the JOUST CHAMPIONS table: `main.ts:369`
-//     `makeHighScoreStorage('joust', …)` is a real localStorage touch keyed
+//     FALSE — jt10-7 added the JOUST CHAMPIONS table: `main.ts`'s
+//     `makeHighScoreStorage('joust', …)` call is a real localStorage touch keyed
 //     `joust-high-scores`, importing `@shared/highscore`.
 //
 // The user ruled (2026-08-11) that the whole section is brought true in one pass:
@@ -797,7 +798,7 @@ describe('SH3-7 AC1 — the falsified persistence/storage claims are brought tru
 
   it('records that joust DOES persist high scores, naming the concrete seam', () => {
     const md = readme()
-    // grep-count 0 today: the real localStorage key (main.ts:369) and the story id.
+    // grep-count 0 today: the real localStorage key (`main.ts`'s makeHighScoreStorage call) and the story id.
     expect(
       md,
       'name the persistence key `joust-high-scores` or cite jt10-7 so the claim is checkable',
