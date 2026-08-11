@@ -5,14 +5,20 @@
 // READY -> PLAY runtime path. Written BEFORE game.ts is wired, so these fail now.
 //
 // SCOPE FENCE (from phase.test.ts): pm4-6 owns the READY timer + the start-input
-// reseed edge (attract --start--> ready --readyTimer--> playing) and the
-// attract/ready SIM GATE (nothing in the world moves until play begins — the
-// reported "Blinky moves during attract" bug, since house.ts:69 releases Blinky
-// from frame 0). Deliberately NOT here: the dying/level-clear freeze (pm4-7), the
-// attract auto-player (pm4-8), and the game-over->attract timeout + its main.ts
-// wiring (pm4-10). A start press therefore does NOT move `game-over` — only
-// pm4-10's timeout does; the derived AC1 phrase "from attract OR game-over"
-// over-reaches the shipped, ROM-cited machine and is corrected by a guard below.
+// reseed edge (attract --start--> ready --readyTimer--> playing) and the READY SIM
+// GATE (nothing in the world moves during the READY hold). Deliberately NOT here:
+// the dying/level-clear freeze (pm4-7), the attract auto-player (pm4-8), and the
+// game-over->attract timeout + its main.ts wiring (pm4-10). A start press therefore
+// does NOT move `game-over` — only pm4-10's timeout does; the derived AC1 phrase
+// "from attract OR game-over" over-reaches the shipped, ROM-cited machine and is
+// corrected by a guard below.
+//
+// pm4-8 UPDATE: pm4-6 ALSO froze the ATTRACT phase ("Blinky must not move during
+// attract"), but pm4-8 deliberately un-freezes it — the attract demo now plays
+// itself. That former freeze assertion is REPLACED below (see the pm4-8 note on the
+// `sim is LIVE during attract` describe); the full self-play suite lives in
+// tests/core/attract-demo.test.ts. The READY gate and the "joystick holds attract"
+// guard (only a coin/START exits) are unchanged and ROM-faithful.
 //
 // These tests drive only the PUBLIC surface — `createGameState` and
 // `stepGame(state, { dir, start })` — and assert OBSERVABLE state. They never
@@ -76,16 +82,24 @@ describe('pm4-6 AC: the cabinet boots into attract, not straight into play', () 
   })
 })
 
-describe('pm4-6 AC4: the whole sim is frozen during attract — Blinky must not move', () => {
-  it('twelve frames of held input move nothing while in attract', () => {
+// pm4-8 REPLACES pm4-6 AC4. pm4-6 froze the whole sim during attract ("Blinky must
+// not move"); pm4-8 makes the attract demo PLAY ITSELF, so the sim is now LIVE in
+// attract. The former "attract freezes Pac, Blinky and the dot count" assertion is
+// retired here as an EXPECTED overturn (not a regression). This is the minimal
+// in-place flip; the thorough self-play suite (liveness, determinism, never-self-
+// exit, coin-reseed) lives in tests/core/attract-demo.test.ts.
+describe('pm4-8 (was pm4-6 AC4): the sim is LIVE during attract — the demo plays itself', () => {
+  it('the auto-player moves Blinky over a handful of attract frames (no input)', () => {
     const s = createGameState(SEED)
     forcePhase(s, 'attract')
     const before = worldPose(s)
-    // Pac-Man would stride right (eating dots) and Blinky would chase from
-    // (13,14) if the sim were live — it must not be.
-    for (let i = 0; i < 12; i++) stepGame(s, { dir: 'right' })
-    expect(s.phase, 'no start pressed → attract holds').toBe('attract')
-    expect(worldPose(s), 'attract freezes Pac, Blinky and the dot count').toEqual(before)
+    // With no input the auto-player drives the maze: the reused ghost AI must move
+    // Blinky (released from frame 0, house.ts:69) and Pac must leave the spawn tile.
+    for (let i = 0; i < 60; i++) stepGame(s, { dir: 'none' })
+    expect(s.phase, 'the demo holds attract until a coin/START arrives').toBe('attract')
+    expect(worldPose(s), 'the attract demo is live — Pac/Blinky/dots all advance').not.toEqual(
+      before,
+    )
   })
 })
 
