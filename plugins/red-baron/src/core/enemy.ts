@@ -38,6 +38,7 @@
 // PURE and deterministic. No DOM, no time, no ambient randomness — the ONLY source
 // of randomness is the seeded Rng handed to `spawn`.
 
+import { clamp } from '@shared/clamp'
 import { type Rng, nextFloat } from '@shared/rng'
 import type { Vec3 } from '@shared/math3d'
 import { biplaneBank } from './biplane'
@@ -371,13 +372,12 @@ export interface Enemy {
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
 
-// NaN-safe: Math.min/max PROPAGATE NaN, and a NaN that ever reaches x/y persists across every
-// later frame (state is fed back through step). Unreachable from spawn today. rb4-16 corrects the
-// old overclaim that this floor was "the total answer" for a degenerate fixture: this `clamp` now
+// NaN totality: the shared `clamp` is guarded (NaN -> lo; see @shared/clamp). Bare Math.min/max
+// PROPAGATE NaN, and a NaN that ever reaches x/y would persist across every later frame (state is
+// fed back through step), so the guard floors it. Unreachable from spawn today. rb4-16 corrects the
+// old overclaim that this floor was "the total answer" for a degenerate fixture: this `clamp`
 // guards only the Y altitude band, while PLONSN's own clamp sinks a NaN X (plonsnClamp returns the
 // pilot). The two together keep step() total on a hand-built NaN fixture (rb4-6 R3 totality pin).
-const clamp = (v: number, lo: number, hi: number): number => (Number.isNaN(v) ? lo : Math.max(lo, Math.min(hi, v)))
-
 /** Clamp a GMLEVL to a valid table index (0 .. .LEVLS-1). */
 const levelIndex = (level: number): number => clamp(Math.floor(level) || 0, 0, P_OLIM.length - 1)
 

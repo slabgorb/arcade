@@ -62,6 +62,8 @@
  * Read as decimal 1080 the whole world was 3.91× too shallow — which is the bug that
  * invalidated every constant measured in depth (see tests/core/depth-scale.test.ts).
  */
+import { clamp } from '@shared/clamp'
+
 export const P_INDP = 0x1080
 
 /**
@@ -111,8 +113,6 @@ export const PLPOSZ: readonly number[] = Object.freeze([
 ])
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
 /** Clamp a GMLEVL to a valid PLPOSZ index (0 .. .LEVLS-1); NaN/negative/over-range fold to a valid slot. */
 const levelIndex = (level: number): number => clamp(Math.floor(level) || 0, 0, PLPOSZ.length - 1)

@@ -21,6 +21,8 @@
 // cabinet's — V grows UPWARD from the bottom (as in core/field.ts); render.ts
 // flips V for the top-left-origin canvas and shell/input.ts flips the pointer.
 
+import { clamp } from '@shared/clamp'
+
 /** The crosshair position in cabinet coordinates (V origin at the BOTTOM). */
 export interface Cursor {
   /** Horizontal cabinet coordinate, always within [HMIN, HMAX]. */
@@ -61,9 +63,6 @@ export const INITIAL_CURSOR: Cursor = { h: (HMIN + HMAX) >> 1, v: (VMIN + VMAX) 
 export const LOGICAL_WIDTH = 0x100 // 256
 /** Logical field height — TOPSCR=222. (W3COMN.MAC:107; matches render.ts LOGICAL_HEIGHT). */
 export const LOGICAL_HEIGHT = 222
-
-/** Clamp x into the inclusive range [lo, hi] (the cabinet's CMP/IFCC/IFCS pair). */
-const clamp = (x: number, lo: number, hi: number): number => (x < lo ? lo : x > hi ? hi : x)
 
 /**
  * Integrate the delta into the cursor and clamp the result to the play area.

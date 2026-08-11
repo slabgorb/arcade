@@ -34,6 +34,7 @@
 //
 // PURE and deterministic. No DOM, no time, no randomness.
 
+import { clamp } from '@shared/clamp'
 import type { Vec3 } from '@shared/math3d'
 import type { Attitude } from './camera'
 
@@ -151,8 +152,6 @@ export const INITIAL_FLIGHT: FlightState = Object.freeze({
 })
 
 // ─── pure ROM helpers ─────────────────────────────────────────────────────────
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
 /**
  * POTSCL — map the pitch pot [-1, 1] to a discrete PLDELY step (findings §2).
