@@ -382,3 +382,8 @@ completed_stories:
     title: 'Lift the 3-D model/sheet dev-tool helpers into a new pure @shared/model-view: cellRects (byte-identical x3 — red-baron tools/sheetLayout.ts, star-wars + tempest core/modelView.ts; the source itself calls it "the THIRD copy... a genuine candidate for extraction"), fitDistance (x2) and modelBounds (near-identical x2, take red-baron''s readonly Vec3[] signature). Pure, dev-tool-only (contact sheets / model viewers), on no game''s render path'
     points: 3
     completed: '2026-08-11'
+  - id: pm4-10
+    epic: pm4
+    title: "Game-over -> attract timeout (core+shell): after game-over (and name entry, if the run qualified), a cited cadence auto-returns to attract, closing the MAINLINE loop and replacing today's manual Enter-to-restart in main.ts. Pin the timeout constant at RED."
+    points: 2
+    completed: '2026-08-11'
