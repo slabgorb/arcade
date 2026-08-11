@@ -1,0 +1,22 @@
+id: ml8
+type: epic
+title: 'Millipede — hardening / mutation batteries (phase 8): Reviewer-driven, grouped by file surface (expect this epic to GROW)'
+description: "Eighth Millipede epic, phase 8 — the hardening pass, mirroring joust jt3-jt9 and missile-command mc10. This is where a finished cabinet spends most of its commits. It is Reviewer-driven and EXPECTED TO FILE STORIES, not just close them: each completed story buys one Reviewer mutation battery over one file surface, and a battery over a weakly-asserted surface reliably yields surviving mutants, each filed as its own story. GROOMING RULE (the jt9 gotcha): group the backlog by the FILES each story edits, NOT by subsystem or the ROM routine it cites — two stories touching the same guard/test-file/decoder are one story with two commits; two stories citing adjacent ROM lines but editing different files are two stories and merging them buys nothing but a bigger diff. A mutant that reddens nothing is a finding (zero mutation coverage), not redundancy — trace reachability first. The seed stories below are a starting battery over the highest-risk, weakest-asserted surfaces (the CONWAY Life field, the scroll geometry, the two-POKEY driver); the epic grows as batteries surface mutants. Dependency: ml8 -> ml2..ml7 (hardens shipped code). Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml8). This epic is open-ended by design; points are seed-only."
+priority: p3
+status: backlog
+repos: arcade
+stories:
+  - id: ml8-1
+    title: 'Mutation battery over the CONWAY Life field (ml3-4): the highest-novelty, no-sibling reducer. Mutate the growth/death generation logic and the seeded-field golden; every mutant that reddens nothing is a finding. File survivors as file-surface-grouped stories.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml8-2
+    title: 'Mutation battery over the scroll geometry (ml3-5) + the two-POKEY sound driver (ml6-1): pin output coordinates and channel writes against surviving mutants; group any survivors by file surface, not by subsystem.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd

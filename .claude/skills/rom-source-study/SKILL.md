@@ -166,6 +166,40 @@ provenance row lives in `docs/reference-sources.md`. The dossier is the prose;
 that tree is the bytes it cites — the study produces both.
 </output>
 
+## The roadmap is a deliverable — and the study PRODUCES it, never waits on an implementation epic
+
+The point of this study is not only a reference dossier; it is a **complete build
+roadmap** — the ordered epics the whole game is built along (`ml1` study/scaffold →
+graphics → core → sound → wiring/HUD → hardening), each with a story-level surface. A
+common wrong instinct is "we must finish epic 1 before we can know the later epics." That
+is backwards: the roadmap is authored **from the study**, so it lands *with* the study,
+not after some implementation epic. What varies is only *when within the study* you can
+draft it, which depends on your priors:
+
+- **Studied sibling exists** (same board/family, already built here — e.g.
+  centipede→millipede, or the Williams defender/joust/robotron board). The sibling's
+  COMPLETED epic arc IS the template: read `sprint/archive/epic-<sib>*.yaml` titles and
+  map them onto THIS machine's subsystems. Draft the roadmap up-front; the study *refines*
+  it. (Centipede's cp1 foundation → cp2 train → cp3 menagerie → cp4 structure → cp5/6
+  audio → cp7 playtest is a ready-made spine for millipede.)
+- **No sibling, but a playbook arc exists** (`docs/playbooks/next-sprite-game.md` for
+  raster; the vector games for vector). The playbook fixes the PHASE ORDER; the per-epic
+  STORY surface comes from `subsystems.md` — the `.SBTTL` map you build in `<run>` is
+  literally the epic→story list (one reducer per critter, one per playfield op).
+- **Neither** (first-of-dialect, e.g. a lone Stern/TDL machine). The subsystem structure
+  is genuinely unknown until the preflight is done — so author the roadmap at the **end**
+  of the study, straight off `subsystems.md`. Still a study output; still not gated on
+  building anything.
+
+**Provisional, not frozen.** The roadmap is authored on the best evidence available
+pre-code, so its later epics carry open questions the early epics resolve (exact refresh,
+a decode seam, a scoring table). Write `roadmap.md` with every epic fleshed to
+story-titles, but **materialize each later epic into a sprint shard at ITS kickoff, not
+up-front** — a story list frozen months early goes stale, and re-serializing sprint YAML
+churns siblings. Only the study/scaffold epic starts as a live shard; the rest live in
+`roadmap.md` until their turn (the `plugins/*/` epics that carry "plan: to be authored at
+epic kickoff" follow this).
+
 ## Secondary source — the emulator driver
 
 MAME's driver holds board-level facts the source assumes silently: master clock, exact refresh, screen geometry, IRQ scanline generation, palette/PROM wiring, memory map, input polling rates. Find the machine's driver dir FIRST — it is per-manufacturer and **NOT always `atari/`**. Williams games (Defender, Joust, Robotron) live in `src/mame/williams/`; Namco/Midway Pac-Man in `src/mame/pacman/`. Locate by machine name, then sparse-checkout just that dir:
@@ -193,4 +227,9 @@ Read the machine config — the `<machine>_state` class, its `_main_map`/`_sound
 
 The dossier is what sprint stories cite while implementing. Once code exists, `rom-fidelity-audit` runs against the SAME ground truth — its preflight is answered by `brief.md`, handed verbatim. Agent prompt templates: `prompts.md` beside this file.
 
-For a raster cabinet, this study is **phase 1** of a larger build sequence. The full phased order (scaffold + fidelity gate → graphics-ROM decode → core sim → sound → wiring → HUD → hardening), the raster-only render/sound seams and the traps that shipped green tests while being wrong are captured in the arcade repo's playbook: `docs/playbooks/next-sprite-game.md`.
+For a raster cabinet, this study is **phase 1** of a larger build sequence, and
+`roadmap.md` (above) is where you record the whole sequence. The full phased order
+(scaffold + fidelity gate → graphics-ROM decode → core sim → sound → wiring → HUD →
+hardening), the raster-only render/sound seams and the traps that shipped green tests
+while being wrong are captured in the arcade repo's playbook: `docs/playbooks/next-sprite-game.md`.
+That playbook fixes the phase order; `roadmap.md` binds it to THIS machine's subsystems.

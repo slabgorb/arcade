@@ -1,0 +1,36 @@
+id: ml7
+type: epic
+title: 'Millipede — phase machine, runtime wiring, HUD, showcase (phase 6-7): where it becomes a cabinet, with the epilepsy accessibility gate baked in'
+description: "Seventh Millipede epic, phase 6-7 — the attract->play->death->game-over state machine and the wiring that connects core events to shell render/audio, mirroring pac-man pm4 / missile-command mc6 and centipede cp7 playtest followups. Attract from MLATR MODE FE/FF (initialize + execute, MLATR.MAC:126/313) and attract-mode action (MLATR.MAC:21); ships the PURE phase machine unwired first (pm4-5 model) then wires runtime in later stories (small diffs). HUD: score/lives/DDT-count icons + the high-score display; opt the game into the lobby showcase carousel. ACCESSIBILITY GATE — the standing exception to ROM-always-wins: the owner has photosensitive epilepsy, so NO full-screen strobe/flash anywhere (wave transitions, death, DDT explosion, attract); freeze or fade instead. Bake this into the phase machine from the start, not as a retrofit. VISUAL playtest for coordinate/colour/scroll correctness — not just green vitest (routing tests pass while a flipped/mis-scaled HUD ships; pin output coordinates). Reuse @shared (esc-overlay/pause/font/glow/view/host-helpers). Dependency: ml7 -> ml5 (needs game structure + high scores) and ml2/ml3/ml4 (render + sim) + ml6 (audio to wire). Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml7). OUT OF SCOPE: reducers themselves (ml3/ml4/ml5), sound driver (ml6), hardening batteries (ml8)."
+priority: p3
+status: backlog
+repos: arcade
+stories:
+  - id: ml7-1
+    title: 'Pure attract/play/death/game-over phase machine (unwired) from MLATR MODE FE/FF (MLATR.MAC:126/313) + attract action (MLATR.MAC:21). Route a qualifying game-over to the ml5 name-entry phase. Phase transitions via a forcePhase helper (bare phase-literal assignment reds tsc TS2367).'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-2
+    title: 'Wire runtime core->shell: frame loop drives stepGame; core events (render/audio/score) reach the shell render + the ml6 sound driver; input (trackball TBLMT MLSUB.MAC:1797; resolve trackball-vs-joystick ml1 OQ-4) feeds core. Small diffs, incremental.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-3
+    title: 'HUD (score/lives/DDT-count + high-score display) with output COORDINATES pinned in a core unit test (routing != geometry); opt millipede into the lobby showcase carousel (attract self-play). Visual playtest.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-4
+    title: 'Accessibility gate (standing exception to ROM-always-wins): NO full-screen strobe/flash on wave transition, death, DDT explosion, or attract — freeze or fade instead. Baked into the phase machine. Verify by visual playtest across every transition.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
