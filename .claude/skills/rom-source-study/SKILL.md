@@ -39,6 +39,24 @@ Either layout MUST be committed, never gitignored: the citation gate byte-verifi
 in-repo tree, so a CI checkout has to contain it.
 </acquire>
 
+<sibling>
+Before deriving the preflight from scratch, check for a SIBLING already vendored AND studied
+in this repo — arcade machines come in families (centipede→millipede; the Williams
+defender/joust/robotron board). Two moves, each CITED, never assumed:
+
+- DIFF the literally-shared source files to prove what transfers verbatim. millipede ∩ centipede
+  is one file, `COIN65.MAC`, and `diff` reports it byte-IDENTICAL — so the coin subsystem is
+  cited "identical to `reference/atari-source/centipede/COIN65.MAC`, verified by diff", not
+  re-studied.
+- CROSS-REFERENCE the sibling's dossier (`plugins/centipede/docs/rom-study/brief.md`) for
+  shared-board facts — timebase, radix inheritance, trackball, screen geometry — then RE-VERIFY
+  each against THIS tree and THIS machine's MAME set, because a sequel is usually a REVISED
+  board. millipede's exact refresh IS centipede's 59.88593 Hz (both drivers carry the identical
+  "/263 ?? could be /262" hedge) — confirm it, cite it as shared, don't copy on faith.
+
+The game code (all `ML*.MAC`) shares nothing with the sibling; it gets the full study below.
+</sibling>
+
 <run>
 Preflight — FIVE questions, answered in order, before any subsystem reading:
 
