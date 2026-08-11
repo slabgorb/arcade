@@ -17,10 +17,11 @@ stories:
     title: 'Extract the held-keys input tracker (Set<string> + keydown-add/keyup-remove + any(keys) membership) duplicated across 6 games (asteroids, battlezone, centipede, joust, pac-man, red-baron) into a shell helper beside @shared/host-helpers. Parameterize the only real diffs: idOf (default e.code; games pass an e.key.toLowerCase() variant) and preventDefaultFor; ship blur-reset + dispose so the 4 leaky sites (all but centipede) stop leaking listeners'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-11'
     review_findings: "Round 2 APPROVED. All four round-1 findings closed: F1 (orchestrator RED on AC-3) fixed by splitting the migration into per-game commits — each main.ts commit is single-game, AC-3 green, orchestrator 457/457; F3 'four'→'five' leaky sites; F4 dropped the 'two laws' over-attribution (host-helpers documents only the required-seam law); F2 retyped the test spy (no 'as never'). tsc green, full vitest 952 files/14420 tests green. Extraction faithful: 5 games migrated, centipede untouched, blur-reset fleet-wide, battlezone's =window mg1-5 default removed."
     review_verdict: approved
   - id: SH4-3
