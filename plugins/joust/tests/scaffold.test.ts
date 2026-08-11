@@ -114,9 +114,10 @@
 // Reaching up the `extends` chain to the root config is the one place this file
 // is no longer standalone-clone-pure — the plugin is not a repo now.
 //
-// joust never pinned `@arcade/shared` (its mulberry32 is lifted byte-for-byte
-// into src/core/frame.ts rather than imported), so nothing here changes on that
-// axis and no `@shared` import is added.
+// This scaffold guards the plugin's own tsconfig/skeleton, not its @shared
+// adoption. (SH3-1 later retired joust's inlined mulberry32 in favour of
+// `@shared/rng` via src/core/rng.ts — but that is pinned by
+// tests/rng-shared-adoption.test.ts, not here.)
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
