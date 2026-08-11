@@ -11,6 +11,7 @@ completed_epics:
   - sw10
   - jt10
   - mc8
+  - mc7
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -318,4 +319,9 @@ completed_stories:
     epic: pm4
     title: "Freeze pauses — level-clear + dying (core): on level-cleared, enter level-clear (freeze sim, hold a static frame, then advanceLevel -> ready); on pac-died with lives>0, enter dying (freeze, death-anim window, then respawn -> ready). Replaces today's INSTANT advance/respawn. This realises the boss's 'freeze + no flash' level-clear (builds on pm4-1's strobe removal — MUST NOT reintroduce any full-screen flash). Anchor the READY!/death-delay + level-complete cadence citations at RED."
     points: 5
+    completed: '2026-08-11'
+  - id: mc7-4
+    epic: mc7
+    title: 'ROM-faithful ladder display + seeded default table: seed the initial ladder from the cited W3DSUP INIT HI SCORE defaults and render the ladder on the attract high-score screen (the mc6-5 slot). Pin default names/scores at RED. REV-01 W3DSUP.MAC:3724 INIT HI SCORE'
+    points: 3
     completed: '2026-08-11'
