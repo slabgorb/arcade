@@ -32,3 +32,4 @@ can change the audited bytes underneath the fidelity oracles.
 | defender | historicalsource/defender | 3fae9d3 | ~/Projects/defender-source | ~/Projects/a-2/reference/original-source/defender | 2026-08-11 |
 | millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/original-source/millipede | 2026-08-11 |
 | frenzy | historicalsource/frenzy | df69ecd | ~/Projects/frenzy-source | ~/Projects/a-2/reference/original-source/frenzy | 2026-08-11 |
+| lunar-lander | historicalsource/lunar-lander | e7e1d99 | ~/Projects/lunar-lander-source | ~/Projects/a-2/reference/original-source/lunar-lander | 2026-08-11 |
