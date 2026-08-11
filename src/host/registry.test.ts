@@ -165,20 +165,25 @@ describe('the generated registry', () => {
     expect(getGame('red-baron')?.listed).toBe(false)
   })
 
-  it('shows tempest, asteroids, battlezone and centipede in the carousel', () => {
+  it('shows tempest, asteroids, battlezone, centipede and pac-man in the carousel', () => {
     // showcase is required and never defaulted precisely so this set cannot change by
     // omission. If a game joins or leaves the carousel, it is because someone said so.
     // battlezone said so in ad1-2: its attract mode has self-played since the bz1-10 era
     // (core/sim.ts drives the same stepBattle real play uses through an autopilot), so
     // the opt-in was the only work the story had left. asteroids said so in ad1-3: it
     // grew a real self-play attract demo (a ship steering and shooting the drifting
-    // field, tests/attract-demo.test.ts) and flipped its manifest showcase:true. The
-    // order follows the GAMES roster (asteroids sits between star-wars and battlezone).
+    // field, tests/attract-demo.test.ts) and flipped its manifest showcase:true.
+    // pac-man says so in pm4-9: pm4-8 gave it a real self-playing attract demo (a seeded
+    // auto-player driving the maze, plugins/pac-man/tests/core/attract-demo.test.ts) and
+    // pm4-9 paints the attract screen over it, so its manifest flips showcase:true. The
+    // order follows the GAMES roster (asteroids sits between star-wars and battlezone;
+    // pac-man is last). This assertion is RED until Dev flips plugins/pac-man/plugin.ts.
     expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual([
       'tempest',
       'asteroids',
       'battlezone',
       'centipede',
+      'pac-man',
     ])
   })
 
