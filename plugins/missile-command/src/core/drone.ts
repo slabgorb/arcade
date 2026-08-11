@@ -20,7 +20,7 @@ export type DroneKind = 'sputnik' | 'cruise' | 'both'
 //   BOTTOM: .BYTE 30,0,0     (A35820.1C:354)  → Sputnik floor 0x30, Cruise/Both 0
 // Values are hex under the inherited .RADIX 16 (claims SOUND-DRONE-TOP-70 / -BOTTOM-30).
 const TOP: Readonly<Record<DroneKind, number>> = { sputnik: 0x70, cruise: 0x30, both: 0x30 }
-const BOTTOM: Readonly<Record<DroneKind, number>> = { sputnik: 0x30, cruise: 0, both: 0 }
+const BOTTOM: Readonly<Record<DroneKind, number>> = { sputnik: 0x30, cruise: 0, both: 0 } // BOTTOM .BYTE 30,0,0 — A35820.1C:354
 
 // PMRBIL decrements the drone frequency by 2 each frame (SBC I,2, A35820.1C).
 const STEP = 2

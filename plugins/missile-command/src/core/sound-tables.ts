@@ -40,7 +40,7 @@ export interface Sound {
 
 // The fixed POKEY AUDCTL/AUDCV control byte — set once, never changed
 // (W3SOUN `AUDCV =20`). The worklet mirrors this into set_audctl.
-export const AUDCTL = 0x20
+export const AUDCTL = 0x20 // AUDCV control byte — A35820.1C:128 (claim SOUND-AUDCV)
 
 // EXPLOSION — `EX` (W3SOUN EX1..EX4). ABM detonation / structure loss.
 export const EX: Sound = {

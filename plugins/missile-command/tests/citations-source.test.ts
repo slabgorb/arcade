@@ -289,9 +289,9 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
 
   it('every non-EQU claim carries a kind-tag string value, never a number (mc2-6 review M6)', () => {
     // The vacuous-green vector this closes: a NUMERIC value on an anchor/cite/
-    // external claim would flow into the un-cited-literal guard's claimedValues
-    // set (citations.test.ts section 4 takes Number(c.value)) and could
-    // greenlight an un-cited magic constant in src/core. Non-EQU claims have no
+    // external claim could authorize a src/core literal through the mc10-6
+    // line-anchored guard (which matches a NAMED claim's Number(c.value) to the
+    // literal) and greenlight an un-cited magic constant in src/core. Non-EQU claims have no
     // decodable value BY DEFINITION — their value is the kind tag, and nothing
     // else is legal. (DERIVED constants are EQU-or-.BYTE cases with real
     // numeric values, checked in the explicit block below — they are exempt.)
@@ -399,8 +399,8 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // mc5-2: the Sputnik constants, same shape as the mc4-2 bonus rates + mc4-1 tables.
   // SPUTKI/SPUTFIRE_MAX are instruction-site immediates; WSPFIR/WSPLAU are `.BYTE`
   // timing tables whose value is the full hex-decoded decimal row. This block keeps
-  // the DERIVED exemption honest — a fabricated number cannot ride into the
-  // un-cited-literal guard's claimedValues set.
+  // the DERIVED exemption honest — a fabricated number cannot become false
+  // coverage in the mc10-6 line-anchored un-cited-literal guard.
   it('mc5-2: the Sputnik claim values decode from their cited operands / .BYTE rows', () => {
     const by = new Map(loadClaims().map((c) => [c.symbol, c]))
     const immediate = (verbatim: string): number => {
@@ -437,7 +437,7 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // mc5-1 MIRV constants. The DERIVED exemption lets it carry the numeric 4; this
   // block keeps that honest — the value must decode from the immediate operand of
   // its own cited `CPX I,4` (W3MAIN.MAC:2475, the "MAX AT 4" compare), so a
-  // fabricated cap cannot ride into the un-cited-literal guard's claimedValues set.
+  // fabricated cap cannot become false coverage in the mc10-6 line-anchored un-cited-literal guard.
   it('mc5-5: the ICNORM cap value decodes from its cited CPX immediate operand', () => {
     const cap = loadClaims().find((c) => c.symbol === 'ICNORM_CAP')
     expect(cap, 'MC-ICNORM-CAP must be committed').toBeTruthy()
@@ -455,7 +455,7 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // mc5-5's ICNORM cap. The DERIVED exemption lets MC-SPUTFIR-MARGIN carry the
   // numeric 48; this block keeps that honest — the value must decode from the
   // immediate operand of its own cited `CMP I,30` (0x30), so a fabricated margin
-  // cannot ride into the un-cited-literal guard's claimedValues set. The upper
+  // cannot become false coverage in the mc10-6 line-anchored un-cited-literal guard. The upper
   // bound 208 = 0xD0 = 256 − 0x30 is the symmetric wrap of the paired `CMP I,-30`
   // (W3MAIN.MAC:2535), asserted here as a derivation from the same margin.
   it('mc5-8: the SPUTFIR gate margin value decodes from its cited CMP immediate operand', () => {
@@ -473,7 +473,7 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // per-wave budget `.BYTE` row), and the SLOPEH/SLOPEL/ANGADD cruise-angle `.BYTE`
   // rows. The DERIVED exemption lets them carry real numerics; this block keeps that
   // honest — each value must decode from its own cited line, so a fabricated cruise
-  // constant cannot ride into the un-cited-literal guard's claimedValues set.
+  // constant cannot become false coverage in the mc10-6 line-anchored un-cited-literal guard.
   it('mc5-3: the cruise claim values decode from their cited operand / .BYTE rows', () => {
     const by = new Map(loadClaims().map((c) => [c.symbol, c]))
     // Strip a trailing `;comment` (SLOPEH carries one) before splitting the `.BYTE` row.
@@ -521,7 +521,7 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // scaled to points by x100 (score/100 via LSCORM:LSCORH). The DERIVED exemption lets
   // it carry numeric point values; this block keeps that honest — every claimed value
   // must be a real BCD entry of its cited `.WORD` line, x100 (so a fabricated interval
-  // cannot ride into the un-cited-literal guard's claimedValues set).
+  // cannot become false coverage in the mc10-6 line-anchored un-cited-literal guard).
   it('mc4-5: every BONINL claim value is a BCD entry of its cited .WORD line, x100', () => {
     // The `.WORD` tokens are hex digits read as BCD: parseInt(token, 10) IS the BCD
     // decode (0100 -> 100, 0080 -> 80), and the point interval is that x 100.
@@ -543,8 +543,8 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
     // The DERIVED exemption lets the sound sequences carry numeric values; this is
     // what keeps that from being a hole (the mc4-1 wave-table pattern). Every
     // sound claim's value must be a genuine radix decode of an entry on its own
-    // cited `.BYTE` line, so a fabricated byte cannot ride into the un-cited-literal
-    // guard's claimedValues set.
+    // cited `.BYTE` line, so a fabricated byte cannot become false coverage in the
+    // mc10-6 line-anchored un-cited-literal guard.
     const SEQ = new Set([
       'EX1', 'EX2', 'EX3', 'EX4', 'LA5', 'LA6', 'TK1', 'TK2', 'BN1', 'BN2',
       'WP1', 'WP2', 'LO7', 'LO8', 'XX1', 'XX2', 'XX3', 'XX4', 'NS7', 'NS8',
@@ -564,7 +564,7 @@ describe('every claim `value` is the radix decode of its own verbatim', () => {
   // mc9-3: the EXPFRA cadence is a STRUCTURAL derivation, not a byte of its cited
   // line (the DERIVED exemption lets it carry the numeric 5). This block is its teeth
   // — the value must re-derive from the EXPFIX batch-table byte count, so a fabricated
-  // cadence cannot ride into the un-cited-literal guard's claimedValues set.
+  // cadence cannot become false coverage in the mc10-6 line-anchored un-cited-literal guard.
   it('mc9-3: the EXPFRA cadence value derives from the EXPFIX batch-table byte count', () => {
     const expfra = loadClaims().find((c) => c.symbol === 'EXPFRA_FRAMES')
     expect(expfra, 'MC-EXPFRA must be committed').toBeTruthy()

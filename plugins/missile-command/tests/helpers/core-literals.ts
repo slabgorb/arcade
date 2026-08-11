@@ -8,32 +8,39 @@
 // number — e.g. `cursor.ts` `LOGICAL_WIDTH = 0x100 // 256` passed only because an
 // ICBM-speed-scale claim also decodes to 256, with nothing tying 256 to cursor.ts.
 //
-// This module hardens coverage to the literal's OWN citation. A literal `v` is
-// COVERED iff:
+// This module hardens coverage to the literal's OWN citation. A core literal `v`
+// is COVERED iff:
 //   • `v` ∈ TRIVIAL (indices/halving/sign), OR
 //   • `v` ∈ STRUCTURAL — a documented cabinet/byte-space fact that names no ROM
 //     line (value → reason), OR
-//   • a committed claim WHOSE VALUE EQUALS `v` is *referenced* in the literal's own
-//     context — its `symbol`, its claim `id`, or its `FILE.MAC:NNN` / bare `:NNN`
-//     source cite appears in the literal's line + doc-block + the file header.
+//   • a committed claim WHOSE VALUE EQUALS `v` is named by a STRUCTURED anchor in
+//     the literal's context — its distinctive claim `id` (MC-…/SOUND-…) or its
+//     `FILE.MAC:NNN` source cite. NOT its `symbol`: ROM symbols like TOP/MAX/MIN
+//     are ordinary English words that collide with narrative prose (esp. the
+//     shared file header), so a bare-symbol match re-admits the coincidental
+//     coverage this story retires (Reviewer round-1 R1), OR
+//   • the literal's OWN line self-documents an inline `FILE.MAC:NNN` / bare `:NNN`
+//     cite — this keeps the sound-table / city / base byte rows green without a
+//     per-byte claim. Scoped to the OWN line ONLY, so a cite in a shared preceding
+//     block or the file header cannot vouch for a bare magic number (that is
+//     exactly the `LOGICAL_WIDTH = 0x100` collision).
 //
-// The third arm is the anchor: it demands the claim be named where the literal
-// lives, so a coincidental value collision from an unrelated claim (whose symbol
-// appears nowhere near the literal) no longer counts. The mc citation discipline
-// already writes exactly these anchors — the file "SOURCE OF TRUTH" header lists
-// each constant as `SYMBOL = VALUE  FILE.MAC:NNN  claim MC-XXX`, and inline table
-// rows carry `// SYMBOL :NNN` — so genuinely-cited literals stay green while the
-// value-collision loophole closes.
+// A bare value collision (the retired `claimedValues.has(v)`) and a bare-symbol
+// prose coincidence are BOTH non-coverage. The mc citation discipline already
+// writes these structured anchors — the "SOURCE OF TRUTH" header lists each
+// constant as `SYMBOL = VALUE  FILE.MAC:NNN  claim MC-XXX`, and inline rows carry
+// `// … FILE.MAC:NNN`.
 //
 // Literal extraction strips `//`, single- AND multi-line `/* */` / `/** */` blocks
 // and string bodies, so prose numbers (story ids like `mc5-3`, "6 cities") in
 // JSDoc do not leak in as fake literals (the mc citations-scanner-JSDoc-leak trap).
 
-import { type Claim, claimCovers } from './claims.js'
+import { type Claim } from './claims.js'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-/** Indices, halving, sign — not game constants. Mirrors citations.test.ts. */
+/** Indices, halving, sign — not game constants. The sole definition (it replaced
+ *  the former local copy in citations.test.ts, which now delegates here). */
 export const TRIVIAL: ReadonlySet<number> = new Set([0, 1, 2, -1])
 
 /**
@@ -82,19 +89,30 @@ export function parseAnchors(text: string): Anchor[] {
   return out
 }
 
-/** Does `docText` reference this specific claim — by symbol, id, or source cite? */
+/**
+ * Does `docText` name this specific claim by a STRUCTURED anchor — its distinctive
+ * claim `id` (MC-…/SOUND-…), or its `FILE.MAC:NNN` source cite?
+ *
+ * It deliberately does NOT match the claim's `symbol`. ROM assembler symbols are
+ * frequently ordinary English words (TOP/BOTTOM/MAX/MIN/STEP/COUNT…), so a bare
+ * symbol substring over prose — especially the shared file header — admits
+ * *coincidental* coverage: an un-cited literal "covered" only because a claim's
+ * symbol happens to appear as an English word nearby. That is the exact bug class
+ * this story retires (Reviewer round-1 R1). A claim id and a `FILE.MAC:NNN` cite
+ * are structured tokens that cannot collide with narrative prose, so they are the
+ * only two positive anchors.
+ */
 function referencesClaim(docText: string, c: Claim): boolean {
   const hay = docText.toLowerCase()
-  if (c.symbol && hay.includes(c.symbol.toLowerCase())) return true
+  // Distinctive claim id — never an English word.
   if (c.id && hay.includes(c.id.toLowerCase())) return true
-  const file = basename(c.source.file)
+  // The claim's own `FILE.MAC:NNN` cite (with or without the extension, as the mc
+  // "SOURCE OF TRUTH" headers write it).
+  const file = basename(c.source.file).toLowerCase()
   const line = c.source.line
-  // full `FILE.MAC:NNN` cite, or the extensionless `FILE:NNN` the headers also use
-  if (hay.includes(`${file.toLowerCase()}:${line}`)) return true
-  const stem = file.replace(/\.[^.]+$/, '').toLowerCase()
-  if (hay.includes(`${stem}:${line}`)) return true
-  // a bare `:NNN` line ref that a claim at that physical line covers
-  return parseAnchors(docText).some((a) => a.file === null && claimCovers([c], file, a.start, a.end))
+  if (hay.includes(`${file}:${line}`)) return true
+  const stem = file.replace(/\.[^.]+$/, '')
+  return hay.includes(`${stem}:${line}`)
 }
 
 /**
