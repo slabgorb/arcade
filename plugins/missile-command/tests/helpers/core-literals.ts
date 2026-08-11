@@ -25,10 +25,12 @@
 //     NOT the claim's `symbol` as free prose either: ROM symbols like TOP/MAX/MIN are
 //     English words that collide with narrative prose (Reviewer round-1 R1), OR
 //   • a value-matched claim's `symbol` EQUALS (normalized) the literal's ENCLOSING
-//     declaration symbol (nearest preceding `(export )?const|let|function|type IDENT`).
-//     This is the WICSPL===WICSPL arm: a real `WICSPL` claim backs a `WICSPL` table
-//     entry that carries no per-line inline cite. Equality only — a short ROM symbol
-//     must not coincidentally match a longer enclosing name.
+//     declaration symbol — the `(export )?const|let|function|type IDENT` whose own line
+//     or initializer (bracket depth) the literal sits in; a top-level non-declaration
+//     statement carries NO enclosing symbol (Reviewer round-3 R3-B). This is the
+//     WICSPL===WICSPL arm: a real `WICSPL` claim backs a `WICSPL` table entry that
+//     carries no per-line inline cite. Equality only — a short ROM symbol must not
+//     coincidentally match a longer enclosing name.
 //
 // A bare value collision (the retired `claimedValues.has(v)`), a bare-symbol prose
 // coincidence, and an unrelated header cite are ALL non-coverage. The mc citation
@@ -111,7 +113,10 @@ export function parseAnchors(text: string): Anchor[] {
  * symbol happens to appear as an English word nearby. That is the exact bug class
  * this story retires (Reviewer round-1 R1). A claim id and a `FILE.MAC:NNN` cite
  * are structured tokens that cannot collide with narrative prose, so they are the
- * only two positive anchors.
+ * only two positive anchors THIS function recognises. (Symbol matching is not banned
+ * module-wide: `literalCovered` has a SEPARATE enclosing-symbol arm that matches
+ * `claim.symbol` by exact equality against the literal's enclosing *declaration* —
+ * never as free prose. See its doc below.)
  */
 function referencesClaim(docText: string, c: Claim): boolean {
   const hay = docText.toLowerCase()
@@ -133,9 +138,11 @@ function referencesClaim(docText: string, c: Claim): boolean {
 }
 
 /**
- * Is a core numeric literal of `value`, whose surrounding source context is
- * `docText` (its own line + doc-block + file header), covered by a line-anchored
- * citation — NOT by bare global value-membership?
+ * Is a core numeric literal of `value`, whose LOCAL source context is `docText` (its
+ * own line + immediately-preceding comment block — the file header is deliberately
+ * EXCLUDED, Reviewer round-2 R2-A) and whose enclosing declaration symbol is
+ * `enclosingSymbol`, covered by a line-anchored citation — NOT by bare global
+ * value-membership, a bare-symbol prose coincidence, or an unrelated header cite?
  */
 export function literalCovered(
   claims: readonly Claim[],
@@ -177,23 +184,31 @@ interface CoreLiteral {
   enclosingSymbol: string
 }
 
-/** The nearest preceding `(export )?const|let|function|type IDENT` on a raw line —
- *  the enclosing declaration symbol a literal on/after this line belongs to. */
+/** A top-level `(export )?const|let|function|type IDENT` — matched against a line's
+ *  COMMENT-STRIPPED code (so a code-shaped line inside a block comment is not mistaken
+ *  for a declaration). The enclosing symbol is bounded to this declaration's own line
+ *  plus its initializer (bracket depth), never carried onto a later unrelated line. */
 const DECL_RE = /^\s*(?:export\s+)?(?:const|let|function|type)\s+([A-Za-z_$][\w$]*)/
 
-/** The contiguous comment/blank block immediately preceding line index `i`. */
+/**
+ * The literal's IMMEDIATELY-preceding contiguous comment block — the comment lines
+ * directly above line `i`, with no intervening blank or code line. A blank line
+ * terminates the block: a comment separated from the literal by even one blank line is
+ * NOT immediately preceding, so it cannot vouch. This is what stops the back-scan from
+ * walking into the shared file header (or an unrelated earlier comment block) when a
+ * declaration carries no comment of its own — the leak Reviewer round-3 R3-A found in
+ * the old `t === '' && block.length > 1` rule, which absorbed a leading blank line and
+ * kept walking. A literal with no attached comment gets an empty preceding block.
+ */
 function precedingBlock(lines: readonly string[], i: number): string {
   const block: string[] = []
   for (let k = i - 1; k >= 0; k--) {
     const t = lines[k].trim()
-    if (t === '' || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.endsWith('*/')) {
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.endsWith('*/')) {
       block.unshift(lines[k])
-      // stop at a blank line ONLY if we have not yet reached a comment (keep the
-      // JSDoc block attached across its own internal lines)
-      if (t === '' && block.length > 1) break
       continue
     }
-    break
+    break // a blank line OR a code line ends the immediately-preceding comment block
   }
   return block.join('\n')
 }
@@ -207,12 +222,9 @@ export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
   const lines = src.split('\n')
   const out: CoreLiteral[] = []
   let inBlock = false
-  let enclosingSymbol = ''
+  let declSymbol = ''
+  let depth = 0
   for (let i = 0; i < lines.length; i++) {
-    // Track the enclosing declaration BEFORE emitting this line's literals, so a value
-    // on the declaration line itself (`const WICSPL = [0x10]`) sees `WICSPL`.
-    const decl = DECL_RE.exec(lines[i])
-    if (decl) enclosingSymbol = decl[1]
     let s = lines[i]
     if (inBlock) {
       const end = s.indexOf('*/')
@@ -243,6 +255,23 @@ export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
       }
       code += ch
     }
+    // Enclosing declaration symbol — bounded to the declaration's OWN line + its
+    // initializer (bracket/brace/paren depth > 0 from the opening). A top-level line
+    // that is NOT a declaration (depth 0, no `const|let|function|type`) clears it, so a
+    // stray literal on a later statement never inherits a previous, unrelated symbol
+    // (Reviewer round-3 R3-B). `startDepth` is the depth entering this line; DECL_RE
+    // runs on comment-stripped `code`, so a code-shaped line inside a block comment is
+    // not mistaken for a declaration.
+    const startDepth = depth
+    const declMatch = DECL_RE.exec(code)
+    const isDecl = declMatch !== null && startDepth === 0
+    if (isDecl) declSymbol = declMatch![1]
+    const enclosingSymbol = startDepth > 0 || isDecl ? declSymbol : ''
+    for (const ch of code) {
+      if (ch === '(' || ch === '[' || ch === '{') depth++
+      else if (ch === ')' || ch === ']' || ch === '}') depth--
+    }
+    if (depth < 0) depth = 0
     const nums = [...code.matchAll(/(?<![\w.])(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)/g)]
       .map((m) => Number(m[1]))
       .filter((v) => Number.isFinite(v) && !TRIVIAL.has(v))
