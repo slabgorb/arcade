@@ -57,9 +57,11 @@ describe('pm4-12 maze bottom border (drawMaze)', () => {
     expect(bottom, 'bottom border (row 33) must render the same full wall row as the top').toBe(top)
   })
 
-  it('still blanks the two-row bottom HUD band (rows 34-35) for LIVES/LEVEL text', () => {
+  it('still blanks the two-row bottom HUD band (rows 34-35) for the drawHud icon rows', () => {
     // The fix narrows the bottom band to 2 rows (34-35); those stay black so drawHud
-    // has clean space. A regression that blanked nothing would fail this.
+    // has clean space for its bottom-band content — the reserve-life and fruit-row
+    // sprites since pm4-11 (formerly the LIVES/LEVEL text). A regression that blanked
+    // nothing would fail this.
     const { ctx, puts } = fakeCtx()
     drawMaze(ctx)
     expect(tilesAtRow(puts, (MAZE.rows - 2) * TILE_PX)).toBe(0) // row 34

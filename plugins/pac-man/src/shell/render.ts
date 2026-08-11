@@ -580,10 +580,15 @@ export function drawHud(
   }
 
   // Bottom-right: the fruit row — the last up-to-7 levels' fruits, newest at the
-  // right (tile 27) stepping left, so the window slides and drops the oldest.
-  const windowStart = Math.max(1, level - (FRUIT_ROW_CAP - 1))
-  for (let l = windowStart; l <= level; l++) {
-    const tileX = 27 - 2 * (level - l)
-    drawFruit(ctx, tileX, MAZE.rows - 2, levelRow(l).fruit.type)
+  // right (tile 27) stepping left, so the window slides and drops the oldest. The
+  // loop counts DOWN from the current level and is bounded to FRUIT_ROW_CAP
+  // iterations, so a non-finite `level` (guarded here) can neither spin it forever
+  // nor index the level table out of range.
+  if (Number.isFinite(level)) {
+    for (let k = 0; k < FRUIT_ROW_CAP; k++) {
+      const l = level - k
+      if (l < 1) break // fewer than 7 levels reached — no older fruit to show
+      drawFruit(ctx, 27 - 2 * k, MAZE.rows - 2, levelRow(l).fruit.type)
+    }
   }
 }

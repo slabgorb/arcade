@@ -1,13 +1,17 @@
 // tests/shell/hud.test.ts
 //
 // Story pm4-9 — the HUD layout. `maze.ts` reserves two black HUD bands the playfield
-// never uses: the TOP band (rows 0-2, y < 24) and the BOTTOM band (rows 33-35,
-// y >= 264). pm4-9 moved the readouts to the ROM-authentic arrangement so no HUD text
-// bleeds onto the maze and the bottom band carries lives/level (where Pac-Man shows
-// them):
+// never uses: the TOP band (rows 0-2, y < 24) and the reserved BOTTOM band (rows 34-35,
+// y >= 272 per render.ts's `BOTTOM`). pm4-9 moved the readouts to the ROM-authentic
+// arrangement so no HUD text bleeds onto the maze:
 //   • SCORE       — top band, left
 //   • HIGH SCORE  — top band, centre (pacman.asm:36a5), value = persisted top (or 0)
-//   • LIVES/LEVEL — BOTTOM band (lives left, level right)
+//
+// pm4-11 SUPERSEDES pm4-9's bottom band: the LIVES/LEVEL *text* is retired and replaced
+// by sprite icons (reserve-life icons left, a fruit-row level indicator right) — that
+// sprite behaviour is pinned in hud-icons.test.ts. The two bottom-band tests below are
+// re-baselined to guard that the text is now GONE; the top-band and bleed-guard tests
+// remain pm4-9's.
 //
 // These tests pin the BAND each readout lands in (a y-coordinate assertion), which is
 // exactly the regression the playtest caught: HIGH SCORE was bleeding onto the
@@ -19,7 +23,10 @@ import { LOGICAL_H } from '../../src/shell/layout'
 
 // The reserved bands, in logical pixels (TILE_PX = 8; maze rows 0-35).
 const TOP_BAND_MAX_Y = 24 // rows 0-2
-const BOTTOM_BAND_MIN_Y = LOGICAL_H - 24 // rows 33-35 (264)
+// y=264 (top of row 33): the lower edge of the playfield used by the bleed guard below.
+// The reserved bottom HUD band proper is rows 34-35 (y >= 272 per render.ts's BOTTOM);
+// 264 leaves row 33 as slack so the guard never false-flags a HUD glyph near the edge.
+const BOTTOM_BAND_MIN_Y = LOGICAL_H - 24
 
 interface TextCall {
   text: string
