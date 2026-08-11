@@ -702,3 +702,121 @@ describe('jt9-28 AC4 — the derived file-count’s contributor cost is written 
     ).toMatch(/adding a (new )?test file[^.]*\b(bump|update|derived count|derived file count)\b/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Story SH3-7 — RED phase (Han Solo / TEA). The README's "What joust does NOT do"
+// section (README :143-160) carries THREE claims the SH3 shared-adoption epic and
+// jt10-7 have since falsified. Measured against the tree 2026-08-11:
+//
+//   · "It consumes exactly one `@shared` subpath: `@shared/audio`."  (:148)
+//     FALSE — `grep -rhoE '@shared/[a-z0-9-]+' plugins/joust/src | sort -u` is NINE:
+//     audio, font, held-keys, highscore, host-helpers, loop, name-entry, rng, view.
+//   · "Its mulberry32 is still lifted **byte-for-byte** into `src/core/frame.ts`
+//     rather than imported … provenance, not a dependency"           (:155-157)
+//     FALSE — SH3-1 routed it through `src/core/rng.ts`'s `import { createRng,
+//     nextFloat } from '@shared/rng'`; the inline copy is gone — `frame.ts`
+//     carries only a provenance comment now.
+//   · "It persists no high scores. No `localStorage`, … no `@shared/highscore`" (:145)
+//     and the shell's "**no storage**, deliberately"                 (:138)
+//     FALSE — jt10-7 added the JOUST CHAMPIONS table: `main.ts`'s
+//     `makeHighScoreStorage('joust', …)` call is a real localStorage touch keyed
+//     `joust-high-scores`, importing `@shared/highscore`.
+//
+// The user ruled (2026-08-11) that the whole section is brought true in one pass:
+// correcting only :148 to name `@shared/highscore` among the nine, while :145 still
+// says "no `@shared/highscore`", would make the section self-contradictory.
+//
+// AC2 — THE INTERLOCK: jt9-28 AC2 (above) locates the fleet @shared range via
+// `md.indexOf('zero-consumption outlier')`. If AC1's rewrite drops that phrase, that
+// guard's precondition (`toBeGreaterThan(-1)`) fails — so the fleet-range guard's
+// prose "must move with it" (re-anchor jt9-28, or fold it in). The guard below pins
+// the fleet-range CONTENT independently of that anchor, so the indicative/measured
+// stamp cannot be lost in the re-anchor. Dev: whichever way you re-seat jt9-28, this
+// stays the durable protection.
+//
+// Every negative was verified to MATCH the unchanged README (so it fires today);
+// every positive is a token verified grep-count 0 in the README today (`@shared/rng`,
+// `@shared/host-helpers`, `src/core/rng.ts`, `joust-high-scores`, `jt10-7`), so none
+// can be satisfied by the stale text it replaces. Note `@shared/rng` ≠ the existing
+// `@arcade/shared/rng` provenance mention at :157.
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('SH3-7 AC1 — the @shared-consumption bullet names the measured truth, not "exactly one"', () => {
+  it('no longer claims joust consumes exactly one @shared subpath', () => {
+    expect(
+      readme(),
+      'joust consumes nine @shared subpaths now, not one',
+    ).not.toMatch(/It consumes exactly one/i)
+  })
+
+  it('names the newly-adopted subpaths — proof the enumeration expanded past audio', () => {
+    const md = readme()
+    // Both grep-count 0 in the README today, so neither can pass on the stale text.
+    expect(md, 'SH3-1 routed the seeded draw through @shared/rng').toMatch(/@shared\/rng/)
+    expect(md, 'SH3-2 mounts the canvas via @shared/host-helpers').toMatch(/@shared\/host-helpers/)
+  })
+})
+
+describe('SH3-7 AC1 — the mulberry32 is imported from @shared/rng, not lifted byte-for-byte', () => {
+  it('no longer says the mulberry32 is lifted byte-for-byte rather than imported', () => {
+    const md = readme()
+    expect(
+      md,
+      'src/core/frame.ts sources its draw from @shared/rng via src/core/rng.ts (SH3-1)',
+    ).not.toMatch(/rather than imported/)
+    expect(
+      md,
+      'the "@arcade/shared/rng is provenance, not a dependency" gloss is now false',
+    ).not.toMatch(/provenance, not a dependency/)
+  })
+
+  it('names the real rng import path', () => {
+    const md = readme()
+    expect(md, 'the README must cite the shared rng module joust now imports').toMatch(/@shared\/rng/)
+    expect(md, 'and the in-plugin seam file that imports it').toMatch(/src\/core\/rng\.ts/)
+  })
+})
+
+describe('SH3-7 AC1 — the falsified persistence/storage claims are brought true (jt10-7)', () => {
+  it('no longer claims joust persists no high scores', () => {
+    expect(
+      readme(),
+      'jt10-7 added the JOUST CHAMPIONS localStorage table',
+    ).not.toMatch(/persists no high scores/)
+  })
+
+  it('no longer flatly claims the shell has "no storage, deliberately"', () => {
+    // The shell genuinely has no storage MODULE — persistence lives at the host
+    // layer (main.ts) via @shared/highscore. So Dev must QUALIFY this, not merely
+    // delete it: the flat "**no storage**, deliberately" reads as "joust never
+    // persists", which jt10-7 falsified.
+    expect(
+      readme(),
+      'joust persists at the host layer since jt10-7; the flat "no storage" denial is stale',
+    ).not.toMatch(/\*\*no storage\*\*, deliberately/)
+  })
+
+  it('records that joust DOES persist high scores, naming the concrete seam', () => {
+    const md = readme()
+    // grep-count 0 today: the real localStorage key (`main.ts`'s makeHighScoreStorage call) and the story id.
+    expect(
+      md,
+      'name the persistence key `joust-high-scores` or cite jt10-7 so the claim is checkable',
+    ).toMatch(/joust-high-scores|jt10-7/)
+  })
+})
+
+describe('SH3-7 AC2 — the fleet @shared range stays indicative and dated through the rewrite', () => {
+  it('the indicative, measured-2026-08-06 fleet range survives when joust’s own line is corrected', () => {
+    // GREEN today — a regression lock, not a RED assertion. jt9-28 AC2 guards this
+    // via the `zero-consumption outlier` anchor that AC1 may remove; this pins the
+    // CONTENT via the fleet EXEMPLAR data (other games), which SH3-7 does not touch,
+    // so the indicative stamp cannot be dropped in the re-anchor.
+    const md = flatten(readmeRaw())
+    const anchor = md.indexOf('battlezone 14')
+    expect(anchor, 'precondition: the fleet range exemplars are still in the README').toBeGreaterThan(-1)
+    const near = md.slice(anchor, anchor + 300)
+    expect(near, 'the fleet @shared range must stay marked indicative').toMatch(/indicative/i)
+    expect(near, 'and keep the date it was measured').toMatch(/measured\s+2026-08-\d\d/i)
+  })
+})
