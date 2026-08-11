@@ -10,7 +10,7 @@ stories:
     title: 'Lift the 3-D model/sheet dev-tool helpers into a new pure @shared/model-view: cellRects (byte-identical x3 — red-baron tools/sheetLayout.ts, star-wars + tempest core/modelView.ts; the source itself calls it "the THIRD copy... a genuine candidate for extraction"), fitDistance (x2) and modelBounds (near-identical x2, take red-baron''s readonly Vec3[] signature). Pure, dev-tool-only (contact sheets / model viewers), on no game''s render path'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
@@ -62,3 +62,11 @@ stories:
     repos: arcade
     workflow: trivial
     type: chore
+  - id: SH4-7
+    title: 'Polish SH4-1 model-view guards/comments: (1) strengthen the tempest flatTube locality guard to assert flatTube is ABSENT from @shared/model-view — it currently only checks typeof===function, so an over-extraction of flatTube into @shared stays green (mutation-verified in SH4-1 review, finding F1); (2) scope the "THIRD copy" provenance phrase to cellRects only in red-baron tools/sheetLayout.ts and its model-view-shared.test.ts, since fitDistance and modelBounds only ever had 2 copies not 3 (SH4-1 review finding F2). Optional: pin modelBounds([]) empty-input behaviour (F3).'
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
+    type: refactor
