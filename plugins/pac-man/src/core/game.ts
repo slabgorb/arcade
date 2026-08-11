@@ -67,6 +67,7 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
+import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
 import { stepNameEntry } from '@shared/name-entry'
@@ -498,9 +499,23 @@ export function stepGame(state: GameState, input: GameInput): void {
   // `game-over -> attract` (the timeout) is pm4-10.
   if (state.phase === 'game-over') return
   if (state.phase === 'attract') {
-    // A start/coin advances attract -> ready AND reseeds a fresh board; no start
-    // holds attract. (advancePhase ignores `start` in every other phase.)
-    if (advancePhase('attract', { startRequested: !!input.start }) === 'ready') startCabinet(state)
+    // A start/coin advances attract -> ready AND reseeds a fresh board (pm4-6).
+    // The joystick does NOT: the ROM gates the exit on the credit count
+    // (pacman.asm:061e reads (#4e6e) Credits), so a bare direction press is inert.
+    if (advancePhase('attract', { startRequested: !!input.start }) === 'ready') {
+      startCabinet(state)
+      return
+    }
+    // pm4-8: no coin -> the SELF-PLAYING DEMO. The seeded auto-player drives Pac
+    // (input.dir is ignored — the stick is inert in attract) and the SAME sim runs,
+    // reusing stepGhost for the ghost AI. Like mc6-4 (missile-command game.ts:428)
+    // the demo is PINNED to attract: if the auto-player's Pac is caught the sim
+    // would flip to dying/game-over, so on any such flip we reseed a fresh demo
+    // board — the attract loop plays on forever and never self-exits to real play.
+    stepPlayingSim(state, { dir: autoPlayDir(state.pac) })
+    if (state.phase !== 'attract') {
+      Object.assign(state, createGameState(state.seed, state.highScoreTable))
+    }
     return
   }
   if (state.phase === 'ready') {
@@ -538,6 +553,18 @@ export function stepGame(state: GameState, input: GameInput): void {
     return
   }
 
+  // pm4-6/pm4-8: past the phase gate, the sim proper runs. In `playing` it runs
+  // once on the real input; in `attract` the demo drove it above (same body), so
+  // the attract demo can never drift from real play.
+  stepPlayingSim(state, input)
+}
+
+/** The PLAYING sim proper: Pac movement + eating, fruit, the mode engine, the
+ *  ghost movement loop (reusing `stepGhost`), Pac/ghost collision, and the
+ *  level-clear edge. Extracted from `stepGame` (pm4-8) so the attract auto-player
+ *  can run the IDENTICAL simulation without duplicating it. `input.dir` drives
+ *  Pac — the real joystick in `playing`, the auto-player's route in `attract`. */
+function stepPlayingSim(state: GameState, input: GameInput): void {
   // ── Pac-Man movement + dot/energizer eating ──────────────────────────
   const prevEaten = state.pac.eaten.size
   stepPacman(state.pac, { dir: input.dir })
