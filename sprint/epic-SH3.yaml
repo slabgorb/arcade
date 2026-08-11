@@ -19,10 +19,12 @@ stories:
     title: 'joust — route the bespoke canvas mount + audio-unlock lifecycle in src/main.ts through @shared/host-helpers (mountCanvas / installAudioUnlock), retiring the hand-rolled shell wiring; keep joust''s own ROM timebase but document why @shared/loop''s 60Hz accumulator is or is not adoptable'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-11'
+    review_verdict: approved
   - id: SH3-3
     title: 'missile-command — replace the raw requestAnimationFrame loop (src/main.ts:71/74) with @shared/loop createLoop and route the canvas mount through @shared/host-helpers; the sim already uses @shared/rng, so no determinism-sequence change is expected — pin it anyway'
     points: 3
