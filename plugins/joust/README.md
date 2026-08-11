@@ -134,9 +134,10 @@ checkout-local `reference/` for scratch work, which is a different directory.
 - `src/core/` — pure deterministic simulation. No DOM, no Canvas, no time,
   no `Math.random`. 18 modules (`flight`, `arena`, `enemy`, `egg`, `wave`,
   `target`, `pictures`, …), guarded by `tests/purity.test.ts`.
-- `src/shell/` — render / input / timebase / audio (manifest + dispatch). Five
-  modules since jt5-1; no storage module — high-score persistence lives at the
-  host layer in `main.ts` (jt10-7), not in the shell.
+- `src/shell/` — render, input, timebase, audio (manifest + dispatch) and the
+  per-mode screens (title, select, attract, game-over, high-score); no storage
+  module — high-score persistence lives at the host layer in `main.ts` (jt10-7),
+  not in the shell.
 
 That boundary is the single most important rule in this repo, as in every
 sibling.
