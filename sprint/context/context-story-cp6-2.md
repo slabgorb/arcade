@@ -192,7 +192,7 @@ reasoning in its own header (`:1-11`): *"Nothing here may gain an import — tha
 deploy-time bake while every vitest stayed green."*
 
 **The ROM data.** Six FREQ tables at `CENTI4.MAC:2455-2465` — FREQ0/1/2/3/4/6, **no FREQ5** — in
-`reference/atari-source/centipede/revision.v4/CENTI4.MAC`. Frequency bytes are `AUDF`; control bytes
+`reference/original-source/centipede/revision.v4/CENTI4.MAC`. Frequency bytes are `AUDF`; control bytes
 are `AUDC` (distortion in the high nibble, volume in the low).
 
 > **`FREQ4` is a TWO-LINE table and cp6-1 got it right — do not "tidy" it.** `:2463` is

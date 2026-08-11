@@ -38,7 +38,7 @@ workflow: "tdd"
 
 **Ground truth for the render side (AC-2):** LCOLOR → rendered colour goes through the ROM's CLRCH mapping — transcribe it from `centipede/docs/rom-study/subsystems.md` (CLRCH :879), do not invent. This is per-wave colour SELECT, not the IRQ colour cycling.
 
-**Discipline:** citation gate LIVE; CENTI4.MAC inherits `.RADIX 16` (0x80 is hex) — every transcribed constant needs a radix-cited comment + claims entry; cite the VENDORED tree (`reference/atari-source/centipede/revision.v4/CENTI4.MAC`), re-anchor + machine-verify at delivery.
+**Discipline:** citation gate LIVE; CENTI4.MAC inherits `.RADIX 16` (0x80 is hex) — every transcribed constant needs a radix-cited comment + claims entry; cite the VENDORED tree (`reference/original-source/centipede/revision.v4/CENTI4.MAC`), re-anchor + machine-verify at delivery.
 
 **Quarry for TEA:** `sprint/archive/cp4-2-session.md` and `sprint/archive/cp4-1-session.md` (Delivery Findings / reviewer notes) — the same re-lay block.
 

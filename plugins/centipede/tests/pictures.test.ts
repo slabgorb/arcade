@@ -72,7 +72,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 // vendoredAvailable to false and SKIPS the byte-for-byte blocks below.
 const vendoredRoot =
   process.env.CENTIPEDE_SOURCE_DIR ??
-  join(repoRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+  join(repoRoot, '..', '..', 'reference', 'original-source', 'centipede')
 const picDir = join(vendoredRoot, 'revision.v2')
 const rom201 = join(picDir, '136001.201')
 const rom202 = join(picDir, '136001.202')

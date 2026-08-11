@@ -89,7 +89,7 @@ npm run test:orchestrator              # the root node:test suite
 - **Primary:** the preserved original assembler source
   ([historicalsource/centipede](https://github.com/historicalsource/centipede)),
   vendored as a greppable LF copy at the **monorepo root** —
-  [`reference/atari-source/centipede/`](../../reference/atari-source/centipede/),
+  [`reference/original-source/centipede/`](../../reference/original-source/centipede/),
   pinned `dbbe6de`, and tracked in this repo. Four ROM revisions in one tree;
   the study targets **revision 4** (final, Sept 1981), with rev-2 supplying the
   graphics/sync artifacts rev 4 never re-cut.

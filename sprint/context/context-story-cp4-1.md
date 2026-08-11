@@ -21,7 +21,7 @@ intended behavior._
 
 **Sources (read these first):**
 - **Design spec (authoritative rationale):** `centipede/docs/superpowers/specs/2026-07-20-centipede-cp4-game-structure-design.md` — the "Constant-source findings" section reads CENTPC in full.
-- **ROM ground truth:** `reference/atari-source/centipede/revision.v4/CENTI4.MAC`, routine `CENTPC` (`:456-554`). This is the VENDORED tree — the ONLY numbering `npm test -- citations` accepts. The `~/Projects/centipede-source` copy is off-by-one from line 44 (CRLF + form-feeds); do NOT cite it.
+- **ROM ground truth:** `reference/original-source/centipede/revision.v4/CENTI4.MAC`, routine `CENTPC` (`:456-554`). This is the VENDORED tree — the ONLY numbering `npm test -- citations` accepts. The `~/Projects/centipede-source` copy is off-by-one from line 44 (CRLF + form-feeds); do NOT cite it.
 - **Code under change:** `centipede/src/core/centipede.ts` — `CENT_SPEED = 2` (`:72`), consumed at `:190-191`; the scope-fence comment at `:162-168` (strike the SPEED half only). `SimState.centis` and `stepWaveCadence` already ship from cp3-4 in `src/core/sim.ts` + `centipede.ts`.
 
 **The ROM shape to pin (from CENTPC):** CENTIS drives both axes — `MOBJDV = CENTIS` (`:479-480`), `MOBJDH = ±CENTIS` with the sign from `FRAME AND 2` (`:481-485`). Boot value is 2 (`INIT :1174-1176`), which is exactly why the hardcoded `CENT_SPEED = 2` looks right on wave 1 and never changes.

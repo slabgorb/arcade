@@ -79,7 +79,7 @@ const soundClaimsPath = join(romStudyDir, 'claims', '16-sound.json')
 // plugin. Absent on CI, so every block that re-opens a byte is skipped there —
 // the same graceful degradation citations.test.ts uses.
 const vendoredRoot =
-  process.env.CENTIPEDE_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+  process.env.CENTIPEDE_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'original-source', 'centipede')
 const vendoredAvailable = existsSync(vendoredRoot)
 
 /** CENTI4.MAC as 1-indexed lines, so `lines[2455]` is what a citation calls :2455. */

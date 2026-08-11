@@ -16,7 +16,7 @@ Correct the sw8 ST.UX citation and prose defects from sw8-8 review rounds 2+3 --
 
 sw8-8's reviewer found eleven citation and prose defects across the star-wars ST.UX work
 and filed them as sw8-18. Every one of them is a claim about a line of source — either the
-1983 assembler under `reference/atari-source/star-wars-1983/`, or another file in this repo,
+1983 assembler under `reference/original-source/star-wars-1983/`, or another file in this repo,
 or the epic's own design spec — and the story asks for two things: fix them, and add the
 mechanical guard whose absence let all of them survive two green review rounds.
 
@@ -31,7 +31,7 @@ and the vendored ROM before handoff. Three things came out of it that change the
 
 ### The ROM premises all hold, line-exact
 
-Verified in `reference/atari-source/star-wars-1983/`:
+Verified in `reference/original-source/star-wars-1983/`:
 
 | Claim | Verified at |
 |---|---|

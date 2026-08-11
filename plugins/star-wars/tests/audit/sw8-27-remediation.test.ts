@@ -63,7 +63,7 @@ import { TIE_HIT_RADIUS } from '../../src/core/state'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const swRoot = join(here, '..', '..')
-const romDir = join(swRoot, '..', '..', 'reference', 'atari-source', 'star-wars-1983')
+const romDir = join(swRoot, '..', '..', 'reference', 'original-source', 'star-wars-1983')
 
 const read = (...p: string[]) => readFileSync(join(swRoot, ...p), 'utf8')
 const rom = (f: string) => readFileSync(join(romDir, f), 'utf8').split(/\r\n|\r|\n/)

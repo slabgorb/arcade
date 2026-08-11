@@ -1,7 +1,7 @@
 // Bakes the original Atari ROM source into a committed TypeScript artifact the
 // contact sheet can import.
 //
-// WHY BAKE: the vendored source (reference/atari-source/) is raw MACRO-11
+// WHY BAKE: the vendored source (reference/original-source/) is raw MACRO-11
 // assembler text — a browser bundle cannot import it. Same pattern as the
 // existing star-wars/tools/pokey-bake and tools/speech-bake. The generated file
 // IS the audit record.
@@ -19,7 +19,7 @@ import { assembleRedBaronPictures } from './rom-models/redbaron-pictures.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Each entry names its vendored source file(s) (in-repo under
-// reference/atari-source/ — see docs/reference-sources.md), the generated
+// reference/original-source/ — see docs/reference-sources.md), the generated
 // artifact it writes, and a `build`
 // that turns the raw source text(s) into { code, lines } — the emitted
 // TypeScript plus the human-readable per-object summary main() prints.

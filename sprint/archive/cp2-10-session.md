@@ -128,7 +128,7 @@ the motion loop, seeded end-to-end.
 
 **RED commit:** `776f272` on `feat/cp2-10-newhd-head-factory` (off cp2-9 tip `459f380`). Working tree clean; NO implementation written (TEA writes tests only).
 
-### Quarry (rev-4 CENTI4.MAC, .RADIX 16; authoritative tree = the checker's `reference/atari-source/centipede/revision.v4/`)
+### Quarry (rev-4 CENTI4.MAC, .RADIX 16; authoritative tree = the checker's `reference/original-source/centipede/revision.v4/`)
 
 **The trigger chain (NEWD, CT-23/89/90):** a MOTION segment reaching the bottom row (`CMP I,9 / BCS 71$`, V<9) that is a PLAIN head (`CMP I,10 / BCS 70$` — pic < 0x10, excludes bodies 0x4x and poisoned heads 0x2x) sets `STY NEWD` (Y=1) — the factory arm (:1305-1310). CENTPC clears NEWD at every wave re-lay (:552-553), so the factory re-arms per wave. NEWD stays set for the rest of the wave once tripped.
 
@@ -189,7 +189,7 @@ CT-78 (COUNT1 down-counter), CT-79 (dead-slot backfill + NCENT cap), CT-80 (head
 | 3 | reviewer-test-analyzer | Yes | findings | Mutation-tested. 1 tautological assertion (:352-357, HIGH conf); missing coverage for ramp/arm-exclusion/death-respawn-disarm; controls verified surgical; AC-2 determinism non-vacuous; factoryHeadAt40 sound (decoy can't reach 0x40) | CONFIRMED — tautology reproduced independently (F2); coverage gaps → F3/F4/F5; controls & determinism dismissed as sound |
 | 4 | reviewer-comment-analyzer | Yes | findings | CT-91 prose over-generalizes 2-player-only reload as "respawn" (HIGH conf, same ROM trace I ran); CT-87 "floors at 0x60" cosmetic; CT-78..CT-90 + all code comments accurate | CONFIRMED — CT-91 → F1 (blocking-for-finish docs fix); CT-87 wording → LOW |
 
-**All received: Yes** — all four specialists returned and are consistent with my independent ROM verification against `reference/atari-source/centipede/revision.v4/CENTI4.MAC`.
+**All received: Yes** — all four specialists returned and are consistent with my independent ROM verification against `reference/original-source/centipede/revision.v4/CENTI4.MAC`.
 
 ## Reviewer Assessment
 

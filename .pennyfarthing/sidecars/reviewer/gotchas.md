@@ -886,7 +886,7 @@ DELIBERATELY skips remediated findings and freezes their line as a historical re
 ### A subagent's "stale quarry copy / N-line offset" claim can be ITS OWN newline handling — adjudicate with universal-newline reads of BOTH copies before believing it
 
 **Situation:** cp2-16 review. The rule-checker verified all 8 new CENTI4.MAC citations exact
-against the repo-bundled quarry (`reference/atari-source/...`) but reported the OTHER local copy
+against the repo-bundled quarry (`reference/original-source/...`) but reported the OTHER local copy
 (`~/Projects/centipede-source/...`) as "stale, systematically 2-line offset" (`:1284` allegedly
 landing on `AND I,0F`), md5s and line counts differing.
 

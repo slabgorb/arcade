@@ -30,7 +30,7 @@ workflow: "tdd"
 
 ## Story Summary
 
-Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/atari-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere.
+Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/original-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere.
 
 ## Acceptance Criteria
 
@@ -79,7 +79,7 @@ Carry-forward from cp1-2 review:
 
 **Setup verified:** session + context files in place (epic context untouched — checked against the setup commit), branch `feat/cp1-3-picture-rom-transcription` off origin/develop @ 0bed329 (cp1-2's merge), epic YAML flipped to in_progress. Merge gate clear; no sibling cp1-3 race on origin.
 
-**Story shape:** 5pt, `workflow: tdd` explicit. Repo centipede only. The vendored binaries live at the ORCHESTRATOR path `reference/atari-source/centipede/revision.v2/` — read-only quarry, nothing in the orchestrator changes. (The contact-sheet "bake-models.mjs precedent" is an orchestrator-side idiom to imitate, not to modify — the centipede bake tool lives in the centipede repo.)
+**Story shape:** 5pt, `workflow: tdd` explicit. Repo centipede only. The vendored binaries live at the ORCHESTRATOR path `reference/original-source/centipede/revision.v2/` — read-only quarry, nothing in the orchestrator changes. (The contact-sheet "bake-models.mjs precedent" is an orchestrator-side idiom to imitate, not to modify — the centipede bake tool lives in the centipede repo.)
 
 **Hazards routed to TEA (O'Brien):**
 - AC-1 is a THREE-way identity: vendored ROM bytes ↔ committed pictures.ts ↔ committed fixture (the CI fallback). The fixture must itself be provably derived (AC-4), or the degraded path becomes a self-confirming copy. Design the derivation chain so each link is tested.
@@ -260,6 +260,6 @@ All Delivery Findings (TEA a/b, TEA×3, Dev×2) reviewed — each is an accurate
 
 - **origin/develop freshness:** `merge-base(origin/develop, HEAD) == origin/develop @ 0bed329` — develop has NOT moved since the fork. Clean fast-forward; no trial-merge required.
 - **Sibling race:** only `origin/feat/cp1-3-picture-rom-transcription @ 10215a9` exists; no rival cp1-3 branch, no open cp1-3 PR. No checkout race.
-- **Orchestrator:** the vendored quarry (`reference/atari-source/centipede/revision.v2/`) is read-only and untouched; centipede working tree is clean.
+- **Orchestrator:** the vendored quarry (`reference/original-source/centipede/revision.v2/`) is read-only and untouched; centipede working tree is clean.
 
 **Handoff:** To SM (Winston) for finish-story. No rework needed. Blocking items: none. Two LOW improvements logged in Delivery Findings for a future render story (decode-orientation golden; width-constant use) — neither gates this merge.

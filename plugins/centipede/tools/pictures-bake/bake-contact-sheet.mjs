@@ -136,7 +136,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // reference/ sits at the MONOREPO root — two levels above plugins/centipede.
   const vendoredRoot =
     process.env.CENTIPEDE_SOURCE_DIR ??
-    join(repoRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+    join(repoRoot, '..', '..', 'reference', 'original-source', 'centipede')
   const romDir = join(vendoredRoot, 'revision.v2')
   const outPath = join(repoRoot, 'docs', 'rom-study', 'pictures-contact-sheet.svg')
 

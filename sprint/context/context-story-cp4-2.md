@@ -22,7 +22,7 @@ TEA doesn't have to re-derive the ASM._
 
 **Sources (read these first):**
 - **Design spec (authoritative rationale):** `centipede/docs/superpowers/specs/2026-07-20-centipede-cp4-game-structure-design.md` — the "Constant-source findings" section reads CENTPC in full, including the fragmentation half.
-- **ROM ground truth:** `reference/atari-source/centipede/revision.v4/CENTI4.MAC` (repo root, NOT inside `centipede/`), routine `CENTPC` `:456-554`. This is the VENDORED tree — the ONLY numbering `npm test -- citations` accepts. The `~/Projects/centipede-source` copy is off-by-one from line 44 (CRLF + form-feeds); do NOT cite it.
+- **ROM ground truth:** `reference/original-source/centipede/revision.v4/CENTI4.MAC` (repo root, NOT inside `centipede/`), routine `CENTPC` `:456-554`. This is the VENDORED tree — the ONLY numbering `npm test -- citations` accepts. The `~/Projects/centipede-source` copy is off-by-one from line 44 (CRLF + form-feeds); do NOT cite it.
 - **Code under change:** `centipede/src/core/centipede.ts` — `createCentipede()` (`:196-210`), the "SCOPE (Delivery Findings, TEA)" comment (`:20-32`) and the "SCOPE FENCE" comment (`:158-168`, both need updating/striking). `centipede/src/core/sim.ts` — the three lay sites: boot `:139`, death respawn `:396`, wave-clear re-lay `:439`.
 - **Existing claims:** `centipede/docs/rom-study/claims/09-centipede-train.json` — 97 entries (`CT-1`..`CT-97`); cp4-2's new claims start at **CT-98**. Schema: `{id, claim, source:{file, line, verbatim}, corroboration?}` — `verbatim` is byte-checked against the vendored tree, `.trimEnd()` compared.
 - **Next CT already claimed by a sibling story:** `NEWHD_HEAD_PIC = 0x00` (`centipede.ts:501`, CT-80, `:1664 "LDA I,0"` — "plain head, not CENTPC's 0x03") is the EXACT SAME ROM idiom CENTPC's loose-head fill uses (`:531 "LDA I,0" / STA X,MOBJP`). Reuse this constant (or cite CT-80 as corroboration for the new claim) rather than inventing a second "plain head pic" constant — the codebase already named this value once.
@@ -190,7 +190,7 @@ module) + a claims entry (CT-98+). Citations cite the vendored tree only.
   in comments) in `centipede.ts`/`sim.ts`.
 - **Citations:** every new constant/behaviour needs a `CT-98`+ entry in
   `docs/rom-study/claims/09-centipede-train.json` with a byte-verified
-  `verbatim` against `reference/atari-source/centipede/revision.v4/CENTI4.MAC`;
+  `verbatim` against `reference/original-source/centipede/revision.v4/CENTI4.MAC`;
   run `npm test -- citations` before calling RED done.
 
 ## Acceptance Criteria

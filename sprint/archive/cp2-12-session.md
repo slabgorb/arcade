@@ -103,7 +103,7 @@ optional** — and the ROM mandates it anyway (DLIVES draws ship pictures,
 never digits). Playfield rendering is unchanged; this is a HUD-only move.
 PM-1/PM-27 are existing cited claims (geometry/reservation only); the
 UPSCRE/DLIVES routine addresses are **net-new claims** for RED to file
-against the vendored `reference/atari-source/centipede/revision.v4/` tree.
+against the vendored `reference/original-source/centipede/revision.v4/` tree.
 
 Context file enriched beyond the `pf context create story` stub with a
 Technical Approach section covering: the current HUD draw in

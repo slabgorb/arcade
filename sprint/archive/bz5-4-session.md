@@ -80,7 +80,7 @@ Both sources verified on disk. MAME is EXTERNAL, not vendored:
 /Users/slabgorb/Projects/mame/src/mame/atari/{bzone.cpp,bzone.h,bzone_a.cpp} and
 layout/bzone.lay. The `bzone_a.cpp:1-20` sound-enable-bit citation is confirmed accurate
 (D7 motor, D5 sound, D4 rev, D2 shell, D0 explosion). Vendored disassembly:
-reference/atari-source/battlezone/BZONE.MAC + reference/va-battlezone/Battlezone.dis65.
+reference/original-source/battlezone/BZONE.MAC + reference/va-battlezone/Battlezone.dis65.
 Clone code under audit is the pure sim under plugins/battlezone/src/core/ (enemies.ts,
 movement.ts, firing.ts, saucer.ts, difficulty.ts). Full source paths and suite list are
 in sprint/context/context-story-bz5-4.md.

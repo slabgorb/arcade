@@ -45,7 +45,7 @@ Each finding is one list item. Use "No upstream findings" if none.
   two cited gates; the flea-freeze fixture stages a FLEA, so gating `stepFlea` greens it
   and `stepScorp` on a live flea is a no-op. Affects `centipede/src/core/sim.ts`
   (`stepScorp` gating at :506) — possible follow-up story. *Found by TEA during test design.*
-- **Improvement** (non-blocking): the vendored quarry `reference/atari-source/` is
+- **Improvement** (non-blocking): the vendored quarry `reference/original-source/` is
   gitignored and its audit gate is `describe.skipIf(!vendoredAvailable)`
   (`tests/audit/citations.test.ts:47`), so a MISSING quarry silently skips citation
   verification rather than failing CI. `~/Projects/centipede-source` is off by one line
@@ -300,7 +300,7 @@ leaves the already-computed value from the prior in-block step (`stepSpiderExplo
    the narrowness guard is green under develop-parity (won't false-credit the fix) and red
    under over-freeze. No vacuous assertions.
 2. [VERIFIED] [RULE] All 22 ROM citations exact against the VENDORED quarry
-   (`reference/atari-source/.../revision.v4/CENTI4.MAC`, read `newline=None`) — verified three
+   (`reference/original-source/.../revision.v4/CENTI4.MAC`, read `newline=None`) — verified three
    times independently (my audit, rule-checker, security). BUGMV `:289-291`, ANTMV `:50-56`,
    mainloop `:30-:37`, PLAYEX `:1805-1808`, tie-break `:1284`/`:1450`/`:1449`. The RED phase
    caught + corrected an off-by-one (the external `~/Projects/centipede-source` copy) before it

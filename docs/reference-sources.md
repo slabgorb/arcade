@@ -1,7 +1,7 @@
-# Reference sources — vendored original Atari source
+# Reference sources — vendored original arcade source
 
-The preserved original Atari source for each game, vendored **into this repo** at
-`reference/atari-source/<name>/`. This table records where each tree came from and
+The preserved original arcade source for each game, vendored **into this repo** at
+`reference/original-source/<name>/`. This table records where each tree came from and
 the commit it is pinned to.
 
 It used to live under `~/Projects`, machine-local and in no repo. That made every
@@ -23,12 +23,12 @@ can change the audited bytes underneath the fidelity oracles.
 
 | Name | Repo | Pinned SHA | Clone cache | In-repo source | Vendored |
 |------|------|------------|----------------|----------------|----------|
-| red-baron | historicalsource/red-baron | 5ceb7b4 | ~/Projects/red-baron-source | reference/atari-source/red-baron | 2026-07-12 |
-| star-wars-1983 | historicalsource/star-wars | 5355b76 | ~/Projects/star-wars-1983-source | reference/atari-source/star-wars-1983 | 2026-07-12 |
-| tempest | historicalsource/tempest | 6c783be | ~/Projects/tempest-source | reference/atari-source/tempest | 2026-07-12 |
-| asteroids | historicalsource/asteroids | fafcd40 | ~/Projects/asteroids-source | reference/atari-source/asteroids | 2026-07-12 |
-| battlezone | historicalsource/battlezone | 38d0b07 | ~/Projects/battlezone-source | reference/atari-source/battlezone | 2026-07-12 |
-| centipede | historicalsource/centipede | dbbe6de | ~/Projects/centipede-source | ~/Projects/a-1/reference/atari-source/centipede | 2026-07-18 |
-| defender | historicalsource/defender | 3fae9d3 | ~/Projects/defender-source | ~/Projects/a-2/reference/atari-source/defender | 2026-08-11 |
-| millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/atari-source/millipede | 2026-08-11 |
-| frenzy | historicalsource/frenzy | df69ecd | ~/Projects/frenzy-source | ~/Projects/a-2/reference/atari-source/frenzy | 2026-08-11 |
+| red-baron | historicalsource/red-baron | 5ceb7b4 | ~/Projects/red-baron-source | reference/original-source/red-baron | 2026-07-12 |
+| star-wars-1983 | historicalsource/star-wars | 5355b76 | ~/Projects/star-wars-1983-source | reference/original-source/star-wars-1983 | 2026-07-12 |
+| tempest | historicalsource/tempest | 6c783be | ~/Projects/tempest-source | reference/original-source/tempest | 2026-07-12 |
+| asteroids | historicalsource/asteroids | fafcd40 | ~/Projects/asteroids-source | reference/original-source/asteroids | 2026-07-12 |
+| battlezone | historicalsource/battlezone | 38d0b07 | ~/Projects/battlezone-source | reference/original-source/battlezone | 2026-07-12 |
+| centipede | historicalsource/centipede | dbbe6de | ~/Projects/centipede-source | ~/Projects/a-1/reference/original-source/centipede | 2026-07-18 |
+| defender | historicalsource/defender | 3fae9d3 | ~/Projects/defender-source | ~/Projects/a-2/reference/original-source/defender | 2026-08-11 |
+| millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/original-source/millipede | 2026-08-11 |
+| frenzy | historicalsource/frenzy | df69ecd | ~/Projects/frenzy-source | ~/Projects/a-2/reference/original-source/frenzy | 2026-08-11 |

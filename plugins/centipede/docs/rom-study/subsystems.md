@@ -1,7 +1,7 @@
 # Subsystem map — Centipede rev 4
 
 Generated 2026-07-18 directly from `grep -n "\.SBTTL"` over the rev-4 modules
-(`arcade/reference/atari-source/centipede/revision.v4/` + shared `COIN65.MAC`)
+(`arcade/reference/original-source/centipede/revision.v4/` + shared `COIN65.MAC`)
 — every line number below is tool output, not transcription. Read `brief.md`
 first for the shipped-set, radix, and timebase ground truth.
 

@@ -48,7 +48,7 @@ import { checkCitations } from '../../tools/audit/check-comment-citations.mjs'
 const here = dirname(fileURLToPath(import.meta.url))
 const swRoot = join(here, '..', '..')
 const repoRoot = join(swRoot, '..', '..')
-const romDir = join(repoRoot, 'reference', 'atari-source', 'star-wars-1983')
+const romDir = join(repoRoot, 'reference', 'original-source', 'star-wars-1983')
 const opts = { swRoot, romDir }
 
 describe('sw8-24 AC3 — the zero-floor ratchet is mutation-proven, not merely asserted', () => {

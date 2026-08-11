@@ -160,7 +160,7 @@ routine — the exact td1-14 gap this story navigates.
 **Independent ROM verification of every judgement call (the part the guard cannot check):**
 
 - **[DOC] Duplicate-verbatim trap — CORRECT.** `trench-traversal-speed.test.ts` → `WSMAIN.MAC:2654-2656`.
-  Confirmed against `reference/atari-source/star-wars-1983/WSMAIN.MAC`: `:2537 S1MVGD` (ground-flying)
+  Confirmed against `reference/original-source/star-wars-1983/WSMAIN.MAC`: `:2537 S1MVGD` (ground-flying)
   carries `ADDD M$TX+M.S1` at :2539; `:2654 S1MVBS` (wormhole) carries it at :2656. The comment's own
   prose names S1MVBS, so :2654-2656 is right and the guard's first-occurrence hint :2539 (S1MVGD) is
   the wrong routine. Both anchors pass the guard — only the ROM boundary distinguishes them. Dev

@@ -23,10 +23,10 @@ byte-of-record the fidelity oracles read), and records repo + pinned SHA in
 ```bash
 just vendor-source historicalsource/<game> <sha>   # ref is POSITIONAL via just; PIN it — HEAD drifts
 # (raw script form: node scripts/vendor-source.mjs historicalsource/<game> --ref <sha>)
-# → reference/atari-source/<game>/   ← this is $SRC in the preflight below.
+# → reference/original-source/<game>/   ← this is $SRC in the preflight below.
 ```
 
-The `atari-source/` path is a fleet-wide legacy name, not a claim of manufacturer — Williams'
+The `original-source/` path is a fleet-wide legacy name, not a claim of manufacturer — Williams'
 Defender vendors there too (`just vendor-source historicalsource/defender 3fae9d3`). A
 pristine clone is cached at `~/Projects/<game>-source`; no tool reads it.
 
@@ -46,7 +46,7 @@ defender/joust/robotron board). Two moves, each CITED, never assumed:
 
 - DIFF the literally-shared source files to prove what transfers verbatim. millipede ∩ centipede
   is one file, `COIN65.MAC`, and `diff` reports it byte-IDENTICAL — so the coin subsystem is
-  cited "identical to `reference/atari-source/centipede/COIN65.MAC`, verified by diff", not
+  cited "identical to `reference/original-source/centipede/COIN65.MAC`, verified by diff", not
   re-studied.
 - CROSS-REFERENCE the sibling's dossier (`plugins/centipede/docs/rom-study/brief.md`) for
   shared-board facts — timebase, radix inheritance, trackball, screen geometry — then RE-VERIFY
@@ -152,7 +152,7 @@ The study yields a dossier, written into the new game repo at `docs/rom-study/`:
   non-zero; a claim that fails is DELETED, not repaired.
 
 Every claim's `source.file` resolves into the vendored tree from Step 0
-(`reference/atari-source/<game>/` or `plugins/<id>/reference/source/`), whose
+(`reference/original-source/<game>/` or `plugins/<id>/reference/source/`), whose
 provenance row lives in `docs/reference-sources.md`. The dossier is the prose;
 that tree is the bytes it cites — the study produces both.
 </output>

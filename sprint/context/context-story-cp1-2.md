@@ -13,7 +13,7 @@ Citation checker + claims JSON — the dossier becomes machine-verified before a
 - **Epic:** Centipede — foundation slice (scaffold, citations, picture ROMs, playfield, player+shot, render)
 
 ## Problem
-Port tempest/tools/audit + tests/audit/citations.test.ts with the ours side dropped (single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+glossary citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/atari-source/centipede) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. THIS BLOCKS cp1-4 and cp1-5 — rb4's lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself.
+Port tempest/tools/audit + tests/audit/citations.test.ts with the ours side dropped (single-sided schema per the rom-source-study skill: id, claim, source{file,line,verbatim}, corroboration?). Convert docs/rom-study/ brief+glossary citations into docs/rom-study/claims/*.json. The checker re-opens every cited line in the vendored tree (arcade/reference/original-source/centipede) byte-for-byte, prints one error per bad claim, exits non-zero; it degrades gracefully (schema-only checks) when the vendored tree is absent, so CI stays green. THIS BLOCKS cp1-4 and cp1-5 — rb4's lesson: any numeric story that lands before the gate re-bakes its own misreadings and then confirms itself.
 
 ## Technical Approach
 _Approach hints to be refined by TEA/Dev. The story title above defines the

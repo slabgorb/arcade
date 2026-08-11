@@ -318,7 +318,7 @@ string: 10 mis-split args → 4 correct args, `args[2]` → `"[seq(0xa4, 2, 0, 0
 
 ### What I verified as GOOD (do not re-litigate)
 
-- **Tempest cue remap — CONFIRMED against primary source.** `reference/atari-source/tempest/ALSOUN.MAC`
+- **Tempest cue remap — CONFIRMED against primary source.** `reference/original-source/tempest/ALSOUN.MAC`
   is present in this checkout; PNTRS at `:87-100` gives `OFFSET EX ;ENEMY EXPLOSION` → `$cc5d`,
   `OFFSET LA ;PLAYER FIRE` → `$cbe9`, `OFFSET T3 ;THRUST IN SPACE` → `$cc81`, `OFFSET T2 ;THRUST IN TUBE`
   → `$cc75`. All four agree with Dev's map, with `tempest/tests/audit/alsoun-cue-mapping.test.ts`,

@@ -33,7 +33,7 @@ of them hold**. Citations below are current as of `main` @ 447ef2f:
    (1D1/1D2/1D3). Every one of the 6 sets ends with TWV2Z, and the past-table
    recycle (`selectWaveSet`, line 112) only ever recycles SETA5/SETA6 — which also
    end with TWV2Z.
-3. **The ROM loops the last group.** `reference/atari-source/star-wars-1983/WSCPU.MAC`
+3. **The ROM loops the last group.** `reference/original-source/star-wars-1983/WSCPU.MAC`
    (~:1058-1090), `ADASHP::` — when `WV.LP` is invalid or at end-of-group:
    `INC WV.LVL`, select the wave's set, then
    `LDB WV.LVL / CMPB 0(X)+ / IFHI / LDB -1(X) / ENDIF / STB WV.LVL`

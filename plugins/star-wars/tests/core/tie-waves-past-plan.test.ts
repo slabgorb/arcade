@@ -22,7 +22,7 @@
 // spawnIndex past SET A1's 27 entries in a legitimately played game.
 //
 // GROUND TRUTH is WSCPU.MAC in the 1983 Atari source (in-repo copy:
-// reference/atari-source/star-wars-1983/WSCPU.MAC; greppable original:
+// reference/original-source/star-wars-1983/WSCPU.MAC; greppable original:
 // ~/Projects/star-wars-1983-source-text, historicalsource/star-wars @ 5355b76).
 // The full TSPWAV/TWV/TBG transcription gate lives in tie-waves-rom.test.ts
 // (sw7-12) — this suite does not re-pin the tables; it pins what happens where

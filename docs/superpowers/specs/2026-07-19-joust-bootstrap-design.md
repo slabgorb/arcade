@@ -34,7 +34,7 @@ Vite/TS/Vitest scaffold (cp1-1 precedent).
 **2. Source vendoring**
 
 - `reference/williams-source/joust/` — new `williams-source/` lineage beside
-  `atari-source/`. Verbatim copy of
+  `original-source/`. Verbatim copy of
   [historicalsource/joust](https://github.com/historicalsource/joust), pinned
   `9bcfdb1` ("Prepare to Joust"), 49 files. Already LF/ASCII (no CR
   normalization needed, unlike star-wars). `*.PIC` files are Motorola

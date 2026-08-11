@@ -279,7 +279,7 @@ guard that never fails.
 
 ### What the ROM actually says (the transcription that drove the tests)
 
-Read from `reference/atari-source/centipede/revision.v4/`, upright cabinet
+Read from `reference/original-source/centipede/revision.v4/`, upright cabinet
 (`CLEAR` :737-751 zeroes CKF8/CKC0/CK40, so every `EOR CKxx` is identity).
 
 | Mechanism | ROM | Fact |

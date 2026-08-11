@@ -317,7 +317,7 @@ own citations have gone stale the corrections land in the wrong place. So every 
 re-opened before handoff.
 
 **The ROM held perfectly.** Ten separate premises verified line-exact in
-`reference/atari-source/star-wars-1983/` — the two `.SBTTL` boundaries at WSMAIN.MAC:2243 and
+`reference/original-source/star-wars-1983/` — the two `.SBTTL` boundaries at WSMAIN.MAC:2243 and
 :2292, the four space-wave labels at :2522-2525, `S1MVHP:` at :2531 with its `JSR LSLD8`, the
 `.REPT 0`/`.ENDR` pair at :2271/:2290, all five `LDD ST.UX` sites, `WSGLOB.MAC:465`'s
 `;VIEWER X POSITION`, and `WSSTAR.MAC:98`. Nine of the eleven filed items are still true exactly

@@ -89,7 +89,7 @@ wave-1 loop closure, and the SIM ASSEMBLY that wires everything into a playable 
 
 **RED commit:** `f7b7b23` on `feat/cp2-5-death-restor-wave-loop` (off cp2-6 tip 62d6ac9). Working tree clean; NO implementation written (TEA writes tests only).
 
-### Quarry (rev-4 CENTI4.MAC, .RADIX 16; trailing `.` = decimal) — the authoritative tree is the one the checker resolves (`reference/atari-source/centipede/revision.v4/`), NOT `~/Projects/centipede-source` (line numbers differ by ~2-4 lines; cite the checker's tree)
+### Quarry (rev-4 CENTI4.MAC, .RADIX 16; trailing `.` = decimal) — the authoritative tree is the one the checker resolves (`reference/original-source/centipede/revision.v4/`), NOT `~/Projects/centipede-source` (line numbers differ by ~2-4 lines; cite the checker's tree)
 | Semantic | Where | Claim |
 |---|---|---|
 | PLAY gun-vs-segment: `\|dH\|<7 AND \|dV\|<7 AND \|dH\|+\|dV\|<0x0C` (Manhattan diamond) | :1785/1792/1798 | CT-49/50/51 |

@@ -4,7 +4,7 @@ Produced 2026-07-18 with the `rom-source-study` skill. Every citation below was
 re-opened and verified byte-for-byte in this session (the hand-run equivalent of
 the citation checker; building the automated checker is the first story).
 
-**Primary source:** `arcade/reference/atari-source/centipede/` (LF/ASCII vendored
+**Primary source:** `arcade/reference/original-source/centipede/` (LF/ASCII vendored
 copy of [historicalsource/centipede](https://github.com/historicalsource/centipede),
 pinned `dbbe6de`). Citations are file:line in that tree.
 **Secondary source:** MAME driver `src/mame/atari/centiped.cpp` (sparse clone at
@@ -21,7 +21,7 @@ citation derived
 from the wrong copy is silently off by one. The citation gate only re-opens the
 vendored tree, so a mis-derived line either fails the gate with a confusing
 verbatim mismatch or — worse — lands on a real-but-wrong neighbouring
-instruction. Read `reference/atari-source/centipede/`, or set
+instruction. Read `reference/original-source/centipede/`, or set
 `CENTIPEDE_SOURCE_DIR`. (Found the hard way in cp3-4.)
 
 ## 0. Revision — build against rev 4, know its gaps

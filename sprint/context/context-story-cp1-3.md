@@ -13,7 +13,7 @@ Picture-ROM transcription — decode 136001.201/202 into src/core/pictures.ts, b
 - **Epic:** Centipede — foundation slice (scaffold, citations, picture ROMs, playfield, player+shot, render)
 
 ## Problem
-Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/atari-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link — brief section 1). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere.
+Decode the rev-2 picture ROM binaries (vendored VERBATIM at arcade/reference/original-source/centipede/revision.v2/136001.201-202 — rev 4 shipped these chips) into a committed data module: tiles and sprites with names cross-referenced to CENPIC.MAC labels (CENPIC is .RADIX 16 at line 8, assembled OUTSIDE the CPU link — brief section 1). A vitest re-derives every tile from the ROM bytes and compares byte-exact, so the transcription is auditable, not asserted. Bake a contact-sheet artifact for human review (bake-models.mjs precedent at the orchestrator). NO hand-authored pixels anywhere.
 
 ## Technical Approach
 _Approach hints to be refined by TEA/Dev. The story title above defines the

@@ -26,7 +26,7 @@ export interface Claim {
   claim: string
   /**
    * Primary-source citation into the vendored tree
-   * (arcade/reference/atari-source/centipede). This is RE-OPENED byte-for-byte.
+   * (arcade/reference/original-source/centipede). This is RE-OPENED byte-for-byte.
    * `file` is resolved root-first, then revision.v4/ (the target revision), so a
    * bare rev-1 filename (CENDEF.MAC) and a bare rev-4 filename (CENTI4.MAC, which
    * lives only under revision.v4/) both resolve — AC-4. A file already carrying a
@@ -66,7 +66,7 @@ export interface CountAssertion {
   /**
    * Optional tree-relative subpath scoping the scan — a directory (walked
    * recursively) or a single file. Absent ⇒ the WHOLE vendored tree, i.e. the
-   * `grep -rn … reference/atari-source/centipede` recipe. Must stay inside the
+   * `grep -rn … reference/original-source/centipede` recipe. Must stay inside the
    * tree after normalisation (same containment rule as `source.file`).
    */
   scope?: string
@@ -79,7 +79,7 @@ export interface CountAssertion {
 export interface CheckOpts {
   /**
    * Absolute path to the vendored tree root
-   * (arcade/reference/atari-source/centipede), or `null` to skip every
+   * (arcade/reference/original-source/centipede), or `null` to skip every
    * byte-verification and run schema-only. CI clones only the centipede subrepo
    * and therefore lacks the orchestrator's reference/ tree — it passes `null`
    * and stays green (AC-3).

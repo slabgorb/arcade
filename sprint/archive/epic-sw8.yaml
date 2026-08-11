@@ -196,7 +196,7 @@ stories:
     description: |
       Correct the citation and prose defects the sw8-8 reviewer found in rounds 2 and 3, and add the comment-citation guard for the subset a mechanical checker can actually catch.
 
-      MEASURED AT SETUP (2026-08-02, against the current tree and reference/atari-source/star-wars-1983). Every ROM premise the filing rests on verified line-exact: `.SBTTL MOVE STARS IN SOME DIRECTION` WSMAIN.MAC:2243; `.SBTTL MOVE THE PLAYER` :2292; `SMVSP1:` :2522, `SMVSP2:` :2523, `SMVNXT:` :2524, `S1MV:` :2525, `STD ST.UX` :2528; `S1MVHP: ;MOVE DURING HYPER` :2531 with `JSR LSLD8` :2533 and `STD ST.UX` :2534; `.REPT 0` :2271, `SMVDX1:` :2272, `.ENDR` :2290; `LDD ST.UX` at exactly :2245/:2266/:2273/:2279/:2285; `WSGLOB.MAC:465 ST.UX:: .BLKB 2 ;VIEWER X POSITION`; `WSSTAR.MAC:98 LDD ST.UX ;STARS RELATIVE MOVEMENT`. Items 1-8 and 11 are still true as filed.
+      MEASURED AT SETUP (2026-08-02, against the current tree and reference/original-source/star-wars-1983). Every ROM premise the filing rests on verified line-exact: `.SBTTL MOVE STARS IN SOME DIRECTION` WSMAIN.MAC:2243; `.SBTTL MOVE THE PLAYER` :2292; `SMVSP1:` :2522, `SMVSP2:` :2523, `SMVNXT:` :2524, `S1MV:` :2525, `STD ST.UX` :2528; `S1MVHP: ;MOVE DURING HYPER` :2531 with `JSR LSLD8` :2533 and `STD ST.UX` :2534; `.REPT 0` :2271, `SMVDX1:` :2272, `.ENDR` :2290; `LDD ST.UX` at exactly :2245/:2266/:2273/:2279/:2285; `WSGLOB.MAC:465 ST.UX:: .BLKB 2 ;VIEWER X POSITION`; `WSSTAR.MAC:98 LDD ST.UX ;STARS RELATIVE MOVEMENT`. Items 1-8 and 11 are still true as filed.
 
       THREE CORRECTIONS TO THE FILING ITSELF.
 

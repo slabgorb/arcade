@@ -339,7 +339,7 @@ The filing described the ROM gate as implicit — the sole `CHSET C$PS` "sits IN
 draw pass". SM measured it as control flow, and the RED is built on that: `S2VW`
 (`WSMAIN.MAC:3755`) has exactly four exits before `CHSET C$PV`, all to `RTS1: RTS` at `:3754`,
 and those four tests ARE C_PV's definition. I re-verified every one against the **vendored**
-`reference/atari-source/star-wars-1983/WSMAIN.MAC` — which is byte-identical (`cmp`) to the
+`reference/original-source/star-wars-1983/WSMAIN.MAC` — which is byte-identical (`cmp`) to the
 machine-local greppable copy, so the citations are safe from the known off-by-N quarry trap —
 and each cited line reads exactly as claimed. So each negative seat is named for the ROM exit it
 exercises rather than for its coordinates.
@@ -413,7 +413,7 @@ the project's own hard rules (`CLAUDE.md`, `plugins/star-wars/CLAUDE.md`).
 |------|---------|--------|
 | `src/core` purity — no DOM, no wall clock, no `Math.random` | whole file: only `computeStatus`/`stepGame` + seeded `rngSeed`; enforced repo-side by the existing core-boundary scan | green |
 | Determinism — seeded RNG only | every fixture threads `rngSeed(1)`; the in-play run uses `initialState(1983)` | green |
-| ROM claims cite primary source | every cited span re-opened against the VENDORED `reference/atari-source/star-wars-1983/WSMAIN.MAC` (byte-identical to the greppable copy) | green |
+| ROM claims cite primary source | every cited span re-opened against the VENDORED `reference/original-source/star-wars-1983/WSMAIN.MAC` (byte-identical to the greppable copy) | green |
 | Comment citations must resolve | tree-wide guard back to the 29 ceiling with 0 from this file | green |
 | No vacuous assertions | see self-check below | green |
 
@@ -457,7 +457,7 @@ cabinet does, and the comment now carries the evidence rather than the old infer
 ### What I verified rather than inherited
 
 The handoff said the ROM gate is control flow. I re-derived it from the vendored
-`reference/atari-source/star-wars-1983/WSMAIN.MAC` before writing the comment, because the comment
+`reference/original-source/star-wars-1983/WSMAIN.MAC` before writing the comment, because the comment
 is half the deliverable:
 
 - `RTS1` has exactly FIVE references in the file — its definition at `:3754` and four long
@@ -630,7 +630,7 @@ TypeScript checklist in this repo, and there is no `SOUL.md` or `.claude/rules/`
 | No `Date.now`/`performance.now`/`Math.random`/`requestAnimationFrame` in core | The diff adds one `&&` term reading `status`; no call of any kind added. The existing `Math.tan`/`Math.sqrt` are pure. | compliant |
 | The purity guard greps COMMENTS too (`/\bwindow\s*\./`) | ~35 new comment lines in `tie-status.ts`. Checked: no sentence ends on the word "window"; the suite's own boundary scan is green. | compliant |
 | All randomness via the seeded `Rng` | The gate short-circuits BEFORE `beamHit`, which draws no RNG; the two `nextInt` calls sit after and remain unconditional, so no seed desync. The existing "costs no extra RNG" test is green. | compliant |
-| ROM claims cite primary source, resolvable | Every span in the diff re-opened against the VENDORED `reference/atari-source/star-wars-1983/WSMAIN.MAC` — which `cmp` says is byte-identical to the greppable clone. `:3825-3826`, `:3827-3828`, `:3834-3836`, `:3840-3842`, `:3754`, `:3846`, `:3930`, `:3933`, `:3926-3928`, `:3915-3918`, `:3870-3873` all read as quoted. | compliant |
+| ROM claims cite primary source, resolvable | Every span in the diff re-opened against the VENDORED `reference/original-source/star-wars-1983/WSMAIN.MAC` — which `cmp` says is byte-identical to the greppable clone. `:3825-3826`, `:3827-3828`, `:3834-3836`, `:3840-3842`, `:3754`, `:3846`, `:3930`, `:3933`, `:3926-3928`, `:3915-3918`, `:3870-3873` all read as quoted. | compliant |
 | Comment citations must resolve (`check-comment-citations`) | Tree-wide count 29 — the delivered ceiling — with 0 from any of the three touched files. | compliant |
 | Tests must not write into a tree another suite measures | The new suite touches no filesystem; the only reads are `readFileSync` of two source files. | compliant |
 | Tenant isolation / auth / secrets | No such surface exists in this diff: a pure sim function reading two numbers from an in-memory struct. Enumerated all changed functions — `computeStatus` is the only one, and it takes no identity, performs no I/O, and returns a bitfield. | N/A |

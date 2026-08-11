@@ -231,7 +231,7 @@ uncited and must be corrected to 0x06 with citation. Deterministic: colour
 **Status:** RED (39 new tests failing for the right reason; ready for Dev)
 
 **ROM quarry (all verified byte-for-byte against
-`reference/atari-source/centipede/revision.v4/` this session):**
+`reference/original-source/centipede/revision.v4/` this session):**
 - **99$ table = 42 bytes, 14 schemes** (CENTI4.MAC:898-901). Transcribed
   byte-for-byte. **Exactly ONE 0x06** — at table index 32, the [X+2] pen of the
   scheme beginning at X=30 (= wave 11's eyes/mushroom-outside/alphanumerics pen).

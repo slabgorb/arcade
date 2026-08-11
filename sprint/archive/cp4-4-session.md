@@ -102,7 +102,7 @@ Each finding is one list item. Use "No upstream findings" if none.
 - `SimState.bonusLevel` (points), seeded to `BONUS_INCREMENT` in `createSim`, carried by `cloneState`, and consulted on the score funnel in BOTH `stepPlayingFrame` and `stepDeathFrame` (RESTOR's repairs are SCORNG events too — one test drives a real death to prove it).
 - Order matters: the ROM advances the threshold BEFORE it tests LIVES, so a refused award still moves the level (pinned).
 
-**Ground truth re-opened by hand this session** (vendored `reference/atari-source/centipede/revision.v4/CENTI4.MAC` — never `~/Projects/centipede-source`, which is off by one): `:239-248`, `:849-859`, `:922-931`, `:1943-1998`. Dev converts these into `docs/rom-study/claims/14-*.json` (claims are Dev-authored data per the cp1-2 ruling) and adds the open-questions entry AC-3 requires — the suite asserts that file names `BONUSV`, `OPTNS` and `OPTSW2` and attributes the entry to cp4-4.
+**Ground truth re-opened by hand this session** (vendored `reference/original-source/centipede/revision.v4/CENTI4.MAC` — never `~/Projects/centipede-source`, which is off by one): `:239-248`, `:849-859`, `:922-931`, `:1943-1998`. Dev converts these into `docs/rom-study/claims/14-*.json` (claims are Dev-authored data per the cp1-2 ruling) and adds the open-questions entry AC-3 requires — the suite asserts that file names `BONUSV`, `OPTNS` and `OPTSW2` and attributes the entry to cp4-4.
 
 ### Rule Coverage
 

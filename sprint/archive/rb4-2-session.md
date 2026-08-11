@@ -62,7 +62,7 @@ Each finding is one list item. Use "No upstream findings" if none.
   source — IS the CRLF sibling (md5 `27cdfe…`), the copy the epic calls NOT citable. The citable
   byte-of-record is `~/Projects/red-baron-source-text` (md5 `497db9…`, LF). Until that checkout is
   re-pointed, the next author reads the wrong line numbers and this story happens again. The
-  orchestrator has already vendored the correct LF copy at `arcade/reference/atari-source/red-baron/`
+  orchestrator has already vendored the correct LF copy at `arcade/reference/original-source/red-baron/`
   (branch `feat/extract-audio`). Affects `red-baron/reference/`. *Found by TEA during test design.*
 - **Gap** (non-blocking): `src/core/biplane.ts` implements a **distance** LOD (`LOD_DISTANCE`) that
   the ROM does not have. `DRNPIC` (RBARON.MAC:4961-4963) selects the 29-point `.DRPNT` drone model

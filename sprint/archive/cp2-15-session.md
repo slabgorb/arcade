@@ -74,7 +74,7 @@ All of these are affected because they call stepPlayingFrame or step:
 
 All existing tests must re-pin (not weaken).
 
-### ROM Citations (reference/atari-source/centipede/revision.v4/CENTI4.MAC)
+### ROM Citations (reference/original-source/centipede/revision.v4/CENTI4.MAC)
 - :30 MOTION
 - :31 EXPLOD
 - :33 mainloop calls PLAY from BUGMV
@@ -190,7 +190,7 @@ Each entry: what was changed, what the spec said, and why.
 
 - Full suite: **48 files / 900 tests — 896 pass, 4 fail**, all 4 in `tests/frame-order.test.ts`. Runner total matches my direct `npx vitest run` (no scope narrowing). `tsc --noEmit` clean; citation gate 26/26 green (no cited file touched).
 - Engagement proven non-vacuous with a temporary probe (deleted before commit): on CURRENT code each staging exercises the wrong mechanism — AC1-spider: spider dies +900, player lives; AC1-segment: head dies +100, player lives; AC2-spider: segment +10, spider survives, mushroom stamped; AC2-scorpion: segment +10, scorpion survives.
-- Every cited ROM line was re-opened in `reference/atari-source/centipede/revision.v4/CENTI4.MAC` this session: mainloop :30-:37; PLAY :1775-1799 + PLAYEX :1800-1808; PLAY call sites :108 (ANTMV), :417 (BUGMV), :1449 (MOTION); SHOOT scan :2171-2294.
+- Every cited ROM line was re-opened in `reference/original-source/centipede/revision.v4/CENTI4.MAC` this session: mainloop :30-:37; PLAY :1775-1799 + PLAYEX :1800-1808; PLAY call sites :108 (ANTMV), :417 (BUGMV), :1449 (MOTION); SHOOT scan :2171-2294.
 
 ### Staging design (why these cannot pass by accident)
 
