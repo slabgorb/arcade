@@ -28,8 +28,8 @@ import { type Rng, nextInt } from '@shared/rng'
 
 export const MIRV_LO = 128
 export const MIRV_HI = 160
-export const MIRV_MAX_CHILDREN = 3
-export const MIRV_EXPLOSION_SUPPRESS = 12
+export const MIRV_MAX_CHILDREN = 3 // POTENT W3MAIN.MAC:2713 (claim MC-MIRV-MAX)
+export const MIRV_EXPLOSION_SUPPRESS = 12 // EXPLCT W3MAIN.MAC:1531 (claim MC-MIRV-EXPSUP)
 
 /** A live (non-arrived) ballistic ICBM whose head is inside the MIRV band
  *  [MIRV_LO, MIRV_HI], edges inclusive — the candidate MIRVER splits. (No numeric

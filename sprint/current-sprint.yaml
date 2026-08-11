@@ -9,8 +9,6 @@ sprint:
   number: 2633
 epics:
   - mc5
-  - mc6
   - SH3
   - SH4
-  - mc10
   - pm4

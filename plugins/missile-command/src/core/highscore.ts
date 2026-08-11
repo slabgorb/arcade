@@ -40,11 +40,11 @@ export const MC_HIGH_SCORE_DEPTH = 5
 // (W3DSUP.MAC:3748) + STRINI (W3DSUP.MAC:3746); claims MC-HISCORE-DEFAULT-{DFT,DLS,
 // SRC,RDA,MJP}, one per rung so each cited value backs its literal.
 export const DEFAULT_HIGH_SCORES: readonly MissileCommandHighScore[] = [
-  { name: 'DFT', score: 7500 }, // SCOINI triple 5 [00,75,00] — BEST (HSCORL+<3*4>)
-  { name: 'DLS', score: 7495 }, // SCOINI triple 4 [95,74,00]
-  { name: 'SRC', score: 7330 }, // SCOINI triple 3 [30,73,00]
-  { name: 'RDA', score: 7005 }, // SCOINI triple 2 [05,70,00]
-  { name: 'MJP', score: 6950 }, // SCOINI triple 1 [50,69,00] — lowest rung
+  { name: 'DFT', score: 7500 }, // SCOINI triple 5 [00,75,00] — BEST (HSCORL+<3*4>) W3DSUP.MAC:3748
+  { name: 'DLS', score: 7495 }, // SCOINI triple 4 [95,74,00] W3DSUP.MAC:3748
+  { name: 'SRC', score: 7330 }, // SCOINI triple 3 [30,73,00] W3DSUP.MAC:3748
+  { name: 'RDA', score: 7005 }, // SCOINI triple 2 [05,70,00] W3DSUP.MAC:3748
+  { name: 'MJP', score: 6950 }, // SCOINI triple 1 [50,69,00] — lowest rung W3DSUP.MAC:3748
 ]
 
 // MC-HISCORE-QUALIFY — qualify + insert over MC GameState.score at the depth-5
