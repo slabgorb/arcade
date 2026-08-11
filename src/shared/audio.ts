@@ -27,6 +27,26 @@
 // to one `.wav` fetches/decodes that file ONCE and both names resolve to it
 // (design §4.1 — the asteroids N:1 case, absorbed as a superset rather than a mode).
 
+// ── Event→cue dispatch convention (SH4-5) ────────────────────────────────────
+// The seven cabinets that turn core `GameEvent`s into calls on this engine share a
+// PATTERN, not a lifted module — the design gate for SH4-5 confirmed there is nothing
+// left to extract (the engine contract below IS the shared surface; each dispatcher's
+// switch body is its own ROM cue map, which stays in the game). New games follow, and
+// tests/audio-dispatch-convention.test.mjs pins, these five clauses:
+//   1. A game's event→cue wiring lives in `src/shell/audio-dispatch.ts` as PURE,
+//      node-importable functions (no module state, no DOM), unit-testable against a
+//      recording fake.
+//   2. Each dispatch function narrows the engine to a same-file `Pick<AudioEngine, …>`
+//      slice — never the full engine — so the param tracks the game's real signatures.
+//   3. Exhaustiveness is compile-time, anchored by an explicit `never`-typed binding
+//      (a switch-default `const _: never`, or a closed-union switch under a typed
+//      `Record` — the centipede form).
+//   4. Runtime DEGRADES, never throws: this runs on the frame path, where a throw
+//      freezes the game and a wrong sound is worse than a missing one.
+//   5. Switch/table BODIES are that game's own ROM cue map, cited to its assembler —
+//      never unified, tabled, or shared across games (share the VERB, not the NUMBERS).
+// Deliberate exemptions (pinned by set identity, not count): pac-man folds dispatch
+// inline into a stateful driver; star-wars selects cues via lookup tables.
 export interface AudioEngine<N extends string> {
   // Create/resume the AudioContext and start loading samples. Safe to call
   // repeatedly (e.g. on every user gesture); only the first call does work. A no-op

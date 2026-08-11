@@ -49,4 +49,4 @@ stories:
     status: in_progress
     started: '2026-08-11'
     repos: arcade
-    workflow: tdd
+    workflow: trivial
