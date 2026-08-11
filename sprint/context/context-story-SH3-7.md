@@ -25,6 +25,18 @@ intended behavior._
 
 ## Acceptance Criteria
 
+> ⚠ **SCOPE RULING (user, 2026-08-11) + TEA measurement — read before implementing.**
+> TEA found a THIRD stale claim in the same "What joust does NOT do" section: the
+> persistence bullet (`README:145`, "persists no high scores … no `@shared/highscore`")
+> and the shell "**no storage**, deliberately" (`:138`) are both falsified by jt10-7
+> (`main.ts:369` persists to localStorage keyed `joust-high-scores`, imports
+> `@shared/highscore`). Correcting only the `@shared`-consumption bullet would make the
+> section self-contradictory. **The user ruled: fix the whole section coherently.** The
+> RED tests (`plugins/joust/tests/audio-seam-scope.test.ts`, SH3-7 section) and the
+> session file's **TEA Assessment + Design Deviations** are the scope of record — the
+> story title and AC-1 below understate it. See especially the jt9-28 AC2 **interlock**
+> note in the TEA Assessment before touching the paragraph.
+
 **AC-1: Correct the README @shared-consumption paragraph**
 - The paragraph at `plugins/joust/README.md:148-149` must be updated to reflect the measured truth:
   - Remove "consumes exactly one `@shared` subpath: `@shared/audio`"
