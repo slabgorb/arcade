@@ -11,6 +11,7 @@ completed_epics:
   - sw10
   - jt10
   - mc8
+  - mc10
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -314,3 +315,8 @@ completed_stories:
     title: "START/coin -> READY -> PLAY (core+shell): a start/coin action advances attract|game-over -> ready -> playing and reseeds createGameState; a READY! freeze (timer) runs the intro BEFORE the sim moves — fixes 'the game begins before the intro plays'. Blinky must NOT move during attract/ready (today house.released.blinky=true from frame 0). Shell binds the start key. Cite pacman.asm:061e start/player-select, :36a7 READY?/PUSH START text."
     points: 3
     completed: '2026-08-10'
+  - id: mc10-6
+    epic: mc10
+    title: "Harden the mc citations AC3 un-cited-literal gate: it currently checks only global value-membership across ALL claims, so an un-cited core literal passes whenever ANY unrelated claim shares its number (e.g. cursor.ts LOGICAL_WIDTH=0x100 passes only via the ICBM-speed-scale claim value 256). Require a symbol/line-anchored citation (claimCovers on the literal's own file:line), not bare value membership, in citations.test.ts"
+    points: 3
+    completed: '2026-08-11'
