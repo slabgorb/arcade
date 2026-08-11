@@ -115,3 +115,10 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+  - id: pm4-11
+    title: "Authentic HUD icons (shell): render lives as Pac-life sprites bottom-left and the level indicator as fruit sprites bottom-right, replacing pm4-9's procedural LIVES/LEVEL text in the bottom HUD band. Reuse drawPacman/drawFruit; leave the top band (SCORE, HIGH SCORE) unchanged. Pin the ROM life-icon cap + fruit-per-level sequence at RED. Accessibility: no full-screen flash (pm4-1)."
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
