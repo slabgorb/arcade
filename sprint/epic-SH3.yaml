@@ -29,9 +29,11 @@ stories:
     title: 'missile-command — replace the raw requestAnimationFrame loop (src/main.ts:71/74) with @shared/loop createLoop and route the canvas mount through @shared/host-helpers; the sim already uses @shared/rng, so no determinism-sequence change is expected — pin it anyway'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: SH3-4
     title: 'pac-man — adopt @shared/host-helpers mount + @shared/view letterbox for the DPR/resize handling in src/shell/layout.ts; fold the player-pause path onto @shared/pause ONLY IF core/mode.ts `paused` is player-pause and not ghost scatter/chase mode-state (verify first — reuse-first, do not force a false match)'
     points: 3
