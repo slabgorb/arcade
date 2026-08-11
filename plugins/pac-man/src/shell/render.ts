@@ -16,8 +16,9 @@
 // bonus-fruit sprite (FRUIT_SPRITE, glyph-data.ts) instead of a flat red
 // square, and a new drawScoreSprite blits the ghost-chain "200"/"400"/
 // "800"/"1600" digit-glyph sprites (SCORE_SPRITE) for pm3-7's eaten-ghost
-// popups. The HUD (drawHud) is still the pm1-8 procedural text — untouched
-// here, still out of scope.
+// popups. The HUD (drawHud) stayed the pm1-8 procedural text through pm3-6/pm3-7
+// (sprites were out of scope there); pm4-9 relaid it out — still procedural text,
+// now split across the top band (SCORE, HIGH SCORE) and the bottom band (LIVES, LEVEL).
 //
 // ─── PAC-MAN / GHOST SPRITES: WHAT IS BYTE-CITED, WHAT IS AUTHORED (pm3-5) ─
 // SPRITES (sprite-data.ts) is baked from decodeSpritePixel, a byte-for-byte
