@@ -31,3 +31,4 @@ can change the audited bytes underneath the fidelity oracles.
 | centipede | historicalsource/centipede | dbbe6de | ~/Projects/centipede-source | ~/Projects/a-1/reference/atari-source/centipede | 2026-07-18 |
 | defender | historicalsource/defender | 3fae9d3 | ~/Projects/defender-source | ~/Projects/a-2/reference/atari-source/defender | 2026-08-11 |
 | millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/atari-source/millipede | 2026-08-11 |
+| frenzy | historicalsource/frenzy | df69ecd | ~/Projects/frenzy-source | ~/Projects/a-2/reference/atari-source/frenzy | 2026-08-11 |
