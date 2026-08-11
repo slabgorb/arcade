@@ -1,5 +1,15 @@
 # Story SH3-2 Context
 
+> ⚠ **SCOPE NARROWED (user ruling, 2026-08-11) — read this before the title.**
+> The title asks joust to adopt BOTH `mountCanvas` AND `installAudioUnlock`. That
+> over-asserts and is refuted by `docs/ops/shell-adoption-matrix.md` (sc1-1), which
+> deliberately defers joust's audio-unlock as `rom-cadence` because it is fused into the
+> input-sampling keydown handler (the epic's named hazard). **Ruling: adopt `mountCanvas`
+> ONLY**; keep the audio-unlock hand-rolled (`rom-cadence`); document why `@shared/loop`'s
+> accumulator is not adoptable (joust keeps its ROM `pumpFrames` timebase). Full rationale +
+> forward-impact: the **Design Deviations** section of `.session/SH3-2-session.md`. The RED
+> gates live in `plugins/joust/tests/main-host-adoption.test.ts` (AC-2 is the deferral lock).
+
 ## Title
 joust — route the bespoke canvas mount + audio-unlock lifecycle in src/main.ts through @shared/host-helpers (mountCanvas / installAudioUnlock), retiring the hand-rolled shell wiring; keep joust's own ROM timebase but document why @shared/loop's 60Hz accumulator is or is not adoptable
 
