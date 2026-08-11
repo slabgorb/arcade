@@ -16,6 +16,8 @@ completed_epics:
   - mc6
   - mc5
   - pm4
+  - SH3
+  - SH4
 completed_stories:
   - id: mc5-1
     epic: mc5
@@ -417,4 +419,19 @@ completed_stories:
     epic: SH4
     title: 'Harden the audio-dispatch-convention guard: resolve local aliases / renamed AudioEngine imports in AC-2, and require the never anchor sit in a switch/exhaustiveness position (AC-3) — needs a type-resolving tsc program, not the current syntactic AST walk. Non-blocking follow-up from SH4-5 review (test-analyzer Findings 1-3); tsc + the convention prose already backstop the current syntactic form.'
     points: 2
+    completed: '2026-08-11'
+  - id: SH3-5
+    epic: SH3
+    title: 'Orchestrator guard (tests/) — a topology test that fails when a plugin re-declares a shared primitive outside src/shared (the mulberry32 magic 0x6d2b79f5, and the canvas-mount/audio-unlock boilerplate host-helpers owns), so a future straggler cannot silently fork extracted code again'
+    points: 2
+    completed: '2026-08-11'
+  - id: SH3-6
+    epic: SH3
+    title: Harden SH3-4's main-host-adoption source-wiring assertions — call-anchor the fitIntegerScale/pumpFrame positives, assert the mountCanvas destructure + full resizeToDisplay signature, broaden the querySelector/clientWidth retirement guards, and fix the stale 'Today main.ts:43' comment + tp1-39 citation
+    points: 1
+    completed: '2026-08-11'
+  - id: SH4-7
+    epic: SH4
+    title: 'Polish SH4-1 model-view guards/comments: (1) strengthen the tempest flatTube locality guard to assert flatTube is ABSENT from @shared/model-view — it currently only checks typeof===function, so an over-extraction of flatTube into @shared stays green (mutation-verified in SH4-1 review, finding F1); (2) scope the "THIRD copy" provenance phrase to cellRects only in red-baron tools/sheetLayout.ts and its model-view-shared.test.ts, since fitDistance and modelBounds only ever had 2 copies not 3 (SH4-1 review finding F2). Optional: pin modelBounds([]) empty-input behaviour (F3).'
+    points: 1
     completed: '2026-08-11'
