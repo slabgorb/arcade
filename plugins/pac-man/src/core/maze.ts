@@ -50,8 +50,10 @@ export type Actor = 'pac-man' | 'ghost'
 
 // ─── THE ROW TABLE ────────────────────────────────────────────────────────
 // One character per tile, 28 characters per row, 36 rows. MAZE_ROWS comes
-// from maze-topology.generated (pm3-9) and already carries the HUD bands
-// (rows 0-2, 33-35) as all-'#'; no HUD spread needed here.
+// from maze-topology.generated (pm3-9) and carries rows 0-2 and 33-35 as all-'#'.
+// The renderer's HUD bands are ASYMMETRIC (`isHudRow`): rows 0-2 (top) + 34-35
+// (bottom) are blanked for the HUD, while row 33 renders as the maze's bottom border
+// wall — the mirror of the top border at row 3 (pm4-12; it used to be blanked too).
 //   '#' wall        '.' dot          'o' energizer
 //   ' ' path (no dot, e.g. plaza/tunnel-row floor)
 //   '=' gate (ghost-house door)      'H' house interior
