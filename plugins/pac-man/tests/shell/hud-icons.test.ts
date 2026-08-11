@@ -194,6 +194,17 @@ describe('pm4-11 bottom HUD — level indicator as a fruit row (bottom-right)', 
     expect(seq[seq.length - 1], 'the rightmost (newest) fruit is the current level, key').toBe(levelRow(13).fruit.type)
     expect(seq, 'the oldest fruit (cherry) has scrolled off the 7-wide window').not.toContain('cherry')
   })
+
+  it('guards a non-finite level — draws no fruit and neither hangs nor throws', () => {
+    // `level` reaches the fruit loop as a bound; a non-finite value must not spin the
+    // loop or index the level table out of range (drawHud guards with Number.isFinite).
+    const ctxInf = fakeCtx()
+    expect(() => drawHud(ctxInf, 0, 0, 3, Infinity)).not.toThrow()
+    expect(fruitBlits(ctxInf).length, 'Infinity level draws no fruit').toBe(0)
+    const ctxNaN = fakeCtx()
+    expect(() => drawHud(ctxNaN, 0, 0, 3, NaN)).not.toThrow()
+    expect(fruitBlits(ctxNaN).length, 'NaN level draws no fruit').toBe(0)
+  })
 })
 
 describe('pm4-11 bottom HUD — placement & accessibility', () => {
