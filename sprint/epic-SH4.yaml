@@ -46,6 +46,7 @@ stories:
     title: 'Retire the audio-dispatch.ts duplication across all 7 games (asteroids, battlezone, centipede, joust, missile-command, red-baron, tempest) — a duplicated PATTERN not algorithm. DESIGN GATE: decide the extractable surface (the identical SoundPlayer = Pick<AudioEngine,play|startLoop|stopLoop> narrowing type + the for/switch/exhaustive-never skeleton) vs a table-driven dispatcher (which would fight asteroids'' nested explosion.source and tempest''s loop hand-offs). Lift the TYPE at minimum; do NOT force a lossy table — each switch body is that game''s own ROM cue map'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
