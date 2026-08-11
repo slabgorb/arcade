@@ -47,7 +47,9 @@ defender/joust/robotron board). Two moves, each CITED, never assumed:
 - DIFF the literally-shared source files to prove what transfers verbatim. millipede ∩ centipede
   is one file, `COIN65.MAC`, and `diff` reports it byte-IDENTICAL — so the coin subsystem is
   cited "identical to `reference/original-source/centipede/COIN65.MAC`, verified by diff", not
-  re-studied.
+  re-studied. Diff EACH, though — a shared NAME is not proof: asteroids ∩ lunar-lander share
+  `VECAN.XX` (byte-identical) AND `VECMAC.XX` (DIFFERS), so one identical file never vouches
+  for its neighbour.
 - CROSS-REFERENCE the sibling's dossier (`plugins/centipede/docs/rom-study/brief.md`) for
   shared-board facts — timebase, radix inheritance, trackball, screen geometry — then RE-VERIFY
   each against THIS tree and THIS machine's MAME set, because a sequel is usually a REVISED
@@ -62,13 +64,16 @@ DIALECT FIRST — the five questions below are universal; the COMMANDS are not. 
 here is written in Atari MACRO-65 (`.MAC`) tokens and silently returns NOTHING on another
 toolchain. Identify the toolchain before you trust a probe: the source extension + the
 assembler's own directives + any author note on the build. An empty result means WRONG
-DIALECT far more often than "absent" — three games so far, three toolchains:
+DIALECT far more often than "absent". The fleet already spans FOUR dialects — and TWO are
+Atari's OWN (MACRO-65 for the raster/6502 games, MACRO-11 for the vector games, whose source
+carries a bare `.XX` extension that reads like a placeholder):
 
-| Machine (dialect)                    | src ext | include token        | hex literal | author doc         |
-|--------------------------------------|---------|----------------------|-------------|--------------------|
-| centipede/millipede (Atari MACRO-65) | `.MAC`  | `.INCLUDE`           | `#xx` / col | `*.DOC`            |
-| defender (Williams 6809)             | `.SRC`  | RASM chain (INFO.SRC)| `$NN`       | `INFO.SRC`         |
-| frenzy (Stern — TDL Z80/8080)        | `.asm`  | `.insert`            | `NNh`       | `README.md` (author quote) |
+| Machine (dialect)                               | src ext | include token         | radix / hex                 | author doc            |
+|-------------------------------------------------|---------|-----------------------|-----------------------------|-----------------------|
+| centipede/millipede (Atari MACRO-65, raster)    | `.MAC`  | `.INCLUDE`            | `#xx` / column              | `*.DOC`               |
+| asteroids/lunar-lander (Atari MACRO-11, vector) | `.XX`   | `.INCLUDE`            | per-file `.RADIX` (VARIES!)  | `*.DOC` + `*.MAP`     |
+| defender (Williams 6809)                        | `.SRC`  | RASM chain (INFO.SRC) | `$NN`                       | `INFO.SRC`            |
+| frenzy (Stern — TDL Z80/8080)                   | `.asm`  | `.insert`             | `NNh`                       | `README.md` (author quote) |
 
 ```bash
 ls $SRC | sed 's/.*\.//' | sort | uniq -c | sort -rn | head   # what extension IS this tree?
@@ -117,6 +122,8 @@ grep -iE "^BIN:|=OBJ:" $SRC/**/*.MAP; grep -n "\.INCLUDE\|LINK COMMAND" $SRC/**/
 #    lives ONLY in the shared equates file and reaches every CPU module via
 #    .INCLUDE. A module with no .RADIX of its own is NOT decimal. Trailing
 #    period = decimal literal. Say which file SETS it and which files INHERIT.
+#    And files can DISAGREE: lunar-lander's VECAN.XX is `.RADIX 10` while its
+#    PENNY.XX is `.RADIX 16` in the SAME tree — never generalize one file's radix.
 grep -n "\.RADIX" $SRC/**/*.MAC
 
 # 3. WHAT TIMEBASE? IRQ rate ≠ frame rate: derive (a) IRQs per frame and which
