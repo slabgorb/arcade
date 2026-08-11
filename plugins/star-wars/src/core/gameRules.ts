@@ -5,6 +5,7 @@
 // math routes through the Math Box (math3d), never ad-hoc trig, so there is a
 // single source of 3D truth.
 
+import { clamp } from '@shared/clamp'
 import { length, sub, add, scale, dot, normalize, type Vec3 } from '@shared/math3d'
 import { ENEMY_FIRE_INTERVAL, FIRE_MASK, FIRE_THRESHOLD, TRENCH_SCROLL_SPEED } from './state'
 
@@ -125,10 +126,6 @@ export function sweptCollides(center: Vec3, a: Vec3, b: Vec3, radius: number): b
   const t = clamp(dot(sub(center, a), ab) / abLen2, 0, 1)
   const closest = add(a, scale(ab, t))
   return length(sub(center, closest)) <= radius
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return v < lo ? lo : v > hi ? hi : v
 }
 
 // --- The laser beam (story sw7-17 / R11b) -----------------------------------

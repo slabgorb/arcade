@@ -41,6 +41,7 @@
 //
 // PURE and deterministic. No DOM, no time, no randomness.
 
+import { clamp } from '@shared/clamp'
 import type { GameEvent } from './events'
 
 // ─── ROM-exact constants (RBARON.MAC, .RADIX 16 region — HEX) ─────────────────
@@ -92,8 +93,6 @@ export interface ScoreCountUp {
 export function initialCountUp(): ScoreCountUp {
   return { displayed: 0, pending: 0, cooldown: 0, awarded: 0 }
 }
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
 /** Clamp an OPTION selector to a BONUSL column; NaN/negative/over-range fold to a valid slot. */
 const optionIndex = (option: number): number => clamp(Math.floor(option) || 0, 0, BONUSL.length - 1)

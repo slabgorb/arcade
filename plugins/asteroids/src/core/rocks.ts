@@ -13,6 +13,7 @@
 // Provisional constants are named + isolated below so A-17's quarry
 // verification is a data-only swap, not a refactor.
 
+import { clamp } from '@shared/clamp'
 import type { Rock, RockSize } from './state'
 import { wrapPosition, type Bounds } from './bounds'
 import { nextFloat, nextInt, type Rng } from '@shared/rng'
@@ -118,11 +119,6 @@ const SPLIT_CHILD: Readonly<Record<RockSize, RockSize | null>> = {
   large: 'medium',
   medium: 'small',
   small: null,
-}
-
-/** Clamp x into [lo, hi]. */
-function clamp(x: number, lo: number, hi: number): number {
-  return Math.min(Math.max(x, lo), hi)
 }
 
 /** A-7: split a destroyed rock into its children — large → 2 medium, medium →

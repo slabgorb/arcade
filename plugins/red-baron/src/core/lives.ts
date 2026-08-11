@@ -35,6 +35,7 @@
 // PURE and deterministic. No DOM, no time, no randomness — every function returns a
 // fresh value and never mutates its input.
 
+import { clamp } from '@shared/clamp'
 import { type SceneSegment, V_BRIT_MAX } from './scene'
 
 // ─── ROM-exact constants (findings §5) ───────────────────────────────────────
@@ -61,8 +62,6 @@ export const DEATH_SEQUENCE: readonly DeathPhase[] = Object.freeze([
 ])
 
 // ─── pure helpers ─────────────────────────────────────────────────────────────
-
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v))
 
 /** Clamp an options selector to a valid INITLF index; NaN/negative/over-range fold to a valid slot. */
 const livesIndex = (option: number): number => clamp(Math.floor(option) || 0, 0, INITLF.length - 1)
