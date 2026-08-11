@@ -196,9 +196,12 @@ const frame = (now: number): void => {
       // sub-step) so START/coin reaches stepGame (attract -> ready) once per press.
       () => ({ dir: currentDir(), start: consumeStart() }),
       (input) => {
-        // pm4-10: the sim now runs in EVERY phase — game-over included — so the
-        // core GAME OVER hold can tick down and time out back to attract on its
-        // own (was: an early-return here that skipped stepGame in game-over).
+        // pm4-10: stepGame is now CALLED every frame in every phase — game-over
+        // included — so the core GAME OVER hold can tick down and time out back to
+        // attract on its own (was: an early-return here that skipped stepGame in
+        // game-over). This does NOT thaw the sim: stepGame's game-over branch runs
+        // no stepPlayingSim, so nothing moves (game.ts "stays FROZEN") — only the
+        // phase-dispatch / timeout counter advances each frame.
         const boardBefore = game.highScoreTable
         stepGame(game, input)
         animClock++ // pm4-2: one tick per sim sub-step drives the animation hold
