@@ -46,7 +46,9 @@
 //   5. Switch/table BODIES are that game's own ROM cue map, cited to its assembler —
 //      never unified, tabled, or shared across games (share the VERB, not the NUMBERS).
 // Deliberate exemptions (pinned by set identity, not count): pac-man folds dispatch
-// inline into a stateful driver; star-wars selects cues via lookup tables.
+// inline into a stateful driver; star-wars inlines the same switch + `never`-guard
+// dispatch in `main.ts` rather than a standalone `audio-dispatch.ts` file (its lookup
+// tables resolve a sound NAME to a file/channel inside the engine — a different step).
 export interface AudioEngine<N extends string> {
   // Create/resume the AudioContext and start loading samples. Safe to call
   // repeatedly (e.g. on every user gesture); only the first call does work. A no-op

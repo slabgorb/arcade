@@ -23,8 +23,9 @@
 // Convention pinned (mirrors the 5 clauses documented in src/shared/audio.ts's header):
 //   AC-1  the dispatch-file owners are EXACTLY the seven vector/raster games with a
 //         standalone src/shell/audio-dispatch.ts (pac-man folds dispatch inline into a
-//         stateful driver; star-wars uses lookup tables — both are deliberate exemptions
-//         pinned by set identity, not by count).
+//         stateful driver; star-wars inlines the same switch+never dispatch in main.ts
+//         with no standalone file — both are deliberate exemptions pinned by set
+//         identity, not by count).
 //   AC-2  every dispatch function narrows the engine to a same-file `Pick<AudioEngine,…>`
 //         slice — never the bare full engine (checked as: no parameter is typed bare
 //         `AudioEngine`; the local Pick tracks the game's real engine signatures).
@@ -158,8 +159,13 @@ test('SH4-5 AC-3: every dispatch file carries a never-typed exhaustiveness ancho
   )
 })
 
-// ── AC-4: restrictive-direction controls — the predicates have teeth ─────────
-// If these ever pass in the wrong direction, the AC-2/AC-3 sweeps above are vacuous.
+// ── AC-4: restrictive-direction controls — the predicates reject trivia ──────
+// These prove the predicates are not TRIVIA-satisfiable: a comment-only `never` and a
+// bare-engine param are both rejected, and a compliant fixture passes — run through the
+// SAME predicate functions the sweeps use. (They do NOT claim immunity to every bypass:
+// an aliased/renamed full engine still reads as compliant to AC-2, by design — the AC is
+// the syntactic "no bare `AudioEngine` param" form, backstopped by `tsc` and clause 2's
+// prose. If these controls ever pass in the wrong direction, the sweeps above are vacuous.)
 const FIXTURE_BARE_PARAM = `
 import type { AudioEngine } from './audio'
 export function playEventSounds(audio: AudioEngine, events) {

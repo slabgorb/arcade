@@ -103,9 +103,11 @@ SH4-5 ships a convention document plus an AST-based orchestrator guard test, and
 4. **Counter-models prove the pattern is a convention, not a universal.**
    pac-man folds the same event→voice dispatch inline into `createAudioDriver` — a
    STATEFUL closure (munch alternation, `deathHold` counter, ambient warble phase) that a
-   stateless shared skeleton cannot host. star-wars has no dispatch file; its SFX already
-   run through the shared engine (SH2-16) and its cue selection is lookup tables plus
-   speech/tune channels on separate engine instances.
+   stateless shared skeleton cannot host. star-wars has no standalone dispatch file — its
+   event→cue SELECTION is the same `switch (event.type)` + `const _exhaustive: never`
+   guard as the seven, inlined in `main.ts:148-259`; its lookup tables (`SOUNDS`/`CHANNELS`)
+   resolve a sound NAME to a file/channel inside the engine (SH2-16), a separate step from
+   selection, alongside speech/tune channels on separate engine instances.
 
 ### Rejected alternatives
 
