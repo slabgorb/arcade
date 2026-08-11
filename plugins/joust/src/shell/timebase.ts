@@ -4,16 +4,21 @@
 // wall time: it accumulates elapsed seconds and hands the core whole frames,
 // so the simulation never reads a clock of its own.
 //
-// ── SH3-2: why joust keeps this pump and does NOT adopt @shared/loop ─────────
-// @shared/loop provides a fixed-timestep accumulator too, but at a hard-coded
-// 60 Hz. joust does not run at 60 Hz: `pumpFrames` drains wall time at the ROM's
-// own `FRAME_HZ` (core/frame), the cabinet's video rate, and the simulation is
-// gated against original source at that cadence. Adopting @shared/loop would swap
-// the NUMBER (the frame period) for a rounded 60, which is exactly what the SH3
-// epic forbids — "share the VERB, not the NUMBERS; per-cabinet exotic ROM
-// timebases stay in the games." So the accumulator VERB is identical but the rate
-// is joust's own: the shared loop is NOT adoptable here, and this pump stays. Only
-// the boot-time canvas MOUNT was shared (@shared/host-helpers.mountCanvas, main.ts).
+// ── SH3-2: whether joust can adopt @shared/loop's accumulator (AC-4) ─────────
+// It CAN — and the honest answer is "adoptable, deferred", not "impossible".
+// @shared/loop's `advanceFixedSteps(acc, elapsed, dt, step, maxFrame)` takes the
+// timestep `dt` as a parameter (and `createLoop(step, render, hz = 60)` takes `hz`
+// as a parameter — a default, not a hard-coded rate), so the shared helper runs at
+// whatever cadence a caller passes, not a rounded 60. `pumpFrames` below is that
+// same arithmetic at joust's own `SECONDS_PER_FRAME = 1/FRAME_HZ` (the ROM's video
+// rate, core/frame), and centipede and pac-man already wrap that exact shared
+// helper at their own non-60 `FRAME_DT`. So adopting it here would keep joust's
+// NUMBER while sharing the VERB — "share the VERB, not the NUMBERS" is satisfied,
+// no cadence change. It is simply out of SH3-2's scope (a user ruling narrowed this
+// story to the canvas mount); retiring `pumpFrames` onto
+// `advanceFixedSteps(acc, elapsed, SECONDS_PER_FRAME, step)` is a clean,
+// determinism-neutral follow-up. Only the boot-time canvas MOUNT was shared here
+// (@shared/host-helpers.mountCanvas, main.ts).
 
 import { FRAME_HZ } from '../core/frame'
 

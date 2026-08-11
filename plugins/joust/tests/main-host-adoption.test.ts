@@ -190,15 +190,21 @@ describe('SH3-2 AC-3 — adoption matrix + @shared/loop timebase verdict', () =>
     )
   })
 
-  it("documents whether @shared/loop's 60Hz accumulator is adoptable (it is not)", () => {
-    // AC-4: a written verdict on @shared/loop lives in main.ts or shell/timebase.ts.
-    // RAW source on purpose — a comment is what satisfies a documentation deliverable,
-    // and there is no @shared/loop mention anywhere in joust today, so this is a clean RED.
+  it('documents the @shared/loop adoptability verdict, naming the shared accumulator', () => {
+    // AC-4: a reasoned verdict on @shared/loop lives in main.ts or shell/timebase.ts.
+    // RAW source on purpose — a comment is what satisfies a documentation deliverable.
+    // Two anchors, not a bare token: the verdict must name BOTH @shared/loop AND the
+    // actual accumulator it judges (advanceFixedSteps) — a genuine adoptability call
+    // cannot be made without naming the function, so a stray `// TODO @shared/loop`
+    // cannot satisfy this. (The verdict itself: adoptable at joust's own dt — centipede
+    // and pac-man already wrap advanceFixedSteps at their FRAME_DT — deferred as
+    // out-of-SH3-2-scope, not impossible.)
     const docs = rawMain + '\n' + readFileSync(timebasePath, 'utf8')
+    expect(docs, 'main.ts or shell/timebase.ts must reference @shared/loop').toMatch(/@shared\/loop/)
     expect(
       docs,
-      'main.ts or shell/timebase.ts must reference @shared/loop and state why joust keeps its ROM timebase',
-    ).toMatch(/@shared\/loop/)
+      'the verdict must name the shared accumulator it judges (advanceFixedSteps), not a bare @shared/loop mention',
+    ).toMatch(/\badvanceFixedSteps\b/)
   })
 })
 
