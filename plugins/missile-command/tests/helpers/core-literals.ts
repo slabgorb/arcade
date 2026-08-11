@@ -19,15 +19,17 @@
 //   • a committed claim WHOSE VALUE EQUALS `v` is named by a STRUCTURED anchor in
 //     the literal's LOCAL context — its distinctive claim `id` (MC-…/SOUND-…, matched
 //     as a WHOLE TOKEN, R2-B) or its `FILE.MAC:NNN` source cite. LOCAL means the own
-//     line + immediately-preceding comment block ONLY: the shared file header is NOT
-//     searched, so an unrelated same-file constant's header cite cannot vouch for a
-//     bare literal (Reviewer round-2 R2-A — the wave.ts:61 WICSPL-via-ICBWAV leak).
+//     line + the enclosing declaration statement's attached leading comment block ONLY:
+//     the shared file preamble (header) is excluded BY POSITION, so an unrelated same-file
+//     constant's header cite cannot vouch for a bare literal (Reviewer round-2 R2-A — the
+//     wave.ts:61 WICSPL-via-ICBWAV leak).
 //     NOT the claim's `symbol` as free prose either: ROM symbols like TOP/MAX/MIN are
 //     English words that collide with narrative prose (Reviewer round-1 R1), OR
 //   • a value-matched claim's `symbol` EQUALS (normalized) the literal's ENCLOSING
-//     declaration symbol — the `(export )?const|let|function|type IDENT` whose own line
-//     or initializer (bracket depth) the literal sits in; a top-level non-declaration
-//     statement carries NO enclosing symbol (Reviewer round-3 R3-B). This is the
+//     declaration symbol — the name of the nearest `const`/`let` `VariableDeclaration`
+//     (or `type` alias, R5-D) ancestor in the AST; crossing any function/method/arrow/
+//     accessor boundary first yields NO enclosing symbol (a function-body literal is
+//     executable code, not a named constant — Reviewer round-4 R4-C). This is the
 //     WICSPL===WICSPL arm: a real `WICSPL` claim backs a `WICSPL` table entry that
 //     carries no per-line inline cite. Equality only — a short ROM symbol must not
 //     coincidentally match a longer enclosing name.
@@ -141,11 +143,12 @@ function referencesClaim(docText: string, c: Claim): boolean {
 }
 
 /**
- * Is a core numeric literal of `value`, whose LOCAL source context is `docText` (its
- * own line + immediately-preceding comment block — the file header is deliberately
- * EXCLUDED, Reviewer round-2 R2-A) and whose enclosing declaration symbol is
- * `enclosingSymbol`, covered by a line-anchored citation — NOT by bare global
- * value-membership, a bare-symbol prose coincidence, or an unrelated header cite?
+ * Is a core numeric literal of `value`, whose LOCAL source context is `docText` (its own
+ * line + the enclosing declaration statement's attached leading comment block — the file
+ * preamble is EXCLUDED BY POSITION, Reviewer round-2 R2-A / round-5 R5-A) and whose
+ * enclosing declaration symbol is `enclosingSymbol`, covered by a line-anchored citation —
+ * NOT by bare global value-membership, a bare-symbol prose coincidence, or an unrelated
+ * header cite?
  */
 export function literalCovered(
   claims: readonly Claim[],
@@ -176,9 +179,9 @@ export function literalCovered(
   return parseAnchors(ownLine).length > 0
 }
 
-/** One extracted core literal: its 1-based line, decoded value, the LOCAL source
- *  context a coverage decision reads (own line + immediately-preceding comment block —
- *  NOT the file header), and the literal's enclosing declaration symbol. */
+/** One extracted core literal: its 1-based line, decoded (signed) value, the LOCAL source
+ *  context a coverage decision reads (own line + the enclosing statement's attached leading
+ *  comments, MINUS the file preamble), and the literal's enclosing declaration symbol. */
 interface CoreLiteral {
   file: string
   line: number
@@ -200,12 +203,14 @@ const isFunctionBoundary = (n: ts.Node): boolean =>
   ts.isSetAccessorDeclaration(n)
 
 /** The literal's enclosing declaration symbol: the name of the nearest ancestor
- *  `VariableDeclaration` whose initializer contains it — unless a function boundary is
- *  crossed first (then the literal is function-body code, with no enclosing constant). */
+ *  `VariableDeclaration` (or `type` alias — Reviewer round-5 R5-D) whose body contains it —
+ *  unless a function boundary is crossed first (then the literal is function-body code, with
+ *  no enclosing constant). */
 function enclosingSymbolOf(node: ts.Node): string {
   for (let n = node.parent; n && !ts.isSourceFile(n); n = n.parent) {
     if (isFunctionBoundary(n)) return ''
     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) return n.name.text
+    if (ts.isTypeAliasDeclaration(n)) return n.name.text
   }
   return ''
 }
@@ -224,40 +229,76 @@ function enclosingStatement(node: ts.Node): ts.Node {
  * the line-based lexer kept leaking on sibling shapes; user ruled this AST rewrite):
  *
  *   • the literal's LOCAL comment context is its own source line + the LEADING comments
- *     of its enclosing statement (`ts.getLeadingCommentRanges`). The shared file header
- *     is never a leading comment of a later statement, and a trailing inline comment on
- *     a prior statement is that statement's trailing comment — so neither can vouch for
- *     a bare literal (round-2 R2-A and round-4 R4-A are STRUCTURALLY impossible).
+ *     of its enclosing statement (`ts.getLeadingCommentRanges`), MINUS the file preamble —
+ *     the top-anchored comment run of the first statement, excluded BY POSITION so the
+ *     shared header cannot vouch even with NO blank line above the first declaration
+ *     (round-5 R5-A). The header is never a leading comment of a LATER statement, and a
+ *     trailing inline comment on a prior statement is that statement's trailing comment —
+ *     so round-2 R2-A and round-4 R4-A are structurally impossible.
  *   • the literal's ENCLOSING declaration symbol comes from the AST parent-chain
  *     (`enclosingSymbolOf`), bounded exactly by syntax — a stale-carry across statements
  *     (round-3 R3-B), a bracket-depth desync from a multi-line template (round-4 R4-B),
  *     and a function-body literal inheriting the function name (round-4 R4-C) cannot occur.
  *
- * Numbers inside comments and strings are simply not `NumericLiteral` nodes, so prose
- * numbers (JSDoc counts, story ids) never leak in — no line-by-line comment stripping.
+ * A BigInt literal (`100n`) is surfaced with its numeric part, and a unary-minus parent
+ * signs the value, so neither a bigint nor a negative game constant escapes or is decided
+ * against the wrong value (round-5 R5-B / R5-C). Numbers inside comments and strings are
+ * not literal nodes, so prose numbers (JSDoc counts, story ids) never leak in.
  */
 export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
   const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, /* setParentNodes */ true, ts.ScriptKind.TS)
   const fullText = sf.getFullText()
   const srcLines = src.split('\n')
   const out: CoreLiteral[] = []
+
+  // The file preamble — the top-anchored leading-comment run of the FIRST statement, from
+  // file position 0. It is the shared file header BY POSITION, so it is never a literal's
+  // local context even when NO blank line separates it from the first declaration (Reviewer
+  // round-5 R5-A: the header exclusion is STRUCTURAL, not a blank-line heuristic). The run
+  // ends at the first blank-line gap: a comment past that gap sits against a declaration and
+  // is local, not header.
+  const preamblePositions = new Set<number>()
+  const firstStmt = sf.statements[0]
+  if (firstStmt) {
+    const preambleRanges = ts.getLeadingCommentRanges(fullText, firstStmt.getFullStart()) ?? []
+    let prevEnd = -1
+    for (const r of preambleRanges) {
+      if (prevEnd >= 0 && (fullText.slice(prevEnd, r.pos).match(/\n/g) ?? []).length >= 2) break
+      preamblePositions.add(r.pos)
+      prevEnd = r.end
+    }
+  }
+
   const visit = (node: ts.Node): void => {
-    if (ts.isNumericLiteral(node)) {
-      const value = Number(node.getText(sf).replace(/_/g, ''))
+    // A game constant is a NumericLiteral or a BigIntLiteral (`100n`); bigint is surfaced
+    // with its numeric part so an un-cited BigInt constant cannot sail through the gate
+    // invisibly (Reviewer round-5 R5-B). Its sign comes from a unary-minus PARENT — `-5000`
+    // is `PrefixUnaryExpression(-, NumericLiteral)`, so the literal node alone reads unsigned
+    // and coverage would decide against the wrong value (R5-C).
+    const numericText = ts.isNumericLiteral(node)
+      ? node.getText(sf)
+      : ts.isBigIntLiteral(node)
+        ? node.getText(sf).replace(/n$/i, '')
+        : null
+    if (numericText !== null) {
+      const magnitude = Number(numericText.replace(/_/g, ''))
+      const negated =
+        ts.isPrefixUnaryExpression(node.parent) && node.parent.operator === ts.SyntaxKind.MinusToken
+      const value = negated ? -magnitude : magnitude
       if (Number.isFinite(value) && !TRIVIAL.has(value)) {
         const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line
         const ownLine = srcLines[line] ?? ''
         const stmt = enclosingStatement(node)
         // Only the comment block IMMEDIATELY attached to the statement is local context.
-        // Walk the leading comment ranges backward from the statement; a blank line (>=2
-        // newlines) between a comment and the statement (or the next kept comment)
-        // DETACHES it — so the file header, always separated by a blank line, is excluded
-        // even when the declaration is the file's first statement (Reviewer round-2 R2-A).
+        // Walk the leading comment ranges backward from the statement, stopping at either
+        // the file preamble (the header, excluded BY POSITION — round-5 R5-A) or a blank
+        // line (>=2 newlines) that DETACHES an earlier block from the literal.
         const ranges = ts.getLeadingCommentRanges(fullText, stmt.getFullStart()) ?? []
         const attached: string[] = []
         let boundary = stmt.getStart(sf)
         for (let idx = ranges.length - 1; idx >= 0; idx--) {
           const r = ranges[idx]
+          if (preamblePositions.has(r.pos)) break
           if ((fullText.slice(r.end, boundary).match(/\n/g) ?? []).length >= 2) break
           attached.unshift(fullText.slice(r.pos, r.end))
           boundary = r.pos
