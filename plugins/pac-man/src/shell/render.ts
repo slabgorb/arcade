@@ -80,12 +80,14 @@ const SPRITE_PX = 16 // pacman.5f's native sprite size — 2x2 maze tiles.
 const GATE_COLOR = '#ffb8de'
 const HUD_COLOR = '#ffffff'
 
-/** Rows this maze table reserves for the score/lives/level HUD (`maze.ts`'s
- *  header: rows 0-2 and 33-35, always 'wall', no gameplay tile). These must
- *  never paint wall line art — they are six rows deep specifically so
- *  `drawHud` has clean black to write its text onto. */
+/** Rows reserved for the HUD, kept black so `drawHud` has clean space. Authentic
+ *  Pac-Man is 3 rows top (score / HIGH SCORE) + 2 rows bottom (lives / level) —
+ *  ASYMMETRIC. pm4-12: this used to blank 3 bottom rows (33-35), which swallowed the
+ *  maze's bottom BORDER WALL (row 33 is a full '#' row, the mirror of the top border
+ *  at row 3) and left the maze looking open at the bottom. The bottom band is rows
+ *  34-35 only, so row 33 renders as the bottom border. */
 function isHudRow(ty: number): boolean {
-  return ty < 3 || ty >= MAZE.rows - 3
+  return ty < 3 || ty >= MAZE.rows - 2
 }
 
 // The maze is monochrome per element (a MAME framebuffer of the level-1 maze is
@@ -250,7 +252,7 @@ export function drawMaze(ctx: CanvasRenderingContext2D, eaten: ReadonlySet<strin
   clearField(ctx, MAZE.cols * TILE_PX, MAZE.rows * TILE_PX)
 
   for (let ty = 0; ty < MAZE.rows; ty++) {
-    // HUD bands (rows 0-2, 33-35) stay black — drawHud paints its text there.
+    // HUD bands (rows 0-2 top, 34-35 bottom) stay black — drawHud paints its text there.
     if (isHudRow(ty)) continue
     for (let tx = 0; tx < MAZE.cols; tx++) {
       const kind = tileAt(tx, ty)
@@ -535,7 +537,7 @@ export function drawScorePopup(ctx: CanvasRenderingContext2D, xPx: number, yPx: 
 }
 
 /** The HUD, drawn into the RESERVED HUD bands so it never overlaps the playfield
- *  (`maze.ts` rows 0-2 at the top and rows 33-35 at the bottom — always 'wall'/no
+ *  (`maze.ts` rows 0-2 at the top and rows 34-35 at the bottom — always 'wall'/no
  *  gameplay tile, per that file's header; `isHudRow` keeps them black). pm4-9 moved
  *  the layout to the ROM-authentic arrangement: SCORE top-left, HIGH SCORE top-centre
  *  (pacman.asm:36a5 — the persisted top score, or 0), and LIVES/LEVEL in the BOTTOM
@@ -549,7 +551,7 @@ export function drawHud(
   level: number,
 ): void {
   const W = MAZE.cols * TILE_PX
-  const BOTTOM = (MAZE.rows - 2) * TILE_PX // row 34 of 0-35, inside the bottom band (rows 33-35)
+  const BOTTOM = (MAZE.rows - 2) * TILE_PX // row 34 of 0-35, inside the bottom band (rows 34-35)
   ctx.fillStyle = HUD_COLOR
   ctx.font = '8px monospace'
   ctx.textBaseline = 'top'
@@ -559,7 +561,7 @@ export function drawHud(
   ctx.textAlign = 'center'
   ctx.fillText('HIGH SCORE', W / 2, 4) // pacman.asm:36a5
   ctx.fillText(String(highScore), W / 2, 14)
-  // Bottom band (rows 33-35, y >= 264): lives at the left, level at the right.
+  // Bottom band (rows 34-35, y >= 272): lives at the left, level at the right.
   ctx.textAlign = 'start'
   ctx.fillText(`LIVES ${lives}`, 4, BOTTOM)
   ctx.textAlign = 'end'

@@ -143,7 +143,9 @@ describe('drawMaze tile blit (pm3-4)', () => {
     const calls = (ctx as unknown as { calls: RecordedCall[] }).calls
 
     for (let ty = 0; ty < MAZE.rows; ty++) {
-      if (ty >= 3 && ty < MAZE.rows - 3) continue // real 30-row maze, not the HUD bands
+      if (ty >= 3 && ty < MAZE.rows - 2) continue // real 31-row maze (rows 3-33), not the HUD bands
+      // pm4-12: the bottom HUD band is rows 34-35 only (2 rows); row 33 is the maze's
+      // bottom border wall and DOES paint (mirror of the top border at row 3).
       for (let tx = 0; tx < MAZE.cols; tx++) {
         // Only per-TILE paints (w===8, h===8) count — clearField's initial
         // full-canvas fillRect(0, 0, 224, 288) also lands at x=0,y=0 and

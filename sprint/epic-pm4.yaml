@@ -122,3 +122,13 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: pm4-12
+    title: "[BUG] Maze bottom border wall is invisible — the maze looks open at the bottom. Root cause: isHudRow blanked 3 bottom rows (33-35), but the maze's bottom border wall is row 33 (full '#' row), the mirror of the top border at row 3. Fix: bottom band -> rows 34-35 (MAZE.rows-2) so row 33 renders. Fixed in this PR + maze-border.test.ts."
+    points: 2
+    priority: p2
+    status: done
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-11'
+    type: bug
+    review_verdict: approved
