@@ -19,7 +19,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 1,
     listed: true,
     showcase: true,
-    version: '1.1.4',
+    version: '1.1.5',
   },
   {
     id: 'star-wars',
