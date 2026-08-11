@@ -17,6 +17,8 @@
 // gravity of the pair applies — wings down while held, wings up when released.
 // Both are needed; neither substitutes for the other.
 
+import type { KeyMembership } from '@shared/held-keys'
+
 /** Exactly what core accepts. */
 export interface PlayerInput {
   dir: -1 | 0 | 1
@@ -36,7 +38,7 @@ const PLAYER_1: Binding = { left: 'ArrowLeft', right: 'ArrowRight', flap: 'Space
 /** Player 2: A / D and left shift — disjoint from P1 so neither steals keys. */
 const PLAYER_2: Binding = { left: 'KeyA', right: 'KeyD', flap: 'ShiftLeft' }
 
-function map(binding: Binding, held: ReadonlySet<string>, prevFlap: boolean): PlayerInput {
+function map(binding: Binding, held: KeyMembership, prevFlap: boolean): PlayerInput {
   const left = held.has(binding.left)
   const right = held.has(binding.right)
   // The ROM's answer for both-at-once: neutral.
@@ -50,10 +52,10 @@ function map(binding: Binding, held: ReadonlySet<string>, prevFlap: boolean): Pl
  * @param prevFlap  whether the flap key was down on the PREVIOUS frame — the
  *                  shell's edge memory, kept out here so this stays pure
  */
-export function mapPlayer1(held: ReadonlySet<string>, prevFlap: boolean): PlayerInput {
+export function mapPlayer1(held: KeyMembership, prevFlap: boolean): PlayerInput {
   return map(PLAYER_1, held, prevFlap)
 }
 
-export function mapPlayer2(held: ReadonlySet<string>, prevFlap: boolean): PlayerInput {
+export function mapPlayer2(held: KeyMembership, prevFlap: boolean): PlayerInput {
   return map(PLAYER_2, held, prevFlap)
 }
