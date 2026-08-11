@@ -121,6 +121,28 @@
     }
   },
   {
+    "id": "MC-WICSPL-16",
+    "symbol": "WICSPL",
+    "value": 16,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 16 (0x10) is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
+    "id": "MC-WICSPL-10",
+    "symbol": "WICSPL",
+    "value": 10,
+    "meaning": "REV-01 per-wave ICBM descent speed, fraction byte of the \"frames before update\" period (SET UP ICBM SPEED, WICSPL); larger period = slower. 10 (0x0A) is one hex entry (period = WICSPH + WICSPL/256).",
+    "source": {
+      "file": "W3MAIN.MAC",
+      "line": 5717,
+      "verbatim": "WICSPL:\t.BYTE 0D0,0E0,0C0,8,0A0,60,40,20,10,0A,6,4,2,1,0"
+    }
+  },
+  {
     "id": "MC-WICSPL-8",
     "symbol": "WICSPL",
     "value": 8,

@@ -252,7 +252,7 @@ describe('src/core carries no un-cited numeric literal (AC3 guard)', () => {
     const claims = loadCommittedClaims()
     for (const lit of extractCoreLiterals(src, file)) {
       expect(
-        literalCovered(claims, lit.docText, lit.value),
+        literalCovered(claims, lit.docText, lit.value, lit.enclosingSymbol),
         `core/${file}:${lit.line} has un-cited game-constant literal ${lit.value} — no committed claim is anchored to its own citation, and it is not STRUCTURAL/TRIVIAL. Add an inline FILE.MAC:NNN cite on its line/doc-block, or a documented STRUCTURAL exemption.`,
       ).toBe(true)
     }

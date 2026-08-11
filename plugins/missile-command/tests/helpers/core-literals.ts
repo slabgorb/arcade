@@ -9,27 +9,31 @@
 // ICBM-speed-scale claim also decodes to 256, with nothing tying 256 to cursor.ts.
 //
 // This module hardens coverage to the literal's OWN citation. A core literal `v`
-// is COVERED iff:
+// is COVERED iff (mc10-6 round 3 — the "close the class" rule, user-ruled 2026-08-11):
 //   • `v` ∈ TRIVIAL (indices/halving/sign), OR
 //   • `v` ∈ STRUCTURAL — a documented cabinet/byte-space fact that names no ROM
 //     line (value → reason), OR
-//   • a committed claim WHOSE VALUE EQUALS `v` is named by a STRUCTURED anchor in
-//     the literal's context — its distinctive claim `id` (MC-…/SOUND-…) or its
-//     `FILE.MAC:NNN` source cite. NOT its `symbol`: ROM symbols like TOP/MAX/MIN
-//     are ordinary English words that collide with narrative prose (esp. the
-//     shared file header), so a bare-symbol match re-admits the coincidental
-//     coverage this story retires (Reviewer round-1 R1), OR
 //   • the literal's OWN line self-documents an inline `FILE.MAC:NNN` / bare `:NNN`
 //     cite — this keeps the sound-table / city / base byte rows green without a
-//     per-byte claim. Scoped to the OWN line ONLY, so a cite in a shared preceding
-//     block or the file header cannot vouch for a bare magic number (that is
-//     exactly the `LOGICAL_WIDTH = 0x100` collision).
+//     per-byte claim, OR
+//   • a committed claim WHOSE VALUE EQUALS `v` is named by a STRUCTURED anchor in
+//     the literal's LOCAL context — its distinctive claim `id` (MC-…/SOUND-…, matched
+//     as a WHOLE TOKEN, R2-B) or its `FILE.MAC:NNN` source cite. LOCAL means the own
+//     line + immediately-preceding comment block ONLY: the shared file header is NOT
+//     searched, so an unrelated same-file constant's header cite cannot vouch for a
+//     bare literal (Reviewer round-2 R2-A — the wave.ts:61 WICSPL-via-ICBWAV leak).
+//     NOT the claim's `symbol` as free prose either: ROM symbols like TOP/MAX/MIN are
+//     English words that collide with narrative prose (Reviewer round-1 R1), OR
+//   • a value-matched claim's `symbol` EQUALS (normalized) the literal's ENCLOSING
+//     declaration symbol (nearest preceding `(export )?const|let|function|type IDENT`).
+//     This is the WICSPL===WICSPL arm: a real `WICSPL` claim backs a `WICSPL` table
+//     entry that carries no per-line inline cite. Equality only — a short ROM symbol
+//     must not coincidentally match a longer enclosing name.
 //
-// A bare value collision (the retired `claimedValues.has(v)`) and a bare-symbol
-// prose coincidence are BOTH non-coverage. The mc citation discipline already
-// writes these structured anchors — the "SOURCE OF TRUTH" header lists each
-// constant as `SYMBOL = VALUE  FILE.MAC:NNN  claim MC-XXX`, and inline rows carry
-// `// … FILE.MAC:NNN`.
+// A bare value collision (the retired `claimedValues.has(v)`), a bare-symbol prose
+// coincidence, and an unrelated header cite are ALL non-coverage. The mc citation
+// discipline already writes these structured anchors — inline rows carry
+// `// … FILE.MAC:NNN`, and a table's entries share its enclosing symbol.
 //
 // Literal extraction strips `//`, single- AND multi-line `/* */` / `/** */` blocks
 // and string bodies, so prose numbers (story ids like `mc5-3`, "6 cities") in
@@ -64,6 +68,13 @@ export const STRUCTURAL: ReadonlyMap<number, string> = new Map<number, string>([
 ])
 
 const basename = (p: string): string => p.split('/').pop() ?? p
+
+/** Lowercase + strip every non-alphanumeric — so an enclosing TS declaration name
+ *  (`MIRV_LO`) and a ROM claim symbol (`MIRVLO`) compare on their letters/digits only. */
+const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+/** Escape a string for literal use inside a RegExp. */
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /** A source citation anchor as it appears in prose: `FILE.MAC:NNN` (opt. `.MAC`,
  *  opt. `-M` range) or a bare `:NNN` line ref (the field.ts `// SYM :123` form). */
@@ -104,8 +115,14 @@ export function parseAnchors(text: string): Anchor[] {
  */
 function referencesClaim(docText: string, c: Claim): boolean {
   const hay = docText.toLowerCase()
-  // Distinctive claim id — never an English word.
-  if (c.id && hay.includes(c.id.toLowerCase())) return true
+  // Distinctive claim id — never an English word. Matched as a WHOLE TOKEN, not a
+  // bare substring: `MC-WICSPL-6` must NOT be satisfied by a doc naming only the
+  // longer real id `MC-WICSPL-64` (Reviewer round-2 R2-B). The boundaries reject an
+  // adjacent alphanumeric on either side (hyphens inside the id are literal).
+  if (c.id) {
+    const idRe = new RegExp(`(?<![a-z0-9])${escapeRe(c.id.toLowerCase())}(?![a-z0-9])`)
+    if (idRe.test(hay)) return true
+  }
   // The claim's own `FILE.MAC:NNN` cite (with or without the extension, as the mc
   // "SOURCE OF TRUTH" headers write it).
   const file = basename(c.source.file).toLowerCase()
@@ -120,10 +137,24 @@ function referencesClaim(docText: string, c: Claim): boolean {
  * `docText` (its own line + doc-block + file header), covered by a line-anchored
  * citation — NOT by bare global value-membership?
  */
-export function literalCovered(claims: readonly Claim[], docText: string, value: number): boolean {
+export function literalCovered(
+  claims: readonly Claim[],
+  docText: string,
+  value: number,
+  enclosingSymbol = '',
+): boolean {
   if (TRIVIAL.has(value) || STRUCTURAL.has(value)) return true
   const matching = claims.filter((c) => Number(c.value) === value)
+  // LOCAL structured anchor: a value-matched claim named by its id / FILE.MAC:NNN cite
+  // in `docText` (own line + preceding block ONLY — the file header is NOT in docText,
+  // so an unrelated same-file constant's header cite cannot vouch, Reviewer round-2 R2-A).
   if (matching.some((c) => referencesClaim(docText, c))) return true
+  // Enclosing-symbol arm: a value-matched claim whose `symbol` EQUALS (normalized) the
+  // literal's enclosing declaration symbol. This is how a real `WICSPL` claim backs a
+  // `WICSPL` table entry that carries no per-line inline cite — WICSPL===WICSPL. Equality
+  // only (not substring): a short ROM symbol must not coincidentally match a longer name.
+  const encl = norm(enclosingSymbol)
+  if (encl && matching.some((c) => norm(c.symbol) === encl)) return true
   // Self-documenting: the literal's OWN line (the first line of docText) carries a
   // source citation — `FILE.MAC:NNN` or a bare `:NNN` line ref. This is the narrow
   // ruling's "carries a real inline citation counts as anchored": the sound-table
@@ -135,43 +166,20 @@ export function literalCovered(claims: readonly Claim[], docText: string, value:
   return parseAnchors(ownLine).length > 0
 }
 
-/** One extracted core literal: its 1-based line, decoded value, and the source
- *  context a coverage decision reads (own line + preceding comment block + header). */
+/** One extracted core literal: its 1-based line, decoded value, the LOCAL source
+ *  context a coverage decision reads (own line + immediately-preceding comment block —
+ *  NOT the file header), and the literal's enclosing declaration symbol. */
 interface CoreLiteral {
   file: string
   line: number
   value: number
   docText: string
+  enclosingSymbol: string
 }
 
-/** The file's leading contiguous comment block (the "SOURCE OF TRUTH" header). */
-function headerBlock(lines: readonly string[]): string {
-  const head: string[] = []
-  let inBlock = false
-  for (const raw of lines) {
-    const t = raw.trim()
-    if (inBlock) {
-      head.push(raw)
-      if (t.includes('*/')) inBlock = false
-      continue
-    }
-    if (t === '') {
-      head.push(raw)
-      continue
-    }
-    if (t.startsWith('//')) {
-      head.push(raw)
-      continue
-    }
-    if (t.startsWith('/*')) {
-      head.push(raw)
-      if (!t.includes('*/')) inBlock = true
-      continue
-    }
-    break
-  }
-  return head.join('\n')
-}
+/** The nearest preceding `(export )?const|let|function|type IDENT` on a raw line —
+ *  the enclosing declaration symbol a literal on/after this line belongs to. */
+const DECL_RE = /^\s*(?:export\s+)?(?:const|let|function|type)\s+([A-Za-z_$][\w$]*)/
 
 /** The contiguous comment/blank block immediately preceding line index `i`. */
 function precedingBlock(lines: readonly string[], i: number): string {
@@ -197,10 +205,14 @@ function precedingBlock(lines: readonly string[], i: number): string {
  */
 export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
   const lines = src.split('\n')
-  const header = headerBlock(lines)
   const out: CoreLiteral[] = []
   let inBlock = false
+  let enclosingSymbol = ''
   for (let i = 0; i < lines.length; i++) {
+    // Track the enclosing declaration BEFORE emitting this line's literals, so a value
+    // on the declaration line itself (`const WICSPL = [0x10]`) sees `WICSPL`.
+    const decl = DECL_RE.exec(lines[i])
+    if (decl) enclosingSymbol = decl[1]
     let s = lines[i]
     if (inBlock) {
       const end = s.indexOf('*/')
@@ -235,8 +247,11 @@ export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
       .map((m) => Number(m[1]))
       .filter((v) => Number.isFinite(v) && !TRIVIAL.has(v))
     if (nums.length === 0) continue
-    const docText = [lines[i], precedingBlock(lines, i), header].join('\n')
-    for (const value of nums) out.push({ file, line: i + 1, value, docText })
+    // LOCAL context ONLY — own line + immediately-preceding comment block. The file
+    // header is deliberately excluded: an unrelated same-file constant's header cite
+    // must not vouch for a bare literal (Reviewer round-2 R2-A, the wave.ts:61 leak).
+    const docText = [lines[i], precedingBlock(lines, i)].join('\n')
+    for (const value of nums) out.push({ file, line: i + 1, value, docText, enclosingSymbol })
   }
   return out
 }
@@ -252,7 +267,7 @@ export function uncitedCoreLiterals(claims: readonly Claim[], coreDir: string): 
   for (const file of files) {
     const src = readFileSync(join(coreDir, file), 'utf8')
     for (const lit of extractCoreLiterals(src, file)) {
-      if (!literalCovered(claims, lit.docText, lit.value)) {
+      if (!literalCovered(claims, lit.docText, lit.value, lit.enclosingSymbol)) {
         uncited.push(`${file}:${lit.line}=${lit.value}`)
       }
     }
