@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2634 - Completed Stories
-# Jira Sprint ID: 5
-# Archived: 2026-08-11
-
 sprint:
   name: "TO Sprint 2634"
   number: 2634
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2634"
   goal: Smoothing out the game factory (Millipede ml1)
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: ml1-5
+    epic: ml1
+    title: 'Four-file scaffold + three registrations -> boots black canvas at /millipede/: copy plugins/joust/ (index.html, plugin.ts, package.json, tsconfig.json extends ../../tsconfig.json); add millipede to justfile games and vitest.config.ts GAMES; npm run gen:registry. Green npx vitest run --project millipede + npm run lint; visual boot check at http://127.0.0.1:5270/millipede/ (compare against a nonsense control path, not just a 200).'
+    points: 5
+    completed: '2026-08-11'
