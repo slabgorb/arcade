@@ -38,7 +38,7 @@ stories:
     title: 'Smart bomb (blast-dodging enemy) — REV-03 port. BLOCKED: absent from vendored REV-01 (035820-01); needs just vendor-source of REV-03 + rom-source-study before any RED'
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: mc5-5
