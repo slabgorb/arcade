@@ -73,7 +73,8 @@ stories:
     title: "Harden the mc citations AC3 un-cited-literal gate: it currently checks only global value-membership across ALL claims, so an un-cited core literal passes whenever ANY unrelated claim shares its number (e.g. cursor.ts LOGICAL_WIDTH=0x100 passes only via the ICBM-speed-scale claim value 256). Require a symbol/line-anchored citation (claimCovers on the literal's own file:line), not bare value membership, in citations.test.ts"
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
     type: chore
