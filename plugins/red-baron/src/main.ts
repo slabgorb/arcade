@@ -63,6 +63,7 @@ import { multiply, type Mat4, type Vec3 } from '@shared/math3d'
 import { createRng, nextFloat } from '@shared/rng'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { installHeldKeys } from '@shared/held-keys'
 import { drawEscOverlay } from '@shared/esc-overlay'
 
 // sc1-1: the checked mount. This file previously cast the element and then used a
@@ -353,7 +354,6 @@ function draw(
 
 // ─── the yoke: keyboard → FlightInput ─────────────────────────────────────────
 
-const held = new Set<string>()
 const CONTROL_KEYS = new Set([
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
   'a', 'A', 'd', 'D', 'w', 'W', 's', 'S',
@@ -361,11 +361,12 @@ const CONTROL_KEYS = new Set([
 ])
 const axis = (pos: boolean, neg: boolean): number => (pos ? 1 : 0) - (neg ? 1 : 0)
 
-window.addEventListener('keydown', (e) => {
-  held.add(e.key)
-  if (CONTROL_KEYS.has(e.key)) e.preventDefault() // arrows must fly, not scroll
-})
-window.addEventListener('keyup', (e) => held.delete(e.key))
+// SH4-2: the shared held-keys tracker replaces the hand-rolled Set + keydown/keyup.
+// idOf is e.key (red-baron keys on the character, not the physical code); arrows
+// and Space preventDefault so they fly rather than scroll; blur clears the held
+// set so a key does not stick across an alt-tab (the old hand-rolled version had
+// no blur reset). `keys.uninstall()` is the disposer this exposes.
+const keys = installHeldKeys(window, { idOf: (e) => e.key, preventDefaultFor: CONTROL_KEYS })
 
 // rb2-11: POKEY + analog sound. The browser forbids an AudioContext before a user
 // gesture, so the engine stays inert until the pilot touches a key (or clicks) —
@@ -410,8 +411,8 @@ function nearestDepth(planes: readonly Enemy[]): number {
  */
 function readInput(enemies: readonly Enemy[], grmode: number): FlightInput {
   return {
-    turn: axis(held.has('ArrowRight') || held.has('d') || held.has('D'), held.has('ArrowLeft') || held.has('a') || held.has('A')),
-    pitch: axis(held.has('ArrowUp') || held.has('w') || held.has('W'), held.has('ArrowDown') || held.has('s') || held.has('S')),
+    turn: axis(keys.has('ArrowRight') || keys.has('d') || keys.has('D'), keys.has('ArrowLeft') || keys.has('a') || keys.has('A')),
+    pitch: axis(keys.has('ArrowUp') || keys.has('w') || keys.has('W'), keys.has('ArrowDown') || keys.has('s') || keys.has('S')),
     proximity: controlBand(isGroundMode(grmode), proximityBand(nearestDepth(enemies))),
   }
 }
@@ -633,7 +634,7 @@ function frame(nowMs: number): void {
   displayFrame += 1
 
   const input = readInput(enemies, grmode)
-  const fireHeld = held.has(' ')
+  const fireHeld = keys.has(' ')
   // The frame the sim's SCREEN-SPACE questions are asked against (the blimp's entry + despawn).
   const aspect = viewAspect()
   // rb2-11: the sound moments this frame's calc-steps produce. red-baron has no

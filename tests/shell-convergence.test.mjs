@@ -392,32 +392,38 @@ test('AC-2: centipede keeps the ROM frame clock (15750/263 Hz), not a rounded st
   );
 });
 
-test('AC-2: joust keeps its per-frame input sampling — the unlock must not swallow the held set', () => {
-  // joust's audio unlock is FUSED into the handler that samples input:
+test('AC-2: joust keeps its per-frame input sampling — the shell helpers must not swallow the held set', () => {
+  // joust's audio unlock is FUSED into the keydown handler, and SH4-2 moved the
+  // held-set sampling itself out of an inline `held.add(e.code)` and into the
+  // shared @shared/held-keys tracker:
   //
+  //   const held = installHeldKeys(window, { preventDefaultFor: new Set(['Space']) })
   //   window.addEventListener('keydown', (e) => {
-  //     audio.resume()          <- the unlock
-  //     held.add(e.code)        <- the input sample
-  //     if (e.code === 'Space') e.preventDefault()
+  //     audio.resume()                                <- the unlock, alongside
+  //     if (cabinet.mode === 'highscore') entry = ... <- the initials edge
   //   })
   //
-  // So adopting installAudioUnlock here necessarily edits the input path — the
-  // precise hazard the epic names ("a helper that changes when a frame starts or
-  // how input is sampled is a regression even if every test stays green"). The
-  // helper must be added ALONGSIDE this handler, never by replacing it.
+  // The epic's hazard still stands ("a helper that changes when a frame starts or
+  // how input is sampled is a regression even if every test stays green"), so
+  // this pins that the sampling seam is still PRESENT — now the installHeldKeys
+  // call — and that the Space preventDefault survived the move into the helper's
+  // `preventDefaultFor` config. The keyup half is now owned by the helper, which
+  // the installHeldKeys anchor covers. (Before SH4-2 this asserted the inline
+  // `held.add(e.code)` / `held.delete(e.code)` idiom; that idiom is gone, sampled
+  // by the shared tracker instead — joust's own 3311-test suite guards the feel.)
   //
   // `mainSrc` strips comments, and that is load-bearing here rather than tidy.
-  // The first cut matched raw source, so all three assertions below survived
-  // COMMENTING OUT the very lines they guard — `// held.add(e.code)` still
-  // contains the text `held.add(e.code)`. The sampling could have been disabled
-  // outright with the suite green, on the one guard this file calls the
-  // load-bearing proof for the riskiest cadence-sensitive game.
+  // Anchoring to raw source would let COMMENTING OUT the installHeldKeys call
+  // pass, since `// installHeldKeys(window, …)` still contains the text.
   const src = mainSrc('joust');
-  assert.match(src, /held\.add\(\s*e\.code\s*\)/, "joust must still sample held keys into `held`");
-  assert.match(src, /held\.delete\(\s*e\.code\s*\)/, 'joust must still release held keys on keyup');
   assert.match(
     src,
-    /e\.preventDefault\(\)/,
+    /installHeldKeys\(\s*window\s*,/,
+    'joust must still sample held keys — now through the shared installHeldKeys tracker',
+  );
+  assert.match(
+    src,
+    /preventDefaultFor\s*:\s*new Set\(\s*\[\s*'Space'\s*\]\s*\)/,
     'joust must still preventDefault on Space — losing it scrolls the page mid-game',
   );
 });

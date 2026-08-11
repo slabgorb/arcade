@@ -42,6 +42,9 @@ const PURE_SUBPATHS = ['math3d', 'rng', 'loop', 'font', 'name-entry', 'pause'] a
 // concession — the whole module is the imperative DOM wiring the games used to
 // hand-write. Classified here, not exempted: the guard below still scans it for
 // nothing, because being in this list is what says "this file is allowed a DOM".
+// SH4-2 adds `held-keys` for the same reason: the extracted held-keys input
+// tracker reads KeyboardEvent and attaches keydown/keyup/blur listeners — it IS
+// DOM wiring, browser-exempt by construction like host-helpers beside it.
 const BROWSER_SUBPATHS = [
   'esc-overlay',
   'glow',
@@ -50,6 +53,7 @@ const BROWSER_SUBPATHS = [
   'highscore',
   'synth',
   'host-helpers',
+  'held-keys',
 ] as const
 
 const srcPath = (name: string) => join(SHARED_ROOT, `${name}.ts`)
@@ -162,8 +166,12 @@ describe('purity guard — classification is honest, not just a Set literal', ()
     // mountCanvas resolves a <canvas> and its 2d context, installAudioUnlock and
     // installPauseToggle attach listeners. There is no version of it that belongs in
     // PURE_SUBPATHS, which is the distinction this guard exists to police.
+    //
+    // `held-keys` added deliberately by SH4-2, same rationale: `installHeldKeys`
+    // reads KeyboardEvent and attaches keydown/keyup/blur listeners — the DOM
+    // wiring IS the module, so it can never belong in PURE_SUBPATHS.
     expect([...BROWSER_SUBPATHS].sort()).toEqual(
-      ['audio', 'esc-overlay', 'glow', 'highscore', 'host-helpers', 'synth', 'view'].sort(),
+      ['audio', 'esc-overlay', 'glow', 'held-keys', 'highscore', 'host-helpers', 'synth', 'view'].sort(),
     )
   })
 

@@ -15,6 +15,7 @@
 
 import type { Input } from '../core/input'
 import { DEFAULT_TUNING, type RotationTuning } from './tuning'
+import { installHeldKeys, type HeldKeysHandle } from '@shared/held-keys'
 
 export interface InputController {
   /** A fresh Input reflecting the keys held this instant. */
@@ -57,7 +58,6 @@ export function createInputController(
   target: HTMLElement,
   tuning: RotationTuning = DEFAULT_TUNING,
 ): InputController {
-  const held = new Set<string>()
   let mouseFireHeld = false
   let mouseHyperspaceHeld = false
 
@@ -70,17 +70,21 @@ export function createInputController(
   let leftEdge = false
   let rightEdge = false
 
+  // SH4-2: the shared held-keys tracker owns the Set, keydown-add, keyup-remove,
+  // the SCROLL_KEYS preventDefault, and — new — a blur reset that clears the held
+  // KEYS on alt-tab (the mouse-button reset in the blur handler below stays; the
+  // two together now fully release on focus loss). The keydown here keeps ONLY
+  // the A-20 rising-edge latch, which must observe the PRE-ADD state: it is
+  // registered BEFORE installHeldKeys' own keydown, so `keys.has(e.code)` is
+  // still false on the press frame. `keys.uninstall()` is the disposer.
+  let keys: HeldKeysHandle
   window.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (!held.has(e.code)) {
+    if (!keys.has(e.code)) {
       if ((KEYS.left as readonly string[]).includes(e.code)) leftEdge = true
       if ((KEYS.right as readonly string[]).includes(e.code)) rightEdge = true
     }
-    held.add(e.code)
-    if (SCROLL_KEYS.has(e.code)) e.preventDefault()
   })
-  window.addEventListener('keyup', (e: KeyboardEvent) => {
-    held.delete(e.code)
-  })
+  keys = installHeldKeys(window, { preventDefaultFor: SCROLL_KEYS })
 
   target.addEventListener('mousedown', (e: MouseEvent) => {
     if (e.button === MOUSE_BUTTON.left) mouseFireHeld = true
@@ -100,7 +104,7 @@ export function createInputController(
     mouseHyperspaceHeld = false
   })
 
-  const any = (codes: readonly string[]): boolean => codes.some((c) => held.has(c))
+  const any = (codes: readonly string[]): boolean => keys.any(codes)
 
   // Advance one rotate direction's frame counter for this sample and decide its
   // output. Held → increment (0→1 is the press edge, which nudges). Not held but
