@@ -403,3 +403,8 @@ completed_stories:
     title: "joust — correct the README @shared-consumption paragraph that SH3-1 falsified: the mulberry32 is no longer 'lifted byte-for-byte into src/core/frame.ts rather than imported' (it now imports @shared/rng via src/core/rng.ts), and joust consumes several @shared subpaths, not 'exactly one: @shared/audio' (measure: grep -rhoE '@shared/[a-z0-9-]+' plugins/joust/src | sort -u). The paragraph is pinned by the jt9-28 AC2 guard in tests/audio-seam-scope.test.ts (anchor 'zero-consumption outlier' + indicative/measured stamp), so the guard prose must move with it. Adjacent, out-of-scope note: a THIRD inlined mulberry32 (0x6d2b79f5) still lives in tools/sample-bake/bake-samples.mjs:66."
     points: 2
     completed: '2026-08-11'
+  - id: SH3-3
+    epic: SH3
+    title: 'missile-command — replace the raw requestAnimationFrame loop (src/main.ts:71/74) with @shared/loop createLoop and route the canvas mount through @shared/host-helpers; the sim already uses @shared/rng, so no determinism-sequence change is expected — pin it anyway'
+    points: 3
+    completed: '2026-08-11'
