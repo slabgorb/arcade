@@ -98,7 +98,7 @@ stories:
     title: 'Attract presentation + high-score ladder display + default table (shell+core): render the attract screen — title + the already-built high-score ladder + ROM attract text — over the pm4-8 demo, and SEED a default ladder (the mc7-4 tail). Pin the ROM strings/cadence at RED (pacman.asm:36a7 table).'
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
