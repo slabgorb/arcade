@@ -88,11 +88,12 @@ stories:
     title: 'Self-playing attract demo (core): a deterministic seeded auto-player drives Pac-Man during phase attract so the maze plays itself (ghost AI already runs); any input -> ready. Pure attract driver in src/core, seeded RNG, no clock (mirrors mc6-4). purity.test.ts green.'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+    completed: '2026-08-11'
     review_verdict: approved
   - id: pm4-9
     title: 'Attract presentation + high-score ladder display + default table (shell+core): render the attract screen — title + the already-built high-score ladder + ROM attract text — over the pm4-8 demo, and SEED a default ladder (the mc7-4 tail). Pin the ROM strings/cadence at RED (pacman.asm:36a7 table).'
