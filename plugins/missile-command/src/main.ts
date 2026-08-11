@@ -7,6 +7,8 @@
 // moments on GameState.soundEvents, and the shell voices them through the live
 // POKEY engine. The shell owns the clock — core never reads the time.
 
+import { createLoop } from '@shared/loop'
+import { mountCanvas } from '@shared/host-helpers'
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
@@ -16,10 +18,11 @@ import { makeMcHighScoreStorage, loadHighScores } from './shell/highscore.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
 
-const canvas = document.querySelector<HTMLCanvasElement>('#game')
-if (!canvas) throw new Error('index.html must host a <canvas id="game">')
-const context = canvas.getContext('2d')
-if (!context) throw new Error('2d canvas context unavailable')
+// SH3-3: the checked mount from @shared/host-helpers replaces the hand-rolled
+// querySelector('#game') + getContext('2d')! pair (asteroids' sc1-1 idiom). mountCanvas
+// owns the null / not-a-canvas / no-2d-context guards and returns a non-null canvas +
+// ctx, so `context` is aliased straight out of the destructure.
+const { canvas, ctx: context } = mountCanvas(document)
 
 // mc10-5: pin the canvas to the fixed 256:222 field ratio and letterbox it, instead
 // of stretching to the full ~2:1 window. The fit math + HiDPI clamp live in the pure,
@@ -27,9 +30,9 @@ if (!context) throw new Error('2d canvas context unavailable')
 // smaller canvas so the black page shows through as the letterbox/pillarbox bars.
 // This runs on resize and once at boot — NOT per frame, so the frame loop no longer
 // slams the backing store back to the full client size (the old smear).
-// A const arrow (created after the null-check above) so `canvas` stays narrowed to
-// HTMLCanvasElement — a hoisted `function` declaration would sit above the throw and
-// widen it back to `| null`. Matches the file's other closures (drain/frame).
+// A const arrow, matching the file's other closures (drain, and the loop callbacks
+// below). `canvas` arrives as a non-null HTMLCanvasElement from mountCanvas, so no
+// narrowing dance is needed here.
 const resize = (): void => {
   applyLetterbox(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
 }
@@ -106,26 +109,32 @@ window.addEventListener('keydown', (event: KeyboardEvent): void => {
   drain()
 })
 
-const frame = (): void => {
-  const prev = game
-  game = stepGame(game)
-  // Voice this frame's sim sound moments (detonations, kills, structure losses), then the
-  // state-EDGE cues (mc8-4: whoop on wave advance, end-game on the game-over edge, bonus-
-  // city on a bonus earned — none of which ride the soundEvents stream), then re-read the
-  // sustained drone so it goes silent at the game-over edge.
-  playEventSounds(audio, game.soundEvents)
-  playEdgeCues(audio, prev, game)
-  updateSustainedSounds(audio, game)
-  game = { ...game, soundEvents: [] }
-
-  // The backing store is the letterboxed buffer set by resize() (mc10-5) — the frame
-  // loop no longer resizes it, so drawFrame paints into the pinned 256:222 canvas.
-  // mc10-4: feed the LIVE wave so the per-wave palette (paletteForWave, mc9-2) follows
-  // the game. Without this 5th arg drawFrame falls back to its wave=INITIAL_WAVE default
-  // and every frame renders the wave-1 colours forever, no matter how far play advances.
-  drawFrame(context, game, canvas.width, canvas.height, game.wave)
-
-  requestAnimationFrame(frame)
-}
-
-requestAnimationFrame(frame)
+// SH3-3: the frame loop is now @shared/loop's createLoop — the fixed-timestep
+// accumulator (asteroids' pattern) that paces the sim at a steady 60Hz regardless of
+// display refresh, retiring the raw once-per-rAF loop. The STEP thunk owns the sim
+// advance + sound voicing; MC's stepGame takes no dt, so the accumulator's dt is unused
+// (the core is deliberately untouched — the same @shared/rng sequence runs per step).
+// The RENDER thunk paints the latest state; MC doesn't interpolate, so alpha is unused.
+const loop = createLoop(
+  () => {
+    const prev = game
+    game = stepGame(game)
+    // Voice this step's sim sound moments (detonations, kills, structure losses), then the
+    // state-EDGE cues (mc8-4: whoop on wave advance, end-game on the game-over edge, bonus-
+    // city on a bonus earned — none of which ride the soundEvents stream), then re-read the
+    // sustained drone so it goes silent at the game-over edge.
+    playEventSounds(audio, game.soundEvents)
+    playEdgeCues(audio, prev, game)
+    updateSustainedSounds(audio, game)
+    game = { ...game, soundEvents: [] }
+  },
+  () => {
+    // The backing store is the letterboxed buffer set by resize() (mc10-5) — the loop
+    // no longer resizes it, so drawFrame paints into the pinned 256:222 canvas.
+    // mc10-4: feed the LIVE wave so the per-wave palette (paletteForWave, mc9-2) follows
+    // the game. Without this 5th arg drawFrame falls back to its wave=INITIAL_WAVE default
+    // and every frame renders the wave-1 colours forever, no matter how far play advances.
+    drawFrame(context, game, canvas.width, canvas.height, game.wave)
+  },
+)
+loop.start()
