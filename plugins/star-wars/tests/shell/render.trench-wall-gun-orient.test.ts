@@ -210,16 +210,31 @@ describe('sw11-2 — while here: SQUARE and CATWALK share the IDENTITY-orient de
     }
   })
 
-  it('TRENCH_CATWALK (`.WP WFF`) lateral fin points INTO the channel on both walls', () => {
-    // The force field already stands vertical, but its front fin projects laterally
-    // to ONE side. With no per-wall mirror that fin reaches into the channel on one
-    // wall and into the WALL on the other — the same mirror the guns need.
+  it('TRENCH_CATWALK (`.WP WFF`) STAYS VERTICAL and mirrors its fin into the channel', () => {
+    // The force field is authored ALREADY vertical (a 3-fin barrier rising up
+    // 0→512). Two things must hold, and the naive "roll it up like the gun plate"
+    // fix breaks the FIRST — it lays the barrier flat:
+    //   (a) it stays STANDING — its 512-tall height edge is NOT flattened into the
+    //       lateral (wall-normal) direction; and
+    //   (b) its front fin projects laterally INTO the channel on BOTH walls (the
+    //       per-wall mirror the guns need too).
     const draws = obstacleDraws(trenchScene(wallPair('catwalk', 0)), 'Trench Catwalk')
     expect(draws, 'render() draws a catwalk on each wall').toHaveLength(2)
     const [right, left] = [eyeOf(draws[0]), eyeOf(draws[1])]
     const lateral = lateralAxis(right, left)
 
-    // The vertex reaching furthest along the wall-normal is the laterally-projecting fin.
+    // (a) STAYS VERTICAL: model verts 0 and 1 are the front fin's base and top —
+    // they differ ONLY in the authored height (0 vs 512). Their eye-space
+    // separation must survive as a real edge that does NOT lie along the wall
+    // normal. A stand-up roll would rotate that height into the lateral axis.
+    for (const [name, g] of [['right', right], ['left', left]] as const) {
+      const heightEdge = sub(g.verts[1], g.verts[0])
+      expect(length(heightEdge), `${name} wall: the fin keeps its full height`).toBeGreaterThan(400)
+      expect(Math.abs(dot(heightEdge, lateral)), `${name} wall: height did NOT flatten into the wall`)
+        .toBeLessThan(50)
+    }
+
+    // (b) MIRROR: the vertex reaching furthest along the wall-normal is the fin.
     const finLateral = (g: ReturnType<typeof eyeOf>): number => {
       const projs = g.verts.map((v) => dot(sub(v, g.station), lateral))
       return projs.reduce((a, b) => (Math.abs(b) > Math.abs(a) ? b : a), 0)
