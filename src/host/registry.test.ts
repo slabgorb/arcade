@@ -165,7 +165,7 @@ describe('the generated registry', () => {
     expect(getGame('red-baron')?.listed).toBe(false)
   })
 
-  it('shows tempest, asteroids, battlezone, centipede and pac-man in the carousel', () => {
+  it('shows tempest, asteroids, battlezone, centipede, joust, missile-command and pac-man in the carousel', () => {
     // showcase is required and never defaulted precisely so this set cannot change by
     // omission. If a game joins or leaves the carousel, it is because someone said so.
     // battlezone said so in ad1-2: its attract mode has self-played since the bz1-10 era
@@ -175,14 +175,20 @@ describe('the generated registry', () => {
     // field, tests/attract-demo.test.ts) and flipped its manifest showcase:true.
     // pac-man says so in pm4-9: pm4-8 gave it a real self-playing attract demo (a seeded
     // auto-player driving the maze, plugins/pac-man/tests/core/attract-demo.test.ts) and
-    // pm4-9 paints the attract screen over it, so its manifest flips showcase:true. The
-    // order follows the GAMES roster (asteroids sits between star-wars and battlezone;
-    // pac-man is last). This assertion is RED until Dev flips plugins/pac-man/plugin.ts.
+    // pm4-9 paints the attract screen over it, so its manifest flips showcase:true.
+    // missile-command joins here: it already boots into 'attract' with a skilled AUTCUR
+    // self-play (mc6-4, self-playing-attract.test.ts), so the opt-in was the only work.
+    // joust joins too: its self-play attract cycle (jt10-4) already exists, but main.ts
+    // booted into 'select' until now — booting into attract (createCabinet) is what puts
+    // its live demo on screen. The order follows the GAMES roster (asteroids sits between
+    // star-wars and battlezone; joust before red-baron; missile-command before pac-man).
     expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual([
       'tempest',
       'asteroids',
       'battlezone',
       'centipede',
+      'joust',
+      'missile-command',
       'pac-man',
     ])
   })

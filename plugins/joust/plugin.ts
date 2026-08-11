@@ -9,6 +9,6 @@ export const meta: GameMeta = {
   controls: ['MOVE — ←→ / A D', 'FLAP — Space / Shift'],
   order: 6,
   listed: true,
-  showcase: false,
+  showcase: true,
   version,
 }

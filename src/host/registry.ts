@@ -73,7 +73,7 @@ export const GAMES: readonly GameMeta[] = [
     controls: ['MOVE — ←→ / A D', 'FLAP — Space / Shift'],
     order: 6,
     listed: true,
-    showcase: false,
+    showcase: true,
     version: '0.0.16',
   },
   {
@@ -95,7 +95,7 @@ export const GAMES: readonly GameMeta[] = [
     controls: ['AIM — Mouse / Trackball', 'FIRE — Z X C  (left / centre / right base)'],
     order: 8,
     listed: true,
-    showcase: false,
+    showcase: true,
     version: '1.0.0',
   },
   {
