@@ -39,6 +39,7 @@ import {
 } from './core/highscore.js'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
+import { mountCanvas } from '@shared/host-helpers'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
@@ -63,10 +64,13 @@ import { mapPlayer1, mapPlayer2 } from './shell/input.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds } from './shell/audio-dispatch.js'
 
-const canvas = document.querySelector<HTMLCanvasElement>('#game')
-if (!canvas) throw new Error('index.html must host a <canvas id="game">')
-const context = canvas.getContext('2d')
-if (!context) throw new Error('2d canvas context unavailable')
+// SH3-2: the checked #game mount is @shared/host-helpers.mountCanvas now — one
+// boot-time lookup with the null-element and not-a-canvas guards the whole fleet
+// shares (joust and centipede hand-wrote a byte-identical version, which is what
+// proved the helper worth extracting). Only the MOUNT is shared: the audio unlock
+// stays hand-rolled below (rom-cadence — it is fused into the input-sampling
+// keydown, the hazard the epic names), per docs/ops/shell-adoption-matrix.md.
+const { canvas, ctx: context } = mountCanvas(document)
 configureContext(context)
 
 // Everything is drawn into a fixed 292x240 backbuffer and blitted to the
