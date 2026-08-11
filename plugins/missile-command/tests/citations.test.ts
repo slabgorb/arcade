@@ -478,7 +478,14 @@ interface CoreLiteral {
   file: string
   line: number
   value: number
+  // The literal's LOCAL citation context — its own line + the immediately-preceding
+  // comment block ONLY. mc10-6 round 3 (Reviewer R2-A): the shared file header is NO
+  // LONGER part of docText, so an unrelated same-file constant's header cite cannot
+  // vouch for a bare literal (the live wave.ts:61 WICSPL-covered-by-ICBWAV leak).
   docText: string
+  // The literal's enclosing declaration symbol — the nearest preceding
+  // `(export )?const|let|function|type IDENT` (mc10-6 round 3, enclosing-symbol arm).
+  enclosingSymbol: string
 }
 interface CoreAnchor {
   file: string | null
@@ -487,7 +494,15 @@ interface CoreAnchor {
 }
 interface CoreLiteralsModule {
   STRUCTURAL: ReadonlyMap<number, string>
-  literalCovered(claims: readonly CommittedClaim[], docText: string, value: number): boolean
+  // `enclosingSymbol` (round 3): a value-matched claim whose `symbol` EQUALS (normalized)
+  // the literal's enclosing declaration symbol covers it — the WICSPL===WICSPL arm that
+  // lets a real WICSPL claim back the WICSPL table entry without a per-line inline cite.
+  literalCovered(
+    claims: readonly CommittedClaim[],
+    docText: string,
+    value: number,
+    enclosingSymbol?: string,
+  ): boolean
   uncitedCoreLiterals(claims: readonly CommittedClaim[], coreDir: string): string[]
   extractCoreLiterals(src: string, file: string): CoreLiteral[]
   parseAnchors(text: string): CoreAnchor[]
@@ -648,6 +663,122 @@ describe('mc10-6 round 2 — the anchor is structured (id/cite), never a bare-sy
     const got = parseAnchors('see `W3COMN.MAC:39`, `W3MAIN.MAC:100-200`, `W3INT:5` and a bare :77')
       .map((a) => `${a.file ?? '(bare)'}:${a.start}-${a.end}`)
     expect(got).toEqual(['W3COMN.MAC:39-39', 'W3MAIN.MAC:100-200', 'W3INT.MAC:5-5', '(bare):77-77'])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6c. mc10-6 ROUND 3 — CLOSE THE CLASS: coverage is LOCAL + enclosing-symbol, the
+//     shared file header does NOT vouch, and a claim id matches as a whole token.
+//     Reviewer round 2 (Heimdall) REJECTED round 2 with three findings:
+//       R2-A [CRITICAL] `referencesClaim`'s id/cite search spans the WHOLE docText
+//         incl. the file header, so a bare literal is "covered" by an UNRELATED
+//         same-file constant's cite of the same value. LIVE: wave.ts:61 WICSPL 16/10
+//         (no WICSPL claim for 16/10) pass ONLY via MC-ICBWAV-16/10, whose cite
+//         W3MAIN.MAC:5713 sits in wave.ts's header. The class moved from symbol-prose
+//         (round 1) to header-cite — not closed.
+//       R2-B [HIGH] the id is matched by BARE SUBSTRING, so MC-WICSPL-6 is a prefix
+//         of the real id MC-WICSPL-64. Word-boundary it.
+//       R2-C [LOW] a stale claim-id in a src/core comment (drone.ts) — a Dev fix.
+//     USER RULING 2026-08-11 — "FULL RIGOR: close the class". A core literal is
+//     COVERED iff:
+//       • value ∈ TRIVIAL or STRUCTURAL, OR
+//       • its OWN line self-documents an inline FILE.MAC:NNN / bare :NNN cite, OR
+//       • a value-matched claim's id (WORD-BOUNDARY) or FILE.MAC:NNN cite appears in
+//         the literal's LOCAL context (own line + preceding comment block — NOT the
+//         header), OR
+//       • a value-matched claim's SYMBOL EQUALS (normalized) the literal's ENCLOSING
+//         declaration symbol.
+//     These pin the tightened contract on synthetic input (mutation-proof style).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mc10-6 round 3 — coverage is local + enclosing-symbol; the shared header does not vouch', () => {
+  // R2-A (RED against round-2 `referencesClaim`, which searches the whole docText):
+  it('a value-matched claim cited ONLY in the shared file header does NOT cover a bare literal', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // Reproduces wave.ts:61 exactly: BAR=16 is a bare literal whose ONLY reference to a
+    // value-16 claim (MC-ICBWAV-16, cite W3MAIN.MAC:5713 — an UNRELATED table) lives in
+    // the "SOURCE OF TRUTH" header. The header is separated from BAR by a code line, so
+    // it is not BAR's preceding block; only the header-scope leak can cover it.
+    const src = [
+      '// SOURCE OF TRUTH: ICBWAV (W3MAIN.MAC:5713) — unrelated table; claim MC-ICBWAV-16',
+      '',
+      'const GAP = 99',
+      'export const BAR = 16',
+    ].join('\n')
+    const icbwav: CommittedClaim = {
+      id: 'MC-ICBWAV-16', symbol: 'ICBWAV', value: 16, meaning: 'unrelated per-wave ICBM budget',
+      source: { file: 'W3MAIN.MAC', line: 5713, verbatim: 'ICBWAV\t.BYTE 12.,15.,...' },
+    }
+    const bar = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 16)
+    expect(bar, 'extractor must surface BAR=16').toBeDefined()
+    // BAR's enclosing symbol is BAR (≠ ICBWAV); its own line + preceding block carry no
+    // cite. The claim is named only in the header → NOT covered.
+    expect(literalCovered([icbwav], bar!.docText, 16, bar!.enclosingSymbol)).toBe(false)
+  })
+
+  // Enclosing-symbol arm (RED — round-2 has no such arm and no enclosingSymbol field):
+  it('a value-matched claim whose symbol equals the enclosing declaration symbol DOES cover, across a multi-line decl', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // The wave.ts:61 fix: a real MC-WICSPL-16 claim (symbol WICSPL) covers the WICSPL
+    // table entry because the literal's ENCLOSING const is WICSPL — even though the
+    // literal sits on its own line inside a multi-line array, with no inline cite and
+    // the claim's id/cite nowhere in its local context.
+    const src = ['export const WICSPL = [', '  0x10,', '  0x0a,', ']'].join('\n')
+    const wicspl16: CommittedClaim = {
+      id: 'MC-WICSPL-16', symbol: 'WICSPL', value: 16, meaning: 'WICSPL fraction byte, one hex entry',
+      source: { file: 'W3MAIN.MAC', line: 5717, verbatim: 'WICSPL\t.BYTE 0D0,...,10,0A,...' },
+    }
+    const l16 = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 16)
+    expect(l16, 'extractor must surface 0x10=16').toBeDefined()
+    // The extractor must compute the nearest preceding declaration symbol…
+    expect(l16!.enclosingSymbol).toBe('WICSPL')
+    // …and the enclosing-symbol arm must cover on symbol equality.
+    expect(literalCovered([wicspl16], l16!.docText, 16, l16!.enclosingSymbol)).toBe(true)
+  })
+
+  // Enclosing-symbol arm is EQUALITY, not substring — else a short ROM symbol re-opens
+  // the coincidence this story keeps closing (guard; green both sides):
+  it('the enclosing-symbol arm requires equality, not a substring match', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    // Claim symbol 'WIC' is a substring of the enclosing 'WICSPL' but not equal.
+    const partial: CommittedClaim = {
+      id: 'MC-WIC-16', symbol: 'WIC', value: 16, meaning: 'x',
+      source: { file: 'W3MAIN.MAC', line: 5717, verbatim: 'x' },
+    }
+    expect(literalCovered([partial], 'export const WICSPL = [0x10, 0x0a]', 16, 'WICSPL')).toBe(false)
+  })
+
+  // R2-B (RED — round-2 matches the id by bare substring):
+  it('a claim id matches as a whole token, not as a prefix of a longer id', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    // MC-WICSPL-6 is a real prefix of the real id MC-WICSPL-64. A doc that names ONLY
+    // MC-WICSPL-64 must NOT satisfy the value-6 claim. Enclosing symbol OTHER (≠ WICSPL)
+    // so only the id arm is in play.
+    const six: CommittedClaim = {
+      id: 'MC-WICSPL-6', symbol: 'WICSPL', value: 6, meaning: 'x',
+      source: { file: 'W3MAIN.MAC', line: 5717, verbatim: 'x' },
+    }
+    expect(literalCovered([six], 'export const OTHER = 6\n// see claim MC-WICSPL-64', 6, 'OTHER')).toBe(false)
+    // …but naming the EXACT id still covers (word-boundary matches the whole token).
+    expect(literalCovered([six], 'export const OTHER = 6\n// see claim MC-WICSPL-6', 6, 'OTHER')).toBe(true)
+  })
+
+  // The LOCAL preceding-block cite must survive the header being dropped (guard against
+  // over-narrowing the local scope to the own line only):
+  it('a cite in the immediately-preceding comment block (local, not header) still covers', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const src = [
+      '// SOURCE OF TRUTH header — unrelated, carries no matching cite',
+      '',
+      '// backed by W3COMN.MAC:39 (claim MC-FOO-4242)',
+      'export const N = 4242',
+    ].join('\n')
+    const foo: CommittedClaim = {
+      id: 'MC-FOO-4242', symbol: 'FOO', value: 4242, meaning: 'x',
+      source: { file: 'W3COMN.MAC', line: 39, verbatim: 'x' },
+    }
+    const n = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(n, 'extractor must surface N=4242').toBeDefined()
+    expect(literalCovered([foo], n!.docText, 4242, n!.enclosingSymbol)).toBe(true)
   })
 })
 
