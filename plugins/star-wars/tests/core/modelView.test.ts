@@ -5,7 +5,9 @@ import type { Model3D } from '../../src/core/models'
 
 describe('modelBounds', () => {
   it('centres the unit cube at the origin with the corner radius', () => {
-    const { center, radius } = modelBounds(CUBE)
+    // SH4-1: shared modelBounds takes a bare readonly Vec3[] (red-baron's
+    // signature), so pass the model's vertices rather than the Model3D envelope.
+    const { center, radius } = modelBounds(CUBE.vertices)
     expect(center[0]).toBeCloseTo(0)
     expect(center[1]).toBeCloseTo(0)
     expect(center[2]).toBeCloseTo(0)
@@ -14,7 +16,7 @@ describe('modelBounds', () => {
 
   it('finds the AABB centre of an off-origin model', () => {
     const m: Model3D = { name: 't', vertices: [[0, 0, 0], [10, 4, -2]], edges: [] }
-    expect(modelBounds(m).center).toEqual([5, 2, -1])
+    expect(modelBounds(m.vertices).center).toEqual([5, 2, -1])
   })
 })
 
