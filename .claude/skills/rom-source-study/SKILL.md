@@ -58,6 +58,27 @@ The game code (all `ML*.MAC`) shares nothing with the sibling; it gets the full 
 </sibling>
 
 <run>
+DIALECT FIRST — the five questions below are universal; the COMMANDS are not. Every probe
+here is written in Atari MACRO-65 (`.MAC`) tokens and silently returns NOTHING on another
+toolchain. Identify the toolchain before you trust a probe: the source extension + the
+assembler's own directives + any author note on the build. An empty result means WRONG
+DIALECT far more often than "absent" — three games so far, three toolchains:
+
+| Machine (dialect)                    | src ext | include token        | hex literal | author doc         |
+|--------------------------------------|---------|----------------------|-------------|--------------------|
+| centipede/millipede (Atari MACRO-65) | `.MAC`  | `.INCLUDE`           | `#xx` / col | `*.DOC`            |
+| defender (Williams 6809)             | `.SRC`  | RASM chain (INFO.SRC)| `$NN`       | `INFO.SRC`         |
+| frenzy (Stern — TDL Z80/8080)        | `.asm`  | `.insert`            | `NNh`       | `README.md` (author quote) |
+
+```bash
+ls $SRC | sed 's/.*\.//' | sort | uniq -c | sort -rn | head   # what extension IS this tree?
+```
+
+Translate each probe's extension and directive token to the tree's dialect before running it;
+if it STILL finds nothing, only then is it absent. (frenzy: `.insert equs` is the include,
+`66h`-style suffix hex, 8080 mnemonics `lxi`/`dad`, and the author doc is a `README.md` quote
+from Alan McNeil, not a `.DOC` — Q4 must look past `*.DOC`.)
+
 Preflight — FIVE questions, answered in order, before any subsystem reading:
 
 ```bash
