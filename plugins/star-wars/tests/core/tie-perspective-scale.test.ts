@@ -46,7 +46,8 @@ import { TIE_FIGHTER } from '../../src/core/models'
 import { FOV_Y } from '../../src/core/gameRules'
 import { TIE_SPAWN_DISTANCE, TIE_NEAR_BOUND, TIE_THRUST_RATE } from '../../src/core/state'
 
-const { center, radius } = modelBounds(TIE_FIGHTER)
+// SH4-1: shared modelBounds takes a bare readonly Vec3[], so pass vertices.
+const { center, radius } = modelBounds(TIE_FIGHTER.vertices)
 
 // A spawned TIE should read as a distant ship — the cabinet's freshly-spawned
 // fighter subtends ~6-7% of the frame; ≤12% of viewport height under the

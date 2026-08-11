@@ -29,7 +29,7 @@ const FORBIDDEN_GLOBALS = ['document', 'window', 'canvas', 'FontFace'] as const
 
 // Pure subpaths per ADR-0003 Amendment 1 — must remain DOM-free. Ported BY NAME
 // from arcade-shared/tests/purity.test.ts's PURE_SUBPATHS.
-const PURE_SUBPATHS = ['math3d', 'rng', 'loop', 'font', 'name-entry', 'pause'] as const
+const PURE_SUBPATHS = ['math3d', 'rng', 'loop', 'font', 'name-entry', 'pause', 'model-view'] as const
 
 // Browser subpaths (ADR-0003) — explicitly flagged as canvas/AudioContext/cookie-
 // touching and so EXEMPT from the purity guard. Ported BY NAME from the original's

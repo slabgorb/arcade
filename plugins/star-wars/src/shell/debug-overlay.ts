@@ -231,7 +231,7 @@ export function drawDebugOverlay(
 
   // 4. Per-model bounding sphere + name label (reusing core modelBounds).
   for (const { model, mv } of sceneModels(state, view)) {
-    const { center, radius } = modelBounds(model)
+    const { center, radius } = modelBounds(model.vertices)
     const circle = projectBounds(transform(mv, center), radius, proj, w, h)
     if (!circle) continue
     ctx.lineWidth = 1

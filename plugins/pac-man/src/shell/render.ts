@@ -63,7 +63,7 @@ import { TILE_PX as CORE_TILE_PX, type Dir } from '../core/actor'
 import type { Ghost, GhostId } from '../core/ghost'
 import { FRIGHT_FLASHES, type Mode } from '../core/mode'
 import type { GameState } from '../core/game'
-import type { FruitType } from '../core/level'
+import { levelRow, type FruitType } from '../core/level'
 import { TILES } from './tile-data'
 import { SPRITES } from './sprite-data'
 import { HARDWARE_PALETTE, colourLookup } from './palette-data'
@@ -538,11 +538,20 @@ export function drawScorePopup(ctx: CanvasRenderingContext2D, xPx: number, yPx: 
 
 /** The HUD, drawn into the RESERVED HUD bands so it never overlaps the playfield
  *  (`maze.ts` rows 0-2 at the top and rows 34-35 at the bottom — always 'wall'/no
- *  gameplay tile, per that file's header; `isHudRow` keeps them black). pm4-9 moved
- *  the layout to the ROM-authentic arrangement: SCORE top-left, HIGH SCORE top-centre
- *  (pacman.asm:36a5 — the persisted top score, or 0), and LIVES/LEVEL in the BOTTOM
- *  band (lives left, level right) where Pac-Man puts them, instead of stacking every
- *  readout at the top. `highScore` is `game.highScoreTable[0]?.score ?? 0`. */
+ *  gameplay tile, per that file's header; `isHudRow` keeps them black). The TOP band
+ *  is pm4-9's: SCORE top-left, HIGH SCORE top-centre (pacman.asm:36a5 — the persisted
+ *  top score, or 0); `highScore` is `game.highScoreTable[0]?.score ?? 0`.
+ *
+ *  pm4-11 makes the BOTTOM band authentic icon rows instead of pm4-9's LIVES/LEVEL
+ *  text — exactly what the cabinet draws:
+ *    • bottom-LEFT  — the reserve lives, as Pac-life sprites (drawPacman), capped at
+ *      the ROM maximum of 5 (pacman.asm:2b41-2b62 — `ld c,#05`, `cp #06 / jr nc`).
+ *    • bottom-RIGHT — the level indicator, as a fruit row (drawFruit): the most-recent
+ *      up-to-7 levels' fruits, newest at the right, a sliding window that drops the
+ *      oldest (pacman.asm:2bf0-2c41 — `ld c,#07`, the >=8 branch's `sub #07`). Each
+ *      level's fruit is core's byte-cited `levelRow(l).fruit` (pacman.asm:2b23-2b31). */
+const LIFE_ICON_CAP = 5 // pacman.asm:2b41-2b62
+const FRUIT_ROW_CAP = 7 // pacman.asm:2bf0-2c41
 export function drawHud(
   ctx: CanvasRenderingContext2D,
   score: number,
@@ -555,16 +564,31 @@ export function drawHud(
   ctx.fillStyle = HUD_COLOR
   ctx.font = '8px monospace'
   ctx.textBaseline = 'top'
-  // Top band (rows 0-2, y < 24): score at the left, HIGH SCORE centred.
+  // Top band (rows 0-2, y < 24): score at the left, HIGH SCORE centred. (pm4-9)
   ctx.textAlign = 'start'
   ctx.fillText(`SCORE ${score}`, 4, 4)
   ctx.textAlign = 'center'
   ctx.fillText('HIGH SCORE', W / 2, 4) // pacman.asm:36a5
   ctx.fillText(String(highScore), W / 2, 14)
-  // Bottom band (rows 34-35, y >= 272): lives at the left, level at the right.
   ctx.textAlign = 'start'
-  ctx.fillText(`LIVES ${lives}`, 4, BOTTOM)
-  ctx.textAlign = 'end'
-  ctx.fillText(`LEVEL ${level}`, W - 4, BOTTOM)
-  ctx.textAlign = 'start'
+
+  // Bottom-left: reserve lives as Pac-life sprites, left-facing like the cabinet
+  // icons, capped at the ROM maximum of 5.
+  const shownLives = Math.min(Math.max(lives, 0), LIFE_ICON_CAP)
+  for (let i = 0; i < shownLives; i++) {
+    drawPacman(ctx, 8 + i * SPRITE_PX, BOTTOM, 'left', 0)
+  }
+
+  // Bottom-right: the fruit row — the last up-to-7 levels' fruits, newest at the
+  // right (tile 27) stepping left, so the window slides and drops the oldest. The
+  // loop counts DOWN from the current level and is bounded to FRUIT_ROW_CAP
+  // iterations, so a non-finite `level` (guarded here) can neither spin it forever
+  // nor index the level table out of range.
+  if (Number.isFinite(level)) {
+    for (let k = 0; k < FRUIT_ROW_CAP; k++) {
+      const l = level - k
+      if (l < 1) break // fewer than 7 levels reached — no older fruit to show
+      drawFruit(ctx, 27 - 2 * k, MAZE.rows - 2, levelRow(l).fruit.type)
+    }
+  }
 }

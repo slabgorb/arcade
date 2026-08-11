@@ -3,7 +3,7 @@ type: epic
 title: Pac-Man — cabinet lifecycle (attract + state machine + freeze pauses) + fidelity/accessibility fixes
 description: 'Pac-Man equivalent of missile-command mc6 (attract + MAINLINE state machine) plus four reported fidelity/accessibility fixes; the mc7 half (high-score ladder + name entry) is already ported in game.ts, only the attract-screen ladder display + default table remain (folded into pm4-6). Extends core GamePhase from playing|game-over to a pure, seeded, clock-free MAINLINE dispatch keyed on ROM master-state byte #4e00 (pacman.asm:0195 dispatch, :0984/:269a/:318c writes): attract -> ready -> playing -> (dying -> ready | game-over); playing -> level-clear -> ready; game-over -> attract. DELIBERATE deviations from the mc6 template, both recorded in the design: NO pause phase (Pac-Man cabinets have none, not requested) and level-clear FREEZES WITHOUT FLASHING — the boss has photosensitive epilepsy, so accessibility overrides ROM fidelity here (the current full-screen white strobe is a seizure hazard AND non-authentic). Per the arcade fidelity contract, every new src/core constant carries a citations.test.ts-gated claim and purity.test.ts stays green (attract timers + auto-player are frame counts + seeded RNG, never a clock). Design: docs/superpowers/specs/2026-08-09-pac-man-cabinet-lifecycle-design.md. OUT OF SCOPE: pause phase, coin/credit economy UI, intermission cutscenes, maze row-table changes beyond a genuine authoring bug proven by pm4-10.'
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: pm4-1
@@ -111,17 +111,25 @@ stories:
     title: "Game-over -> attract timeout (core+shell): after game-over (and name entry, if the run qualified), a cited cadence auto-returns to attract, closing the MAINLINE loop and replacing today's manual Enter-to-restart in main.ts. Pin the timeout constant at RED."
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
     depends_on: pm4-5
+    completed: '2026-08-11'
+    branch: feat/pm4-10-game-over-attract-timeout
+    review_verdict: approved
   - id: pm4-11
     title: "Authentic HUD icons (shell): render lives as Pac-life sprites bottom-left and the level indicator as fruit sprites bottom-right, replacing pm4-9's procedural LIVES/LEVEL text in the bottom HUD band. Reuse drawPacman/drawFruit; leave the top band (SCORE, HIGH SCORE) unchanged. Pin the ROM life-icon cap + fruit-per-level sequence at RED. Accessibility: no full-screen flash (pm4-1)."
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-11'
+    branch: feat/pm4-11-authentic-hud-icons
+    review_findings: "APPROVED (round 1). 8 findings, all fixed + mutation-verified: fruit-cap tests couldn't detect a missing cap (MID_X reclassification) and ordering was unpinned — now classify by sprite data + pin full sequence; level was an unbounded/unguarded loop terminator — now bounded + Number.isFinite guarded; added negative-lives + non-finite-level tests; corrected stale HUD comments/title. ROM citations (5/7 caps, 2b41-2b62 / 2bf0-2c41) independently verified. pac-man 393/393, orchestrator 463/463, lint clean."
   - id: pm4-12
     title: "[BUG] Maze bottom border wall is invisible — the maze looks open at the bottom. Root cause: isHudRow blanked 3 bottom rows (33-35), but the maze's bottom border wall is row 33 (full '#' row), the mirror of the top border at row 3. Fix: bottom band -> rows 34-35 (MAZE.rows-2) so row 33 renders. Fixed in this PR + maze-border.test.ts."
     points: 2
@@ -132,3 +140,4 @@ stories:
     completed: '2026-08-11'
     type: bug
     review_verdict: approved
+completed: '2026-08-11'
