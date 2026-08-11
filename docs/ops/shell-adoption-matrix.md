@@ -25,7 +25,7 @@ prose; only this one is the contract, and the test refuses to run without them.
 | battlezone | adopted | adopted | adopted |
 | red-baron | adopted | adopted | adopted |
 | centipede | rom-cadence | rom-cadence | adopted |
-| joust | rom-cadence | rom-cadence | behaviour-absent |
+| joust | adopted | rom-cadence | behaviour-absent |
 
 <!-- adoption-matrix:end -->
 
@@ -46,38 +46,50 @@ nobody will re-examine.
 says "yes, this game does this, and we chose not to touch it". Nothing here is a
 missed opportunity; the two rows are argued below.
 
-## Why centipede and joust defer the canvas mount and audio unlock
+## Why centipede and joust defer the audio unlock (and centipede the canvas mount)
 
 Both run the original cabinets' frame cadences — centipede on `FRAME_HZ =
 15750/263`, joust on its own `FRAME_DURATIONS` timebase — and both are gated
 against original source. The epic's constraint is explicit: a helper that changes
 when a frame starts or how input is sampled is a regression **even if every test
-stays green**. That reasoning covers `mountCanvas` and `installAudioUnlock`, which
-sit next to the frame/input plumbing; it does NOT cover the pause toggle, whose
-listener is independent of both — which is why centipede later adopted that one
-alone (see the pause note below).
+stays green**. That reasoning covers `installAudioUnlock`, which sits next to the
+frame/input plumbing; it does NOT cover the pause toggle, whose listener is
+independent of both — which is why centipede later adopted that one alone (see the
+pause note below). Nor does it cover `mountCanvas`: a one-shot at boot, it runs
+before the first frame and touches neither the cadence nor the input sample —
+which is why joust adopted it in SH3-2 (the canvas-mount note below).
 
-joust makes the risk concrete. Its audio unlock is not a separate listener; it is
-fused into the handler that samples input:
+joust makes the audio-unlock risk concrete. Its unlock is not a separate listener;
+it is fused into the handler that samples input:
 
 ```ts
+const held = installHeldKeys(window, { preventDefaultFor: new Set(['Space']) })
 window.addEventListener('keydown', (e) => {
-  audio.resume()            // the unlock
-  held.add(e.code)          // the input sample
-  if (e.code === 'Space') e.preventDefault()
+  audio.resume()                                   // the unlock
+  if (cabinet.mode === 'highscore') entry = ...    // the initials edge, on the same event
 })
 ```
 
-Adopting `installAudioUnlock` there necessarily edits the input path — precisely
-the hazard the epic names. The helper would have to be added *alongside* that
-listener rather than replacing it, which buys nothing: one line of `audio.resume()`
-would be traded for one line of `installAudioUnlock(...)` plus a second listener on
-the same event. `tests/shell-convergence.test.mjs` pins the `held` sampling so a
-later story cannot quietly make that trade.
+(SH4-2 moved the held-set sample itself into the shared `installHeldKeys` tracker;
+the unlock and the highscore-initials edge still ride this same keydown.) Adopting
+`installAudioUnlock` there necessarily edits the input path — precisely the hazard
+the epic names. The helper would have to be added *alongside* that listener rather
+than replacing it, which buys nothing: one line of `audio.resume()` would be traded
+for one line of `installAudioUnlock(...)` plus a second listener on the same event.
+`tests/shell-convergence.test.mjs` pins the `installHeldKeys` sampling, and joust's
+own suite pins the deferral, so a later story cannot quietly make that trade.
 
-Both games already hand-wrote the checked canvas mount — with a byte-identical
-error string, which is what proved `mountCanvas` was worth extracting at all — so
-adopting it there would be the lowest-value, highest-risk cell in the table.
+## Why joust adopted the canvas mount but centipede has not
+
+The canvas mount is a different cell from the audio unlock: it is a boot-time
+one-shot that carries none of the cadence/input risk above. Both games hand-wrote
+the same checked mount — with a byte-identical error string, which is what proved
+`mountCanvas` was worth extracting at all. **joust adopted it in SH3-2**, retiring
+`querySelector('#game')` + the two bespoke throws for `mountCanvas(document)`; a
+user ruling on 2026-08-11 split joust's two cells deliberately — mount yes,
+audio-unlock deferred — precisely because only the audio half touches the input
+path. **centipede's mount stays `rom-cadence`** — a lower-priority judgement call,
+not the cadence hazard; a later story may retire it the same way.
 
 Their pause cells diverged. During sc1 neither game had a pause at all, so both
 were `behaviour-absent` — checked, not asserted: their `main.ts` mentioned no
