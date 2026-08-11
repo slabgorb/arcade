@@ -133,6 +133,12 @@ export function fireOrStart(key: string, state: GameState): GameState {
   // ABM, spend a round, or sound a launch/klaxon cue under the entry screen. Guarded
   // before every fire path; nameEntryFromKey (below) owns the keystroke during entry.
   if (state.phase === 'entry') return state
+  // mc6-7: while PAUSED the fire path is INERT too. The ROM's MAINLINE JSRs the PAUSE
+  // handler (its own routine, W3MAIN.MAC:615/:617), never PLAY, so ABMLAU never runs —
+  // a fire key under the pause overlay must not spend a round, queue an ABM, or sound a
+  // launch. The sim freeze (stepGame's 'pause' branch, mc6-3) only stops the clock's
+  // effect; this gates the SHELL input that mc6-3's Heimdall review flagged as ungated.
+  if (state.phase === 'pause') return state
   if (state.phase === 'attract') return beginSetupOnInput(state) // any input -> setup
   if (fireKeyToBase(key) !== null && state.phase === 'over') return startGame(state)
   return fireFromKey(key, state)
