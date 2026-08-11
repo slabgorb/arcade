@@ -5,30 +5,14 @@
 // characteristic motion on. No DOM, no time, no randomness — safe under the
 // core's purity rule (CLAUDE.md) and unit-tested.
 //
-// `cellRects` is a near-verbatim port of the Star Wars dev tool's helper
-// (star-wars/src/core/modelView.ts). Two tiny copies of a grid partitioner do
-// not justify a cross-repo shared library; revisit extraction at a third
-// consumer (see the design doc's "Deliberate duplication").
+// SH4-1: the third consumer arrived, so `cellRects` was extracted into the pure
+// shared library (`@shared/model-view`) and is re-exported here. `flatTube` stays
+// local — it is tempest's own contact-sheet board geometry, not shared math.
 
 import type { Tube, Point } from './geometry'
 
 /** Partition a w×h area into `count` grid cells across `cols` columns (row-major). */
-export function cellRects(
-  w: number,
-  h: number,
-  count: number,
-  cols: number,
-): { x: number; y: number; w: number; h: number }[] {
-  const c = Math.max(1, cols)
-  const rows = Math.max(1, Math.ceil(count / c))
-  const cw = w / c
-  const ch = h / rows
-  const rects: { x: number; y: number; w: number; h: number }[] = []
-  for (let i = 0; i < count; i++) {
-    rects.push({ x: (i % c) * cw, y: Math.floor(i / c) * ch, w: cw, h: ch })
-  }
-  return rects
-}
+export { cellRects } from '@shared/model-view'
 
 // Flat-board proportions, in board-local pixels centred on the origin. The near
 // rim is wide and low (the player's front rim); the far edge is narrower and

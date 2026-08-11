@@ -77,7 +77,7 @@ window.addEventListener('keydown', (e) => {
 })
 
 // Geometry is static — measure each model's bounding sphere once.
-const bounds = MODELS.map((m) => modelBounds(m))
+const bounds = MODELS.map((m) => modelBounds(m.vertices))
 
 // One rendered half of a compare cell. 'edges' strokes a wireframe exactly
 // like the PORT-only mode; 'dots' draws unconnected vertex points for ROM
@@ -132,7 +132,7 @@ const pairRenders: PairRender[] = pairs.map((p) => {
   // this tool exists to surface, not hide.
   const boundSource = romModel ?? p.port
   const bound = boundSource
-    ? modelBounds({ name: p.romName, vertices: boundSource.vertices, edges: [] })
+    ? modelBounds(boundSource.vertices)
     : { center: [0, 0, 0] as Vec3, radius: 1 }
   return { bound, rom, port }
 })
