@@ -331,22 +331,27 @@ function renderAttract(): void {
   paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), ATTRACT_BANNER_Y)
 }
 
-// ─── The cabinet: booted to 'select', stepping the SESSION layer once playing ──
+// ─── The cabinet: booted to 'attract', stepping the SESSION layer once playing ──
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
 // `stepGame` from core/game — NOT the raw sim. The jt2-1 one-sim seam still holds:
 // `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
 // sim, so there is no divergent second stepping path, and the dev-overlay reads the
-// per-player registers straight off the GameState it steps. jt10-5 wraps that game
-// in the cabinet tier: the cabinet boots into 'select' (the coin-up screen) over a
-// fresh `createGame(seed)`, and a start press begins a real game via `startPlaying`.
-// jt10-4 (Yoda): the 'attract' mode is now a real cycle — reached from a game-over
-// that doesn't qualify (afterGameOver → attract), rendered by renderAttract below;
-// a start press there routes on to the 'select' coin-up (toSelect).
+// per-player registers straight off the GameState it steps. jt10-5 wrapped that game
+// in the cabinet tier, and TEMPORARILY booted into 'select' (the coin-up screen)
+// because jt10-4's attract renderer did not yet exist — booting into attract would
+// have rendered nothing. jt10-4 has since landed `renderAttract` (the self-play cycle
+// below), so we now boot the cabinet's authentic mode — the 'attract' cycle — which is
+// what puts joust's live demo in the lobby showcase carousel (showcase:true). This is
+// exactly `createCabinet(SEED)`, spelled inline to keep the jt4-5 session seam visible:
+// main.ts constructs the game with the literal `createGame(` and steps it with
+// `stepGame(` (pinned by demo-source.test.ts / gameover-wiring.test.ts), rather than
+// through a wrapper. A start press in attract routes on to the 'select' coin-up
+// (toSelect), and select → startPlaying begins a real game, exactly as before.
 // A fixed shell-owned seed replays the same run each load; core mints no entropy,
 // so the seed crosses the boundary from here.
 const SEED = 0x1a2b_3c4d
-let cabinet: CabinetState = { mode: 'select', game: createGame(SEED) }
+let cabinet: CabinetState = { mode: 'attract', game: createGame(SEED) }
 
 // jt10-4 — the attract SUB-CYCLE scheduler (pure core). Stepped once per video frame
 // while the cabinet sits in 'attract'; it cycles the self-play demo and the two
