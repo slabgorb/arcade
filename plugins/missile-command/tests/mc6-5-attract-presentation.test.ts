@@ -228,20 +228,14 @@ describe('mc6-5 AC3 — high-score display SLOT (the mc7-4 container; sized for 
     expect(str(m.MSG_HIGH_SCORES)).toBe('HIGH SCORES')
   })
 
-  it('the slot is a CONTAINER only — drawFrame in attract does NOT paint the lower ladder rungs', () => {
-    // mc7-4 fills the slot; this story must not render the ladder entries. The default
-    // initials (DFT/DLS/SRC/RDA/MJP) are glyph fillRects, not readable text, so we assert
-    // the structural invariant instead. The HUD's BEST figure (mc10-3) legitimately reads
-    // highScores[0], so we keep rung 0 FIXED and mutate only the LOWER rungs (1-4): if the
-    // attract render painted the full ladder, those marks would move; a container-only slot
-    // leaves the painted marks identical.
-    const normal = paint(attractAt(0))
-    const swappedLower = paint({
-      ...attractAt(0),
-      highScores: DEFAULT_HIGH_SCORES.map((e, i) => (i === 0 ? e : { name: 'ZZZ', score: 1234 })),
-    })
-    expect(xSignature(normal)).toBe(xSignature(swappedLower))
-  })
+  // The mc6-5 "slot is a CONTAINER only" assertion (drawFrame in attract does NOT
+  // paint the lower ladder rungs) was RETIRED by story mc7-4, which fills the slot —
+  // exactly what this story's own comment anticipated ("mc7-4 fills the slot; this
+  // story must not render the ladder entries"). The now-authoritative behaviour — the
+  // ladder IS painted into the slot, best-first, read from state.highScores — lives in
+  // tests/mc7-4-ladder-display.test.ts (AC1's swapped-lower-rungs test is the direct
+  // inverse of the retired assertion). Removing the lock here, rather than leaving two
+  // contradictory expectations, is what lets the suite reach GREEN.
 })
 
 describe('mc6-5 AC4 — the seeded default ladder is UNTOUCHED (lock; mc7-1/mc7-4 own it)', () => {

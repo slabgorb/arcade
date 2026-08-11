@@ -40,6 +40,7 @@ stories:
     title: 'ROM-faithful ladder display + seeded default table: seed the initial ladder from the cited W3DSUP INIT HI SCORE defaults and render the ladder on the attract high-score screen (the mc6-5 slot). Pin default names/scores at RED. REV-01 W3DSUP.MAC:3724 INIT HI SCORE'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-10'
     repos: arcade
     workflow: tdd
