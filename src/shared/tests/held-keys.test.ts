@@ -9,13 +9,15 @@
 // `.session/SH4-2-session.md`).
 //
 // ── WHY A FACTORY WITH A REQUIRED TARGET, NOT `new HeldKeys().attach(el?)` ────
-// This helper is a sibling of `@shared/host-helpers` and obeys its two laws:
-// factory-returns-handle (like `installPauseToggle`), and every seam is a
-// REQUIRED positional parameter. `target` is required — an `attach(element?)`
-// that falls back to `window` is the mg1-5 "fails OPEN" hazard (an absent seam
-// degrading to the real global). So these cases always pass a `target`
-// explicitly, and the leak/dispose cases use a structural SPY target that
-// counts listener add/remove so a partial disposer cannot pass.
+// This helper is a sibling of `@shared/host-helpers` and follows the rule that
+// module's header DOES document — every seam is a REQUIRED positional parameter
+// (mg1-5) — plus its observed convention of factory-returns-handle (like
+// `installPauseToggle`), which the header demonstrates without legislating.
+// `target` is required — an `attach(element?)` that falls back to `window` is
+// the mg1-5 "fails OPEN" hazard (an absent seam degrading to the real global).
+// So these cases always pass a `target` explicitly, and the leak/dispose cases
+// use a structural SPY target that counts listener add/remove so a partial
+// disposer cannot pass.
 //
 // ── WHY jsdom + real KeyboardEvents ──────────────────────────────────────────
 // The `shared` project is `environment: 'node'`; this file opts into jsdom via
@@ -37,6 +39,16 @@ function release(code: string, key: string): void {
   window.dispatchEvent(new KeyboardEvent('keyup', { code, key }))
 }
 
+// The two listener shapes the tracker attaches: keydown/keyup take a
+// KeyboardEvent, blur takes a bare Event. A union (note the parens — without
+// them `=> void | (...)` would parse as ONE function returning a union, which is
+// the shape a `as never` cast would then have to paper over). A union of
+// function types is not directly callable, so `emit`/`emitBlur` narrow to the
+// concrete shape at the one call site that knows which listener kind it holds.
+type KeyListener = (e: KeyboardEvent) => void
+type BlurListener = (e: Event) => void
+type SpyListener = KeyListener | BlurListener
+
 /** A structural spy target: records every listener add/remove as a multiset so
  *  the leak-fix cases can prove `uninstall()` removes exactly what it installed.
  *  Satisfies `HeldKeysTarget` (the narrow interface `window` also satisfies). */
@@ -45,19 +57,18 @@ function spyTarget(): HeldKeysTarget & {
   emit: (type: 'keydown' | 'keyup', e: KeyboardEvent) => void
   emitBlur: () => void
 } {
-  const listeners = new Map<
-    string,
-    Set<(e: KeyboardEvent) => void | ((e: Event) => void)>
-  >()
-  const add = (type: string, fn: (e: never) => void): void => {
-    const set = listeners.get(type) ?? new Set()
-    set.add(fn as never)
+  const listeners = new Map<string, Set<SpyListener>>()
+  const add = (type: string, fn: SpyListener): void => {
+    const set = listeners.get(type) ?? new Set<SpyListener>()
+    set.add(fn)
     listeners.set(type, set)
   }
-  const remove = (type: string, fn: (e: never) => void): void => {
-    listeners.get(type)?.delete(fn as never)
+  const remove = (type: string, fn: SpyListener): void => {
+    listeners.get(type)?.delete(fn)
   }
   return {
+    // One boundary cast: `add`/`remove` accept the union, which is a supertype of
+    // each overload's listener parameter, so this is sound (not an `as any`).
     addEventListener: add as HeldKeysTarget['addEventListener'],
     removeEventListener: remove as HeldKeysTarget['removeEventListener'],
     live: () =>
@@ -65,10 +76,10 @@ function spyTarget(): HeldKeysTarget & {
         [...set].map(() => ({ type })),
       ),
     emit: (type, e) => {
-      for (const fn of listeners.get(type) ?? []) (fn as (e: KeyboardEvent) => void)(e)
+      for (const fn of listeners.get(type) ?? []) (fn as KeyListener)(e)
     },
     emitBlur: () => {
-      for (const fn of listeners.get('blur') ?? []) (fn as (e: Event) => void)(new Event('blur'))
+      for (const fn of listeners.get('blur') ?? []) (fn as BlurListener)(new Event('blur'))
     },
   }
 }
@@ -187,7 +198,7 @@ describe('installHeldKeys — dispose without leaking listeners', () => {
   })
 
   it('uninstall() removes every listener it installed — net zero, no accumulation', () => {
-    // The actual leak the story fixes: the four leaky sites never remove their
+    // The actual leak the story fixes: the five leaky sites never remove their
     // handlers. A disposer that removed only keydown (the likely partial) leaves
     // keyup and blur live, so this asserts the multiset is emptied entirely.
     const target = spyTarget()
