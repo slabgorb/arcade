@@ -491,9 +491,11 @@ export function stepGame(state: GameState, input: GameInput): void {
   state.events = []
 
   // ── pm4-6: the cabinet MAINLINE — START/coin -> READY -> PLAY ────────────
-  // The sim proper runs ONLY in `playing`. `game-over`, `attract` and `ready`
-  // freeze it: nothing moves — not Pac, not the ghosts (Blinky is released from
-  // frame 0), not the dot count. Each edge here feeds the pure pm4-5 machine
+  // The real-player sim runs in `playing`. `game-over`, `ready`, `dying` and
+  // `level-clear` freeze it: nothing moves — not Pac, not the ghosts (Blinky is
+  // released from frame 0), not the dot count. `attract` used to freeze too, but
+  // pm4-8 runs the SELF-PLAYING DEMO there — the auto-player drives the SAME sim
+  // (see the attract branch below). Each edge here feeds the pure pm4-5 machine
   // (`advancePhase`, phase.ts) the one signal it owns and applies that edge's
   // side effect. `dying`/`level-clear` (their freeze + advanceLevel) are pm4-7;
   // `game-over -> attract` (the timeout) is pm4-10.
