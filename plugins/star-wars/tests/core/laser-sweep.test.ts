@@ -89,7 +89,7 @@ const ASPECT = 16 / 9
  */
 
 /** The ROM's `LDB #8`, in the clone's house idiom for a ROM frame count — the same shape as
- *  `ENEMY_SHOT_TTL = 64 / TICK_HZ` (state.ts:393). ≈ 0.390 s. Derived here rather than imported
+ *  `ENEMY_SHOT_TTL = 64 / TICK_HZ` (state.ts:398). ≈ 0.390 s. Derived here rather than imported
  *  so this suite pins the DURATION the player can observe, and leaves the naming and the storage
  *  of the counter to Dev. */
 const SWEEP_SECONDS = 8 / TICK_HZ

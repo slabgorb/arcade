@@ -279,8 +279,8 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 //
 // >> Line numbers below marked (pre-fix) describe that OLD layout and will not
 // >> match the current file: the fix moved the push. Current anchors are
-// >> `const scrollSpeed` (sim.ts:1067, where the crossing is computed),
-// >> `loseShield` / `const lives` (:1210-1211) and the gated push (:1232-1237).
+// >> `const scrollSpeed` (sim.ts:1073, where the crossing is computed),
+// >> `loseShield` / `const lives` (:1216-1217) and the gated push (:1238-1243).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the
@@ -374,7 +374,7 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
     // the terrain scrape above it (:1000-1004) has already been counted. A fix
     // that gated on `damage` at the crossing would therefore pass the scrape
     // test above and fail this one. Only the post-`loseShield` `lives`
-    // (:1210-1211) sees every source, whatever they are.
+    // (:1216-1217) sees every source, whatever they are.
     const ship = surfaceShip(SKIM_ALTITUDE)
     const out = stepGame(
       atCrossing({

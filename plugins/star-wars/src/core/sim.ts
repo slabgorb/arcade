@@ -69,6 +69,9 @@ import {
   TRENCH_GUN_FIRE_MASK,
   TRENCH_GUN_FIRE_THRESHOLD,
   TRENCH_GUN_FIRE_RANGE,
+  TGNBS,
+  TRENCH_GUN_FIRE_BAND,
+  TRENCH_GUN_MIN_FIRE_DEPTH,
   TRENCH_BONUS,
   PORT_HIT_RADIUS,
   PORT_APPROACH_WINDOW,
@@ -359,14 +362,17 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
 
   // Enemy fire advances & expires each step. SPACE-phase TIE fireballs HOME on the
   // cockpit (ROM sub_A875, story sw4-2 / spec §B): their position decays 7/8 per
-  // cabinet tick toward the origin, so an un-shot shot ALWAYS arrives. Surface and
-  // trench fire instead RIDES THE SCROLL — spawned with a closing velocity that leads
-  // the ship (trenchGunFireVelocity: trench sw7-16, surface sw10-2) — and is carried
-  // straight here by `advance` (the lead was baked into the muzzle velocity).
+  // cabinet tick toward the origin, so an un-shot shot ALWAYS arrives. TRENCH base-gun
+  // shells ride the scroll in depth and DAMPED-heat-seek the player each tick (MOVPL/MOVPR,
+  // sw11-1) — never a lead, so they scatter. Surface fire RIDES THE SCROLL with a closing
+  // lead baked into the muzzle velocity (trenchGunFireVelocity: surface sw10-2), carried
+  // straight here by `advance`.
   const enemyShots =
     state.phase === 'space'
       ? homeShots(state.enemyShots, dt)
-      : advance(state.enemyShots, dt)
+      : state.phase === 'trench'
+        ? seekShots(state.enemyShots, state.trenchView, wvHrd(state.wave, state.gmDif), dt)
+        : advance(state.enemyShots, dt)
 
   const common: StepCommon = {
     t,
@@ -1461,10 +1467,11 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
 
   // --- Trench wall guns fire back (B-017; DOBASE/BSGUN, WSBASE.MAC:1200-1330) ---
   // The wall guns (the turrets) return fire on their own per-difficulty TGPROB
-  // throttle: on a timer-mask opening each in-range gun rolls the probability and,
-  // if it passes, fires a shot AT THE SHIP POINT (trenchView, sw7-16 — the flying
-  // ship, not a detached floor origin). A shot that reaches the cockpit costs a
-  // shield (loseShield / S-016), unlike the force-field GRAZE above. The cadence
+  // throttle: on a timer-mask opening each ELIGIBLE gun rolls the probability and,
+  // if it passes, launches a shell at ITS OWN muzzle that then damped-heat-seeks the
+  // ship in `seekShots` — the ROM never leads (sw11-1 corrected the sw7-16 closed-form
+  // lead, which made every shot a guaranteed hit). A shot that reaches the cockpit
+  // costs a shield (loseShield / S-016), unlike the force-field GRAZE above. The cadence
   // keys off the integer game-frame — `stepTrench` never advances `state.frame`, so
   // the ROM's FRAME counter is `Math.floor(trenchTimer)` (game frames elapsed).
   // Base-gun difficulty is the SAME WV.HRD accumulator as the space TIEs (WSBASE.MAC
@@ -1488,19 +1495,43 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
     return s.pos[0] >= 0 // keep unless it scrolled past the cockpit (native depth < 0), like the obstacles
   })
 
-  // BSGUN: on an opening, each surviving wall gun still on the approach (within the
-  // ROM's furthest-firing range) rolls `nextInt(rng, 256) > threshold` and fires.
+  // BSGUN (WSBASE.MAC:1236-1341): on an opening, each surviving wall gun that is on the
+  // approach fires only when the ROM's THREE mechanisms agree (sw11-1) —
+  //   CONCURRENCY: at most `TGNBS[gunDiff]` base shells airborne at once (GNBSAVAIL), not
+  //     the flat MAX_FIREBALL_SLOTS; wave-1 allows exactly one.
+  //   ELIGIBILITY: never too close (`DONT SHOOT IF TOO CLOSE`, one panel skipped), never a
+  //     player BELOW the gun (`IFGE ?PLAYER ABOVE BUNKER?`); full TGPROB within one
+  //     panel-height band above, the SQUARED prob `P.RND1*P.RND1` one band lower, silent
+  //     beyond two bands.
+  //   AIM: the shell launches at the gun with NO lead — it rides the scroll and
+  //     damped-heat-seeks the player in `seekShots` (PANLIN/MOVPL), so it scatters.
+  const baseGunCap = TGNBS[gunDiff]
   const firedShots: Projectile[] = []
   if (fireOpening) {
     for (const o of survivors) {
-      if (standingShots.length + firedShots.length >= MAX_FIREBALL_SLOTS) break
+      if (standingShots.length + firedShots.length >= baseGunCap) break // GNBSAVAIL: TGNBS[WV.HRD]
       if (o.kind !== 'turret') continue
-      if (o.pos[0] > TRENCH_GUN_FIRE_RANGE) continue // beyond the furthest firing bunker (native depth ahead)
-      if (nextInt(rng, 256) > gunThreshold) {
+      if (o.pos[0] > TRENCH_GUN_FIRE_RANGE) continue // beyond the furthest firing bunker
+      if (o.pos[0] < TRENCH_GUN_MIN_FIRE_DEPTH) continue // DONT SHOOT IF TOO CLOSE (panel skipped)
+      // BSGUN vertical alignment (`SUBD M.Z0 / IFGE ... SUBD #400`): a gun only reaches a
+      // player within one panel-height band, at full TGPROB, or one band lower at the
+      // SQUARED prob; beyond two bands it can not elevate/depress onto him. Measured as the
+      // vertical GAP (like the force-field band at :1447) — our seat sits below the wall
+      // slots, so a signed "player above" test would silence every streamed gun (the
+      // coordinate polarity vs the ROM's signed Z is unresolved; see sw11-1 Dev notes).
+      const dz = Math.abs(trenchView[2] - o.pos[2])
+      const fires =
+        dz < TRENCH_GUN_FIRE_BAND
+          ? nextInt(rng, 256) > gunThreshold // near band — full TGPROB
+          : dz < 2 * TRENCH_GUN_FIRE_BAND
+            ? ((nextInt(rng, 256) * nextInt(rng, 256)) >> 8) > gunThreshold // one band lower — squared, skewed low
+            : false // more than two panel-heights off — out of the gun's reach
+      if (fires) {
         firedShots.push({
           pos: [...o.pos] as Vec3,
-          vel: trenchGunFireVelocity(o.pos, trenchView), // rides the scroll + leads the ship (sw7-16); not outrun
+          vel: [-TRENCH_SCROLL_SPEED, 0, 0], // PANLIN: rides the scroll, NO lead (player-independent)
           ttl: ENEMY_SHOT_TTL,
+          seek: o.pos[1] < 0 ? 1 : -1, // left wall seeks right, right wall seeks left (MOVPL/MOVPR)
         })
         events.push({ type: 'enemy-fire', pos: [...o.pos] as Vec3 })
       }
@@ -2092,6 +2123,36 @@ function advance(bolts: readonly Projectile[], dt: number): Projectile[] {
     const ttl = b.ttl - dt
     if (ttl <= 0) continue
     out.push({ pos: add(b.pos, scale(b.vel ?? ZERO, dt)), vel: b.vel, ttl })
+  }
+  return out
+}
+
+/**
+ * Advance TRENCH base-gun shells by the ROM's DAMPED, DIRECTIONALLY-LIMITED heat-seek
+ * (MOVPL/MOVPR, WSGUNS.MAC:788-846). Each shell rides the scroll in depth (its `vel`),
+ * and each cabinet tick its VERTICAL closes 1/16 (`ASRD4`, >>4) of the gap UP toward the
+ * player — and ONLY up (`IFPL ?NEED TO GO UP TO PLAYER?`) — while its LATERAL closes 1/16
+ * toward the player when `WV.HRD >= 1` (below that it drifts to the channel centre), moving
+ * ONLY in the shell's own `seek` direction (a left-wall shell right, a right-wall shell
+ * left). Frame-rate independent like `homeShots`: the per-tick 1/16 close is
+ * `1 - (15/16)^(dt·TICK_HZ)`. The result scatters — an authentic shell usually MISSES and
+ * never leads (sw11-1). A shell with no `seek` (there are none in the trench) is carried
+ * straight, so the law degrades to `advance`.
+ */
+function seekShots(shots: readonly Projectile[], view: Vec3, wvHrd: number, dt: number): Projectile[] {
+  const close = 1 - Math.pow(15 / 16, dt * TICK_HZ)
+  const out: Projectile[] = []
+  for (const s of shots) {
+    const ttl = s.ttl - dt
+    if (ttl <= 0) continue
+    const depth = s.pos[0] + s.vel[0] * dt // SLEWX / PANLMV: ride the scroll toward the cockpit
+    let up = s.pos[2]
+    if (view[2] > up) up += (view[2] - up) * close // climbs only toward a player above (IFPL)
+    let lat = s.pos[1]
+    const target = wvHrd >= 1 ? view[1] : 0 // heat-seek the player, else drift to channel centre
+    const delta = target - lat
+    if (s.seek !== undefined && Math.sign(delta) === Math.sign(s.seek)) lat += delta * close
+    out.push({ pos: [depth, lat, up], vel: s.vel, ttl, seek: s.seek })
   }
   return out
 }
