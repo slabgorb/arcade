@@ -45,11 +45,25 @@ Preflight — FIVE questions, answered in order, before any subsystem reading:
 ```bash
 SRC=<vendored greppable copy>          # LF/ASCII — never the pristine CRLF clone
 
-# 0. WHICH REVISION? Preserved trees often hold several complete releases
-#    (centipede: root=rev1 + revision.v2/3/4). Pick the implementation target
-#    (usually the final release), record WHY, and list per-revision artifact
-#    gaps — a late revision may re-cut only program EPROMs, so its picture/
-#    sync ROMs are an EARLIER revision's. Cite the release ledger.
+# 0. WHICH REVISION? Two questions, not one.
+#  (a) HOW MANY releases does the tree hold? Preserved trees often hold several
+#      (centipede: root=rev1 + revision.v2/3/4). Pick the target (usually the
+#      final release), record WHY, list per-revision artifact gaps — a late
+#      revision may re-cut only program EPROMs, so its picture/sync ROMs are an
+#      EARLIER revision's. Cite the release ledger.
+#  (b) WHICH revision IS this tree? A single tree still has an identity its
+#      FILENAMES do not give you (defender's DEFA7/DEFB6/PHR6 do not encode the
+#      white/blue/green/red label; the suffix is an iteration counter, not the
+#      revision). Identify by a DISTINGUISHING BEHAVIOUR read from the source,
+#      cross-check it against the emulator's set list (which set is PARENT), then
+#      CONFIRM by matching the assembled CKBYT/checksum to that set's ROM CRCs.
+#      The label is the CONCLUSION, never the evidence — and beware label-SHAPED
+#      tokens that are not revisions (defender's "FULL RED PRESENT?" is a Williams
+#      logo colour check, not a version flag). WORKED: defender ships UNCONDITIONAL
+#      cocktail screen-flip (PHR6 `WDATA $38` normal/`$39` flipped; DEFA7 `LDA PIA3
+#      COCKTAIL?` → "SWITCH UPSIDE DOWN GUYS"), which INFO.SRC's ledger defines as
+#      the RED/cocktail software = MAME's parent set `defender`. Checksums present
+#      rule out WHITE; runtime (not assembly-time) cocktail rules out plain GREEN.
 ls $SRC $SRC/revision.* 2>/dev/null
 
 # 1. WHAT SHIPPED? Linker map + the author's own ;LINK COMMAND comment +
