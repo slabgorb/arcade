@@ -36,6 +36,10 @@ function fakeCtx(): { ctx: CanvasRenderingContext2D; texts: TextCall[] } {
     textAlign: 'start',
     fillText: (text: string, x: number, y: number) => texts.push({ text, x, y }),
     fillRect: () => {},
+    // pm4-11 makes drawHud blit sprites (lives + fruit) into the bottom band via
+    // drawPacman/drawFruit; the ctx must answer these or the top-band tests crash.
+    createImageData: (w: number, h: number) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+    putImageData: () => {},
   } as unknown as CanvasRenderingContext2D
   return { ctx, texts }
 }
@@ -75,22 +79,20 @@ describe('pm4-9 HUD layout (drawHud)', () => {
     expect(inTopBand(score as TextCall)).toBe(true)
   })
 
-  it('draws LIVES in the BOTTOM band (where the playtest showed it belongs)', () => {
+  // pm4-9 drew LIVES/LEVEL as text in the bottom band. pm4-11 replaces both with
+  // real sprites (life icons + a fruit row) — so the bottom band carries NO text
+  // any more. The sprite behaviour itself is pinned in hud-icons.test.ts; here we
+  // re-baseline pm4-9's two text guards to the new spec: the text must be gone.
+  it('no longer draws LIVES as text — pm4-11 renders lives as Pac-life sprites (see hud-icons.test.ts)', () => {
     const { ctx, texts } = fakeCtx()
     drawHud(ctx, 1440, 0, 3, 1)
-    const lives = texts.find((c) => c.text.includes('LIVES'))
-    expect(lives, 'LIVES readout must be drawn').toBeDefined()
-    expect(lives?.text).toContain('3')
-    expect(inBottomBand(lives as TextCall), 'LIVES must sit in the bottom band (y >= 264)').toBe(true)
+    expect(texts.some((c) => c.text.includes('LIVES')), 'the procedural "LIVES n" text is retired').toBe(false)
   })
 
-  it('draws LEVEL in the BOTTOM band', () => {
+  it('no longer draws LEVEL as text — pm4-11 renders the level as a fruit row (see hud-icons.test.ts)', () => {
     const { ctx, texts } = fakeCtx()
     drawHud(ctx, 1440, 0, 3, 7)
-    const level = texts.find((c) => c.text.includes('LEVEL'))
-    expect(level, 'LEVEL readout must be drawn').toBeDefined()
-    expect(level?.text).toContain('7')
-    expect(inBottomBand(level as TextCall), 'LEVEL must sit in the bottom band (y >= 264)').toBe(true)
+    expect(texts.some((c) => c.text.includes('LEVEL')), 'the procedural "LEVEL n" text is retired').toBe(false)
   })
 
   it('bleed guard: NO HUD text is drawn in the playfield band (24 <= y < 264)', () => {
