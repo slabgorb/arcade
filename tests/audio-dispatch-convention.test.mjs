@@ -117,8 +117,13 @@ function buildProgram(files) {
 }
 
 // An in-memory Program for the control fixtures: the fixture plus a stub `./audio`
-// declaring an `AudioEngine` interface. An empty default lib is enough — we ask only for
-// types, never emit or run semantic diagnostics.
+// declaring an `AudioEngine` interface, and a minimal default lib. The lib MUST declare
+// `Pick` — it is a lib-declared utility type, and with an empty lib `Pick<AudioEngine,…>`
+// fails to resolve ("Cannot find name 'Pick'") and the parameter degrades to `any`, so the
+// Pick fixtures would then pass isFullEngineType only because `any`'s symbol is ALSO
+// undefined (a coincidence, not the `__type` mechanism). Declaring `Pick` here makes the
+// fixture path resolve a real Pick to the same anonymous `__type` the real on-disk sweep
+// sees, so the AC-4c/AC-5c "Pick passes" controls exercise the actual discriminator.
 const STUB_AUDIO_MODULE = `
 export interface AudioEngine {
   play(n: string): void
@@ -127,9 +132,13 @@ export interface AudioEngine {
 }
 `
 
+// Just enough of a global lib for the fixtures: `Pick` as its real mapped-type definition.
+// `keyof` is a compiler operator (needs no lib), so this one line resolves `Pick` fully.
+const FIXTURE_LIB = `type Pick<T, K extends keyof T> = { [P in K]: T[P] };`
+
 function fixtureResolvesToFullEngineParam(src) {
   const libName = ts.getDefaultLibFileName({ target: ts.ScriptTarget.Latest })
-  const fileMap = { [libName]: '', '/audio.ts': STUB_AUDIO_MODULE, '/dispatch.ts': src }
+  const fileMap = { [libName]: FIXTURE_LIB, '/audio.ts': STUB_AUDIO_MODULE, '/dispatch.ts': src }
   const host = {
     getSourceFile: (name, lang) =>
       fileMap[name] !== undefined ? ts.createSourceFile(name, fileMap[name], lang, true) : undefined,
@@ -333,4 +342,37 @@ test('SH4-6 AC-5c: the AC-2 predicate PASSES an inline Pick (narrowing without a
 
 test('SH4-6 AC-6: the AC-3 predicate REJECTS a never binding that is not inside a switch', () => {
   assert.equal(hasNeverAnchorInSwitch(FIXTURE_NEVER_OUTSIDE_SWITCH), false)
+})
+
+// ── AC-7 (SH4-6): positive control — the REAL program actually resolves types ──
+// The AC-2 sweep reports "no full-engine param" by asking the TypeChecker to resolve each
+// parameter. If that resolution silently degraded — a tsconfig/@shared break leaving params
+// typed `any`/error — AC-2 would flag nothing and pass having checked NOTHING (vacuously
+// green). This pins that the real program is live: every real dispatch file must have at
+// least one audio parameter that resolves to a narrowed Pick (the anonymous `__type`), and
+// never to `any`. It is the real-path counterpart to the AC-4/AC-5 fixture controls.
+test('SH4-6 AC-7: the real AC-2 program resolves each dispatch audio param to a narrowed Pick, not any', () => {
+  const games = ownersOnDisk()
+  const program = buildProgram(games.map(dispatchPath))
+  const checker = program.getTypeChecker()
+  const unresolved = games.filter((game) => {
+    const sf = program.getSourceFile(dispatchPath(game))
+    let sawResolvedPick = false
+    const walk = (n) => {
+      if (ts.isParameter(n) && n.type) {
+        const type = checker.getTypeAtLocation(n)
+        const isAny = (type.flags & ts.TypeFlags.Any) !== 0
+        if (!isAny && type?.symbol?.name === '__type') sawResolvedPick = true
+      }
+      ts.forEachChild(n, walk)
+    }
+    walk(sf)
+    return !sawResolvedPick
+  })
+  assert.deepEqual(
+    unresolved,
+    [],
+    `These dispatch files had no audio param resolve to a narrowed Pick — type resolution may ` +
+      `have silently degraded, which would make the AC-2 sweep vacuous: ${unresolved.join(', ')}`,
+  )
 })
