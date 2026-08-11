@@ -408,3 +408,8 @@ completed_stories:
     title: 'missile-command — replace the raw requestAnimationFrame loop (src/main.ts:71/74) with @shared/loop createLoop and route the canvas mount through @shared/host-helpers; the sim already uses @shared/rng, so no determinism-sequence change is expected — pin it anyway'
     points: 3
     completed: '2026-08-11'
+  - id: SH4-4
+    epic: SH4
+    title: 'Extract the generic clamp(v,lo,hi) into the shared pure core — duplicated across 4 games (red-baron, star-wars, missile-command, asteroids) in three spellings (Math.max/min nest, ternary, Math.min(Math.max)) that agree except on NaN. DESIGN GATE: choose ONE explicit NaN policy first (the ternary/guarded form matches red-baron enemy.ts''s Number.isNaN->lo intent). Fold ONLY the generic 3-arg form; leave clampVel/clamp01/clampIndex and inline index-clamps local'
+    points: 2
+    completed: '2026-08-11'
