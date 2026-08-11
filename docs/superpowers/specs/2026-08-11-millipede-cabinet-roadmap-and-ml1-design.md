@@ -100,23 +100,101 @@ constant that is not backed by a claim in `claims/*.json` and gated by `citation
 
 ---
 
-## 4. The cabinet roadmap (phased, per `docs/playbooks/next-sprite-game.md`)
+## 4. The cabinet roadmap (the complete build sequence)
 
-Millipede is a **raster** cabinet, so it follows the pac-man/missile-command phased arc.
-Each epic is boot-stable and depends only on the ones above it. **Pixels before physics,
-gate before constants, wire last.**
+Millipede is a **raster** cabinet, so it follows the pac-man/missile-command phased arc
+(`docs/playbooks/next-sprite-game.md`) — and it has a **studied sibling**, so the shape is
+not guessed: Centipede walked the identical path in seven epics (`sprint/archive/epic-cp1..7.yaml`),
+and its arc maps almost 1:1 onto Millipede's subsystems. This roadmap binds the playbook's
+phase order to *this* machine's `.SBTTL` map (built in the `ml1` study). Each epic is
+boot-stable and depends only on the ones above it. **Pixels before physics, gate before
+constants, wire last.**
 
-| Epic | Phase | Scope | Leans on |
-|---|---|---|---|
-| **`ml1`** | 1–2 | **ROM study dossier + scaffold + fidelity harness** (this epic) | centipede dossier; skill |
-| `ml2` | 3 | Graphics-ROM decode: picture EPROMs `136013-106/107` → baked `*-data.ts`; RAM-colour seam | pac-man `gfx-rom.ts`, `bake-graphics` |
-| `ml3` | 4 | Core sim reducers — player/shot, millipede train+split, bestiary, **CONWAY Life field** | vector-game process; ml1 claims |
-| `ml4` | 5 | Sound — POKEY driver + `MLIRQ` `SOUNDS` routine (`MLIRQ.MAC:8`) | centipede `sound.md`; `@shared/synth` |
-| `ml5` | 6–7 | Phase machine (attract `MLATR` MODE FE/FF) + runtime wiring + HUD + showcase | pm4/mc6; `@shared` |
-| `ml6+` | 8 | Hardening / mutation batteries (Reviewer-driven, grouped by **file surface**) | jt9 gotcha |
+> **Provisional by construction.** Only `ml1` is a live sprint shard. `ml2`–`ml8` live
+> here as story-level plans and are **materialized into `sprint/epic-ml*.yaml` at each
+> epic's own kickoff** — a story list frozen months early goes stale, and `ml1` will
+> resolve OQ-1..4 and pin constants that sharpen every later epic. Points are the
+> Architect's order-of-magnitude estimate (Centipede's real burns in parentheses), not a
+> commitment.
 
-The **CONWAY Life field** (`ml3`) is the schedule risk to watch: it is the one subsystem
-with no sibling code and no design-doc prose, ported purely from Cerny's 6502.
+### `ml1` — study + scaffold + fidelity harness *(live; §5)*
+Phase 1–2. The dossier, the citation gate, the boot-stable scaffold. Sibling: centipede
+dossier. **(≈21 pts)**
+
+### `ml2` — graphics-ROM decode → pixels on screen
+Phase 3, the raster heart. Mirrors pac-man's `gfx-rom.ts` + `bake-graphics` seam; kept
+separate from `ml1` (Centipede folded it into cp1, but Millipede's colour path is novel
+enough to earn its own epic).
+- Vendor + byte-citation-gate the picture EPROMs `136013-106/107` (from the MAME `milliped`
+  set — OQ-3); decode the 8×8 stamps (2-bit planar, like centipede `CENPIC`).
+- **RAM-colour seam** — the genuine divergence: Millipede colours from COLOR RAM
+  (`MLIRQ.MAC:242` `CLRCH`), not a resistor-DAC PROM. Design the palette source off
+  `milliped.cpp`, not centipede's `SYNC.MAC` model.
+- `tools/bake-graphics.mjs` → committed `*-data.ts`; render a static playfield of stamps.
+- Visual playtest for the ROT/orientation trap **now**, before physics (playbook §4).
+- Leans on: `plugins/pac-man/src/shell/gfx-rom.ts`, `plugins/centipede/` picture decode. **(≈18 pts)**
+
+### `ml3` — the train + the playfield *(the novel-heavy epic; mirrors cp2 + Cerny)*
+Phase 4a. The millipede itself and the field it crawls through.
+- Millipede head/body init + motion + turn (`CENTPC` `MILLI.MAC:498`, `NEWHD` `MLSUB.MAC:775`,
+  `MOTION` `MILLI.MAC:1444`), split-on-mushroom, `EXPLOD` (`MILLI.MAC:763`), player death.
+- Mushroom field: `MUSHER`/`MUSHDC` (`MLSUB.MAC:732/707`), `RESTOR` (`:919`), poison
+  mushrooms (`MLDEF.MAC:143`), `OBSTAC` (`:824`).
+- **`CONWAY` Life field** — Cerny's `MASTER` (`CONWAY.MAC:24`) growth/death of mushrooms &
+  DDT; a pure reducer with **no sibling and no design-doc prose**. Highest schedule risk;
+  give it its own stories + a seeded-field golden test.
+- **`SCROLL`/`SCROLD`/`SCROLU`** (`MLSUB.MAC:1105/1149/1309`) — the vertically scrolling
+  playfield, absent from Centipede. Design the core coordinate system to scroll from day one.
+- Leans on: centipede cp2 "the train"; `ml1` claims. **(≈26 pts — the CONWAY+scroll premium)**
+
+### `ml4` — the menagerie + DDT
+Phase 4b. The bestiary, one cited reducer per critter (the `.SBTTL` map is the story list).
+- Beetle (`BEETL` `MILLI.MAC:243`), spider (`SPDMV` `:2295`), dragonfly (`FLYMV` `:1004`),
+  mosquito (`MOSQT` `:1324`), earwig (`EARWIG` `:672`), inchworm (`WRMMV` `:2559`),
+  bee (`BEEMV` `:56`).
+- DDT bombs: `DDTS` add (`MLSUB.MAC:420`), `BOMBS` player-bombing (`MILLI.MAC:446`),
+  explosion clouds (`MLDEF.MAC:202`).
+- Per-critter scoring pinned to the `PTS` table (`MLDEF.MAC:398`), not the missing `MILLI.DOC`.
+- Leans on: centipede cp3 "the menagerie". **(≈21 pts)**
+
+### `ml5` — game structure + high scores
+Phase 4c/6. The outer loop that turns reducers into a game.
+- Waves + difficulty (`BEETLA` per-wave `MLDEF.MAC:370`, `DELAY` between waves `:286`),
+  scoring (`SCORNG` `MLSUB.MAC:1040`, `UPSCRE` `:1912`).
+- Bonus life "EVERY XXXX" selectable (`BONUS` `MLSUB.MAC:8`, DIP `MLDEF.MAC:90`), lives
+  (`DLIVES` `:505`), and **`SELECT` starting score** (`MLSUB.MAC:1404`) — Millipede's
+  start-harder-for-more-points feature, absent from Centipede.
+- High-score table + initials, **reusing `@shared/highscore` + `@shared/name-entry`**
+  over one-origin `localStorage` (`GETINT` `MLSUB.MAC:547`, `UPDATE` `:1817`, `COPYHS`
+  `:406`) — the EAROM (`MLTST` `CKSUM`/`READEA`/`WRITEA`) maps to `localStorage`, not chip
+  emulation (the asteroids/joust/mc7 consumer pattern).
+- Leans on: centipede cp4 "game structure"; `mc7`. **(≈21 pts)**
+
+### `ml6` — sound
+Phase 5. Can precede or follow `ml4`/`ml5`.
+- **Two POKEYs, 8 channels** (`MLDEF.MAC:20,311`) — one more than Centipede — driven by the
+  `SOUNDS` routine (`MLIRQ.MAC:8`) off the `CHAN` table. Port the driver; **the sweep is the
+  sound** (playbook §4); gate audio on first gesture.
+- Leans on: `plugins/centipede/docs/rom-study/sound.md`, `@shared/synth`/`@shared/audio`. **(≈13 pts)**
+
+### `ml7` — phase machine, wiring, HUD, showcase
+Phase 6–7. Where it becomes a cabinet.
+- Attract state machine from `MLATR` MODE FE/FF (`MLATR.MAC:126/313`); pure phase machine
+  first (unwired), runtime wiring after (pm4 model).
+- HUD (score/lives/DDT), lobby-showcase opt-in, and the **visual playtest** for
+  coordinate/colour/scroll correctness — not just green vitest.
+- **Accessibility gate (standing exception to ROM-always-wins):** the owner has
+  photosensitive epilepsy — **no full-screen strobe/flash**; freeze or fade. Bake into the
+  phase machine from the start, not as a retrofit.
+- Leans on: `pm4`/`mc6`; centipede cp7 "playtest followups". **(≈18 pts)**
+
+### `ml8+` — hardening / mutation batteries
+Phase 8. Reviewer-driven; **expect it to file stories, not just close them** — group by
+**file surface**, not theme (the jt9 gotcha). This is where a finished cabinet spends most
+of its commits. **(open-ended)**
+
+**The one to watch:** `ml3`'s CONWAY Life field — no sibling code, no prose, ported purely
+from Cerny's 6502. Everything else has a Centipede analog or a `@shared` consumer to copy.
 
 ---
 
