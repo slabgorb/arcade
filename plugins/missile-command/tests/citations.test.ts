@@ -782,6 +782,99 @@ describe('mc10-6 round 3 — coverage is local + enclosing-symbol; the shared he
   })
 })
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 6d. mc10-6 ROUND 4 — CLOSE THE REMAINING TWO SCOPE LEAKS. Reviewer round 3
+//     (Heimdall) REJECTED: the header-vouch class was closed for ONE shape (header
+//     separated by a code line — the shape section 6c's R2-A test constructs) but
+//     left OPEN for another, and the new enclosing-symbol arm introduced a second leak:
+//       R3-A [HIGH] `precedingBlock`'s stop condition (t==='' && block.length>1) only
+//         breaks on a blank line AFTER collecting a comment, so a literal with NO
+//         attached comment, separated from the file header by a single blank line,
+//         walks the back-scan INTO the header — R2-A reopens (reproduced).
+//       R3-B [HIGH] `DECL_RE`-tracked `enclosingSymbol` is never reset, so a literal on
+//         a NON-declaration statement inherits the PREVIOUS declaration's symbol, and a
+//         same-symbol claim wrongly covers it (reproduced).
+//     Neither fires on the committed tree today (real files have a JSDoc/import after
+//     the header; no core file has a module-scope non-declaration literal) — so these
+//     pin the leaks on SYNTHETIC input, the section-5/6 way.
+//     Also pins the round-3 coverage gaps: R3-D (norm strips separators / folds case),
+//     R3-F (id word-boundary lookbehind — suffix collision), R3-G (empty enclosing).
+// ─────────────────────────────────────────────────────────────────────────────
+describe('mc10-6 round 4 — the header/blank leak and the stale-enclosing-symbol leak are closed', () => {
+  // R3-A (RED against round-3 precedingBlock):
+  it('a header cite separated from a bare declaration by only a blank line does NOT cover', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // No CODE line between the header and BAR — just one blank (the house style of
+    // score.ts/abm.ts etc.). precedingBlock must not walk past the blank into the header.
+    const src = [
+      '// SOURCE OF TRUTH: ICBWAV (W3MAIN.MAC:5713) — unrelated table; claim MC-ICBWAV-16',
+      '',
+      'export const BAR = 16',
+    ].join('\n')
+    const icbwav: CommittedClaim = {
+      id: 'MC-ICBWAV-16', symbol: 'ICBWAV', value: 16, meaning: 'unrelated per-wave ICBM budget',
+      source: { file: 'W3MAIN.MAC', line: 5713, verbatim: 'ICBWAV\t.BYTE 12.,15.,...' },
+    }
+    const bar = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 16)
+    expect(bar, 'extractor must surface BAR=16').toBeDefined()
+    // BAR has no own-line cite, enclosing symbol BAR (≠ ICBWAV), and the header is the
+    // ONLY place the claim is named — so it must NOT be in BAR's local docText.
+    expect(literalCovered([icbwav], bar!.docText, 16, bar!.enclosingSymbol)).toBe(false)
+  })
+
+  // R3-B (RED against round-3 DECL_RE tracking):
+  it('a literal on a non-declaration statement does not inherit the previous declaration symbol', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    // After the WICSPL array closes, a bare call-statement literal must carry NO
+    // enclosing symbol — else a same-symbol claim wrongly covers an unrelated number.
+    const src = ['export const WICSPL = [', '  0x10,', ']', '', 'doSomething(4242)'].join('\n')
+    const target = extractCoreLiterals(src, 'wave.ts').find((l) => l.value === 4242)
+    expect(target, 'extractor must surface 4242').toBeDefined()
+    expect(target!.enclosingSymbol, 'a non-declaration literal has no enclosing declaration symbol').toBe('')
+    const wicspl: CommittedClaim = {
+      id: 'MC-WICSPL-4242', symbol: 'WICSPL', value: 4242, meaning: 'unrelated same-symbol claim',
+      source: { file: 'W3MAIN.MAC', line: 1, verbatim: 'x' },
+    }
+    expect(literalCovered([wicspl], target!.docText, 4242, target!.enclosingSymbol)).toBe(false)
+  })
+
+  // R3-D (guard — norm() strips separators + folds case; a mutant dropping the strip survives 6c):
+  it('the enclosing-symbol arm normalizes separators and case (MIRV_LO ≡ MIRVLO)', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    const c: CommittedClaim = {
+      id: 'MC-MIRV-LO', symbol: 'MIRVLO', value: 128, meaning: 'x',
+      source: { file: 'W3COMN.MAC', line: 159, verbatim: 'x' },
+    }
+    // TS name 'MIRV_LO' (underscore) must normalize-equal ROM symbol 'MIRVLO'.
+    expect(literalCovered([c], 'export const MIRV_LO = 128', 128, 'MIRV_LO')).toBe(true)
+  })
+
+  // R3-F (guard — id word-boundary LEFT side; a mutant deleting the lookbehind survives 6c):
+  it('a claim id does not match as a suffix of a longer alphanumeric token', async () => {
+    const { literalCovered } = await loadCoreLiterals()
+    const c: CommittedClaim = {
+      id: 'MC-WICSPL-6', symbol: 'WICSPL', value: 6, meaning: 'x',
+      source: { file: 'W3MAIN.MAC', line: 5717, verbatim: 'x' },
+    }
+    // 'mc-wicspl-6' embedded as a suffix of a longer token must not match (enclosing OTHER).
+    expect(literalCovered([c], 'export const OTHER = 6\n// xmc-wicspl-6', 6, 'OTHER')).toBe(false)
+  })
+
+  // R3-G (guard — a literal before any declaration has an empty enclosing symbol):
+  it('a literal preceding any declaration has an empty enclosing symbol', async () => {
+    const { extractCoreLiterals, literalCovered } = await loadCoreLiterals()
+    const src = ['someExpr(4242)', 'export const X = 1'].join('\n')
+    const lit = extractCoreLiterals(src, 'x.ts').find((l) => l.value === 4242)
+    expect(lit, 'extractor must surface 4242').toBeDefined()
+    expect(lit!.enclosingSymbol).toBe('')
+    const c: CommittedClaim = {
+      id: 'MC-ANY', symbol: 'ANYTHING', value: 4242, meaning: 'x',
+      source: { file: 'W3COMN.MAC', line: 1, verbatim: 'x' },
+    }
+    expect(literalCovered([c], lit!.docText, 4242, lit!.enclosingSymbol)).toBe(false)
+  })
+})
+
 describe('mc10-6 — every real src/core literal is line-anchored or exempt (AC3 real-tree gate)', () => {
   it('src/core exists so the gate has teeth', () => {
     expect(existsSync(coreDirPath), 'src/core must exist for the anchored gate to bite').toBe(true)
