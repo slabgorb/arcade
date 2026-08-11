@@ -30,7 +30,7 @@ import { SOUNDS } from '../../src/shell/audio-manifest.ts'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const CENTIPEDE = join(HERE, '..', '..')
 const ORCHESTRATOR = join(CENTIPEDE, '..', '..')
-const ROM = join(ORCHESTRATOR, 'reference', 'atari-source', 'centipede', 'revision.v4', 'CENTI4.MAC')
+const ROM = join(ORCHESTRATOR, 'reference', 'original-source', 'centipede', 'revision.v4', 'CENTI4.MAC')
 
 /** Re-exported so the bake and the shell provably hold the SAME record. A copy
  *  would drift silently the first time a cue is added; the same object cannot. */

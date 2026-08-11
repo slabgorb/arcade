@@ -93,7 +93,7 @@ Each finding is one list item. Use "No upstream findings" if none.
   universal newlines: every cited line (`:1284`, `:1449`, `:1805-1806`, …) is IDENTICAL in the
   two copies; the md5/line-count delta is byte-level newline noise, and the "2-line offset" came
   from the subagent's own CRLF splitting. Canonical path to cite remains the repo-bundled
-  `reference/atari-source/centipede/revision.v4/CENTI4.MAC` (byte-identical across checkouts).
+  `reference/original-source/centipede/revision.v4/CENTI4.MAC` (byte-identical across checkouts).
   Affects nothing in the diff (citations verified exact against both).
   *Found by Reviewer during code review.*
 
@@ -326,7 +326,7 @@ anything ambient.
    905-green). Confirmed; quarry evidence gathered this review (`:1284` + `:1450 BCC 35$`);
    routed with observation 2.
 4. [VERIFIED] [RULE] All 8 new ROM citations exact against the repo-bundled quarry
-   (`reference/atari-source/.../CENTI4.MAC`) AND the `~/Projects/centipede-source` copy under
+   (`reference/original-source/.../CENTI4.MAC`) AND the `~/Projects/centipede-source` copy under
    universal-newline reading — the rule-checker's offset claim was its own CRLF splitting.
    16 lang-review rules / 27 instances / 0 violations. Dossier edit surgical: CT-70's two
    `JSR PLAY` cites corrected to `:1449`; CT-13's genuine `:1447 ADC X,MOBJH` cites untouched
@@ -435,4 +435,4 @@ squash-merged to develop as `359c7fe` by the user 2026-07-27.
 
 **Recorded, no action:** Reviewer Improvement — the "stale quarry copy" alarm on
 `~/Projects/centipede-source` was a CRLF newline artifact; both copies identical at every
-cited line; canonical cite path is the repo-bundled `reference/atari-source/...` quarry.
+cited line; canonical cite path is the repo-bundled `reference/original-source/...` quarry.

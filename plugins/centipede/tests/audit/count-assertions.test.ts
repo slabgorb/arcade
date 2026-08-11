@@ -7,7 +7,7 @@
 // byte-for-byte, but it cannot see the TALLIES embedded in claim prose. SND-114
 // says the `52$` label "is DEFINED four more times in this revision (CENTI4.MAC:622,
 // :1076, :2065 and CENIR4.MAC:388), and 20 times across the whole vendored tree;
-// counted with grep -rn '^52[$]:' over reference/atari-source/centipede." Both
+// counted with grep -rn '^52[$]:' over reference/original-source/centipede." Both
 // numbers are correct TODAY and guarded by NOTHING — a future edit to the vendored
 // source rots "four"/"20" behind a green suite. "The claim ledger cannot re-run a
 // COUNT" (cp6-5). This suite makes it re-run one.
@@ -55,7 +55,7 @@ type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => s
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const vendoredRoot =
   process.env.CENTIPEDE_SOURCE_DIR ??
-  join(repoRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+  join(repoRoot, '..', '..', 'reference', 'original-source', 'centipede')
 const vendoredAvailable = existsSync(vendoredRoot)
 
 // Load the checker with a self-describing failure, so a RED here reads "count

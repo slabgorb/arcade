@@ -34,7 +34,7 @@ import { tmpdir } from 'node:os'
 const here = dirname(fileURLToPath(import.meta.url))
 const centipede = join(here, '..', '..')
 const orchestrator = join(centipede, '..', '..')
-const ROM = join(orchestrator, 'reference', 'atari-source', 'centipede', 'revision.v4', 'CENTI4.MAC')
+const ROM = join(orchestrator, 'reference', 'original-source', 'centipede', 'revision.v4', 'CENTI4.MAC')
 
 /** cp6-1's machine-readable ruling — the input contract, not the prose. */
 const fixture = () =>

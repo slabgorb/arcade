@@ -29,7 +29,7 @@ tmux.conf
 # whose directories are gone. The rule that governed them is kept as a warning:
 # ANCHOR any such entry (`/name/`, not `name`) — an unanchored name matches a
 # directory at ANY depth, so a bare `tempest` also swallowed
-# reference/atari-source/tempest/ and 57 files of vendored ROM source vanished
+# reference/original-source/tempest/ and 57 files of vendored ROM source vanished
 # from `git add` without a word.
 #
 # LEFTOVER, not a subrepo. arcade-shared's content was imported to src/shared/

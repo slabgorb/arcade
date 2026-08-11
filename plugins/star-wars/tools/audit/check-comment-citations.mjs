@@ -522,7 +522,7 @@ export const UNCATCHABLE = [
 if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
   const swRoot = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..')
   const repoRoot = join(swRoot, '..', '..')
-  const errors = checkTree({ swRoot, romDir: join(repoRoot, 'reference', 'atari-source', 'star-wars-1983'), repoRoot })
+  const errors = checkTree({ swRoot, romDir: join(repoRoot, 'reference', 'original-source', 'star-wars-1983'), repoRoot })
   for (const e of errors) console.error(e)
   console.error(`\n${errors.length} stale citation(s).`)
   process.exit(errors.length ? 1 : 0)

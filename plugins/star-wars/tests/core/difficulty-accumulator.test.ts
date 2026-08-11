@@ -5,7 +5,7 @@
 // AC1 (NOT from the story prose). This suite is the AC1 ORACLE made executable
 // and the AC2 schedule contract.
 //
-// GROUND TRUTH (read directly from reference/atari-source/star-wars-1983):
+// GROUND TRUTH (read directly from reference/original-source/star-wars-1983):
 //   WSMAIN.MAC:1300-1307  init (once per game): GM.DIF = DIP ordinal (0-3), GM.BMP = 0
 //                         (WSMAIN.MAC:1304 "CURRENT DEFAULT DIFFICULTY, STARTS AT 0(EASY)").
 //   WSMAIN.MAC:1353-1364  SPACE fire index:  WV.HRD = min(min(GM.WAV,31)+GM.DIF, 15)

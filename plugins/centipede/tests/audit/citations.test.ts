@@ -57,7 +57,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 // so the whole gate passes over nothing. reference/ is now tracked in-repo.
 const vendoredRoot =
   process.env.CENTIPEDE_SOURCE_DIR ??
-  join(repoRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+  join(repoRoot, '..', '..', 'reference', 'original-source', 'centipede')
 const vendoredAvailable = existsSync(vendoredRoot)
 
 // The checker resolves a bare filename root-first, then revision.v4/ (the target

@@ -6,7 +6,7 @@
 // this story transcribes the ROM's per-wave palette and keys it off SimState.wave.
 //
 // GROUND TRUTH (docs/rom-study/claims/08-render-color.json, CL-17..CL-27, all
-// byte-verified against reference/atari-source/centipede/revision.v4/ this session):
+// byte-verified against reference/original-source/centipede/revision.v4/ this session):
 //   • 99$ (CENTI4.MAC:898-901, CL-9/25/26/27) is a 42-byte table = 14 three-nibble
 //     schemes. It carries EXACTLY ONE 0x06 (table index 32 = scheme X=30's [X+2]
 //     pen) and NO 0x07 anywhere — the ROM stores 0x06; any 0x07 is uncited.

@@ -93,7 +93,7 @@ cadence (`stepWaveCadence`); this story makes the march CONSUME it. Pure
 
 **Key pointers for TEA (in the context file):**
 - Design spec: `centipede/docs/superpowers/specs/2026-07-20-centipede-cp4-game-structure-design.md`.
-- ROM ground truth: `CENTPC` in `reference/atari-source/centipede/revision.v4/CENTI4.MAC:456-554` (VENDORED tree only — citation gate rejects the `~/Projects/centipede-source` off-by-one copy). CENTIS drives both axes: `MOBJDV = CENTIS` (`:479-480`), `MOBJDH = ±CENTIS`, sign from `FRAME AND 2` (`:481-485`).
+- ROM ground truth: `CENTPC` in `reference/original-source/centipede/revision.v4/CENTI4.MAC:456-554` (VENDORED tree only — citation gate rejects the `~/Projects/centipede-source` off-by-one copy). CENTIS drives both axes: `MOBJDV = CENTIS` (`:479-480`), `MOBJDH = ±CENTIS`, sign from `FRAME AND 2` (`:481-485`).
 - `.RADIX 16` — every transcribed constant needs a radix-cited comment + a claims entry; `npm test -- citations` stays green.
 
 **Scope fence:** cp4-1 is the SPEED half only. Fragmentation/loose heads = cp4-2,

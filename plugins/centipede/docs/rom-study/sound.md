@@ -10,7 +10,7 @@ against the vendored 1981 source before anything bakes a byte.
 > vitest.
 
 Every citation below is into the **vendored** tree,
-`reference/atari-source/centipede/revision.v4/CENTI4.MAC`. The
+`reference/original-source/centipede/revision.v4/CENTI4.MAC`. The
 `~/Projects/centipede-source` copy is off by one from line 44 and none of these
 numbers were taken against it. Every line cited here is pinned by a claim in
 [`claims/16-sound.json`](./claims/16-sound.json), which the citation gate

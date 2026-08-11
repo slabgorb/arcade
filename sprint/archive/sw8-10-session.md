@@ -56,7 +56,7 @@ supply. `origin/main` had moved (jt5-3 finish); fast-forwarded before any setup.
 the `'1A1'` fallback exists at `plugins/star-wars/src/core/sim.ts:2129-2145`; wave-1
 plan is 27 entries and TWV2Z is 18 entries incl. the ±2048 corners
 (`tie-waves.ts:65-88`); ADASHP's clamp-to-last-group + loop-pointer-restart read
-directly from `reference/atari-source/star-wars-1983/WSCPU.MAC` (~:1058-1090). The
+directly from `reference/original-source/star-wars-1983/WSCPU.MAC` (~:1058-1090). The
 "≤9 spawns under the 6-kill quota" latency figure is the one unmeasured claim — TEA
 to measure in RED. No corrections to the story were needed.
 

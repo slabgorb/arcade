@@ -103,7 +103,7 @@ drawText(ctx, atlas, `SCORE ${state.score}`, TILE_W, 0)
   06-playfield-mushrooms.json`); the UPSCRE/DLIVES routine addresses are
   **net-new** claims — file them (likely in `08-render-color.json`, the
   render/HUD claims file cp2-11 also used for CL-12) against the vendored
-  `reference/atari-source/centipede/revision.v4/` tree before RED, per the
+  `reference/original-source/centipede/revision.v4/` tree before RED, per the
   project's citation-gate convention.
 - **AC-3 screenshot caveat:** the committed screenshot MUST come from THIS
   checkout (`/Users/slabgorb/Projects/a-1/centipede`) — port 5278 is a pinned

@@ -3443,7 +3443,7 @@ and now is not" in a file you never edited. Run them against your file alone.
 ## Re-verify ROM citations against the VENDORED tree, not the greppable clone
 
 All of sw8-19's measurements were taken from `~/Projects/star-wars-1983-source-text`, but the
-citation guard resolves against `reference/atari-source/star-wars-1983/` **inside the repo**. The
+citation guard resolves against `reference/original-source/star-wars-1983/` **inside the repo**. The
 `centipede-quarry-canonical-path` memory records these being off by one for another game, so the
 two are not interchangeable by default. Checked here with `cmp`: byte-identical, 3996 lines both,
 and every cited line reads as claimed. **Cost of the check: one `cmp`. Cost of skipping it: every

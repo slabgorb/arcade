@@ -26,7 +26,7 @@ _Approach hints to be refined by TEA/Dev. The story title and acceptance criteri
 
 **Sources (read these first):**
 - **Design spec (authoritative rationale):** `centipede/docs/superpowers/specs/2026-07-20-centipede-cp4-game-structure-design.md` — the "Constant-source findings" section, COLOUR half.
-- **ROM ground truth:** `reference/atari-source/centipede/revision.v4/CENTI4.MAC` (repo root, VENDORED tree only; the `~/Projects/centipede-source` copy is off-by-one from line 44). Routine `CENTPC` `:456-554`, specifically `:459-463` for the colour walk guard and the walk itself.
+- **ROM ground truth:** `reference/original-source/centipede/revision.v4/CENTI4.MAC` (repo root, VENDORED tree only; the `~/Projects/centipede-source` copy is off-by-one from line 44). Routine `CENTPC` `:456-554`, specifically `:459-463` for the colour walk guard and the walk itself.
 - **Colour mapping (critical):** `centipede/docs/rom-study/subsystems.md` — section on `CLRCH` (`:879` in the ROM). This routine initializes a motion object's colour from LCOLOR and other factors. READ IT FIRST — the mapping from LCOLOR value to rendered RGB is the single most important piece of external knowledge for this story.
 - **Code under change:**
   - `centipede/src/core/sim.ts` — SimState definition; add `lcolor: number` field initialized at STARTING_LCOLOR (TBD, read ROM).

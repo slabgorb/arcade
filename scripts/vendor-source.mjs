@@ -1,5 +1,5 @@
 // Vendors a preserved original-source repo (historicalsource/*) INTO THIS REPO at
-// reference/atari-source/<name>/, and records the provenance (repo + pinned SHA)
+// reference/original-source/<name>/, and records the provenance (repo + pinned SHA)
 // in docs/reference-sources.md.
 //
 // The vendored tree is the greppable copy: same filenames, text LF-normalized to
@@ -10,7 +10,7 @@
 // A PRISTINE git clone is still kept under ~/Projects/<name>-source as a local
 // cache to transcribe from and diff against; it is NOT what any tool reads.
 //
-// The original Atari source files are CR-terminated, non-UTF8 — grep flags them
+// The original source files are CR-terminated, non-UTF8 — grep flags them
 // binary and silently returns nothing. The greppable copy applies the canonical
 // byte transform documented in star-wars/CLAUDE.md:112.
 //
@@ -104,10 +104,10 @@ export function formatRow(r) {
 
 function freshIndex(row) {
   return [
-    '# Reference sources — vendored original Atari source',
+    '# Reference sources — vendored original arcade source',
     '',
-    'The preserved original Atari source for each game, vendored **into this repo** at',
-    '`reference/atari-source/<name>/` by `just vendor-source`. This table records where',
+    'The preserved original arcade source for each game, vendored **into this repo** at',
+    '`reference/original-source/<name>/` by `just vendor-source`. This table records where',
     'each tree came from and the commit it is pinned to.',
     '',
     'The vendored tree is LF-normalized ASCII (grep it directly — the upstream files are',
@@ -184,7 +184,7 @@ function transcribeTree(srcDir, destDir) {
 function vendorOne({ repo, ref, name, force, indexOnly }) {
   const dirbase = name || basename(repo);
   const pristine = join(PROJECTS, `${dirbase}-source`);   // local clone cache
-  const greppable = join(ROOT, 'reference', 'atari-source', dirbase); // IN-REPO reference
+  const greppable = join(ROOT, 'reference', 'original-source', dirbase); // IN-REPO reference
 
   // Index-only: the dirs already exist (hand-vendored); record, never clobber.
   if (indexOnly) {

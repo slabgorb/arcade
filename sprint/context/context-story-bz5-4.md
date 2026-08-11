@@ -30,7 +30,7 @@ behavior changes ONLY where BOTH sources agree the clone diverged.
   - `/Users/slabgorb/Projects/mame/src/mame/layout/bzone.lay`
   MAME EXECUTES the ROM; its running behavior + sound-gating are the second source.
 - **BZONE.MAC disassembly (vendored, first source, used by bz1–bz4):**
-  `reference/atari-source/battlezone/BZONE.MAC` (+ `reference/va-battlezone/Battlezone.dis65`).
+  `reference/original-source/battlezone/BZONE.MAC` (+ `reference/va-battlezone/Battlezone.dis65`).
 
 ## Clone code under audit (plugins/battlezone/src/core/ — pure sim; do NOT compute AI in the shell)
 `enemies.ts` (tank AI state machine), `movement.ts`, `firing.ts`, `saucer.ts`, `difficulty.ts` (aggression ramp).

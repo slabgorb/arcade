@@ -123,7 +123,7 @@ this story makes it read `centin` and place the loose heads.
 
 **Key pointers for TEA (fully detailed in the context file, condensed here):**
 - ROM ground truth: `CENTPC` in
-  `reference/atari-source/centipede/revision.v4/CENTI4.MAC:456-554` (repo
+  `reference/original-source/centipede/revision.v4/CENTI4.MAC:456-554` (repo
   root, VENDORED tree only — the `~/Projects/centipede-source` copy is
   off-by-one from line 44). New claims start at **CT-98** in
   `docs/rom-study/claims/09-centipede-train.json` (97 entries already).

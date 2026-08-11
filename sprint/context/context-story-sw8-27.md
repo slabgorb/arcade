@@ -62,7 +62,7 @@ the identical four-exit shape before its `;GUN SHOT IS VISIBLE` marker at `:904`
      long branch that acts on it. These four read `:885`, `:887`, `:896` and `:903` until the
      sw8-27 finish — one line each, naming only the BRANCH while quoting both instructions, so
      every row attributed a `CMPD`/`SUBD` to the line below it. Verified against
-     `reference/atari-source/star-wars-1983/WSGUNS.MAC` at finish: :884 `CMPD #01`, :885
+     `reference/original-source/star-wars-1983/WSGUNS.MAC` at finish: :884 `CMPD #01`, :885
      `LBLE 90$`, :886 `CMPD #7F00`, :887 `LBHI 90$`, :895 `SUBD M.XP`, :896 `LBHS 90$`, :902
      `SUBD M.XP`, :903 `LBHS 90$`, :904 `;GUN SHOT IS VISIBLE`. These are BARE `:N` refs, which
      the citation guard does not watch — it matches only `file.ts:N` — which is why the error

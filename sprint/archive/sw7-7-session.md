@@ -37,7 +37,7 @@ workflow: "tdd"
 > **R7a — the TIE explosion pieces only (X-002 + X-003)**. The rest moved out:
 > **X-005** ground debris → **sw7-14 (R7b)**; **X-006 + X-007 + M-010** finale +
 > authentic Death Star picture → **sw7-15 (R7c)**. Ground truth verified against the
-> in-repo ROM `reference/atari-source/star-wars-1983/WSXPLD.MAC` (matches the
+> in-repo ROM `reference/original-source/star-wars-1983/WSXPLD.MAC` (matches the
 > findings' cited line numbers 1:1).
 
 ### AC-1 — X-002: per-piece TIE explosion lifetimes (wings outlive the globe)
@@ -103,7 +103,7 @@ No upstream findings at setup.
 
 ### Dev (implementation)
 - **Gap** (non-blocking): the TEA Assessment cites ground truth at the in-repo path
-  `reference/atari-source/star-wars-1983/WSXPLD.MAC` — that path does **not exist**
+  `reference/original-source/star-wars-1983/WSXPLD.MAC` — that path does **not exist**
   (`star-wars/reference/` holds only `disasm/` + `README.md`). The real source is the
   machine-local greppable copy `~/Projects/star-wars-1983-source-text/WSXPLD.MAC`, which is
   also what `tests/audit/citations.test.ts` resolves by default (`STARWARS_SOURCE_DIR ??
@@ -296,7 +296,7 @@ Handoff is clean. Han Solo — the RED phase is yours.
 **Scope:** sw7-7 was NARROWED to R7a (X-002 + X-003, TIE explosion pieces) before
 writing tests — see the split note under Acceptance Criteria and the major deviation.
 Ground truth was verified against the in-repo ROM
-`reference/atari-source/star-wars-1983/WSXPLD.MAC` (line numbers match the findings 1:1;
+`reference/original-source/star-wars-1983/WSXPLD.MAC` (line numbers match the findings 1:1;
 RADIX 16 via `.INCLUDE WSCOMN` confirmed — `#18`/`#10` are HEX 24/16).
 
 **Test Files:**

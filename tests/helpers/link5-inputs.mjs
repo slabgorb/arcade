@@ -5,7 +5,7 @@
 // outside the orchestrator into gitignored sibling subrepos; since the monorepo
 // collapse every one of those trees is tracked here under plugins/<id>/, so both
 // halves of link 5 are always present in a complete checkout. Links 1-4 read the
-// vendored ROM images in reference/atari-source/, also in-repo.
+// vendored ROM images in reference/original-source/, also in-repo.
 //
 // WHY THIS EXISTS (AC2): the two link-5 audit tests assert concrete verdicts
 // (ROM-VERIFIED / MISMATCH). If their shipped inputs are absent, EVERY row

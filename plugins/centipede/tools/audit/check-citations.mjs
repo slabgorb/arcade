@@ -107,7 +107,7 @@ function resolveInTree(vendoredRoot, file) {
 /**
  * cp6-5 — resolve a count assertion's optional `scope` to an absolute path in
  * the vendored tree. Absent/empty ⇒ the whole tree (the bare
- * `grep -rn … reference/atari-source/centipede` recipe). A subpath is joined and
+ * `grep -rn … reference/original-source/centipede` recipe). A subpath is joined and
  * then CONTAINED: it must stay inside vendoredRoot after normalisation (same rule
  * as `resolveInTree`'s slash-branch — a `..` landing back inside is fine; one that
  * escapes is refused, never a silent zero). Returns undefined if it escapes or is
@@ -264,7 +264,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // reference/ sits at the MONOREPO root — two levels above plugins/centipede.
   const vendoredRoot =
     process.env.CENTIPEDE_SOURCE_DIR ??
-    join(repoRoot, '..', '..', 'reference', 'atari-source', 'centipede')
+    join(repoRoot, '..', '..', 'reference', 'original-source', 'centipede')
 
   const claims = existsSync(claimsDir)
     ? readdirSync(claimsDir)

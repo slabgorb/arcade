@@ -150,7 +150,7 @@ Each finding is one list item. Use "No upstream findings" if none.
   silently dropped by `dossier-sweep.ts:82-86`, which has no else branch.
   *Found by Reviewer during code review.*
 - **Improvement** (non-blocking): this diff's own header comment says the vendored
-  ROM is "Absent on CI", which is false — `reference/atari-source/` is tracked in
+  ROM is "Absent on CI", which is false — `reference/original-source/` is tracked in
   git and `.github/workflows/deploy.yml:74` checks out with `fetch-depth: 0`, so
   the byte-reopening blocks DO run in CI. Affects
   `plugins/centipede/tests/audit/sound-dossier.test.ts:77`. Worth correcting
@@ -534,7 +534,7 @@ deliverable IS citation accuracy and a dossier story that ships rotten anchors
 teaches the next reader to trust anchors. Three of its own were wrong.
 
 **Corrected in the story AND the epic** (cp6-2 reads the epic and inherited the
-same two), all measured against `reference/atari-source/centipede/revision.v4/CENTI4.MAC`
+same two), all measured against `reference/original-source/centipede/revision.v4/CENTI4.MAC`
 (2686 lines, present):
 
 1. The every-other-frame gate is **:2338-2340**, not :2339-2340. The prose quoted

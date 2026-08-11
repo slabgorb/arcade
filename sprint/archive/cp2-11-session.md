@@ -65,7 +65,7 @@ Each entry: what was changed, what the spec said, and why.
 the arcade's real cabinet draws NO level indicator anywhere; our clone draws
 a `'LEVEL 1'` text label (`src/shell/render.ts:100`, added under cp1-6 with no
 ROM anchor). ROM anchors verified 2026-07-19 (vendored
-`reference/atari-source/centipede/revision.v4/`): a full-tree grep proves no
+`reference/original-source/centipede/revision.v4/`): a full-tree grep proves no
 LEVEL/WAVE/ROUND/STAGE string or digit-writer exists in rev-4 — the complete
 display set is the MESG message table (CENIR4.MAC:16, MESS0..MES10 at :67-110)
 plus copyright (CENTI4.MAC:12), drawn via MESS/CHAR/DIGIT2/DIGITZ and the HUD
@@ -94,7 +94,7 @@ negative claim in the claims dossier citing the MESG enumeration.
 **Status:** RED (failing — ready for Dev)
 
 **Quarry verified** (against the checker's authoritative tree
-`/Users/slabgorb/Projects/a-1/reference/atari-source/centipede/revision.v4/`,
+`/Users/slabgorb/Projects/a-1/reference/original-source/centipede/revision.v4/`,
 which `tools/audit/check-citations.mjs` resolves via `repoRoot/../reference/...`):
 - **Positive display set is closed:** MESG (CENIR4.MAC:16) is a 44-entry `.WORD`
   pointer table — 11 message groups MESS0..MES10, each ×4 languages
@@ -210,7 +210,7 @@ gates re-run independently, numbers not trusted from the handoff.
 
 **Data flow traced:** `state.score` → `drawText(\`SCORE ${state.score}\`, …)` (line 99, retained, exercised by the state-scan tests). The deleted line drew a *hardcoded* `'LEVEL 1'` — never data-driven, no ROM anchor (added under cp1-6). Removing it changes only a static label; the score path is intact.
 
-**CL-12 claim quality — ROM anchors byte-verified** against `reference/atari-source/centipede/revision.v4/` (the tree `check-citations.mjs` resolves via `repoRoot/../reference/…`):
+**CL-12 claim quality — ROM anchors byte-verified** against `reference/original-source/centipede/revision.v4/` (the tree `check-citations.mjs` resolves via `repoRoot/../reference/…`):
 - Source `CENIR4.MAC:16` = `MESG:\t.WORD MESS0` — verbatim exact.
 - 44-entry table (11 groups MESS0..MES10 × 4 languages, lines 16–59) and every enumerated string — PLAYER, the three coinage lines, GAME OVER, ENTER YOUR INITIALS, BONUS EVERY, HIGH SCORES, GREAT SCORE, CREDITS, 2 CREDIT MINIMUM (CENIR4.MAC:67–110) — match the claim exactly.
 - Copyright `CENTI4.MAC:12` `.ASCIN /1980 ATARI/` exact; both "comment-only" hits exact (`D4-D5=BONUS LEVEL OPTIONS` CENTI4.MAC:240, `TIME TO CHANGE COLOR BETWEEN WAVES` CENIR4.MAC:311).

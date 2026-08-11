@@ -123,7 +123,7 @@ clean — the working tree carries none of it.)
 | `plugins/centipede/tests/atlas-orientation.test.ts` | 74-139 | the five rotation pins that must stay green |
 | `plugins/centipede/tests/atlas-orientation.test.ts` | 150-155 | the render.ts transform ban (AC-5) |
 
-**ROM references** (`reference/atari-source/centipede/revision.v4/`): `CENDE4.MAC:239` (CKC0),
+**ROM references** (`reference/original-source/centipede/revision.v4/`): `CENDE4.MAC:239` (CKC0),
 `:248` (CK40), `:129-137` (MOBJP bit layout); `CENIR4.MAC:328-368` (the display routine —
 the flip's actual consumer, and the citation the filing was missing).
 

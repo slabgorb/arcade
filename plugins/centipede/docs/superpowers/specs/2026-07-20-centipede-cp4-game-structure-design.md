@@ -5,7 +5,7 @@
 bonus lives, high scores + initials, attract mode")
 **Parent spec:** `2026-07-18-centipede-clone-design.md`
 **Ground truth:** rev-4 `CENTI4.MAC` in the vendored tree
-(`reference/atari-source/centipede/revision.v4/`) — the only numbering the
+(`reference/original-source/centipede/revision.v4/`) — the only numbering the
 citation gate accepts. `docs/rom-study/` dossier + claims; cite, never
 re-derive.
 
