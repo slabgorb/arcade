@@ -3,7 +3,7 @@ type: epic
 title: 'Missile Command — full enemy roster (REV-01): MIRV, Sputnik/bomber, cruise'
 description: "Fifth Missile Command epic — the full REV-01 enemy roster, spawned by mc4's wave schedule. Adds three cited src/core enemies in ROM-faithful wave order: MIRV split (wave 1; an in-flight ballistic ICBM entering height band [128,160] forks into <=3 children), Sputnik/bomber fly-across launchers (wave 2, SPUTWV; a plane crossing the field that periodically fires ICBMs, killed x4), and cruise missiles (wave 6, CRMWAV; angle-driven flight via ANGLE/CMANGL, killed x5). Models enemies by the ROM's entity boundary: cruise/MIRV are ICBM-family (an Icbm.kind flag + a pure split function), Sputnik is a distinct fly-across entity with its own GameState array. mc5-3 exposes the droneRequest(state) selector (cruise-on-screen count + sputnik-active flag -> DroneKind) that UNBLOCKS mc8-5. Smart bombs are ABSENT from the vendored REV-01 (035820-01) tree — a REV-02/03 feature — so they are deferred to mc5-4, blocked on vendoring REV-03. Design: docs/superpowers/specs/2026-08-08-missile-command-mc5-enemy-roster-design.md; plan: docs/superpowers/plans/2026-08-08-missile-command-mc5-enemy-roster.md. Every new src/core constant carries a claim gated by citations.test.ts; purity.test.ts stays green (pure, seeded RNG, no clock). OUT OF SCOPE: attract/pause (mc6), high scores (mc7), authentic audio wiring (mc8), palette/stamps (mc9)."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc5-1
@@ -89,3 +89,4 @@ stories:
     workflow: trivial
     completed: '2026-08-09'
     type: bug
+completed: '2026-08-11'

@@ -8,7 +8,6 @@ sprint:
   status: active
   number: 2633
 epics:
-  - mc5
   - SH3
   - SH4
   - pm4
