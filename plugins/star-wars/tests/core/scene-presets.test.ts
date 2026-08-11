@@ -36,6 +36,18 @@ describe('SCENE_PRESETS', () => {
     expect(SCENE_PRESETS.map((p) => p.id)).toContain('turret-alley')
     const preset = SCENE_PRESETS.find((p) => p.id === 'turret-alley')!
     expect(preset.state.trenchObstacles.length).toBeGreaterThan(0)
+    // sw11-2: the sheet must show all three wall-furniture kinds so their per-wall
+    // orientation (guns, squares AND catwalks) can be eyeballed together — wave 1
+    // streams no force fields, so the catwalk is injected explicitly.
+    const kinds = new Set(preset.state.trenchObstacles.map((o) => o.kind))
+    for (const k of ['turret', 'square', 'catwalk'] as const)
+      expect(kinds, `turret-alley shows a ${k}`).toContain(k)
+    // and the catwalks demonstrate the per-wall MIRROR: the pair sits on OPPOSITE
+    // walls (their native RIGHT coords negate), so the sheet shows both seatings.
+    const catwalks = preset.state.trenchObstacles.filter((o) => o.kind === 'catwalk')
+    expect(catwalks.length, 'a catwalk on each wall').toBe(2)
+    expect(catwalks[0].pos[1], 'the two catwalks are on opposite walls').toBe(-catwalks[1].pos[1])
+    expect(Math.abs(catwalks[0].pos[1]), 'and neither on the centreline').toBeGreaterThan(0)
   })
 
   it('includes the force-bonus preset showing the "Use the Force" banner state (fidelity epic task 4)', () => {

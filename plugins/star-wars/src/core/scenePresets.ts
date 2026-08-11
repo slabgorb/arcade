@@ -9,6 +9,7 @@
 import { initialState, EXHAUST_PORT_DISTANCE, type GameState } from './state'
 import { enterPhase } from './sim'
 import { spawnTrenchObstacles, streamWallGuns } from './trench-obstacles'
+import { TRENCH_HALF_W } from './trench-channel'
 import { createRng } from '@shared/rng'
 import type { Vec3 } from '@shared/math3d'
 
@@ -41,11 +42,17 @@ export const SCENE_PRESETS: readonly ScenePreset[] = [
   // nearest at −0x6000) pulled up beside them, so turrets AND squares sit in
   // range on the walls for the contact sheet, rather than the far-downrange
   // content a stock trenchAt(1400) would show.
-  { id: 'turret-alley', label: 'TURRET-ALLEY', hint: 'obstacles in range',
+  { id: 'turret-alley', label: 'TURRET-ALLEY', hint: 'guns, squares & catwalks',
     state: { ...trenchAt(1400), trenchObstacles: [
       // sw10-3 native: pull the stations/guns toward the cockpit along native depth (index 0).
       ...spawnTrenchObstacles().map((o) => ({ ...o, pos: [o.pos[0] - 600, o.pos[1], o.pos[2]] as Vec3 })),
       ...streamWallGuns(0, createRng(0)).slice(0, 4).map((o) => ({ ...o, pos: [o.pos[0] - (0x6000 - 2000), o.pos[1], o.pos[2]] as Vec3 })),
+      // sw11-2: a force-field CATWALK on EACH wall so the scene sheet shows all three
+      // furniture kinds together — the catwalk's per-wall seating (it mounts on both
+      // walls across a run) is otherwise unseen at wave 1, whose PIE1 streams no force
+      // fields (sim.ts). Height 0: the field rises y=0→512 off the floor.
+      { kind: 'catwalk', pos: [1500, TRENCH_HALF_W, 0] as Vec3 },
+      { kind: 'catwalk', pos: [1500, -TRENCH_HALF_W, 0] as Vec3 },
     ] } },
   { id: 'port-in-sight', label: 'PORT-IN-SIGHT', hint: 'in range',
     state: trenchAt(600) },

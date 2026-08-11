@@ -25,6 +25,7 @@ import {
   nextTowerWorth,
   DEATH_STAR_CHOICES,
   type GameState,
+  type TrenchObstacle,
 } from '../core/state'
 import type { HighScoreTable } from '@shared/highscore'
 import { formatScore, formatLives, formatWave } from '../core/hud'
@@ -66,6 +67,7 @@ import {
   perspective,
   multiply,
   rotationX,
+  rotationZ,
   translation,
   scaling,
   viewMatrix,
@@ -169,6 +171,41 @@ const ENEMY_MUZZLE_FLASH_SECONDS = 0.1
 // in the dev server once the surface phase is reachable in play.
 export const SURFACE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 export const TRENCH_ORIENT: Mat4 = IDENTITY
+
+// The per-wall seating for trench wall FURNITURE — turrets, squares, catwalks
+// (story sw11-2). All three ride BOTH side walls at `pos[1] = ±W` (the native
+// RIGHT axis): guns and catwalks are STREAMED from the wedge grid via
+// `streamPanelSlots` (trench-obstacles.ts), while squares are hand-authored at
+// fixed stations (`TRENCH_OBSTACLE_STATIONS`) under the same ±W convention.
+// "ORIENTATION is the shell's job" (models.ts). Drawn under the retired
+// `TRENCH_ORIENT = IDENTITY` the furniture sat wrong on the walls; the ROM handles
+// the two walls as MIRROR images — BSGUN mounts the barrel `M.Y0 = -380 ;GUN
+// BARREL ON LEFT WALL` (WSBASE.MAC:1251) vs `M.Y0 = +380 ;GUN BARREL ON RIGHT WALL`
+// (WSBASE.MAC:1295), and the left/right guns fire through the shared PANLIN with
+// MOV$PL vs MOV$PR (WSGUNS.MAC). But the SEATING differs by model posture:
+//
+//   • GUN (`.WP WGA`) and SQUARE (`.WP WPN`) are authored as HORIZONTAL base plates
+//     (in the up=0 plane). A 90° roll about the DEPTH axis (`rotationX`, which fixes
+//     native depth and swaps right↔up) stands the plate UP flush against the
+//     vertical wall; the SIGN of `pos[1]` mirrors it per wall so the gun barrel
+//     points INTO the channel. Under IDENTITY the plate cantilevered off the wall
+//     and the barrel pointed into the WALL on one side.
+//   • CATWALK (`.WP WFF`) is authored ALREADY VERTICAL (a 3-fin barrier rising
+//     up 0→512). It must NOT be rolled — that would lay it flat. It needs ONLY the
+//     per-wall MIRROR so its lateral fin reaches INTO the channel on both walls: a
+//     180° turn about the UP axis (`rotationZ`) on the left wall, identity on the
+//     right (where it already faces inboard).
+//
+// ⚠ As the SURFACE_ORIENT NOTE above warns — structural tests can't catch
+// orientation; the exact barrel
+// angle and how each model reads MUST be eyeballed on the dev server (/star-wars/,
+// trench phase; the scene sheet's TURRET-ALLEY cell shows all three). The tests pin
+// the mechanism (flush, vertical, mirror, fin/barrel inboard); the look is the human gate.
+export function trenchWallOrient(o: TrenchObstacle): Mat4 {
+  const leftWall = o.pos[1] < 0 // native RIGHT < 0
+  if (o.kind === 'catwalk') return leftWall ? rotationZ(Math.PI) : IDENTITY
+  return rotationX(leftWall ? -Math.PI / 2 : Math.PI / 2)
+}
 
 // The exhaust port's placement basis (story sw5-6).
 //
@@ -582,7 +619,7 @@ export function render(
     for (const o of state.trenchObstacles) {
       const model =
         o.kind === 'turret' ? TRENCH_TURRET : o.kind === 'square' ? TRENCH_SQUARE : TRENCH_CATWALK
-      drawWireframe(ctx, model, multiply(view, modelMatrix(o.pos, TRENCH_ORIENT)), proj, w, h, TURRET_GLOW)
+      drawWireframe(ctx, model, multiply(view, modelMatrix(o.pos, trenchWallOrient(o))), proj, w, h, TURRET_GLOW)
     }
     // The exhaust port still rides up the channel at its true sim world position.
     const { port } = trenchPlacement(state)
