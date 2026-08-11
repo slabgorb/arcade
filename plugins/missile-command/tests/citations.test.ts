@@ -950,6 +950,22 @@ describe('mc10-6 round 5 — the extractor is AST-derived; header/template/nesti
     expect(lit, 'extractor must surface 4242').toBeDefined()
     expect(lit!.enclosingSymbol).toBe('inner')
   })
+
+  // R4-C, all function FORMS (guard): a literal in an arrow / function-expression / method
+  // body assigned to a const must NOT inherit the const's name — the enclosing-symbol walk
+  // stops at ANY function boundary, so R4-C is closed for every function form, not only a
+  // top-level `function` declaration. (Real src/core uses arrow-const helpers heavily.)
+  it('a literal inside an arrow / function-expression / method body has no enclosing constant', async () => {
+    const { extractCoreLiterals } = await loadCoreLiterals()
+    const encl = (src: string, v: number): string | undefined =>
+      extractCoreLiterals(src, 'x.ts').find((l) => l.value === v)?.enclosingSymbol
+    expect(encl('export const step = (x: number) => x * 42', 42)).toBe('')
+    expect(encl('export const h = function () { return 7777 }', 7777)).toBe('')
+    expect(encl('export const o = { m() { return 555 } }', 555)).toBe('')
+    // …while a genuine top-level scalar/array constant still gets its name.
+    expect(encl('export const NICBMS = 8', 8)).toBe('NICBMS')
+    expect(encl('export const T = [\n  0x10,\n]', 16)).toBe('T')
+  })
 })
 
 describe('mc10-6 — every real src/core literal is line-anchored or exempt (AC3 real-tree gate)', () => {

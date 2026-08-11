@@ -37,13 +37,16 @@
 // discipline already writes these structured anchors — inline rows carry
 // `// … FILE.MAC:NNN`, and a table's entries share its enclosing symbol.
 //
-// Literal extraction strips `//`, single- AND multi-line `/* */` / `/** */` blocks
-// and string bodies, so prose numbers (story ids like `mc5-3`, "6 cities") in
-// JSDoc do not leak in as fake literals (the mc citations-scanner-JSDoc-leak trap).
+// Literal extraction PARSES the source (TypeScript compiler API) and visits real
+// `NumericLiteral` nodes, so prose numbers (story ids like `mc5-3`, "6 cities") in
+// comments or strings are never nodes and cannot leak in as fake literals (the mc
+// citations-scanner-JSDoc-leak trap) — and the LOCAL comment/enclosing scope is read
+// from syntax, not a line heuristic, so header/nesting/template edge shapes cannot leak.
 
 import { type Claim } from './claims.js'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import * as ts from 'typescript'
 
 /** Indices, halving, sign — not game constants. The sole definition (it replaced
  *  the former local copy in citations.test.ts, which now delegates here). */
@@ -184,104 +187,91 @@ interface CoreLiteral {
   enclosingSymbol: string
 }
 
-/** A top-level `(export )?const|let|function|type IDENT` — matched against a line's
- *  COMMENT-STRIPPED code (so a code-shaped line inside a block comment is not mistaken
- *  for a declaration). The enclosing symbol is bounded to this declaration's own line
- *  plus its initializer (bracket depth), never carried onto a later unrelated line. */
-const DECL_RE = /^\s*(?:export\s+)?(?:const|let|function|type)\s+([A-Za-z_$][\w$]*)/
+/** A function boundary — a literal inside one of these bodies is executable code, not a
+ *  named constant, so the enclosing-symbol walk stops here (never inherits the enclosing
+ *  function's name; Reviewer round-4 R4-C). */
+const isFunctionBoundary = (n: ts.Node): boolean =>
+  ts.isFunctionDeclaration(n) ||
+  ts.isFunctionExpression(n) ||
+  ts.isArrowFunction(n) ||
+  ts.isMethodDeclaration(n) ||
+  ts.isConstructorDeclaration(n) ||
+  ts.isGetAccessorDeclaration(n) ||
+  ts.isSetAccessorDeclaration(n)
 
-/**
- * The literal's IMMEDIATELY-preceding contiguous comment block — the comment lines
- * directly above line `i`, with no intervening blank or code line. A blank line
- * terminates the block: a comment separated from the literal by even one blank line is
- * NOT immediately preceding, so it cannot vouch. This is what stops the back-scan from
- * walking into the shared file header (or an unrelated earlier comment block) when a
- * declaration carries no comment of its own — the leak Reviewer round-3 R3-A found in
- * the old `t === '' && block.length > 1` rule, which absorbed a leading blank line and
- * kept walking. A literal with no attached comment gets an empty preceding block.
- */
-function precedingBlock(lines: readonly string[], i: number): string {
-  const block: string[] = []
-  for (let k = i - 1; k >= 0; k--) {
-    const t = lines[k].trim()
-    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.endsWith('*/')) {
-      block.unshift(lines[k])
-      continue
-    }
-    break // a blank line OR a code line ends the immediately-preceding comment block
+/** The literal's enclosing declaration symbol: the name of the nearest ancestor
+ *  `VariableDeclaration` whose initializer contains it — unless a function boundary is
+ *  crossed first (then the literal is function-body code, with no enclosing constant). */
+function enclosingSymbolOf(node: ts.Node): string {
+  for (let n = node.parent; n && !ts.isSourceFile(n); n = n.parent) {
+    if (isFunctionBoundary(n)) return ''
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) return n.name.text
   }
-  return block.join('\n')
+  return ''
+}
+
+/** The literal's enclosing statement — where its LEADING comments are attached. */
+function enclosingStatement(node: ts.Node): ts.Node {
+  let n: ts.Node = node
+  while (n.parent && !ts.isSourceFile(n.parent) && !ts.isStatement(n)) n = n.parent
+  return n
 }
 
 /**
- * Extract every game-constant numeric literal from `src`, stripping `//`, block
- * `/* *​/` and `/** *​/` comments and string bodies so prose numbers never leak in.
- * Each literal carries the `docText` a coverage decision reads.
+ * Extract every game-constant numeric literal from `src` by PARSING it (TypeScript
+ * compiler API) instead of scanning lines — so the two syntactic questions a coverage
+ * decision needs are answered from real syntax, never a line heuristic (Reviewer round-4:
+ * the line-based lexer kept leaking on sibling shapes; user ruled this AST rewrite):
+ *
+ *   • the literal's LOCAL comment context is its own source line + the LEADING comments
+ *     of its enclosing statement (`ts.getLeadingCommentRanges`). The shared file header
+ *     is never a leading comment of a later statement, and a trailing inline comment on
+ *     a prior statement is that statement's trailing comment — so neither can vouch for
+ *     a bare literal (round-2 R2-A and round-4 R4-A are STRUCTURALLY impossible).
+ *   • the literal's ENCLOSING declaration symbol comes from the AST parent-chain
+ *     (`enclosingSymbolOf`), bounded exactly by syntax — a stale-carry across statements
+ *     (round-3 R3-B), a bracket-depth desync from a multi-line template (round-4 R4-B),
+ *     and a function-body literal inheriting the function name (round-4 R4-C) cannot occur.
+ *
+ * Numbers inside comments and strings are simply not `NumericLiteral` nodes, so prose
+ * numbers (JSDoc counts, story ids) never leak in — no line-by-line comment stripping.
  */
 export function extractCoreLiterals(src: string, file: string): CoreLiteral[] {
-  const lines = src.split('\n')
+  const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, /* setParentNodes */ true, ts.ScriptKind.TS)
+  const fullText = sf.getFullText()
+  const srcLines = src.split('\n')
   const out: CoreLiteral[] = []
-  let inBlock = false
-  let declSymbol = ''
-  let depth = 0
-  for (let i = 0; i < lines.length; i++) {
-    let s = lines[i]
-    if (inBlock) {
-      const end = s.indexOf('*/')
-      if (end === -1) continue
-      s = s.slice(end + 2)
-      inBlock = false
-    }
-    let code = ''
-    for (let k = 0; k < s.length; k++) {
-      if (s.startsWith('//', k)) break
-      if (s.startsWith('/*', k)) {
-        const end = s.indexOf('*/', k + 2)
-        if (end === -1) {
-          inBlock = true
-          break
+  const visit = (node: ts.Node): void => {
+    if (ts.isNumericLiteral(node)) {
+      const value = Number(node.getText(sf).replace(/_/g, ''))
+      if (Number.isFinite(value) && !TRIVIAL.has(value)) {
+        const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line
+        const ownLine = srcLines[line] ?? ''
+        const stmt = enclosingStatement(node)
+        // Only the comment block IMMEDIATELY attached to the statement is local context.
+        // Walk the leading comment ranges backward from the statement; a blank line (>=2
+        // newlines) between a comment and the statement (or the next kept comment)
+        // DETACHES it — so the file header, always separated by a blank line, is excluded
+        // even when the declaration is the file's first statement (Reviewer round-2 R2-A).
+        const ranges = ts.getLeadingCommentRanges(fullText, stmt.getFullStart()) ?? []
+        const attached: string[] = []
+        let boundary = stmt.getStart(sf)
+        for (let idx = ranges.length - 1; idx >= 0; idx--) {
+          const r = ranges[idx]
+          if ((fullText.slice(r.end, boundary).match(/\n/g) ?? []).length >= 2) break
+          attached.unshift(fullText.slice(r.pos, r.end))
+          boundary = r.pos
         }
-        k = end + 1
-        continue
+        const leading = attached.join('\n')
+        // Own source line FIRST (the own-line self-documenting arm reads docText's first
+        // line), then the statement's leading comments — the literal's LOCAL context.
+        const docText = leading ? `${ownLine}\n${leading}` : ownLine
+        out.push({ file, line: line + 1, value, docText, enclosingSymbol: enclosingSymbolOf(node) })
       }
-      const ch = s[k]
-      if (ch === '"' || ch === "'" || ch === '`') {
-        k++
-        while (k < s.length && s[k] !== ch) {
-          if (s[k] === '\\') k++
-          k++
-        }
-        continue
-      }
-      code += ch
     }
-    // Enclosing declaration symbol — bounded to the declaration's OWN line + its
-    // initializer (bracket/brace/paren depth > 0 from the opening). A top-level line
-    // that is NOT a declaration (depth 0, no `const|let|function|type`) clears it, so a
-    // stray literal on a later statement never inherits a previous, unrelated symbol
-    // (Reviewer round-3 R3-B). `startDepth` is the depth entering this line; DECL_RE
-    // runs on comment-stripped `code`, so a code-shaped line inside a block comment is
-    // not mistaken for a declaration.
-    const startDepth = depth
-    const declMatch = DECL_RE.exec(code)
-    const isDecl = declMatch !== null && startDepth === 0
-    if (isDecl) declSymbol = declMatch![1]
-    const enclosingSymbol = startDepth > 0 || isDecl ? declSymbol : ''
-    for (const ch of code) {
-      if (ch === '(' || ch === '[' || ch === '{') depth++
-      else if (ch === ')' || ch === ']' || ch === '}') depth--
-    }
-    if (depth < 0) depth = 0
-    const nums = [...code.matchAll(/(?<![\w.])(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)/g)]
-      .map((m) => Number(m[1]))
-      .filter((v) => Number.isFinite(v) && !TRIVIAL.has(v))
-    if (nums.length === 0) continue
-    // LOCAL context ONLY — own line + immediately-preceding comment block. The file
-    // header is deliberately excluded: an unrelated same-file constant's header cite
-    // must not vouch for a bare literal (Reviewer round-2 R2-A, the wave.ts:61 leak).
-    const docText = [lines[i], precedingBlock(lines, i)].join('\n')
-    for (const value of nums) out.push({ file, line: i + 1, value, docText, enclosingSymbol })
+    ts.forEachChild(node, visit)
   }
+  visit(sf)
   return out
 }
 
