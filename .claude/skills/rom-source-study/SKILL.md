@@ -89,3 +89,5 @@ Sparse MAME clone at `~/Projects/mame/src/mame/atari/` (`git clone --depth 1 --f
 ## Handoff
 
 The dossier is what sprint stories cite while implementing. Once code exists, `rom-fidelity-audit` runs against the SAME ground truth — its preflight is answered by `brief.md`, handed verbatim. Agent prompt templates: `prompts.md` beside this file.
+
+For a raster cabinet, this study is **phase 1** of a larger build sequence. The full phased order (scaffold + fidelity gate → graphics-ROM decode → core sim → sound → wiring → HUD → hardening), the raster-only render/sound seams and the traps that shipped green tests while being wrong are captured in the arcade repo's playbook: `docs/playbooks/next-sprite-game.md`.
