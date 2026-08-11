@@ -78,9 +78,10 @@ describe('lobby bootstrap', () => {
     expect(tiles.length).toBe(LISTED_GAMES.length)
     // Stated as a number as well as a length, because `LISTED_GAMES.length` alone would
     // follow the registry wherever it went: if the filter broke and both lists became
-    // nine, the comparison above would still hold. Eight is what the cabinet ships.
-    expect(tiles.length).toBe(8)
-    expect(GAMES.length).toBe(9)
+    // ten, the comparison above would still hold. Nine is what the cabinet lists (ten
+    // games, red-baron held back).
+    expect(tiles.length).toBe(9)
+    expect(GAMES.length).toBe(10)
   })
 
   it('wires each tile to its game real launch path, in listed order', async () => {
@@ -101,6 +102,7 @@ describe('lobby bootstrap', () => {
       '/joust/',
       '/missile-command/',
       '/pac-man/',
+      '/millipede/',
     ])
     expect(hrefs.some((h) => h?.includes('slabgorb.com'))).toBe(false)
   })

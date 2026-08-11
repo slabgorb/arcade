@@ -37,6 +37,7 @@ import { meta as joust } from '../../plugins/joust/plugin'
 import { meta as redBaron, build as redBaronBuild } from '../../plugins/red-baron/plugin'
 import { meta as missileCommand } from '../../plugins/missile-command/plugin'
 import { meta as pacMan } from '../../plugins/pac-man/plugin'
+import { meta as millipede } from '../../plugins/millipede/plugin'
 
 const PLUGINS = fileURLToPath(new URL('../../plugins', import.meta.url))
 
@@ -47,6 +48,7 @@ const MANIFESTS = {
   battlezone,
   centipede,
   joust,
+  millipede,
   'missile-command': missileCommand,
   'pac-man': pacMan,
   'red-baron': redBaron,
@@ -69,7 +71,7 @@ const dirNames = (): string[] =>
     .map((d) => d.name)
     .sort()
 
-describe('the nine real manifests', () => {
+describe('the ten real manifests', () => {
   it('covers every plugins/ directory', () => {
     // A ninth game that never gets imported above would otherwise be validated by
     // nothing at all — the exact silent-absence failure this contract exists to stop.
@@ -116,7 +118,7 @@ describe('the nine real manifests', () => {
 })
 
 describe('the generated registry', () => {
-  it('holds exactly the nine manifests, each still passing validateMeta', () => {
+  it('holds exactly the ten manifests, each still passing validateMeta', () => {
     // The generated file is committed, so it can be hand-edited. Re-validating it here
     // means a hand edit that breaks the contract fails the suite, not just the generator.
     //
@@ -148,10 +150,11 @@ describe('the generated registry', () => {
       'red-baron',
       'missile-command',
       'pac-man',
+      'millipede',
     ])
   })
 
-  it('lists eight games and holds red-baron back deliberately', () => {
+  it('lists nine games and holds red-baron back deliberately', () => {
     expect(LISTED_GAMES.map((g) => g.id)).toEqual([
       'tempest',
       'star-wars',
@@ -161,6 +164,7 @@ describe('the generated registry', () => {
       'joust',
       'missile-command',
       'pac-man',
+      'millipede',
     ])
     expect(getGame('red-baron')?.listed).toBe(false)
   })

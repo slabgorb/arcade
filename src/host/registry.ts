@@ -109,6 +109,17 @@ export const GAMES: readonly GameMeta[] = [
     showcase: true,
     version: '1.0.1',
   },
+  {
+    id: 'millipede',
+    title: 'MILLIPEDE',
+    year: 1982,
+    color: '#7ac142',
+    controls: ['Mouse / Trackball'],
+    order: 10,
+    listed: true,
+    showcase: false,
+    version: '0.0.1',
+  },
 ]
 
 /** The games the lobby lists — `listed: false` opts a game out deliberately. */
