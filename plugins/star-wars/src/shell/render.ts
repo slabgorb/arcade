@@ -173,13 +173,16 @@ export const SURFACE_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world bas
 export const TRENCH_ORIENT: Mat4 = IDENTITY
 
 // The per-wall seating for trench wall FURNITURE — turrets, squares, catwalks
-// (story sw11-2). These ride BOTH side walls (`streamPanelSlots` mounts them at
-// `pos[1] = ±W`, the native RIGHT axis), and "ORIENTATION is the shell's job"
-// (models.ts). Drawn under the retired `TRENCH_ORIENT = IDENTITY` the furniture
-// sat wrong on the walls; the ROM handles the two walls as MIRROR images — it
-// mounts the barrel `M.Y0 = -380 ;GUN BARREL ON LEFT WALL` (FRPLGN) vs `M.Y0 =
-// +380 ;GUN BARREL ON RIGHT WALL` (FRPRGN, WSBASE.MAC:1251/1295), and PANLIN feeds
-// the shell MOV$PL vs MOV$PR. But the SEATING differs by model posture:
+// (story sw11-2). All three ride BOTH side walls at `pos[1] = ±W` (the native
+// RIGHT axis): guns and catwalks are STREAMED from the wedge grid via
+// `streamPanelSlots` (trench-obstacles.ts), while squares are hand-authored at
+// fixed stations (`TRENCH_OBSTACLE_STATIONS`) under the same ±W convention.
+// "ORIENTATION is the shell's job" (models.ts). Drawn under the retired
+// `TRENCH_ORIENT = IDENTITY` the furniture sat wrong on the walls; the ROM handles
+// the two walls as MIRROR images — BSGUN mounts the barrel `M.Y0 = -380 ;GUN
+// BARREL ON LEFT WALL` (WSBASE.MAC:1251) vs `M.Y0 = +380 ;GUN BARREL ON RIGHT WALL`
+// (WSBASE.MAC:1295), and the left/right guns fire through the shared PANLIN with
+// MOV$PL vs MOV$PR (WSGUNS.MAC). But the SEATING differs by model posture:
 //
 //   • GUN (`.WP WGA`) and SQUARE (`.WP WPN`) are authored as HORIZONTAL base plates
 //     (in the up=0 plane). A 90° roll about the DEPTH axis (`rotationX`, which fixes
@@ -193,7 +196,8 @@ export const TRENCH_ORIENT: Mat4 = IDENTITY
 //     180° turn about the UP axis (`rotationZ`) on the left wall, identity on the
 //     right (where it already faces inboard).
 //
-// ⚠ render.ts:168 — structural tests can't catch orientation; the exact barrel
+// ⚠ As the SURFACE_ORIENT NOTE above warns — structural tests can't catch
+// orientation; the exact barrel
 // angle and how each model reads MUST be eyeballed on the dev server (/star-wars/,
 // trench phase; the scene sheet's TURRET-ALLEY cell shows all three). The tests pin
 // the mechanism (flush, vertical, mirror, fin/barrel inboard); the look is the human gate.
