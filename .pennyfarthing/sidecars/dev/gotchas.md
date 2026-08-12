@@ -2353,3 +2353,119 @@ that hole; don't climb into it.
 
 **Reusable for ml1-3/ml1-4 and every rom-study claims story:** table-driven generate → run the
 checker → author prose. Line numbers come from `sed -n 'Np'`/the checker, never arithmetic.
+
+## A guard that selects files by REGEX is invisible to every rename sweep (jt11-4 rework, joust, 2026-08-12)
+
+The rename `core/demo.ts` → `core/sim.ts` swept the tree for `'demo.ts'` and hit everything —
+except `audio-channel-role.test.ts`'s file selector, which spells the name as an alternation:
+
+```ts
+/core[/\\](events|demo)\.ts$/.test(f)
+```
+
+`grep 'demo.ts'` cannot see that. The alternation quietly matched **neither** name afterwards, so
+jt9-28's two cue-count guards stopped scanning the game's largest cue-emitting file. Measured:
+21 files with `src/core/sim.ts` absent, 22 with it present. Nothing reddened, because both guards'
+non-vacuity checks (`claims > 2`, `scanned > 3`) are satisfied by the *other* files in the set. And
+the file kept its `SEVENTEEN_OK['sim.ts']` allow-list entry — permission granted for cues no guard
+was reading any more, which is the fingerprint to look for.
+
+Two lessons, and the second is the durable one:
+
+1. **When you rename a module, grep for its BASENAME (`demo`), not its filename (`demo.ts`).** Any
+   character class, alternation, or `join()`-built path splits the token you searched for.
+2. **A read-set guard needs a required-file assertion**, because a non-vacuity COUNT cannot detect a
+   read-set that merely got smaller:
+
+```ts
+const AUDIO_SCAN_REQUIRED = ['src/core/events.ts', 'src/core/sim.ts', 'src/shell/audio.ts'] as const
+// …plus: every allow-list key must name a file that is actually scanned.
+```
+
+Reverting the alternation now reddens both of those and neither of the originals.
+
+## Probing a source-scanning guard: never copy the guard file into the tree it scans
+
+To measure the read-set above I copied `audio-channel-role.test.ts` to `tests/zz-probe.test.ts` with a
+`console.log` added. The copy immediately failed — the guard excludes only `import.meta.url` (its OWN
+path), so the *copy* was inside its own scan set, and its NUMBER_WORDS table and quoted prose read as
+live offenders. The failure looks exactly like a real regression.
+
+Probe **out of tree** instead: a standalone `.mjs` in the scratchpad that re-implements the selector
+over `process.argv[2]` measures the same thing and cannot contaminate anything. Same family as the
+"a test that writes into the tree another suite MEASURES" trap, reached from the opposite direction —
+here the probe was the thing being measured.
+
+## An "N-th wave" claim in a comment is checkable in about 40 seconds — check it
+
+The Reviewer's finding said egg waves are "5/10/15/20", and I nearly wrote that list into the code
+comment verbatim. Running `dispatchWaveType(waveRowAt(w).status, …)` across 1..40 gives
+**5, 10, 15, 20, 25, 30, 35, 40** — every fifth wave, not a four-case list, and the comment now says
+the measured form. The Reviewer's list was not wrong, it was the subset they had reason to name
+(the ones just past `TROLL_WAVE`); copying it as if exhaustive would have made the comment false.
+
+The general shape: a finding's numbers are scoped to the finding's purpose. Before a number crosses
+from a review table into a source comment — where the next reader will treat it as the law — derive
+it from the artifact. A throwaway `it()` that `console.log`s the sweep costs one vitest run.
+
+## A conjunctive gate that waits for a THING can be starved by a mode where that thing never exists
+
+jt11-4 deferred the lava troll's rise until a bird had actually been served:
+
+```ts
+if (trollArmed && processes.some((p) => p.kind === 'enemy') && !processes.some((p) => p.kind === 'troll'))
+```
+
+Correct on a normal wave, and the reason is good (the victim is chosen by proximity, so rising into
+an arena of knights alone grabs a player by default). But an **egg wave** enters only eggs — no
+`kind:'enemy'` will EVER appear there — so the gate waited forever and one wave in five silently lost
+the troll. Baiters did not rescue it either: they are `kind:'ptero'`.
+
+The predecessor condition it replaced (`pendingEnemies.length === 0`) was true on an egg wave, which
+is exactly why the swap looked like a strict improvement and was not.
+
+**When you replace "has the thing arrived?" with "is the thing HERE?", enumerate the modes where the
+thing is never created.** The repair is usually the disjunction of both readings — *a bird is here,
+OR no bird is coming* — and the test that catches it has to reach a wave/mode the existing suites
+never reach. joust's troll suites all stop at wave 4; the defect lived at wave 5.
+
+## `src.includes(fnName)` over comment-stripped source is satisfied by the IMPORT BLOCK
+
+The wiring guard for this story's headline AC read:
+
+```ts
+const src = sourceSansComments()
+expect(src.includes(fn)).toBe(true)   // vacuous
+```
+
+`sim.ts` imports all four names from `./transporter.js`, so the import statement alone satisfies it.
+Every call site could be deleted and the guard stays green — the lang-review #25 failure mode, and it
+landed on the one AC ("the dead law gains a production caller") that most needed a real assertion.
+
+Strip the imports too, then assert a **call**:
+
+```ts
+const src = sourceSansComments().replace(/import\s*(?:type\s*)?\{[^}]*\}\s*from\s*'[^']*'/g, ' ')
+expect(new RegExp(`\\b${fn}\\s*\\(`).test(src)).toBe(true)
+```
+
+The mutation that proves it: alias the import to a local (`const serve = serveEnemy; q = serve(q)`).
+Behaviour is byte-identical, the call site is gone, and only the repaired guard notices. Pair it with
+a sibling asserting the stripping actually happened, or the strip itself can rot silently.
+
+## "Different frames" and "strictly later" do not pin a stagger — a 1-frame gap satisfies both
+
+The arrival-cadence suite asserted the complement arrived on N *distinct* frames, each *strictly
+later* than the last, with at most one arrival per frame. An implementation that seats four birds on
+frames 1,2,3,4 passes all of it — and shipped, green, while completely failing the reported defect
+(four buzzards inside a fifteenth of a second is a batch insert with a limp).
+
+**An ordering assertion is not a magnitude assertion.** If the story exists because something happens
+too FAST, one of the assertions must carry the number:
+
+```ts
+expect(frames[i] - frames[i - 1]).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)  // WCREATE PCNAP 61, :2189
+```
+
+The tell that this is real coverage and not ceremony: collapsing the stagger to 1 frame left **16 of
+18** tests green and reddened only the new one.
