@@ -64,17 +64,16 @@ const W = TRENCH_HALF_W
 // STREAMED from the wedge grid's PANEL_GUN columns — `streamWallGuns`, uf1-4 / B-017 —
 // so their placement is the ROM's own wedge data, not a hand-tuned proportion.)
 //
-// The CATWALK is now a wall FORCE FIELD (TD$WFF, B-012): it mounts on ONE wall and is
-// SIDE-GATED — it grazes only a pilot on the wall it hangs from, within a vertical band
-// about its height. A hands-off pilot rides centred (trenchView[0] = 0), which the ROM's
-// `IFLE ;?ON LEFT SIDE?` counts as the left side, so seating the field on the LEFT wall
-// still makes a neutral run graze it — hazard preserved. The dodge is LATERAL: steer to the
-// opposite (right) wall and it can't touch you (or climb clear of its height band). The
-// graze costs NO shield (WSPANL glow+sound+roll; the shield accounting rides WSGLOW,
-// score-shields scope). tests/core/trench-viewpoint.test.ts asserts these behaviourally.
-// (The dense authentic panel grid — ~80 fields streamed over the full channel — is R6d /
-// sw7-22, which un-clamps the port stub; here the trench carries the one head-of-pie divider
-// catwalk, wall-mounted.) Its height need only sit within a hands-off pilot's hit band.
+// The CATWALK is a force-field row (TD$WFF) that SPANS THE CHANNEL, seated in a top or
+// bottom band — WSBASE.MAC TWDG92-96, "8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM". It
+// grazes any pilot inside its vertical band, whatever his lateral position, because WSPANL
+// runs the panel collision once per wall (`PNVLW`/`PNVRW`) and the row is present on both
+// sides at the same band. So the dodge is VERTICAL — dive under a top catwalk, climb over a
+// bottom one — and steering to the far wall is NOT a dodge. (sw11-3 reworked B-012, which
+// had mounted the field on ONE wall and side-gated the graze, inventing a lateral escape
+// the cabinet does not offer.) The graze costs NO shield (WSPANL glow+sound+roll; the
+// shield accounting rides WSGLOW, score-shields scope). tests/core/trench-viewpoint.test.ts
+// and trench-force-field-hazard.test.ts assert these behaviourally.
 
 /** Wall square — it must stay INSIDE THE PILOT'S AIM CONE from its own
  *  station, or it is scenery he can see and never shoot.
@@ -189,11 +188,39 @@ function streamPanelSlots(baseWave: number, rng: Rng, slotType: number, kind: Tr
   return out
 }
 
-/** The wave's wall force fields (B-012, sw7-22 / R6d): every PANEL_FORCEFIELD
- *  (TD$WFF) slot becomes one 'catwalk' obstacle — the kind the side-gated graze
- *  collision reads (sw7-19). */
+/**
+ * The wave's CATWALKS (sw11-3, reworking B-012): each wedge/slot that carries a
+ * PANEL_FORCEFIELD (TD$WFF) in EITHER wall column becomes ONE channel-spanning
+ * 'catwalk' obstacle, seated at the channel centre (right = 0) at that slot's band
+ * height — the kind the vertical-band graze reads.
+ *
+ * Why the two columns MERGE into one obstacle rather than becoming two: WSPANL runs
+ * the panel collision once per wall (`PNVLW ;VIEW LEFT WALL PANELS` /
+ * `PNVRW ;VIEW RIGHT WALL PANELS`), so a force-field row is present on both sides of
+ * the channel at the same band and the pilot meets it wherever he flies. That is a
+ * catwalk ACROSS the channel — WSBASE.MAC TWDG92-96, "8 PANEL DIVIDER WITH CATWALK AT
+ * TOP/BOTTOM" — not two independent single-wall hazards. Modelling it as one centred,
+ * width-spanning member is what removes B-012's phantom lateral dodge; the collision
+ * therefore needs no wall sign, only the band and the depth.
+ *
+ * (The single-panel MODEL is unchanged and still authentic: `.WP WFF` is one panel's
+ * vertical fin, pinned by trench-force-field-rom.test.ts. A catwalk is a ROW of those
+ * fins, which is a placement fact, not a model fact.)
+ */
 export function streamForceFields(baseWave: number, rng: Rng): TrenchObstacle[] {
-  return streamPanelSlots(baseWave, rng, PANEL_FORCEFIELD, 'catwalk')
+  const out: TrenchObstacle[] = []
+  let z = 0
+  for (const w of buildTrench(baseWave, rng) as readonly Wedge[]) {
+    for (let i = 0; i < WALL_SLOT_Y.length; i++) {
+      // Either column carrying the slot means the row spans the channel at this band.
+      if (w.left[i] === PANEL_FORCEFIELD || w.right[i] === PANEL_FORCEFIELD) {
+        // sw10-3 native basis: [depth (+forward), right (0 — spans the width), up (band height)].
+        out.push({ kind: 'catwalk', pos: [z, 0, WALL_SLOT_Y[i]] })
+      }
+    }
+    z += wedgeLength(w.type)
+  }
+  return out
 }
 
 /** The wave's wall guns (B-017, uf1-4): every PANEL_GUN (TD$WGA) slot becomes

@@ -1435,24 +1435,32 @@ function stepTrench(state: GameState, common: StepCommon, dt: number): GameState
     const o = state.trenchObstacles[oi]
     const pos: Vec3 = [o.pos[0] - TRENCH_SCROLL_SPEED * dt, o.pos[1], o.pos[2]]
     if (o.kind === 'catwalk') {
-      // The catwalk is a wall FORCE FIELD (TD$WFF, WSPANL.MAC:186-215, B-012), not a
-      // channel-spanning bar. The graze fires FIRST, before the despawn cutoff below,
-      // so a field that leaps the cockpit plane in one scroll step (B-008) still
-      // registers rather than being silently despawned. Three gates, then a GRAZE:
-      //   • SIDE  — the pilot is on the field's wall side (native RIGHT, o.pos[1] sign
-      //     vs the eye trenchView[1]; `IFLE ;?ON LEFT SIDE?`). A single-wall field is
-      //     dodged by flying the OTHER wall; both walls must be dodged vertically.
-      //   • BAND  — the eye is within the field's vertical hit band about its native UP
+      // The catwalk is a CHANNEL-SPANNING force-field row (TD$WFF), seated in a top or
+      // bottom band across an 8-panel divider — WSBASE.MAC TWDG92/93 (top), TWDG94/96
+      // (bottom), "8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM"; `.WGD WFG`'s
+      // ";CATWALK COLOR WHEN COLLIDED" (WSOBJ.MAC:1834) is what identifies WFF/WFG as
+      // the catwalk. The graze fires FIRST, before the despawn cutoff below, so a row
+      // that leaps the cockpit plane in one scroll step (B-008) still registers rather
+      // than being silently despawned. TWO gates, then a GRAZE:
+      //   • BAND  — the eye is within the row's vertical hit band about its native UP
       //     slot (`?FORCE FIELD ABOVE PLAYER? / ?BUT NOT TOO FAR?`); dive/climb clear.
-      //   • DEPTH — the field is within its first half-depth (native DEPTH, 0) of cockpit.
+      //   • DEPTH — the row is within its first half-depth (native DEPTH, 0) of cockpit.
+      //
+      // There is deliberately NO lateral gate (sw11-3, reworking B-012). WSPANL runs the
+      // panel collision TWICE per segment — `PNVLW ;VIEW LEFT WALL PANELS` (`IFLE ;?ON
+      // LEFT SIDE?`) and `PNVRW ;VIEW RIGHT WALL PANELS` (`IFGE ;?ON RIGHT SIDE?`) — so a
+      // force-field row has a left panel AND a right panel at the same band: a pilot who
+      // "steers to the other wall" simply meets the other panel. B-012 modelled one wall
+      // only, which made lateral steering a dodge the cabinet does not offer. The
+      // authentic dodge is VERTICAL — dive under a top catwalk, climb over a bottom one.
+      //
       // A hit GLOWS + sounds + rolls the ship (AUDCR → 'terrain-crash') and costs NO
       // shield — the shield accounting rides WSGLOW (score-shields scope), and the ship
       // glow/roll are the deferred A-018 visual, so the only cue modelled here is the
       // crash sound.
-      const onFieldSide = o.pos[1] < 0 ? trenchView[1] <= 0 : trenchView[1] >= 0
       const inBand = Math.abs(trenchView[2] - o.pos[2]) <= FORCE_FIELD_BAND_HALF
       const inDepth = pos[0] >= -FORCE_FIELD_DEPTH && pos[0] <= FORCE_FIELD_DEPTH
-      if (onFieldSide && inBand && inDepth) {
+      if (inBand && inDepth) {
         events.push({ type: 'terrain-crash' }) // AUDCR — the graze crash sound, no shield
         continue // flew through the force field — spent
       }

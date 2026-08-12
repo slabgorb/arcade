@@ -160,6 +160,19 @@ the findings JSON; ids cited throughout.
   authored runs, ours randomizes (B-011); the "catwalk" is a wall-mounted
   force field, not a channel-spanning bar (B-012); wall guns fire back
   (B-017, missing); a missed port re-flies the whole trench (B-018, accepted).
+  - ⚠ **CORRECTED BY sw11-3 (2026-08-12) — B-012's "not a channel-spanning bar"
+    is wrong, and so was the single-wall fix it produced.** The catwalk *does*
+    span the channel: WSPANL runs the panel collision once per wall — `PNVLW`
+    (`IFLE ;?ON LEFT SIDE?`, the line B-012 cites) **and** `PNVRW`
+    (`IFGE ;?ON RIGHT SIDE?`) — so a force-field row stands on both walls at the
+    same band and steering to the far wall is no dodge. `WSBASE.MAC` TWDG92-96
+    name them outright: "8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM". What B-012
+    got right and still stands: the object identity (TD$WFF/WFG *is* the catwalk),
+    the single-panel `.WP WFF` fin **model** (M-012 — a catwalk is a *row* of
+    those fins, a placement fact), the vertical band + depth window, and that the
+    contact is a graze, not a shield hit. The authentic dodge is **vertical**
+    (dive under a top catwalk, climb over a bottom one). See the correction note
+    on B-012 in `docs/audit/findings/pair-trench.json`.
 
 ### Explosions & finale (pair-explosions, X)
 - **Confirmed:** 3-piece TIE split with lateral separation (X-001 — third
