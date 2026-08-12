@@ -10,9 +10,10 @@ stories:
     title: 'Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.'
     points: 5
     priority: p1
-    status: in_review
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
     type: bug
     branch: feat/jt11-1-start-experience-player-count
   - id: jt11-2
@@ -62,3 +63,10 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: jt11-5
+  - id: jt11-8
+    title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2, and a click/tap on the attract or select screen as a start gesture (routed Delivery Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a lobby-browser player may also reasonably click). Keep the rising-edge discipline (prevStartHeld) for all new sources.'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
