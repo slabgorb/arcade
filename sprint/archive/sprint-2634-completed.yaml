@@ -92,3 +92,8 @@ completed_stories:
     title: 'tools/bake-graphics.mjs -> committed *-data.ts + render a static playfield of stamps at /millipede/; VISUAL playtest for the ROT/orientation trap now, before physics (playbook section 4 — byte-equality hides orientation bugs, only a visual catch works).'
     points: 3
     completed: '2026-08-12'
+  - id: jt11-11
+    epic: jt11
+    title: 'Enemy facing for ground velXIndex: enemy.ts stepEntity calls the 2-arg stepGround (no facing), so since jt11-3 a grounded enemy velXIndex is always +flyVel and a left-moving enemy takes off with a rightward airspeed. Thread the enemy own facing into its stepGround call (verify against the ROM enemy ground loop, which signs PVELX by PFACE like UPDNO2). Filed from jt11-3 review routing; the facing-less sign is deliberately unpinned in ground-momentum.test.ts pending this story.'
+    points: 2
+    completed: '2026-08-12'

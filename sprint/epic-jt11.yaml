@@ -111,9 +111,11 @@ stories:
     title: 'Enemy facing for ground velXIndex: enemy.ts stepEntity calls the 2-arg stepGround (no facing), so since jt11-3 a grounded enemy velXIndex is always +flyVel and a left-moving enemy takes off with a rightward airspeed. Thread the enemy own facing into its stepGround call (verify against the ROM enemy ground loop, which signs PVELX by PFACE like UPDNO2). Filed from jt11-3 review routing; the facing-less sign is deliberately unpinned in ground-momentum.test.ts pending this story.'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
   - id: jt11-12
     title: 'Post-jt11-5 destruction-consumption leftovers (routed review findings): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake''s look-ahead, so a destroyed cliff stops blocking climb decisions. (2) TEA''s troll-grip Question: a stander on the burned plank now walks off into LNDB7 lava-troll space - verify the grip system''s grab-zone reads (jt3-3/jt9) cover an entity dropped at shore X columns, pin or fix. (3) LOW refactor (review F6): groundMaskAt''s burned branch re-derives landMaskAtX''s indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages.'
     points: 2
