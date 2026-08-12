@@ -14,6 +14,7 @@ stories:
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: ml2-2
     title: 'Pure 8x8 stamp decode primitive in src/shell/gfx-rom.ts: (Uint8Array) -> plain pixel data, 2-bit planar like centipede CENPIC, no fetch/DOM/canvas so it runs under vitest AND the bake script. Byte-equality decode tests.'
     points: 5
