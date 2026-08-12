@@ -102,3 +102,8 @@ completed_stories:
     title: 'Two-POKEY, eight-channel sound driver in core/shell: port the SOUNDS routine (MLIRQ.MAC:8) over the CHAN table (MLDEF.MAC:311), writing AUDF0/AUDC0 (MLDEF.MAC:83-84) and AUDF1/AUDC1 (:96-97), lower/upper POKEY by channel (MLIRQ.MAC:58). Reuse @shared/synth + centipede sound.md; the sweep IS the effect (not a static beep).'
     points: 8
     completed: '2026-08-12'
+  - id: jt11-6
+    epic: jt11
+    title: 'High-score entry UX: persistence wiring is verified CORRECT (game writes and lobby reads the same joust-high-scores key via shared highScoreKey - highscore.ts:118-120,497,580-588; lobby chain tiles.ts:109 -> storage.ts:42-43 -> readLocalTableRaw; qualify gate afterGameOver cabinet.ts:119-122 wired to the persisted table main.ts:375, pinned by highscore-wiring.test.ts:72-84). The felt bug is the commit gate: nothing saves until exactly 3 initials entered AND FLAP (Space) pressed on a rising edge (main.ts:483-488) - abandoning the entry screen writes nothing. Fix: on-screen instruction on the entry screen (which keys cycle letters, PRESS FLAP TO CONFIRM) + a ROM-style entry timeout that auto-commits the current initials so a walked-away qualifying score still persists. Verify the ROM entry-timeout behavior in JOUSTRV4.SRC before choosing the timeout law - cite it.'
+    points: 2
+    completed: '2026-08-12'
