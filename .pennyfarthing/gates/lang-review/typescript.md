@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#29. Common patterns:
+checks #1-#12 and #14-#30. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -512,13 +512,42 @@ strictly later, at most one per frame" went green on a 1-frame stagger — four
 arrivals inside a fifteenth of a second, which is the batch insert the story existed
 to remove. Collapsing the real 61-frame stagger to 1 left 16 of 18 tests green)*
 
+**30. A semantics-preserving REWRITE that breaks a guard reading the file as TEXT**
+#28 is about a guard whose read-set silently narrows. This is the mirror on the other
+side of the file: the guard is fine and the DATA gets rewritten into an equivalent
+form its parser accepts and its guard does not. A YAML re-serialisation, a JSON
+re-indent, a prettier pass over a fixture, a line-folded long scalar — the object
+graph is identical, every consumer that PARSES the file is happy, and the one guard
+that reads it as lines with an anchored regex (`/^ {2}- id: \S/`) reports zero
+matches. Nothing looks corrupted, because nothing is.
+- The tell is a diff with a huge line count and no content delta. Prove it: parse both
+  revisions and compare the structures, don't eyeball the hunks. If the structures are
+  equal and the line count moved, a text-level guard is the thing at risk
+- Conflict resolution during a REBASE is the high-risk moment — the merge is done by
+  hand, the file is large, and the reviewer already signed off on the pre-rebase tree
+- Run the suite that OWNS the file, not the suite you were working in. A repo with
+  two runners (one for app code, one for wiring invariants) will let a green app suite
+  stand in for the one that guards the file you actually rewrote
+- A "fully verified" claim in a commit message must ENUMERATE the gates it ran. A
+  subset stated without its complement reads as totality and is how this ships
+- Failure messages on such guards should name the SHAPE they wanted, not the data they
+  concluded was missing: "no story block matched `^ {2}- id:`" sends the reader two
+  spaces to the left; "declares no stories" sends them hunting for deleted records
+*Origin: jt11-4 round-3 review R2-F1 (a rebase reconciliation re-serialised an epic
+shard's twelve story blocks flush-left. YAML parsed identically — a story-by-story
+structural compare showed no content delta — but the orchestrator guard matched
+`^ {2}- id:` as text and asserted "epic shard declares no stories". The commit's own
+message claimed "Full verification" and named three suites, omitting the one that
+owns the file)*
+
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (29 checks)"
+  message: "TypeScript self-review checklist passed (30 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
