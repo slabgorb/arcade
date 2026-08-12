@@ -146,8 +146,23 @@ describe('AC2/AC3 main.ts wires the entry verb, the prompt, and the overlay', ()
     // Kills a silent entryScore/entryWave swap — both are numbers, so a swap compiles,
     // passes commitEntry's pure unit tests (correct args in isolation), and corrupts
     // the persisted table. Pin the exact call-site argument order.
-    expect(src, "commitEntry(highScoreTable, entry.initials, entryScore, entryWave)").toMatch(
-      /commitEntry\(\s*highScoreTable\s*,\s*entry\.initials\s*,\s*entryScore\s*,\s*entryWave\s*\)/,
+    //
+    // jt11-6 (2026-08-12) widened the SECOND operand only. The call moved into the
+    // one commitHighScore(initials) helper both exits now share (the manual FLAP
+    // confirm and the entry timeout's auto-commit), so at the call site the initials
+    // arrive as that parameter rather than as `entry.initials` — which is checked at
+    // the two callers below instead. Everything this test was written to kill is
+    // untouched: the table operand, the score/wave ORDER, and the arity.
+    expect(src, 'commitEntry(highScoreTable, <initials>, entryScore, entryWave)').toMatch(
+      /commitEntry\(\s*highScoreTable\s*,\s*(?:entry\.)?initials\s*,\s*entryScore\s*,\s*entryWave\s*\)/,
+    )
+    // The initials that reach it still come from the entry BUFFER, by both routes —
+    // so widening the operand above cannot be satisfied by a stray local.
+    expect(src, 'the manual confirm commits the buffer it just completed').toMatch(
+      /commitHighScore\(\s*entry\.initials\s*\)/,
+    )
+    expect(src, 'the timeout commits the same buffer, space-padded').toMatch(
+      /commitHighScore\(\s*timeoutInitials\(\s*entry\s*\)\s*\)/,
     )
   })
 })

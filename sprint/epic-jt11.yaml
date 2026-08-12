@@ -62,10 +62,13 @@ stories:
     title: 'High-score entry UX: persistence wiring is verified CORRECT (game writes and lobby reads the same joust-high-scores key via shared highScoreKey - highscore.ts:118-120,497,580-588; lobby chain tiles.ts:109 -> storage.ts:42-43 -> readLocalTableRaw; qualify gate afterGameOver cabinet.ts:119-122 wired to the persisted table main.ts:375, pinned by highscore-wiring.test.ts:72-84). The felt bug is the commit gate: nothing saves until exactly 3 initials entered AND FLAP (Space) pressed on a rising edge (main.ts:483-488) - abandoning the entry screen writes nothing. Fix: on-screen instruction on the entry screen (which keys cycle letters, PRESS FLAP TO CONFIRM) + a ROM-style entry timeout that auto-commits the current initials so a walked-away qualifying score still persists. Verify the ROM entry-timeout behavior in JOUSTRV4.SRC before choosing the timeout law - cite it.'
     points: 2
     priority: p1
-    status: backlog
+    status: in_review
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: "HIGH: the story's central law (an INCOMPLETE buffer auto-commits on timeout) is unguarded — mutant M8 (adding && isEntryComplete to the expiry branch) keeps the suite green, restoring the original bug; TS checklist #15 requires every guard be mutation-tested. Plus MEDIUM: the TEA contract file (tests/helpers/highscore-contract.ts) still describes the pre-jt11-6 module shape; two comments describe only one of the two commit paths. Plus LOW: catch(e) cast to Error without narrowing x2 (TS #11), 'as LaidOutText' without a null check x2 (TS #1), and 'falls into JMP VATTRT' should read 'branches back to'. Code behaviour itself is correct: preflight/security clean, all 8 ROM citations independently resolved, purity scanner green, 7 of 9 mutants die. Two out-of-scope gaps filed for follow-up: the in-flight initials are never painted at all, and the countdown only advances while the tab renders."
+    review_verdict: approved
   - id: jt11-7
     title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
     points: 3
@@ -124,3 +127,21 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt11-13
+    title: 'High-score entry echo: paint the in-flight initials (and a cursor) on the entry screen'
+    description: "Found by Reviewer during jt11-6. The player types initials and NOTHING appears on screen: layoutHighscoreScreen is called with (colour, table, entryPrompt) and never receives entry.initials; entryPrompt is fixed once when the screen is entered (promptForRank), and the only other use of the buffer is the commit. So the entry screen shows the heading, the persisted rows and a static prompt, and gives zero feedback for a keystroke. Pre-existing since jt10-7, but jt11-6 added an on-screen 'TYPE A-Z   SPACE (FLAP) TO CONFIRM' instruction line, which now actively invites a player to type and see nothing happen. The ROM echoes every character: ENTRET BSR OUTHSC 'WRITE THE CHARACTER' (TB12REV1.SRC:1267) -> OUTHSC writes it at the cursor via OUTCHR (:1271-1276), with WRCUR/ERCUR drawing and erasing a cursor glyph (:1287-1295); the buffer is pre-filled with CSPC spaces (:1901-1905), so unentered slots show as blanks. FONT35 carries a cursor glyph already ('ARRW', the SARRW cell, MESSAGE.SRC:343) plus the space glyph. Fix: thread the in-flight buffer into layoutHighscoreScreen as its own laid-out line (initials padded to MAX_INITIALS so the slots are visible) and paint it in renderHighscoreScreen; cite the ROM echo lines. Verify by looking at /joust/ - this one is only really done when a human sees a letter appear."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt11-14
+    title: 'High-score entry timeout survives a hidden tab: commit on pagehide/visibilitychange'
+    description: "Found by Reviewer during jt11-6. jt11-6 gave the entry screen a 7680-tick budget (ROM: AMODE's 256 x PCNAP 30, TB12REV1.SRC:77-78) that auto-commits the current initials when it runs out, so a walked-away qualifying score persists. But the budget is spent inside pumpFrames, driven by requestAnimationFrame, and MAX_CATCHUP_SECONDS = 0.25 discards elapsed wall time - so the countdown FREEZES while the tab is hidden and never advances if the tab is closed. The most literal reading of 'walked away' (hide or close the tab) is therefore the one case the fix does not serve; it works for the visible-cabinet case, which is the arcade case and was the point. Fix: commit the in-flight entry on pagehide (and/or visibilitychange to hidden) while cabinet.mode === 'highscore', through the SAME commitHighScore helper - main.ts asserts exactly one highScores.save( and one commitEntry( call site, and that invariant must survive. Note the listener is shell-only; core still counts ticks and must not learn about the document. Test the seam the way jt11-6 did: a source-scan on the pump/handler wiring plus a mutation to prove the guard bites."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

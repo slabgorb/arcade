@@ -35,6 +35,9 @@ import {
   rankForScore,
   promptForRank,
   PROMPT_LESSER,
+  tickEntry,
+  isEntryExpired,
+  timeoutInitials,
   type JoustHighScore,
 } from './core/highscore.js'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
@@ -235,6 +238,9 @@ function renderHighscoreScreen(): void {
   paintText(screen.heading, centred(screen.heading), 32)
   screen.rows.forEach((row, i) => paintText(row, centred(row), 72 + i * 12))
   if (screen.prompt) paintText(screen.prompt, centred(screen.prompt), 210)
+  // jt11-6 — the key instructions, directly under the prompt (FONT35 is 5 rows
+  // tall, so 222 clears 210 and still sits inside the 240-row logical screen).
+  if (screen.instructions) paintText(screen.instructions, centred(screen.instructions), 222)
 }
 
 // jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
@@ -392,6 +398,11 @@ let highScoreTable: JoustHighScore[] = highScores.load()
 // arrive as keydown EVENTS through enterInitial; the flap RISING edge commits once
 // the buffer is complete. entryScore/entryWave are captured when 'highscore' is
 // entered; entryPrompt is the rank-selected line (champion vs lesser).
+//
+// jt11-6 — the buffer also carries a TICK BUDGET (beginEntry seeds it), and there
+// are now TWO ways it commits: that flap confirm, and the budget running out, which
+// commits whatever has been typed rather than requiring a complete buffer. Both go
+// through commitHighScore below, so there is still exactly one write.
 let entry = beginEntry()
 let entryScore = 0
 let entryWave = 1
@@ -430,6 +441,17 @@ function beginHighScoreEntry(game: GameState): void {
   entry = beginEntry()
   entryPrompt = promptForRank(rankForScore(highScoreTable, entryScore))
   prevHsFlap = false
+}
+
+/**
+ * jt11-6 — the ONE path that persists a high-score row. Both ways off the entry
+ * screen come through here — the manual FLAP confirm and the timeout's auto-commit
+ * — so the ordering, the cap and the buffer reset cannot drift apart between them.
+ */
+function commitHighScore(initials: string): void {
+  highScoreTable = commitEntry(highScoreTable, initials, entryScore, entryWave)
+  highScores.save(highScoreTable)
+  entry = beginEntry()
 }
 
 /** The player's start-button intent this frame: the 1P / 2P start keys (1 / 2). */
@@ -493,11 +515,21 @@ const frame = (now: number): void => {
         // FLAP (Space) on its RISING edge, with the buffer COMPLETE, commits the row
         // to the persisted JOUST CHAMPIONS table and returns to attract. The rising
         // edge (prevHsFlap) keeps a held flap from re-committing every frame.
+        //
+        // jt11-6 — the entry also has a BUDGET, spent one tick per pumped frame (the
+        // shell owns the clock; core counts ticks). When it runs out the current
+        // initials are committed anyway, space-padded — so a player who walks away
+        // from a qualifying score keeps the row instead of losing it. The 1982
+        // cabinet ran the same 7680-tick leash (AMODE, TB12REV1.SRC:77-78) but
+        // ABANDONED the entry on expiry (PKILL, then JMP VATTRT); auto-committing is
+        // this port's deliberate deviation — see the session Design Deviations.
+        entry = tickEntry(entry)
         const flapHeld = held.has('Space')
         if (flapHeld && !prevHsFlap && isEntryComplete(entry)) {
-          highScoreTable = commitEntry(highScoreTable, entry.initials, entryScore, entryWave)
-          highScores.save(highScoreTable)
-          entry = beginEntry()
+          commitHighScore(entry.initials)
+          cabinet = toAttract(cabinet, SEED)
+        } else if (isEntryExpired(entry)) {
+          commitHighScore(timeoutInitials(entry))
           cabinet = toAttract(cabinet, SEED)
         }
         prevHsFlap = flapHeld

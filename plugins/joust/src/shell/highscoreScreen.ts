@@ -18,6 +18,20 @@ import { layoutText, type LaidOutText } from './fontRender.js'
 import { CHAMPIONS_HEADING, type JoustHighScore } from '../core/highscore.js'
 import type { Rgba } from './render.js'
 
+/**
+ * jt11-6 — the instruction line the entry screen shows under the prompt. A
+ * PRESENTATION string, not a ROM transcription, and it lives here for the same
+ * reason jt11-1's START_PROMPT lives beside the attract layout: the 1982 screen's
+ * own instruction (MSENT3 $6B, 'USE -MOVE- TO SELECT LETTER    -FLAP- TO ENTER
+ * LETTER', MESSEQU.SRC:128, written by AMODE at TB12REV1.SRC:70) names the MOVE /
+ * FLAP cursor cycler this port deliberately did not build — jt10-7 adopted the
+ * fleet's @shared/name-entry keyboard verb instead, so letters are TYPED. Naming a
+ * control the browser cabinet does not have would be worse than saying nothing, so
+ * the line names the real keys while keeping the cabinet's own word for the button.
+ * Upper case only: FONT35 has no lowercase glyphs.
+ */
+export const ENTRY_INSTRUCTIONS = 'TYPE A-Z   SPACE (FLAP) TO CONFIRM'
+
 /** The laid-out lines of the high-score screen. */
 export interface HighscoreScreenLayout {
   /** The CHAMPIONS_HEADING (core/highscore), in FONT57. */
@@ -26,6 +40,9 @@ export interface HighscoreScreenLayout {
   readonly rows: readonly LaidOutText[]
   /** The rank-selected entry prompt in FONT35, or null when no entry is in progress. */
   readonly prompt: LaidOutText | null
+  /** ENTRY_INSTRUCTIONS in FONT35 while an entry is in progress, else null — it
+   *  tracks the prompt, so the plain board carries no key instructions. */
+  readonly instructions: LaidOutText | null
 }
 
 /** One table row's text: rank, initials, score. Positions/spacing are a human
@@ -50,5 +67,6 @@ export function layoutHighscoreScreen(
     heading: layoutText('FONT57', CHAMPIONS_HEADING, colour),
     rows: table.map((entry, i) => layoutText('FONT35', rowText(i + 1, entry), colour)),
     prompt: prompt !== null ? layoutText('FONT35', prompt, colour) : null,
+    instructions: prompt !== null ? layoutText('FONT35', ENTRY_INSTRUCTIONS, colour) : null,
   }
 }
