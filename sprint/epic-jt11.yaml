@@ -48,10 +48,11 @@ stories:
     title: 'Lava shore + burn-off (TWO defects, sim and render): (A) render - transcribe BRIDGE/BRIDG2 lava-shore planks (JOUSTRV4.SRC:1126-1127, solid-colour DMA fills 54x3 at 0,211 and 60x3 at 240,211 - NOT pictures, need a solid-fill DrawOp kind; grep BRIDGE hits only timing constants arena.ts:131-132, troll.ts:17) so the ground landMaskAtX asserts (flight.ts:210-214 bakes the LNDXUP or-0x20 CLIFF 5 LANDS AT ALL POINTS constant, JOUSTRV4.SRC:987-989) is no longer invisible black at x 0-54/240-300 y211. (B) sim - destruction is computed every wave (applyWaveDestruction demo.ts:2249, wave-1 demo.ts:1254) but consumed ONLY by the troll gate (troll.ts:126-127): make the dead queries the production path - groundOutcomeInState/bridgeGroundOutcome/backgroundActive (arena-state.ts:172-199, zero callers) - by threading ArenaState into the ground-mask consumers (frame.ts:257,266; enemy.ts:1287,1294; demo.ts:1285 all call pristine groundOutcome), making the or-0x20 conditional on !bridgeBurned for bridge columns (LAVAB per-column clear JOUSTRV4.SRC:5258-5264), and filtering drawList BACKGROUND_RECORDS by arena.destroyedCliffs (demo.ts:2534-2549 currently unconditional, never reads demo.arena). CLIF5 island itself is correctly indestructible (arena-state.ts:65-66) and already renders. CLFDES crumble animation is jt11-7, NOT here. Shares demo.ts with jt11-4 - sequence, do not parallel.'
     points: 8
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
     type: bug
   - id: jt11-6
     title: 'High-score entry UX: persistence wiring is verified CORRECT (game writes and lobby reads the same joust-high-scores key via shared highScoreKey - highscore.ts:118-120,497,580-588; lobby chain tiles.ts:109 -> storage.ts:42-43 -> readLocalTableRaw; qualify gate afterGameOver cabinet.ts:119-122 wired to the persisted table main.ts:375, pinned by highscore-wiring.test.ts:72-84). The felt bug is the commit gate: nothing saves until exactly 3 initials entered AND FLAP (Space) pressed on a rising edge (main.ts:483-488) - abandoning the entry screen writes nothing. Fix: on-screen instruction on the entry screen (which keys cycle letters, PRESS FLAP TO CONFIRM) + a ROM-style entry timeout that auto-commits the current initials so a walked-away qualifying score still persists. Verify the ROM entry-timeout behavior in JOUSTRV4.SRC before choosing the timeout law - cite it.'
@@ -98,3 +99,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: jt11-12
+    title: "Post-jt11-5 destruction-consumption leftovers (routed review findings): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake's look-ahead, so a destroyed cliff stops blocking climb decisions. (2) TEA's troll-grip Question: a stander on the burned plank now walks off into LNDB7 lava-troll space - verify the grip system's grab-zone reads (jt3-3/jt9) cover an entity dropped at shore X columns, pin or fix. (3) LOW refactor (review F6): groundMaskAt's burned branch re-derives landMaskAtX's indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
