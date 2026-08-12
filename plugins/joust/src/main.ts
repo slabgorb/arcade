@@ -320,9 +320,13 @@ function paintSim(game: GameState): void {
 // banner (FONT57) centred on a STATIC background (the fixed colours[0] fill each frame).
 // The banner's TEXT colour steps with the scheduler's `colourPhase` (ATT.SRC:173, every 2.5 s).
 const ATTRACT_BANNER_Y = 108
-// jt11-1 — the start prompt sits BELOW the play area on every attract page (the
-// demo page included: that is where a new player is stuck without it), above the
-// bottom scanlines, clear of the island (y 211-223) rows the sim paints over.
+// jt11-1 — the start prompt paints LAST on every attract page (the demo page
+// included: that is where a new player is stuck without it). At y 228 it sits
+// INSIDE the island's painted rows — the decoded COMCL5 island spans y 211-243
+// (33 rows, measured in review) — and is legible only because it is painted
+// AFTER paintSim/drawIsland, over the bricks. Do not move this paint above the
+// sim paint, and do not trust an "island ends at 223" claim: that figure is a
+// CLIF5 sub-record, not the island.
 const ATTRACT_PROMPT_Y = 228
 function renderAttract(): void {
   const page = attract.page
