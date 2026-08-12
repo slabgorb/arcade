@@ -32,8 +32,16 @@ export interface Claim {
    * Millipede is a SINGLE revision, so `file` is a bare filename resolved at the
    * tree root. A file already carrying a path separator is treated as an exact
    * tree-relative path and contained inside the vendored root.
+   *
+   * Two shapes (ml2-1 adds the second):
+   *  - TEXT `{ file, line, verbatim }` — an assembler-source line, re-opened and
+   *    `.trimEnd()`-compared. A missing text file is an ERROR.
+   *  - BYTE `{ file, offset, bytes }` — a run of whole bytes (0..255) in a picture
+   *    EPROM binary. The binaries are LICENCE-WALLED (vendored locally, never
+   *    committed), so a byte citation whose file is ABSENT under the root is SKIPPED,
+   *    not errored — the CI-green invariant. When present, every byte re-opens exactly.
    */
-  source: { file: string; line: number; verbatim: string }
+  source: { file: string; line: number; verbatim: string } | { file: string; offset: number; bytes: number[] }
   /**
    * Optional secondary corroboration — typically a MAME driver reference
    * (milliped.cpp), which lives OUTSIDE the vendored tree and is absent from CI.

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "GFX-106",
+    "claim": "Picture EPROM 136013-106.p5 (2 KiB / 2048 bytes, PCB socket P5) is vendored licence-walled and byte-pinned: this run is its first 8x8 stamp row-block at offset 0. Raw ROM bytes only — the 2-bit planar stamp decode and plane assignment are ml2-2's job.",
+    "source": {
+      "file": "136013-106.p5",
+      "offset": 0,
+      "bytes": [0, 0, 0, 36, 36, 60, 126, 126, 62, 124, 126, 24, 24, 0, 0, 0]
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 2227,
+      "note": "MAME ROM_START(milliped) region gfx1, ROM_LOAD 136013-106.p5 @0x0800 length 0x0800: CRC32 f4468045 SHA1 602fcc7290f9f4eacb841c76665961ebf4307f80 (cited in prose, never copied — GPL)."
+    }
+  },
+  {
+    "id": "GFX-107",
+    "claim": "Picture EPROM 136013-107.r5 (2 KiB / 2048 bytes, PCB socket R5) is vendored licence-walled and byte-pinned: this run is its first 8x8 stamp row-block at offset 0. In MAME's gfx1 region this EPROM loads FIRST (0x0000), 106.p5 second (0x0800); the plane assignment is ml2-2's job. Raw ROM bytes only.",
+    "source": {
+      "file": "136013-107.r5",
+      "offset": 0,
+      "bytes": [0, 0, 0, 36, 36, 25, 24, 126, 127, 254, 126, 88, 128, 0, 0, 0]
+    },
+    "corroboration": {
+      "file": "src/mame/atari/centiped.cpp",
+      "line": 2226,
+      "note": "MAME ROM_START(milliped) region gfx1, ROM_LOAD 136013-107.r5 @0x0000 length 0x0800: CRC32 68c3437a SHA1 4c7ea33d9501456ee8f5a642da7d6c972f2bb90d (cited in prose, never copied — GPL)."
+    }
+  }
+]

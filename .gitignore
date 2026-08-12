@@ -59,6 +59,15 @@ out/audio/
 # pre-monorepo history stays recoverable on this machine. Safe to remove once every
 # game is imported and its GitHub remote is confirmed in sync.
 .migration-backup/
+# Millipede picture EPROMs (ml2-1) — the ROM IMAGE bytes are LICENCE-WALLED: vendored
+# locally into reference/original-source/millipede/ from the MAME `milliped` set and
+# byte-gated (docs/rom-study/claims + plugins/millipede/tests/audit/graphics-rom.test.ts),
+# but NEVER committed. The .MAC assembler SOURCE in that dir stays TRACKED; only these
+# two picture binaries are walled. ANCHORED + specific per the warning above — mechanism,
+# not discipline. The byte-teeth skip when they are absent (a CI clone), so nothing here
+# depends on their presence.
+/reference/original-source/millipede/136013-106.p5
+/reference/original-source/millipede/136013-107.r5
 # Persona portrait art — GENERATED OUTPUT, not source. `just portraits <theme>`
 # renders it (GPU, and `portraits-all` covers 102 themes), tmux displays it inline
 # via the Kitty/iTerm2/Sixel passthrough, and `pf init` drops a prebuilt copy in.

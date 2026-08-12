@@ -71,6 +71,31 @@ function isValidCorroboration(c) {
   return false
 }
 
+/**
+ * A full-BYTE citation (ml2-1): a picture-ROM file, a byte offset, and the run of
+ * whole bytes (0..255) expected there. Used for the two Millipede picture EPROMs
+ * (136013-106.p5 / -107.r5), which are LICENCE-WALLED binaries — vendored locally,
+ * never committed — so they carry no text `verbatim` to quote. Ported in spirit from
+ * pac-man's graphics-ROM teeth (plugins/pac-man/tools/audit/check-citations.mjs).
+ * Unlike a text citation, a byte citation whose binary is ABSENT under the root is
+ * SKIPPED, not errored (the CI-green invariant): the .MAC source is committed so the
+ * tree root always exists, but the picture bytes are walled off a CI clone.
+ */
+function isByteCitation(o) {
+  return (
+    typeof o === 'object' &&
+    o !== null &&
+    !Array.isArray(o) &&
+    typeof o.file === 'string' &&
+    o.file.length > 0 &&
+    Number.isInteger(o.offset) &&
+    o.offset >= 0 &&
+    Array.isArray(o.bytes) &&
+    o.bytes.length > 0 &&
+    o.bytes.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)
+  )
+}
+
 const lineCache = new Map()
 function lineAt(path, n) {
   if (!lineCache.has(path)) {
@@ -78,6 +103,13 @@ function lineAt(path, n) {
     lineCache.set(path, readFileSync(path, 'utf8').split('\n'))
   }
   return lineCache.get(path)[n - 1]
+}
+
+const byteCache = new Map()
+/** The raw bytes of a binary source (a picture EPROM), cached per path. */
+function bytesOf(path) {
+  if (!byteCache.has(path)) byteCache.set(path, readFileSync(path))
+  return byteCache.get(path)
 }
 
 /**
@@ -140,24 +172,54 @@ export function checkClaims(claims, { vendoredRoot }) {
 
     if (!c?.claim) errors.push(`${id}: missing claim`)
 
-    if (!isCitation(c?.source)) {
-      errors.push(`${id}: missing or malformed source citation (needs file, positive line, verbatim)`)
-    } else if (vendoredRoot) {
-      const path = resolveInTree(vendoredRoot, c.source.file)
-      if (!path) {
-        errors.push(`${id}: source file ${c.source.file} not found in the vendored tree`)
-      } else {
-        const actual = lineAt(path, c.source.line)
-        if (actual === undefined) {
-          errors.push(`${id}: source ${c.source.file}:${c.source.line} does not exist`)
-        } else if (actual.trimEnd() !== String(c.source.verbatim).trimEnd()) {
-          errors.push(
-            `${id}: source ${c.source.file}:${c.source.line} does not match verbatim\n` +
-              `  cited:  ${JSON.stringify(c.source.verbatim)}\n` +
-              `  actual: ${JSON.stringify(actual)}`,
-          )
+    if (isCitation(c?.source)) {
+      if (vendoredRoot) {
+        const path = resolveInTree(vendoredRoot, c.source.file)
+        if (!path) {
+          errors.push(`${id}: source file ${c.source.file} not found in the vendored tree`)
+        } else {
+          const actual = lineAt(path, c.source.line)
+          if (actual === undefined) {
+            errors.push(`${id}: source ${c.source.file}:${c.source.line} does not exist`)
+          } else if (actual.trimEnd() !== String(c.source.verbatim).trimEnd()) {
+            errors.push(
+              `${id}: source ${c.source.file}:${c.source.line} does not match verbatim\n` +
+                `  cited:  ${JSON.stringify(c.source.verbatim)}\n` +
+                `  actual: ${JSON.stringify(actual)}`,
+            )
+          }
         }
       }
+    } else if (isByteCitation(c?.source)) {
+      // Byte teeth. A licence-walled binary that is ABSENT under the root is SKIPPED,
+      // not errored (unlike the text path's "not found") — that is what keeps a CI
+      // clone green with the picture bytes walled off. When it IS present, every byte
+      // in the run must re-open exactly, and a run past end-of-file reddens.
+      if (vendoredRoot) {
+        const path = resolveInTree(vendoredRoot, c.source.file)
+        if (path) {
+          const buf = bytesOf(path)
+          const { offset, bytes } = c.source
+          if (offset + bytes.length > buf.length) {
+            errors.push(
+              `${id}: picture ROM ${c.source.file} offset ${offset}+${bytes.length} runs past end-of-file (length ${buf.length})`,
+            )
+          } else {
+            const mism = []
+            for (let i = 0; i < bytes.length; i++) {
+              if (buf[offset + i] !== bytes[i]) mism.push(`[${i}] cited ${bytes[i]}, actual ${buf[offset + i]}`)
+            }
+            if (mism.length) {
+              errors.push(
+                `${id}: picture ROM ${c.source.file}@${offset} byte mismatch: ` +
+                  `${mism.slice(0, 4).join('; ')}${mism.length > 4 ? ` (+${mism.length - 4} more)` : ''}`,
+              )
+            }
+          }
+        }
+      }
+    } else {
+      errors.push(`${id}: missing or malformed source citation (needs a text {file,line,verbatim} or a byte {file,offset,bytes})`)
     }
 
     if ('corroboration' in (c ?? {}) && c.corroboration !== undefined) {
