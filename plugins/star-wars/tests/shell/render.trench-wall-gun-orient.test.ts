@@ -210,37 +210,43 @@ describe('sw11-2 — while here: SQUARE and CATWALK share the IDENTITY-orient de
     }
   })
 
-  it('TRENCH_CATWALK (`.WP WFF`) STAYS VERTICAL and mirrors its fin into the channel', () => {
-    // The force field is authored ALREADY vertical (a 3-fin barrier rising up
-    // 0→512). Two things must hold, and the naive "roll it up like the gun plate"
-    // fix breaks the FIRST — it lays the barrier flat:
-    //   (a) it stays STANDING — its 512-tall height edge is NOT flattened into the
-    //       lateral (wall-normal) direction; and
-    //   (b) its front fin projects laterally INTO the channel on BOTH walls (the
-    //       per-wall mirror the guns need too).
+  it('TRENCH_CATWALK (`.WP WFF`) REACHES ACROSS the channel on BOTH walls', () => {
+    // ⚠ REWRITTEN BY sw11-3. This test used to assert the catwalk "STAYS VERTICAL"
+    // and that laying it flat was the bug. That was backwards, and it had pinned the
+    // misreading in place: `.WP WFF`'s 0→40 run is the WALL NORMAL, not height, so
+    // the member is a BEAM reaching into the channel — which is why the row's two
+    // members meet mid-channel (the seam the cabinet shows) and why the hazard cannot
+    // be dodged sideways. The table settles it against its own siblings: `.WP WPN`
+    // (square) is flat at y=0, `.WP WGA` (gun) puts its WALL BASE at y=0 and lifts
+    // the body to y=4..12 off the wall, and WFF labels its rows FRONT MIDLINE
+    // (x=-20) / BOTTOM MIDLINE (z=-20) / TOP MIDLINE (z=+20) — x depth, z up, y out.
+    //
+    // Two things must hold:
+    //   (a) the 0→40 RUN lies along the wall normal (it spans, it does not stand); and
+    //   (b) it reaches INBOARD on BOTH walls (the same per-wall mirror the guns need).
     const draws = obstacleDraws(trenchScene(wallPair('catwalk', 0)), 'Trench Catwalk')
     expect(draws, 'render() draws a catwalk on each wall').toHaveLength(2)
     const [right, left] = [eyeOf(draws[0]), eyeOf(draws[1])]
     const lateral = lateralAxis(right, left)
 
-    // (a) STAYS VERTICAL: model verts 0 and 1 are the front fin's base and top —
-    // they differ ONLY in the authored height (0 vs 512). Their eye-space
-    // separation must survive as a real edge that does NOT lie along the wall
-    // normal. A stand-up roll would rotate that height into the lateral axis.
+    // (a) SPANS: model verts 0 and 1 are the FRONT MIDLINE pair — they differ ONLY by
+    // the authored 0→40 run. That edge must survive at full length AND lie essentially
+    // along the wall normal. The retired orientation put it perpendicular to lateral
+    // (a standing post); this requires it be parallel to it (a beam across).
     for (const [name, g] of [['right', right], ['left', left]] as const) {
-      const heightEdge = sub(g.verts[1], g.verts[0])
-      expect(length(heightEdge), `${name} wall: the fin keeps its full height`).toBeGreaterThan(400)
-      expect(Math.abs(dot(heightEdge, lateral)), `${name} wall: height did NOT flatten into the wall`)
-        .toBeLessThan(50)
+      const run = sub(g.verts[1], g.verts[0])
+      expect(length(run), `${name} wall: the beam keeps its full run`).toBeGreaterThan(400)
+      expect(Math.abs(dot(run, lateral)), `${name} wall: the run lies ALONG the wall normal`)
+        .toBeGreaterThan(400)
     }
 
-    // (b) MIRROR: the vertex reaching furthest along the wall-normal is the fin.
-    const finLateral = (g: ReturnType<typeof eyeOf>): number => {
+    // (b) MIRROR: each wall's beam runs toward the centreline, so the two meet.
+    const reach = (g: ReturnType<typeof eyeOf>): number => {
       const projs = g.verts.map((v) => dot(sub(v, g.station), lateral))
       return projs.reduce((a, b) => (Math.abs(b) > Math.abs(a) ? b : a), 0)
     }
-    expect(Math.abs(finLateral(right)), 'the catwalk HAS a laterally-projecting fin').toBeGreaterThan(1)
-    expect(finLateral(right), 'RIGHT wall: fin reaches inboard (−lateral)').toBeLessThan(0)
-    expect(finLateral(left), 'LEFT wall: fin reaches inboard (+lateral)').toBeGreaterThan(0)
+    expect(Math.abs(reach(right)), 'the catwalk HAS a laterally-reaching beam').toBeGreaterThan(1)
+    expect(reach(right), 'RIGHT wall: beam reaches inboard (−lateral)').toBeLessThan(0)
+    expect(reach(left), 'LEFT wall: beam reaches inboard (+lateral)').toBeGreaterThan(0)
   })
 })
