@@ -64,7 +64,7 @@ import {
 } from './dossier-sweep'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
 
-type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
+type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: string | null }) => string[]
 
 const BRIEF = 'brief.md'
 
@@ -216,6 +216,10 @@ describe('ml1-2 AC-2 — brief.md answers all five preflight questions, each cit
     it(`${answer.key}: cites the primary source the story names and states the fact`, () => {
       const md = brief()
       expect(md, `brief.md must exist before ${answer.key} can be checked`).not.toBe('')
+      // Guard both inner sweeps (lang-review #15): an ANSWERS entry with an empty
+      // `cites` or `prose` array would iterate zero times and assert nothing.
+      expectPopulated(answer.cites.length, 1, `${answer.key} required citations`)
+      expectPopulated(answer.prose.length, 1, `${answer.key} prose signatures`)
       for (const [file, line] of answer.cites) {
         expect(
           cites(file, line),
@@ -240,7 +244,7 @@ describe('ml1-2 AC-3 — every prose citation in brief.md is covered by a claim'
   it('brief.md carries a substantial body of citations (not a stub)', () => {
     // The five answers alone name eight distinct primary-source lines; a brief with
     // fewer has dropped an answer or cited nothing.
-    expectPopulated(briefCitations().length, 6, 'brief.md prose citations')
+    expectPopulated(briefCitations().length, 8, 'brief.md prose citations')
   })
 
   it('no backticked citation in brief.md is malformed (a mistyped range is invisible to coverage)', () => {
@@ -271,7 +275,8 @@ describe.skipIf(!vendoredAvailable)('ml1-2 AC-4 — brief.md claims re-open byte
     const claims = loadClaims()
     // ml1-2 is the first story to add claims; loadClaims() is therefore brief.md's
     // claims. A stub with no claims must fail here, not pass by having nothing to check.
-    expectPopulated(claims.length, 6, 'brief.md claims')
+    // Floor 8 = the distinct primary-source lines the five answers require a claim for.
+    expectPopulated(claims.length, 8, 'brief.md claims')
     expect(
       checkClaims(claims, { vendoredRoot }),
       'a brief.md claim quotes a line that does not re-open byte-for-byte in the vendored source ' +

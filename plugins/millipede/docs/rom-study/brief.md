@@ -81,10 +81,10 @@ gaps; both are genuinely missing:
   and embedded in no `.MAC` file. This is a **secondary-doc gap, not a ground-truth
   gap**: Centipede got Ed Logg's `CENTIP.DOC` vendored and Millipede did not, but the
   design intent is still first-hand in the *code*. Scoring is the **16-entry `PTS`
-  table** (`MLDEF.MAC:398`), and difficulty is equated per bit in `MLDEF` —
-  `D1=BEETLE DIFFICULTY` (`MLDEF.MAC:88`) through `D6=SPIDER DIFFICULTY`
-  (`MLDEF.MAC:91`). Ground truth for scoring/difficulty is these tables, not the
-  missing doc.
+  table** (`MLDEF.MAC:398`), and difficulty is an operator **option-switch (DIP)**
+  setting, documented per bit in `MLDEF` — `D1=BEETLE DIFFICULTY` (`MLDEF.MAC:88`)
+  through `D6=SPIDER DIFFICULTY` (`MLDEF.MAC:91`). Ground truth for scoring/difficulty
+  is the source (the `PTS` table and the option-switch bits), not the missing doc.
 - **368XX.SB2** — the picture source (`368X1.DOC:41`). Also absent. The picture pixels
   come from the **MAME `milliped` ROM set** (`136013-106/107`), decoded in `ml2` — the
   ordinary raster trap the playbook predicts (data ROMs live outside the CPU link).

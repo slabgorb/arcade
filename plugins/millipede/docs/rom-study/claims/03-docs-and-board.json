@@ -28,7 +28,7 @@
   },
   {
     "id": "DG-4",
-    "claim": "Difficulty is equated in the source as well: D1=BEETLE DIFFICULTY.",
+    "claim": "Difficulty is an operator option-switch (DIP) setting documented in the source: D1=BEETLE DIFFICULTY.",
     "source": {
       "file": "MLDEF.MAC",
       "line": 88,
@@ -37,7 +37,7 @@
   },
   {
     "id": "DG-5",
-    "claim": "The difficulty equates run through D6=SPIDER DIFFICULTY — the per-bit difficulty MLDEF documents in place of the missing MILLI.DOC.",
+    "claim": "The difficulty option bits run through D6=SPIDER DIFFICULTY — the per-bit difficulty MLDEF documents in place of the missing MILLI.DOC.",
     "source": {
       "file": "MLDEF.MAC",
       "line": 91,
