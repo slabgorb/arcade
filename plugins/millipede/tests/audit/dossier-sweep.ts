@@ -143,14 +143,13 @@ export function loadClaims(): Claim[] {
     .flat()
 }
 
-/** Does this claim pin a line inside the cited range? */
+/** Does this claim pin a line inside the cited range? A BYTE citation (ml2-1, the
+ *  picture EPROMs) has no `line` and pins no prose line, so it never covers a prose
+ *  `FILE:LINESPEC` citation — narrow it out. */
 export function claimCovers(claim: Readonly<Claim>, c: Readonly<ProseCitation>): boolean {
-  return (
-    !!claim.source &&
-    basename(claim.source.file) === c.file &&
-    claim.source.line >= c.start &&
-    claim.source.line <= c.end
-  )
+  const src = claim.source
+  if (!src || !('line' in src)) return false
+  return basename(src.file) === c.file && src.line >= c.start && src.line <= c.end
 }
 
 /** Is any of `claims` covering this citation? */
