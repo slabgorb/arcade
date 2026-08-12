@@ -27,9 +27,9 @@ fact.
 
 MAME states the master crystal as **12.096 MHz** (`centiped.cpp:22`, "Main clock: XTAL = 12.096
 MHz") and clocks the 6502 at that crystal divided by eight — **1.512 MHz** — in the shared
-`centiped_base` machine config: `M6502(config, m_maincpu, 12096000/8)` (`centiped.cpp:1778`,
-"1.512 MHz"). The `milliped()` config inherits it via `centiped_base(config)` and adds two
-POKEYs, each also at `12096000/8` (`centiped.cpp:1884`+). The crystal itself is a board fact the
+`centiped_base` machine config (`centiped.cpp:1778`, "1.512 MHz"). The `milliped()` config
+inherits it via `centiped_base` and adds two POKEYs, each also at the crystal ÷8
+(`centiped.cpp:1884`, with the POKEY clocks at `centiped.cpp:1906`–`1910`). The crystal itself is a board fact the
 1982 source never states — hence MAME as the secondary source here.
 
 ## 2. Exact refresh — OQ-1, recorded not resolved
@@ -48,26 +48,23 @@ So MAME gives Millipede the **same 59.88593 Hz as Centipede**, derived as HSYNC 
 leaves open. The VBlank duration is quoted as `1/VSYNC * (23/263) = 1460 us` (`centiped.cpp:26`).
 
 **Tension to carry forward:** the *comment* says 59.88593 Hz, but the *code* rounds — the shared
-screen config calls `m_screen->set_refresh_hz(60)` (`centiped.cpp:1798`), a hard-coded 60 Hz.
+screen config hard-codes the refresh to a rounded **60 Hz** via `set_refresh_hz` (`centiped.cpp:1798`).
 MAME's executable rate is therefore 60 Hz while its own documented rate is 59.88593 Hz. A later
-sim story should treat 59.88593 Hz as the intended rate and note the 60 Hz rounding, not read
-`set_refresh_hz(60)` as ground truth.
+sim story should treat 59.88593 Hz as the intended rate and note the 60 Hz rounding, not read the
+hard-coded 60 Hz as ground truth.
 
 ## 3. Screen geometry — 32×32 tiles, 256×240 visible
 
-The shared screen config sets a **32×32 tile** field, `set_size(32*8, 32*8)` = 256×256 pixels
-(`centiped.cpp:1799`), with the visible area cropped to **256×240** — `set_visarea(0*8, 32*8-1,
-0*8, 30*8-1)`, i.e. columns 0–255 and rows 0–239 (`centiped.cpp:1800`). The bottom two tile rows
-(240–255) are off-screen. This matches the Atari playfield RAM layout (a 32×30 character grid)
+The shared screen config sets a **32×32 tile** field of 256×256 pixels via `set_size`
+(`centiped.cpp:1799`), with the visible area cropped to **256×240** — columns 0–255 and rows
+0–239 — via `set_visarea` (`centiped.cpp:1800`). The bottom two tile rows (240–255) are off-screen. This matches the Atari playfield RAM layout (a 32×30 character grid)
 the memory map implies, but the pixel geometry itself is MAME's.
 
 ## 4. Cabinet rotation — ROT270 (vertical monitor)
 
-Millipede is a **vertical** cabinet: the `GAME()` registration declares **`ROT270`** —
-`GAME( 1982, milliped, 0, milliped, milliped, centiped_state, empty_init, ROT270, "Atari",
-"Millipede", MACHINE_SUPPORTS_SAVE )` (`centiped.cpp:2389`) — the monitor rotated 270°, the same
-orientation as Centipede. (This is distinct from the cocktail **flip**, wired separately as
-`flip_screen_w` in `milliped()`.)
+Millipede is a **vertical** cabinet: its `GAME()` registration declares the orientation
+**`ROT270`** (`centiped.cpp:2389`) — the monitor rotated 270°, the same orientation as Centipede.
+(This is distinct from the cocktail **flip**, wired separately as `flip_screen_w` in `milliped()`.)
 
 ## 5. Colour is RAM-driven — no colour PROM
 
@@ -75,8 +72,9 @@ Millipede has **no colour PROM**; colours are driven from RAM. MAME states it di
 video code: the hardware "doesn't have a color PROM — eight RAM locations control the color"
 (`centiped_v.cpp:186`), with the paletteram write handler `milliped_paletteram_w`
 (`centiped_v.cpp:390`) decoding those RAM writes into pen colours. This corroborates the 1982
-primary source: the ROM sign-off ledger lists **no colour or sync PROM** among the shipped parts
-(`368X1.DOC:22`–`368X1.DOC:23` are the only PROM-family parts, both *picture* EPROMs), and
+primary source: the ROM sign-off ledger lists **no colour or sync PROM** among the shipped parts — only program
+and *picture* EPROMs (`368X1.DOC:22`–`368X1.DOC:23`), never an 82S129-class sync/colour PROM as on
+Centipede — and
 `CLRCH` is the **colour-RAM initialisation** routine (`MLIRQ.MAC:242`). Colour being RAM-driven —
 no 82S129 sync PROM as on Centipede — is the real board difference the ledger already records;
 MAME's video code is the secondary confirmation of *how* that RAM drives the pens.

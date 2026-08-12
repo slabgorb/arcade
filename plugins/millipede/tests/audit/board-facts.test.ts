@@ -156,7 +156,11 @@ const FACTS: readonly Fact[] = [
   {
     key: 'refresh-tension',
     what: 'the tension: the 59.88593 Hz comment vs the rounded set_refresh_hz(60) call',
-    value: [/59\.88593/, /\b60\b/, /set_refresh_hz|round|rounded|hard-?cod|differ|tension/i],
+    // Anchor the tension-word alternation: bare `round` matched this dossier's pervasive
+    // "ground"/"grounded"/"grounding" vocabulary, so the guard passed even without the tension
+    // prose (rule-checker RULE 15). \bround(s|ed|ing)?\b matches rounds/rounded/rounding but not
+    // grounded/background/surrounding.
+    value: [/59\.88593/, /\b60\b/, /set_refresh_hz|\bround(s|ed|ing)?\b|hard-?cod|\bdiffers?\b|\btension\b/i],
     mame: /centiped\.cpp:1798\b/,
   },
   {
