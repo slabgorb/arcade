@@ -30,10 +30,11 @@ stories:
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (beetle/spider/earwig/inchworm/mosquito/dragonfly/DDT/poison-mushroom); subsystem -> owning file + .SBTTL line (MILLI.MAC BEEMV/BEETL/EARWIG/FLYMV/MOSQT/SPDMV/WRMMV/SHOOT/MOVE/MOTION/EXPLOD/CENTPC, MLIRQ SOUNDS/CLRCH/IRQ/JOYS, MLATR MODE FE/FF, CONWAY INICON/MASTER); OQ-1..OQ-4 (exact refresh, MILLI.DOC, graphics+RAM-colour, trackball-vs-joystick input MLIRQ.MAC:897).'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: ml1-4
     title: 'Secondary source MAME milliped.cpp board facts as claims: master clock, EXACT refresh (resolve OQ-1 vs centipede 59.88593 Hz and record any /263-vs-/262 hedge verbatim), screen geometry, cabinet rotation, COLOR-RAM/palette wiring, picture-ROM part numbers 136013-106/107. MAME cited in prose only, never copied into the repo (GPL). Locate the milliped driver dir first (atari/).'
     points: 3
