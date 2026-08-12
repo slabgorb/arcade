@@ -510,9 +510,12 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
     }
     const readout = g.overlayReadout(state)
     expect(readout.wave, 'the overlay shows the GameState wave').toBe(7)
+    // jt11-2: each line also carries the ledger's BCD register through to the
+    // shell (the authentic HUD's display source) — the selector extension's
+    // identity pin lives in hud-jt11-2; here the full line shape is pinned.
     expect(readout.players, 'one line per player, P1 then P2, with 1-based ids and exact registers').toEqual([
-      { player: 1, score: 12_345, lives: 3 },
-      { player: 2, score: 6_789, lives: 5 },
+      { player: 1, score: 12_345, scoreBcd: [0, 0, 0], lives: 3 },
+      { player: 2, score: 6_789, scoreBcd: [0, 0, 0], lives: 5 },
     ])
   })
 
@@ -538,7 +541,9 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
     const solo: GameState = { ...g.createGame(SEED, 1), wave: 3, players: [ledger({ score: 999, lives: 2 })] }
     const before = JSON.stringify(solo)
     const readout = g.overlayReadout(solo)
-    expect(readout.players, 'a 1P game shows exactly one overlay line').toEqual([{ player: 1, score: 999, lives: 2 }])
+    expect(readout.players, 'a 1P game shows exactly one overlay line').toEqual([
+      { player: 1, score: 999, scoreBcd: [0, 0, 0], lives: 2 }, // jt11-2: + the BCD register
+    ])
     expect(JSON.stringify(solo), 'overlayReadout is pure — it never mutates the GameState').toBe(before)
   })
 })
