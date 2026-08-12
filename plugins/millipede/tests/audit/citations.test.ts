@@ -419,6 +419,70 @@ describe('citation checker — traversal containment (a cited path must not esca
       rmSync(base, { recursive: true, force: true })
     }
   })
+
+  // ── S1 (Reviewer, HIGH) — the bare-`..` bypass. A `source.file` of exactly ".."
+  // carries no path separator and is not absolute, so it SKIPS resolveInTree's
+  // containment branch (which only guards `isAbsolute || includes('/')`) and falls
+  // through to the bare-filename loop: join(root,'','..') === dirname(root), which
+  // EXISTS (it is a directory) and sits OUTSIDE the tree. The checker then
+  // readFileSync's a directory and dies with an uncaught EISDIR — aborting the whole
+  // audit with a node:fs stack trace instead of returning "source not found". The
+  // guard's own docblock swears this cannot happen ("a `..` that escapes is refused,
+  // even if the target file is real"), so the lie is load-bearing. GREEN (Dev) must
+  // apply the resolvedRoot-anchored containment UNCONDITIONALLY (or reject
+  // file === '.'|'..' before the loop) so a bare `..` is REPORTED, never thrown.
+  it('REFUSES a bare `..` source.file (no separator) — reports an error, never crashes (S1)', async () => {
+    const checkClaims = await loadChecker()
+    const base = mkdtempSync(join(tmpdir(), 'ml1-1-bare-dotdot-'))
+    try {
+      const tree = join(base, 'tree')
+      mkdirSync(tree, { recursive: true })
+      writeFileSync(join(tree, 'MLDEF.MAC'), '\t.RADIX 16\n')
+
+      let errors: string[] = []
+      expect(
+        () => {
+          errors = checkClaims(
+            [{ id: 'BARE-1', claim: 'bare dotdot escape', source: { file: '..', line: 1, verbatim: 'x' } }],
+            { vendoredRoot: tree },
+          )
+        },
+        'a bare `..` must NOT crash the whole checker with an uncaught EISDIR on readFileSync(dir)',
+      ).not.toThrow()
+      expect(
+        errors.join('\n'),
+        'a bare `..` resolves to dirname(root), OUTSIDE the tree — it must be reported as an error, not read',
+      ).toMatch(/BARE-1/)
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
+  })
+
+  // ── R3 (Reviewer) — the ACCEPT side of the same code the S1 fix touches. A `..`
+  // that NORMALISES BACK INSIDE the tree is legitimate and must still resolve +
+  // verify; the containment fix must not over-reject it. `sub/../MLDEF.MAC` carries a
+  // separator, so it runs the containment branch, and after normalisation is
+  // <tree>/MLDEF.MAC — inside the tree.
+  it('ACCEPTS a `..` that normalises back INSIDE the tree (sub/../MLDEF.MAC resolves + verifies)', async () => {
+    const checkClaims = await loadChecker()
+    const base = mkdtempSync(join(tmpdir(), 'ml1-1-inside-dotdot-'))
+    try {
+      const tree = join(base, 'tree')
+      mkdirSync(tree, { recursive: true })
+      writeFileSync(join(tree, 'MLDEF.MAC'), '\t.RADIX 16\n')
+
+      const errors = checkClaims(
+        [{ id: 'INS-1', claim: 'dotdot back inside', source: { file: 'sub/../MLDEF.MAC', line: 1, verbatim: '\t.RADIX 16' } }],
+        { vendoredRoot: tree },
+      )
+      expect(
+        errors,
+        'a `..` that resolves back inside the vendored tree is legitimate and must verify, not be refused',
+      ).toEqual([])
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
+  })
 })
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -468,15 +532,17 @@ describe('AC-2 — the dossier coverage sweep detects uncovered citations (fixtu
     expect(malformed.join('\n'), 'it must be REPORTED as malformed, not dropped').toMatch(/MLDEF\.MAC:398-2/)
   })
 
-  it('DOSSIER_FILES starts empty — the real-dossier gate is green-on-empty, armed for ml1-2', async () => {
+  it('DOSSIER_FILES is an array — the enrollment surface exists, armed for ml1-2 (green-on-empty)', async () => {
     const scan = await loadSweep()
     // Documents the "gate before constants" shape: no dossier file is enrolled yet
-    // (ml1-2 enrolls brief.md, ml1-3 its files, …). An empty enrollment sweeps zero
-    // citations, so the real-dossier gate below passes today and gains teeth as the
-    // dossier lands. It is an ARRAY (not asserted empty, so ml1-2 adding brief.md
-    // does not redden this — that story owns the enrollment).
+    // (ml1-2 enrolls brief.md, ml1-3 its files, …), so the real-dossier gate below
+    // passes today and gains teeth as the dossier lands. We assert ONLY that
+    // DOSSIER_FILES is an array — a real cross-module contract on Dev's export (it
+    // could be exported undefined/null and this would catch it). We deliberately do
+    // NOT assert allProseCitations().length === 0 (M1): the moment ml1-2 enrolls a
+    // citation-bearing brief.md that count goes non-zero, and ml1-2 must not be
+    // forced to edit ml1-1's suite to enroll its own file (TEA-deviation #2).
     expect(Array.isArray(scan.DOSSIER_FILES)).toBe(true)
-    expect(scan.allProseCitations().length, 'no dossier enrolled yet ⇒ zero prose citations swept').toBe(0)
   })
 
   it('the real-dossier gate: every enrolled prose citation has a covering claim (green-on-empty now)', async () => {

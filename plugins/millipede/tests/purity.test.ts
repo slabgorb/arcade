@@ -127,6 +127,71 @@ describe('purity scanner — fixture self-tests (the guard must have teeth of it
   })
 })
 
+// ─── R2 (Reviewer, MEDIUM) — the wider hardening bans, each with the full sidecar
+// matrix: live CODE flags, comment/string/lookalike do NOT. Ported from centipede's
+// `purity.test.ts` "cp1-2 hardening bans" describe block. The scanner already
+// implements these bans (it is a verbatim port of centipede's), so these tests PASS
+// — that is the point: without them the bans ship LIVE and UNTESTED (lang-review
+// #18), so a future refactor of the ported scanner could silently drop the
+// `globalThis`/`eval`/`new Function`/dynamic-import/`Date`-alias case and every
+// millipede core module could import the ambient global with the suite still green.
+// The scanner's barrel must not be half-empty behind a gate every ml* story trusts.
+describe('purity scanner — hardening bans (globalThis / import() / eval / new Function / Date-alias)', () => {
+  it('flags live globalThis, but not comments, strings, or lookalikes', async () => {
+    const violations = await loadViolations()
+    expect(violations('globalThis.document.title = "x"')).toContain('globalThis')
+    expect(violations('const d = globalThis.Date')).toContain('globalThis')
+    expect(violations('// globalThis is forbidden in core')).toEqual([])
+    expect(violations('const name = "globalThis"')).toEqual([])
+    expect(violations('const globalThisManager = makeManager()')).toEqual([]) // no trailing boundary
+  })
+
+  it('flags live dynamic import(), but not static imports, import.meta, comments, or strings', async () => {
+    const violations = await loadViolations()
+    expect(violations("const m = await import('./danger')")).toContain('dynamic import()')
+    expect(violations('import ("./x")')).toContain('dynamic import()')
+    // The critical non-matches: static import and import.meta must sail through.
+    expect(violations("import { stepGame } from './sim'")).toEqual([])
+    expect(violations('import type { GameState } from "./state"')).toEqual([])
+    expect(violations('const u = import.meta.url')).toEqual([])
+    expect(violations('// lazy import() is banned in core')).toEqual([])
+    expect(violations('const s = "import(\'x\')"')).toEqual([])
+  })
+
+  it('flags live eval(), but not evaluate()/method-name lookalikes, comments, or strings', async () => {
+    const violations = await loadViolations()
+    expect(violations('eval("1 + 1")')).toContain('eval()')
+    expect(violations('const evaluated = evaluate(expr)')).toEqual([]) // "evaluate(" ≠ "eval("
+    expect(violations('const r = retrieval(x)')).toEqual([]) // no boundary before "eval"
+    expect(violations('// never eval() untrusted input')).toEqual([])
+    expect(violations('const note = "eval() is dangerous"')).toEqual([])
+  })
+
+  it('flags live new Function(), but not FunctionRegistry(), a Function type, or plain functions', async () => {
+    const violations = await loadViolations()
+    expect(violations('const f = new Function("return 1")')).toContain('new Function()')
+    expect(violations('const reg = new FunctionRegistry()')).toEqual([]) // "Function(" not immediate
+    expect(violations('let cb: Function')).toEqual([]) // type annotation, no new / no call
+    expect(violations('function step(state) { return state }')).toEqual([]) // lowercase decl
+    expect(violations('// new Function() generates code')).toEqual([])
+    expect(violations('const t = "new Function()"')).toEqual([])
+  })
+
+  it('flags Date ALIASING (assignment), but not Date type annotations/aliases/generic defaults', async () => {
+    const violations = await loadViolations()
+    expect(violations('const D = Date')).toContain('Date aliasing (= Date)')
+    expect(violations('let clock = Date')).toContain('Date aliasing (= Date)')
+    // The false positives a bare `=\s*Date\b` regex would cause — all must pass clean:
+    expect(violations('let stamp: Date')).toEqual([])
+    expect(violations('type Timestamp = Date')).toEqual([])
+    expect(violations('function at<T = Date>(): T { return undefined as T }')).toEqual([])
+    expect(violations('const times = [] as Date[]')).toEqual([])
+    // …and the mentions in prose/data still do not flag:
+    expect(violations('// do not alias const D = Date to dodge the clock ban')).toEqual([])
+    expect(violations('const hint = "const D = Date is an evasion"')).toEqual([])
+  })
+})
+
 // The listing is guarded so a missing dir yields an empty (dormant) sweep, never
 // an import-time throw. src/core/ does not exist until ml3.
 const coreFiles = existsSync(coreDir)
@@ -134,13 +199,28 @@ const coreFiles = existsSync(coreDir)
   : []
 
 describe('src/core/ purity sweep (ml1-1 — armed, dormant until ml3 lands the sim)', () => {
-  it('the real-tree sweep is ARMED: it scans every core module the moment one exists', () => {
-    // Deliberately NOT `toBeGreaterThan(0)` (centipede cp1-1's shape) — src/core is
-    // ml3's deliverable, so requiring a non-empty core here would keep ml1-1 RED
-    // forever. The scanner's teeth are the fixture self-tests above, which exercise
-    // the scanner directly (lang-review #18). This test documents the dormant state
-    // honestly: today the listing is empty; when ml3 adds core/, it.each below bites.
-    expect(Array.isArray(coreFiles)).toBe(true)
+  // Deliberately NO `expect(coreFiles.length).toBeGreaterThan(0)` (centipede cp1-1's
+  // shape) — src/core is ml3's deliverable, so a non-empty assertion would keep
+  // ml1-1 RED forever. The R5 tautology (`expect(Array.isArray(coreFiles)).toBe(true)`)
+  // was replaced, not just deleted: coreFiles is array-typed on both ternary branches,
+  // so no production change could ever fail it (lang-review #26), and deleting it
+  // outright leaves this describe with only the dormant `it.each([])` — an EMPTY suite
+  // vitest reports as a failure. The meaningful replacement below pins the LOCATED
+  // form of the scanner — the exact `scan(src, file)` path the `it.each(coreFiles)`
+  // sweep uses, which the loadViolations() wrapper strips and the fixture self-tests
+  // above therefore never exercise. This keeps the arming honest without coupling
+  // ml1-1 to whether core exists yet.
+  it('the sweep emits LOCATED violations (rule + file:line) — the form the real-tree it.each relies on', async () => {
+    const scan = await loadScanner()
+    // When ml3 lands a core module with a violation, the sweep must name WHERE, not
+    // just WHAT — a hit on a large generated data module with no line leaves the
+    // author grepping. loadViolations() strips the `(file:line)` suffix, so this is
+    // the one place the located form is pinned.
+    const hits = scan('export const tick = () => Date.now()', 'entity.ts')
+    expect(
+      hits.some((h) => /Date\.now\(\)\s+\(entity\.ts:1\)/.test(h)),
+      `the sweep must locate the hit at entity.ts:1 — got: ${hits.join(', ')}`,
+    ).toBe(true)
   })
 
   it.each(coreFiles)('src/core/%s stays inside the boundary', async (file) => {
