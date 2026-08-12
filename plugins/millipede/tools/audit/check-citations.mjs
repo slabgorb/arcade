@@ -16,9 +16,10 @@
 //
 // Schema per claim: non-empty unique `id`; non-empty `claim`; `source` =
 // {file: non-empty string, line: positive int, verbatim: string}; optional
-// `corroboration` (object or non-empty string), never byte-opened; optional
-// `counts` — an array of {pattern, scope?, expected, note?} tallies RE-DERIVED
-// against the tree (schema-checked always, re-run only with a vendoredRoot).
+// `corroboration` (object or non-empty string), never byte-opened. (The `counts`
+// re-derivation machinery centipede carries is NOT ported here — no ml1-1 claim
+// uses a tally, and porting it live-and-untested was an ml1-1 rework finding; ml1-2
+// re-adds `counts` with its own count-assertions test the first time it needs one.)
 //
 // Byte verification (only when `vendoredRoot` is non-null): resolve `source.file`
 // at the tree root; read the line; compare `.trimEnd()` on both sides (tolerates
@@ -80,86 +81,39 @@ function lineAt(path, n) {
 }
 
 /**
- * Resolve a cited `file` to an absolute path in the vendored tree. A bare
- * filename resolves at the tree root (REVISION_SUBDIRS = ['']). A file already
- * carrying a path separator (or already absolute) is treated as an exact
- * tree-relative (or absolute) path, then CONTAINED: it must stay inside
- * vendoredRoot after normalisation (a `..` that lands back inside is fine; one
- * that escapes is refused, even if the target file is real and the verbatim would
- * have matched — the traversal guard carried forward from cp1-2/cp1-3 review).
+ * Resolve a cited `file` to an absolute path to a FILE inside the vendored tree,
+ * or `undefined`. A bare filename resolves at the tree root (REVISION_SUBDIRS =
+ * ['']); a file carrying a path separator (or already absolute) is an exact
+ * tree-relative (or absolute) path. Every candidate — whichever branch built it —
+ * passes ONE containment gate: after normalisation it must stay inside
+ * vendoredRoot (a `..` that lands back inside is fine; one that escapes is
+ * refused, even if the target is real and the verbatim would have matched) AND it
+ * must be a regular file.
+ *
+ * The containment used to guard ONLY the `isAbsolute || includes('/')` branch, so
+ * a bare `..` or `.` (no separator) fell through to the search loop, resolved to
+ * `dirname(root)` / the root itself — a DIRECTORY outside or at the tree — and was
+ * handed back for `readFileSync`, which threw an uncaught EISDIR and aborted the
+ * whole audit (S1, cp1-2/cp1-3 traversal guard hardened in ml1-1 rework). Applying
+ * containment + the is-file check to every candidate closes both: an escaping path
+ * and a directory citation are now REFUSED (returned as "not found"), never read.
  */
 function resolveInTree(vendoredRoot, file) {
-  if (isAbsolute(file) || file.includes('/')) {
-    const p = isAbsolute(file) ? file : join(vendoredRoot, file)
-    const resolvedRoot = resolve(vendoredRoot)
+  const resolvedRoot = resolve(vendoredRoot)
+  const resolveContainedFile = (p) => {
     const resolvedPath = resolve(p)
     const withinTree = resolvedPath === resolvedRoot || resolvedPath.startsWith(resolvedRoot + sep)
     if (!withinTree) return undefined
-    return existsSync(p) ? p : undefined
+    return existsSync(p) && statSync(p).isFile() ? p : undefined
+  }
+  if (isAbsolute(file) || file.includes('/')) {
+    return resolveContainedFile(isAbsolute(file) ? file : join(vendoredRoot, file))
   }
   for (const sub of REVISION_SUBDIRS) {
-    const p = join(vendoredRoot, sub, file)
-    if (existsSync(p)) return p
+    const hit = resolveContainedFile(join(vendoredRoot, sub, file))
+    if (hit) return hit
   }
   return undefined
-}
-
-/**
- * Resolve a count assertion's optional `scope` to an absolute path in the
- * vendored tree. Absent/empty ⇒ the whole tree (the bare `grep -rn …
- * reference/original-source/millipede` recipe). A subpath is joined and then
- * CONTAINED (same rule as `resolveInTree`'s slash-branch). Returns undefined if
- * it escapes or is absent from the tree.
- */
-function resolveScope(vendoredRoot, scope) {
-  if (scope === undefined || scope === '') return vendoredRoot
-  const p = isAbsolute(scope) ? scope : join(vendoredRoot, scope)
-  const resolvedRoot = resolve(vendoredRoot)
-  const resolvedPath = resolve(p)
-  const withinTree = resolvedPath === resolvedRoot || resolvedPath.startsWith(resolvedRoot + sep)
-  if (!withinTree) return undefined
-  return existsSync(p) ? p : undefined
-}
-
-/**
- * Count LINES matching `re` under `root` (a file, or a directory walked
- * recursively). Line-oriented, mirroring `grep -n <pattern>` — not global matches
- * within a line. `re` must be flag-free (`new RegExp(pattern)`) so `.test` stays
- * stateless across the walk.
- */
-function countMatchingLines(root, re) {
-  if (statSync(root).isDirectory()) {
-    let n = 0
-    for (const e of readdirSync(root, { withFileTypes: true })) n += countMatchingLines(join(root, e.name), re)
-    return n
-  }
-  let n = 0
-  for (const line of readFileSync(root, 'utf8').split('\n')) if (re.test(line)) n++
-  return n
-}
-
-/**
- * Schema-validate one count assertion, returning an error string or null.
- * `expected: 0` is VALID (a pattern that legitimately matches nothing) — the
- * non-negative-integer test admits it, so no `||`-style falsy coercion can drop it.
- */
-function countSchemaError(id, ct) {
-  if (typeof ct !== 'object' || ct === null || Array.isArray(ct)) {
-    return `${id}: malformed count assertion (must be an object with a pattern and expected)`
-  }
-  if (typeof ct.pattern !== 'string' || ct.pattern.length === 0) {
-    return `${id}: malformed count assertion (needs a non-empty string pattern)`
-  }
-  if (!(Number.isInteger(ct.expected) && ct.expected >= 0)) {
-    return `${id}: malformed count assertion (expected must be a non-negative integer)`
-  }
-  if ('scope' in ct && ct.scope !== undefined && typeof ct.scope !== 'string') {
-    return `${id}: malformed count assertion (scope must be a string)`
-  }
-  if ('note' in ct && ct.note !== undefined && typeof ct.note !== 'string') {
-    return `${id}: malformed count assertion (note must be a string)`
-  }
-  return null
 }
 
 /**
@@ -209,41 +163,6 @@ export function checkClaims(claims, { vendoredRoot }) {
     if ('corroboration' in (c ?? {}) && c.corroboration !== undefined) {
       if (!isValidCorroboration(c.corroboration)) {
         errors.push(`${id}: malformed corroboration (must be a non-empty string, or an object with valid fields)`)
-      }
-    }
-
-    // COUNT assertions: schema always, re-derivation only with a tree.
-    if ('counts' in (c ?? {}) && c.counts !== undefined) {
-      if (!Array.isArray(c.counts)) {
-        errors.push(`${id}: malformed counts (must be an array of count assertions)`)
-      } else {
-        for (const ct of c.counts) {
-          const schemaErr = countSchemaError(id, ct)
-          if (schemaErr) {
-            errors.push(schemaErr)
-            continue
-          }
-          if (!vendoredRoot) continue // schema-only (CI): the tree is absent, don't re-derive
-          const scopeRoot = resolveScope(vendoredRoot, ct.scope)
-          if (scopeRoot === undefined) {
-            errors.push(`${id}: count scope ${JSON.stringify(ct.scope)} escapes or is absent from the vendored tree`)
-            continue
-          }
-          let re
-          try {
-            re = new RegExp(ct.pattern)
-          } catch (e) {
-            errors.push(`${id}: count pattern ${JSON.stringify(ct.pattern)} is not a valid regex (${e.message})`)
-            continue
-          }
-          const actual = countMatchingLines(scopeRoot, re)
-          if (actual !== ct.expected) {
-            const where = ct.scope ? `in ${ct.scope}` : 'over the whole tree'
-            errors.push(
-              `${id}: count ${JSON.stringify(ct.pattern)} ${where} expected ${ct.expected} but re-derived ${actual}`,
-            )
-          }
-        }
       }
     }
   }

@@ -13,7 +13,9 @@
 // SINGLE-SIDED SCHEMA (rom-source-study skill): a claim is an assertion ABOUT the
 // 1982 machine, cited to primary source. There is no clone yet, so there is no
 // `ours` side — the ours/theirs/class/recommendation machinery tempest carries is
-// dropped. A claim is: { id, claim, source, corroboration?, counts? }.
+// dropped. A claim is: { id, claim, source, corroboration? }. (The `counts`
+// re-derivation machinery is not ported at ml1-1 — no claim needs a tally yet;
+// ml1-2 re-adds `counts` + its `CountAssertion` type with a guarding test.)
 
 /**
  * A single-sided claim: one assertion about the machine, cited to a byte-exact
@@ -38,41 +40,6 @@ export interface Claim {
    * Its SHAPE is schema-validated; it is never byte-opened.
    */
   corroboration?: unknown
-  /**
-   * Optional COUNT assertions. A claim's prose often embeds a reproducible tally
-   * ("the PTS table is 16 entries"). The verbatim/line gate cannot see such a
-   * number, so it rots silently when the source drifts. Each entry RE-DERIVES a
-   * tally from the vendored tree and compares it to `expected` — shape-checked
-   * always, re-run only when `vendoredRoot` is present (schema-only on CI, exactly
-   * like the byte gate). Each mismatched entry is one error, so a claim with two
-   * bad `counts` produces two errors (not one per claim).
-   */
-  counts?: CountAssertion[]
-}
-
-/**
- * A machine-checkable tally embedded in a claim's prose. The checker walks the
- * in-scope files, counts LINES matching `pattern` (line-oriented, mirroring
- * `grep -n <pattern>` — not global matches within a line), and compares the total
- * to `expected`.
- */
-export interface CountAssertion {
-  /**
-   * Regex SOURCE (a string, fed to `new RegExp(pattern)`) tested against each
-   * line. E.g. `"^PTS:"` counts lines that begin `PTS:`.
-   */
-  pattern: string
-  /**
-   * Optional tree-relative subpath scoping the scan — a directory (walked
-   * recursively) or a single file. Absent ⇒ the WHOLE vendored tree, i.e. the
-   * `grep -rn … reference/original-source/millipede` recipe. Must stay inside the
-   * tree after normalisation (same containment rule as `source.file`).
-   */
-  scope?: string
-  /** The tally the prose asserts. Re-derived and compared when `vendoredRoot` is non-null. */
-  expected: number
-  /** Optional human note — which prose figure this guards, or a derivation. */
-  note?: string
 }
 
 export interface CheckOpts {
