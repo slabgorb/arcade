@@ -10,7 +10,8 @@ stories:
     title: 'Vendor + byte-citation-gate the picture EPROMs 136013-106/107 from the MAME milliped set (368XX.SB2 not preserved upstream, ml1 OQ-3): place the ROM bytes under a byte-equality gate like pac-man/centipede, provenance recorded, reference/ licence-walled.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
   - id: ml2-2
