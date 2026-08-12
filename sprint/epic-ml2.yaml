@@ -24,9 +24,10 @@ stories:
     title: 'RAM-colour palette seam (the divergence from centipede): decode the palette from MAME milliped.cpp COLOR-RAM wiring (MLIRQ.MAC:242 CLRCH), NOT a resistor-DAC PROM. Pin the palette source as claims; cite milliped.cpp in prose, never copy (GPL).'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
+    branch: feat/ml2-3-ram-colour-palette-seam
   - id: ml2-4
     title: 'tools/bake-graphics.mjs -> committed *-data.ts + render a static playfield of stamps at /millipede/; VISUAL playtest for the ROT/orientation trap now, before physics (playbook section 4 — byte-equality hides orientation bugs, only a visual catch works).'
     points: 3
