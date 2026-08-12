@@ -110,13 +110,13 @@ export interface SecondVariantTrace {
  */
 export interface ArenaState {
   /** The bridge solid-fill is gone (latching). */
-  bridgeBurned: boolean
+  readonly bridgeBurned: boolean
   /** Labels of cliffs currently destroyed (a subset of the four destructible). */
-  destroyedCliffs: readonly string[]
+  readonly destroyedCliffs: readonly string[]
   /** OR of destroyed cliffs' landing bits — vetoes a landing dispatch. */
-  destroyedLandingBits: number
+  readonly destroyedLandingBits: number
   /** OR of destroyed cliffs' background-collision bits. */
-  destroyedBackgroundBits: number
+  readonly destroyedBackgroundBits: number
 }
 
 /**
@@ -183,6 +183,12 @@ export function groundOutcomeInState(state: ArenaState, mask: number): GroundOut
  * lands on the CLIF5 surface; once burned the footing is gone and the entity is
  * airborne — it drops into the lava (LAVAB clears the $20 bit across the bridge
  * columns, JOUSTRV4.SRC:5258-5264).
+ *
+ * jt11-5 — production consumes the burn PER COLUMN instead: `groundMaskAt`
+ * drops the wave-init `ORA #$20` once `bridgeBurned` and the steppers resolve
+ * through `groundOutcomeInState`, which subsumes this span-level query. It
+ * stays as the unit-pinned semantic statement of the bridge law (jt3-2's
+ * suite), deliberately without a production call-site.
  */
 export function bridgeGroundOutcome(state: ArenaState): GroundOutcome {
   if (state.bridgeBurned) return { kind: 'airborne' }

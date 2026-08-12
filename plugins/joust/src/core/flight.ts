@@ -30,6 +30,7 @@
 // flight. (LNDXS3 is the same zero-point-label shape — a house convention.)
 
 import { LND_Y_TABLE } from './arena.js'
+import type { ArenaState } from './arena-state.js'
 
 /** Where a constant came from: an inclusive line range in a vendored file. */
 export interface SourceAnchor {
@@ -217,10 +218,27 @@ export function landMaskAtX(x: number): number {
 /**
  * `LNDXTB[x] & LNDYTB[y]` (`CKGND`, :6705-6706) — the (x,y) → mask step jt1-4
  * defined a dispatch for but could not supply the input to.
+ *
+ * jt11-5 — the optional `arena` makes the wave-init `ORA #$20` CONDITIONAL:
+ * once `arena.bridgeBurned` the X column is the PLAIN table byte, which is the
+ * LAVAB burn at the bit granularity jt3-2 ruled (`EORA LNDXS3,X / ANDA #$20 /
+ * STA LNDXTB,X`, :5258-5263, clears the granted $20 column by column and STOPS
+ * at the island — whose own LNDXS1 bytes carry $20 natively and so survive
+ * here too). Absent/intact arena keeps the pristine mask byte for byte.
  */
-export function groundMaskAt(x: number, y: number): number {
+export function groundMaskAt(
+  x: number,
+  y: number,
+  arena?: Pick<ArenaState, 'bridgeBurned'>,
+): number {
   if (!Number.isInteger(y)) throw new TypeError(`groundMaskAt expects a whole scanline, got ${y}`)
   if (y < 0 || y >= LND_Y_TABLE.length) return 0
+  if (arena?.bridgeBurned) {
+    if (!Number.isInteger(x)) throw new TypeError(`groundMaskAt expects a whole pixel, got ${x}`)
+    const i = x + X_TABLE_ORIGIN
+    const col = i < 0 || i >= LND_X_TABLE.length ? 0 : LND_X_TABLE[i]
+    return col & LND_Y_TABLE[y]
+  }
   return landMaskAtX(x) & LND_Y_TABLE[y]
 }
 

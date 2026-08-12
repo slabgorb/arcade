@@ -229,12 +229,23 @@ export interface ContactResult {
  * cliff/platform/foreground tiles; `entity` ops are the sprites.
  */
 export interface DrawOp {
-  kind: 'arena' | 'entity'
+  /**
+   * jt11-5 adds `'fill'`: a SOLID-COLOUR rectangle with no pixel source — the
+   * BRIDGE/BRIDG2 lava-shore planks are `$12`-mode DMA fills (`FDB
+   * $1200+LIB*$11,0,…` — source word 0, JOUSTRV4.SRC:1126-1127), not pictures,
+   * so no atlas block can carry them. The shell paints a `fill` op with
+   * `fillRect`, not a blit.
+   */
+  kind: 'arena' | 'entity' | 'fill'
   /** The atlas block (or a foreground tag) this op blits. */
   name: string
   x: number
   y: number
   height?: number
+  /** jt11-5 — a `fill` op's width in CRT pixels (the DMA length high byte × 2). */
+  width?: number
+  /** jt11-5 — a `fill` op's colour PROM nibble (LIB = $8; the byte is LIB*$11). */
+  colour?: number
   /**
    * jt2-9 — the entity's `PFACE` on this op, so the shell can flip the
    * right-facing atlas frame horizontally for a left-facer. The render's
@@ -280,8 +291,13 @@ export interface DemoModule {
    * documented in egg.ts). A still-ASCENDING egg (velY < 0) at a ledge is NOT
    * bounced and NOT settled — the guard the ROM keeps and the pure law cannot.
    * Pure.
+   *
+   * jt11-5 — the optional `arena` makes the ledge test destruction-aware: the
+   * feet-below outcome is `groundOutcomeInState` over the CONDITIONAL mask, so
+   * an egg falling onto a burned bridge plank or a destroyed cliff finds no
+   * footing and keeps falling. Absent arena = pristine (pre-jt11-5 callers).
    */
-  stepEgg(egg: EggState): EggState
+  stepEgg(egg: EggState, arena?: ArenaState): EggState
 
   /**
    * jt9-9 — `12`, the `PCNAP 12` a settled egg's wait loop costs per tick, in

@@ -29,8 +29,19 @@
 import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
 import { GRAV, flap, tickTimeUp, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
-import { groundOutcome, FLOOR, ELEFT, ERIGHT, wrapX } from './arena.js'
-import { applyWaveDestruction, initialArenaState, type ArenaState } from './arena-state.js'
+import { FLOOR, ELEFT, ERIGHT, wrapX } from './arena.js'
+// jt11-5 — the egg's ledge test resolves through the MUTATED arena (the jt3-2
+// seam), so a plank that burned or a cliff a wave destroyed settles nothing.
+import {
+  applyWaveDestruction,
+  groundOutcomeInState,
+  initialArenaState,
+  type ArenaState,
+} from './arena-state.js'
+
+/** jt11-5 — the no-arena default: bridge intact, nothing destroyed. Shared,
+ *  read-only, so per-frame egg checks do not allocate. */
+const PRISTINE_ARENA: ArenaState = Object.freeze(initialArenaState())
 import {
   bounceEgg,
   eggSettles,
@@ -284,12 +295,23 @@ export const TROLL_FRAME_STEP = 6
  * cliff/platform/foreground tiles; `entity` ops are the sprites.
  */
 export interface DrawOp {
-  kind: 'arena' | 'entity'
+  /**
+   * jt11-5 adds `'fill'`: a SOLID-COLOUR rectangle with no pixel source — the
+   * BRIDGE/BRIDG2 lava-shore planks are `$12`-mode DMA fills whose source word
+   * is 0 (JOUSTRV4.SRC:1126-1127), so no atlas block can carry them. The shell
+   * paints a fill op with `fillRect`, not a blit.
+   */
+  kind: 'arena' | 'entity' | 'fill'
   /** The atlas block (or ENTITY_RECORDS frame name) this op blits. */
   name: string
   x: number
   y: number
   height?: number
+  /** jt11-5 — a `fill` op's width in CRT pixels (the DMA length high byte × 2). */
+  width?: number
+  /** jt11-5 — a `fill` op's colour PROM nibble (`LIB EQU $8`, :60; the DMA
+   *  constant byte is `LIB*$11` — the same nibble in both 4-bit pixels). */
+  colour?: number
   /**
    * `PFACE` for an ENTITY op (jt2-9) — the shell mirrors the right-facing atlas
    * frame horizontally for a left-facer. Undefined on `arena` ops.
@@ -1283,11 +1305,14 @@ export function createWaveDemo(seed: number, playerCount: number = 2): DemoState
  * the ROM keeps and the pure `bounceEgg` law cannot. An open-air egg accelerates
  * under the flight core's base gravity (Finding #3) and integrates its 8.8 Y. Pure.
  */
-export function stepEgg(egg: EggState): EggState {
+export function stepEgg(egg: EggState, arena: ArenaState = PRISTINE_ARENA): EggState {
   if (egg.settled) return egg
 
   const pixelY = egg.posY >> 8
-  const feetBelow = groundOutcome(groundMaskAt(egg.posX, pixelY + 1))
+  // jt11-5 — the ledge is looked up in the MUTATED arena: the conditional mask
+  // drops the burned bridge's granted $20 and groundOutcomeInState vetoes a
+  // destroyed cliff's landing bit, so the egg falls on through either.
+  const feetBelow = groundOutcomeInState(arena, groundMaskAt(egg.posX, pixelY + 1, arena))
 
   // BMI EGGBCK: bounce ONLY a downward/level egg (velY >= 0).
   if (egg.velY >= 0 && feetBelow.kind === 'platform') {
@@ -2032,7 +2057,10 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   const stepped = stepFrame(
     { ...demo.sim, targets: tickedTargets, cues: [] },
     inputs,
-    { wave: waveOrdinal },
+    // jt11-5 — the frame runs under the ENTRY arena: destruction applies at the
+    // wave EVENT (below, on an advance), exactly as the ROM mutates the RAM
+    // tables at wave init and lets the frames run against them.
+    { wave: waveOrdinal, arena: demo.arena },
   )
 
   const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as DemoProcess))
@@ -2498,7 +2526,13 @@ export function enemyDrawList(p: DemoProcess): string[] {
  * distinct (compacted `COMCL5`, separately un-compacted, excluded from the manual
  * CLIF1L..CLIF5 loop), which is consistent with singling out the bottom tier but
  * does not derive 0xC0. True per-tier depth is underivable from the source. */
-function isForegroundArena(destY: number): boolean {
+/**
+ * The jt3-7 z-order split: arena records whose dest row is at/below $C0 paint
+ * AFTER the sprites (the bottom island occludes entities behind its front
+ * edge). Exported since jt11-5 review round 2 (F4) so the AC-3 filter test
+ * pins its expected order to THIS predicate rather than a re-derived literal.
+ */
+export function isForegroundArena(destY: number): boolean {
   return destY >= 0xc0
 }
 
@@ -2539,7 +2573,28 @@ function entityOp(name: string, posX: number, feetY: number, facing: Facing): Dr
 export function drawList(demo: DemoState): DrawOp[] {
   const back: DrawOp[] = []
   const fore: DrawOp[] = []
+  // jt11-5 — the BRIDGE/BRIDG2 lava-shore planks (JOUSTRV4.SRC:1126-1127):
+  //   BRIDGE  FDB $1200+LIB*$11,0,$00D3,$1B03!XDMAFIX
+  //   BRIDG2  FDB $1200+LIB*$11,0,$78D3,$1E03!XDMAFIX
+  // Solid-colour DMA fills, not pictures — source word 0, constant byte
+  // LIB*$11 (LIB EQU $8, :60). Dest/len decode with the same ×2 X scale the
+  // records below use: 54×3 at (0,211) and 60×3 at (240,211). They are wave-
+  // init BACKGROUND writes (`LDY #BRIDGE` :998 / `LDY #BRIDG2` :1002), painted
+  // before every sprite — NOT routed through the jt3-7 foreground split, which
+  // is the island art's own ruling. Once the wave event burns the bridge
+  // (TBRIDGE :1934-1938) the planks are gone with their footing.
+  if (!demo.arena.bridgeBurned) {
+    back.push({ kind: 'fill', name: 'BRIDGE', x: 0, y: 211, width: 54, height: 3, colour: 8 })
+    back.push({ kind: 'fill', name: 'BRIDG2', x: 240, y: 211, width: 60, height: 3, colour: 8 })
+  }
+  // jt11-5 — a DESTROYED cliff stops drawing: WCLFEW writes the cliff away and
+  // WCLFEW's create path writes it back (JOUSTRV4.SRC:2301-2368), and the live
+  // set is exactly `demo.arena.destroyedCliffs`. A variant row (`CLIF2_CSRC2`)
+  // belongs to its `_`-prefix cliff; CLIF3*/CLIF5/TRANS* never appear in the
+  // destroyed set (no WBCLS bit), so they cannot be filtered.
+  const destroyed = new Set(demo.arena.destroyedCliffs)
   for (const rec of BACKGROUND_RECORDS) {
+    if (destroyed.has(rec.name.split('_')[0])) continue
     const destY = rec.dest & 0xff
     const op: DrawOp = {
       kind: 'arena',

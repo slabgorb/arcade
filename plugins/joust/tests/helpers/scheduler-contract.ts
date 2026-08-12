@@ -32,6 +32,9 @@
 // a one-shot timer that must never re-fire in a test window uses a large period.
 
 import type { EntityState, PlayerInput } from './flight-contract.js'
+import type { EnemyState } from './enemy-contract.js'
+import type { EggState } from './egg-contract.js'
+import type { ArenaState } from './arena-state-contract.js'
 
 export type { EntityState, PlayerInput }
 
@@ -52,6 +55,15 @@ export interface ProcessSpec {
   kind: string
   /** A player process carries its flight/ground state here. */
   entity?: EntityState
+  /**
+   * jt11-5 contract catch-up (the uf1-9 one-directional-drift precedent):
+   * production `frame.ts` has stepped `kind: 'enemy'` processes through
+   * `stepEnemyDetailed` since jt5-3 and `kind: 'egg'` ones through the demo's
+   * `stepEgg` since jt2-7, but neither arm was ever declared here, so no
+   * frame-level test could stage them. Plain data, carried by `spawn`'s spread.
+   */
+  enemy?: EnemyState
+  egg?: EggState
 }
 
 /** A scheduled process. Plain data — the behaviour is dispatched by `kind`. */
@@ -114,8 +126,19 @@ export interface SchedulerModule {
    * kind's behaviour and re-nap to `period`, and the RNG stirs ONCE. `inputs`
    * supplies this frame's `PlayerInput` per process id (players only). Pure —
    * the returned state is new; the argument is never mutated.
+   *
+   * `opts.wave` is uf1-2's per-wave difficulty dial (default 1). jt11-5 adds
+   * `opts.arena` — the demo's live ArenaState, threaded into EVERY ground-mask
+   * consumer this stepper drives (the player's land/walk-off pair, the enemy's
+   * via `stepEnemyDetailed`, the egg's via `stepEgg`), so mid-game destruction
+   * is consumed by the production step, not only by the troll gate. Absent
+   * arena = pristine arena (every pre-jt11-5 caller unchanged).
    */
-  stepFrame(state: GameState, inputs?: Record<number, PlayerInput>): GameState
+  stepFrame(
+    state: GameState,
+    inputs?: Record<number, PlayerInput>,
+    opts?: { wave?: number; arena?: ArenaState },
+  ): GameState
 
   /** Draw one random from the durable stream, returning it and the advance. Pure. */
   draw(state: GameState): Draw

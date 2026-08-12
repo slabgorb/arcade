@@ -54,6 +54,7 @@
 
 import type { EntityState, PlayerInput } from './flight-contract.js'
 import type { GameState, ProcessSpec } from './scheduler-contract.js'
+import type { ArenaState } from './arena-state-contract.js'
 
 export type { EntityState, PlayerInput, GameState, ProcessSpec }
 
@@ -475,7 +476,7 @@ export interface EnemyModule {
    */
   stepEnemyDetailed(
     enemy: EnemyState,
-    ctx?: { player?: PlayerView | null; wave?: number; bumpX?: number },
+    ctx?: { player?: PlayerView | null; wave?: number; bumpX?: number; arena?: ArenaState },
   ): { enemy: EnemyState; wingEdge: 'down' | 'up' | null }
 
   /**
@@ -484,7 +485,20 @@ export interface EnemyModule {
    * and never in this contract (the same one-directional drift that hid
    * `stepEnemyDetailed`), and a cliff turn is the only way to arm a dwell.
    */
-  steerWake(enemy: EnemyState, target: PlayerView | null): { enemy: EnemyState; turned: boolean }
+  /**
+   * jt11-5 — the trailing params catch the contract up to production (`bumpX`,
+   * jt9-48's collision-driven bump arm) and thread the live arena into the
+   * BCKXTB look-ahead: a DESTROYED cliff's background bits are inactive
+   * (`backgroundActive`, WCLFEW clears BCKXD1 — JOUSTRV4.SRC:2301-2325), so the
+   * look-ahead no longer turns at a cliff that is not there. Absent arena =
+   * pristine background (every pre-jt11-5 caller unchanged).
+   */
+  steerWake(
+    enemy: EnemyState,
+    target: PlayerView | null,
+    bumpX?: number,
+    arena?: ArenaState,
+  ): { enemy: EnemyState; turned: boolean }
 
   /** uf1-9 — `LDA #2` (:3823/:4008), the DOWN-seek's frozen wing-down hold. */
   DOWN_SEEK_WING_HOLD: number

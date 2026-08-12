@@ -131,8 +131,16 @@ export interface FlightModule {
    */
   landMaskAtX(x: number): number
 
-  /** `LNDXTB[x] & LNDYTB[y]` — the (x,y) → mask step jt1-4 could not provide. */
-  groundMaskAt(x: number, y: number): number
+  /**
+   * `LNDXTB[x] & LNDYTB[y]` — the (x,y) → mask step jt1-4 could not provide.
+   *
+   * jt11-5 — the optional `arena` makes the wave-init `ORA #$20` CONDITIONAL:
+   * once `arena.bridgeBurned` the baked CLIFF-5-lands-at-all-points OR is
+   * dropped and the mask is the plain table AND — the LAVAB per-column clear
+   * (JOUSTRV4.SRC:5258-5264) at bit granularity. Absent/intact arena keeps the
+   * pristine `landMaskAtX` behaviour byte for byte (every pre-jt11-5 caller).
+   */
+  groundMaskAt(x: number, y: number, arena?: { bridgeBurned: boolean }): number
 
   // ─── Flight ───────────────────────────────────────────────────────────────
   /**
