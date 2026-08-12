@@ -1,0 +1,3 @@
+[
+  { "id": "GL-1", "claim": "A poisoned mushroom is the object the straight-Conway pass kills for: STRAIGHT CONWAY, KILL IF POISON MUSHROOM.", "source": { "file": "CONWAY.MAC", "line": 216, "verbatim": "\tLDA NY,TEMP2\t\t;STRAIGHT CONWAY, KILL IF POISON MUSHROOM" } }
+]

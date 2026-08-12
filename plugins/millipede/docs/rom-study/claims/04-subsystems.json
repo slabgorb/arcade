@@ -1,0 +1,23 @@
+[
+  { "id": "SS-1",  "claim": "BEEMV moves the bee down the screen.",                              "source": { "file": "MILLI.MAC", "line": 56,   "verbatim": "\t.SBTTL\tBEEMV-MOVE BEE DOWN SCREEN" } },
+  { "id": "SS-2",  "claim": "BEETL moves and starts the beetle.",                                "source": { "file": "MILLI.MAC", "line": 243,  "verbatim": "\t.SBTTL\tBEETL-MOVE AND START BEETLE" } },
+  { "id": "SS-3",  "claim": "CENTPC initializes the centipede picture.",                         "source": { "file": "MILLI.MAC", "line": 498,  "verbatim": "\t.SBTTL\tCENTPC-INITIALIZE CENTIPEDE PICTURE" } },
+  { "id": "SS-4",  "claim": "EARWIG moves and starts the earwig.",                               "source": { "file": "MILLI.MAC", "line": 672,  "verbatim": "\t.SBTTL\tEARWIG-MOVE AND START EARWIG" } },
+  { "id": "SS-5",  "claim": "EXPLOD explodes centipede segments and the player.",                "source": { "file": "MILLI.MAC", "line": 763,  "verbatim": "\t.SBTTL\tEXPLOD-EXPLODE CENTIPEDE SEGMENTS AND PLAYER" } },
+  { "id": "SS-6",  "claim": "FLYMV enters and moves the dragonfly.",                             "source": { "file": "MILLI.MAC", "line": 1004, "verbatim": "\t.SBTTL\tFLYMV - ENTER AND MOVE DRAGONFLY" } },
+  { "id": "SS-7",  "claim": "MOSQT enters and moves the mosquito.",                              "source": { "file": "MILLI.MAC", "line": 1324, "verbatim": "\t.SBTTL\tMOSQT-ENTER AND MOVE THE MOSQUITO" } },
+  { "id": "SS-8",  "claim": "MOTION is the motion-update section (centipede stepping).",         "source": { "file": "MILLI.MAC", "line": 1444, "verbatim": ".SBTTL\tMOTION-MOTION UPDATE" } },
+  { "id": "SS-9",  "claim": "MOVE moves the player.",                                            "source": { "file": "MILLI.MAC", "line": 1640, "verbatim": ".SBTTL\tMOVE-MOVE PLAYER" } },
+  { "id": "SS-10", "claim": "SHOOT checks the fire switch and fires the shot.",                  "source": { "file": "MILLI.MAC", "line": 1820, "verbatim": "\t.SBTTL\tSHOOT-CHECK FIRE SWITCH AND FIRE SHOT" } },
+  { "id": "SS-11", "claim": "SPDMV moves the spider.",                                           "source": { "file": "MILLI.MAC", "line": 2295, "verbatim": "\t.SBTTL\tSPDMV-MOVE SPIDER" } },
+  { "id": "SS-12", "claim": "WRMMV enters and moves the inch worm.",                             "source": { "file": "MILLI.MAC", "line": 2559, "verbatim": "\t.SBTTL\tWRMMV-ENTER AND MOVE INCH WORM" } },
+  { "id": "SS-13", "claim": "SOUNDS is the sound routine.",                                      "source": { "file": "MLIRQ.MAC", "line": 8,    "verbatim": "\t.SBTTL\tSOUNDS - SOUND ROUTINE" } },
+  { "id": "SS-14", "claim": "CLRCH is the colour-RAM initialization — colour is RAM-driven.",    "source": { "file": "MLIRQ.MAC", "line": 242,  "verbatim": "\t.SBTTL\tCLRCH - COLOR RAM INITIALIZATION" } },
+  { "id": "SS-15", "claim": "IRQ is the interrupt-processing section, the once-per-frame dispatch.", "source": { "file": "MLIRQ.MAC", "line": 701, "verbatim": "\t.SBTTL\tIRQ-IRQ PROCESSING" } },
+  { "id": "SS-16", "claim": "JOYS reads and responds to the joysticks — the input routine.",     "source": { "file": "MLIRQ.MAC", "line": 897,  "verbatim": "\t.SBTTL\tJOYS - READ AND RESPOND TO JOYSTICKS" } },
+  { "id": "SS-17", "claim": "MODE FE is the attract-mode FE initialization section.",            "source": { "file": "MLATR.MAC", "line": 126,  "verbatim": "\t.SBTTL\t\tMODE FE, INITIALIZATION" } },
+  { "id": "SS-18", "claim": "MODE FF is an attract-mode section.",                               "source": { "file": "MLATR.MAC", "line": 313,  "verbatim": "\t.SBTTL\t\tMODE FF" } },
+  { "id": "SS-19", "claim": "MASTER is CONWAY's master control program (the mushroom-field automaton driver).", "source": { "file": "CONWAY.MAC", "line": 24, "verbatim": "\t.SBTTL\tMASTER CONTROL PROGRAM" } },
+  { "id": "SS-20", "claim": "INICON initializes Conway; it is a plain label, not a .SBTTL section.", "source": { "file": "CONWAY.MAC", "line": 11, "verbatim": "INICON:\tLDX #00" } },
+  { "id": "SS-21", "claim": "MODE FE execution follows its initialization at EXECUTE MODE FE.",  "source": { "file": "MLATR.MAC", "line": 165,  "verbatim": "\t.SBTTL\t\tEXECUTE MODE FE" } }
+]
