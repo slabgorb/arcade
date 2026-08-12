@@ -31,7 +31,8 @@ stories:
     title: 'CONWAY Life field (the schedule risk — no sibling, no prose): port Cerny MASTER control (CONWAY.MAC:24) grow/kill of mushrooms + DDT clouds by Game-of-Life rules; INICON init (MLDEF.MAC:73). Pure reducer + a SEEDED-FIELD golden test proving the growth generations match the ROM algorithm.'
     points: 8
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
   - id: ml3-5
