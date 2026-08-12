@@ -64,6 +64,13 @@ stories:
     repos: arcade
     workflow: tdd
     depends_on: jt11-5
+  - id: jt11-9
+    title: 'Transporter pad occupancy (routed Delivery Finding from jt11-4, with the prerequisite it uncovered): (A) an arrival must STAND on its pad for 30 frames (LDA #30 / STA PFRAME JOUSTRV4.SRC:5726-5727) before its brain moves it - measured today it drifts on the very next frame (seed 0x1234: id 256 born f62 at x=23 on TR3, x=25 by f82), and MATERIALISE_WINDOW=120 is the collision gate, NOT the standing period. (B) then TCURUSE: a pad is in use from GOTTR INC [TCURUSE,X] :5710 until DEC :5898, selection keeps enterViaPads draw as the VRAND preference and falls through GOTR1..GOTR4 to the first free pad :5687-5709, and BNE CRELP :5709 leaves a customer pending with its ticket intact when all four are busy. (A) is a hard prerequisite for (B): with a one-frame occupancy nothing can ever contend, so TCURUSE alone would be unobservable dead state - the exact condition this epic exists to remove. A 400-frame sweep on four seeds found zero same-pad collisions today. Full test design incl. the reachable fixture (player respawn during a wave walk-in, since 30 < 61 rules out enemy-to-enemy contention) in context-story-jt11-9.md. Sequence after jt11-4; shares sim.ts with jt11-5 - do not parallel.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
   - id: jt11-8
     title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2, and a click/tap on the attract or select screen as a start gesture (routed Delivery Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a lobby-browser player may also reasonably click). Keep the rising-edge discipline (prevStartHeld) for all new sources.'
     points: 2
