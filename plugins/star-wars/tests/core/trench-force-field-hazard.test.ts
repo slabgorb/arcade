@@ -29,34 +29,48 @@
 // (WSBASE.MAC:878-906) name the "8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM" —
 // a full row across the channel, seated at a top or bottom band.
 //
+// -- WHY THE ROW SPANS: THE MEMBER RUNS ALONG THE WALL NORMAL ------------------
+//
+// `.WP WFF` is not a fin standing on the wall — its whole 0→40 run points INTO the
+// channel. The table proves it against its own siblings: the square `.WP WPN` is
+// flat at y=0 (a plate on the wall) and the gun `.WP WGA` puts its `WALL BASE` at
+// y=0 and lifts `GUN BODY`/`GUN NOZZLE` to y=4..12 (off the wall), so y is the wall
+// NORMAL; and WFF's own rows are labelled `FRONT MIDLINE` (x=-20), `BOTTOM MIDLINE`
+// (z=-20), `TOP MIDLINE` (z=+20), fixing x as depth and z as up. So each wall's
+// member reaches inboard and the pair MEET IN THE MIDDLE — the seam visible on the
+// cabinet. The span is a property of the PAIR plus the model, not of one obstacle.
+//
 // -- WHAT B-012 GOT RIGHT, AND WHAT IT GOT WRONG ------------------------------
 //
-// RIGHT: the object identity (the catwalk IS the wall force field, TD$WFF/WFG)
-//   and the single-panel model shape (`.WP WFF`, a vertical fin) — unchanged, and
-//   still pinned by trench-force-field-rom.test.ts. NOT this story's concern.
-// WRONG: it placed ONE panel on ONE wall and gated the graze on the pilot's
-//   lateral side (`onFieldSide`), so steering to the far wall dodged it. The ROM
-//   places the row on BOTH walls at the band and never checks lateral distance —
-//   the graze is vertical-band-gated and channel-spanning.
+// RIGHT: the object identity (the catwalk IS the wall force field, TD$WFF/WFG) and
+//   the per-wall PLACEMENT (WSPANL really does place one member per wall).
+// WRONG: it read the member as a lone vertical fin and gated the graze on the
+//   pilot's lateral side (`onFieldSide`), so steering to the far wall dodged it.
+//   The ROM never checks lateral distance — the graze is vertical-band-gated, and
+//   the row it belongs to spans the width.
 //
-// -- REPRESENTATION CONTRACT (declared here; Dev's grid-derived spawning meets it)
+// -- REPRESENTATION CONTRACT --------------------------------------------------
 //
-// A channel-spanning catwalk is a trench obstacle of kind 'catwalk' whose lateral
-// pos[1] is the channel CENTRE (0) — it is NOT mounted to a wall sign. pos[2] is
-// its band height (a top or a bottom band); pos[0] is its downrange depth. The
-// graze fires whenever the pilot's VERTICAL trenchView[2] is within the field's
-// band AND it is within the depth window — INDEPENDENT of the pilot's lateral
-// trenchView[1]. The contact is a GRAZE ('terrain-crash', NO shield — the shield
-// accounting rides WSGLOW, S-016 scope, a later story). The EXACT band ($200 top
-// offset / $400 height) and the grid slot→band-height map are Dev's to derive
-// from the wedge grid; this suite pins the OBSERVABLE (which HEIGHT grazes vs
-// clears, and that LATERAL side never matters), not those literals.
+// A catwalk is a trench obstacle of kind 'catwalk' MOUNTED ON A WALL (pos[1] =
+// ±TRENCH_HALF_W, the sign naming the wall); pos[2] is its band height (a top or a
+// bottom band); pos[0] is its downrange depth. A row is the PAIR. The graze fires
+// whenever the pilot's VERTICAL trenchView[2] is within the band AND it is within
+// the depth window — INDEPENDENT of the pilot's lateral trenchView[1]. The contact
+// is a GRAZE ('terrain-crash', NO shield — the shield accounting rides WSGLOW,
+// S-016 scope, a later story). The EXACT band ($200 top offset / $400 height) and
+// the grid slot→band-height map are not pinned here; this suite pins the OBSERVABLE
+// (which HEIGHT grazes vs clears, and that LATERAL side never matters).
 
 import { describe, it, expect } from 'vitest'
 import { initialState, type GameState, type TrenchObstacle } from '../../src/core/state'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
-import { TRENCH_EYE_SEAT, TRENCH_EYE_MIN, TRENCH_EYE_MAX } from '../../src/core/trench-channel'
+import {
+  TRENCH_HALF_W,
+  TRENCH_EYE_SEAT,
+  TRENCH_EYE_MIN,
+  TRENCH_EYE_MAX,
+} from '../../src/core/trench-channel'
 import type { Vec3 } from '@shared/math3d'
 
 /**
@@ -76,11 +90,16 @@ function trenchWith(obstacles: TrenchObstacle[], view: Vec3): GameState {
 }
 
 /**
- * A channel-spanning catwalk: seated at band height `y`, downrange `depth`
- * (positive = ahead of the cockpit). Lateral pos[1] is the channel centre (0):
- * the catwalk spans the width, so which wall the pilot hugs is immaterial.
+ * A catwalk ROW at band height `y`, downrange `depth` (positive = ahead of the
+ * cockpit) — the PAIR of wall-mounted members the ROM places, one per wall
+ * (WSPANL's PNVLW/PNVRW). Each member's whole run is the wall normal (`.WP WFF`),
+ * so the two reach inboard and meet mid-channel: the pair is what spans the width,
+ * and which wall the pilot hugs is therefore immaterial.
  */
-const catwalk = (y: number, depth = 1): TrenchObstacle => ({ kind: 'catwalk', pos: [depth, 0, y] })
+const catwalk = (y: number, depth = 1): TrenchObstacle[] => [
+  { kind: 'catwalk', pos: [depth, -TRENCH_HALF_W, y] },
+  { kind: 'catwalk', pos: [depth, TRENCH_HALF_W, y] },
+]
 
 // Lateral pilot offsets, inside the ROM ±511 clamp. Vertical dodging is the only
 // dodge, so these must ALL graze an in-band catwalk.
@@ -107,7 +126,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // A catwalk at the pilot's height, just downrange; pilot centred at that
     // height. It grazes (crash sound), and a graze spends no shield (WSGLOW/S-016
     // scope, not this story).
-    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, CENTRE, TRENCH_EYE_SEAT])
+    const s0 = trenchWith(catwalk(TRENCH_EYE_SEAT), [0, CENTRE, TRENCH_EYE_SEAT])
     const { crashSeen, shieldsLost } = flyThrough(s0)
     expect(crashSeen, 'the catwalk grazes the in-band pilot').toBe(true)
     expect(shieldsLost, 'a graze costs no shield').toBe(0)
@@ -119,7 +138,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // trenchView[1] >= 0, so the FAR-LEFT pilot flies clear today. All three must
     // graze once the lateral gate is gone.
     for (const lateral of [FAR_LEFT, CENTRE, FAR_RIGHT]) {
-      const { crashSeen } = flyThrough(trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, lateral, TRENCH_EYE_SEAT]))
+      const { crashSeen } = flyThrough(trenchWith(catwalk(TRENCH_EYE_SEAT), [0, lateral, TRENCH_EYE_SEAT]))
       expect(crashSeen, `a pilot at lateral ${lateral}, in the band, grazes`).toBe(true)
     }
   })
@@ -128,7 +147,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // B-012 let a pilot dodge a left-wall field by holding the right wall. The
     // spanning catwalk has no such escape: a pilot pinned to the far edge, still at
     // the band height, grazes. RED today (the opposite side flies clear).
-    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, FAR_LEFT, TRENCH_EYE_SEAT])
+    const s0 = trenchWith(catwalk(TRENCH_EYE_SEAT), [0, FAR_LEFT, TRENCH_EYE_SEAT])
     const { crashSeen, shieldsLost } = flyThrough(s0)
     expect(crashSeen, 'no lateral escape from a channel-spanning catwalk').toBe(true)
     expect(shieldsLost).toBe(0)
@@ -138,7 +157,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // A LOW (bottom-band) catwalk and a pilot climbed to the ceiling — separated in
     // height by far more than any ROM band ($400) — must NOT graze, even hugging the
     // far wall. Robust to the exact band size: the extreme is unambiguous.
-    const climbed = flyThrough(trenchWith([catwalk(TRENCH_EYE_MIN)], [0, FAR_LEFT, TRENCH_EYE_MAX]))
+    const climbed = flyThrough(trenchWith(catwalk(TRENCH_EYE_MIN), [0, FAR_LEFT, TRENCH_EYE_MAX]))
     expect(climbed.crashSeen, 'a pilot a full channel above a low catwalk is clear').toBe(false)
     expect(climbed.shieldsLost).toBe(0)
   })
@@ -146,7 +165,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
   it('a TOP-band catwalk grazes a high pilot and clears a dived one — dodge is DIVE', () => {
     // Both pilots centred, so only HEIGHT decides. A top-band catwalk (high y)
     // grazes the pilot who rides high and clears the pilot who dives to the floor.
-    const topBand = () => [catwalk(TRENCH_EYE_MAX)]
+    const topBand = () => catwalk(TRENCH_EYE_MAX)
     const high = flyThrough(trenchWith(topBand(), [0, CENTRE, TRENCH_EYE_MAX]))
     const dived = flyThrough(trenchWith(topBand(), [0, CENTRE, TRENCH_EYE_MIN]))
     expect(high.crashSeen, 'a high pilot grazes the top catwalk').toBe(true)
@@ -157,7 +176,7 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // The mirror: a bottom-band catwalk (low y) grazes the low pilot and clears the
     // one who climbs to the ceiling. Both bands exist (TWDG top/bottom), and neither
     // dodge is lateral.
-    const bottomBand = () => [catwalk(TRENCH_EYE_MIN)]
+    const bottomBand = () => catwalk(TRENCH_EYE_MIN)
     const low = flyThrough(trenchWith(bottomBand(), [0, CENTRE, TRENCH_EYE_MIN]))
     const climbed = flyThrough(trenchWith(bottomBand(), [0, CENTRE, TRENCH_EYE_MAX]))
     expect(low.crashSeen, 'a low pilot grazes the bottom catwalk').toBe(true)
@@ -168,10 +187,10 @@ describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO late
     // One frame with the catwalk parked deep in the channel: no sane depth gate
     // (within the field's first $400) should register a hit this far out — even for
     // an in-band pilot.
-    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT, 8000)], [0, CENTRE, TRENCH_EYE_SEAT])
+    const s0 = trenchWith(catwalk(TRENCH_EYE_SEAT, 8000), [0, CENTRE, TRENCH_EYE_SEAT])
     const s1 = stepGame(s0, NO_INPUT, DT)
     expect(s1.events.some((e) => e.type === 'terrain-crash')).toBe(false)
     expect(s1.lives).toBe(s0.lives)
-    expect(s1.trenchObstacles).toHaveLength(1) // still ahead, still airborne
+    expect(s1.trenchObstacles).toHaveLength(2) // the row's two members: still ahead, still airborne
   })
 })

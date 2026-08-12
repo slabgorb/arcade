@@ -67,7 +67,6 @@ import {
   perspective,
   multiply,
   rotationX,
-  rotationZ,
   translation,
   scaling,
   viewMatrix,
@@ -184,26 +183,39 @@ export const TRENCH_ORIENT: Mat4 = IDENTITY
 // (WSBASE.MAC:1295), and the left/right guns fire through the shared PANLIN with
 // MOV$PL vs MOV$PR (WSGUNS.MAC). But the SEATING differs by model posture:
 //
-//   • GUN (`.WP WGA`) and SQUARE (`.WP WPN`) are authored as HORIZONTAL base plates
-//     (in the up=0 plane). A 90° roll about the DEPTH axis (`rotationX`, which fixes
-//     native depth and swaps right↔up) stands the plate UP flush against the
-//     vertical wall; the SIGN of `pos[1]` mirrors it per wall so the gun barrel
-//     points INTO the channel. Under IDENTITY the plate cantilevered off the wall
-//     and the barrel pointed into the WALL on one side.
-//   • CATWALK (`.WP WFF`) is authored ALREADY VERTICAL (a 3-fin barrier rising
-//     up 0→512). It must NOT be rolled — that would lay it flat. It needs ONLY the
-//     per-wall MIRROR so its lateral fin reaches INTO the channel on both walls: a
-//     180° turn about the UP axis (`rotationZ`) on the left wall, identity on the
-//     right (where it already faces inboard).
+// ALL THREE share one seating, because all three are authored in the SAME frame:
+// x = DEPTH, y = the WALL NORMAL (out into the channel), z = UP. That is provable
+// from the tables rather than inferred — `.WP WPN` (the square) has y=0 on every
+// point, a flat plate in the x-z plane; `.WP WGA` (the gun) has its `WALL BASE` at
+// y=0 and then raises the `GUN BODY`/`GUN NOZZLE` to y=4..12, i.e. OFF the wall;
+// and `.WP WFF` (the catwalk) labels its rows `FRONT MIDLINE` (x=-20), `BOTTOM
+// MIDLINE` (z=-20) and `TOP MIDLINE` (z=+20), which fixes x as depth and z as up
+// and leaves y — its whole 0→40 run — pointing straight into the channel.
+//
+// So a 90° roll about the DEPTH axis (`rotationX`, which fixes native depth and
+// swaps right↔up) seats every one of them, and the SIGN of `pos[1]` mirrors it per
+// wall so the projecting part reaches INBOARD on both walls:
+//   • GUN / SQUARE — the plate stands UP flush against the vertical wall and the
+//     barrel points into the channel. Under IDENTITY it cantilevered off the wall
+//     and the barrel pointed into the WALL on one side (sw11-2).
+//   • CATWALK — its 0→40 run lies ACROSS the channel, so the pair (one per wall,
+//     the ROM's PNVLW/PNVRW) meet in the middle: the SEAM visible on the cabinet.
+//
+// ⚠ sw11-3 corrected the catwalk here. It had been special-cased on the reading
+// that `.WP WFF` is "authored already vertical, a 3-fin barrier rising 0→512" and
+// so "must NOT be rolled — that would lay it flat". Both halves were backwards: the
+// 512 run is the wall-NORMAL, not height, and laying it flat is exactly right. The
+// special case drew each catwalk as a lone post standing on the wall instead of a
+// beam crossing the channel — which is also why B-012 thought the hazard was
+// single-wall and dodgeable sideways (see sim.ts's catwalk graze).
 //
 // ⚠ As the SURFACE_ORIENT NOTE above warns — structural tests can't catch
 // orientation; the exact barrel
 // angle and how each model reads MUST be eyeballed on the dev server (/star-wars/,
 // trench phase; the scene sheet's TURRET-ALLEY cell shows all three). The tests pin
-// the mechanism (flush, vertical, mirror, fin/barrel inboard); the look is the human gate.
+// the mechanism (flush, mirror, barrel/beam inboard); the look is the human gate.
 export function trenchWallOrient(o: TrenchObstacle): Mat4 {
   const leftWall = o.pos[1] < 0 // native RIGHT < 0
-  if (o.kind === 'catwalk') return leftWall ? rotationZ(Math.PI) : IDENTITY
   return rotationX(leftWall ? -Math.PI / 2 : Math.PI / 2)
 }
 

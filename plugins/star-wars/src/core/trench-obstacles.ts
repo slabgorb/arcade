@@ -188,39 +188,19 @@ function streamPanelSlots(baseWave: number, rng: Rng, slotType: number, kind: Tr
   return out
 }
 
-/**
- * The wave's CATWALKS (sw11-3, reworking B-012): each wedge/slot that carries a
- * PANEL_FORCEFIELD (TD$WFF) in EITHER wall column becomes ONE channel-spanning
- * 'catwalk' obstacle, seated at the channel centre (right = 0) at that slot's band
- * height — the kind the vertical-band graze reads.
+/** The wave's CATWALKS (TD$WFF): every PANEL_FORCEFIELD slot becomes one 'catwalk'
+ *  obstacle, mounted on its own column's wall — the ROM's own shape, since WSPANL
+ *  walks the walls separately (`PNVLW ;VIEW LEFT WALL PANELS` / `PNVRW ;VIEW RIGHT
+ *  WALL PANELS`) and each pass places that wall's panels.
  *
- * Why the two columns MERGE into one obstacle rather than becoming two: WSPANL runs
- * the panel collision once per wall (`PNVLW ;VIEW LEFT WALL PANELS` /
- * `PNVRW ;VIEW RIGHT WALL PANELS`), so a force-field row is present on both sides of
- * the channel at the same band and the pilot meets it wherever he flies. That is a
- * catwalk ACROSS the channel — WSBASE.MAC TWDG92-96, "8 PANEL DIVIDER WITH CATWALK AT
- * TOP/BOTTOM" — not two independent single-wall hazards. Modelling it as one centred,
- * width-spanning member is what removes B-012's phantom lateral dodge; the collision
- * therefore needs no wall sign, only the band and the depth.
- *
- * (The single-panel MODEL is unchanged and still authentic: `.WP WFF` is one panel's
- * vertical fin, pinned by trench-force-field-rom.test.ts. A catwalk is a ROW of those
- * fins, which is a placement fact, not a model fact.)
- */
+ *  A catwalk is a BEAM ACROSS the channel, but that is a fact about the MODEL, not
+ *  about this placement: `.WP WFF`'s whole 0→40 run points along the wall normal
+ *  (see `trenchWallOrient`), so the left-wall and right-wall members of a row reach
+ *  inboard and meet in the middle — the seam the cabinet shows. The pair is the
+ *  span. sw11-3 briefly seated a single merged catwalk at the channel centre
+ *  instead; that is NOT what the ROM does, and it drew one post in mid-channel. */
 export function streamForceFields(baseWave: number, rng: Rng): TrenchObstacle[] {
-  const out: TrenchObstacle[] = []
-  let z = 0
-  for (const w of buildTrench(baseWave, rng) as readonly Wedge[]) {
-    for (let i = 0; i < WALL_SLOT_Y.length; i++) {
-      // Either column carrying the slot means the row spans the channel at this band.
-      if (w.left[i] === PANEL_FORCEFIELD || w.right[i] === PANEL_FORCEFIELD) {
-        // sw10-3 native basis: [depth (+forward), right (0 — spans the width), up (band height)].
-        out.push({ kind: 'catwalk', pos: [z, 0, WALL_SLOT_Y[i]] })
-      }
-    }
-    z += wedgeLength(w.type)
-  }
-  return out
+  return streamPanelSlots(baseWave, rng, PANEL_FORCEFIELD, 'catwalk')
 }
 
 /** The wave's wall guns (B-017, uf1-4): every PANEL_GUN (TD$WGA) slot becomes

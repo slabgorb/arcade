@@ -765,9 +765,20 @@ export const TRENCH_SQUARE: Model3D = {
 
 /**
  * Trench catwalk — the authentic WALL FORCE FIELD (`.WP WFF`, WSOBJ.MAC:603-615;
- * finding M-012). NOT the old channel-spanning girder: a 3-fin VERTICAL barrier
- * rising y=0→512 (`0x40 * .S=8`) off a wall. `.WGD WFG`'s ";CATWALK COLOR WHEN
- * COLLIDED" comment is what identifies WFF/WFG as the trench catwalk/force field.
+ * finding M-012). `.WGD WFG`'s ";CATWALK COLOR WHEN COLLIDED" comment is what
+ * identifies WFF/WFG as the trench catwalk/force field.
+ *
+ * A BEAM 0→512 (`0x40 * .S=8`) long that projects from its wall ACROSS the channel.
+ * ⚠ CORRECTED BY sw11-3: this read "a 3-fin VERTICAL barrier rising y=0→512 off a
+ * wall", taking the 512 run for height. It is the WALL NORMAL. The table says so
+ * itself — the three rows are labelled `FRONT MIDLINE` (x=-20), `BOTTOM MIDLINE`
+ * (z=-20) and `TOP MIDLINE` (z=+20), which fixes x as depth and z as up and leaves
+ * y, the run, pointing into the channel; and the sibling wall models agree (`.WP
+ * WPN` is flat at y=0, `.WP WGA` lifts its body off the wall along +y). So a row's
+ * left- and right-wall members reach inboard and MEET IN THE MIDDLE — the seam the
+ * cabinet shows — which is why the hazard spans the width and cannot be dodged
+ * sideways (sim.ts's catwalk graze; the rework of B-012). The old reading is what
+ * made it look like a lone post standing on one wall.
  *
  * Six points (`.PH` rows, `.RADIX 16` hex × `.S=8`), in ROM order; edges from
  * `.WGD WFF` (`PLOT 1 / DRAWTO 0,2,3,1,5,4,0`). Vertices are raw ROM data —

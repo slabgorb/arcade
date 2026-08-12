@@ -51,6 +51,7 @@ import { initialState, type GameState, type TrenchObstacle } from '../../src/cor
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT, type Input } from '../../src/core/input'
 import {
+  TRENCH_HALF_W,
   TRENCH_EYE_MIN,
   TRENCH_EYE_MAX,
   TRENCH_EYE_SEAT,
@@ -64,14 +65,16 @@ const DOWN: Input = { aimX: 0, aimY: -1, fire: false }
 const LEFT: Input = { aimX: -1, aimY: 0, fire: false }
 const RIGHT: Input = { aimX: 1, aimY: 0, fire: false }
 
-/** The catwalk hazard the viewpoint tests fly against: a CHANNEL-SPANNING catwalk at
- *  the seated pilot's height, just downrange. sw11-3 reworks B-012 — the catwalk is a
- *  channel-spanning member (WSBASE.MAC TWDG92-96), not a single-wall fin, so it sits at
- *  the channel CENTRE (pos[1] = 0) and is dodged VERTICALLY (climb out of its band), not
- *  by steering to a far wall. Built directly, as trench-force-field-hazard.test.ts stages it. */
+/** The catwalk hazard the viewpoint tests fly against: a wall-mounted catwalk at the
+ *  seated pilot's height, just downrange. sw11-3 reworks B-012 — a catwalk is a BEAM
+ *  whose run points along the wall normal (`.WP WFF`), so it reaches across the channel
+ *  and the row's two members meet mid-channel. It is therefore dodged VERTICALLY (climb
+ *  or dive out of its band), never by steering to the far wall — which is what the
+ *  lateral test below now asserts. Built directly, as trench-force-field-hazard.test.ts
+ *  stages it. */
 function spawnedCatwalk(): TrenchObstacle {
-  // native basis: pos = [depth (+forward, just downrange), right (CENTRE, spans width), up (seat band)].
-  return { kind: 'catwalk', pos: [2000, 0, TRENCH_EYE_SEAT] }
+  // native basis: pos = [depth (+forward, just downrange), right (the wall it mounts on), up (seat band)].
+  return { kind: 'catwalk', pos: [2000, -TRENCH_HALF_W, TRENCH_EYE_SEAT] }
 }
 
 /**
