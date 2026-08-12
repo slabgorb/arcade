@@ -1,4 +1,4 @@
-// tests/helpers/demo-contract.ts
+// tests/helpers/sim-contract.ts
 //
 // Story jt2-7 — the CONTRACT for the wave-1 DEMO wiring, TEA-authored (Leeloo).
 // Same split the epic has used since jt1-2: TEA states the module shape and the
@@ -14,7 +14,7 @@
 // diverge — not new transcribed constants. Every constant it leans on is already
 // gated by an earlier story's citations suite; nothing here adds a claim.
 //
-// ─── THE SEAM: src/core/demo.ts (PURE) ───────────────────────────────────────
+// ─── THE SEAM: src/core/sim.ts (PURE) ───────────────────────────────────────
 // The wiring assembles wave 1 and drives it deterministically, with NO browser
 // surface, NO clock and NO ambient entropy — it is CORE (the jt1-7 purity scanner
 // sweeps it the moment it lands). main.ts becomes a thin shell: it seeds the demo
@@ -60,7 +60,7 @@ export type {
 // and the enemy's TYPE (a wave-1 complement is three bounders — the type the
 // joust's `killScore` reads). Every field is data; behaviour dispatches on `kind`.
 
-export interface DemoProcess {
+export interface SimProcess {
   /** `PID` — unique, non-zero. */
   id: number
   /** `PPRI` — primary steps before secondary. */
@@ -138,19 +138,19 @@ export interface DemoProcess {
    */
   grip?: TrollGrip
   /**
-   * jt9-11 — set on the VICTIM (a player OR enemy `DemoProcess`) to the grabbing
+   * jt9-11 — set on the VICTIM (a player OR enemy `SimProcess`) to the grabbing
    * troll's `id` once the grab commits (PADGRA→ADDLAV, JOUSTRV4.SRC:1651). While it
    * is present the flight/looker core skips the bird (`runBehaviour`'s short-circuit)
    * so its fall is the troll's single `stepGrip` integration, never grip + GRAV.
-   * jt9-42 pins that skip; mirrored here from the production `DemoProcess`.
+   * jt9-42 pins that skip; mirrored here from the production `SimProcess`.
    */
   grippedBy?: number
 }
 
 /** The demo's simulation state — the jt2-1 GameState, egg variant live. */
-export interface DemoSim {
+export interface SimCore {
   readonly frame: number
-  readonly processes: readonly DemoProcess[]
+  readonly processes: readonly SimProcess[]
   readonly woke: readonly number[]
   readonly rng: number
   readonly budget: IntelBudget
@@ -162,7 +162,7 @@ export interface DemoSim {
  * the score display and font rendering are jt4. So an event carries a value or a
  * message and NOTHING is drawn.
  */
-export type DemoEvent =
+export type SimEvent =
   // `player` attributes the award to the scoring player's id (jt4-1's game.ts
   // drain credits the matching ledger — the co-op independence). Optional so
   // pre-jt4 event literals still typecheck. jt8-4 REQUIRES the catch pass to set
@@ -172,15 +172,15 @@ export type DemoEvent =
   | { kind: 'beat'; message: string }
 
 /** The whole demo: the sim, the 1-based wave, and the console/overlay event log. */
-export interface DemoState {
-  sim: DemoSim
+export interface SimState {
+  sim: SimCore
   /** The 1-based wave number (wave 1 at creation). */
   wave: number
   /** Console/dev-overlay events accumulated so far (kills, egg catches, beats). */
-  events: readonly DemoEvent[]
+  events: readonly SimEvent[]
   /**
-   * jt8-7: the frame's AUDIO cue stream — `stepDemo` has returned this since
-   * jt5-1 (`demo.ts:274`, built at `:1184` from the frame's and the collision
+   * jt8-7: the frame's AUDIO cue stream — `stepSim` has returned this since
+   * jt5-1 (`sim.ts:274`, built at `:1184` from the frame's and the collision
    * pass's cues) but the contract never mirrored it, so no demo-level test
    * could read a cue without an `any`. Mirrored STRUCTURALLY rather than by
    * importing `GameEvent` from `src/core/events.ts`, to keep the contract an
@@ -189,12 +189,22 @@ export interface DemoState {
   cues: readonly { readonly type: string }[]
   /**
    * The mutable per-run arena (jt3-2): which cliffs/bridge are currently gone.
-   * `createWaveDemo` seeds it from wave 1 and `stepDemo` re-applies it on every wave
+   * `createWaveSim` seeds it from wave 1 and `stepSim` re-applies it on every wave
    * advance (the applyWaveDestruction call-site), so the wave-3 bridge burn flows
    * through here. jt3-3's troll spawn gate READS `arena.bridgeBurned` — the reason
    * this field is no longer write-only (the carried jt3-2 obligation).
    */
   arena: ArenaState
+  /**
+   * jt11-4: the wave's ground enemies AWAITING SERVICE by the transporter. A wave's
+   * complement is no longer spliced into `sim.processes` on one frame — each enemy
+   * takes a number (CREEM, JOUSTRV4.SRC:5663-5666) and waits in CRELP (:5667-5676)
+   * until it is served, so an unserved enemy sits HERE and is neither drawn nor
+   * collidable. Mirrored STRUCTURALLY (`arrival` opaque), on the same second-entry
+   * discipline as `cues` above; tests/helpers/wave-entry.ts is the seam that reads it.
+   * Optional, so a hand-built contract state need not carry one.
+   */
+  pendingEnemies?: readonly { arrival: unknown }[]
 }
 
 /**
@@ -256,7 +266,7 @@ export interface DrawOp {
   facing?: Facing
 }
 
-export interface DemoModule {
+export interface SimModule {
   /**
    * Assemble wave 1, deterministically under the SHELL's seed:
    *   • the first `playerCount` mounts (default 2) from the transporter spawn
@@ -270,19 +280,19 @@ export interface DemoModule {
    *   • the intelligence budget seeded from wave 1's pursuit nibble
    *     (seedWaveBudget(waveRowAt(1)) → wsmart = 1, nsmart = 0);
    *   • the wave-1 message beats surfaced as `beat` events (the intro).
-   * Pure — same seed and count, same DemoState.
+   * Pure — same seed and count, same SimState.
    */
-  createWaveDemo(seed: number, playerCount?: number): DemoState
+  createWaveSim(seed: number, playerCount?: number): SimState
 
   /**
    * Advance the demo exactly one video frame: drive the scheduler (players +
    * enemies + eggs) through `stepFrame`, run the collision pass between entities,
    * fire the 15 s growth cadence (growthDue → growWanted while enemies live),
    * and append any score/beat events. Pure — the argument is never mutated; the
-   * returned DemoState is new. `inputs` supplies this frame's PlayerInput per
+   * returned SimState is new. `inputs` supplies this frame's PlayerInput per
    * process id.
    */
-  stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>): DemoState
+  stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): SimState
 
   /**
    * One frame of a FALLING egg process (the STEGG/EGGLPA fall loop this story
@@ -367,7 +377,7 @@ export interface DemoModule {
    * Facing is applied at the blit (a horizontal flip), not by a different record.
    * Pure.
    */
-  enemyFrame(p: DemoProcess): string
+  enemyFrame(p: SimProcess): string
 
   /**
    * The ordered draw layers for a PLAYER: `[mount, rider]` — the MOUNT drawn
@@ -375,7 +385,7 @@ export interface DemoModule {
    * `p.mount` (an ostrich block for P1, a stork block for P2); the rider is the
    * PLY* knight sprite. The user reported the mount missing entirely. Pure.
    */
-  playerDrawList(p: DemoProcess): string[]
+  playerDrawList(p: SimProcess): string[]
 
   /**
    * jt9-46 — the ordered draw layers for a kind:'enemy' process: `[mount, rider]`,
@@ -387,7 +397,7 @@ export interface DemoModule {
    * (`remountEnemyProcess`, a kind:'enemy' process) gets its rider with no special
    * case. Pure DATA; the shell blits and mirrors a left-facer from the op's facing.
    */
-  enemyDrawList(p: DemoProcess): string[]
+  enemyDrawList(p: SimProcess): string[]
 
   /**
    * The transcribed POSOFF offset for an entity frame name (jt2-9): each
@@ -405,29 +415,29 @@ export interface DemoModule {
    * BEHIND the sprites. A correct list draws back tiles → entities → foreground
    * tiles, so some `arena` op follows some `entity` op. Pure.
    */
-  drawList(demo: DemoState): DrawOp[]
+  drawList(demo: SimState): DrawOp[]
 }
 
 /**
  * Load the round-2 render-selection seams with a self-describing failure. Kept
- * SEPARATE from `loadDemo` so the round-1 suite (which loads only the five wiring
+ * SEPARATE from `loadSim` so the round-1 suite (which loads only the five wiring
  * exports) stays green while these new seams are still absent — the new rails red
  * cleanly here instead of reddening the whole module.
  */
-export async function loadDemoRender(): Promise<
-  Pick<DemoModule, 'enemyFrame' | 'playerDrawList' | 'drawList'>
+export async function loadSimRender(): Promise<
+  Pick<SimModule, 'enemyFrame' | 'playerDrawList' | 'drawList'>
 > {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   try {
-    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<DemoModule>
+    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<SimModule>
     for (const fn of ['enemyFrame', 'playerDrawList', 'drawList'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
-    return mod as DemoModule
+    return mod as SimModule
   } catch (e) {
     throw new Error(
       'demo render-selection not built yet — GREEN (Julia) adds enemyFrame / ' +
-        'playerDrawList / drawList to joust/src/core/demo.ts: the buzzard RUN frames ' +
+        'playerDrawList / drawList to joust/src/core/sim.ts: the buzzard RUN frames ' +
         '(BRRUN1-4), the [mount, rider] player composition (ostrich/stork under PLY*), ' +
         `and the back→entity→foreground draw order. (${(e as Error).message})`,
     )
@@ -436,25 +446,25 @@ export async function loadDemoRender(): Promise<
 
 /**
  * Load the jt9-46 enemy rider seam with a self-describing failure. Kept SEPARATE
- * from `loadDemoRender` so the pre-existing render suite stays green while only
+ * from `loadSimRender` so the pre-existing render suite stays green while only
  * `enemyDrawList` is still absent — my new rails red cleanly here, and the rest of
- * the suite (which still asks loadDemoRender for the three built seams) does not.
+ * the suite (which still asks loadSimRender for the three built seams) does not.
  * `drawList`/`enemyFrame`/`posOffset` already exist; `enemyDrawList` is the RED.
  */
 export async function loadEnemyDrawList(): Promise<
-  Pick<DemoModule, 'enemyDrawList' | 'drawList' | 'enemyFrame' | 'posOffset'>
+  Pick<SimModule, 'enemyDrawList' | 'drawList' | 'enemyFrame' | 'posOffset'>
 > {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   try {
-    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<DemoModule>
+    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<SimModule>
     for (const fn of ['enemyDrawList', 'drawList', 'enemyFrame', 'posOffset'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
-    return mod as DemoModule
+    return mod as SimModule
   } catch (e) {
     throw new Error(
       'enemy rider seam not built yet — GREEN (Julia) adds a pure `enemyDrawList(p)` ' +
-        'to joust/src/core/demo.ts returning [enemyFrame(p), <species DPLYR rider>] ' +
+        'to joust/src/core/sim.ts returning [enemyFrame(p), <species DPLYR rider>] ' +
         '(bounder→PLYR3, hunter→PLYR4, shadowLord→PLYR5) and has drawList emit both ops ' +
         `for every kind:'enemy' process, tagged with the enemy's facing. (${(e as Error).message})`,
     )
@@ -466,22 +476,22 @@ export async function loadEnemyDrawList(): Promise<
  * loadFlight/loadScheduler pattern. The specifier is assembled at runtime so the
  * bundler cannot resolve it statically and fail the whole FILE at collection.
  *
- * RED today: `src/core/demo.ts` does not exist, so this throws "demo wiring not
+ * RED today: `src/core/sim.ts` does not exist, so this throws "demo wiring not
  * built yet" per test — a clean "feature absent" red, never a module-resolution
  * trace.
  */
-export async function loadDemo(): Promise<DemoModule> {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+export async function loadSim(): Promise<SimModule> {
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   try {
-    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<DemoModule>
-    for (const fn of ['createWaveDemo', 'stepDemo', 'stepEgg', 'hatchEgg', 'resolveContacts'] as const) {
+    const mod = (await import(/* @vite-ignore */ specifier)) as Partial<SimModule>
+    for (const fn of ['createWaveSim', 'stepSim', 'stepEgg', 'hatchEgg', 'resolveContacts'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
-    return mod as DemoModule
+    return mod as SimModule
   } catch (e) {
     throw new Error(
-      'demo wiring not built yet — GREEN (Julia) creates joust/src/core/demo.ts ' +
-        'satisfying tests/helpers/demo-contract.ts: createWaveDemo/stepDemo drive the ' +
+      'demo wiring not built yet — GREEN (Julia) creates joust/src/core/sim.ts ' +
+        'satisfying tests/helpers/sim-contract.ts: createWaveSim/stepSim drive the ' +
         'scheduler, collision and wave cadence; stepEgg/hatchEgg wire the egg fall + ' +
         `remount; resolveContacts is the collision-pass layer over resolveJoust. (${(e as Error).message})`,
     )

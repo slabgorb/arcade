@@ -16,9 +16,9 @@
 // sprint/context/context-epic-jt5.md). It is pinned at `GameState.events`
 // because that is the seam the shell actually reads: main.ts steps
 // `stepGame` and nothing else. Two of the eleven moments (extra-man, wave-
-// bounty) are resolved by the SESSION layer in game.ts, not by `stepDemo` at
-// all, so a stream homed on `DemoState` could not carry them. Whether Dev also
-// grows a field on `DemoState` to carry the sim's own moments upward is Dev's
+// bounty) are resolved by the SESSION layer in game.ts, not by `stepSim` at
+// all, so a stream homed on `SimState` could not carry them. Whether Dev also
+// grows a field on `SimState` to carry the sim's own moments upward is Dev's
 // choice; these tests do not look.
 //
 // ─── WHY THE events.ts IMPORT IS COMPUTED ────────────────────────────────────
@@ -26,7 +26,7 @@
 // `npm run lint` (tsc --noEmit) clean. A literal `import('../src/core/events')`
 // — static OR dynamic — is TS2307 while the file is absent. So the specifier is
 // assembled at runtime: tsc cannot resolve a non-literal, vitest can. game.ts
-// and demo.ts DO exist, so those are imported normally and only the new
+// and sim.ts DO exist, so those are imported normally and only the new
 // `events` FIELD is reached through a widening type.
 //
 // ─── THE TWO TRAPS THIS FILE IS BUILT AROUND ─────────────────────────────────
@@ -39,9 +39,9 @@
 //     so both streams still match while every cue re-fires forever. The clear
 //     needs its own, different test — `the stream is REBUILT each frame` below
 //     — which steps past a triggering frame and demands the event be GONE.
-//     This trap is not hypothetical here: joust's EXISTING `DemoState.events`
+//     This trap is not hypothetical here: joust's EXISTING `SimState.events`
 //     log is append-and-cap (`[...demo.events, ...collided.events]
-//     .slice(-EVENT_LOG_CAP)`, demo.ts, the cap declared 32 at demo.ts —
+//     .slice(-EVENT_LOG_CAP)`, sim.ts, the cap declared 32 at sim.ts —
 //     this cited `:1173` and a literal `slice(-32)` from jt5-1 until jt5-4
 //     re-anchored it), and `stepGame` only tells this frame's entries from last
 //     frame's by a reference-set delta (game.ts). A cue channel built
@@ -55,6 +55,13 @@ import { violations } from './helpers/purity-scanner.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { load } from './helpers/dynamic-load'
 import type { PlayerInput } from '../src/core/flight.js'
+// jt11-4 — a wave's enemies now take a transporter number and are served one per
+// frame (CREEM/CRELP, JOUSTRV4.SRC:5663-5676), so `createGame` hands back an arena
+// with NO buzzards standing in it. Every frame COORDINATE in this file was measured
+// against the whole complement being there from frame 0; seating the waiting room at
+// frame 0 restores exactly that arrangement — no frame stepped, no draw spent — so
+// each staged frame still means what it was measured to mean.
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const eventsPath = join(root, 'src', 'core', 'events.ts')
@@ -148,11 +155,15 @@ function runCollecting(start: GameState, frames: number): { end: GameState; perF
   return { end: g, perFrame }
 }
 
+/** jt11-4 — the wave's complement on the pads at frame 0, with no frame stepped and
+ *  no RNG spent: the arrangement every measured frame in this file assumes. */
+const seated = (g: GameState): GameState => ({ ...g, sim: seatWaveInstantly(g.sim) })
+
 /** Step to `frame` (exclusive) and return the state, without reading `events` —
  *  usable as a staging helper BEFORE the field exists, so the preconditions
  *  below are green today and prove the staging is real. */
 function advanceTo(seed: number, frame: number): GameState {
-  let g = createGame(seed)
+  let g = seated(createGame(seed))
   for (let i = 0; i < frame; i++) g = stepGame(g, inputsAt(i))
   return g
 }
@@ -167,7 +178,7 @@ const countOf = (g: GameState, kind: string): number =>
 // Eleven moments, each one a REAL Williams sound table with the machine's own
 // comment on it, and each one reachable in this port. The ROM's whole sound set
 // is 38 tables (JOUSTRV4.SRC:8051-8131, under the format header at :8045-8049);
-// these are the entries whose moment `stepDemo`/`stepGame` actually resolves
+// these are the entries whose moment `stepSim`/`stepGame` actually resolves
 // today. The ROM citations live in tests/audio-rom-citations.test.ts, which
 // byte-opens every one of them.
 //
@@ -519,6 +530,12 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   })
 
   it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 2866)', () => {
+    // jt11-4 RESHAPE (body, not baseline): this test used to assert the whole
+    // complement materialises on the ADVANCE frame, which is exactly what the story
+    // moved. The advance still happens and the same four buzzards still arrive —
+    // they are now served one per frame over the following frames, each sounding
+    // its own SNECRE; only the window the assertion reads over changed. (Rebased
+    // over jt11-3/jt11-5: the advance anchor is jt11-3's 2866, re-verified below.)
     // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1726 -> 1900.
@@ -576,11 +593,43 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // frames for the same precondition (wave 1 -> 2 AND a complement dealt) —
     // 2866 (four buzzards) is now the earliest. Seed, script, assertions unchanged.
     const before = advanceTo(0xface, 2866)
-    const after = stepGame(before, inputsAt(2866))
-    expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
-    const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
-    expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
-    expect(kindsOf(after).filter((k) => k === 'enemy-materialise')).toHaveLength(arrived)
+    const advanceFrame = stepGame(before, inputsAt(2866))
+    expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
+    // jt11-4 — nothing materialises on the advance frame itself: the complement has
+    // only just taken its numbers and owes the transporter its PCNAP 1
+    // (JOUSTRV4.SRC:5667). SNECRE sounds per buzzard ON THE PADS, so the cue now
+    // follows each bird to its own arrival frame instead of firing as one burst.
+    expect(
+      kindsOf(advanceFrame).filter((k) => k === 'enemy-materialise'),
+      'the advance frame serves nobody, so it sounds nothing',
+    ).toHaveLength(0)
+
+    // The invariant that survives, and it is the stronger one — the same shape the
+    // ptero sibling adopted at jt9-59: across the entry window the cue fires exactly
+    // once per new bird, on the frame that bird arrives. Tracked by ID, not by count,
+    // so a death inside the window cannot mask a missing (or a doubled) cue.
+    const enemyIds = (g: GameState): number[] =>
+      g.sim.sim.processes.filter((p) => p.kind === 'enemy').map((p) => p.id)
+    const seen = new Set(enemyIds(advanceFrame))
+    let g = advanceFrame
+    let totalArrived = 0
+    let totalCues = 0
+    // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
+    // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
+    for (let i = 0; i < 320; i++) {
+      g = stepGame(g, inputsAt(2867 + i))
+      const fresh = enemyIds(g).filter((id) => !seen.has(id))
+      for (const id of fresh) seen.add(id)
+      const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
+      expect(
+        cued,
+        `frame ${2867 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+      ).toBe(fresh.length)
+      totalArrived += fresh.length
+      totalCues += cued
+    }
+    expect(totalArrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
+    expect(totalCues, 'one cue per arriving buzzard across the whole entry window').toBe(totalArrived)
   })
 
   it('a CONTROL frame with nothing happening emits none of them', () => {
@@ -599,8 +648,8 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
 
 describe('jt5-1 AC3 — a fixed seed and input stream replay an identical stream', () => {
   it('two runs of the same seed and script emit identical per-frame streams', () => {
-    const a = runCollecting(createGame(0x2468), 300)
-    const b = runCollecting(createGame(0x2468), 300)
+    const a = runCollecting(seated(createGame(0x2468)), 300)
+    const b = runCollecting(seated(createGame(0x2468)), 300)
 
     // NON-VACUITY, asserted BEFORE the comparison: two empty runs match
     // trivially, and that is the failure mode this whole AC invites.
@@ -620,8 +669,8 @@ describe('jt5-1 AC3 — a fixed seed and input stream replay an identical stream
   it('a DIFFERENT seed diverges — the stream is not a constant', () => {
     // The control for the test above: if `events` were hard-coded (or always
     // empty), "identical" would hold for every seed and prove nothing.
-    const a = runCollecting(createGame(0x2468), 300)
-    const b = runCollecting(createGame(0xbeef), 300)
+    const a = runCollecting(seated(createGame(0x2468)), 300)
+    const b = runCollecting(seated(createGame(0xbeef)), 300)
     expect(b.perFrame).not.toEqual(a.perFrame)
   })
 
@@ -694,8 +743,8 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     ).toEqual([])
   })
 
-  it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
-    // `demo.ts` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
+  it('the stream is NOT joust’s capped SimState.events log wearing a new name', () => {
+    // `sim.ts` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
     // clears it per frame. If the cue channel were that log — or derived from it
     // by the reference-set delta game.ts uses — a quiet frame would still
     // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log
@@ -737,7 +786,11 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
 // session's TEA Assessment), never from the assertion reading plausible.
 describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', () => {
   const fingerprint = (seed: number, frames: number) => {
-    let g = createGame(seed)
+    // jt11-4 — seated at frame 0, so these stay the FROZEN numbers they have been
+    // through eight re-baselines rather than a re-measurement of the new arrival
+    // cadence. Verified: with the complement seated all three fingerprints, `rng`
+    // included, are bit-identical to the pins below.
+    let g = seated(createGame(seed))
     for (let i = 0; i < frames; i++) g = stepGame(g, inputsAt(i))
     return {
       frame: g.sim.sim.frame,

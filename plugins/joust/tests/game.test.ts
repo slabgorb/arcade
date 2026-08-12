@@ -19,9 +19,10 @@ import { readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadGame, type PlayerLedger, type GameScoreEvent, type PlayerInput } from './helpers/game-contract.js'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
 import { loadPtero } from './helpers/ptero-contract.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
@@ -51,6 +52,11 @@ async function stepToFirstKill(
   maxFrames = 400,
 ) {
   let game = g.createGame(SEED)
+  // jt11-4: every window built on this helper was measured against a wave whose
+  // complement stood in the arena from frame 0 (the ~frame-145 kill below). The birds
+  // now walk in on WCREATE's `PCNAP 61` cadence, so seat them — no RNG spent, no clock
+  // advanced — and each measured frame anchor holds exactly as before.
+  game = { ...game, sim: seatWaveInstantly(game.sim) }
   for (let f = 1; f <= maxFrames; f++) {
     game = g.stepGame(game, input)
     if (game.sim.events.some((e) => e.kind === 'score')) return { game, frame: f }
@@ -59,32 +65,32 @@ async function stepToFirstKill(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-1 — game.ts exists; stepGame WRAPS stepDemo (one sim, no second path);
+// AC-1 — game.ts exists; stepGame WRAPS stepSim (one sim, no second path);
 //        the per-player registers are drained; the purity scanner sweeps game.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — the session layer wraps the sim, one stepping path', () => {
-  it('createGame builds two zeroed ledgers over a real createWaveDemo sim', async () => {
+  it('createGame builds two zeroed ledgers over a real createWaveSim sim', async () => {
     const g = await loadGame()
-    const d = await loadDemo()
+    const d = await loadSim()
     const game = g.createGame(SEED)
 
     expect(game.players.length, 'two knights = two ledgers (the ROM co-op shape)').toBe(2)
     expect(game.players.map((p) => p.score), 'both ledgers open at zero').toEqual([0, 0])
     expect(game.wave, 'the game opens on wave 1').toBe(1)
-    // The wrapped sim IS a createWaveDemo DemoState — not a re-implementation.
-    expect(game.sim, 'game.sim is a genuine createWaveDemo(seed) — no parallel sim').toEqual(
-      d.createWaveDemo(SEED),
+    // The wrapped sim IS a createWaveSim SimState — not a re-implementation.
+    expect(game.sim, 'game.sim is a genuine createWaveSim(seed) — no parallel sim').toEqual(
+      d.createWaveSim(SEED),
     )
   })
 
-  it('stepGame delegates stepping to stepDemo — the produced sim is bit-identical (no second stepping path)', async () => {
+  it('stepGame delegates stepping to stepSim — the produced sim is bit-identical (no second stepping path)', async () => {
     const g = await loadGame()
-    const d = await loadDemo()
+    const d = await loadSim()
     const stepped = g.stepGame(g.createGame(SEED))
     // Kills the mutant "game.ts re-implements the frame loop": if stepGame ran its
-    // OWN stepper the sim would drift from a raw stepDemo within a frame.
-    expect(stepped.sim, 'stepGame(game).sim === stepDemo(createWaveDemo(seed)) — ONE sim').toEqual(
-      d.stepDemo(d.createWaveDemo(SEED)),
+    // OWN stepper the sim would drift from a raw stepSim within a frame.
+    expect(stepped.sim, 'stepGame(game).sim === stepSim(createWaveSim(seed)) — ONE sim').toEqual(
+      d.stepSim(d.createWaveSim(SEED)),
     )
     expect(stepped.wave, 'the wave mirrors the sim').toBe(stepped.sim.wave)
   })
@@ -200,6 +206,11 @@ describe('AC-4 — determinism and an honest drain', () => {
     const input: Record<number, PlayerInput> = { 2: flap(-1) }
     const run = () => {
       let game = g.createGame(SEED)
+      // jt11-4: the ~frame-145 kill this window relies on was measured when the wave's
+      // three bounders stood in the arena from frame 0. They now walk in on WCREATE's
+      // `PCNAP 61` cadence, so the third is not even out of the transporter by 145.
+      // Seat them — no RNG spent, no clock advanced — and the measured window holds.
+      game = { ...game, sim: seatWaveInstantly(game.sim) }
       for (let i = 0; i < 200; i++) game = g.stepGame(game, input)
       return game
     }
@@ -227,7 +238,7 @@ describe('AC-4 — determinism and an honest drain', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1/AC-3/AC-4 INTEGRATION — a REAL kill through stepGame's full wiring.
 // The pure creditScoreEvents tests above pin the drain in isolation; these drive
-// demo.ts's collisionPass -> winner.id attribution -> stepGame's event-diff ->
+// sim.ts's collisionPass -> winner.id attribution -> stepGame's event-diff ->
 // creditScoreEvents end-to-end. Each mutation-KILLS a specific bug the isolated
 // tests missed (Reviewer REJECT, jt4-1): hardcoding player=P1, dropping the
 // dedupe, and disconnecting the drain all leave the isolated suite green.
@@ -290,7 +301,12 @@ describe('AC-3 integration — a real kill through stepGame credits the right le
     // ledger (here ledger 1), never the other. Detect the kill as a >=500 jump (a bounder), not
     // the 50-for-dying death credit P2 also books.
     const input: Record<number, PlayerInput> = { 1: flap(1), 2: flap(-1) }
+    // jt11-4: the wave's bounders now queue for the transporter and materialise one
+    // per frame. Seat them at frame 0 — the arrangement this seeded kill window was
+    // measured against — which spends no RNG and advances no clock, so the replay
+    // (and the re-baselined ~frame 315 joust) is unchanged.
     let game = g.createGame(SEED)
+    game = { ...game, sim: seatWaveInstantly(game.sim) }
     let killed = false
     let prevP2 = 0
     for (let f = 1; f <= 400 && !killed; f++) {

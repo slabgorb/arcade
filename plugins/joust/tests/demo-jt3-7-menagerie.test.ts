@@ -26,12 +26,12 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  loadDemoRender,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  loadSimRender,
+  type SimState,
+  type SimProcess,
   type EntityState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadPtero } from './helpers/ptero-contract.js'
 import { loadDissolve } from './helpers/dissolve-contract.js'
 
@@ -57,18 +57,22 @@ function entity(over: Partial<EntityState> = {}): EntityState {
   }
 }
 
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({
+const only = (d: SimState, procs: SimProcess[]): SimState => ({
   ...d,
   sim: { ...d.sim, processes: procs },
   events: [],
 })
 
-function forceAdvance(step: (d: DemoState) => DemoState, demo: DemoState): DemoState {
-  const players = demo.sim.processes.filter((p: DemoProcess) => p.kind === 'player')
-  return step({ ...demo, sim: { ...demo.sim, processes: players } })
+function forceAdvance(step: (d: SimState) => SimState, demo: SimState): SimState {
+  const players = demo.sim.processes.filter((p: SimProcess) => p.kind === 'player')
+  // jt11-4: the waiting room goes with the strip. An enemy still holding a transporter
+  // number is alive and holds the wave open, and WCREATE's `PCNAP 61` means the
+  // complement takes ~61 frames PER BIRD to walk in — so a strip that leaves the queue
+  // behind does not clear the wave inside any sane guard.
+  return step({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [] })
 }
 
-function advanceTo(step: (d: DemoState) => DemoState, demo: DemoState, target: number): DemoState {
+function advanceTo(step: (d: SimState) => SimState, demo: SimState, target: number): SimState {
   let d = demo
   let guard = 0
   while (d.wave < target) {
@@ -83,13 +87,13 @@ function advanceTo(step: (d: DemoState) => DemoState, demo: DemoState, target: n
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — a live ptero is stepped by stepPteroFlight (gravity-exempt)', () => {
   it('a ptero with a downward VY moves posY by exactly VY — no gravity added (RED: inert today)', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // A ptero carrying its own flight state (the kind:'ptero' contract). velY is a
     // deliberate downward 1px/frame; the gravity-EXEMPT integrate moves posY by
     // exactly velY and leaves velY untouched (JOUSTRV4.SRC:1506 "NO GRAVITY!").
     const VY = 0x0100
     const START_Y = 100 << 8
-    const ptero: DemoProcess = {
+    const ptero: SimProcess = {
       id: 0x0880,
       cls: 'secondary',
       nap: 1,
@@ -99,7 +103,7 @@ describe('AC-1 — a live ptero is stepped by stepPteroFlight (gravity-exempt)',
       facing: 1,
       entity: entity({ posY: START_Y, velY: VY }),
     }
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [ptero]))
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [ptero]))
     const out = stepped.sim.processes.find((p) => p.kind === 'ptero')
     expect(out?.entity, 'the ptero must still carry its flight state').toBeTruthy()
     // Inert today: runBehaviour has no 'ptero' branch, so posY is UNCHANGED (delta 0).
@@ -112,10 +116,10 @@ describe('AC-1 — a live ptero is stepped by stepPteroFlight (gravity-exempt)',
     // The baseline: a player mount stepped one frame gains GRAV (its posY delta is
     // NOT a clean VY). This is the control that makes the ptero test meaningful —
     // "posY += VY exactly" is only special because the mount does something else.
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const VY = 0x0100
     const START_Y = 100 << 8
-    const mount: DemoProcess = {
+    const mount: SimProcess = {
       id: 1,
       cls: 'primary',
       nap: 1,
@@ -126,7 +130,7 @@ describe('AC-1 — a live ptero is stepped by stepPteroFlight (gravity-exempt)',
       collisionEnabled: true,
       entity: entity({ posX: 146, posY: START_Y, velY: VY }),
     }
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [mount]))
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [mount]))
     const out = stepped.sim.processes.find((p) => p.kind === 'player')
     expect(out!.entity!.velY, 'the mount gains gravity (velY grows past VY)').toBeGreaterThan(VY)
   })
@@ -154,8 +158,8 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
    * locating (dx=0) keeps the masks superimposed at the lance row AND exercises the
    * documented COLDX=0 right-facer kill (facingInto: coldx≥0, JOUSTRV4.SRC:4994).
    */
-  function killScenario(): { player: DemoProcess; ptero: DemoProcess } {
-    const player: DemoProcess = {
+  function killScenario(): { player: SimProcess; ptero: SimProcess } {
+    const player: SimProcess = {
       id: 1,
       cls: 'primary',
       nap: 1,
@@ -166,7 +170,7 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
       collisionEnabled: true,
       entity: entity({ posX: 100, posY: 109 << 8, airborne: true }),
     }
-    const ptero: DemoProcess = {
+    const ptero: SimProcess = {
       id: 0x0880,
       cls: 'secondary',
       nap: 1,
@@ -183,10 +187,10 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
   }
 
   it('a lance-height, opposite-facing, facing-into contact emits a PTERO_SCORE (1000) kill event', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const ptero = await loadPtero()
     const { player, ptero: pt } = killScenario()
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [player, pt]))
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [player, pt]))
     const scored = stepped.events.filter((e) => e.kind === 'score')
     expect(
       scored.some((e) => (e as { value: number }).value === ptero.PTERO_SCORE),
@@ -195,9 +199,9 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
   })
 
   it('and the ptero does not survive the contact as a live hunting ptero', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const { player, ptero: pt } = killScenario()
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [player, pt]))
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [player, pt]))
     const livePteros = stepped.sim.processes.filter((p) => p.kind === 'ptero')
     expect(livePteros.length, 'the killed ptero is no longer a live ptero (it dies/dissolves)').toBe(0)
   })
@@ -208,22 +212,22 @@ describe('AC-1 — collisionPass resolves the ptero lance-height joust (RED: fil
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — a killed ptero enters the dissolve, rendered, not vanished (RED)', () => {
   it('the frame after the kill renders a dissolve frame at the body (not gone, not a poof)', async () => {
-    const demo = await loadDemo()
-    const r = await loadDemoRender()
-    const player: DemoProcess = {
+    const demo = await loadSim()
+    const r = await loadSimRender()
+    const player: SimProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1,
       mount: 'ostrich', collisionEnabled: true,
       // jt9-14 re-seat 110→109 (lanceOffset 9): in the glide band AND the
       // CWNG3R×PT1RC narrowPhase mask the pass now consults.
       entity: entity({ posX: 100, posY: 109 << 8, airborne: true }),
     }
-    const ptero: DemoProcess = {
+    const ptero: SimProcess = {
       id: 0x0880, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: -1,
       // jt9-43 COLDX re-seat 104→100: co-located so the lance row's masks stay
       // superimposed once narrowPhase folds the screen-X term.
       collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8, airborne: true }),
     }
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [player, ptero]))
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [player, ptero]))
     const ops = r.drawList(stepped).filter((o) => o.kind === 'entity')
     // The body must dissolve, not vanish: a dissolve-frame op is present, and the
     // body is no longer rendered as a live ptero frame.
@@ -242,8 +246,8 @@ describe('AC-1 — a killed ptero enters the dissolve, rendered, not vanished (R
 // AC-1 (iv) — THE DISSOLVE ADVANCES IN-SCHEDULER: frame.ts dispatches stepDissolve.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — a dissolve process advances through the scheduler (RED: no dispatch today)', () => {
-  it('one stepDemo wakes a dissolve process and steps its DissolveState (nap decrements)', async () => {
-    const demo = await loadDemo()
+  it('one stepSim wakes a dissolve process and steps its DissolveState (nap decrements)', async () => {
+    const demo = await loadSim()
     const dissolve = await loadDissolve()
     // A dissolving body — the kind:'dissolve' contract. Woken every frame (nap 1),
     // stepDissolve should decrement its frame nap from DISSOLVE_FRAME_NAPS toward 0.
@@ -251,10 +255,10 @@ describe('AC-1 — a dissolve process advances through the scheduler (RED: no di
     const proc = {
       id: 0x0980, cls: 'secondary', nap: 1, period: 1, kind: 'dissolve',
       dissolve: start, entity: entity({ posX: 50, posY: 100 << 8 }),
-    } as unknown as DemoProcess
-    const stepped = demo.stepDemo(only(demo.createWaveDemo(SEED), [proc]))
+    } as unknown as SimProcess
+    const stepped = demo.stepSim(only(demo.createWaveSim(SEED), [proc]))
     const out = stepped.sim.processes.find((p) => p.kind === 'dissolve') as
-      | (DemoProcess & { dissolve?: { nap: number; frame: number; done: boolean } })
+      | (SimProcess & { dissolve?: { nap: number; frame: number; done: boolean } })
       | undefined
     expect(out?.dissolve, 'the dissolve process must survive the step carrying its state').toBeTruthy()
     // Inert today: runBehaviour has no 'dissolve' branch, so nap stays at the start
@@ -263,16 +267,16 @@ describe('AC-1 — a dissolve process advances through the scheduler (RED: no di
   })
 
   it('across a full run the dissolve completes and the body is removed', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const dissolve = await loadDissolve()
     const proc = {
       id: 0x0980, cls: 'secondary', nap: 1, period: 1, kind: 'dissolve',
       dissolve: dissolve.startDissolve(), entity: entity({ posX: 50, posY: 100 << 8 }),
-    } as unknown as DemoProcess
+    } as unknown as SimProcess
     // DISSOLVE_FRAME_COUNT frames × DISSOLVE_FRAME_NAPS naps, plus slack.
     const totalWakes = dissolve.DISSOLVE_FRAME_COUNT * dissolve.DISSOLVE_FRAME_NAPS + 4
-    let d = only(demo.createWaveDemo(SEED), [proc])
-    for (let i = 0; i < totalWakes; i++) d = demo.stepDemo(d)
+    let d = only(demo.createWaveSim(SEED), [proc])
+    for (let i = 0; i < totalWakes; i++) d = demo.stepSim(d)
     expect(
       d.sim.processes.some((p) => p.kind === 'dissolve'),
       'the dissolve reaches done and the body is removed from the process list',
@@ -287,42 +291,42 @@ describe('AC-1 — a dissolve process advances through the scheduler (RED: no di
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — drawList renders the ptero / troll / dissolve kinds, POSOFF-lifted (RED)', () => {
   it('a live ptero renders a PT* frame op, lifted off its feet', async () => {
-    const r = await loadDemoRender()
-    const demoMod = await loadDemo()
+    const r = await loadSimRender()
+    const demoMod = await loadSim()
     const FEET = 100
-    const ptero: DemoProcess = {
+    const ptero: SimProcess = {
       id: 0x0880, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: 1,
       collisionEnabled: true, entity: entity({ posX: 60, posY: FEET << 8, airborne: true }),
     }
-    const ops = r.drawList(only(demoMod.createWaveDemo(SEED), [ptero])).filter((o) => o.kind === 'entity')
+    const ops = r.drawList(only(demoMod.createWaveSim(SEED), [ptero])).filter((o) => o.kind === 'entity')
     const op = ops.find((o) => PTERO_FRAMES.has(o.name))
     expect(op, 'drawList must emit a pterodactyl frame op (PT1R..PT3L) for a kind:ptero').toBeTruthy()
     expect(op!.y, 'the ptero is POSOFF-lifted (name resolves to its IPTERO record), not at raw feet Y').toBeLessThan(FEET)
   })
 
   it('a live troll renders a GRAB* hand op, lifted off its feet', async () => {
-    const r = await loadDemoRender()
-    const demoMod = await loadDemo()
+    const r = await loadSimRender()
+    const demoMod = await loadSim()
     const FEET = 210 // CLIF5 landing surface
     const troll = {
       id: 0x0a80, cls: 'secondary', nap: 1, period: 1, kind: 'troll', facing: 1,
       collisionEnabled: true, entity: entity({ posX: 100, posY: FEET << 8, airborne: false }),
-    } as unknown as DemoProcess
-    const ops = r.drawList(only(demoMod.createWaveDemo(SEED), [troll])).filter((o) => o.kind === 'entity')
+    } as unknown as SimProcess
+    const ops = r.drawList(only(demoMod.createWaveSim(SEED), [troll])).filter((o) => o.kind === 'entity')
     const op = ops.find((o) => TROLL_FRAMES.has(o.name))
     expect(op, 'drawList must emit a lava-troll hand op (GRAB1..GRAB6) for a kind:troll').toBeTruthy()
     expect(op!.y, 'the troll hand is POSOFF-lifted (name resolves to its ILAVAT record)').toBeLessThan(FEET)
   })
 
   it('a dissolving body renders a dissolve frame op', async () => {
-    const r = await loadDemoRender()
-    const demoMod = await loadDemo()
+    const r = await loadSimRender()
+    const demoMod = await loadSim()
     const dissolve = await loadDissolve()
     const proc = {
       id: 0x0980, cls: 'secondary', nap: 1, period: 1, kind: 'dissolve',
       dissolve: dissolve.startDissolve(), entity: entity({ posX: 70, posY: 100 << 8 }),
-    } as unknown as DemoProcess
-    const ops = r.drawList(only(demoMod.createWaveDemo(SEED), [proc])).filter((o) => o.kind === 'entity')
+    } as unknown as SimProcess
+    const ops = r.drawList(only(demoMod.createWaveSim(SEED), [proc])).filter((o) => o.kind === 'entity')
     expect(
       ops.some((o) => DISSOLVE_FRAMES.has(o.name)),
       'drawList must render the dissolve animation frame for a kind:dissolve',
@@ -337,16 +341,23 @@ describe('AC-1 — drawList renders the ptero / troll / dissolve kinds, POSOFF-l
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — the demo spawns the live troll at the troll wave (RED: never spawned today)', () => {
   it('a fresh wave-1 demo has no live troll', async () => {
-    const demo = await loadDemo()
-    const d = demo.createWaveDemo(SEED)
+    const demo = await loadSim()
+    const d = demo.createWaveSim(SEED)
     expect(d.sim.processes.some((p) => p.kind === 'troll'), 'wave 1: bridge intact, no troll').toBe(false)
   })
 
   it('driving past the wave-3 burn to wave 4 puts a live troll on the slice', async () => {
-    const demo = await loadDemo()
-    const d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 4)
+    const demo = await loadSim()
+    let d = advanceTo(demo.stepSim, demo.createWaveSim(SEED), 4)
     expect(d.wave).toBe(4)
     expect(d.arena.bridgeBurned, 'the bridge has burned by wave 4').toBe(true)
+    // jt11-4: the troll is armed at the advance and rises once wave 4's complement has
+    // been served onto the pads — it binds the nearest BIRD, and on the advance frame
+    // itself the arena holds only knights. Step to its spawn frame; the assertion (a
+    // live troll on the wave-4 slice) is unchanged.
+    for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+      d = demo.stepSim(d)
+    }
     expect(
       d.sim.processes.some((p) => p.kind === 'troll'),
       'wave 4 with a burned bridge spawns the lava troll off CLIF5 (trollSpawnable consumed)',

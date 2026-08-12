@@ -49,7 +49,7 @@ import {
   type PlayerView,
   type SeekState,
 } from './helpers/enemy-contract.js'
-import { loadDemo, type DemoState } from './helpers/demo-contract.js'
+import { loadSim, type SimState } from './helpers/sim-contract.js'
 
 const coreDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'core')
 const readCore = (f: string): string => readFileSync(join(coreDir, f), 'utf8')
@@ -585,13 +585,13 @@ describe('AC-5 — ROW_DISPOSITION records the wiring', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-6 — the RUNNING GAME arms wave-true budgets: stepDemo, real complement,
+// AC-6 — the RUNNING GAME arms wave-true budgets: stepSim, real complement,
 //        knights parked below (the uf1-2 staging fix), count-first guard.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-6 — the budgets reach the cabinet', () => {
   const KNIGHTS_ON_THE_BOTTOM_ISLAND = 211
 
-  const knightsBelowTheBuzzards = (base: DemoState): DemoState => ({
+  const knightsBelowTheBuzzards = (base: SimState): SimState => ({
     ...base,
     sim: {
       ...base.sim,
@@ -610,7 +610,7 @@ describe('AC-6 — the budgets reach the cabinet', () => {
    * brakeDecidingFrames discipline; the empty-knight early return is what keeps
    * a wiped-out wave from counting vacuously — `[].every` is TRUE).
    */
-  const downEpisodes = (d: DemoState): { frames: number; minPdist: number | null } => {
+  const downEpisodes = (d: SimState): { frames: number; minPdist: number | null } => {
     const knightY: number[] = []
     for (const p of d.sim.processes) {
       if (p.kind === 'player' && p.entity) knightY.push(p.entity.posY >> 8)
@@ -631,12 +631,12 @@ describe('AC-6 — the budgets reach the cabinet', () => {
   }
 
   const run240 = async (counter: number): Promise<{ frames: number; minPdist: number | null }> => {
-    const demo = await loadDemo()
-    let s: DemoState = { ...knightsBelowTheBuzzards(demo.createWaveDemo(0x1234)), wave: counter }
+    const demo = await loadSim()
+    let s: SimState = { ...knightsBelowTheBuzzards(demo.createWaveSim(0x1234)), wave: counter }
     let frames = 0
     let minPdist: number | null = null
     for (let i = 0; i < 240; i++) {
-      s = demo.stepDemo(s)
+      s = demo.stepSim(s)
       const seen = downEpisodes(s)
       frames += seen.frames
       if (seen.minPdist !== null && (minPdist === null || seen.minPdist < minPdist))

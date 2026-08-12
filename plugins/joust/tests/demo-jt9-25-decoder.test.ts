@@ -7,7 +7,7 @@
 // not share a commit with the cutscene, which is.
 //
 // ─── THE BUG ─────────────────────────────────────────────────────────────────
-// posOffset (demo.ts, sole call site inside entityOp) decodes a transcribed POSOFF
+// posOffset (sim.ts, sole call site inside entityOp) decodes a transcribed POSOFF
 // word as `{ xoff: rec.position >> 8, yoff: 256 - (rec.position & 0xff) }`. The ROM
 // POSOFF macro packs `XOFF*256 + 256-YOFF` (JOUSTI.SRC:12-13) and XOFF is SIGNED —
 // a sprite whose art hangs LEFT of its hot spot carries a negative XOFF. `>> 8` on
@@ -28,15 +28,15 @@
 // bug and pass). Keep the raw 16-bit word in the record; the sign belongs in the
 // decoder, not the data (jt8-7's reviewed decision).
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'
 import { loadPictures } from './helpers/pictures-contract.js'
 
 /**
- * Load jt9-25's new demo.ts exports with a self-describing RED failure — the
- * loadDemoRender idiom, kept LOCAL so the shared render contract is not coupled to
+ * Load jt9-25's new sim.ts exports with a self-describing RED failure — the
+ * loadSimRender idiom, kept LOCAL so the shared render contract is not coupled to
  * this story's additions. The specifier is assembled at runtime so the bundler
  * cannot resolve it statically and red the whole file at collection.
  */
@@ -44,11 +44,11 @@ interface EggAnimModule {
   posOffset(name: string): { xoff: number; yoff: number }
 }
 async function loadPosOffset(): Promise<EggAnimModule> {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   const mod = (await import(/* @vite-ignore */ specifier)) as Record<string, unknown>
   if (typeof mod.posOffset !== 'function') {
     throw new Error(
-      'jt9-25 commit 1 not built — demo.ts must EXPORT posOffset (today it is a ' +
+      'jt9-25 commit 1 not built — sim.ts must EXPORT posOffset (today it is a ' +
         'private function). GREEN sign-extends its high byte so a negative XOFF ' +
         'decodes signed, and exports it so this decode-range guard exercises the ' +
         'real decoder instead of a copy.',

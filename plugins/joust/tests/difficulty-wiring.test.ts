@@ -51,7 +51,7 @@
 //
 //     waveValue('BODNVY') → enemy.boundr  ─┐
 //     waveValue('HUDNVY') → enemy.b2undr  ─┴→ runBrain → stepEnemy
-//                                            → frame.ts → demo.stepDemo → game
+//                                            → frame.ts → demo.stepSim → game
 //
 // Everything else needs a mechanic first (a wing-flap cadence timer, a PDIST
 // "distance to go", a range gate, a decision timer, an egg wait) or has a consumer
@@ -74,8 +74,8 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadDifficulty, type DyRowName, type RowDisposition } from './helpers/difficulty-contract.js'
 import { loadEnemy, type EnemyState, type PlayerView } from './helpers/enemy-contract.js'
-import { loadDemo } from './helpers/demo-contract.js'
-import type { DemoState, DemoProcess } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
+import type { SimState, SimProcess } from './helpers/sim-contract.js'
 import { loadWaveBcd } from './helpers/wave-contract.js'
 import { violations } from './helpers/purity-scanner.js'
 
@@ -204,10 +204,10 @@ const CONSUMER_FILE: Readonly<Record<string, string>> = {
   HUUPVY: 'enemy.ts',
   SHUPVY: 'enemy.ts',
   // The egg-hatch waits (via demo.eggWaitFrames) and the lava-troll grip/timer.
-  EGGWT: 'demo.ts',
-  EGGWT2: 'demo.ts',
-  LAVTIM: 'demo.ts',
-  LAVGRA: 'demo.ts',
+  EGGWT: 'sim.ts',
+  EGGWT2: 'sim.ts',
+  LAVTIM: 'sim.ts',
+  LAVGRA: 'sim.ts',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ const FAR_BELOW: PlayerView = { pixelY: 0xd2, velXIndex: 2 }
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `createWaveDemo`'s knights start mid-screen at pixel Y 90 and settle at 162 and
+ * `createWaveSim`'s knights start mid-screen at pixel Y 90 and settle at 162 and
  * 128 — one above and one below the buzzard that promotes on this seed. Park both
  * at the bottom island's band top: `arena.ts` is CLIF5's LANDING record (LNDB5,
  * `bandTop: 211, snapY: 210`), which is exactly why a knight staged at 211 comes to
@@ -335,7 +335,7 @@ const FAR_BELOW: PlayerView = { pixelY: 0xd2, velXIndex: 2 }
  */
 const KNIGHTS_ON_THE_BOTTOM_ISLAND = 211
 
-const knightsBelowTheBuzzards = (base: DemoState): DemoState => ({
+const knightsBelowTheBuzzards = (base: SimState): SimState => ({
   ...base,
   sim: {
     ...base.sim,
@@ -370,7 +370,7 @@ const knightsBelowTheBuzzards = (base: DemoState): DemoState => ({
  * guard clause that could not fail (see the Dev Delivery Findings), and the cheap
  * check is to delete each clause and confirm a test dies.
  */
-const brakeDecidingFrames = (d: DemoState): number => {
+const brakeDecidingFrames = (d: SimState): number => {
   // A narrowing loop, not `filter().map()` — the latter needs a cast to reach
   // `entity`, and this file is the template uf1-8/uf1-9 are told to copy.
   const knightY: number[] = []
@@ -484,26 +484,26 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     )
   })
 
-  it('reaches the RUNNING GAME — stepDemo feeds its own wave to the enemies', async () => {
-    const demo = await loadDemo()
+  it('reaches the RUNNING GAME — stepSim feeds its own wave to the enemies', async () => {
+    const demo = await loadSim()
     const SEED = 0x1234
     // The two demos differ in ONE field: `wave`. Same seed, same processes, same
     // arena — so any divergence in the enemies is attributable to the wired dial and
     // nothing else. This is the test that fails if `stepEnemy` gains a `wave` option
     // that no caller ever passes — i.e. if the fix stops one layer short and leaves
     // the engine dead exactly the way uf1-2 found it.
-    const base = knightsBelowTheBuzzards(demo.createWaveDemo(SEED))
-    const seed3: DemoState = { ...base, wave: 3 }
+    const base = knightsBelowTheBuzzards(demo.createWaveSim(SEED))
+    const seed3: SimState = { ...base, wave: 3 }
 
-    const enemyStates = (d: DemoState): string =>
+    const enemyStates = (d: SimState): string =>
       JSON.stringify(
         d.sim.processes
           .filter((p) => p.kind === 'enemy')
           .map((p) => [p.id, p.enemy?.entity.posY, p.enemy?.entity.velY]),
       )
 
-    let a: DemoState = base
-    let b: DemoState = seed3
+    let a: SimState = base
+    let b: SimState = seed3
     // THE PROBE GUARDS ITS OWN DISCRIMINABILITY. The two waves can only diverge if
     // some SMART-brained enemy actually falls into the window between the wave-1
     // brake and the wave-3 brake WHILE the brake is the branch that decides — a dumb
@@ -519,8 +519,8 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // the divergence check silently becoming untestable.
     let discriminating = 0
     for (let i = 0; i < 240; i++) {
-      a = demo.stepDemo(a)
-      b = demo.stepDemo(b)
+      a = demo.stepSim(a)
+      b = demo.stepSim(b)
       discriminating += brakeDecidingFrames(a)
     }
     expect(
@@ -544,7 +544,7 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
   })
 
   it('reads ZERO once the knights are gone — the guard cannot certify the pre-jt8-1 regime', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // The instrument the two end-to-end probes above depend on, pinned directly.
     // With no knight on screen nothing is targetable, `selectTarget` answers null and
     // the brake decides every down-seek — which is exactly the world uf1-2 was
@@ -556,14 +556,14 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // deleted: `[].every(…)` is vacuously true, so the guard would happily certify a
     // knightless frame. Neither probe above flips without it — which is precisely why
     // it is pinned here instead of being trusted.
-    const base = knightsBelowTheBuzzards(demo.createWaveDemo(0x1234))
+    const base = knightsBelowTheBuzzards(demo.createWaveSim(0x1234))
     // uf1-8: a knightless wave can no longer WANDER into the brake window — a
     // no-target buzzard flies BOLEV (flap iff falling) and never builds $0100
     // of fall. The run therefore carries one buzzard mid-episode with a budget
     // deep enough to outlast all 240 frames (a committed episode spends on,
     // target or none — `BODN1` never re-runs SELPLY), so the window IS reached
     // and the guard's refusal to count it is what is measured, not vacuity.
-    const knightless: DemoState = {
+    const knightless: SimState = {
       ...base,
       sim: {
         ...base.sim,
@@ -581,7 +581,7 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // buzzard in the brake window, or a guard that always returned 0 would pass. That
     // UNGUARDED count comes off the same loop — stepping the run twice to measure two
     // things about it is waste.
-    const smartInWindow = (d: DemoState): number =>
+    const smartInWindow = (d: SimState): number =>
       d.sim.processes.filter(
         (p) =>
           p.kind === 'enemy' &&
@@ -591,14 +591,14 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
           p.enemy.entity.velY < WIRED.BODNVY.wave3,
       ).length
 
-    let withKnights: DemoState = base
-    let without: DemoState = knightless
+    let withKnights: SimState = base
+    let without: SimState = knightless
     let counted = 0
     let countedKnightless = 0
     let raw = 0
     for (let i = 0; i < 240; i++) {
-      withKnights = demo.stepDemo(withKnights)
-      without = demo.stepDemo(without)
+      withKnights = demo.stepSim(withKnights)
+      without = demo.stepSim(without)
       counted += brakeDecidingFrames(withKnights)
       countedKnightless += brakeDecidingFrames(without)
       raw += smartInWindow(without)
@@ -610,7 +610,7 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
   })
 
   it('reads ZERO with the knight ABOVE — that is the seek-up branch deciding, not the dial', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // The other half of the instrument, and the half jt8-1 created. A buzzard falling
     // at $0110 is inside the wave-1/wave-3 brake window whatever is on screen — but
     // with the quarry ABOVE, `smartDecision`'s seek-up clause is true, and since both
@@ -623,10 +623,10 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // the assertion that dies if the `knightY.every(y => y >= enemyY)` clause is
     // deleted — the end-to-end probes above cannot kill it, because their knights are
     // parked below for the whole run.
-    const base = demo.createWaveDemo(0x1234)
+    const base = demo.createWaveSim(0x1234)
     const buzzard = enemyProcess(fallingEnemy('boundr', 0x110))
     const buzzardY = buzzard.enemy!.entity.posY >> 8
-    const knightAt = (pixelY: number): DemoState => ({
+    const knightAt = (pixelY: number): SimState => ({
       ...base,
       sim: {
         ...base.sim,
@@ -1099,13 +1099,13 @@ describe('project rules — the core boundary and the type-safety escapes', () =
   it('keeps every module this story touches inside the pure core', async () => {
     // The single most important rule in the repo. Threading a wave is exactly the
     // kind of change that tempts a module-scope mutable "current wave".
-    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'demo.ts', 'wave.ts']) {
+    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'sim.ts', 'wave.ts']) {
       expect(violations(readCore(f), f), `${f} must stay inside the core boundary`).toEqual([])
     }
   })
 
   it('adds no type-safety escape hatches (checklist rule 1)', () => {
-    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'demo.ts', 'wave.ts']) {
+    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'sim.ts', 'wave.ts']) {
       const text = readCore(f)
       expect(text, `${f} must not cast away the type system`).not.toMatch(/\bas\s+any\b/)
       expect(text, `${f} must not suppress errors without a code`).not.toMatch(/@ts-ignore/)
@@ -1115,7 +1115,7 @@ describe('project rules — the core boundary and the type-safety escapes', () =
   it('carries the .js extension on every relative import (checklist rule 5)', () => {
     // ESM/Node16 resolution — a bare './difficulty' resolves under the bundler and
     // explodes nowhere else until it does.
-    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'demo.ts', 'wave.ts']) {
+    for (const f of ['difficulty.ts', 'enemy.ts', 'frame.ts', 'sim.ts', 'wave.ts']) {
       for (const m of readCore(f).matchAll(/from\s+'(\.[^']*)'/g)) {
         expect(m[1], `${f}: relative import ${m[1]} needs the .js extension`).toMatch(/\.js$/)
       }
@@ -1140,11 +1140,11 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 // Round 1 threaded the wave through all four layers and the Reviewer confirmed
 // every link load-bearing. It then REJECTED the story, because the VALUE entering
 // the chain is the wrong unit: `demo.wave` is the ROM's WAVBCD byte — BCD-PACKED,
-// advanced by `nextWaveBcd` (demo.ts; "BCD not binary" is already pinned at
+// advanced by `nextWaveBcd` (sim.ts; "BCD not binary" is already pinned at
 // tests/wave.test.ts) — and `waveValue` documents its argument as a 1-based
 // DECIMAL wave. The two agree for waves 1-9 and diverge forever after.
 //
-// MEASURED against the tree at 88de71c, through the real `stepDemo`:
+// MEASURED against the tree at 88de71c, through the real `stepSim`:
 //
 //   the cabinet's wave │ counter │ brake the brains got │ brake the ROM says
 //   ───────────────────┼─────────┼──────────────────────┼───────────────────
@@ -1156,7 +1156,7 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 // old `0x100` was honestly stale, this is confidently wrong — and at the
 // hundredth wave the counter rolls to 0x00, `waveValue` rejects a wave < 1, and
 // the running game CRASHES on the first smart-enemy decision. (Verified: a lone
-// `boundr` process at counter 0x00 makes `stepDemo` throw "wave must be a 1-based
+// `boundr` process at counter 0x00 makes `stepSim` throw "wave must be a 1-based
 // integer, got 0". That crash did not exist before this story's seam.)
 //
 // ─── WHY ROUND 1's SUITE MISSED IT ───────────────────────────────────────────
@@ -1165,15 +1165,15 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 // literals, which bypass the counter entirely — so every high-wave assertion was
 // testing the engine, which already worked, and none was testing the seam. The
 // e2e test stopped at wave 3, one wave short of the boundary. Every test below
-// therefore reaches the dial THROUGH `stepDemo` and through the counter's own
+// therefore reaches the dial THROUGH `stepSim` and through the counter's own
 // advance, never through a literal.
 //
 // ─── SCOPE — WHAT IS *NOT* HERE ──────────────────────────────────────────────
-// The same confusion PREDATES uf1-2 at demo.ts, where the raw counter also
+// The same confusion PREDATES uf1-2 at sim.ts, where the raw counter also
 // reaches `waveRowAt` / `applyWaveDestruction` / `spawnWaveEnemies` /
 // `trollSpawnable` / `seedWaveBudget` (and game.ts). That is **td1-12**, filed,
 // p1, and deliberately untouched here: every probe below is staged so the wave
-// never ADVANCES (a wave clears only with a player present — demo.ts —
+// never ADVANCES (a wave clears only with a player present — sim.ts —
 // and no probe stages one), so those consumers never run and this suite cannot
 // accidentally demand td1-12's fix.
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1181,7 +1181,7 @@ describe('project rules — the core boundary and the type-safety escapes', () =
 const PROBE_ID = 0x7e57
 
 /** A `boundr`/`b2undr` process already smart (pchase 1), woken on the first frame. */
-const enemyProcess = (enemy: EnemyState): DemoProcess => ({
+const enemyProcess = (enemy: EnemyState): SimProcess => ({
   id: PROBE_ID,
   cls: 'secondary',
   nap: 1,
@@ -1205,7 +1205,7 @@ const enemyProcess = (enemy: EnemyState): DemoProcess => ({
  *
  * AND a single-step probe IS a no-target probe, parked knights or none: the
  * demo registers players into the aggro slots only at the END of its first
- * step, with their TARTIM grace armed (`reconcileTargets`, demo.ts) — so the
+ * step, with their TARTIM grace armed (`reconcileTargets`, sim.ts) — so the
  * probe's one wake reads `selectTarget` = null whatever sits on the island.
  * The regime where the dial legitimately decides in ONE wake is therefore a
  * COMMITTED DOWN EPISODE (`enemy.seek`): `BODN1` never re-runs SELPLY and runs
@@ -1219,17 +1219,17 @@ const enemyProcess = (enemy: EnemyState): DemoProcess => ({
  * its facing whatever velocity index its target reads once one exists —
  * $FF − 1 = $FE keeps BMI looping (:3942-3943), the flip needs 128 more matched
  * wakes than any probe gets, and the entity comparison stays about the BRAKE.
- * One `stepDemo` on this state reproduces `stepEnemy(probe, { player:
+ * One `stepSim` on this state reproduces `stepEnemy(probe, { player:
  * FAR_BELOW, wave })` on the entity — the committed episode runs the same
  * brake law both sides — so the assertions below compare against the engine
  * directly instead of against a hand-copied expectation.
  */
 const demoAtCounter = (
-  demo: Awaited<ReturnType<typeof loadDemo>>,
+  demo: Awaited<ReturnType<typeof loadSim>>,
   counter: number,
   enemy: EnemyState,
-): DemoState => {
-  const base = knightsBelowTheBuzzards(demo.createWaveDemo(0x1234))
+): SimState => {
+  const base = knightsBelowTheBuzzards(demo.createWaveSim(0x1234))
   return {
     ...base,
     wave: counter,
@@ -1253,16 +1253,16 @@ const counterAtWave = (w: Pick<Awaited<ReturnType<typeof loadWaveBcd>>, 'nextWav
   return n
 }
 
-/** The enemy as one `stepDemo` leaves it. Throws rather than returning undefined. */
-const steppedProbe = (d: DemoState, demo: Awaited<ReturnType<typeof loadDemo>>): EnemyState => {
-  const p = demo.stepDemo(d).sim.processes.find((q) => q.id === PROBE_ID)
+/** The enemy as one `stepSim` leaves it. Throws rather than returning undefined. */
+const steppedProbe = (d: SimState, demo: Awaited<ReturnType<typeof loadSim>>): EnemyState => {
+  const p = demo.stepSim(d).sim.processes.find((q) => q.id === PROBE_ID)
   if (!p?.enemy) throw new Error('the probe buzzard vanished — the staging is wrong, not the code')
   return p.enemy
 }
 
 describe('R2-1 — the wave the brains read is the wave the CABINET is on', () => {
   it('resolves the TENTH wave at wave 10, not at its BCD byte 16', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const e = await loadEnemy()
     const d = await loadDifficulty()
     const w = await loadWaveBcd()
@@ -1315,7 +1315,7 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
   })
 
   it('resolves the TWELFTH wave at wave 12 for the HUNTER too — the seam, not a BODNVY patch', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const e = await loadEnemy()
     const d = await loadDifficulty()
     const w = await loadWaveBcd()
@@ -1355,7 +1355,7 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
   })
 
   it('brakes at THAT wave rung on every wave 1..24 — driven through the counter, never a literal', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const d = await loadDifficulty()
     const w = await loadWaveBcd()
 
@@ -1390,7 +1390,7 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
   })
 
   it('plays its TENTH wave exactly as its third, and not as its eleventh — the whole cabinet, 240 frames', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const d = await loadDifficulty()
     const w = await loadWaveBcd()
 
@@ -1412,11 +1412,11 @@ describe('R2-1 — the wave the brains read is the wave the CABINET is on', () =
     // also reports how many of those frames had the BRAKE deciding — the same guard
     // AC-1 uses, carried here so this probe cannot go vacuous either.
     const trajectory = (counter: number): { signature: string; deciding: number } => {
-      let s: DemoState = { ...knightsBelowTheBuzzards(demo.createWaveDemo(0x1234)), wave: counter }
+      let s: SimState = { ...knightsBelowTheBuzzards(demo.createWaveSim(0x1234)), wave: counter }
       const frames: string[] = []
       let deciding = 0
       for (let i = 0; i < 240; i++) {
-        s = demo.stepDemo(s)
+        s = demo.stepSim(s)
         deciding += brakeDecidingFrames(s)
         frames.push(
           JSON.stringify(

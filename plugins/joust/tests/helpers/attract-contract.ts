@@ -1,7 +1,7 @@
 // tests/helpers/attract-contract.ts
 //
 // Story jt10-4 — the CONTRACT for src/core/attract-scheduler.ts, TEA-authored
-// (Han Solo). Same seam epic jt has used since jt1-2 (loadGame / loadDemo /
+// (Han Solo). Same seam epic jt has used since jt1-2 (loadGame / loadSim /
 // loadFont / loadCabinet): TEA states the module shape and pins the behaviour;
 // Dev (Julia) writes the module. The behaviour + citations + purity + rule
 // coverage live in tests/attract-scheduler.test.ts.
@@ -11,7 +11,7 @@
 // a `toAttract` reset stubbed as "jt10-4"'s job. This story fills the attract
 // SUB-CYCLE: a pure page scheduler that cycles the self-play demo and the banner
 // pages and REPEATS, with the ROM's colour-cycle cadence. It does NOT rebuild
-// demo.ts (the self-play substrate, jt2-7, SHIPPED) or cabinet.ts (jt10-2).
+// sim.ts (the self-play substrate, jt2-7, SHIPPED) or cabinet.ts (jt10-2).
 //
 //   sim (frame.ts) ⊂ session (game.ts) ⊂ cabinet (cabinet.ts) ⊂ attract cycle
 //
@@ -25,7 +25,7 @@
 //
 // ─── TIMING IS IN FRAMES, NOT MILLISECONDS (TEA deviation from AC-1 wording) ──
 // AC-1's context says "stepped with elapsed milliseconds", but the joust core
-// counts integer video FRAMES (FRAME_HZ, one step per frame — demo.ts / pumpFrames
+// counts integer video FRAMES (FRAME_HZ, one step per frame — sim.ts / pumpFrames
 // convention), and a millisecond input would smuggle a wall-clock mindset past the
 // jt1-7 purity boundary. The scheduler is therefore stepped in FRAMES. Logged as a
 // design deviation in the session; the determinism AC is stronger for it.
@@ -34,7 +34,7 @@
 // ATT.SRC:173 — `LDD #((((2*60+30)/16)+1)*8)+7  CHANGE COLORS EVERY 2 1/2 SECONDS`
 // — the marquee palette rotates every 2.5 s. At the 60 Hz video rate that is 150
 // frames: COLOUR_CYCLE_FRAMES. This is the single transcribed timing constant the
-// citation gate pins; the per-page DWELLS are presentation choices (like demo.ts's
+// citation gate pins; the per-page DWELLS are presentation choices (like sim.ts's
 // MATERIALISE_WINDOW), documented against the ROM's 18.5 s marque rhythm
 // (ATT.SRC:121) but not claimed as transcribed law.
 
@@ -44,7 +44,7 @@ export type { CabinetState }
 
 /**
  * The attract pages THIS story pins. `demo` is the self-play centrepiece (wraps
- * the shipped demo.ts); the two banners are the title-named warning pages. A
+ * the shipped sim.ts); the two banners are the title-named warning pages. A
  * UNION, not an enum (lang-review checklist prefers unions). Extensible: the
  * remaining six ATMST lessions widen this union in a follow-up.
  */
@@ -105,7 +105,7 @@ export interface AttractModule {
 
 /**
  * Load the not-yet-built attract-scheduler module with a self-describing failure —
- * the loadGame / loadDemo / loadFont / loadCabinet pattern. The specifier is
+ * the loadGame / loadSim / loadFont / loadCabinet pattern. The specifier is
  * assembled at runtime so the bundler cannot resolve it statically and redden the
  * whole FILE at collection (the tp1-8 trap); each test reddens with a clean
  * "feature absent" instead.

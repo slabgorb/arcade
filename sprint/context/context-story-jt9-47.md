@@ -18,7 +18,7 @@ user directed. jt9-46 makes this VISIBLE — once enemies draw their DPLYR rider
 hunter or shadow-lord will re-ride as a bounder — but the defect is in the SIM, not the render,
 so it is its own story.
 
-WHAT THE PORT DOES NOW. remountEnemyProcess (demo.ts:1056-1082) — the buzzard a SETTLED egg
+WHAT THE PORT DOES NOW. remountEnemyProcess (sim.ts:1056-1082) — the buzzard a SETTLED egg
 hatches into — builds its EnemyState with `const type: EnemyType = 'bounder'` hardcoded
 (:1058), then `decision: brainFor(type)` and `enemyType: type`. So EVERY hatched bird is a
 bounder regardless of the species that laid the egg. The one species-carrying field it DOES
@@ -59,10 +59,10 @@ intended behavior._
 - Out of scope: unrelated changes.
 
 ## Acceptance Criteria
-- AC-1 A REMOUNT PRESERVES THE LAYING SPECIES. A hunter's settled egg hatches into a hunter and a shadow-lord's into a shadow-lord — remountEnemyProcess takes the species from the egg, not the hardcoded 'bounder' (demo.ts:1058). Guard all THREE species through a full drop→settle→hatch cycle and assert the remount's enemyType matches the parent. MUTATION: restoring the `= 'bounder'` hardcode must redden a named test.
+- AC-1 A REMOUNT PRESERVES THE LAYING SPECIES. A hunter's settled egg hatches into a hunter and a shadow-lord's into a shadow-lord — remountEnemyProcess takes the species from the egg, not the hardcoded 'bounder' (sim.ts:1058). Guard all THREE species through a full drop→settle→hatch cycle and assert the remount's enemyType matches the parent. MUTATION: restoring the `= 'bounder'` hardcode must redden a named test.
 - AC-2 EGGSTATE CARRIES THE PARENT SPECIES, SET EXPLICITLY AT DEATH. The egg records the dropping enemy's EnemyType at creation (egg.ts, the DEATH3/egg-spawn site) and remountEnemyProcess reads it — the species is THREADED, never inferred from position, brain, or colour. Guard that an egg dropped by each species carries that species. MUTATION: dropping the field (defaulting to bounder) must redden.
 - AC-3 THE REMOUNT KEEPS ITS BRAIN AND ITS SCORE. decision resolves via brainFor(remountType) so a remounted hunter carries the b2undr brain and a shadow-lord SHADOW (enemy.ts:531-539), and killScore(enemyType) (joust.ts:243) pays the species' real value on a bird that has hatched. Guard a hatched hunter's decision brain is b2undr (not boundr) and its kill scores as a hunter. This is the behaviour half — pin it distinctly from AC-1's identity.
-- AC-4 PEGG IS STILL PRESERVED, AND THE 4-EGG PERMADEATH STILL TERMINATES. The existing eggsLeft carry-forward (demo.ts:1076-1080, JOUSTRV4.SRC:3251-3252) is untouched and the complement still walks to permadeath at 0 — adding the species must not perturb the egg-count ladder. Guard a full 4-egg depletion of a non-bounder species reaches permadeath (no regeneration), so the type thread did not reopen the count-to-zero the eggsLeft comment guards.
+- AC-4 PEGG IS STILL PRESERVED, AND THE 4-EGG PERMADEATH STILL TERMINATES. The existing eggsLeft carry-forward (sim.ts:1076-1080, JOUSTRV4.SRC:3251-3252) is untouched and the complement still walks to permadeath at 0 — adding the species must not perturb the egg-count ladder. Guard a full 4-egg depletion of a non-bounder species reaches permadeath (no regeneration), so the type thread did not reopen the count-to-zero the eggsLeft comment guards.
 - AC-5 DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT, RE-FOUND NOT NUDGED. Per this epic's standing rule: any seeded fixture that hatches a non-bounder and then steps it will move because the brain changed; re-run the seeded sweeps, take the moved frames from that run, and name in the commit message which seeds moved and why. Event-searching tests should survive; frame-pinned ones will not.
 
 ---

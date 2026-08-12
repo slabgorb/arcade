@@ -70,7 +70,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 // jt9-3 — the RAW scheduler seam. ONE of jt5-3's three unguarded invariants is
 // invisible from `stepGame`, BY CONSTRUCTION: the accumulation one (see the
@@ -78,12 +78,20 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 // directly. The pre-step `wasAirborne` invariant is NOT in that position — it
 // is reachable either way, and the walk-off guard below reaches it through
 // `stepGame`. `GameState` is aliased because game.ts already owns that name here.
-import { createState, spawn, stepFrame, type GameState as SimState } from '../src/core/frame.js'
+import { createState, spawn, stepFrame, type GameState as FrameState } from '../src/core/frame.js'
 import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audio.js'
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { linet, type EnemyState } from '../src/core/enemy.js'
+// jt11-4 — the wave's complement now QUEUES for the transporter (CREEM/CRELP,
+// JOUSTRV4.SRC:5663-5676) instead of standing on the pads from frame 0, so a fresh
+// `createGame`/`createWaveSim` hands back an arena with NO buzzards in it: they
+// materialise one per frame over the first frames of any window staged here, and a
+// buzzard that materialises mid-window beats its wings INTO these exact streams.
+// Nothing in this file is about the arrival cadence, so every fixture below seats
+// the waiting room at frame 0 and goes on measuring what it always measured.
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const vendoredRoot =
@@ -146,12 +154,20 @@ const LEFT_HELD: PlayerInput = { dir: -1, flap: false, flapHeld: true }
 const btn = (flap: boolean, flapHeld: boolean): PlayerInput => ({ dir: 0, flap, flapHeld })
 
 const kindsOf = (g: GameState): string[] => g.events.map((e) => e.type as string)
-const simKindsOf = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
+const simKindsOf = (d: SimState): string[] => d.cues.map((c) => c.type as string)
 const wingsOf = (g: GameState): string[] => kindsOf(g).filter((k) => WING_KINDS.includes(k))
 
-const procOf = (g: GameState, id: number): DemoProcess | undefined =>
+const procOf = (g: GameState, id: number): SimProcess | undefined =>
   g.sim.sim.processes.find((p) => p.id === id)
 const airborne = (g: GameState, id: number): boolean | undefined => procOf(g, id)?.entity?.airborne
+
+/**
+ * jt11-4 — the wave's complement, on the pads at frame 0, with no frame stepped and
+ * no RNG spent: the exact arrangement every window in this file was measured
+ * against. Seating comes BEFORE `hushEverythingButKnights`, because a buzzard still
+ * holding its transporter number is not in `sim.processes` to be hushed.
+ */
+const seated = (g: GameState): GameState => ({ ...g, sim: seatWaveInstantly(g.sim) })
 
 /**
  * Park every non-player process asleep for the whole window. The wave stays OPEN
@@ -179,7 +195,7 @@ function hushEverythingButKnights(g: GameState): GameState {
  *  Measured — at 68 steps P1 is grounded (PLYBR) at x=100, and at 70 it has
  *  walked off the edge. */
 function knightOnTheGround(): GameState {
-  let g = createGame(0xbeef)
+  let g = seated(createGame(0xbeef))
   for (let i = 0; i < 68; i++) g = stepGame(g, { 1: LEFT, 2: IDLE })
   return hushEverythingButKnights(g)
 }
@@ -410,7 +426,7 @@ describe('jt5-3 AC4 — press sounds DOWN, release sounds UP, and holding is sil
   ]
 
   it('the whole wingbeat sequence lands frame for frame', () => {
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     expect(airborne(g, 1), 'precondition: the knight starts airborne').toBe(true)
 
     const seen: string[][] = []
@@ -436,7 +452,7 @@ describe('jt5-3 AC4 — press sounds DOWN, release sounds UP, and holding is sil
   it('holding for a LONG time stays silent — the level is not re-read as an edge', () => {
     // The shape the naive detector gets wrong in the other direction: emitting
     // once per frame the button is down. Forty held frames, one cue.
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     g = stepGame(g, { 1: btn(true, true), 2: IDLE })
     expect(wingsOf(g), 'precondition: the press really sounded').toEqual([PLAYER_WING_DOWN])
 
@@ -452,20 +468,20 @@ describe('jt5-3 AC4 — press sounds DOWN, release sounds UP, and holding is sil
     // G1DEC and G2DEC bind the identical SNPLWU/SNPLWD (:5544 / :5548) — unlike
     // SNPCR1/SNPCR2, the wings are NOT per-knight. So two flaps on one frame is
     // two firings of one cue, not one firing and not two different cues.
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     expect(airborne(g, 2), 'precondition: the second knight is airborne too').toBe(true)
     g = stepGame(g, { 1: btn(true, true), 2: btn(true, true) })
     expect(kindsOf(g)).toEqual([PLAYER_WING_DOWN, PLAYER_WING_DOWN])
   })
 
   it('one knight flapping does not sound for the other', () => {
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     g = stepGame(g, { 1: btn(true, true), 2: IDLE })
     expect(kindsOf(g)).toEqual([PLAYER_WING_DOWN])
   })
 
   it('no knight cue is ever an ENEMY cue', () => {
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     const all: string[] = []
     for (const input of [btn(true, true), btn(false, true), btn(false, false)]) {
       g = stepGame(g, { 1: input, 2: IDLE })
@@ -599,10 +615,15 @@ const enemyEntity = (pixelY: number, velY: number, timeUp: number): EntityState 
 
 const BUZZARD_ID = 0xa01
 
-function stageBuzzard(entity: EntityState, period: number): DemoState {
-  const base = createWaveDemo(0x1234)
+function stageBuzzard(entity: EntityState, period: number): SimState {
+  // jt11-4 — filtering `sim.processes` down to the knights no longer empties the
+  // arena of buzzards: the wave's own complement is queued for the transporter and
+  // would materialise into this window, one per frame, flapping over the staged
+  // bird's stream. Empty the waiting room as well, so this fixture stages exactly
+  // the one buzzard it names.
+  const base = withNoPendingEnemies(createWaveSim(0x1234))
   const enemy: EnemyState = { entity, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }
-  const buzzard: DemoProcess = {
+  const buzzard: SimProcess = {
     id: BUZZARD_ID,
     cls: 'secondary',
     nap: 1,
@@ -624,9 +645,9 @@ function stageBuzzard(entity: EntityState, period: number): DemoState {
   }
 }
 
-const buzzardOf = (d: DemoState): DemoProcess | undefined =>
+const buzzardOf = (d: SimState): SimProcess | undefined =>
   d.sim.processes.find((p) => p.id === BUZZARD_ID)
-const buzzardStepped = (before: DemoState, after: DemoState): boolean =>
+const buzzardStepped = (before: SimState, after: SimState): boolean =>
   buzzardOf(before)?.enemy?.entity !== buzzardOf(after)?.enemy?.entity
 
 describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun them', () => {
@@ -655,7 +676,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     const seen: string[][] = []
     for (let i = 0; i < expected.length; i++) {
       const before = d
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       expect(buzzardStepped(before, d), `precondition: the buzzard woke on step ${i}`).toBe(true)
       expect(
         buzzardOf(d)?.enemy?.entity.airborne,
@@ -690,7 +711,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     //    wings down for two wakes → `down` then `null`).
     //
     // What is pinned HERE instead is the thing that replaced it, through the
-    // whole `stepDemo` pipeline rather than through `stepEnemyDetailed` alone:
+    // whole `stepSim` pipeline rather than through `stepEnemyDetailed` alone:
     // the ROM's alternation, wake after wake, for as long as the bird keeps
     // asking. Each `down` is still an EDGE — the level falls between them —
     // which is why a machine-gun would fail this test too: it would put a `down`
@@ -698,10 +719,10 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     // FLAPS2, BYPASSING the `JSR VSND`) is still the reason a held level is
     // silent; what jt5-8 removes is this brain's ability to hold one.
     let d = stageBuzzard(enemyEntity(0x90, -1, 255), 1)
-    const before = stepDemo(d, {})
+    const before = stepSim(d, {})
     expect(simKindsOf(before), 'precondition: the first wake is the silent rising one').toEqual([])
 
-    d = stepDemo(before, {})
+    d = stepSim(before, {})
     expect(simKindsOf(d), 'precondition: the second wake is the press edge').toEqual([
       ENEMY_WING_DOWN,
     ])
@@ -709,7 +730,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     const rest: string[][] = []
     for (let i = 0; i < 12; i++) {
       const prev = d
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       expect(buzzardStepped(prev, d), `precondition: the buzzard is still waking (${i})`).toBe(true)
       // The lane decision must still WANT a flap on every one of these wakes,
       // or the alternation below could be the bird having simply stopped asking
@@ -750,7 +771,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     const emitted: { woke: boolean; cues: string[] }[] = []
     for (let i = 0; i < 6; i++) {
       const before = d
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       emitted.push({ woke: buzzardStepped(before, d), cues: simKindsOf(d) })
     }
     expect(
@@ -782,7 +803,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
     let d = stageBuzzard(enemyEntity(0x90, -1, 1), 1)
     const all: string[] = []
     for (let i = 0; i < 6; i++) {
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       all.push(...simKindsOf(d))
     }
     expect(all, 'precondition: the buzzard really did sound').toContain(ENEMY_WING_DOWN)
@@ -798,7 +819,7 @@ describe('jt5-3 AC5 — the buzzard beats its wings, it does not machine-gun the
 describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps', () => {
   /** A knight airborne with the button HELD, so the next step is a release edge. */
   function holdingTheButton(): GameState {
-    const g = hushEverythingButKnights(createGame(0xbeef))
+    const g = hushEverythingButKnights(seated(createGame(0xbeef)))
     const pressed = stepGame(g, { 1: btn(true, true), 2: IDLE })
     expect(wingsOf(pressed), 'precondition: the press sounded').toEqual([PLAYER_WING_DOWN])
     return stepGame(pressed, { 1: btn(false, true), 2: IDLE })
@@ -827,8 +848,8 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
   it('two games in flight do not share an edge memory', () => {
     // The other shape of the same defect: a module-scoped previous level is
     // global, so interleaving two games makes each one see the other's button.
-    let held = hushEverythingButKnights(createGame(0xbeef))
-    let free = hushEverythingButKnights(createGame(0x2468))
+    let held = hushEverythingButKnights(seated(createGame(0xbeef)))
+    let free = hushEverythingButKnights(seated(createGame(0x2468)))
     held = stepGame(held, { 1: btn(true, true), 2: IDLE })
     free = stepGame(free, { 1: IDLE, 2: IDLE })
     expect(wingsOf(held), 'precondition: only the first game pressed').toEqual([PLAYER_WING_DOWN])
@@ -849,7 +870,7 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
     // jt5-1's rule, restated for the kinds this story adds: the trap replay
     // determinism cannot see, because a stale carry-forward is carried forward
     // identically in both runs.
-    let g = hushEverythingButKnights(createGame(0xbeef))
+    let g = hushEverythingButKnights(seated(createGame(0xbeef)))
     g = stepGame(g, { 1: btn(true, true), 2: IDLE })
     expect(kindsOf(g), 'precondition: the press sounded').toEqual([PLAYER_WING_DOWN])
     g = stepGame(g, { 1: btn(false, true), 2: IDLE })
@@ -873,7 +894,7 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
 // duplicates of somebody else's.
 //
 // TWO of the three are frame.ts's and live here, beside the emission groups
-// above. The third — `stepDemo` emitting flight cues before collision cues —
+// above. The third — `stepSim` emitting flight cues before collision cues —
 // needs the two-bodies-at-one-lance-height staging that audio-thud.test.ts
 // already owns, so it lives there rather than being written twice.
 // `grep -rn jt9-3 plugins/joust/tests` finds all three.
@@ -889,7 +910,7 @@ describe('jt5-3 AC1 — the edge memory is carried by the state the shell steps'
 // ─── WHY THE ACCUMULATION GUARDS USE THE RAW `stepFrame` SEAM ────────────────
 // For the ACCUMULATION invariant this is not preference but a STRUCTURAL
 // necessity, and the two invariants differ here — see the correction at the
-// foot of this block. `stepDemo` calls
+// foot of this block. `stepSim` calls
 //
 //     stepFrame({ ...demo.sim, targets: tickedTargets, cues: [] }, …)
 //
@@ -936,7 +957,7 @@ const rawEntity = (posXpx: number, posYpx: number, velY: number): EntityState =>
  * the state the sim itself leaves behind after any held frame. Playing it in
  * would cost a press frame whose flap impulse moves the measured landing.
  */
-const rawSim = (e: EntityState, prevFlapHeld: boolean): SimState =>
+const rawSim = (e: EntityState, prevFlapHeld: boolean): FrameState =>
   spawn(createState(0x1234), {
     id: RAW_PID,
     cls: 'primary',
@@ -947,8 +968,8 @@ const rawSim = (e: EntityState, prevFlapHeld: boolean): SimState =>
     prevFlapHeld,
   })
 
-const rawCues = (s: SimState): string[] => s.cues.map((c) => c.type as string)
-const rawAirborne = (s: SimState): boolean | undefined =>
+const rawCues = (s: FrameState): string[] => s.cues.map((c) => c.type as string)
+const rawAirborne = (s: FrameState): boolean | undefined =>
   s.processes.find((p) => p.id === RAW_PID)?.entity?.airborne
 
 describe('jt9-3 — the airborne level is read BEFORE the step, never after', () => {
@@ -1062,7 +1083,7 @@ describe('jt9-3 — `GameState.cues` is REBUILT every frame, never accumulated',
   //
   // WHY IT COULD ROT UNSEEN. A carried-forward cue is invisible to every seeded
   // replay digest, because both runs carry it forward identically; and it is
-  // unreachable through `stepDemo`, which passes `cues: []` in. It would first
+  // unreachable through `stepSim`, which passes `cues: []` in. It would first
   // appear in the SHELL, as one sound repeating for the rest of the game —
   // which is the failure this whole seam was designed to make impossible.
 
@@ -1070,7 +1091,7 @@ describe('jt9-3 — `GameState.cues` is REBUILT every frame, never accumulated',
    *  was carried in. Deliberately NOT a wing cue: a sentinel from the family the
    *  emitter itself raises cannot tell carry-forward from a fresh emission. */
   const CARRIED: GameEvent = { type: 'egg-hatched' }
-  const aloft = (): SimState => rawSim(rawEntity(100, 60, 256), true)
+  const aloft = (): FrameState => rawSim(rawEntity(100, 60, 256), true)
 
   it('a cue handed IN does not come back out — even on a frame that emits', () => {
     const out = stepFrame({ ...aloft(), cues: [CARRIED] }, { [RAW_PID]: btn(false, false) })
@@ -1136,7 +1157,11 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
    *  `stepFlight()` — e.g. selecting gravity from the PREVIOUS level instead of
    *  the current one — moves every bird and moves none of jt5-1's numbers. */
   function entityDigest(seed: number, frames: number): string[] {
-    let g = createGame(seed)
+    // jt11-4 — seated at frame 0, so this stays the frozen pre-story digest it has
+    // always been rather than a re-measurement of the new arrival cadence (which
+    // demo-jt11-4.test.ts owns). Verified: with the complement seated, all five rows
+    // are bit-identical to the jt9-50 pin below.
+    let g = seated(createGame(seed))
     for (let f = 0; f < frames; f++) g = stepGame(g, { 1: scripted(f), 2: IDLE })
     return g.sim.sim.processes.map((p) => {
       const e = p.entity ?? p.enemy?.entity
@@ -1222,7 +1247,7 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
 
   it('two runs of one seed emit an identical per-frame WING stream', () => {
     const run = (seed: number): string[][] => {
-      let g = createGame(seed)
+      let g = seated(createGame(seed))
       const perFrame: string[][] = []
       for (let f = 0; f < 240; f++) {
         g = stepGame(g, { 1: scripted(f), 2: IDLE })

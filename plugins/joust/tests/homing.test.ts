@@ -508,7 +508,7 @@ describe('AC-7 — a mounted enemy is born ready to reverse, not 129 wakes away'
     // first wake seeds it" contract was unexercised — replacing the
     // `?? seedHoming()` default with `{ prdir: 200 }` left all 1698 tests green.
     // It is exercised now, and with the born value observable the default cannot
-    // be anything else: this is the shape EVERY enemy demo.ts spawns arrives in.
+    // be anything else: this is the shape EVERY enemy sim.ts spawns arrives in.
     const bare = smartEnemy({}, { velXIndex: 4 })
     expect(bare.homing, 'the fixture really omits the workspace').toBeUndefined()
     expect(flipWakes(bare, targetAt(4), 4), 'the absent workspace defaults to the mounted seed').toEqual([1])

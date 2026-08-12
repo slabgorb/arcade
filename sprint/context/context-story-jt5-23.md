@@ -102,10 +102,10 @@ So the G/P duality is **knights-only**, and the `P` prefix on P3DEC–P7DEC does
 
 ### Open question SM could NOT settle — hand on, do not guess
 
-The port has a 1602-line `plugins/joust/src/core/demo.ts` that emits its **own cue stream**,
+The port has a 1602-line `plugins/joust/src/core/sim.ts` that emits its **own cue stream**,
 and `SNPTREF` is modelled by **no cue at all** (it appears only inside verbatim strings).
 So there is **no current audible G/P divergence** — nothing to fix today. But whether
-`demo.ts`'s cue stream ought to cite the G-family is a real question this story does not
+`sim.ts`'s cue stream ought to cite the G-family is a real question this story does not
 close. **TEA should rule it in scope or file it**; per the standing project rule an
 out-of-scope finding must end with a filed story ID or a named existing owner.
 

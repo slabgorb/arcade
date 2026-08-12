@@ -2,7 +2,7 @@
 //
 // Story jt9-25 — RED phase (TEA). COMMIT 2: EGGTBL is the egg's hatch-animation
 // driver. The port swaps a settled egg STRAIGHT into a remount buzzard on one frame
-// (demo.ts, `return [remountEnemyProcess(...)]`) and draws a hardcoded 'EGGI' its
+// (sim.ts, `return [remountEnemyProcess(...)]`) and draws a hardcoded 'EGGI' its
 // whole life. The ROM plays an EGGMAN cutscene first: after the wait, the egg walks
 // EGGTBL — wiggle L/up/R/pause, then HATCH 1-4 — revealing the standing knight, THEN
 // the buzzard arrives (JOUSTRV4.SRC:3290-3319).
@@ -26,18 +26,19 @@
 // EGGI_ROW_BYTES` on col1/col2 reads a height (11) or a nap as a row index. col0 is
 // divided by 6; col1 and col2 are NOT.
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  loadDemoRender,
-  type DemoProcess,
-  type DemoState,
+  loadSim,
+  loadSimRender,
+  type SimProcess,
+  type SimState,
   type DrawOp,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 const PLAYER1_ID = 1
@@ -67,18 +68,18 @@ const EGGTBL_EXPECTED: ReadonlyArray<readonly [number, number, number]> = [
 const EXPECTED_FRAME_SEQUENCE = EGGTBL_EXPECTED.map((row) => EGG_ROW_NAMES[row[0] / EGGI_ROW_BYTES])
 //  = ['EGGLF','EGGI','EGGRT','EGGI','EGGB1','EGGB2','EGGB3','PLY4S']
 
-/** jt9-25's new demo.ts exports, with a self-describing RED failure (local loader). */
+/** jt9-25's new sim.ts exports, with a self-describing RED failure (local loader). */
 interface EggAnimModule {
   EGGTBL: ReadonlyArray<readonly number[]>
-  eggFrame(p: DemoProcess): string
+  eggFrame(p: SimProcess): string
 }
 async function loadEggAnim(): Promise<EggAnimModule> {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   const mod = (await import(/* @vite-ignore */ specifier)) as Record<string, unknown>
   const missing = (['EGGTBL', 'eggFrame'] as const).filter((k) => mod[k] === undefined)
   if (missing.length) {
     throw new Error(
-      `jt9-25 commit 2 not built — demo.ts must export ${missing.join(', ')}. GREEN ` +
+      `jt9-25 commit 2 not built — sim.ts must export ${missing.join(', ')}. GREEN ` +
         'transcribes EGGTBL (JOUSTRV4.SRC:3537-3544, beside EGF_LEFT/EGF_RIGHT) and adds ' +
         'an eggFrame(p) selector (the enemyFrame/pteroFrame/trollFrame idiom) that walks ' +
         'EGGTBL for a hatching egg; drawList calls it instead of the hardcoded EGGI.',
@@ -105,10 +106,10 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 /** A SETTLED kill-egg, primed to hatch on the next frame (waitFrames 1). */
-function hatchingEggProc(over: Partial<EggState> = {}): DemoProcess {
+function hatchingEggProc(over: Partial<EggState> = {}): SimProcess {
   return { id: 0x1_0000 + 1, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf({ waitFrames: 1, ...over }) }
 }
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -131,12 +132,16 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
     },
   }
 }
-async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
-  return { ...base, wave, sim: { ...base.sim, processes } }
+async function stagedDemo(processes: SimProcess[], wave = 1): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = dmod.createWaveSim(SEED)
+  // jt11-4: the wave's enemies now queue for the transporter OUTSIDE `sim.processes`
+  // and materialise one per frame, so a staged fixture has to empty the waiting room
+  // as well — otherwise a bounder walks into the cutscene and ends these frame walks
+  // (which stop on the first enemy) long before the egg has hatched.
+  return withNoPendingEnemies({ ...base, wave, sim: { ...base.sim, processes } })
 }
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const enemiesIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const eggOp = (ops: DrawOp[]): DrawOp | undefined =>
   ops.find((o) => o.kind === 'entity' && EGG_FRAME_SET.has(o.name))
 
@@ -199,26 +204,26 @@ describe('jt9-25 AC-5 — EGGTBL max offset 36 -> row 6 requires EGGI to have 7 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzard', () => {
   it('does NOT become a buzzard on the frame its wait expires — the cutscene holds it', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // waitFrames 1 -> next step expires the wait. TODAY that step returns a
     // remountEnemyProcess (1 enemy, 0 eggs). The cutscene must instead keep the egg
     // alive playing EGGTBL frames.
     let d = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), hatchingEggProc()])
-    d = dmod.stepDemo(d)
+    d = dmod.stepSim(d)
     expect(enemiesIn(d).length, 'no buzzard yet — the hatch animation is playing').toBe(0)
-    const { drawList } = await loadDemoRender()
+    const { drawList } = await loadSimRender()
     expect(eggOp(drawList(d)), 'an egg frame is still being drawn').toBeDefined()
   })
 
   it('draws the EGGTBL frame sequence in order, then spawns the buzzard after PLY4S', async () => {
-    const dmod = await loadDemo()
-    const { drawList } = await loadDemoRender()
+    const dmod = await loadSim()
+    const { drawList } = await loadSimRender()
     let d = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), hatchingEggProc()])
 
     const drawn: string[] = []
     let buzzardAppearedAfter: string | null = null
     for (let f = 0; f < 600; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       const op = eggOp(drawList(d))
       if (op) {
         if (drawn[drawn.length - 1] !== op.name) drawn.push(op.name) // dedup consecutive holds
@@ -235,14 +240,14 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
   })
 
   it('draws EGGB2 at xoff -1 and EGGB3 at xoff -2 — the cutscene proves the decoder fix', async () => {
-    const dmod = await loadDemo()
-    const { drawList } = await loadDemoRender()
+    const dmod = await loadSim()
+    const { drawList } = await loadSimRender()
     const EGG_X = 100 // the staged egg's posX; a settled egg does not move.
     let d = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), hatchingEggProc({ posX: EGG_X })])
 
     const xByName = new Map<string, number>()
     for (let f = 0; f < 600 && enemiesIn(d).length === 0; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       const op = eggOp(drawList(d))
       if (op && !xByName.has(op.name)) xByName.set(op.name, op.x)
     }
@@ -261,7 +266,7 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
     // buzzard off-screen (AUTOFF, JOUSTRV4.SRC:3078-3087). Full coverage of the
     // interaction lives in demo-jt9-41.test.ts; this asserts the direct inversion so
     // the jt9-25 suite stays honest about the egg's fate.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const EGG_X = 100
     // A hatching egg (hatchRow set) with a player sitting ON it (same posX/feet).
     let d = await stagedDemo([
@@ -272,7 +277,7 @@ describe('jt9-25 AC-4 — a hatching egg walks EGGTBL before it becomes a buzzar
     // Bounded (no `while enemiesIn === 0` — the remount is cancelled, so it never
     // arrives). 150 > EGG_HATCH_ANIM_FRAMES (112): well past when a remount could fly in.
     for (let f = 0; f < 150; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
     }
     expect(collected, 'the hatching egg was collected mid-crack').toBe(true)

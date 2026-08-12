@@ -81,7 +81,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
 // jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
 // loader jt8-3 extracted. Behaviour-preserving.
@@ -411,7 +411,7 @@ describe('jt5-10 AC1 — the finding enters the claims registry', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 const WING_KINDS = ['enemy-wing-down', 'enemy-wing-up', 'player-wing-down', 'player-wing-up']
-const cueKinds = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
+const cueKinds = (d: SimState): string[] => d.cues.map((c) => c.type as string)
 
 const PTERO_ID = 0xb01
 const CONTROL_ID = 0xb02
@@ -422,7 +422,7 @@ const CONTROL_ID = 0xb02
  * MEASURED NECESSITY, not caution. The first draft of this group staged one
  * ptero beside the players and asserted the stream held no wing cue. It failed —
  * on `enemy-wing-down`, with `enemy-materialise` sitting in the same stream.
- * `createWaveDemo` keeps SPAWNING the wave's buzzards as the frames run, so
+ * `createWaveSim` keeps SPAWNING the wave's buzzards as the frames run, so
  * "the only enemy I added is a ptero" is true at frame 0 and false by frame 12,
  * and the cue belonged to a buzzard that arrived while I was not looking. Cues
  * carry no process id (`cues.push({ type })`), so attribution has to come from
@@ -431,7 +431,7 @@ const CONTROL_ID = 0xb02
  * Re-applied EVERY frame, because a process that did not exist at frame 0
  * cannot be hushed at frame 0.
  */
-function hushAllBut(d: DemoState, keep: number): DemoState {
+function hushAllBut(d: SimState, keep: number): SimState {
   return {
     ...d,
     sim: {
@@ -443,7 +443,7 @@ function hushAllBut(d: DemoState, keep: number): DemoState {
   }
 }
 
-/** The flight state demo.ts gives a real spawned ptero (`pteroFlightEntity`). */
+/** The flight state sim.ts gives a real spawned ptero (`pteroFlightEntity`). */
 const pteroEntity = (): EntityState => ({
   posX: 8,
   posY: 0x60 << 8,
@@ -459,9 +459,9 @@ const pteroEntity = (): EntityState => ({
 
 /** One ptero beside the knights and nothing else that could sound a wing.
  *  Any enemy-wing-* in this fixture is necessarily the ptero's. */
-function stagePtero(): DemoState {
-  const base = createWaveDemo(0x1234)
-  const ptero: DemoProcess = {
+function stagePtero(): SimState {
+  const base = createWaveSim(0x1234)
+  const ptero: SimProcess = {
     id: PTERO_ID,
     cls: 'secondary',
     nap: 1,
@@ -483,11 +483,11 @@ function stagePtero(): DemoState {
 
 /** The control: the SAME fixture with a buzzard in the ptero's place, staged on
  *  the settings audio-flap.test.ts measured to produce a wingbeat. */
-function stageControlBuzzard(): DemoState {
-  const base = createWaveDemo(0x1234)
+function stageControlBuzzard(): SimState {
+  const base = createWaveSim(0x1234)
   const entity: EntityState = { ...pteroEntity(), posY: 0x90 << 8, velY: -1, timeUp: 1 }
   const enemy: EnemyState = { entity, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }
-  const buzzard: DemoProcess = {
+  const buzzard: SimProcess = {
     id: CONTROL_ID,
     cls: 'secondary',
     nap: 1,
@@ -507,7 +507,7 @@ function stageControlBuzzard(): DemoState {
   }
 }
 
-const procOf = (d: DemoState, id: number): DemoProcess | undefined =>
+const procOf = (d: SimState, id: number): SimProcess | undefined =>
   d.sim.processes.find((p) => p.id === id)
 
 describe('jt5-10 AC3 — a pterodactyl flies, and flying is all it does', () => {
@@ -519,7 +519,7 @@ describe('jt5-10 AC3 — a pterodactyl flies, and flying is all it does', () => 
     const all: string[] = []
     for (let i = 0; i < 12; i++) {
       d = hushAllBut(d, CONTROL_ID)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       all.push(...cueKinds(d))
     }
     expect(all, 'a buzzard in the same hushed fixture must reach enemy-wing-down').toContain(
@@ -534,7 +534,7 @@ describe('jt5-10 AC3 — a pterodactyl flies, and flying is all it does', () => 
     for (let i = 0; i < 40; i++) {
       d = hushAllBut(d, PTERO_ID)
       const before = procOf(d, PTERO_ID)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       const after = procOf(d, PTERO_ID)
       // PRECONDITION, per the audio-emission.test.ts rule: prove the moment
       // really happened. An absent cue over a ptero that never woke, or was
@@ -591,8 +591,8 @@ describe.skipIf(!vendoredAvailable)('jt5-10 AC4 — the ROM routes ptero-vs-pter
 })
 
 describe('jt5-10 AC4/AC5 — recorded there, built by jt5-16', () => {
-  it('demo.ts records the routing — settled by jt5-10, closed by jt5-16', () => {
-    const src = readSrc('core', 'demo.ts')
+  it('sim.ts records the routing — settled by jt5-10, closed by jt5-16', () => {
+    const src = readSrc('core', 'sim.ts')
     expect(src, 'the record must keep the ROM routing anchor').toContain('OSTHT2')
     expect(src, 'and keep naming the story that settled the read').toContain('jt5-10')
     expect(src, 'and name the story that closed the gap (RED until jt5-16 lands)').toContain(
@@ -607,7 +607,7 @@ describe('jt5-10 AC4/AC5 — recorded there, built by jt5-16', () => {
     // work (lang-review #15): the quoted kind must appear inside the pair
     // loop's eligible filter itself, not merely somewhere in the file (the
     // nearby comments have always said "ptero" unquoted).
-    const src = readSrc('core', 'demo.ts')
+    const src = readSrc('core', 'sim.ts')
     const at = src.indexOf('const eligible = processes.filter')
     expect(at, 'precondition: the pair-loop eligible filter exists').toBeGreaterThanOrEqual(0)
     const filter = src.slice(at, at + 300)

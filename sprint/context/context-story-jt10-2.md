@@ -60,20 +60,20 @@ Transitions are pure transforms of the CabinetState; no side effects, no statefu
 |--------|------|----------|---------|-------|
 | `GOVER_OVER` | const | game.ts:183 | settleGameOver(), cabinet transitions | `0` — all players out |
 | `GOVER_RUNNING` | const | game.ts:184 | createGame(), cabinet transitions | `-1` — game in progress |
-| `GOVER_ATTRACT` | const | game.ts:185 | — (ROM demo.ts uses it) | `0x7F` (127) — attract/demo mode |
+| `GOVER_ATTRACT` | const | game.ts:185 | — (ROM sim.ts uses it) | `0x7F` (127) — attract/demo mode |
 | `createGame(seed, playerCount?)` | fn | game.ts:317 | Cabinet: init a playing game | `(seed: number, playerCount?: number): GameState` |
 | `stepGame(game, inputs?)` | fn | game.ts:399 | Cabinet: step a playing game | `(game: GameState, inputs?: Record<number, PlayerInput>): GameState` |
 | `settleGameOver(players)` | fn | game.ts:359 | Cabinet: evaluate game-over logic | `(players: readonly PlayerLedger[]): { players: PlayerLedger[]; gover: number }` — returns GOVER_OVER iff all out |
 | `GameState` | interface | game.ts:76 | CabinetState field | `{ players, gover, wave, sim, events, guards? }` |
 | `PlayerLedger` | interface | game.ts:55 | GameState field | `{ score, scoreBcd, lives, extraManAt?, out }` |
 
-### From demo.ts (jt2-1)
+### From sim.ts (jt2-1)
 
 | Symbol | Type | Location | Used by | Notes |
 |--------|------|----------|---------|-------|
-| `createWaveDemo(seed)` | fn | demo.ts | Cabinet: init attract demo | Returns DemoState seeded for self-play |
-| `stepDemo(sim, inputs?)` | fn | demo.ts | Wrapped by game.ts | The frame-stepping function |
-| `DemoState` | interface | demo.ts | Wrapped by GameState | `{ sim: SimState, wave, seed, events, ... }` |
+| `createWaveSim(seed)` | fn | sim.ts | Cabinet: init attract demo | Returns SimState seeded for self-play |
+| `stepSim(sim, inputs?)` | fn | sim.ts | Wrapped by game.ts | The frame-stepping function |
+| `SimState` | interface | sim.ts | Wrapped by GameState | `{ sim: SimState, wave, seed, events, ... }` |
 
 ### From @shared/highscore
 
@@ -158,7 +158,7 @@ The jt1-7 boundary scanner is LIVE on this story the moment cabinet.ts lands. Ev
 The tri-state is already live in game.ts (jt4-4). Respect the ROM's three meanings:
 - `GOVER_OVER (0)`: the ROM's "STATE OF GAME = OVER" — set ONLY when ALL players out.
 - `GOVER_RUNNING (-1)`: the ROM's "STATE OF GAME = STARTING" — a game in progress; a survivor keeps it here.
-- `GOVER_ATTRACT (0x7F)`: the ROM's "GAME SIMULATION MODE" — self-play in demo.ts; never seeded by createGame().
+- `GOVER_ATTRACT (0x7F)`: the ROM's "GAME SIMULATION MODE" — self-play in sim.ts; never seeded by createGame().
 
 Do NOT re-interpret these values; they are direct transcriptions (game.ts lines 173–185).
 

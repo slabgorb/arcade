@@ -15,7 +15,7 @@
 // reads a clock.
 
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
-import { drawList, type DrawOp } from './core/demo.js'
+import { drawList, type DrawOp } from './core/sim.js'
 import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState, type OverlayReadout } from './core/game.js'
 import {
   startPlaying,
@@ -349,7 +349,7 @@ function renderAttract(): void {
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
 // `stepGame` from core/game — NOT the raw sim. The jt2-1 one-sim seam still holds:
-// `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
+// `stepGame` internally WRAPS the sim's `stepSim` over a `createWaveSim`-built
 // sim, so there is no divergent second stepping path, and the HUD reads the
 // per-player registers straight off the GameState it steps. jt10-5 wrapped that game
 // in the cabinet tier, and TEMPORARILY booted into 'select' (the coin-up screen)

@@ -23,7 +23,7 @@
 // derived over there.
 //
 // ─── WHAT THE PORT LOOKS LIKE, MEASURED AT RED ───────────────────────────────
-// `advanceTo(5)` then one `stepDemo`, seeds 0x1234 / 0xbeef / 0x2468:
+// `advanceTo(5)` then one `stepSim`, seeds 0x1234 / 0xbeef / 0x2468:
 //   · twelve eggs, ids 0x500..0x50b in deal order;
 //   · `waitFrames` UNDEFINED on all twelve at spawn (jt9-9 seeds the wait lazily,
 //     in the hatch pass, because `spawnWaveEggs` holds the raw BCD counter);
@@ -52,7 +52,7 @@
 // ROM span to a .ts file.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, type DemoProcess, type DemoState, type DemoModule } from './helpers/demo-contract.js'
+import { loadSim, type SimProcess, type SimState, type SimModule } from './helpers/sim-contract.js'
 import type { EggState } from './helpers/egg-contract.js'
 
 /** The egg wave the whole suite works in — counter 5, decimal ordinal 5. */
@@ -71,19 +71,19 @@ const eggIdsFor = (wave: number): number[] => Array.from({ length: 12 }, (_, i) 
 // ─── The seam under test, loaded without widening the shared contract ────────
 
 /**
- * `prematureHatchWait` is new in this story. It cannot join `loadDemo`'s
- * required-export list: that list is checked for EVERY caller of `loadDemo`, so a
+ * `prematureHatchWait` is new in this story. It cannot join `loadSim`'s
+ * required-export list: that list is checked for EVERY caller of `loadSim`, so a
  * name added there fails-to-load every demo test file in the plugin, and a file
  * whose tests never ran is indistinguishable on stdout from one whose tests all
  * passed. Scoped here instead — the jt9-38 `loadWenemy` idiom.
  */
 async function loadPrematureHatchWait(): Promise<(wait: number, draw: number) => number> {
-  const specifier = ['..', '..', 'src', 'core', 'demo.js'].join('/')
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   const mod = (await import(/* @vite-ignore */ specifier)) as Record<string, unknown>
   const fn = mod['prematureHatchWait']
   if (typeof fn !== 'function') {
     throw new Error(
-      'demo.ts has no `prematureHatchWait` export — GREEN (Bicycle Repair Man) adds the ' +
+      'sim.ts has no `prematureHatchWait` export — GREEN (Bicycle Repair Man) adds the ' +
         'PWHCH shortening as a pure function of (wait, draw): CREGG loads the wave wait ' +
         '(`LDB PEGGTM,U`, JOUSTRV4.SRC:2886), draws `JSR VRAND  A RANDOM NUMBER 0-127` ' +
         '(JOUSTRV4.SRC:2890), and MULs the two — the 6809 MUL leaves the HIGH byte of ' +
@@ -97,8 +97,8 @@ async function loadPrematureHatchWait(): Promise<(wait: number, draw: number) =>
 
 // ─── Staging ─────────────────────────────────────────────────────────────────
 
-const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const eggsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+const enemiesIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 
 /**
  * Enter `target` by clearing the arena each frame (the jt4-5 forced-advance idiom
@@ -107,12 +107,16 @@ const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) =>
  * egg-wave path — never hand-staged, which is the only way the premature marking
  * can be observed at all.
  */
-async function advanceTo(seed: number, target: number): Promise<DemoState> {
-  const dmod = await loadDemo()
-  let s = dmod.createWaveDemo(seed)
+async function advanceTo(seed: number, target: number): Promise<SimState> {
+  const dmod = await loadSim()
+  let s = dmod.createWaveSim(seed)
   for (let g = 0; s.wave < target && g < 200; g++) {
-    s = dmod.stepDemo({
+    s = dmod.stepSim({
       ...s,
+      // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and
+      // holds the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it
+      // for ~61*count frames.
+      pendingEnemies: [],
       sim: { ...s.sim, processes: s.sim.processes.filter((p) => p.kind === 'player') },
       events: [],
     })
@@ -127,13 +131,13 @@ async function advanceTo(seed: number, target: number): Promise<DemoState> {
  * the wave does not advance — the clear gate wants a player. So this isolates the
  * hatch timing from a remount buzzard jousting somebody three hundred frames in.
  */
-const eggsOnly = (d: DemoState): DemoState => ({
+const eggsOnly = (d: SimState): SimState => ({
   ...d,
   sim: { ...d.sim, processes: d.sim.processes.filter((p) => p.kind === 'egg') },
 })
 
 /** The `waitFrames` each egg carries, keyed by id. */
-function waitsById(d: DemoState): Map<number, number | undefined> {
+function waitsById(d: SimState): Map<number, number | undefined> {
   return new Map(eggsIn(d).map((p) => [p.id, p.egg?.waitFrames]))
 }
 
@@ -145,12 +149,12 @@ function waitsById(d: DemoState): Map<number, number | undefined> {
  * Nothing here assumes which.
  */
 async function waitsAfterOneStep(seed: number, wave: number): Promise<Map<number, number | undefined>> {
-  const dmod = await loadDemo()
-  return waitsById(dmod.stepDemo(eggsOnly(await advanceTo(seed, wave))))
+  const dmod = await loadSim()
+  return waitsById(dmod.stepSim(eggsOnly(await advanceTo(seed, wave))))
 }
 
 /** A settled KILL egg — a DEATH3 egg, NOT one an egg wave dealt (no `waveEgg`). */
-function killEgg(id: number, posX = 180): DemoProcess {
+function killEgg(id: number, posX = 180): SimProcess {
   const egg: EggState = {
     posX,
     posY: 40 << 8,
@@ -166,7 +170,7 @@ function killEgg(id: number, posX = 180): DemoProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg }
 }
 
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -302,7 +306,7 @@ describe('AC-2 — PWHCH touches the first two eggs an egg wave deals, and no ot
     // wrong wait. Counter 5 is decimal ordinal 5, the one wave where the BCD counter
     // and the ordinal coincide, so the expected value can be named here without
     // re-deriving td1-12's conversion.
-    const dmod: DemoModule = await loadDemo()
+    const dmod: SimModule = await loadSim()
     const { ten } = splitFirstTwo(await waitsAfterOneStep(0x1234, EGG_WAVE), EGG_WAVE)
     const full = dmod.eggWaitFrames('EGGWT2', EGG_WAVE)
     expect(full, 'EGGWT2 at wave 5, in display frames').toBe(624)
@@ -353,15 +357,15 @@ describe('AC-3 — PWHCH is the egg WAVE\'s, and CREGG is its only spender', () 
     // (proved in the source companion), so no other egg the game creates can ever
     // reach the DEC. A DEATH3 egg in a normal wave is the commonest of those.
     // KILLS "shorten the first two settled eggs to resolve a wait".
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(0x1234)
-    const staged: DemoState = {
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(0x1234)
+    const staged: SimState = {
       ...base,
       wave: NON_EGG_WAVE,
       events: [],
       sim: { ...base.sim, processes: [playerAt(1, 20, 40), killEgg(0x1_0500), killEgg(0x1_0501)] },
     }
-    const after = dmod.stepDemo(staged)
+    const after = dmod.stepSim(staged)
     const full = dmod.eggWaitFrames('EGGWT', NON_EGG_WAVE)
     expect(full, 'a landed egg takes EGGWT, not EGGWT2').toBe(744)
     for (const p of eggsIn(after)) {
@@ -376,11 +380,11 @@ describe('AC-3 — PWHCH is the egg WAVE\'s, and CREGG is its only spender', () 
     // where the accident becomes visible.
     // KILLS "shorten the first two entries of `processes`" and "shorten the first two
     // eggs to appear in the wave, whatever their provenance".
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const at = eggsOnly(await advanceTo(0x1234, EGG_WAVE))
     const intruder = killEgg(0x1_0900)
-    const staged: DemoState = { ...at, sim: { ...at.sim, processes: [intruder, ...at.sim.processes] } }
-    const after = dmod.stepDemo(staged)
+    const staged: SimState = { ...at, sim: { ...at.sim, processes: [intruder, ...at.sim.processes] } }
+    const after = dmod.stepSim(staged)
     const waits = waitsById(after)
     expect(waits.size, 'the twelve plus the intruder').toBe(13)
     expect(
@@ -465,15 +469,15 @@ describe('AC-4 — the draw, swept over 32 seeds', () => {
     // the twin: the same twelve eggs, one set as the wave dealt them, one rebuilt from
     // their own data through a field whitelist that drops whatever tag the deal added.
     // Same processes, same frame, same everything the scheduler can see.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const dealt = eggsOnly(await advanceTo(0x1234, EGG_WAVE))
-    const plain = (p: DemoProcess): DemoProcess => ({
+    const plain = (p: SimProcess): SimProcess => ({
       id: p.id, cls: p.cls, nap: p.nap, period: p.period, kind: p.kind, waveEgg: p.waveEgg, egg: p.egg,
     })
-    const untagged: DemoState = { ...dealt, sim: { ...dealt.sim, processes: dealt.sim.processes.map(plain) } }
+    const untagged: SimState = { ...dealt, sim: { ...dealt.sim, processes: dealt.sim.processes.map(plain) } }
 
-    const withPwhch = dmod.stepDemo(dealt)
-    const without = dmod.stepDemo(untagged)
+    const withPwhch = dmod.stepSim(dealt)
+    const without = dmod.stepSim(untagged)
 
     // The fixtures really are the same twelve eggs, or the comparison below is between
     // two different runs and proves nothing.
@@ -491,7 +495,7 @@ describe('AC-4 — the draw, swept over 32 seeds', () => {
     ).not.toBe(without.sim.rng)
 
     // And it is not simply nondeterministic: the same input replays to the same word.
-    expect(dmod.stepDemo(dealt).sim.rng, 'the advance is deterministic, not entropy').toBe(withPwhch.sim.rng)
+    expect(dmod.stepSim(dealt).sim.rng, 'the advance is deterministic, not entropy').toBe(withPwhch.sim.rng)
   })
 
   it('DETERMINISM — the same seed gives the same two waits, twice over', async () => {
@@ -544,7 +548,7 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
     // by any other egg is a different mechanism wearing this one's result), and
     // there ARE early hatchers. The floor is AC-4's reasoning at n=16 draws.
     // KILLS N = 3+, "shorten a random egg", and "compute the cut but never spend it".
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const eligible = new Set(eggIdsFor(EGG_WAVE).slice(0, 2))
     let earlyTotal = 0
     for (const seed of SWEEP.slice(0, 8)) {
@@ -557,7 +561,7 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
       const started = new Set<number>()
       const early: number[] = []
       while (d.sim.frame < bulk - 1) {
-        d = dmod.stepDemo(d)
+        d = dmod.stepSim(d)
         for (const p of eggsIn(d)) {
           if (p.egg?.hatchRow !== undefined && !started.has(p.id)) {
             started.add(p.id)
@@ -582,7 +586,7 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
     // frame after the bulk matures, whatever order they got there in.
     // KILLS "apply the shortening AFTER the population test" and any hatch that
     // bypasses the gate for a pre-mature egg.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     for (const seed of SWEEP.slice(0, 8)) {
       let d = eggsOnly(await advanceTo(seed, EGG_WAVE))
       // jt9-25 — step past the whole EGGMAN cutscene so every matured egg has become
@@ -592,7 +596,7 @@ describe('AC-5 — the wave no longer matures in one lump (JOUSTRV4.SRC:2776-277
       // arena would hatch past the gate. This step-through is what proves it.
       const until =
         d.sim.frame + dmod.eggWaitFrames('EGGWT2', EGG_WAVE) + dmod.EGG_HATCH_ANIM_FRAMES + 1
-      while (d.sim.frame < until) d = dmod.stepDemo(d)
+      while (d.sim.frame < until) d = dmod.stepSim(d)
       expect(enemiesIn(d).length, `seed 0x${seed.toString(16)}: the quota admits six remounts, no more`).toBe(6)
       expect(eggsIn(d).length, 'and the other six are still eggs, deferred').toBe(6)
     }

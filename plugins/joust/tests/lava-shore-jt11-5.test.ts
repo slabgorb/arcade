@@ -21,7 +21,7 @@
 //         island keeps its own NATIVE table bits (indestructible,
 //         arena-state.ts);
 //       • the player/enemy/egg steppers thread the arena into their
-//         land/walk-off/bounce checks (frame.ts, enemy.ts, demo.ts stepEgg) so
+//         land/walk-off/bounce checks (frame.ts, enemy.ts, sim.ts stepEgg) so
 //         a destroyed cliff's landing bit VETOES a landing
 //         (`groundOutcomeInState`) and a burned plank drops its stander —
 //         CKGND answers EQ only for a real platform; LNDB7 ("LAVA TROLLS")
@@ -36,17 +36,17 @@
 // records must keep rendering — it is never destroyed.
 //
 // The wave-advance driver (forceAdvance) is demo-troll.test.ts's, verbatim: the
-// call-site under it (stepDemo re-applying applyWaveDestruction) has been pinned
+// call-site under it (stepSim re-applying applyWaveDestruction) has been pinned
 // since jt3-3.
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type DrawOp,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadArenaState } from './helpers/arena-state-contract.js'
 import { loadFlight, type EntityState, type PlayerInput } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
@@ -55,7 +55,7 @@ import { loadEnemy, type EnemyState } from './helpers/enemy-contract.js'
 import { BACKGROUND_RECORDS } from '../src/core/pictures.js'
 // Review round 2 (F4): the z-order split the expected-order helper applies is
 // THE production predicate, not a re-derived 0xc0 literal that could desync.
-import { isForegroundArena } from '../src/core/demo.js'
+import { isForegroundArena } from '../src/core/sim.js'
 
 const SEED = 0x1234
 
@@ -84,19 +84,19 @@ const ISLAND = 100
 const SHORE_Y = 211
 
 /** Force ONE wave advance (demo-troll.test.ts, verbatim): strip to players so
- *  the wave is "cleared", step once — stepDemo advances the wave and re-applies
+ *  the wave is "cleared", step once — stepSim advances the wave and re-applies
  *  wave destruction to `demo.arena`. */
-function forceAdvance(step: (d: DemoState) => DemoState, demo: DemoState): DemoState {
-  const players = demo.sim.processes.filter((p: DemoProcess) => p.kind === 'player')
-  const stripped: DemoState = { ...demo, sim: { ...demo.sim, processes: players } }
+function forceAdvance(step: (d: SimState) => SimState, demo: SimState): SimState {
+  const players = demo.sim.processes.filter((p: SimProcess) => p.kind === 'player')
+  const stripped: SimState = { ...demo, sim: { ...demo.sim, processes: players } }
   return step(stripped)
 }
 
 /** Advance a fresh demo to `wave` through the REAL wave-event path. */
-async function demoAtWave(wave: number): Promise<DemoState> {
-  const demo = await loadDemo()
-  let d = demo.createWaveDemo(SEED)
-  while (d.wave < wave) d = forceAdvance(demo.stepDemo, d)
+async function demoAtWave(wave: number): Promise<SimState> {
+  const demo = await loadSim()
+  let d = demo.createWaveSim(SEED)
+  while (d.wave < wave) d = forceAdvance(demo.stepSim, d)
   return d
 }
 
@@ -180,16 +180,16 @@ const sourcesOf = (cliff: string): string[] =>
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — the BRIDGE/BRIDG2 lava-shore planks are drawn as solid fills', () => {
   it('emits exactly one BRIDGE fill: 54×3 at (0,211), colour nibble 8', async () => {
-    const demo = await loadDemo()
-    const ops = demo.drawList(demo.createWaveDemo(SEED))
+    const demo = await loadSim()
+    const ops = demo.drawList(demo.createWaveSim(SEED))
     const bridge = fills(ops).filter((op) => op.name === 'BRIDGE')
     expect(bridge, 'one op per DMA record — not a per-row expansion').toHaveLength(1)
     expect(bridge[0]).toMatchObject(BRIDGE_FILL)
   })
 
   it('emits exactly one BRIDG2 fill: 60×3 at (240,211), colour nibble 8', async () => {
-    const demo = await loadDemo()
-    const ops = demo.drawList(demo.createWaveDemo(SEED))
+    const demo = await loadSim()
+    const ops = demo.drawList(demo.createWaveSim(SEED))
     const bridg2 = fills(ops).filter((op) => op.name === 'BRIDG2')
     expect(bridg2).toHaveLength(1)
     expect(bridg2[0]).toMatchObject(BRIDG2_FILL)
@@ -200,8 +200,8 @@ describe('AC-1 — the BRIDGE/BRIDG2 lava-shore planks are drawn as solid fills'
     // init (LDY #BRIDGE / LDY #BRIDG2, JOUSTRV4.SRC:998,1002); sprites paint on
     // top every frame. A fill emitted after the entities would sit ON the feet
     // of anything standing at y 211.
-    const demo = await loadDemo()
-    const ops = demo.drawList(demo.createWaveDemo(SEED))
+    const demo = await loadSim()
+    const ops = demo.drawList(demo.createWaveSim(SEED))
     const firstEntity = ops.findIndex((op) => op.kind === 'entity')
     expect(firstEntity, 'premise: a fresh demo draws entities').toBeGreaterThan(-1)
     for (const name of ['BRIDGE', 'BRIDG2']) {
@@ -219,7 +219,7 @@ describe('AC-1 — the BRIDGE/BRIDG2 lava-shore planks are drawn as solid fills'
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', () => {
   it('the REAL path: advancing across wave 3 removes both fills', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const d3 = await demoAtWave(3)
     expect(d3.arena.bridgeBurned, 'premise (jt3-3): wave 3 burned the bridge').toBe(true)
     expect(fills(demo.drawList(d3)), 'no fill ops survive the burn').toHaveLength(0)
@@ -229,10 +229,10 @@ describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', 
     // Counterfactual splice — if drawList keyed off `demo.wave` (or anything
     // else) instead of consuming `demo.arena`, this arm could not diverge from
     // the one above.
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const arenaMod = await loadArenaState()
     const d3 = await demoAtWave(3)
-    const stale: DemoState = { ...d3, arena: arenaMod.initialArenaState() }
+    const stale: SimState = { ...d3, arena: arenaMod.initialArenaState() }
     const names = fills(demo.drawList(stale)).map((op) => op.name)
     expect(names.sort(), 'an unburned arena still draws both planks').toEqual([
       'BRIDG2',
@@ -241,9 +241,9 @@ describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', 
   })
 
   it('and the converse: a burned arena spliced onto a FRESH wave-1 demo removes them', async () => {
-    const demo = await loadDemo()
-    const fresh = demo.createWaveDemo(SEED)
-    const burned: DemoState = {
+    const demo = await loadSim()
+    const fresh = demo.createWaveSim(SEED)
+    const burned: SimState = {
       ...fresh,
       arena: { ...fresh.arena, bridgeBurned: true },
     }
@@ -258,7 +258,7 @@ describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-3 — drawList drops a destroyed cliff’s background records', () => {
   it('the REAL path: wave 6 (WSTATUS $41) destroys CLIF2 and its records vanish', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const d6 = await demoAtWave(6)
     expect(d6.arena.destroyedCliffs, 'premise: wave 6 status $41 → WBCL2').toEqual(['CLIF2'])
     const names = arenaOps(demo.drawList(d6)).map((op) => op.name)
@@ -270,10 +270,10 @@ describe('AC-3 — drawList drops a destroyed cliff’s background records', () 
   })
 
   it('all four destructible cliffs at once ($F0): exactly their records go, in order', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const arenaMod = await loadArenaState()
-    const fresh = demo.createWaveDemo(SEED)
-    const all: DemoState = {
+    const fresh = demo.createWaveSim(SEED)
+    const all: SimState = {
       ...fresh,
       arena: arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 1, 0xf0),
     }
@@ -296,12 +296,12 @@ describe('AC-3 — drawList drops a destroyed cliff’s background records', () 
     // The WCLFEW create path (JOUSTRV4.SRC:2335-2368): a later wave whose status
     // nibble drops the bit REBUILDS the cliff. drawList must follow the live
     // arena down as well as up.
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const arenaMod = await loadArenaState()
-    const fresh = demo.createWaveDemo(SEED)
+    const fresh = demo.createWaveSim(SEED)
     const wrecked = arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 1, 0xf0)
     const rebuilt = arenaMod.applyWaveDestruction(wrecked, 2, 0x00)
-    const d: DemoState = { ...fresh, arena: rebuilt }
+    const d: SimState = { ...fresh, arena: rebuilt }
     expect(arenaOps(demo.drawList(d)), 'the full pristine record sequence returns').toEqual(
       survivingOps([]),
     )
@@ -501,7 +501,7 @@ describe('AC-5 — stepFrame threads the arena into the player ground paths', ()
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-6 — THE ENEMY AND THE EGG CONSUME IT (enemy.ts stepEntity, demo.ts
+// AC-6 — THE ENEMY AND THE EGG CONSUME IT (enemy.ts stepEntity, sim.ts
 //        stepEgg, and frame.ts's egg call-site).
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-6 — enemy and egg ground checks read the same arena', () => {
@@ -569,7 +569,7 @@ describe('AC-6 — enemy and egg ground checks read the same arena', () => {
   })
 
   it('an egg reaching the burned plank finds no ledge and keeps falling', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const arenaMod = await loadArenaState()
     const burned = arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 3, 0x00)
     const egg = eggOf({ posX: PLANK_L, posY: 210 << 8, velX: 0, velY: 0x40 })
@@ -583,7 +583,7 @@ describe('AC-6 — enemy and egg ground checks read the same arena', () => {
   })
 
   it('an egg over the destroyed CLIF2 falls through the band', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const arenaMod = await loadArenaState()
     const clif2Gone = arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 1, 0x40)
     const egg = eggOf({ posX: ISLAND, posY: 80 << 8, velX: 0, velY: 0x40 })
@@ -616,16 +616,16 @@ describe('AC-6 — enemy and egg ground checks read the same arena', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-8 (review round 2, F1) — THE DEMO LAYER THREADS ITS OWN ARENA. stepDemo
+// AC-8 (review round 2, F1) — THE DEMO LAYER THREADS ITS OWN ARENA. stepSim
 //        must pass demo.arena into stepFrame: mutation M2 proved deleting that
 //        one option left the whole suite green while the production demo
 //        regressed to pristine ground physics. A brainless egg process is the
-//        deterministic witness: driven through stepDemo (not stepFrame), it
+//        deterministic witness: driven through stepSim (not stepFrame), it
 //        settles on the plank only if the frame it rides received THIS demo's
 //        arena.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('AC-8 — stepDemo passes demo.arena into the frame it drives', () => {
-  const eggProc = (): DemoProcess => ({
+describe('AC-8 — stepSim passes demo.arena into the frame it drives', () => {
+  const eggProc = (): SimProcess => ({
     id: 0x7001,
     cls: 'secondary',
     nap: 1,
@@ -634,24 +634,24 @@ describe('AC-8 — stepDemo passes demo.arena into the frame it drives', () => {
     egg: eggOf({ posX: PLANK_L, posY: 210 << 8, velX: 0, velY: 0x40 }),
   })
 
-  const withEgg = (d: DemoState): DemoState => ({
+  const withEgg = (d: SimState): SimState => ({
     ...d,
     sim: { ...d.sim, processes: [...d.sim.processes, eggProc()] },
   })
 
-  it('control: on the intact wave-1 demo the plank egg settles through stepDemo', async () => {
-    const demo = await loadDemo()
-    const d = demo.stepDemo(withEgg(demo.createWaveDemo(SEED)))
+  it('control: on the intact wave-1 demo the plank egg settles through stepSim', async () => {
+    const demo = await loadSim()
+    const d = demo.stepSim(withEgg(demo.createWaveSim(SEED)))
     expect(d.sim.processes.find((p) => p.id === 0x7001)?.egg?.settled).toBe(true)
   })
 
-  it('with the demo arena burned, the same egg finds no plank — through stepDemo itself', async () => {
-    const demo = await loadDemo()
-    const fresh = demo.createWaveDemo(SEED)
-    const burned: DemoState = withEgg({ ...fresh, arena: { ...fresh.arena, bridgeBurned: true } })
-    const d = demo.stepDemo(burned)
+  it('with the demo arena burned, the same egg finds no plank — through stepSim itself', async () => {
+    const demo = await loadSim()
+    const fresh = demo.createWaveSim(SEED)
+    const burned: SimState = withEgg({ ...fresh, arena: { ...fresh.arena, bridgeBurned: true } })
+    const d = demo.stepSim(burned)
     const egg = d.sim.processes.find((p) => p.id === 0x7001)?.egg
-    expect(egg?.settled, 'stepDemo must hand ITS arena to stepFrame').toBe(false)
+    expect(egg?.settled, 'stepSim must hand ITS arena to stepFrame').toBe(false)
     expect(egg && egg.posY, 'the fall keeps integrating').toBeGreaterThan(210 << 8)
   })
 })

@@ -26,7 +26,7 @@ WHY THIS IS A BLOCKER, NOT COMPLETENESS WORK - measured, not argued. jt9-1 shipp
 
 THE ROM ALREADY ANSWERS THE OBVIOUS OBJECTION. PLAVT,U survives promotion by design - LNTSMT (:3764-3775) writes NSMART, PCHASE, PDECSN->DSMART and STX PJOY,U, and NOTHING ELSE. So the machine keeps one countdown running across the promotion boundary this port currently drops it at. jt9-1 pinned that fact in dumb-wingbeat.test.ts (the promoted-vs-fresh reference carries plavt).
 
-ALREADY SHIPPED, DO NOT REBUILD: EnemyState.plavt, lavaTrollLooker() and its wave-scaled LNTLAV reload (DYTBL row 3, wired by jt9-1 after correcting a 'dead-in-rom' misreading that two tests had been guarding), the PPREV channel in frame.ts (lastRanKind), and insertTroll() in demo.ts placing a spawned troll before its victim per :6778. This story adds the three CALL SITES and their branch targets, nothing else.
+ALREADY SHIPPED, DO NOT REBUILD: EnemyState.plavt, lavaTrollLooker() and its wave-scaled LNTLAV reload (DYTBL row 3, wired by jt9-1 after correcting a 'dead-in-rom' misreading that two tests had been guarding), the PPREV channel in frame.ts (lastRanKind), and insertTroll() in sim.ts placing a spawned troll before its victim per :6778. This story adds the three CALL SITES and their branch targets, nothing else.
 
 EXPECT A DETERMINISM RE-BASELINE HERE, unlike jt9-1. jt9-1 moved exactly one promotion by one wake and no pin at all; this one makes a real behaviour reachable in play, which is a different shape. Read sprint/archive/jt9-1-session.md for the method - and for the discipline it cost most to learn: put a POSITIVE CONTROL beside any "the count is zero" assertion, and when a phase threads a new argument from a producer into a pure consumer, mutate the producer (hard-wire the argument to its default) or the wiring goes unguarded no matter how good the unit tests look.
 
@@ -48,7 +48,7 @@ All four blocks are already pinned in `plugins/joust/tests/glide-prologue-source
 - `EnemyState.plavt` (the countdown field)
 - `lavaTrollLooker()` function and its wave-scaled LNTLAV reload (DYTBL row 3, wired by jt9-1 after correcting a dead-in-rom misreading)
 - `PPREV` channel in `frame.ts` (named `lastRanKind`)
-- `insertTroll()` in `demo.ts` placing a spawned troll before its victim per JOUSTRV4.SRC:6778
+- `insertTroll()` in `sim.ts` placing a spawned troll before its victim per JOUSTRV4.SRC:6778
 
 ### This Story's Scope: THREE Call Sites
 Add the looker to **BOUNDR**, **B2UNDR**, and **SHADOW** brains (one per brain's decision routine leading to the three different branch targets above).

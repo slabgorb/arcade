@@ -1699,13 +1699,13 @@ export const ENTITY_RECORDS: EntityRecord[] = [
   // jt8-7: the SEVEN EGGI frames (JOUSTI.SRC:2255-2261, "EGG STILLS & HATCHING").
   // Until this story only row 0 was transcribed, anchored :2255-:2255 — the six
   // continuation rows carry no label, so a label-keyed read sees one row and stops.
-  // Rows 0-2 are the tumble stills WEGG chooses between (see `eggMaskFor`, demo.ts);
+  // Rows 0-2 are the tumble stills WEGG chooses between (see `eggMaskFor`, sim.ts);
   // rows 3-5 are the hatch stages and row 6 the dismounted rider, transcribed for
   // table completeness and with no consumer yet. One record per ROM row, each anchored
   // to its own line — jt3-7's IPTERO/ILAVAT precedent. No new pixel blocks or span
   // tables: every source and mask below already existed.
   //
-  // Row 0 keeps the name `EGGI`: the draw list emits `entityOp('EGGI', …)` (demo.ts)
+  // Row 0 keeps the name `EGGI`: the draw list emits `entityOp('EGGI', …)` (sim.ts)
   // and demo-source.test.ts requires it. The rest take their pixel-source names, as
   // the pterodactyl rows do.
   { name: 'EGGI', collision: 'CEGGUP', position: 250, source: 'EGGUP', anchor: { file: 'JOUSTI.SRC', startLine: 2255, endLine: 2255 } },

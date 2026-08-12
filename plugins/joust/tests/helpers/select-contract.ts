@@ -1,7 +1,7 @@
 // tests/helpers/select-contract.ts
 //
 // Story jt10-5 — the CONTRACT for src/core/select.ts, TEA-authored (Tyr). Same
-// seam epic jt has used since jt1-2 (loadGame / loadDemo / loadFont / loadCabinet):
+// seam epic jt has used since jt1-2 (loadGame / loadSim / loadFont / loadCabinet):
 // TEA states the module shape and pins the behaviour + citation gate in
 // tests/select.test.ts; Dev (Loki) writes the module.
 //

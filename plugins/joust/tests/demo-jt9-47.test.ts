@@ -3,7 +3,7 @@
 // Story jt9-47 — RED phase (Tyr One-Handed / TEA). Split out of jt9-46 as the
 // user directed: jt9-46 made the remount rider VISIBLE, this story fixes the SIM
 // bug underneath it. `remountEnemyProcess` (the buzzard a SETTLED egg hatches
-// into, in demo.ts) hardcodes `const type: EnemyType = 'bounder'`, then
+// into, in sim.ts) hardcodes `const type: EnemyType = 'bounder'`, then
 // `decision: brainFor(type)` and `enemyType: type`. So EVERY hatched bird is a
 // bounder regardless of the species
 // that laid the egg — a hunter's egg remounts a bounder, losing its b2undr brain
@@ -21,7 +21,7 @@
 // record as the species PID and its decision pointer (EGGLND/MOUNRI block
 // :3239-3279). A hunter's egg remounts a hunter. The vendored tree is NOT in this
 // checkout (sibling a-2); nothing here needs it — these are PORT-BEHAVIOUR pins
-// driven through `stepDemo`, not source oracles.
+// driven through `stepSim`, not source oracles.
 //
 // DETERMINISM NOTE (AC-5, Dev's): giving the remount its real brain changes its
 // flight, so seeded replay fixtures that hatch a non-bounder and step it WILL
@@ -32,14 +32,15 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EnemyType,
   type EnemyState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadEgg, type EggVictim } from './helpers/egg-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -59,12 +60,19 @@ const SCORE_FOR: Record<EnemyType, number> = {
 
 const ALL_SPECIES = ['bounder', 'hunter', 'shadowLord'] as const
 
-/** Replace a demo's process list, clearing the event log (jt9-46 idiom). */
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({
-  ...d,
-  sim: { ...d.sim, processes: procs },
-  events: [],
-})
+/** Replace a demo's process list, clearing the event log (jt9-46 idiom).
+ *
+ *  jt11-4 — the wave's ground complement now waits on the transporter instead of
+ *  standing in `sim.processes`, so emptying the process list is no longer enough to
+ *  isolate the subject: the queue would be served over the next few frames and the
+ *  `find(p => p.kind === 'enemy')` searches below would seize a wave buzzard instead
+ *  of the remount under test. Send the waiting room away too — nobody is coming. */
+const only = (d: SimState, procs: SimProcess[]): SimState =>
+  withNoPendingEnemies({
+    ...d,
+    sim: { ...d.sim, processes: procs },
+    events: [],
+  })
 
 /**
  * A SETTLED egg primed to hatch on the next frame, carrying `species` as the
@@ -78,7 +86,7 @@ function hatchingEggProc(
   pixelY: number,
   species: EnemyType,
   eggsLeft = 2,
-): DemoProcess {
+): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -108,12 +116,12 @@ function hatchingEggProc(
  * remount appears within the budget (so an assertion below can never be vacuous
  * on a missing remount).
  */
-async function driveToRemount(species: EnemyType, eggsLeft = 2): Promise<DemoProcess> {
-  const dmod = await loadDemo()
-  let d: DemoState = only(dmod.createWaveDemo(SEED), [hatchingEggProc(0x1_0001, 60, 40, species, eggsLeft)])
-  let remount: DemoProcess | undefined
+async function driveToRemount(species: EnemyType, eggsLeft = 2): Promise<SimProcess> {
+  const dmod = await loadSim()
+  let d: SimState = only(dmod.createWaveSim(SEED), [hatchingEggProc(0x1_0001, 60, 40, species, eggsLeft)])
+  let remount: SimProcess | undefined
   for (let f = 0; f < 800 && !remount; f++) {
-    d = dmod.stepDemo(d)
+    d = dmod.stepSim(d)
     remount = d.sim.processes.find((p) => p.kind === 'enemy')
   }
   expect(remount, `a settled ${species} egg hatched into a remount buzzard`).toBeDefined()
@@ -184,7 +192,7 @@ describe('jt9-47 AC-2 — spawnEgg records the dying enemy species on the egg', 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC-2 (integration) — the DEATH3 KILL SEAM: resolveContacts → spawnEgg wiring
 // (round-1 review R1-1: the unit tests above seed the egg's species directly;
-//  nothing proved the demo.ts wiring that feeds a REAL kill's species into
+//  nothing proved the sim.ts wiring that feeds a REAL kill's species into
 //  spawnEgg. Dropping `enemyType: victim.enemyType` from resolveContacts must
 //  redden HERE — the story's actual gameplay path, not a hand-built egg.)
 // ═════════════════════════════════════════════════════════════════════════════
@@ -206,7 +214,7 @@ describe('jt9-47 AC-2 (integration) — a killed enemy leaves an egg of ITS spec
   it('resolveContacts threads the killed enemy species onto the egg — all three', async () => {
     // MUTATION (R1-1): removing `enemyType: victim.enemyType` from resolveContacts
     // makes the egg carry no species and reddens the hunter + shadowLord rows.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     for (const species of ALL_SPECIES) {
       const r = dmod.resolveContacts(enemyVictim(120, 40, species), playerVictor(120, 30))
       expect(r.egg?.enemyType, `a killed ${species} leaves a ${species} egg`).toBe(species)
@@ -217,18 +225,18 @@ describe('jt9-47 AC-2 (integration) — a killed enemy leaves an egg of ITS spec
     // The strongest guard — the species is set ONLY by the kill, then driven all the
     // way to the remount. Take the actual egg resolveContacts produces, settle it (the
     // fall/settle is harness convenience, exactly as hatchingEggProc), and hatch it.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const killed = dmod.resolveContacts(enemyVictim(120, 40, 'hunter', 3), playerVictor(120, 30))
     expect(killed.egg, 'the killed enemy left an egg').not.toBeNull()
 
-    const settledKillEgg: DemoProcess = {
+    const settledKillEgg: SimProcess = {
       id: 0x3_0001, cls: 'secondary', nap: 1, period: 1, kind: 'egg',
       egg: { ...killed.egg!, settled: true, waitFrames: 1, pfeet: 1 },
     }
-    let d: DemoState = only(dmod.createWaveDemo(SEED), [settledKillEgg])
-    let remount: DemoProcess | undefined
+    let d: SimState = only(dmod.createWaveSim(SEED), [settledKillEgg])
+    let remount: SimProcess | undefined
     for (let f = 0; f < 800 && !remount; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       remount = d.sim.processes.find((p) => p.kind === 'enemy')
     }
     expect(remount, 'the kill-egg hatched a remount').toBeDefined()
@@ -309,8 +317,8 @@ describe('jt9-47 fallback — a species-less (wave) egg remounts a bounder, not 
     // undefined — decision/killScore would then be wrong or throw. Mirrors the
     // wave-egg path jt9-46's Group 4 exercises, but pins the TYPE not the rider.
     const joust = await loadJoust()
-    const dmod = await loadDemo()
-    let d: DemoState = only(dmod.createWaveDemo(SEED), [
+    const dmod = await loadSim()
+    let d: SimState = only(dmod.createWaveSim(SEED), [
       // a settled wave egg: same shape as hatchingEggProc but WITHOUT enemyType
       {
         id: 0x2_0001,
@@ -321,9 +329,9 @@ describe('jt9-47 fallback — a species-less (wave) egg remounts a bounder, not 
         egg: { posX: 60, posY: 40 << 8, velX: 0, velY: 0, bumpX: 0, bumpY: 0, waitFrames: 1, eggsLeft: 2, hitCount: 0, pfeet: 1, settled: true },
       },
     ])
-    let remount: DemoProcess | undefined
+    let remount: SimProcess | undefined
     for (let f = 0; f < 800 && !remount; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       remount = d.sim.processes.find((p) => p.kind === 'enemy')
     }
     expect(remount, 'the species-less wave egg still hatched a remount').toBeDefined()

@@ -5,13 +5,13 @@
 //
 // ─── RED TODAY ───────────────────────────────────────────────────────────────
 // `collisionPass` has THREE overlap passes; only two consult a mask.
-//   • joust pass          (demo.ts) — broadPhase THEN narrowPhase. ✓
-//   • player-vs-egg catch (demo.ts) — broadPhase THEN narrowPhase. ✓ (jt8-7)
-//   • player-vs-ptero     (demo.ts) — broadPhase, then resolvePteroAttack.
+//   • joust pass          (sim.ts) — broadPhase THEN narrowPhase. ✓
+//   • player-vs-egg catch (sim.ts) — broadPhase THEN narrowPhase. ✓ (jt8-7)
+//   • player-vs-ptero     (sim.ts) — broadPhase, then resolvePteroAttack.
 //                                                NO narrowPhase. ← THE DEFECT.
 // So the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H,
 // exactly the bug jt8-7 fixed for eggs. `collisionMaskFor` already returns the
-// real transcribed mask 'PT1RC' for a ptero (demo.ts); the pass that most
+// real transcribed mask 'PT1RC' for a ptero (sim.ts); the pass that most
 // needs it never asks.
 //
 // ─── THE ROM SETTLES THE PREMISE (the story's "settle this first") ───────────
@@ -43,8 +43,9 @@
 // (and the machine) reject.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { broadPhase, type CollisionBox } from '../src/core/joust.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 import type { EntityState } from '../src/core/flight.js'
 
 const SEED = 0x1234
@@ -62,9 +63,16 @@ function entity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** Only [player, ptero, wave-anchor] in the sim — the anchor holds the wave open
- *  without ever colliding (jt5-16's idiom); nothing else can resolve. */
-function only(procs: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+ *  without ever colliding (jt5-16's idiom); nothing else can resolve.
+ *
+ *  Since jt11-4 the wave's ground enemies take a number and wait for the
+ *  transporter, so a fresh `createWaveSim` has NONE of them in `sim.processes`.
+ *  `seatWaveInstantly` puts the complement on the pads with no frame stepped —
+ *  the exact frame-0 arrangement this fixture was written against — so there is
+ *  an anchor to borrow, and the waiting room is left empty so no straggler
+ *  materialises mid-window and resolves a contact of its own. */
+function only(procs: SimProcess[]): SimState {
+  const base = seatWaveInstantly(createWaveSim(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {
@@ -74,7 +82,7 @@ function only(procs: DemoProcess[]): DemoState {
   }
 }
 
-const hush = (d: DemoState, keep: number): DemoState => ({
+const hush = (d: SimState, keep: number): SimState => ({
   ...d,
   sim: {
     ...d.sim,
@@ -102,11 +110,11 @@ interface Outcome {
  */
 function contact(dy: number, dx = 0): Outcome {
   const pteroTop = PLAYER_TOP + dy
-  const player: DemoProcess = {
+  const player: SimProcess = {
     id: PLAYER, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true, entity: entity({ posX: 100, posY: PLAYER_TOP << 8 }),
   }
-  const ptero: DemoProcess = {
+  const ptero: SimProcess = {
     id: PTERO, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: -1,
     collisionEnabled: true, entity: entity({ posX: 100 + dx, posY: pteroTop << 8 }),
   }
@@ -115,7 +123,7 @@ function contact(dy: number, dx = 0): Outcome {
   const deathCues: string[] = []
   for (let f = 0; f < 3; f++) {
     d = hush(d, PTERO)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
     deathCues.push(...d.cues.map((c) => c.type as string).filter((c) => /-death$/.test(c)))
   }
   return {

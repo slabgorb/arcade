@@ -32,7 +32,7 @@ jt5-3's Reviewer ran a 24-mutation battery testing the wing-cue emission logic. 
    - **Mutation test:** Mutating stepFrame to accumulate cues instead of rebuilding reddens 0 tests (unguarded)
    - **Guard strategy:** Assert that `stepFrame` returns a fresh array per frame, not a mutated reference
 
-3. **stepDemo emits flight cues before collision cues** — `plugins/joust/src/core/demo.ts` (story cited line 1109; actual location is lines 1272-1275)
+3. **stepSim emits flight cues before collision cues** — `plugins/joust/src/core/sim.ts` (story cited line 1109; actual location is lines 1272-1275)
    - **Current documentation verified:** Lines 1272-1275 document the order: `const cues: GameEvent[] = [...stepped.cues, ...collided.cues]` with comment "wing edges frame.ts's stepFrame detected… come FIRST: they belong to the flight-stepping phase, which runs before collisionPass ever sees this frame's processes"
    - **Behaviour:** Flight cues (from frame.ts stepping) are prepended to the stream; collision cues follow
    - **Mutation test:** Flipping the order reddens 0 tests (unguarded)
@@ -60,7 +60,7 @@ Each of the three invariants requires a mutation-verified test gate, following t
    - Mutation: Modify `stepFrame` to accumulate cues instead of rebuilding (`state.cues.push(...newCues)`)
    - Verify the mutation reddens this test
 
-3. **Cue ordering test** (demo.ts:1272-1275)
+3. **Cue ordering test** (sim.ts:1272-1275)
    - Create a frame where both a flight cue (wing edge from stepping) and a collision cue (e.g., from a resolved joust) are emitted
    - Assert flight cues appear before collision cues in the returned `cues` array
    - Mutation: Swap the order in `const cues: GameEvent[] = [...collided.cues, ...stepped.cues]`
@@ -85,7 +85,7 @@ Each of the three invariants requires a mutation-verified test gate, following t
 
 2. **Test coverage for cues freshness:** A test asserts that `stepFrame` returns a fresh `cues` array per frame, never accumulated. The test fails if `stepFrame` is mutated to accumulate cues instead of rebuilding. Measured at setup: this behaviour is currently unguarded.
 
-3. **Test coverage for cue ordering:** A test asserts the relative order of flight cues and collision cues — flight first, collision second. The test fails if the order is flipped in `stepDemo`. Measured at setup: this behaviour is currently unguarded.
+3. **Test coverage for cue ordering:** A test asserts the relative order of flight cues and collision cues — flight first, collision second. The test fails if the order is flipped in `stepSim`. Measured at setup: this behaviour is currently unguarded.
 
 4. **Mutation verification completed for all three:** Each test is committed ONLY after being verified to redden under its corresponding mutation. The mutation is then reverted and the test confirmed green again.
 

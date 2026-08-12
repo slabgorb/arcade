@@ -2,11 +2,11 @@
 //
 // Story jt4-1 (GREEN, Korben / Dev) — the SESSION LAYER above the sim: the first
 // module of epic jt4 (the game loop). jt2/jt3 built the deterministic sim
-// (demo.ts / stepDemo); it emits score VALUES as events (joust.killScore,
-// egg.eggScoreEvents, ptero.pteroScoreEvent) and then throws them away (demo.ts
+// (sim.ts / stepSim); it emits score VALUES as events (joust.killScore,
+// egg.eggScoreEvents, ptero.pteroScoreEvent) and then throws them away (sim.ts
 // caps the event log: "nothing drains it until the jt4 score display"). This
 // module is that missing drain — one new module holding per-session state above
-// the per-frame sim, and a `stepGame` that WRAPS `stepDemo` (no second stepping
+// the per-frame sim, and a `stepGame` that WRAPS `stepSim` (no second stepping
 // path — the jt2-1 one-sim seam) and DRAINS each frame's score events into
 // per-player BCD registers.
 //
@@ -35,12 +35,12 @@
 // JOUSTRV4.SRC:7362-7366) — only the SCRTEN *input digit* is backwards.
 
 import {
-  createWaveDemo,
-  stepDemo,
+  createWaveSim,
+  stepSim,
   respawnPlayerProcess,
-  type DemoState,
-  type DemoEvent,
-} from './demo.js'
+  type SimState,
+  type SimEvent,
+} from './sim.js'
 import { dispatchWaveType, waveRowAt, type ResolvedWaveType, type PlayersAlive } from './wave.js'
 import type { PlayerInput } from './flight.js'
 import type { GameEvent } from './events.js'
@@ -80,8 +80,8 @@ export interface GameState {
   gover: number
   /** 1-based wave, mirrored from the sim. */
   wave: number
-  /** The wrapped deterministic sim (createWaveDemo / stepDemo). */
-  sim: DemoState
+  /** The wrapped deterministic sim (createWaveSim / stepSim). */
+  sim: SimState
   /**
    * jt5-1 — THIS FRAME's audio cues: the sim's own stream (`sim.cues`) followed
    * by the moments only the SESSION layer resolves (the extra man, the wave
@@ -157,7 +157,7 @@ export interface GameScoreEvent {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-/** Player process ids (mirroring demo.ts PLAYER1_ID / PLAYER2_ID). */
+/** Player process ids (mirroring sim.ts PLAYER1_ID / PLAYER2_ID). */
 const PLAYER1_ID = 1
 /** Default co-op: two knights, two ledgers. */
 const DEFAULT_PLAYER_COUNT = 2
@@ -311,13 +311,13 @@ export function bookDeath(players: readonly PlayerLedger[], player: number): Pla
 // ─── The session layer ──────────────────────────────────────────────────────
 
 /**
- * A fresh game: the sim is a real `createWaveDemo(seed, playerCount)` — the
+ * A fresh game: the sim is a real `createWaveSim(seed, playerCount)` — the
  * count reaches the sim, so ledgers and mounts cannot diverge (jt11-1) —
  * with `playerCount` ledgers (default 2) at score 0. Deterministic — same
  * seed and count, same GameState. Pure.
  */
 export function createGame(seed: number, playerCount: number = DEFAULT_PLAYER_COUNT): GameState {
-  const sim = createWaveDemo(seed, playerCount)
+  const sim = createWaveSim(seed, playerCount)
   const players: PlayerLedger[] = Array.from({ length: playerCount }, () => ({
     score: 0,
     scoreBcd: scoreToBcd(0),
@@ -382,8 +382,8 @@ function playersAliveTuple(players: readonly PlayerLedger[]): [boolean, boolean]
 }
 
 /**
- * One frame: delegate stepping to `stepDemo` (the produced sim is bit-identical to a raw
- * stepDemo — NO second stepping path, the jt2-1 one-sim seam), then run the SESSION layer
+ * One frame: delegate stepping to `stepSim` (the produced sim is bit-identical to a raw
+ * stepSim — NO second stepping path, the jt2-1 one-sim seam), then run the SESSION layer
  * over the single step — score, lives, GOVER, and the gladiator arm/detect/award loop all
  * ride the ONE sim step. Pure — the argument is never mutated. In order:
  *
@@ -393,21 +393,21 @@ function playersAliveTuple(players: readonly PlayerLedger[]): [boolean, boolean]
  *      death (collisionPass removes a joust loser / ptero victim with no respawn).
  *   3. DETECT partner-kills (jt4-4): record each fresh collisionPass `partnerKill` event
  *      into the PLYG guards (recordPartnerKill / SPDGLA INC ,Y).
- *   4. On a WAVE ADVANCE (the advance runs inside stepDemo): AWARD the ending gladiator
+ *   4. On a WAVE ADVANCE (the advance runs inside stepSim): AWARD the ending gladiator
  *      wave's 3,000 to the first partner-killer from the recorded guards, then ARM the new
  *      wave's PLYG guards for its resolved type (armWaveGuards — the polarity at wave start).
  *   5. SETTLE out/GOVER from the lives every frame (recompute, never carry gover forward).
  */
 export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>): GameState {
-  const sim = stepDemo(game.sim, inputs)
+  const sim = stepSim(game.sim, inputs)
   // jt5-1 — the SESSION layer's own cues. The sim's stream (`sim.cues`) is
-  // prepended at the end; these are the three moments `stepDemo` cannot see,
+  // prepended at the end; these are the three moments `stepSim` cannot see,
   // because the ledgers and the respawn live up here.
   const cues: GameEvent[] = []
-  const prior = new Set<DemoEvent>(game.sim.events)
+  const prior = new Set<SimEvent>(game.sim.events)
   // A type-predicate filter narrows to the score variant without a cast, so a future
-  // DemoEvent-shape drift is a compile error rather than a silent runtime assumption.
-  const isFreshScore = (e: DemoEvent): e is Extract<DemoEvent, { kind: 'score' }> =>
+  // SimEvent-shape drift is a compile error rather than a silent runtime assumption.
+  const isFreshScore = (e: SimEvent): e is Extract<SimEvent, { kind: 'score' }> =>
     !prior.has(e) && e.kind === 'score'
   const scoreEvents: GameScoreEvent[] = sim.events
     .filter(isFreshScore)
@@ -427,7 +427,7 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
   // jt4-4 — the arm / detect / award loop, LIVE on the single sim step.
   // DETECT: fold each fresh partner-kill event from collisionPass into the guards (SPDGLA).
   let guards: WaveGuards = game.guards ?? { plyg1: 0, plyg2: 0 }
-  const isFreshPartnerKill = (e: DemoEvent): e is Extract<DemoEvent, { kind: 'partnerKill' }> =>
+  const isFreshPartnerKill = (e: SimEvent): e is Extract<SimEvent, { kind: 'partnerKill' }> =>
     !prior.has(e) && e.kind === 'partnerKill'
   for (const pk of sim.events.filter(isFreshPartnerKill)) guards = recordPartnerKill(guards, pk.winner)
 
@@ -499,7 +499,7 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
       cues.push({ type: 'player-materialise', player: id === 2 ? 2 : 1 })
     }
   })
-  const finalSim: DemoState =
+  const finalSim: SimState =
     processes === sim.sim.processes ? sim : { ...sim, sim: { ...sim.sim, processes } }
 
   // SNREPL "EXTRA MAN" (:8089) — one cue per man awarded, counted off the ledger
@@ -521,8 +521,8 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
   }
 }
 
-/** The set of live player process ids in a sim frame (GameState.sim is a DemoState). */
-function livePlayerIds(state: DemoState): Set<number> {
+/** The set of live player process ids in a sim frame (GameState.sim is a SimState). */
+function livePlayerIds(state: SimState): Set<number> {
   return new Set(state.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id))
 }
 

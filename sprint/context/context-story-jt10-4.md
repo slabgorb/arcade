@@ -1,7 +1,7 @@
 # Story jt10-4 Context
 
 ## Title
-Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4
+Attract cycle: self-play (sim.ts) + banner pages (BEWARE OF THE PTERODACTYL, HOME OF THE LAVA TROLL) + attract-page scheduler — supersedes ad1-4
 
 ## Metadata
 - **Story ID:** jt10-4
@@ -29,7 +29,7 @@ Attract cycle: self-play (demo.ts) + banner pages (BEWARE OF THE PTERODACTYL, HO
 
 ### What already exists (reuse substrate)
 
-- **`demo.ts` (jt2-7 lineage, 2521 lines)** — wave-1 self-play simulation. **SHIPPED**. This story REUSES it unchanged; TEA/Dev must NOT rebuild or re-scaffold `demo.ts`.
+- **`sim.ts` (jt2-7 lineage, 2521 lines)** — wave-1 self-play simulation. **SHIPPED**. This story REUSES it unchanged; TEA/Dev must NOT rebuild or re-scaffold `sim.ts`.
 - **`cabinet.ts` (jt10-2, DONE)** — Cabinet state machine. Defines `CabinetMode = 'attract' | 'title' | ...`, boots into `attract`, has the `GOVER` hinge (`GOVER_ATTRACT $7F` → attract), and carries `toAttract(cab, seed, playerCount)` reset (line 129) explicitly annotated "the fresh-attract reset is toAttract / jt10-4".
 - **`pumpFrames` (src/shell/timebase.ts)** — Fixed-timestep shell clock. SHIPPED.
 - **`@shared/highscore`** — High-score qualifies + storage. SHIPPED.
@@ -42,7 +42,7 @@ The attract mode is itself a scheduler: it cycles through a sequence of pages wi
 
 1. **Title screen** — (handled by jt10-3; this story does NOT implement title)
 2. **High-score table** — (handled by jt10-7; this story does NOT implement high-score entry)
-3. **Self-play demo** — Runs `demo.ts` under cabinet attract, with the live game rendered onscreen
+3. **Self-play demo** — Runs `sim.ts` under cabinet attract, with the live game rendered onscreen
 4. **Rules/banner pages** — Short-dwell overlays: *BEWARE OF THE PTERODACTYL*, *HOME OF THE LAVA TROLL* (and any other banners from `ATT.SRC`)
 
 The sequence repeats. Each page dwells for a fixed interval; colours cycle per `ATT.SRC:173` (~2.5 s cadence).
@@ -82,7 +82,7 @@ Epic `ad1` story `ad1-4` ("joust attract simulation") is superseded by this stor
    - Colour from scheduler's `colourCycle` output
    - Verified via `render.ts?raw` source-wiring idiom
 
-2. **Self-play render** — Pumps `demo.ts` frames under attract and renders the live game (reuses existing game render path)
+2. **Self-play render** — Pumps `sim.ts` frames under attract and renders the live game (reuses existing game render path)
 
 3. **Transition blending** — Smooth dwell between pages (colour fade, text fade) per ROM behaviour
 
@@ -111,7 +111,7 @@ Epic `ad1` story `ad1-4` ("joust attract simulation") is superseded by this stor
 4. **Shell: Self-play demo runs under attract**
    - GIVEN a cabinet in `attract` mode
    - WHEN the attract-page scheduler is on the demo page
-   - THEN `demo.ts` frames are stepped (via `pumpFrames`)
+   - THEN `sim.ts` frames are stepped (via `pumpFrames`)
    - AND the live game renders onscreen (no pause, no overlay)
    - AND the demo runs deterministically (same seed → same moves/output every time)
 

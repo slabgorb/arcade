@@ -43,7 +43,7 @@ knobs and none for a row:
 |---|---|---|
 | `src/core/wave.ts` | 24 | `emytimForWave as difficultyEmytim`, `seedBudgetForRow` |
 | `src/core/arena.ts` | 51 | `lavaLevelForWave as difficultyLava` |
-| `src/core/demo.ts` | 66 | `emytimForWave` (re-exported via `wave.ts:294`) |
+| `src/core/sim.ts` | 66 | `emytimForWave` (re-exported via `wave.ts:294`) |
 
 `wave.ts:294`, `wave.ts:306` and `arena.ts:340` are thin delegators — the
 retrofit already landed. `enemy.ts`'s two "difficulty" hits (lines 114, 117) are

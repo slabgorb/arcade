@@ -2,15 +2,15 @@
 //
 // Story td1-12 — RED phase (Leeloo / TEA). The joust wave counter is BCD but every
 // ADVANCE-BLOCK consumer reads it as a 1-based decimal wave. `demo.wave` is advanced
-// by `nextWaveBcd` (demo.ts, LDA WAVBCD / ADDA #$01 / DAA, JOUSTRV4.SRC:2001-2004),
+// by `nextWaveBcd` (sim.ts, LDA WAVBCD / ADDA #$01 / DAA, JOUSTRV4.SRC:2001-2004),
 // so it is a BCD-PACKED byte — 1..9 then 0x10, 0x11 … 0x99, 0x00 — while `waveRowAt`,
 // `applyWaveDestruction`, `spawnWaveEnemies`, `trollSpawnable` and `seedWaveBudget`
-// (demo.ts, the advance block) and `resolveWaveType` (game.ts) all document their
+// (sim.ts, the advance block) and `resolveWaveType` (game.ts) all document their
 // argument as a 1-based DECIMAL wave. BCD and decimal AGREE for waves 1-9 and diverge
 // forever after, so nothing is visibly wrong until the TENTH wave.
 //
 // ─── THE RULED FIX — OPTION (B), per the user's setup decision ────────────────
-// Hold a DECIMAL, monotone wave in `DemoState.wave` (the ROM's PWAVE table pointer,
+// Hold a DECIMAL, monotone wave in `SimState.wave` (the ROM's PWAVE table pointer,
 // walked by LDX PWAVE,U / … / LDX #WTBRST, :2011-2019 — monotone, and NEVER a BCD
 // counter), and derive the WAVBCD byte only where the ROM's byte semantics matter:
 // the display (WAVEN3 formats WAVBCD for OUTBCD, :2399-2403) and the 0x99 wrap.
@@ -18,7 +18,7 @@
 // modelling it as the game's wave number is the bug this story ends.
 //
 // ─── WHAT IS RED HERE, AND WHY IT IS NOT VACUOUS ─────────────────────────────
-// Every test below DRIVES the cabinet through its own real `stepDemo`/`stepGame`
+// Every test below DRIVES the cabinet through its own real `stepSim`/`stepGame`
 // advance — never a hand-written `wave:` literal, the exact trap that let uf1-2's
 // round 1 ship. The driving is REGIME-NEUTRAL: it counts wave ADVANCES (clear the
 // board, step, the wave increments once), so `advance(d) × 9` puts the cabinet on
@@ -28,7 +28,7 @@
 // after Option (B) they pass. Waves 1-9 are the untouched control (BCD ≡ decimal).
 //
 // ─── COORDINATION WITH uf1-2's SUITE ─────────────────────────────────────────
-// `tests/difficulty-wiring.test.ts` R2-1..R2-3 pin the DIFFICULTY hop (demo.ts,
+// `tests/difficulty-wiring.test.ts` R2-1..R2-3 pin the DIFFICULTY hop (sim.ts,
 // `decimalWaveFromBcd(demo.wave)`) and deliberately stage so the wave NEVER advances
 // (an enemy is always present), so they exercise none of the advance-block consumers
 // this story owns — and no probe here can accidentally demand uf1-2's fix, nor vice
@@ -38,58 +38,64 @@
 // monotone contract. That re-seat is Dev's, not this file's.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, type DemoState, type DemoProcess } from './helpers/demo-contract.js'
+import { loadSim, type SimState, type SimProcess } from './helpers/sim-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
 import { loadGameFull, type GameState } from './helpers/game-contract.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
 // ─── Regime-neutral driving ──────────────────────────────────────────────────
 
-const players = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
-const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
-const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+// (the local `players` projection retired with jt11-4: `strippedToPlayers` owns that
+//  half of the clear-the-board idiom now, and the waiting room the other half)
+const enemies = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const eggs = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 
 /**
  * Advance the cabinet by EXACTLY ONE wave, without asserting anything about the
  * counter's units. A wave clears only with no enemies, no eggs, and a player present
- * (demo.ts), so stripping the board to its knights makes the very next
- * `stepDemo` take the advance branch. Counting these calls is the regime-neutral
+ * (sim.ts), so stripping the board to its knights makes the very next
+ * `stepSim` take the advance branch. Counting these calls is the regime-neutral
  * odometer: N advances from the wave-1 seed ⇒ the cabinet is on its (N+1)th wave,
  * BCD or decimal. Throws if the advance did not happen — a silent non-advance would
  * make every downstream ordinal wrong and the test vacuously green.
+ *
+ * jt11-4 — stripping the board to its knights is no longer the whole of "no enemies":
+ * an enemy still holding a transporter number counts as alive (it is running CRELP in
+ * the ROM too), so the waiting room has to be emptied alongside `sim.processes`.
+ * `strippedToPlayers` is exactly that pair, and the odometer stays regime-neutral.
  */
 const advance = (
-  demo: Awaited<ReturnType<typeof loadDemo>>,
-  d: DemoState,
-): DemoState => {
-  let s: DemoState = { ...d, sim: { ...d.sim, processes: players(d) } }
+  demo: Awaited<ReturnType<typeof loadSim>>,
+  d: SimState,
+): SimState => {
+  let s: SimState = strippedToPlayers(d)
   const before = s.wave
-  for (let i = 0; i < 6 && s.wave === before; i++) s = demo.stepDemo(s)
+  for (let i = 0; i < 6 && s.wave === before; i++) s = demo.stepSim(s)
   if (s.wave === before) throw new Error('the cleared wave did not advance — staging is wrong')
   return s
 }
 
 /** The demo the cabinet reaches on its Nth wave, driven through its own advance. */
-const demoAtNthWave = (demo: Awaited<ReturnType<typeof loadDemo>>, n: number): DemoState => {
-  let d = demo.createWaveDemo(SEED) // seeds wave 1 (demo.ts createWaveDemo)
+const demoAtNthWave = (demo: Awaited<ReturnType<typeof loadSim>>, n: number): SimState => {
+  let d = demo.createWaveSim(SEED) // seeds wave 1 (sim.ts createWaveSim)
   for (let i = 1; i < n; i++) d = advance(demo, d)
   return d
 }
 
 /**
  * The game-layer twin of `advance`, so the overlay readout is driven, not hand-set.
- * `GameState.sim` is a DemoState, so the board lives two levels down at
- * `g.sim.sim.processes`; clear it there and stepGame delegates the advance to stepDemo.
+ * `GameState.sim` is a SimState, so the board lives two levels down at
+ * `g.sim.sim.processes`; clear it there and stepGame delegates the advance to stepSim.
+ * jt11-4 — and the transporter's waiting room, `g.sim.pendingEnemies`, empties with it
+ * (see `advance` above); `strippedToPlayers` does both on the SimState.
  */
 const advanceGame = (
   game: Awaited<ReturnType<typeof loadGameFull>>,
   g: GameState,
 ): GameState => {
-  let s: GameState = {
-    ...g,
-    sim: { ...g.sim, sim: { ...g.sim.sim, processes: players(g.sim) } },
-  }
+  let s: GameState = { ...g, sim: strippedToPlayers(g.sim) }
   const before = s.sim.wave
   for (let i = 0; i < 6 && s.sim.wave === before; i++) s = game.stepGame(s)
   if (s.sim.wave === before) throw new Error('the cleared wave did not advance (game layer)')
@@ -102,7 +108,7 @@ const advanceGame = (
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-1 — the wave the advance block reads is the wave the cabinet is on', () => {
   it('holds the tenth wave as 10, not its BCD byte 0x10 (= 16)', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // Nine advances from the wave-1 seed. Waves 1-9 are BCD ≡ decimal, so the drive
     // itself is identical under either regime; only the LANDING differs — the ROM's
     // DAA takes 0x09 → 0x10, and 0x10 read as a plain number is 16.
@@ -111,7 +117,7 @@ describe('AC-1 — the wave the advance block reads is the wave the cabinet is o
   })
 
   it("materialises the tenth wave's OWN complement — wave 10's eggs, not wave 16's ground enemies", async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const w = await loadWave()
 
     // Discriminability, asserted before the behaviour so a future table edit that
@@ -177,7 +183,7 @@ describe('AC-2 — the dev-overlay wave readout', () => {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-3 — the counter is monotone, so it neither resets nor dies at wave 100', () => {
   it('reaches the 101st wave as 101 — never rolling back to wave 1', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
 
     // One hundred advances from the wave-1 seed. Against the current tree this cannot
     // even ARRIVE: the 99→100 advance sets the counter to 0x00 and waveRowAt(0) throws,
@@ -189,7 +195,7 @@ describe('AC-3 — the counter is monotone, so it neither resets nor dies at wav
   })
 
   it('plays the 101st wave differently from the first — the difficulty does not reset', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const w = await loadWave()
 
     // The mechanism, stated as an invariant the fix must satisfy: a monotone wave sends
@@ -200,15 +206,15 @@ describe('AC-3 — the counter is monotone, so it neither resets nor dies at wav
       w.waveRowAt(1),
     )
 
-    const first = demo.createWaveDemo(SEED)
+    const first = demo.createWaveSim(SEED)
     const wave101 = demoAtNthWave(demo, 101)
     expect(wave101.wave, 'the 101st wave must not read as the first').not.toBe(first.wave)
   })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-4 — the uf1-2 TRIPWIRE. stepDemo already decodes demo.wave through
-//        `decimalWaveFromBcd(demo.wave)` (demo.ts), which THROWS on a byte that
+// AC-4 — the uf1-2 TRIPWIRE. stepSim already decodes demo.wave through
+//        `decimalWaveFromBcd(demo.wave)` (sim.ts), which THROWS on a byte that
 //        is not valid BCD. The tenth decimal wave, 10, is 0x0A — not valid BCD — so
 //        the moment `demo.wave` becomes decimal that call site MUST change in the same
 //        edit or the game dies at the tenth wave. This test drives PAST the tenth wave
@@ -216,16 +222,16 @@ describe('AC-3 — the counter is monotone, so it neither resets nor dies at wav
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-4 — the tripwire: a decimal counter must not die at the decode seam', () => {
   it('steps through the tenth wave and on to the twelfth without throwing, reading 12', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // Eleven advances → the twelfth wave. Against the current tree the ordinal is the
     // byte 0x12 read as decimal 18 (RED). Under a CORRECT Option (B) the decode seam at
-    // demo.ts has been updated alongside the field and this reaches 12 cleanly;
+    // sim.ts has been updated alongside the field and this reaches 12 cleanly;
     // under a PARTIAL fix (field made decimal, :1792 left decoding) the drive throws at
     // the tenth wave — which is exactly the failure this guard exists to force.
     const twelfth = demoAtNthWave(demo, 12)
     expect(twelfth.wave, 'the twelfth wave is 12, not the byte 0x12 read as 18').toBe(12)
 
     // And it keeps running — one more step past the twelfth wave must not throw.
-    expect(() => demo.stepDemo(twelfth), 'the cabinet keeps stepping past the tenth wave').not.toThrow()
+    expect(() => demo.stepSim(twelfth), 'the cabinet keeps stepping past the tenth wave').not.toThrow()
   })
 })

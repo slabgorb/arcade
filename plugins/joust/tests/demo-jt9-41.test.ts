@@ -19,7 +19,7 @@
 // The egg is collidable across the WHOLE cutscene (PID stays $80+EGGID, PCOLY1/PCOLY2
 // maintained every EGGTBL row, :3302-3305), so the killable window is the whole
 // cutscene, not just the standing frame. This REVISES jt9-25's simplification, which
-// made any `hatchRow`-set egg non-collectible (demo.ts catch loop, the
+// made any `hatchRow`-set egg non-collectible (sim.ts catch loop, the
 // `if (ep.egg.hatchRow !== undefined) continue` guard) to keep the seed-0xface
 // fingerprints still. Removing that guard is the whole change: the existing catch loop
 // already scores via the ladder, removes the egg (so the buzzard never spawns at
@@ -35,17 +35,17 @@
 //     never nudge a digest toward the new output.
 //  3. Update the stale jt9-25 comment at the catch-loop guard when removing it.
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoProcess,
-  type DemoState,
-  type DemoEvent,
+  loadSim,
+  type SimProcess,
+  type SimState,
+  type SimEvent,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 
 const SEED = 0x1234_5678
 const PLAYER1_ID = 1
@@ -69,8 +69,8 @@ function eggOf(over: Partial<EggState>): EggState {
 }
 
 /** A settled kill-egg already MID-CUTSCENE — `hatchRow` set is the reachable state
- *  stepDemo writes every frame of the EGGMAN walk. */
-function hatchingEggProc(over: Partial<EggState> = {}): DemoProcess {
+ *  stepSim writes every frame of the EGGMAN walk. */
+function hatchingEggProc(over: Partial<EggState> = {}): SimProcess {
   return {
     id: 0x1_0000 + 1,
     cls: 'secondary',
@@ -81,7 +81,7 @@ function hatchingEggProc(over: Partial<EggState> = {}): DemoProcess {
   }
 }
 
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -105,22 +105,22 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
   }
 }
 
-async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
+async function stagedDemo(processes: SimProcess[], wave = 1): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = dmod.createWaveSim(SEED)
   return { ...base, wave, sim: { ...base.sim, processes } }
 }
 
-// The remount buzzard rides `0x40_0000 + eggId` (demo.ts remountEnemyProcess) — a
+// The remount buzzard rides `0x40_0000 + eggId` (sim.ts remountEnemyProcess) — a
 // namespace above every other live process (wave enemies < 0x10000, baiters 0x30_0000).
 // Scoping to it isolates the REMOUNT from the wave-advance enemies that spawn once the
 // arena clears after a collect, which a bare enemy count would wrongly catch.
 const REMOUNT_NS = 0x40_0000
-const remountsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy' && p.id >= REMOUNT_NS)
-const hasProc = (d: DemoState, id: number): boolean => d.sim.processes.some((p) => p.id === id)
-const eggScores = (d: DemoState): Array<DemoEvent & { value: number }> =>
+const remountsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy' && p.id >= REMOUNT_NS)
+const hasProc = (d: SimState, id: number): boolean => d.sim.processes.some((p) => p.id === id)
+const eggScores = (d: SimState): Array<SimEvent & { value: number }> =>
   d.events.filter(
-    (e): e is DemoEvent & { value: number } =>
+    (e): e is SimEvent & { value: number } =>
       e.kind === 'score' && (e as { reason?: string }).reason === 'egg',
   )
 
@@ -129,11 +129,11 @@ const EGG_X = 100
 /** Step up to `frames`, running `each` after every step; stops early only via `each`
  *  returning true (so the buzzard-spawn frame never ends the loop implicitly). */
 function run(
-  step: (d: DemoState) => DemoState,
-  start: DemoState,
+  step: (d: SimState) => SimState,
+  start: SimState,
   frames: number,
-  onFrame: (d: DemoState) => void,
-): DemoState {
+  onFrame: (d: SimState) => void,
+): SimState {
   let d = start
   for (let f = 0; f < frames; f++) {
     d = step(d)
@@ -148,14 +148,14 @@ function run(
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-41 AC-1 — a player kills/collects a hatching egg (PLYEGG, JOUSTRV4.SRC:3009)', () => {
   it('collects an egg mid-CRACK (hatchRow 0): egg-collected cue + a reason:egg score', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const start = await stagedDemo([
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 0, hatchNap: 7 }),
     ])
     let collected = false
     let scored = false
-    run(dmod.stepDemo, start, 200, (d) => {
+    run(dmod.stepSim, start, 200, (d) => {
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
       if (eggScores(d).length > 0) scored = true
     })
@@ -165,14 +165,14 @@ describe('jt9-41 AC-1 — a player kills/collects a hatching egg (PLYEGG, JOUSTR
   })
 
   it('collects the STANDING KNIGHT (hatchRow 7, PLY4S) — the literal EGGLLP kill', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // hatchRow 7 = the terminal PLY4S standing frame; the EGGLLP wait before remount.
     const start = await stagedDemo([
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 7, hatchNap: 7 }),
     ])
     let collected = false
-    run(dmod.stepDemo, start, 60, (d) => {
+    run(dmod.stepSim, start, 60, (d) => {
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
     })
     expect(collected, 'the standing knight (PLY4S) is killable during EGGLLP').toBe(true)
@@ -186,7 +186,7 @@ describe('jt9-41 AC-1 — a player kills/collects a hatching egg (PLYEGG, JOUSTR
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.SRC:3086)', () => {
   it('CONTROL: an untouched standing knight (hatchRow 7, nap 1) DOES spawn a buzzard', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // No player near it: the cutscene runs off the end and remounts. Passes today and
     // after — it proves the buzzard normally comes, so AC-2's cancel is non-vacuous.
     const start = await stagedDemo([
@@ -194,14 +194,14 @@ describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.S
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, hatchRow: 7, hatchNap: 1 }),
     ])
     let sawRemount = false
-    run(dmod.stepDemo, start, 20, (d) => {
+    run(dmod.stepSim, start, 20, (d) => {
       if (remountsIn(d).length > 0) sawRemount = true
     })
     expect(sawRemount, 'the uncollected cutscene must remount into a buzzard').toBe(true)
   })
 
   it('a player on the standing knight cancels the remount — NO buzzard ever flies in', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const start = await stagedDemo([
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 0, hatchRow: 7, hatchNap: 1 }),
@@ -210,7 +210,7 @@ describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.S
     // 150 frames > EGG_HATCH_ANIM_FRAMES (112): well past when a remount could fly in.
     // Scoped to the remount namespace so the wave-advance enemies that appear once the
     // arena clears after the collect are not miscounted as the cancelled buzzard.
-    const end = run(dmod.stepDemo, start, 150, (d) => {
+    const end = run(dmod.stepSim, start, 150, (d) => {
       if (remountsIn(d).length > 0) sawRemount = true
     })
     // TODAY the egg is un-collectible, so the flatMap remounts it into a buzzard.
@@ -225,14 +225,14 @@ describe('jt9-41 AC-2 — a kill cancels the remount buzzard (AUTOFF, JOUSTRV4.S
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-41 AC-3 — the score is the egg ladder, not killScore (EGGVAL, JOUSTRV4.SRC:3097)', () => {
   it('a first, grounded collect scores 250 — the ladder rung, not a bounder/hunter/lord value', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // pfeet 1 (already bounced) → no +500 air-catch bonus, isolating rung 1 = 250.
     const start = await stagedDemo([
       playerAt(PLAYER1_ID, EGG_X, 40),
       hatchingEggProc({ posX: EGG_X, posY: 40 << 8, pfeet: 1, hitCount: 0, hatchRow: 0, hatchNap: 7 }),
     ])
     const values: number[] = []
-    run(dmod.stepDemo, start, 200, (d) => {
+    run(dmod.stepSim, start, 200, (d) => {
       if (d.cues.some((c) => c.type === 'egg-collected')) {
         for (const e of eggScores(d)) values.push(e.value)
       }
@@ -252,7 +252,7 @@ describe('jt9-41 AC-3 — the score is the egg ladder, not killScore (EGGVAL, JO
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-41 AC-4 — a killed knight leaves nothing behind (DEC NENEMY, JOUSTRV4.SRC:3080)', () => {
   it('after the kill there is no egg and no enemy for that lineage', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const eggId = 0x1_0000 + 1 // hatchingEggProc's id
     const remountId = REMOUNT_NS + eggId // what remountEnemyProcess would create
     const start = await stagedDemo([
@@ -261,7 +261,7 @@ describe('jt9-41 AC-4 — a killed knight leaves nothing behind (DEC NENEMY, JOU
     ])
     let collected = false
     let sawRemount = false
-    const end = run(dmod.stepDemo, start, 150, (d) => {
+    const end = run(dmod.stepSim, start, 150, (d) => {
       if (d.cues.some((c) => c.type === 'egg-collected')) collected = true
       if (hasProc(d, remountId)) sawRemount = true
     })

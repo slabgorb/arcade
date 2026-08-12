@@ -101,7 +101,7 @@ All JavaScript error checks (#10 from JS checklist) apply, plus:
 
 **13. Fix-introduced regressions (meta-check)**
 After applying fixes for review findings, re-scan the fix diff against
-checks #1-#12 and #14-#26. Common patterns:
+checks #1-#12 and #14-#30. Common patterns:
 - Adding `as any` to silence a type error instead of fixing it
 - Adding null checks but using `||` instead of `??`
 - Adding runtime validation but not updating the type to match
@@ -443,13 +443,111 @@ compared three test-local values in a file importing only `computeStatus` from
 correct version — both constants imported and compared to each other — was written
 into a SIBLING file by that same diff)*
 
+
+**27. A gate that waits for a THING, in a mode where the thing is never created**
+#14 covers an edge computed in one branch. This is the mirror: a CONDITION that
+waits for something to exist, written from the mode where it always eventually
+does. Replacing "has the batch arrived?" (`pending.length === 0`) with "is a member
+HERE?" (`items.some(isMember)`) looks strictly stronger — it is, in the mode you
+tested — and starves permanently in any mode that produces no members at all. The
+failure is a MISSING action, so nothing throws and no snapshot differs.
+- The tell is a predicate over a COLLECTION's contents replacing a predicate over
+  its emptiness or its arrival. Enumerate the modes/types/levels that populate that
+  collection, and name the one that populates it with ZERO of the kind you match
+- A sibling kind does not rescue it: check the discriminant literally. `kind: 'ptero'`
+  does not satisfy `kind === 'enemy'` however alike the two read
+- The repair is usually the DISJUNCTION of both readings — *a member is here, OR
+  none is coming* — not a wider `some()`
+- The test must reach a mode the existing suites never reach. If every suite for
+  this subsystem stops at the same index (wave 4, page 1, tier 0), that boundary is
+  where the defect will be, and a control at the LAST covered index proves the
+  waiting behaviour still holds
+*Origin: jt11-4 round-2 review F-1 (a deferred spawn gated on `processes.some(p =>
+p.kind === 'enemy')` never fired on an egg wave, which enters only eggs — measured
+as every FIFTH wave, one in five silently losing the feature. The suites for that
+subsystem all stopped one wave short of the first egg wave)*
+
+**28. A guard that selects its READ-SET by pattern, and a count that cannot see it shrink**
+#25 asks over what text a match runs. This asks the question one level up: over
+WHICH FILES? A selector written as a regex — `/core[/\\](events|demo)\.ts$/`,
+a `join()`-built path, a glob assembled from parts — spells its filenames in a form
+no rename sweep can grep for. The alternation survives the rename matching NOTHING,
+the guard silently stops reading the file it exists to read, and every test stays
+green.
+- Non-vacuity counts (`expect(claims).toBeGreaterThan(2)`) do NOT protect this. They
+  prove the set is non-empty, never that it is COMPLETE — the remaining files supply
+  enough hits on their own
+- Assert the read-set POSITIVELY: a `REQUIRED` list of repo-relative paths the
+  selector must reach. That is the only form that reddens on a narrowing
+- An ALLOW-LIST entry naming a file the selector no longer reaches is the
+  fingerprint of this bug already having happened — permission granted for something
+  nothing checks. Cross-check allow-list keys against the scan set
+- When renaming a module, grep its BASENAME (`demo`), not its filename (`demo.ts`):
+  any character class, alternation or path `join` splits the token you searched for
+- Probe such a guard OUT OF TREE. Copying the guard file into the directory it scans
+  puts the copy inside its own read-set, and the resulting failure looks exactly like
+  a real regression
+*Origin: jt11-4 round-2 review F-2 (a `demo.ts` → `sim.ts` rename left
+`/core[/\\](events|demo)\.ts$/` matching neither name; two cue-count guards
+silently dropped the game's largest cue-emitting file — 22 files scanned with it
+absent — while that file kept its allow-list entry for cues nothing was checking)*
+
+**29. An ORDERING assertion standing in for a MAGNITUDE the story is about**
+#18 covers a test apparatus that fails by passing. This is the specific shape where
+the apparatus is fine and the assertion is simply one axis short: when the defect is
+"these happen too FAST / too CLOSE / too SOON", `distinct`, `strictly increasing`
+and `at most one per step` are all satisfied by the minimum possible gap. The
+too-fast implementation passes the whole suite while failing the reported bug.
+- Read the DEFECT, not the mechanism. If the complaint is about rate, spacing, or
+  duration, at least one assertion must carry the NUMBER, cited to its source
+- `toBeGreaterThan(prev)` is an ordering claim. `toBeGreaterThanOrEqual(prev + GAP)`
+  is a magnitude claim. Only the second one can fail for the reason the story exists
+- Grep the codebase for the sibling cadence first — a subsystem that already staggers
+  something usually has the lower-bound idiom written, and the constant with it
+- The proof is the blast radius: collapse the quantity to its degenerate value and
+  count. If the older assertions stay green and only the new one reddens, the new one
+  was load-bearing and the others never were
+*Origin: jt11-4 round-2 review F-4 (an arrival cadence pinned as "distinct frames,
+strictly later, at most one per frame" went green on a 1-frame stagger — four
+arrivals inside a fifteenth of a second, which is the batch insert the story existed
+to remove. Collapsing the real 61-frame stagger to 1 left 16 of 18 tests green)*
+
+**30. A semantics-preserving REWRITE that breaks a guard reading the file as TEXT**
+#28 is about a guard whose read-set silently narrows. This is the mirror on the other
+side of the file: the guard is fine and the DATA gets rewritten into an equivalent
+form its parser accepts and its guard does not. A YAML re-serialisation, a JSON
+re-indent, a prettier pass over a fixture, a line-folded long scalar — the object
+graph is identical, every consumer that PARSES the file is happy, and the one guard
+that reads it as lines with an anchored regex (`/^ {2}- id: \S/`) reports zero
+matches. Nothing looks corrupted, because nothing is.
+- The tell is a diff with a huge line count and no content delta. Prove it: parse both
+  revisions and compare the structures, don't eyeball the hunks. If the structures are
+  equal and the line count moved, a text-level guard is the thing at risk
+- Conflict resolution during a REBASE is the high-risk moment — the merge is done by
+  hand, the file is large, and the reviewer already signed off on the pre-rebase tree
+- Run the suite that OWNS the file, not the suite you were working in. A repo with
+  two runners (one for app code, one for wiring invariants) will let a green app suite
+  stand in for the one that guards the file you actually rewrote
+- A "fully verified" claim in a commit message must ENUMERATE the gates it ran. A
+  subset stated without its complement reads as totality and is how this ships
+- Failure messages on such guards should name the SHAPE they wanted, not the data they
+  concluded was missing: "no story block matched `^ {2}- id:`" sends the reader two
+  spaces to the left; "declares no stories" sends them hunting for deleted records
+*Origin: jt11-4 round-3 review R2-F1 (a rebase reconciliation re-serialised an epic
+shard's twelve story blocks flush-left. YAML parsed identically — a story-by-story
+structural compare showed no content delta — but the orchestrator guard matched
+`^ {2}- id:` as text and asserted "epic shard declares no stories". The commit's own
+message claimed "Full verification" and named three suites, omitting the one that
+owns the file)*
+
+
 If ALL checks pass across all changed `.ts`/`.tsx` files, return:
 
 ```yaml
 GATE_RESULT:
   status: pass
   gate: typescript-review-checklist
-  message: "TypeScript self-review checklist passed (26 checks)"
+  message: "TypeScript self-review checklist passed (30 checks)"
   checks:
     - name: type-safety-escapes
       status: pass
@@ -489,7 +587,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#26"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#29"
 ```
 </pass>
 
@@ -554,7 +652,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#26 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#29 before handoff"
 ```
 </fail>
 

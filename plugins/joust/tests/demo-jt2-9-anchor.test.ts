@@ -18,7 +18,7 @@
 //   never hand-typed, so a re-transcription that changes the word moves the expectation):
 //     BRSTND 243→13   ORSTND 237→19   PLYR1 751→17 (XOFF 2)
 //
-// Current bug: drawList (demo.ts) emits every entity op as { x: posX,
+// Current bug: drawList (sim.ts) emits every entity op as { x: posX,
 // y: posY>>8 } — POSOFF NEVER applied. So (1) the whole sprite hangs a full YOFF
 // (13–19px) below the platform on ALL ledges (feet clip through), and (4b) the
 // mount and rider — which carry DIFFERENT POSOFF words — draw at the SAME origin
@@ -26,7 +26,7 @@
 // applies each frame's POSOFF so the op carries the FINAL blit coords as DATA.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, loadDemoRender, type DemoState, type DemoProcess, type EntityState, type EnemyState } from './helpers/demo-contract.js'
+import { loadSim, loadSimRender, type SimState, type SimProcess, type EntityState, type EnemyState } from './helpers/sim-contract.js'
 import { loadPictures } from './helpers/pictures-contract.js'
 
 const SEED = 0x1234_5678
@@ -43,26 +43,26 @@ function entityAt(posX: number, pixelY: number, airborne: boolean, over: Partial
   return { posX, posY: pixelY << 8, velXIndex: 0, velXFrac: 0, velY: 0, timeUp: 1, groundState: airborne ? null : 'PLYBR', plantZ: 0, airborne, animPhase: 0, ...over }
 }
 
-function groundedEnemy(id: number, posX: number, feetY: number): DemoProcess {
+function groundedEnemy(id: number, posX: number, feetY: number): SimProcess {
   const enemy: EnemyState = { entity: entityAt(posX, feetY, false), facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemyType: 'bounder', collisionEnabled: true, enemy }
 }
 
-function groundedPlayer(id: number, posX: number, feetY: number, mount: 'ostrich' | 'stork' = 'ostrich'): DemoProcess {
+function groundedPlayer(id: number, posX: number, feetY: number, mount: 'ostrich' | 'stork' = 'ostrich'): SimProcess {
   return { id, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount, collisionEnabled: true, entity: entityAt(posX, feetY, false) }
 }
 
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
+const only = (d: SimState, procs: SimProcess[]): SimState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ITEM 1 — LEDGE SEAT: a grounded sprite is POSOFF-LIFTED so its feet sit on the ledge
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt2-9 item 1 — the render applies each frame’s POSOFF Y-offset (feet on the ledge)', () => {
   it('a grounded buzzard’s draw op is lifted by its POSOFF YOFF above the feet line (BRSTND: 13px)', async () => {
-    const dmod = await loadDemo()
-    const r = await loadDemoRender()
+    const dmod = await loadSim()
+    const r = await loadSimRender()
     const FEET = 210 // CLIF5 snapY (LNDB5)
-    const demo = only(dmod.createWaveDemo(SEED), [groundedEnemy(0x40, 146, FEET)])
+    const demo = only(dmod.createWaveSim(SEED), [groundedEnemy(0x40, 146, FEET)])
 
     const op = r.drawList(demo).find((o) => o.kind === 'entity')
     expect(op, 'the grounded enemy must produce an entity op').toBeTruthy()
@@ -81,10 +81,10 @@ describe('jt2-9 item 1 — the render applies each frame’s POSOFF Y-offset (fe
   it('the lift is per-FRAME, not a global constant — a taller-offset frame lifts more', async () => {
     // A grounded ostrich mount (ORSTND, YOFF 19) lifts MORE than a buzzard (BRSTND, 13).
     // A single global seat-Y fix would move both by the same amount and fail this.
-    const dmod = await loadDemo()
-    const r = await loadDemoRender()
+    const dmod = await loadSim()
+    const r = await loadSimRender()
     const FEET = 162 // CLIF4 (LNDB4)
-    const demo = only(dmod.createWaveDemo(SEED), [groundedPlayer(1, 146, FEET)])
+    const demo = only(dmod.createWaveSim(SEED), [groundedPlayer(1, 146, FEET)])
     const ops = r.drawList(demo).filter((o) => o.kind === 'entity')
     const mount = ops.find((o) => o.name === 'ORSTND')
     expect(mount, 'the grounded player draws its ostrich mount ORSTND').toBeTruthy()
@@ -97,10 +97,10 @@ describe('jt2-9 item 1 — the render applies each frame’s POSOFF Y-offset (fe
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt2-9 item 4b — mount and rider are POSOFF-aligned, not stacked at one origin', () => {
   it('the ostrich mount and PLYR1 rider draw at their OWN POSOFF offsets (different y), not the same point', async () => {
-    const dmod = await loadDemo()
-    const r = await loadDemoRender()
+    const dmod = await loadSim()
+    const r = await loadSimRender()
     const FEET = 162
-    const demo = only(dmod.createWaveDemo(SEED), [groundedPlayer(1, 146, FEET)])
+    const demo = only(dmod.createWaveSim(SEED), [groundedPlayer(1, 146, FEET)])
     const ops = r.drawList(demo).filter((o) => o.kind === 'entity')
 
     const mount = ops.find((o) => o.name === 'ORSTND')
@@ -137,9 +137,9 @@ describe('jt2-9 item 1/4b — P2 STORK: the mount is POSOFF-lifted and the rider
    * top (rider.y >= mount.y, a small gap), and the mount is lifted off the feet.
    * P1 already satisfies it; P2 (stork) must too. */
   async function alignmentOf(mount: 'ostrich' | 'stork', mountName: string, riderName: string, feetY: number) {
-    const dmod = await loadDemo()
-    const r = await loadDemoRender()
-    const demo = only(dmod.createWaveDemo(SEED), [groundedPlayer(1, 146, feetY, mount)])
+    const dmod = await loadSim()
+    const r = await loadSimRender()
+    const demo = only(dmod.createWaveSim(SEED), [groundedPlayer(1, 146, feetY, mount)])
     const ops = r.drawList(demo).filter((o) => o.kind === 'entity')
     const m = ops.find((o) => o.name === mountName)
     const rd = ops.find((o) => o.name === riderName)

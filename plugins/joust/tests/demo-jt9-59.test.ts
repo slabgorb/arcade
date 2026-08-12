@@ -27,7 +27,7 @@
 // corrected here against the source.)
 //
 // THE OBSERVABLE, fix-agnostic. This suite never calls the schedule directly. It
-// drives `stepDemo` and reads, per frame, the pteros PRESENT in `sim.processes`
+// drives `stepSim` and reads, per frame, the pteros PRESENT in `sim.processes`
 // (the exact set `drawList` draws and `collisionPass` collides), plus the ptero
 // entity ops `drawList` emits. A faithful deferred port shows: zero pteros on the
 // advance frame, then the present/draw/collision count GROWING 0→1→2→3 one bird at
@@ -38,37 +38,36 @@
 // fail — the right red.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, drawList, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, drawList, type SimProcess, type SimState } from '../src/core/sim.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 // WAVE_TABLE[42] (wave 43): status 0xbb → WJSRTB index 5 = WPTERO, 3 pterodactyls.
 // Same fixture as demo-jt9-44 / demo-jt9-45: park one wave before the ptero wave,
-// strip to players, and the next stepDemo clears-and-advances into WPTERO.
+// strip to players, and the next stepSim clears-and-advances into WPTERO.
 const SEED = 0x1234
 const WAVE_BEFORE_PTERO_WAVE = 42
 const EXPECTED_PTEROS = 3
 const WINDOW = 260
 
-const pterosOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
+const pterosOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
 /** Ptero collision candidates: a present ptero with collisions enabled — the fields
  *  collisionPass reads off `sim.processes` (:1460). Absent from processes ⇒ not a candidate. */
-const collidablePteros = (d: DemoState): DemoProcess[] => pterosOf(d).filter((p) => p.collisionEnabled)
+const collidablePteros = (d: SimState): SimProcess[] => pterosOf(d).filter((p) => p.collisionEnabled)
 /** Ptero entity draw ops (PT1R..PT3L) — what `drawList` blits for the present pteros. */
-const pteroDrawOps = (d: DemoState): number =>
+const pteroDrawOps = (d: SimState): number =>
   drawList(d).filter((op) => op.kind === 'entity' && op.name.startsWith('PT')).length
 
-/** Park on the brink of the WPTERO wave, players only — the next step advances in. */
-function onTheBrinkOfThePteroWave(seed: number): DemoState {
-  const base = createWaveDemo(seed)
-  return {
-    ...base,
-    wave: WAVE_BEFORE_PTERO_WAVE,
-    sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') },
-  }
+/** Park on the brink of the WPTERO wave, players only — the next step advances in.
+ *  jt11-4: an enemy still holding a transporter number counts as alive (its process is
+ *  running CRELP), so the strip to players must empty the waiting room too or the wave
+ *  never clears — `strippedToPlayers` is that complete idiom. */
+function onTheBrinkOfThePteroWave(seed: number): SimState {
+  return { ...strippedToPlayers(createWaveSim(seed)), wave: WAVE_BEFORE_PTERO_WAVE }
 }
 
 /** Hush every non-player, non-ptero process (the wave's lords) so nothing bumps a
  *  ptero's posX and the wave stays open while the stagger plays out. */
-function hushNonPteros(d: DemoState): DemoState {
+function hushNonPteros(d: SimState): SimState {
   return {
     ...d,
     sim: {
@@ -92,7 +91,7 @@ interface WaveEntryTimeline {
 }
 
 function walkWaveEntry(seed: number, frames = WINDOW): WaveEntryTimeline {
-  let d = stepDemo(onTheBrinkOfThePteroWave(seed), {}) // frame 0: the clear-and-advance
+  let d = stepSim(onTheBrinkOfThePteroWave(seed), {}) // frame 0: the clear-and-advance
   const presentCount: number[] = []
   const drawCount: number[] = []
   const collideCount: number[] = []
@@ -103,7 +102,7 @@ function walkWaveEntry(seed: number, frames = WINDOW): WaveEntryTimeline {
     drawCount.push(pteroDrawOps(d))
     collideCount.push(collidablePteros(d).length)
     d = hushNonPteros(d)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
   }
   return {
     presentCount,

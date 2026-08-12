@@ -230,7 +230,7 @@ export interface EnemyState {
    * by FLIPLP's `TSTB`/`BNE GOFLAP` and as the level by FLAPS2's `CLRB`,
    * :6195-6196/:6170). Lives here rather than on `EntityState` for the same
    * reason a player's `facing` lives on the demo's PROCESS and not there
-   * (demo.ts Finding #2): `EntityState` is GENERATED (flight.ts) and shared
+   * (sim.ts Finding #2): `EntityState` is GENERATED (flight.ts) and shared
    * with the player, whose own migration-guard test JSON-compares only
    * `.entity` against a pre-jt5-3 reference pipeline. OPTIONAL — absent reads
    * as `false`, since an enemy that has never woken has never held the button
@@ -531,7 +531,7 @@ export function promote(
   // only ever absent or a glide — and a glide can no longer reach here at all,
   // since `frame.ts` skips the promotion check while one is pending. That is
   // true of production (both spawn sites pair `pchase: 0` with `brain: 'linet'`,
-  // `demo.ts:425` and `:654`, and nothing demotes) but nothing ENFORCED it, so
+  // `sim.ts:425` and `:654`, and nothing demotes) but nothing ENFORCED it, so
   // the deletion rested on an argued invariant rather than a checked one.
   // Constructed and measured during review: a `{pchase: 0, brain: 'boundr',
   // pjoy: {kind:'interval'}}` enemy carried that interval straight through into
@@ -1500,7 +1500,7 @@ export function stepEnemyDetailed(
   const arena = ctx?.arena ?? PRISTINE_ARENA
   // jt9-48 — the collision shove jt9-17 parked on the process (`PBUMPX`),
   // threaded in like `player`/`wave` because only the caller (frame.ts) holds
-  // the DemoProcess it rides. Spent by `B2DIR`/`SHDIR`'s bump-facing arm below.
+  // the SimProcess it rides. Spent by `B2DIR`/`SHDIR`'s bump-facing arm below.
   const bumpX = ctx?.bumpX ?? 0
   // jt9-1: `PPREV` — did a lava troll execute immediately before this process
   // this frame? Only the scheduler knows its own wake order, so it is threaded

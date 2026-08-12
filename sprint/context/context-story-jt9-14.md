@@ -15,7 +15,7 @@ Player-vs-ptero attack is box-only too — the third pass that stops at broadPha
 > ⚠ **CORRECTION — read before the Problem text below (SM, verified against the live tree 2026-08-04).**
 > The line cites in the epic description below are **STALE** (the file grew since filing) and it implies the
 > wrong directory. Do not chase `~:982` / `~:1073` / `~:734`. Current, verified locations — all in
-> `plugins/joust/src/core/demo.ts` (**core**, not shell):
+> `plugins/joust/src/core/sim.ts` (**core**, not shell):
 > - **player-vs-ptero attack pass (THE defect):** `:1491` `broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))` → `resolvePteroAttack` at `:1493`, no narrowPhase between them.
 > - **egg-catch pass (jt8-7's fixed reference):** broadPhase THEN narrowPhase at `:1544`/`:1552`.
 > - **joust pass (correct reference):** `:1379`/`:1385`.
@@ -32,11 +32,11 @@ Player-vs-ptero attack is box-only too — the third pass that stops at broadPha
 Filed by jt8-7, which wired narrowPhase into the player-vs-EGG catch pass and left this one alone by an explicit user ruling at setup ("Same defect family, deliberately a separate story. Do NOT widen jt8-7 to cover it.").
 
 THE DEFECT. `collisionPass` has THREE overlap passes and only two of them consult a mask:
-  - the joust pass (demo.ts:887-897) — broadPhase THEN narrowPhase. Correct.
-  - the player-vs-egg catch (demo.ts ~:1073) — broadPhase THEN narrowPhase as of jt8-7. Correct.
-  - the player-vs-ptero attack (demo.ts ~:982) — `broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))` and NOTHING ELSE.
+  - the joust pass (sim.ts:887-897) — broadPhase THEN narrowPhase. Correct.
+  - the player-vs-egg catch (sim.ts ~:1073) — broadPhase THEN narrowPhase as of jt8-7. Correct.
+  - the player-vs-ptero attack (sim.ts ~:982) — `broadPhase(collisionBox(playerJoust), entityBox(pt.entity!))` and NOTHING ELSE.
 
-The third one is not blocked on a missing asset the way the egg was: `collisionMaskFor` (demo.ts ~:734) ALREADY returns the real transcribed mask 'PT1RC' for a ptero, and PT1RC is a live COLLISION_TABLES entry with 13 span rows. So the mask exists, is transcribed, is claimed, is reachable through the existing helper — and the pass that most needs it (a lance-height duel resolved by `resolvePteroAttack`) never asks for it. Effect: the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H box, exactly the bug jt8-7 fixed for eggs.
+The third one is not blocked on a missing asset the way the egg was: `collisionMaskFor` (sim.ts ~:734) ALREADY returns the real transcribed mask 'PT1RC' for a ptero, and PT1RC is a live COLLISION_TABLES entry with 13 span rows. So the mask exists, is transcribed, is claimed, is reachable through the existing helper — and the pass that most needs it (a lance-height duel resolved by `resolvePteroAttack`) never asks for it. Effect: the player's reach against a pterodactyl is the flat 16px ENTITY_BOX_H box, exactly the bug jt8-7 fixed for eggs.
 
 MEASURED SHAPE OF THE FIX (jt8-7's, for reference — this pass will differ in the details): the catch now does
     if (catcher.collision === null) continue

@@ -48,9 +48,9 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const demoPath = join(repoRoot, 'src', 'core', 'demo.ts')
+const demoPath = join(repoRoot, 'src', 'core', 'sim.ts')
 
-/** demo.ts with comments and string literals stripped — the CODE, not the prose. */
+/** sim.ts with comments and string literals stripped — the CODE, not the prose. */
 function demoCode(): string {
   return readFileSync(demoPath, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -222,7 +222,7 @@ describe('jt8-4 REUSE — the catch pass routes through egg.ts, it does not re-i
   it('the hit-count bump goes through egg.ts bumpEggHits (the capped one)', () => {
     expect(
       /\bbumpEggHits\s*\(/.test(demoCode()),
-      'demo.ts must CALL bumpEggHits — a bare `+ 1` scores identically today but ' +
+      'sim.ts must CALL bumpEggHits — a bare `+ 1` scores identically today but ' +
         'lets the stored counter run past the ROM peg of 4 (:3043-3053)',
     ).toBe(true)
   })
@@ -231,7 +231,7 @@ describe('jt8-4 REUSE — the catch pass routes through egg.ts, it does not re-i
     const code = demoCode()
     expect(
       /\beggValue\s*\(/.test(code) || /\beggScoreEvents\s*\(/.test(code),
-      'demo.ts must take the rung from egg.ts (eggValue or eggScoreEvents)',
+      'sim.ts must take the rung from egg.ts (eggValue or eggScoreEvents)',
     ).toBe(true)
   })
 
@@ -239,14 +239,14 @@ describe('jt8-4 REUSE — the catch pass routes through egg.ts, it does not re-i
     const code = demoCode()
     expect(
       /\bairCatchBonus\s*\(/.test(code) || /\beggScoreEvents\s*\(/.test(code),
-      'demo.ts must take the air bonus from egg.ts (airCatchBonus or eggScoreEvents)',
+      'sim.ts must take the air bonus from egg.ts (airCatchBonus or eggScoreEvents)',
     ).toBe(true)
   })
 
-  it('demo.ts declares NO ladder literals of its own', () => {
-    // Comments and strings are stripped first: pristine demo.ts mentions "1000" three
+  it('sim.ts declares NO ladder literals of its own', () => {
+    // Comments and strings are stripped first: pristine sim.ts mentions "1000" three
     // times in PROSE (the jt3-4 ptero kill), and a comment is not a re-implementation.
-    // 250 and 750 are the distinctive rungs — they appear nowhere in demo.ts today.
+    // 250 and 750 are the distinctive rungs — they appear nowhere in sim.ts today.
     const code = demoCode()
     expect(code, 'the 250 rung belongs to egg.ts').not.toMatch(/\b250\b/)
     expect(code, 'the 750 rung belongs to egg.ts').not.toMatch(/\b750\b/)

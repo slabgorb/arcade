@@ -27,7 +27,7 @@ import { loadPictures } from './helpers/pictures-contract.js'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const mainPath = join(repoRoot, 'src', 'main.ts')
 const renderPath = join(repoRoot, 'src', 'shell', 'render.ts')
-const demoPath = join(repoRoot, 'src', 'core', 'demo.ts')
+const demoPath = join(repoRoot, 'src', 'core', 'sim.ts')
 
 const mainSource = (): string => readFileSync(mainPath, 'utf8')
 const renderSource = (): string => readFileSync(renderPath, 'utf8')
@@ -35,7 +35,7 @@ const renderSource = (): string => readFileSync(renderPath, 'utf8')
 /** Read the demo wiring source as text. Fails self-describingly while it is missing. */
 function demoSource(): string {
   if (!existsSync(demoPath)) {
-    throw new Error('GREEN creates joust/src/core/demo.ts — the wave-1 demo wiring')
+    throw new Error('GREEN creates joust/src/core/sim.ts — the wave-1 demo wiring')
   }
   return readFileSync(demoPath, 'utf8')
 }
@@ -47,22 +47,22 @@ function demoSource(): string {
 describe('AC-1 — the demo is driven from the core scheduler, not a divorced loop', () => {
   it('main.ts imports and drives the SESSION layer (createGame / stepGame — jt4-5 migration)', () => {
     // jt4-5 MIGRATION (Reviewer Ruling #2 — the jt2-7 precedent, done again). main.ts no longer
-    // steps the RAW sim (createWaveDemo / stepDemo from core/demo) directly: it drives the SESSION
-    // layer createGame / stepGame from core/game, which internally WRAPS stepDemo over a
-    // createWaveDemo-built sim (the jt2-1 one-sim seam still holds — no divergent second loop).
-    // The old createWaveDemo/stepDemo tokens now live ONLY in a main.ts doc-comment, so the prior
+    // steps the RAW sim (createWaveSim / stepSim from core/sim) directly: it drives the SESSION
+    // layer createGame / stepGame from core/game, which internally WRAPS stepSim over a
+    // createWaveSim-built sim (the jt2-1 one-sim seam still holds — no divergent second loop).
+    // The old createWaveSim/stepSim tokens now live ONLY in a main.ts doc-comment, so the prior
     // pins asserted a now-FALSE intent ("main.ts drives the demo directly") and passed on a mere
     // comment token — green scenery. This is WIDENED to the CALL FORM of the new seam
     // (`createGame(` / `stepGame(` — present only in the real wiring, never in the comment), so it
     // REDDENS if main.ts reverts to stepping the demo directly and never falsely reddens on a
-    // comment edit. (main.ts still IMPORTS core/demo for `drawList`; that is no longer this pin's
+    // comment edit. (main.ts still IMPORTS core/sim for `drawList`; that is no longer this pin's
     // point — the driving seam is the session layer.)
     const src = mainSource()
     expect(src, 'main.ts must pull the session layer from core/game').toMatch(
       /from\s+['"]\.\/core\/game(\.js)?['"]/,
     )
-    expect(src, 'and build the game session (createGame, not the raw createWaveDemo)').toMatch(/createGame\s*\(/)
-    expect(src, 'and step it once per frame through stepGame (not stepDemo directly)').toMatch(/stepGame\s*\(/)
+    expect(src, 'and build the game session (createGame, not the raw createWaveSim)').toMatch(/createGame\s*\(/)
+    expect(src, 'and step it once per frame through stepGame (not stepSim directly)').toMatch(/stepGame\s*\(/)
   })
 
   it('main.ts still advances frames from the shell timebase, never from core', () => {
@@ -136,7 +136,7 @@ describe('AC-2 — enemy/egg/transporter frames render from the transcribed tabl
     // Every colour must derive from COLOR1. A hex literal, an rgb() with literal
     // args, or a CSS colour name on the paint path is a colour nobody
     // transcribed. Mutation-checked in render.test.ts; re-run here so THIS story's
-    // new enemy/egg draws are covered. demo.ts is CORE (no colours) but scanned
+    // new enemy/egg draws are covered. sim.ts is CORE (no colours) but scanned
     // for the same discipline once it lands.
     const sources = [mainSource(), renderSource()]
     if (existsSync(demoPath)) sources.push(demoSource())

@@ -15,7 +15,7 @@
 //
 // ─── WHAT jt4-5 CHANGES IN THE SHELL ─────────────────────────────────────────
 //   • main.ts now drives the SESSION layer (createGame / stepGame), not the raw sim
-//     (createWaveDemo / stepDemo) — the demo is two knights playing a full loop, so
+//     (createWaveSim / stepSim) — the demo is two knights playing a full loop, so
 //     the shell must step the ledgers, not just the sim.
 //   • it draws a DEV-OVERLAY (score + lives + wave per player) from `overlayReadout`
 //     — the PURE projection off the very GameState it steps, so the readout cannot be
@@ -44,7 +44,7 @@ const renderSource = (): string => readFileSync(renderPath, 'utf8')
 describe('jt4-5 shell — the demo is driven by the session layer stepGame (no shell-side game state)', () => {
   it('main.ts pulls createGame + stepGame from core/game (the ledgers, not just the sim)', () => {
     const src = mainSource()
-    // RED today: main.ts drives createWaveDemo/stepDemo from core/demo. The full loop
+    // RED today: main.ts drives createWaveSim/stepSim from core/sim. The full loop
     // needs the session layer — score/lives/wave/game-over ride stepGame.
     expect(src, 'main.ts must import the session layer from core/game').toMatch(
       /from\s+['"]\.\/core\/game(\.js)?['"]/,

@@ -61,7 +61,7 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const demoPath = join(repoRoot, 'src', 'core', 'demo.ts')
+const demoPath = join(repoRoot, 'src', 'core', 'sim.ts')
 
 /** A core module with comments and string literals stripped — CODE, not prose. */
 function codeOf(p: string): string {
@@ -364,19 +364,19 @@ describe('every line this story cites is covered by a committed claim', () => {
 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('project rules — the core boundary holds across the change', () => {
-  it('demo.ts stays inside the pure core', () => {
+  it('sim.ts stays inside the pure core', () => {
     // A draw is exactly the kind of thing that tempts a `Math.random()`, and this
     // story's whole determinism requirement rests on it not being one.
     const text = codeOf(demoPath)
-    expect(text, 'demo.ts must not reach ambient entropy').not.toMatch(/\bMath\s*\.\s*random\b/)
-    expect(text, 'demo.ts must not reach a clock').not.toMatch(/\bDate\s*\.\s*now\b/)
-    expect(text, 'demo.ts must not cast away the type system').not.toMatch(/\bas\s+any\b/)
-    expect(text, 'demo.ts must not suppress errors without a code').not.toMatch(/@ts-ignore/)
+    expect(text, 'sim.ts must not reach ambient entropy').not.toMatch(/\bMath\s*\.\s*random\b/)
+    expect(text, 'sim.ts must not reach a clock').not.toMatch(/\bDate\s*\.\s*now\b/)
+    expect(text, 'sim.ts must not cast away the type system').not.toMatch(/\bas\s+any\b/)
+    expect(text, 'sim.ts must not suppress errors without a code').not.toMatch(/@ts-ignore/)
   })
 
   it('carries the .js extension on every relative import (checklist rule 5)', () => {
     for (const m of codeOf(demoPath).matchAll(/from\s+'(\.[^']*)'/g)) {
-      expect(m[1], `demo.ts: relative import ${m[1]} needs the .js extension`).toMatch(/\.js$/)
+      expect(m[1], `sim.ts: relative import ${m[1]} needs the .js extension`).toMatch(/\.js$/)
     }
   })
 })

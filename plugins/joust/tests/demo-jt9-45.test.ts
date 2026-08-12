@@ -32,17 +32,18 @@
 // FIX-AGNOSTIC. The suite never calls `spawnWavePteros` directly and never pins the
 // exact edge coordinates or the RNG-threading signature — Dev is free to draw VRAND
 // however the core's RNG works and to stagger via nap or incremental creation. It
-// observes only what stepDemo produces: each ptero's BIRTH X (first posX seen, before
+// observes only what stepSim produces: each ptero's BIRTH X (first posX seen, before
 // it flies), its birth Y lane, its ACTIVATION frame (first frame its posX leaves
 // birth X — i.e. it starts flying), and its flight DIRECTION. Those hold for any
 // faithful port.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 // WAVE_TABLE[42] (wave 43): status 0xbb → WJSRTB index 5 = WPTERO, 3 pterodactyls.
 // Identical fixture to demo-jt9-44: park one wave before the ptero wave, strip to
-// players, and the next stepDemo clears-and-advances into WPTERO — spawnWavePteros
+// players, and the next stepSim clears-and-advances into WPTERO — spawnWavePteros
 // runs for real (jt3-4).
 const WAVE_BEFORE_PTERO_WAVE = 42
 const EXPECTED_PTEROS = 3
@@ -75,22 +76,20 @@ interface PteroTrack {
   movedX: number | null
 }
 
-const pterosOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
+const pterosOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
 
-/** Park on the brink of the WPTERO wave, players only — the next step advances in. */
-function onTheBrinkOfThePteroWave(seed: number): DemoState {
-  const base = createWaveDemo(seed)
-  return {
-    ...base,
-    wave: WAVE_BEFORE_PTERO_WAVE,
-    sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') },
-  }
+/** Park on the brink of the WPTERO wave, players only — the next step advances in.
+ *  jt11-4: the strip-to-players clear idiom must ALSO empty the transporter's waiting
+ *  room, since an enemy still holding a number counts as alive and would hold the wave
+ *  open — `strippedToPlayers` is that whole idiom. */
+function onTheBrinkOfThePteroWave(seed: number): SimState {
+  return { ...strippedToPlayers(createWaveSim(seed)), wave: WAVE_BEFORE_PTERO_WAVE }
 }
 
 /** Hush every non-player, non-ptero process (the wave's lords) each frame so nothing
  *  bumps a ptero's posX — a bump would look like flight to the activation detector.
  *  Pteros ride distinct Y lanes so they never overlap each other (jt5-16 no-op). */
-function hushNonPteros(d: DemoState): DemoState {
+function hushNonPteros(d: SimState): SimState {
   return {
     ...d,
     sim: {
@@ -106,7 +105,7 @@ function hushNonPteros(d: DemoState): DemoState {
  *  entered and started to fly. Fix-agnostic: works whether Dev staggers by napping a
  *  present ptero or by creating pteros incrementally. */
 function trackWaveEntry(seed: number, frames = 260): PteroTrack[] {
-  let d = stepDemo(onTheBrinkOfThePteroWave(seed), {}) // frame 0: the clear-and-advance
+  let d = stepSim(onTheBrinkOfThePteroWave(seed), {}) // frame 0: the clear-and-advance
   const tracks = new Map<number, PteroTrack>()
   for (let f = 0; f < frames; f++) {
     for (const p of pterosOf(d)) {
@@ -126,7 +125,7 @@ function trackWaveEntry(seed: number, frames = 260): PteroTrack[] {
       }
     }
     d = hushNonPteros(d)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
   }
   return [...tracks.values()]
 }

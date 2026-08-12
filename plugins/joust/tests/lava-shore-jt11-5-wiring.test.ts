@@ -70,8 +70,8 @@ describe('jt11-5 — the dead arena-state queries become the production path', (
     expect(stripped('core/enemy.ts')).toMatch(/\bbackgroundActive\s*\(/)
   })
 
-  it('demo.ts (the egg fall loop) calls groundOutcomeInState', () => {
-    expect(stripped('core/demo.ts')).toMatch(/\bgroundOutcomeInState\s*\(/)
+  it('sim.ts (the egg fall loop) calls groundOutcomeInState', () => {
+    expect(stripped('core/sim.ts')).toMatch(/\bgroundOutcomeInState\s*\(/)
   })
 })
 

@@ -17,11 +17,12 @@
 // so broadPhase still fires — the mask, not the box, must be the discriminator.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { broadPhase, type CollisionBox } from '../src/core/joust.js'
 import type { EntityState } from '../src/core/flight.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const box = (x: number, top: number): CollisionBox => ({ x, y: top, w: 16, h: 16 })
@@ -36,9 +37,13 @@ function entity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** [staged procs + one ground enemy anchor] — the anchor holds the wave open
- *  without colliding (jt5-16/jt9-14 idiom); budget zeroed so nothing spawns. */
-function only(procs: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+ *  without colliding (jt5-16/jt9-14 idiom); budget zeroed so nothing spawns.
+ *  jt11-4: wave 1's complement now queues for the transporter rather than standing in
+ *  `sim.processes`, so seat it first to pick the anchor out. Seating also empties the
+ *  waiting room, which keeps "only these processes" literally true — an unserved enemy
+ *  would otherwise materialise into the middle of the three-frame contact probe. */
+function only(procs: SimProcess[]): SimState {
+  const base = seatWaveInstantly(createWaveSim(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {
@@ -50,7 +55,7 @@ function only(procs: DemoProcess[]): DemoState {
 
 /** Nap everything except the players and one kept id, so only the staged contact
  *  can resolve. */
-const hush = (d: DemoState, keep: number): DemoState => ({
+const hush = (d: SimState, keep: number): SimState => ({
   ...d,
   sim: {
     ...d.sim,
@@ -61,7 +66,7 @@ const hush = (d: DemoState, keep: number): DemoState => ({
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// CONSUMER 1 — the PLAYER-vs-PTERO pass (demo.ts :1506).
+// CONSUMER 1 — the PLAYER-vs-PTERO pass (sim.ts :1506).
 // ═════════════════════════════════════════════════════════════════════════════
 const PLAYER = 1
 const PTERO = 0xb30
@@ -71,11 +76,11 @@ const PLAYER_TOP = 110
  *  opposite facings, the player facing in; step 3 frames; report the outcome. */
 function pteroContact(dy: number, dx: number): { pteroAlive: boolean; playerAlive: boolean; boxesOverlap: boolean } {
   const pteroTop = PLAYER_TOP + dy
-  const player: DemoProcess = {
+  const player: SimProcess = {
     id: PLAYER, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true, entity: entity({ posX: 100, posY: PLAYER_TOP << 8 }),
   }
-  const ptero: DemoProcess = {
+  const ptero: SimProcess = {
     id: PTERO, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: -1,
     collisionEnabled: true, entity: entity({ posX: 100 + dx, posY: pteroTop << 8 }),
   }
@@ -83,7 +88,7 @@ function pteroContact(dy: number, dx: number): { pteroAlive: boolean; playerAliv
   let d = only([player, ptero])
   for (let f = 0; f < 3; f++) {
     d = hush(d, PTERO)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
   }
   return {
     pteroAlive: d.sim.processes.some((p) => p.id === PTERO),
@@ -111,9 +116,9 @@ describe('jt9-43 — the player-vs-ptero pass folds COLDX (screen-X) into its ma
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// CONSUMER 2 — the PLAYER-vs-EGG catch pass (demo.ts :1573).
+// CONSUMER 2 — the PLAYER-vs-EGG catch pass (sim.ts :1573).
 // ═════════════════════════════════════════════════════════════════════════════
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true,
@@ -144,22 +149,24 @@ async function findAir(): Promise<{ x: number; y: number }> {
  *  offset dx; step one frame; report whether the egg was collected. */
 async function eggCatch(dy: number, dx: number): Promise<{ caught: boolean; boxesOverlap: boolean }> {
   const { x, y } = await findAir()
-  const eggProc: DemoProcess = {
+  const eggProc: SimProcess = {
     id: 0x1_0001, cls: 'secondary', nap: 1, period: 1, kind: 'egg',
     egg: {
       posX: x + dx, posY: (y + dy) << 8, velX: 0, velY: 0, bumpX: 0, bumpY: 0,
       eggsLeft: 4, hitCount: 0, pfeet: 1, settled: true,
     },
   }
-  const anchor: DemoProcess = { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
-  const base = createWaveDemo(SEED)
-  const staged: DemoState = {
+  const anchor: SimProcess = { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
+  // jt11-4: this staging brings its OWN anchor and overwrites the process list, so the
+  // queued wave complement must go too — it is not part of "one player, one egg".
+  const base = withNoPendingEnemies(createWaveSim(SEED))
+  const staged: SimState = {
     ...base,
     sim: { ...base.sim, processes: [playerAt(1, x, y), eggProc, anchor] },
     events: [],
   }
   const boxesOverlap = broadPhase(box(x, y), box(x + dx, y + dy))
-  const after = stepDemo(staged)
+  const after = stepSim(staged)
   const caught = !after.sim.processes.some((p) => p.kind === 'egg')
   return { caught, boxesOverlap }
 }
@@ -183,24 +190,24 @@ describe('jt9-43 — the player-vs-egg catch pass folds COLDX (screen-X) into it
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// CONSUMER 3 — the JOUST pass (player-vs-player / player-vs-enemy, demo.ts :1385).
+// CONSUMER 3 — the JOUST pass (player-vs-player / player-vs-enemy, sim.ts :1385).
 // ═════════════════════════════════════════════════════════════════════════════
 /** Stage two airborne players at vertical offset dy and horizontal offset dx and
  *  step one frame. The higher one (smaller Y) wins a resolved joust; report who
  *  survives. */
 function joustContact(dy: number, dx: number): { p1Alive: boolean; p2Alive: boolean; boxesOverlap: boolean } {
-  const p1: DemoProcess = {
+  const p1: SimProcess = {
     id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8 }),
   }
-  const p2: DemoProcess = {
+  const p2: SimProcess = {
     id: 2, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: -1, mount: 'stork',
     collisionEnabled: true, entity: entity({ posX: 100 + dx, posY: (100 + dy) << 8 }),
   }
   const boxesOverlap = broadPhase(box(100, 100), box(100 + dx, 100 + dy))
   let d = only([p1, p2])
   d = hush(d, 2)
-  d = stepDemo(d, {})
+  d = stepSim(d, {})
   return {
     p1Alive: d.sim.processes.some((p) => p.id === 1),
     p2Alive: d.sim.processes.some((p) => p.id === 2),

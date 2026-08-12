@@ -1,7 +1,7 @@
 # Story jt11-1 Context
 
 ## Title
-Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.
+Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveSim (sim.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.
 
 ## Metadata
 - **Story ID:** jt11-1
@@ -14,15 +14,15 @@ Start experience: thread playerCount from createGame (game.ts:318, currently dro
 
 ## Problem
 
-The 1P/2P choice threads correctly from readSelectInput (main.ts:422-426) through selectPlayerCount (core/select.ts:51-55) into createGame(seed, count) (cabinet.ts:99-101), but game.ts:318 calls createWaveDemo(seed) WITHOUT the count — count only sizes the ledger array (game.ts:319).
+The 1P/2P choice threads correctly from readSelectInput (main.ts:422-426) through selectPlayerCount (core/select.ts:51-55) into createGame(seed, count) (cabinet.ts:99-101), but game.ts:318 calls createWaveSim(seed) WITHOUT the count — count only sizes the ledger array (game.ts:319).
 
-createWaveDemo (demo.ts:1229) hardcodes both PLAYER1_ID and PLAYER2_ID spawns (demo.ts:1233-1236). The orphan P2 mount has no ledger: its death is misattributed to P1's ledger via ledgerIndex clamp (game.ts:257) and it can never respawn (respawn iterates ledgers only, game.ts:479-499) — this is the "second player has one life" symptom.
+createWaveSim (sim.ts:1229) hardcodes both PLAYER1_ID and PLAYER2_ID spawns (sim.ts:1233-1236). The orphan P2 mount has no ledger: its death is misattributed to P1's ledger via ledgerIndex clamp (game.ts:257) and it can never respawn (respawn iterates ledgers only, game.ts:479-499) — this is the "second player has one life" symptom.
 
 Lives init is already correct: NSHIP=5 per ledger (game.ts:191, 322). No lives change needed.
 
 ## Technical Approach
 
-1. Thread the playerCount from createGame through to createWaveDemo, replacing the hardcoded spawns of both PLAYER1_ID and PLAYER2_ID with conditional spawning based on count.
+1. Thread the playerCount from createGame through to createWaveSim, replacing the hardcoded spawns of both PLAYER1_ID and PLAYER2_ID with conditional spawning based on count.
 
 2. Add an on-screen visible "PRESS 1 OR 2 TO START" prompt on the attract pages (attract exits ONLY on Digit1/Digit2, main.ts:500-503; no on-screen prompt exists on the attract pages — the ONE PLAYER START / TWO PLAYER START labels render only on the select screen selectScreen.ts:20-22). Render the prompt using the existing layoutText/paintText FONT57/FONT35 idiom.
 

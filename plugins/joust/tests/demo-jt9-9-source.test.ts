@@ -34,7 +34,7 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const demoPath = join(repoRoot, 'src', 'core', 'demo.ts')
+const demoPath = join(repoRoot, 'src', 'core', 'sim.ts')
 const eggPath = join(repoRoot, 'src', 'core', 'egg.ts')
 
 /** A core module with comments and string literals stripped — CODE, not prose. */
@@ -165,14 +165,14 @@ describe('every line this story cites is covered by a committed claim', () => {
 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('project rules — the core boundary holds across the change', () => {
-  it('keeps egg.ts and demo.ts inside the pure core', () => {
+  it('keeps egg.ts and sim.ts inside the pure core', () => {
     // The wait timer is the kind of thing that tempts a `Date.now()` or a
     // module-scope mutable counter. Neither module may reach a clock, entropy or
     // a browser surface — the jt1-7 scanner's law, asserted here on the two
     // files this story edits.
     for (const [name, p] of [
       ['egg.ts', eggPath],
-      ['demo.ts', demoPath],
+      ['sim.ts', demoPath],
     ] as const) {
       const text = codeOf(p)
       expect(text, `${name} must not reach a clock`).not.toMatch(/\bDate\s*\.\s*now\b/)
@@ -185,7 +185,7 @@ describe('project rules — the core boundary holds across the change', () => {
   it('carries the .js extension on every relative import (checklist rule 5)', () => {
     for (const [name, p] of [
       ['egg.ts', eggPath],
-      ['demo.ts', demoPath],
+      ['sim.ts', demoPath],
     ] as const) {
       for (const m of codeOf(p).matchAll(/from\s+'(\.[^']*)'/g)) {
         expect(m[1], `${name}: relative import ${m[1]} needs the .js extension`).toMatch(/\.js$/)

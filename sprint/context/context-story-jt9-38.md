@@ -94,7 +94,7 @@ not a lookup.
 `:3238 INC PJOYT,U` **"SET = 1,"** is the line that makes the deferral a **one-nap
 re-poll**: `PJOYT` is set to 1 before the population test, so the branch back to `EGGLN2`
 costs exactly one `PCNAP 12` (`:3227`) — twelve display frames, which is the port's own
-`EGG_WAIT_NAP_FRAMES` (`demo.ts:620`). Without `:3238` the branch would `DEC` a zero timer
+`EGG_WAIT_NAP_FRAMES` (`sim.ts:620`). Without `:3238` the branch would `DEC` a zero timer
 to `$FF` and wait 255 more naps. The deferral is **neither** a fresh `EGGWT` wait **nor** a
 per-frame spin. This is what AC-5 pins.
 
@@ -124,7 +124,7 @@ the `:3242` reservation window is zero frames. A stored counter would have to re
 
 **Baiters are already excluded, for free.** Baiter creation `INC`s `NBAIT` (`:2111`) and
 never `NENEMY`. In the port, baiters and pterodactyls are `kind: 'ptero'` processes
-(`demo.ts:1331` — `p.kind === 'ptero' && p.baiter === true`), not `kind: 'enemy'`. So the
+(`sim.ts:1331` — `p.kind === 'ptero' && p.baiter === true`), not `kind: 'enemy'`. So the
 ROM's population and a `kind === 'enemy'` filter agree without any extra work. AC-3 pins
 that as a property that must **stay** free.
 
@@ -132,13 +132,13 @@ that as a property that must **stay** free.
 
 | what | where |
 |---|---|
-| the hatch loop this story gates | `plugins/joust/src/core/demo.ts:1443-1457` (the `processes.flatMap` self-clear) |
-| the nap quantum | `EGG_WAIT_NAP_FRAMES = 12`, `demo.ts:620` |
-| the egg-wave complement to replace | `spawnWaveEggs`, `demo.ts:669-679` |
-| the wave-type predicate (precedent, already used here) | `dispatchWaveType(row.status, {p1,p2}) === 'egg'`, `demo.ts:732-733` |
+| the hatch loop this story gates | `plugins/joust/src/core/sim.ts:1443-1457` (the `processes.flatMap` self-clear) |
+| the nap quantum | `EGG_WAIT_NAP_FRAMES = 12`, `sim.ts:620` |
+| the egg-wave complement to replace | `spawnWaveEggs`, `sim.ts:669-679` |
+| the wave-type predicate (precedent, already used here) | `dispatchWaveType(row.status, {p1,p2}) === 'egg'`, `sim.ts:732-733` |
 | the decoded row | `WaveRow` / `waveRowAt`, `wave.ts:32-48`, `:182-190` |
 | placement pads | `PADS` (four), `transporter.ts:127-132` |
-| the wave-clear gate AC-7 warns about | `demo.ts:1481-1484` |
+| the wave-clear gate AC-7 warns about | `sim.ts:1481-1484` |
 
 **Placement is a DECISION, not a transcription.** The ROM spreads its twelve over six
 ledges plus a 69-slot `EGPTBL`; the port has **four** pads and `spawnWaveEggs` places at
@@ -193,15 +193,15 @@ construction and has not been hand-edited.
 
 2. AC-2 THE EGG WAVE DEALS TWELVE EGGS, INDEPENDENT OF THE WAVE ROW. spawnWaveEggs deals the ROM's twelve - six one-per-ledge over EGLEDG's six entries (LDA #6 / STA PWREGA,U, JOUSTRV4.SRC:2778-2779, the 5$ loop :2780-2804, EGLEDG LEVEL0..LEVEL5 :2910-2915) then six more scattered over the 69-slot EGPTBL (LDA #6 / STA PWREGA,U "6 MORE EGGS TO GO", :2805-2822) - rather than the wave's ground complement. Pinned on BOTH a 6-nibble egg wave and an 8-nibble one (waves 15 and 10) so a complement-shaped regression reddens on each. The port's placement across four PADS (transporter.ts:127-132) against the ROM's six ledges plus 69 slots is a PORT DECISION and is stated as one in a comment at the site, not shipped as if it were the ROM's layout.
 
-3. AC-3 NENEMY IS THE LIVE ENEMY POPULATION, AND IT EXCLUDES BAITERS AND PTERODACTYLS. Modelled from the live process list rather than as a stored counter, which satisfies all six ROM writers by construction (INC :460 attract-only, INC :2193 WCREATE, INC :3242 the hatch commit, DEC :2965 DEATH3, DEC :3080 egg collected with a remount bird already inbound, CLR :975). A guard asserts a live baiter or pterodactyl does NOT count toward the population - the ROM keeps them on a separate NBAIT (INC NBAIT :2111, never NENEMY) and the port matches for free because both are kind ptero processes (demo.ts:1331), so the guard pins a property that is currently free and must stay free.
+3. AC-3 NENEMY IS THE LIVE ENEMY POPULATION, AND IT EXCLUDES BAITERS AND PTERODACTYLS. Modelled from the live process list rather than as a stored counter, which satisfies all six ROM writers by construction (INC :460 attract-only, INC :2193 WCREATE, INC :3242 the hatch commit, DEC :2965 DEATH3, DEC :3080 egg collected with a remount bird already inbound, CLR :975). A guard asserts a live baiter or pterodactyl does NOT count toward the population - the ROM keeps them on a separate NBAIT (INC NBAIT :2111, never NENEMY) and the port matches for free because both are kind ptero processes (sim.ts:1331), so the guard pins a property that is currently free and must stay free.
 
 4. AC-4 A WAVE AT QUOTA DEFERS A MATURED EGG, AND IT IS THE SAME EGG AFTERWARDS. At the exact frame the gate fires, assert by PROCESS IDENTITY that the egg is still there - that id, still a settled egg - and never by a count: jt9-9's Reviewer found a count assertion passing on a REGENERATED egg (a permadeath egg hatched, its bird died, and the NEW egg satisfied length === 1). Ship the POSITIVE CONTROL in the same test: the same fixture one enemy BELOW quota does hatch on that same frame, so a gate that defers everything cannot pass.
 
-5. AC-5 THE DEFERRAL RE-POLLS ONCE PER NAP - TWELVE FRAMES - NOT ONCE PER WAIT AND NOT EVERY FRAME. INC PJOYT,U "SET = 1," (JOUSTRV4.SRC:3238) re-primes the timer to 1 BEFORE the population test, so the branch back to EGGLN2 costs exactly one PCNAP 12 (:3227) - twelve display frames, the port's own EGG_WAIT_NAP_FRAMES (demo.ts:620). Without it the branch would DEC a zero timer to $FF and wait 255 more naps. Assert the gap between two consecutive re-checks is 12 frames, and redden TWO mutants by name: one that re-primes the full EGGWT wait, and one that re-checks on the next frame.
+5. AC-5 THE DEFERRAL RE-POLLS ONCE PER NAP - TWELVE FRAMES - NOT ONCE PER WAIT AND NOT EVERY FRAME. INC PJOYT,U "SET = 1," (JOUSTRV4.SRC:3238) re-primes the timer to 1 BEFORE the population test, so the branch back to EGGLN2 costs exactly one PCNAP 12 (:3227) - twelve display frames, the port's own EGG_WAIT_NAP_FRAMES (sim.ts:620). Without it the branch would DEC a zero timer to $FF and wait 255 more naps. Assert the gap between two consecutive re-checks is 12 frames, and redden TWO mutants by name: one that re-primes the full EGGWT wait, and one that re-checks on the next frame.
 
 6. AC-6 THE PWHCH DISPOSITION IS RECORDED IN WRITING, AND IF DESCOPED IT IS FILED. LDA #2 / STA PWHCH,U "NUMBER OF PRE-MATURE EGG HATCHINGS" (JOUSTRV4.SRC:2776-2777), consumed in CREGG at :2888-2894 (DEC PWHCH / BMI / VRAND / MUL / NEGA / ADDA PJOYT,Y), gives two of the twelve eggs a randomly-shortened hatch time. It is the third unmodelled piece of the same block and SM did not decide it. TEA states explicitly whether it is in scope; the recommendation is OUT (it consumes the RNG, so folding it in moves the re-baseline a second time). If out, it ends with a filed story id - SM owns that at finish, before pf sprint story finish archives the session.
 
-7. AC-7 THE DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT AND ITS NUMBERS ARE RE-FOUND, NOT NUDGED. Per this epic's standing rule. Re-run the seeded sweeps and take the moved fixtures from that run rather than pasting whatever the new code prints; name in the commit message which seeds moved and why. Separately, confirm a seeded EGG WAVE still CLEARS with twelve eggs against a quota of six - the wave-clear gate wants no enemies AND no eggs (demo.ts:1481-1484) and now has twice as many eggs to get through. That is a termination property, nothing currently asserts it, and a stall would look like a hung demo rather than a failing test.
+7. AC-7 THE DETERMINISM RE-BASELINE LANDS AS ITS OWN COMMIT AND ITS NUMBERS ARE RE-FOUND, NOT NUDGED. Per this epic's standing rule. Re-run the seeded sweeps and take the moved fixtures from that run rather than pasting whatever the new code prints; name in the commit message which seeds moved and why. Separately, confirm a seeded EGG WAVE still CLEARS with twelve eggs against a quota of six - the wave-clear gate wants no enemies AND no eggs (sim.ts:1481-1484) and now has twice as many eggs to get through. That is a termination property, nothing currently asserts it, and a stall would look like a hung demo rather than a failing test.
 
 ---
 

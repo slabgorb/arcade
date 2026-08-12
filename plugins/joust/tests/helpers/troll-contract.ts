@@ -135,7 +135,7 @@ export interface TrollModule {
 
 /**
  * Load the not-yet-built troll module with a self-describing failure — the
- * loadArenaState / loadDemo pattern. The specifier is assembled at runtime so the
+ * loadArenaState / loadSim pattern. The specifier is assembled at runtime so the
  * bundler cannot resolve it statically and redden the whole FILE at collection.
  *
  * RED today: src/core/troll.ts does not exist, so this throws a clean "feature

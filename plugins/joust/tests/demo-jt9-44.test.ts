@@ -33,7 +33,8 @@
 // scoped to the CREATION span, not the pteros' whole life.)
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 // WAVE_TABLE[42] (wave 43): 7 lords + 3 pterodactyls, status 0xbb. `(0xbb & 0x0e)
@@ -44,25 +45,24 @@ const EXPECTED_PTEROS = 3
 // of margin captures the third create without walking into the pteros' mutual flight.
 const CREATION_WINDOW = 210
 
-const cueKinds = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
-const countCue = (d: DemoState, kind: string): number => cueKinds(d).filter((k) => k === kind).length
-const pterosOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
-const coord = (p: DemoProcess): string => `${p.entity?.posX},${p.entity?.posY}`
+const cueKinds = (d: SimState): string[] => d.cues.map((c) => c.type as string)
+const countCue = (d: SimState, kind: string): number => cueKinds(d).filter((k) => k === kind).length
+const pterosOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
+const coord = (p: SimProcess): string => `${p.entity?.posX},${p.entity?.posY}`
 
 /** A demo parked one wave BEFORE the WPTERO wave, cleared to players only, so the
  *  very next step advances into the WPTERO wave and its ptero schedule is seeded. */
-function onTheBrinkOfThePteroWave(): DemoState {
-  const base = createWaveDemo(SEED)
-  return {
-    ...base,
-    wave: WAVE_BEFORE_PTERO_WAVE,
-    sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') },
-  }
+function onTheBrinkOfThePteroWave(): SimState {
+  const base = createWaveSim(SEED)
+  // jt11-4: a ground enemy still holding a transporter number is alive, so clearing
+  // to players only counts as a cleared wave once the waiting room is emptied too —
+  // otherwise the next step serves an arrival instead of advancing into WPTERO.
+  return strippedToPlayers({ ...base, wave: WAVE_BEFORE_PTERO_WAVE })
 }
 
 /** Hush every non-player, non-ptero process (the wave's lords) so the wave stays open
  *  while the PTERWV creation schedule plays out. */
-function hushNonPteros(d: DemoState): DemoState {
+function hushNonPteros(d: SimState): SimState {
   return {
     ...d,
     sim: {
@@ -78,7 +78,7 @@ describe('jt9-44 (re-seated by jt9-59) — a multi-ptero wave entry never spams 
   it('no single frame creates >=2 pteros or spams >=2 ptero-arrives, and no two pteros ever stack', () => {
     // Frame 0: the clear-and-advance into wave 43. The ptero schedule is seeded; no
     // ptero is created yet (PTERWV naps 65 first), so the advance frame sounds no arrival.
-    let d = stepDemo(onTheBrinkOfThePteroWave(), {})
+    let d = stepSim(onTheBrinkOfThePteroWave(), {})
     expect(pterosOf(d), 'no ptero stands on the advance frame — deferred creation').toHaveLength(0)
     expect(countCue(d, 'ptero-arrives'), 'no SNPTEI on the advance frame').toBe(0)
 
@@ -96,7 +96,7 @@ describe('jt9-44 (re-seated by jt9-59) — a multi-ptero wave entry never spams 
       for (const p of pterosOf(d)) perCoord.set(coord(p), (perCoord.get(coord(p)) ?? 0) + 1)
       maxStackedAtOneCoord = Math.max(maxStackedAtOneCoord, ...perCoord.values(), 1)
       d = hushNonPteros(d)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
     }
 
     // Non-vacuity: the WPTERO wave really created its three pterodactyls over the
@@ -111,12 +111,12 @@ describe('jt9-44 (re-seated by jt9-59) — a multi-ptero wave entry never spams 
   it('all three pteros are genuinely created and distinct — no bird is culled to hide a burst', () => {
     // Guards against a false green via the wrong mechanism: the three complement birds
     // must all actually be created (distinct ids), not silenced by a cull.
-    let d = stepDemo(onTheBrinkOfThePteroWave(), {})
+    let d = stepSim(onTheBrinkOfThePteroWave(), {})
     const ids = new Set<number>()
     for (let f = 0; f < CREATION_WINDOW; f++) {
       for (const p of pterosOf(d)) ids.add(p.id)
       d = hushNonPteros(d)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
     }
     expect(ids.size, 'all three pteros are created over the cadence, each with its own id').toBe(EXPECTED_PTEROS)
   })

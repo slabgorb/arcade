@@ -3,7 +3,7 @@
 // Story jt9-61 — the bump-facing must read the FULL, PRE-drain PBUMPX.
 //
 // jt9-48 wired B2DIRA/SHDIRA so a parked `PBUMPX` orients the bird, but the shove
-// reached the brain POST-drain: `drainProcessBumpX` ran at the TOP of `stepDemo`
+// reached the brain POST-drain: `drainProcessBumpX` ran at the TOP of `stepSim`
 // (jt9-17) and spent ≤3 px BEFORE `stepFrame` ran the enemy brain, so the brain
 // read the drained remainder. A shove of magnitude ≤3 was fully spent before the
 // brain ever saw it, so it faced the bird for ZERO frames.
@@ -18,7 +18,7 @@
 // reordered to AFTER `stepFrame` (Option A, the ROM's WRAPX-after-brain order).
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import type { EntityState } from '../src/core/flight.js'
 import type { EnemyState } from '../src/core/enemy.js'
 
@@ -44,8 +44,8 @@ function airborneAt(posX: number, pixelY: number, velXIndex: number): EntityStat
 /** A lone hunter carrying a parked shove, facing the OPPOSITE way so the flip is
  *  observable. Isolated at x=200/high so nothing jousts it and re-parks a bump
  *  (the jt9-48 `shovedHunter` shape — a hunter reaches B2DIRA's bump arm even with
- *  target = null). `bumpX` rides on the DemoProcess exactly where jt9-17 parks it. */
-function shovedHunter(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
+ *  target = null). `bumpX` rides on the SimProcess exactly where jt9-17 parks it. */
+function shovedHunter(bumpX: number, facing: -1 | 1 = -1): SimProcess {
   return {
     id: 0x200,
     cls: 'secondary',
@@ -59,13 +59,13 @@ function shovedHunter(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
   }
 }
 
-const theEnemy = (ps: readonly DemoProcess[]): DemoProcess | undefined => ps.find((p) => p.kind === 'enemy')
+const theEnemy = (ps: readonly SimProcess[]): SimProcess | undefined => ps.find((p) => p.kind === 'enemy')
 
 /** A nap no window reaches: the bird is FROZEN — it takes NO flight step, so the
  *  ONLY thing that can move its `posX` is the WRAPX bump drain (the jt9-17 FROZEN
  *  pattern). Used to isolate the drain's same-frame wrap from any flight wrap. */
 const FROZEN = 100_000
-function frozenBirdAt(posX: number, bumpX: number): DemoProcess {
+function frozenBirdAt(posX: number, bumpX: number): SimProcess {
   return {
     id: 0x201,
     cls: 'secondary',
@@ -78,11 +78,11 @@ function frozenBirdAt(posX: number, bumpX: number): DemoProcess {
   }
 }
 
-/** One FULL `stepDemo` over a single shoved hunter — the assembled pipeline. */
-function oneStep(bumpX: number, facing: -1 | 1 = -1): DemoState {
-  const base = createWaveDemo(SEED)
-  const d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(bumpX, facing)] } }
-  return stepDemo(d, {})
+/** One FULL `stepSim` over a single shoved hunter — the assembled pipeline. */
+function oneStep(bumpX: number, facing: -1 | 1 = -1): SimState {
+  const base = createWaveSim(SEED)
+  const d: SimState = { ...base, sim: { ...base.sim, processes: [shovedHunter(bumpX, facing)] } }
+  return stepSim(d, {})
 }
 
 describe('jt9-61 — the enemy brain reads the FULL pre-drain PBUMPX', () => {
@@ -142,8 +142,8 @@ describe('jt9-61 — the enemy brain reads the FULL pre-drain PBUMPX', () => {
     // same-frame to 294−303 = −9 — inside the arena. Without the same-frame wrap
     // (drain committing a raw posX after the flight already wrapped) the bird would
     // sit at 294, 2 px outside ERIGHT for a frame.
-    const base = createWaveDemo(SEED)
-    const d = stepDemo({ ...base, sim: { ...base.sim, processes: [frozenBirdAt(291, 3)] } }, {})
+    const base = createWaveSim(SEED)
+    const d = stepSim({ ...base, sim: { ...base.sim, processes: [frozenBirdAt(291, 3)] } }, {})
     const x = theEnemy(d.sim.processes)?.enemy?.entity.posX ?? Number.NaN
     expect(x, 'drained-across-seam posX is inside [ELEFT, ERIGHT]').toBeGreaterThanOrEqual(-10)
     expect(x, 'drained-across-seam posX is inside [ELEFT, ERIGHT]').toBeLessThanOrEqual(292)

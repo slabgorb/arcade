@@ -260,7 +260,7 @@ export function nextWaveBcd(bcd: number): number {
  * `LDA WAVBCD / … / JMP OUTBCD` at :2399-2403 — while the wave table walks on the
  * separate `PWAVE` pointer (:2011-2019) and the DYTBL difficulty on a per-row RAM
  * countdown fired from IWAVE at each wave end (:945, :2099), both monotone and
- * neither resetting. The fix is a monotone wave count in DemoState — **td1-12**,
+ * neither resetting. The fix is a monotone wave count in SimState — **td1-12**,
  * whose option (B) this makes the faithful choice rather than merely the simpler
  * one. Pinned by `tests/difficulty-wiring.test.ts` R2-3 so it stays visible.
  *

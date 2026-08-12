@@ -3,14 +3,14 @@
 // Story jt9-30 — RED phase (O'Brien / TEA). Descoped out of jt9-2.
 //
 // ─── WHAT THIS GUARD ENFORCES ────────────────────────────────────────────────
-// A comment that cites one of OUR source files by line number — `demo.ts:1109`,
+// A comment that cites one of OUR source files by line number — `sim.ts:1109`,
 // `game.ts:374`, `src/shared/audio.ts:69` — goes stale within HOURS. Measured,
-// not asserted: jt5-3 cited demo.ts:1109 for the flight-vs-collision cue order;
+// not asserted: jt5-3 cited sim.ts:1109 for the flight-vs-collision cue order;
 // that was correct at jt5-3's own GREEN commit, jt5-4 moved it to :1174 the SAME
 // DAY, and it is :1275 today — three positions in three days, by two unrelated
-// stories. Today's demo.ts:1109 is unrelated egg-catch narrowPhase logic, so the
+// stories. Today's sim.ts:1109 is unrelated egg-catch narrowPhase logic, so the
 // stale ref does not dangle: it silently points at the WRONG REAL CODE, the worse
-// failure. jt9-38's GREEN sampling found ~87% of the checkable demo.ts refs
+// failure. jt9-38's GREEN sampling found ~87% of the checkable sim.ts refs
 // already stale. The story's decision (open question 2), therefore: convert ALL
 // comment-body refs on PRINCIPLE — a line number is never a stable anchor — not
 // only the demonstrably-stale ones. Name the SYMBOL instead.
@@ -75,7 +75,7 @@ const suiteFiles = (): string[] => walkTests(testsDir).sort()
 
 describe('jt9-30 — the regex distinguishes our stale line-refs from ROM citations and the historical-note form', () => {
   it('MATCHES a contiguous <our>.ts:<line> ref', () => {
-    for (const s of ['demo.ts:1109', 'game.ts:374', 'src/shared/audio.ts:69', 'audio-flap.test.ts:244']) {
+    for (const s of ['sim.ts:1109', 'game.ts:374', 'src/shared/audio.ts:69', 'audio-flap.test.ts:244']) {
       expect(new RegExp(OUR_TS_LINE_REF.source).test(s), `should flag "${s}"`).toBe(true)
     }
   })

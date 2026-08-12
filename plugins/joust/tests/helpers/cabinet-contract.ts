@@ -1,7 +1,7 @@
 // tests/helpers/cabinet-contract.ts
 //
 // Story jt10-2 — the CONTRACT for src/core/cabinet.ts, TEA-authored (O'Brien).
-// Same seam epic jt has used since jt1-2 (loadGame / loadDemo / loadFont): TEA
+// Same seam epic jt has used since jt1-2 (loadGame / loadSim / loadFont): TEA
 // states the module shape and pins the behaviour here; Dev (Julia) writes the
 // module. The behaviour + purity + rule coverage lives in tests/cabinet.test.ts.
 //
@@ -131,7 +131,7 @@ export interface CabinetModule {
 
 /**
  * Load the not-yet-built cabinet module with a self-describing failure — the
- * loadGame / loadDemo / loadFont pattern. The specifier is assembled at runtime so
+ * loadGame / loadSim / loadFont pattern. The specifier is assembled at runtime so
  * the bundler cannot resolve it statically and redden the whole FILE at collection
  * (the tp1-8 trap); each test reddens with a clean "feature absent" instead.
  *

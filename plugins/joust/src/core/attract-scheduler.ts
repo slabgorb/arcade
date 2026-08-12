@@ -23,7 +23,7 @@
 
 /**
  * The attract pages this story cycles. `demo` is the self-play centrepiece (the
- * shell pumps the shipped demo.ts under it); the two banners are the title-named
+ * shell pumps the shipped sim.ts under it); the two banners are the title-named
  * warning pages. A UNION, not an enum — a union carries no runtime cost.
  */
 export type AttractPage = 'demo' | 'pteroBanner' | 'lavaBanner'
