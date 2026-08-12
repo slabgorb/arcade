@@ -16,7 +16,7 @@
 
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
 import { drawList, type DrawOp } from './core/demo.js'
-import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState } from './core/game.js'
+import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState, type OverlayReadout } from './core/game.js'
 import {
   startPlaying,
   modeForGover,
@@ -40,6 +40,7 @@ import {
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
 import { mountCanvas } from '@shared/host-helpers'
+import { layoutHud } from './shell/hudScreen.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
@@ -156,31 +157,24 @@ function drawIsland(): void {
   }
 }
 
-// The dev-overlay palette index — the colour-5 rider nibble (PLYR1), a transcribed
-// COLOR1 entry, NOT an invented literal (so the denylist scan stays clean).
-const OVERLAY_COLOUR_INDEX = 5
-
 /**
- * Draw the DEV-OVERLAY: each player's score + lives and the wave number, read
- * STRAIGHT off the GameState through the pure `overlayReadout` projection — the shell
- * keeps NO score/lives counters of its own, so the readout cannot drift from the sim
- * (routing≠geometry). The authentic MESSAGE.SRC score row is jt5; this is the dev bar.
+ * jt11-2 — the AUTHENTIC HUD, replacing the jt4-5 fillText dev bar: each player's
+ * BCD score in FONT57 anchored at its ROM units column and its lives as rider-icon
+ * blits from the ROM anchors, all laid out by the pure `layoutHud` (every column,
+ * stride, colour and the 5-icon cap is ROM-cited there) and painted through the
+ * existing paintText/blit paths. The readout is still the pure `overlayReadout`
+ * projection off the very GameState the shell steps — no shell-side counters, and
+ * no wave number: that was the dev bar's line, not the ROM's.
  */
-function drawOverlay(state: GameState): void {
-  const readout = overlayReadout(state)
-  const colour = colours[OVERLAY_COLOUR_INDEX]
-  logicalContext.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
-  logicalContext.font = '8px monospace'
-  logicalContext.textBaseline = 'top'
-  logicalContext.fillText(`WAVE ${readout.wave}`, 4, 2)
-  for (const p of readout.players) {
-    const digits = p.score.toString().padStart(6, '0')
-    logicalContext.fillText(`P${p.player} ${digits} MEN ${p.lives}`, 4, 2 + p.player * 10)
+function drawHud(readout: OverlayReadout): void {
+  for (const p of layoutHud(readout, colours).players) {
+    paintText(p.score, p.scoreX, p.scoreY)
+    for (const icon of p.lives) blit(icon.name, icon.x, icon.y)
   }
 }
 
 // jt10-5 — the select-screen text colour. A transcribed COLOR1 palette index (the
-// PLYR1 rider colour, as the dev overlay uses), NOT an invented literal, so the
+// PLYR1 rider colour, PL1's own score colour), NOT an invented literal, so the
 // denylist scan stays clean. The exact select-screen colours await a reference
 // capture (Delivery Finding); this is a legible placeholder.
 const SELECT_COLOUR_INDEX = 5
@@ -234,7 +228,7 @@ function renderHighscoreScreen(): void {
 }
 
 // jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
-// screen and dev overlay use — NOT an invented literal, so the denylist scan stays
+// screen uses — NOT an invented literal, so the denylist scan stays
 // clean) and its Y position (a placeholder tuned by a human smoke test / reference
 // capture; the ROM puts the phrase at $3090). The exact colour awaits a capture.
 const GAMEOVER_COLOUR_INDEX = 5
@@ -303,7 +297,7 @@ function renderTitleScreen(): void {
 // jt10-4 — paint the core's ordered draw list for a game sim (back platforms →
 // entity sprites → foreground island). The render SELECTION lives in the pure core
 // (drawList), never by-eye in the shell. Shared by the 'playing' render and the
-// attract self-play demo; the dev-overlay is the caller's concern (attract omits it).
+// attract self-play demo; the HUD is the caller's concern (attract omits it).
 function paintSim(game: GameState): void {
   for (const op of drawList(game.sim)) {
     // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp would
@@ -346,7 +340,7 @@ function renderAttract(): void {
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
 // `stepGame` from core/game — NOT the raw sim. The jt2-1 one-sim seam still holds:
 // `stepGame` internally WRAPS the demo's `stepDemo` over a `createWaveDemo`-built
-// sim, so there is no divergent second stepping path, and the dev-overlay reads the
+// sim, so there is no divergent second stepping path, and the HUD reads the
 // per-player registers straight off the GameState it steps. jt10-5 wrapped that game
 // in the cabinet tier, and TEMPORARILY booted into 'select' (the coin-up screen)
 // because jt10-4's attract renderer did not yet exist — booting into attract would
@@ -550,13 +544,14 @@ const frame = (now: number): void => {
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
   logicalContext.fillRect(0, 0, LOGICAL_WIDTH, LOGICAL_HEIGHT)
   if (cabinet.mode === 'playing') {
-    // The live game, plus the dev-overlay reading the session registers off the
-    // stepped GameState.
+    // The live game, plus the authentic HUD reading the session registers off the
+    // stepped GameState. Sim first, HUD over it — the HUD row (y 217) sits inside
+    // the island's painted rows, exactly as the jt11-1 prompt does.
     paintSim(cabinet.game)
-    drawOverlay(cabinet.game)
+    drawHud(overlayReadout(cabinet.game))
   } else if (cabinet.mode === 'attract') {
     // jt10-4 — the attract cycle: the self-play sim on the demo page, or a warning
-    // banner. No dev overlay — attract is the public face of the cabinet.
+    // banner. No HUD — attract is the public face of the cabinet.
     renderAttract()
   } else if (cabinet.mode === 'gameover') {
     // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.

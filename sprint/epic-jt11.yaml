@@ -20,7 +20,8 @@ stories:
     title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180, fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61, main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690 currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO core sim changes.'
     points: 3
     priority: p1
-    status: backlog
+    status: in_review
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
   - id: jt11-3
@@ -70,3 +71,18 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: jt11-9
+    title: Transcribe SCOPL1/SCOPL2 (JOUSTRV4.SRC:7521-7537, the 6x7 'PLAYER n IMAGES LEFT' sitting-player lives icons the ROM's INCLIV/DECLIV DMA from DSCPLY) into pictures.ts and swap them in for the jt11-2 HUD's PLY1R/PLY2R stand-ins - the riders decode 14x7 (JOUSTI.SRC:2054 XSIZE is 7 BYTES = 14px), wider than the ROM's 6px icon stride, so the jt11-2 row overlaps into a fan; SCOPL at 6px restores the exact ROM look. Keep the jt11-2 anchors/stride/cap pins (hud-jt11-2 tests) and update only the icon name + width expectations.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt11-10
+    title: "Chore: sweep the retired dev-bar naming and harden the frame-loop source pins. (a) render-jt4-5.test.ts / helpers/game-contract.ts / demo-td1-12.test.ts prose still calls overlayReadout's consumer the dev-overlay/drawOverlay - retired by jt11-2 (drawHud); truth-fix the headers, keep the assertions. (b) The frame-loop wiring pins in render-jt4-5.test.ts and hud-jt11-2.test.ts slice from the frame declaration to EOF - correct only while frame stays the last top-level decl in main.ts; bound the slice to the matching closing brace (or the ts AST, per the mc10-6 ruling) in both files."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore

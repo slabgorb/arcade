@@ -506,13 +506,21 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
     const state: GameState = {
       ...g.createGame(SEED),
       wave: 7,
-      players: [ledger({ score: 12_345, lives: 3 }), ledger({ score: 6_789, lives: 5 })],
+      players: [
+        ledger({ score: 12_345, scoreBcd: [0x01, 0x23, 0x45], lives: 3 }),
+        ledger({ score: 6_789, scoreBcd: [0x00, 0x67, 0x89], lives: 5 }),
+      ],
     }
     const readout = g.overlayReadout(state)
     expect(readout.wave, 'the overlay shows the GameState wave').toBe(7)
+    // jt11-2: each line also carries the ledger's BCD register through to the
+    // shell (the authentic HUD's display source) — the selector extension's
+    // identity pin lives in hud-jt11-2; here the full line shape is pinned,
+    // with DISTINCT per-player BCD values so a selector hardcoding [0,0,0]
+    // (or crossing the players) reddens (round-2 [TEST] finding).
     expect(readout.players, 'one line per player, P1 then P2, with 1-based ids and exact registers').toEqual([
-      { player: 1, score: 12_345, lives: 3 },
-      { player: 2, score: 6_789, lives: 5 },
+      { player: 1, score: 12_345, scoreBcd: [0x01, 0x23, 0x45], lives: 3 },
+      { player: 2, score: 6_789, scoreBcd: [0x00, 0x67, 0x89], lives: 5 },
     ])
   })
 
@@ -535,10 +543,17 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
 
   it('projects a solo (1P) game as a single line, and does not mutate the state (pure)', async () => {
     const g = await loadGameFull()
-    const solo: GameState = { ...g.createGame(SEED, 1), wave: 3, players: [ledger({ score: 999, lives: 2 })] }
+    const solo: GameState = {
+      ...g.createGame(SEED, 1),
+      wave: 3,
+      players: [ledger({ score: 999, scoreBcd: [0x00, 0x09, 0x99], lives: 2 })],
+    }
     const before = JSON.stringify(solo)
     const readout = g.overlayReadout(solo)
-    expect(readout.players, 'a 1P game shows exactly one overlay line').toEqual([{ player: 1, score: 999, lives: 2 }])
+    expect(readout.players, 'a 1P game shows exactly one overlay line').toEqual([
+      // jt11-2: + the BCD register, a non-default value so a stubbed selector reddens.
+      { player: 1, score: 999, scoreBcd: [0x00, 0x09, 0x99], lives: 2 },
+    ])
     expect(JSON.stringify(solo), 'overlayReadout is pure — it never mutates the GameState').toBe(before)
   })
 })
