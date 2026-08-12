@@ -28,7 +28,8 @@ stories:
     title: "Trench catwalks are horizontal channel-spanning DIVIDERS (catwalk at top/bottom), not single-wall force-field fins — correct finding B-012. The 1983 source proves catwalks are structures ACROSS the channel: WSBASE.MAC TWDG92-96 name '8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM' and the coaching text is 'TRENCH CATWALK'/'AVOID CATWALKS' (TCMES.MAC:560/620); the collision the ROM checks is VERTICAL (WSPANL.MAC:201-209 'FORCE FIELD ABOVE PLAYER?' / 'WITHIN FIRST HALF?'), i.e. dodge by diving/climbing. Finding B-012 (sw7-19) instead identified .WP WFF 'WALL FORCE FIELD' as the catwalk and modeled it as a single vertical fin on ONE wall dodged LATERALLY (models.ts TRENCH_CATWALK; sim.ts onFieldSide graze). Rework: model the catwalk as a channel-spanning member seated in a top or bottom band across the divider; change the graze from side-gated (steer to other wall) to vertical-band-gated (dive/climb); re-point the streaming/placement; update the B-012 docs/findings and the pinned tests (trench-viewpoint, trench-force-field-hazard, trench-forcefield-streaming). Start with the rom-fidelity-audit skill to nail the WFF/WFG-vs-catwalk distinction before RED. Follows sw11-2, which corrected the wall-gun/square orientation and left the catwalk standing and mirrored as an interim."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-11'
     repos: arcade
     workflow: tdd
     type: bug
