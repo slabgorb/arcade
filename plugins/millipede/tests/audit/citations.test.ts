@@ -40,12 +40,15 @@ import { fileURLToPath } from 'node:url'
 // Declared here (not imported from the not-yet-built checker) so this suite
 // COMPILES and vitest can report clean per-test failures instead of a collect
 // crash. Dev's check-citations.d.mts becomes the canonical shape; these mirror it.
+// (No `counts?` here: the `counts`/`CountAssertion` machinery was removed from the
+// real .d.mts in this story's rework — ml1-2 re-adds it with its own test. Keeping a
+// stale `counts?` shim would let a future fixture write `counts: […]` with no type
+// error and silently test nothing, since the runtime checker now ignores the field.)
 interface Claim {
   id: string
   claim: string
   source: { file: string; line: number; verbatim: string }
   corroboration?: unknown
-  counts?: unknown
 }
 type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
 
