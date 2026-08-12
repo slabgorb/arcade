@@ -565,5 +565,50 @@
    "line": 707,
    "verbatim": "\t.SBTTL\tMUSHDC - DECREMENT COUNT OF MUSHROOMS"
   }
+ },
+ {
+  "id": "CW-64",
+  "claim": "GRCODE second template column: 1,0,0,0,1 — code-1 caps, straight-Conway middle.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 324,
+   "verbatim": "\t.BYTE 1,0,0,0,1"
+  }
+ },
+ {
+  "id": "CW-65",
+  "claim": "GRCODE fourth template column: 1,0,0,0,1 — mirror of the second.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 326,
+   "verbatim": "\t.BYTE 1,0,0,0,1"
+  }
+ },
+ {
+  "id": "CW-66",
+  "claim": "GRCODE fifth template column: 2,1,1,1,2 — mirror of the first (CW-34).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 327,
+   "verbatim": "\t.BYTE 2,1,1,1,2"
+  }
+ },
+ {
+  "id": "CW-67",
+  "claim": "Column 0: the template Y offset starts at $40 (third template column) — the pair of the X=$0A skip in CW-29.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 185,
+   "verbatim": "\tLDY #40\t\t\t;START ALGORITHM LATER TO REFLECT THIS"
+  }
+ },
+ {
+  "id": "CW-68",
+  "claim": "Column 1: the template Y offset starts at $20 (second template column) — the pair of the X=5 skip in CW-31.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 192,
+   "verbatim": "\tLDY #20"
+  }
  }
 ]

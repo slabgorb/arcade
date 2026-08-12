@@ -162,13 +162,16 @@ describe('ml3-4 AC-1 — cited constants + INICON init', () => {
     expect(st.addr).toBe(0) // OBST = PLYFLD (CONWAY.MAC:13,16-17, CW-5)
   })
 
-  it('initConway() does not touch the field (INICON writes registers only)', async () => {
+  it('initConway() mints a fresh state each call — no shared mutable singleton (review F3)', async () => {
     const m = await loadConway()
-    m.initConway()
-    // INICON (CONWAY.MAC:11-22) stores PHASE/CDONE/CTEMP only — no field
-    // access exists in those 12 instructions. Guarded by API shape: initConway
-    // takes no field at all.
-    expect(m.initConway.length).toBe(0)
+    const a = m.initConway()
+    const b = m.initConway()
+    expect(a).toEqual(b)
+    // Distinct objects: a caller advancing one process must not advance the
+    // other (the ROM's CTEMP registers are per-process state, CW-6).
+    expect(a).not.toBe(b)
+    a.phase = 5
+    expect(b.phase).toBe(0)
   })
 })
 
@@ -428,8 +431,50 @@ describe('ml3-4 AC-3 — STARTGR: births, survival, death, poison, DDT, edges', 
     expect(f[idx(29, 20)]).toBe(0x7f)
     expect(f[idx(29, 19)]).toBe(0x75)
     expect(f[idx(29, 21)]).toBe(0x75)
-    // Column 1 gets NO seed (CW-31): the interior control dies.
+    // Interior control: a lone mushroom away from any edge dies.
     expect(f[idx(15, 10)]).toBe(0x74)
+  })
+
+  it('the EDGE seed stops at the extreme columns: 1 and 28 get NO seed (CW-29..33, review F1a)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // Columns 1 and 28 take the template CLAMPS (CW-31/33) but not the EDGE
+    // seed — only columns 0 and 29 assume off-screen mushrooms (CW-30). A lone
+    // mushroom there counts 0 neighbours and dies, exactly like the interior.
+    f[idx(1, 10)] = 0x7f
+    f[idx(28, 20)] = 0x7f
+    runPhase0(m, f)
+    expect(f[idx(1, 10)]).toBe(0x74)
+    expect(f[idx(28, 20)]).toBe(0x74)
+  })
+
+  it("a birth ORs the cell's EXISTING background bit — MUSHE1 semantics, not MSKORA (CW-42/62, review F1b)", async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // MUSHE1's store is `picture OR existing cell` (MLSUB.MAC:770-771,
+    // "LEAVE GREY BACKGROUND IF ANY") — NOT `picture OR MSKORA` like every
+    // other STARTGR store. Two directions distinguish them:
+    // (1) a grey-marked blank ($80) OUTSIDE the player area births to $F5
+    //     (MSKORA would give $75);
+    f[idx(10, 10)] = 0x7f
+    f[idx(10, 11)] = 0x7f
+    f[idx(11, 10)] = 0x7f
+    f[idx(11, 11)] = 0x80
+    runPhase0(m, f)
+    expect(f[idx(11, 11)]).toBe(0xf5)
+    // (2) a raw $00 blank INSIDE the player area (rows < 7) births to $75
+    //     (MSKORA would give $F5).
+    const g = emptyField()
+    g[idx(10, 3)] = 0xff
+    g[idx(10, 4)] = 0xff
+    g[idx(11, 3)] = 0xff
+    runPhase0(m, g)
+    expect(g[idx(11, 4)]).toBe(0x75)
+    // The three player-area mushrooms each survive (1..3 neighbours), fully
+    // grown stays, rewritten with the background bit: still $FF.
+    expect(g[idx(10, 3)]).toBe(0xff)
+    expect(g[idx(10, 4)]).toBe(0xff)
+    expect(g[idx(11, 3)]).toBe(0xff)
   })
 })
 
@@ -503,11 +548,18 @@ describe('ml3-4 AC-4 — GROWDIE stage animation + NGROWN termination + CLEANUP'
     }
     expect(st.active).toBe(true)
     expect(st.phase).toBe(m.MAXPH)
-    // Plant an unfinished growth stage for CLEANUP to convert.
+    // Plant ALL THREE unfinished growth stages for CLEANUP to convert, plus a
+    // poison mushroom it must leave frozen (review F4).
     f[idx(21, 20)] = 0x76
+    f[idx(22, 20)] = 0x75
+    f[idx(23, 20)] = 0x77
+    f[idx(24, 20)] = 0x79
     const { state } = runToIdle(m, f, st)
     expect(f[idx(21, 20)]).toBe(0x7d) // $76 + (NORMAL-GROWTH) (CW-60)
-    expect(f[idx(20, 20)]).toBe(0x73) // death stages are NOT cleanup's business — frozen
+    expect(f[idx(22, 20)]).toBe(0x7c) // $75 + 7
+    expect(f[idx(23, 20)]).toBe(0x7e) // $77 + 7
+    expect(f[idx(24, 20)]).toBe(0x79) // poison is not CLEANUP's business — frozen
+    expect(f[idx(20, 20)]).toBe(0x73) // neither are death stages — frozen
     expect(f[idx(11, 11)]).toBe(0x7f) // the natural birth completed long before
     expect(state.active).toBe(false)
     expect(state.phase).toBe(m.MAXPH + 1)
@@ -521,6 +573,25 @@ describe('ml3-4 AC-4 — GROWDIE stage animation + NGROWN termination + CLEANUP'
 // bottom (the address low-5-bits row), printed one row per line, col 0 first.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('ml3-4 AC-5 — the seeded-field golden generation', () => {
+  // What produced each cluster below (review F5; the AC-3/AC-4 tests isolate
+  // each mechanism — this is the reading guide, not the derivation):
+  //   row 1 col 7        — the seeded $76 growth stage completed under GROWDIE
+  //                        with the player-area bit ($FF): row 1 is < 7.
+  //   rows 2-6           — STARTGR's blank rewrite ORs MSKORA: bare $80.
+  //   rows 8-10 col 29   — right-edge EDGE seed: lone mushroom survives,
+  //                        births both flanks (like col 0 at rows 19-21).
+  //   rows 10-11 cols 10-11 — the L-tromino closed into a stable block.
+  //   rows 10-14 cols 22-26 — the lone poison at (24,12): inner ring blocked,
+  //                        the four cardinal fairy-ring cells forced to grow,
+  //                        then THOSE births' own neighbourhoods rippled once.
+  //   rows 13-17 cols 13-17 — the poison cluster: adjacent normals died,
+  //                        fairy-ring forced growths formed the diamond.
+  //   rows 14-15 cols 3-6 — the DDT pair froze; its victim (4,15) became
+  //                        poison $7B mid-sweep and then acted as poison for
+  //                        later columns (the in-place sequential effect).
+  //   rows 20-22 cols 4-6 — the damaged trio regrew to full + flank births.
+  //   row 24             — the lone (20,24) mushroom died away entirely.
+  //   rows 30-31         — the score rows: never touched by any phase.
   const GOLDEN_FINAL_ROWS = [
     '000000000000000000000000000000000000000000000000000000000000', // row 0
     '00000000000000ff00000000000000000000000000000000000000000000', // row 1

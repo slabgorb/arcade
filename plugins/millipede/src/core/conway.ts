@@ -58,17 +58,17 @@ export const EDGE = 2 // mushrooms assumed touching on a screen edge (CW-10)
 const PLAYER_AREA_ROWS = 0x07
 const BACKGROUND_BIT = 0x80
 
-// GRCODE (CONWAY.MAC:320-327, CW-34/35) — the 5x5 neighbourhood template,
-// column-major, 5 entries per column, anchored 2 columns and 2 rows behind the
-// swept cell (TEMP2 = OBST - $42, CW-6). "0 IS NORMAL CONWAY, 1 IS ALWAYS
-// GROW, 2 IS IGNORE": the inner ring is the straight Conway count, the outer
-// fairy ring (cardinal distance-2 cells) is the poison-forces-growth ring.
+// GRCODE (CONWAY.MAC:320-327, CW-34/35/64/65/66) — the 5x5 neighbourhood
+// template, column-major, 5 entries per column, anchored 2 columns and 2 rows
+// behind the swept cell (TEMP2 = OBST - $42, CW-6). "0 IS NORMAL CONWAY, 1 IS
+// ALWAYS GROW, 2 IS IGNORE": the inner ring is the straight Conway count, the
+// outer fairy ring (cardinal distance-2 cells) is the poison-forces-growth ring.
 const GRCODE: readonly number[] = [
-  2, 1, 1, 1, 2, //
-  1, 0, 0, 0, 1, //
-  1, 0, 2, 0, 1, //
-  1, 0, 0, 0, 1, //
-  2, 1, 1, 1, 2, //
+  2, 1, 1, 1, 2, // CONWAY.MAC:323 (CW-34)
+  1, 0, 0, 0, 1, // :324 (CW-64)
+  1, 0, 2, 0, 1, // :325 (CW-35)
+  1, 0, 0, 0, 1, // :326 (CW-65)
+  2, 1, 1, 1, 2, // :327 (CW-66)
 ]
 
 export interface ConwayState {
@@ -105,14 +105,14 @@ function startgr(field: Uint8Array, addr: number): void {
   let y = 0
   // :178-195 — left screen page (OBST high byte $10, i.e. addr < $400):
   if (addr < 0x20) {
-    // column 0: two template columns fall off the edge (CW-29/30)
+    // column 0: two template columns fall off the edge (CW-29/30/67)
     x = 0x0a
-    y = 0x40
+    y = 0x40 // LDY #40 (CW-67)
     mshttl = EDGE
   } else if (addr < 0x40) {
-    // column 1: one template column falls off (CW-31)
+    // column 1: one template column falls off (CW-31/68)
     x = 5
-    y = 0x20
+    y = 0x20 // LDY #20 (CW-68)
   }
   // :196-213 — right screen page (OBST high byte $13, addr >= $380):
   if (addr >= 0x3a0) {
