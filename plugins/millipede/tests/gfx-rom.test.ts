@@ -9,7 +9,7 @@
 //
 // ─── THE DECODE LAW (derived, cited in prose — GPL: never copied) ─────────────
 // Millipede's picture region is TWO bitplanes, one per picture EPROM
-// (368X1.DOC:23 ledgers the two picture EPROMs; the preserved bytes are the
+// (368X1.DOC:22-23 ledgers the two picture EPROMs; the preserved bytes are the
 // MAME `milliped` set's 136013-106/107 — ml1 OQ-3). There is no CENPIC-style
 // vendored picture source for Millipede, so the layout law is stated here in MY
 // OWN words, derived from centipede's in-tree CENPIC decode (the story names it
@@ -78,7 +78,7 @@ async function loadGfxRom(): Promise<GfxRomModule> {
     throw new Error(
       'gfx-rom seam not built yet: GREEN ships plugins/millipede/src/shell/gfx-rom.ts ' +
         'exporting decodeStamp(rom, offset) — see this file’s header for the decode law ' +
-        `(${(e as Error).message})`,
+        `(${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -152,6 +152,10 @@ describe('ml2-2 AC-2 — plane significance: low plane is bit 0, high plane is b
     // low[r] = 0x80 >> r (colour 1 at x = r); high[r] = 0x01 << r (colour 2 at
     // x = 7 - r). The two never collide, and every row is distinct — a wrong
     // row order, plane order, or bit order each produces a DIFFERENT grid.
+    // (One symmetry this fixture deliberately does NOT pin: the expected grid
+    // equals its own transpose, so a row/column-swapped decode passes HERE —
+    // the constant-row two-stamp fixtures in the offset describe are the
+    // transpose catch, review F4.)
     const rom = new Uint8Array(16)
     for (let r = 0; r < 8; r++) {
       rom[r] = 0x80 >> r
@@ -216,6 +220,12 @@ describe('ml2-2 AC-3 — input guards', () => {
     const { decodeStamp } = await loadGfxRom()
     expect(() => decodeStamp(new Uint8Array(0), 0)).toThrow(RangeError)
     expect(() => decodeStamp(new Uint8Array(15), 0)).toThrow(RangeError)
+    // 17 bytes is the case only the PARITY check can catch (review F2,
+    // mutation-proven): planeSize 8.5 satisfies offset+8 <= planeSize, so a
+    // parity-less implementation would read rom[8.5 + r] → undefined → 0 and
+    // return a plausible garbage grid instead of throwing. 15 stays too — it
+    // pins the small-and-odd corner where the window guard also fires.
+    expect(() => decodeStamp(new Uint8Array(17), 0)).toThrow(RangeError)
   })
 
   it('rejects an offset outside 0 <= offset <= planeSize - 8, accepts the boundary', async () => {
@@ -266,16 +276,26 @@ describe('ml2-2 AC-4 — the seam is pure and plain-Node importable', () => {
     // module must be erasable-syntax-only with no bundler-resolved imports.
     // vitest's esbuild transform would hide such a break; a real subprocess
     // cannot.
+    // The probe also CALLS the decode on a one-lit-pixel region and checks
+    // the answer (review F5): loadability alone would miss a stripping edge
+    // that imports cleanly but misbehaves.
     const probe =
       `const m = await import(${JSON.stringify(pathToFileURL(gfxRomPath).href)});` +
-      `if (typeof m.decodeStamp !== 'function') throw new Error('no decodeStamp export');`
+      `if (typeof m.decodeStamp !== 'function') throw new Error('no decodeStamp export');` +
+      `const rom = new Uint8Array(16); rom[0] = 0x80;` +
+      `const g = m.decodeStamp(rom, 0);` +
+      `if (g.length !== 8 || g[0].length !== 8 || g[0][0] !== 1 || g[0][1] !== 0 || g[1][0] !== 0)` +
+      ` throw new Error('decodeStamp misbehaved under plain Node: ' + JSON.stringify(g[0]));`
     try {
       execFileSync(process.execPath, ['--input-type=module', '-e', probe], { stdio: 'pipe' })
     } catch (e) {
-      const stderr = (e as { stderr?: Buffer }).stderr?.toString() ?? (e as Error).message
+      // Narrow the unknown before reading off it (review F6, lang-review #11):
+      // execFileSync throws an Error carrying the subprocess's stderr.
+      const detail =
+        e instanceof Error ? ('stderr' in e && e.stderr ? String(e.stderr) : e.message) : String(e)
       throw new Error(
         'plain-Node import of src/shell/gfx-rom.ts failed — the bake script imports ' +
-          `this file directly, so it must run outside vitest's transform: ${stderr}`,
+          `this file directly, so it must run outside vitest's transform: ${detail}`,
       )
     }
   })
@@ -306,5 +326,25 @@ describe('ml2-2 AC-5 — no MAME gfx-decode code crosses the GPL seam', () => {
     )
     const hits = files.filter((f) => token.test(readFileSync(join(root, f), 'utf8')))
     expect(hits, 'GPL: derive the law, never transcribe the code').toEqual([])
+  })
+
+  // The positive path (review F3, lang-review #15/#25: a source-text guard
+  // must be proven able to fire). Each real spelling is assembled by
+  // CONCATENATION — present here as data handed to .test(), never as
+  // scannable file text — and every pattern must match at least one of them,
+  // so a future typo in a regex that silently de-fangs it fails THIS test
+  // instead of leaving the sweep green forever.
+  it.each(BANNED)('%s pattern still fires on the real spelling', (_what, token) => {
+    const spellings = [
+      'RGN_' + 'FRAC(1,2)',
+      'gfx_' + 'layout',
+      'STEP8' + '(0,1)',
+      'STEP8' + '(0,8)',
+      'plane' + 'offset',
+    ]
+    expect(
+      spellings.some((s) => token.test(s)),
+      'the banned-token pattern matches none of the real MAME spellings — the sweep is de-fanged',
+    ).toBe(true)
   })
 })

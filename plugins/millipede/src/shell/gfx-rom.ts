@@ -10,7 +10,7 @@
 // Node's type stripping — so everything here stays erasable-syntax-only.
 //
 // THE DECODE LAW (derived, cited in prose — GPL: never copied): Millipede's
-// picture region is two bitplanes, one per picture EPROM (368X1.DOC:23
+// picture region is two bitplanes, one per picture EPROM (368X1.DOC:22-23
 // ledgers the pair; the preserved bytes are the MAME `milliped` set's
 // 136013-106/107 — ml1 OQ-3). There is no CENPIC-style vendored picture
 // source for Millipede, so the law is stated in our own words, from
