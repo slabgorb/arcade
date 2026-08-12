@@ -248,9 +248,10 @@ export interface DrawOp {
 export interface DemoModule {
   /**
    * Assemble wave 1, deterministically under the SHELL's seed:
-   *   • P1 and P2 both live, from the transporter spawn constants (P1 x=100
-   *     facing right on an ostrich, P2 x=200 facing left on a stork) — the 2P
-   *     contract;
+   *   • the first `playerCount` mounts (default 2) from the transporter spawn
+   *     constants (P1 x=100 facing right on an ostrich, P2 x=200 facing left
+   *     on a stork) — passing 1 spawns P1 alone (jt11-1); the bare call keeps
+   *     the 2P contract;
    *   • the wave-1 enemy complement (waveEnemyComplement(waveRowAt(1)) = 3
    *     bounders) entered via pads (enterViaPads(count, seed)), each an enemy
    *     process whose `period` is the EMYTIM divider for the wave
@@ -258,7 +259,7 @@ export interface DemoModule {
    *   • the intelligence budget seeded from wave 1's pursuit nibble
    *     (seedWaveBudget(waveRowAt(1)) → wsmart = 1, nsmart = 0);
    *   • the wave-1 message beats surfaced as `beat` events (the intro).
-   * Pure — same seed, same DemoState.
+   * Pure — same seed and count, same DemoState.
    */
   createWaveDemo(seed: number, playerCount?: number): DemoState
 

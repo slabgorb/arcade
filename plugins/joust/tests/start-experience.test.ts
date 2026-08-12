@@ -119,9 +119,12 @@ describe('AC-1 — createWaveDemo/createGame honour the player count', () => {
   it('no P2 mount ever appears across 240 stepped frames of a 1P game', async () => {
     const g = await loadGame()
     let game = g.createGame(SEED, 1)
-    // Kills the deferred-spawn mutant AND pins the respawn side: stepGame's
-    // respawn pass iterates the LEDGERS, so a 1P game must never re-introduce
-    // id 2 — not at assembly, not from any later reconcile/respawn frame.
+    // Kills the deferred-spawn mutant: no later reconcile frame may fabricate
+    // a P2 id in a 1P game. SCOPE (measured, review round 1): across 240 idle
+    // frames P1 never dies, so the respawn branch itself is NOT exercised here
+    // — this pins quiescent stepping only. The respawn path's 1P behavior rests
+    // on it iterating the LEDGERS (one ledger → only id 1 can re-enter), which
+    // is structural, not proven by this loop.
     for (let f = 0; f < 240; f++) {
       game = g.stepGame(game, {})
       const ids = playerIds(game.sim as unknown as DemoState)
@@ -187,8 +190,27 @@ describe('AC-2 — the attract start prompt', () => {
       'layoutStartPrompt is imported from ./shell/attractScreen.js',
     ).toMatch(/import\s*\{[^}]*layoutStartPrompt[^}]*\}\s*from\s*'\.\/shell\/attractScreen\.js'/)
     // And CALLED from live code — comments are stripped, so prose cannot satisfy
-    // this. (Which attract page paints it, and where, is a paint/smoke concern.)
+    // this.
     const calls = code.match(/layoutStartPrompt\(/g) ?? []
     expect(calls.length, 'at least one live call site paints the prompt').toBeGreaterThanOrEqual(1)
+  })
+
+  it('renderAttract reaches the prompt paint on EVERY page — no early return (wiring)', () => {
+    // Kills the review round-1 SURVIVOR: reverting renderAttract to its pre-fix
+    // shape (early `return` inside the demo-page branch, before the prompt
+    // paint) passed the call-site test above while un-fixing the story's
+    // central bug — a demo page with no visible way to start. The prompt paint
+    // is unconditional ONLY while the function body contains no return
+    // statement, so pin exactly that: the demo page is where a stuck player
+    // sits, and it must fall through to layoutStartPrompt.
+    const code = mainCode()
+    const body = code.match(/function renderAttract\(\): void \{([\s\S]*?)\n\}/)?.[1]
+    expect(body, 'renderAttract exists in main.ts').toBeDefined()
+    expect(body!, 'the attract render falls through to the prompt — no early return').not.toMatch(
+      /\breturn\b/,
+    )
+    expect(body!, 'the prompt is laid out inside renderAttract itself').toMatch(
+      /layoutStartPrompt\(/,
+    )
   })
 })
