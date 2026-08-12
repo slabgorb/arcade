@@ -10,10 +10,11 @@ stories:
     title: 'Vendor + byte-citation-gate the picture EPROMs 136013-106/107 from the MAME milliped set (368XX.SB2 not preserved upstream, ml1 OQ-3): place the ROM bytes under a byte-equality gate like pac-man/centipede, provenance recorded, reference/ licence-walled.'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
     review_verdict: approved
   - id: ml2-2
     title: 'Pure 8x8 stamp decode primitive in src/shell/gfx-rom.ts: (Uint8Array) -> plain pixel data, 2-bit planar like centipede CENPIC, no fetch/DOM/canvas so it runs under vitest AND the bake script. Byte-equality decode tests.'

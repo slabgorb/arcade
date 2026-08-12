@@ -71,3 +71,8 @@ completed_stories:
     title: 'RAM-colour palette seam (the divergence from centipede): decode the palette from MAME milliped.cpp COLOR-RAM wiring (MLIRQ.MAC:242 CLRCH), NOT a resistor-DAC PROM. Pin the palette source as claims; cite milliped.cpp in prose, never copy (GPL).'
     points: 5
     completed: '2026-08-12'
+  - id: ml2-1
+    epic: ml2
+    title: 'Vendor + byte-citation-gate the picture EPROMs 136013-106/107 from the MAME milliped set (368XX.SB2 not preserved upstream, ml1 OQ-3): place the ROM bytes under a byte-equality gate like pac-man/centipede, provenance recorded, reference/ licence-walled.'
+    points: 5
+    completed: '2026-08-12'
