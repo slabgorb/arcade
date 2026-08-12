@@ -20,9 +20,11 @@ stories:
     title: 'Pure 8x8 stamp decode primitive in src/shell/gfx-rom.ts: (Uint8Array) -> plain pixel data, 2-bit planar like centipede CENPIC, no fetch/DOM/canvas so it runs under vitest AND the bake script. Byte-equality decode tests.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
   - id: ml2-3
     title: 'RAM-colour palette seam (the divergence from centipede): decode the palette from MAME milliped.cpp COLOR-RAM wiring (MLIRQ.MAC:242 CLRCH), NOT a resistor-DAC PROM. Pin the palette source as claims; cite milliped.cpp in prose, never copy (GPL).'
     points: 5
