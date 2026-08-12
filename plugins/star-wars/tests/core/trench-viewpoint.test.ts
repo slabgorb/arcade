@@ -51,7 +51,6 @@ import { initialState, type GameState, type TrenchObstacle } from '../../src/cor
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT, type Input } from '../../src/core/input'
 import {
-  TRENCH_HALF_W,
   TRENCH_EYE_MIN,
   TRENCH_EYE_MAX,
   TRENCH_EYE_SEAT,
@@ -65,14 +64,14 @@ const DOWN: Input = { aimX: 0, aimY: -1, fire: false }
 const LEFT: Input = { aimX: -1, aimY: 0, fire: false }
 const RIGHT: Input = { aimX: 1, aimY: 0, fire: false }
 
-/** The wall force-field hazard the viewpoint tests fly against: a LEFT-wall field at
- *  the seated pilot's height, just downrange. MIGRATED (sw7-22 / R6d): force fields are
- *  now STREAMED from the wedge grid, not carried by `spawnTrenchObstacles`, so this
- *  fixture builds the field it needs directly — exactly as trench-force-field-hazard.test.ts
- *  stages it — instead of pulling a placeholder catwalk out of the obstacle table. */
+/** The catwalk hazard the viewpoint tests fly against: a CHANNEL-SPANNING catwalk at
+ *  the seated pilot's height, just downrange. sw11-3 reworks B-012 — the catwalk is a
+ *  channel-spanning member (WSBASE.MAC TWDG92-96), not a single-wall fin, so it sits at
+ *  the channel CENTRE (pos[1] = 0) and is dodged VERTICALLY (climb out of its band), not
+ *  by steering to a far wall. Built directly, as trench-force-field-hazard.test.ts stages it. */
 function spawnedCatwalk(): TrenchObstacle {
-  // native basis: pos = [depth (+forward, just downrange), right (LEFT wall), up (seat height)].
-  return { kind: 'catwalk', pos: [2000, -TRENCH_HALF_W, TRENCH_EYE_SEAT] }
+  // native basis: pos = [depth (+forward, just downrange), right (CENTRE, spans width), up (seat band)].
+  return { kind: 'catwalk', pos: [2000, 0, TRENCH_EYE_SEAT] }
 }
 
 /**
@@ -183,29 +182,36 @@ describe('sw3-2 — the viewpoint is clamped to the band (no overshoot, no wrap)
   })
 })
 
-describe('sw7-19 (B-012) — the catwalk is a side-gated wall force field: grazes, but costs no shield', () => {
-  it('steering to the OPPOSITE wall dodges the wall force field — no crash, no shield', () => {
-    // The catwalk is now a LEFT-wall force field (B-012), dodged LATERALLY — steer to the
-    // RIGHT wall (the opposite side of `IFLE ;?ON LEFT SIDE?`) and it cannot reach you. This
-    // replaces sw3-2's dive-under: with the wall band, a dive stays on the left and still
-    // grazes; the authentic dodge is the far wall.
-    let s = trenchStart([spawnedCatwalk()])
-    const lives0 = s.lives
-    let crashed = false
-    const dt = 1 / 60
-    for (let i = 0; i < 600 && s.trenchObstacles.length > 0; i++) {
-      s = stepGame(s, RIGHT, dt)
-      if (s.events.some((e) => e.type === 'terrain-crash')) crashed = true
+describe('sw11-3 (reworks B-012) — the catwalk spans the channel: grazes across it, dodged by CLIMBING', () => {
+  it('steering to EITHER wall does NOT dodge — the channel-spanning catwalk still grazes', () => {
+    // sw11-3 overturns B-012's lateral dodge. WSPANL runs PNVLW *and* PNVRW, so a
+    // force-field row sits on both walls at its band — steering to the far wall just
+    // hits the other panel. A pilot who holds LEFT, and one who holds RIGHT, at the
+    // seat band both graze. RED today: a centred field side-gates to trenchView[1] >= 0,
+    // so the LEFT-holding pilot flies clear.
+    for (const yoke of [LEFT, RIGHT]) {
+      let s = trenchStart([spawnedCatwalk()])
+      let crashed = false
+      const dt = 1 / 60
+      for (let i = 0; i < 600 && s.trenchObstacles.length > 0; i++) {
+        s = stepGame(s, yoke, dt)
+        if (s.events.some((e) => e.type === 'terrain-crash')) crashed = true
+      }
+      expect(crashed, 'lateral steering never escapes a channel-spanning catwalk').toBe(true)
     }
-    expect(crashed).toBe(false) // steered to the far wall — the graze never fires
-    expect(s.lives).toBe(lives0) // no shield lost
-    expect(s.trenchObstacles).toHaveLength(0) // the field scrolled harmlessly past
   })
 
-  it('neutral input GRAZES it (terrain-crash) but costs NO shield — a graze is not a shield hit (B-012)', () => {
-    // A hands-off run rides centre = the ROM's left side, so it grazes the left-wall field:
-    // the crash sound fires (hazard preserved), but WSPANL's contact is a graze — the shield
-    // accounting rides WSGLOW (score-shields scope), so no shield is spent here (was: −1).
+  // NOTE: the vertical (dive/climb) dodge is pinned authoritatively — with
+  // pre-positioned pilots, robust to scroll timing — in trench-force-field-hazard.test.ts
+  // ("a TOP-band catwalk … dodge is DIVE" / "a BOTTOM-band catwalk … dodge is CLIMB").
+  // Whether the yoke can climb OUT of the band before a given catwalk scrolls in is a
+  // constants/playability question the story verifies by hand on the dev server, so it
+  // is deliberately not pinned as an automated timing test here.
+
+  it('neutral input GRAZES it (terrain-crash) but costs NO shield — a graze is not a shield hit', () => {
+    // A hands-off run rides the seat band, so it grazes the spanning catwalk: the
+    // crash sound fires (hazard preserved), but WSPANL's contact is a graze — the
+    // shield accounting rides WSGLOW (score-shields scope), so no shield is spent.
     let s = trenchStart([spawnedCatwalk()])
     const lives0 = s.lives
     let crashed = false
@@ -213,7 +219,7 @@ describe('sw7-19 (B-012) — the catwalk is a side-gated wall force field: graze
       s = stepGame(s, NO_INPUT, 1 / 60)
       if (s.events.some((e) => e.type === 'terrain-crash')) crashed = true
     }
-    expect(crashed).toBe(true) // an un-piloted run still grazes the field...
+    expect(crashed).toBe(true) // an un-piloted run still grazes the catwalk...
     expect(s.lives).toBe(lives0) // ...but a graze costs NO shield
     expect(s.trenchObstacles).toHaveLength(0)
   })

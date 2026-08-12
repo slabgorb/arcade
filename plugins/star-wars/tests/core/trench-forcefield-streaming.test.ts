@@ -92,12 +92,13 @@ describe('sw7-22 (R6d) — the trench streams force fields from the wedge grid o
   })
 
   it('a wave WITH grid force fields streams many of them, spanning past the beam-reach window', () => {
-    // RED now: `spawnTrenchObstacles` ignores the wave and the grid entirely, so the
-    // trench carries the ONE stub catwalk at ~−3,248 and nothing beyond ~4,448.
+    // The grid streams tens of catwalks over the full channel. Lower bound kept loose
+    // (sw11-3: Dev may merge a wedge's left+right force-field slots into one spanning
+    // catwalk, roughly halving the count) — the depth SPAN is the strong pin.
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
-    expect(ff.length, 'the grid streams tens of fields, not the single stub').toBeGreaterThan(40)
-    expect(ff.some((f) => f.pos[0] > TRENCH_FAR), 'fields sit beyond the $7000 window').toBe(true)
-    expect(Math.max(...ff.map((f) => f.pos[0])), 'fields reach deep down the full channel').toBeGreaterThan(200_000)
+    expect(ff.length, 'the grid streams tens of catwalks, not the single stub').toBeGreaterThan(20)
+    expect(ff.some((f) => f.pos[0] > TRENCH_FAR), 'catwalks sit beyond the $7000 window').toBe(true)
+    expect(Math.max(...ff.map((f) => f.pos[0])), 'catwalks reach deep down the full channel').toBeGreaterThan(200_000)
   })
 
   it('the stream is DATA-DRIVEN: a wave whose grid has no force fields (PIE1) streams none', () => {
@@ -107,25 +108,27 @@ describe('sw7-22 (R6d) — the trench streams force fields from the wedge grid o
     expect(ff.length, 'PIE1 is all guns — no force fields until a later pie').toBe(0)
   })
 
-  it('every streamed field sits at a grid-derived (wall, −Z) — no invented stations', () => {
-    // Clone-safe derivation pin: each field must land where the wedge chain puts a
-    // PANEL_FORCEFIELD slot, on that slot column's wall. Invented/evenly-spaced
-    // placements fail; the exact per-slot HEIGHT is deliberately not pinned here.
+  it('every streamed catwalk sits at a grid-derived depth — no invented stations', () => {
+    // Clone-safe derivation pin: each catwalk must land at a downrange depth where the
+    // wedge chain puts a PANEL_FORCEFIELD slot. sw11-3: the catwalk SPANS the channel,
+    // so it is no longer keyed to a slot's wall column — only its depth is pinned here;
+    // the exact per-slot band HEIGHT is Dev's to derive.
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
-    const grid = new Set(gridFields(WAVE_WITH_FIELDS).map((f) => `${f.sign}@${f.dist}`))
+    const gridDepths = new Set(gridFields(WAVE_WITH_FIELDS).map((f) => f.dist))
     for (const f of ff) {
-      const key = `${Math.sign(f.pos[1])}@${f.pos[0]}`
-      expect(grid.has(key), `field at wall ${Math.sign(f.pos[1])}, depth ${f.pos[0]} is a grid slot`).toBe(true)
+      expect(gridDepths.has(f.pos[0]), `catwalk at depth ${f.pos[0]} is a grid slot`).toBe(true)
     }
   })
 
-  it('fields mount on BOTH walls — the side gate the B-012 graze reads is preserved', () => {
-    // The grid carries left- and right-column fields; the stream must keep the wall
-    // so the sw7-19 sign-gated graze still fires on the correct side (both walls
-    // present ⇒ a hardcoded "always left" placement cannot pass).
+  it('catwalks SPAN the channel — seated at centre, not mounted to a wall (sw11-3)', () => {
+    // sw11-3 overturns B-012's per-wall placement: a catwalk is a channel-spanning
+    // member (WSBASE.MAC TWDG92-96, "8 PANEL DIVIDER WITH CATWALK"), so it sits at the
+    // channel centre (pos[1] = 0), NOT at a wall sign. RED today — the stream still
+    // mounts each field on its slot column's wall (±), which a hardcoded "always
+    // centre" cannot fake because the depth pin above keeps it grid-derived.
     const ff = fields(freshTrench(WAVE_WITH_FIELDS))
-    expect(ff.some((f) => f.pos[1] < 0), 'a left-wall field').toBe(true)
-    expect(ff.some((f) => f.pos[1] > 0), 'a right-wall field').toBe(true)
+    expect(ff.length).toBeGreaterThan(0)
+    expect(ff.every((f) => f.pos[1] === 0), 'every catwalk spans the channel at centre').toBe(true)
   })
 
   it('streamed fields are the force-field kind the B-012 collision reads (catwalk)', () => {

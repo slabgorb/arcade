@@ -1,75 +1,68 @@
 // tests/core/trench-force-field-hazard.test.ts
 //
-// Story sw7-19 — RED phase (Han Solo / TEA): the trench "catwalk" collision is
-// re-ported as the WALL FORCE FIELD it is in the ROM (finding B-012, the
-// behaviour half; the model half is trench-force-field-rom.test.ts).
+// Story sw11-3 — RED phase (Han Solo / TEA): the trench catwalk is a CHANNEL-
+// SPANNING member seated in a top/bottom band, dodged by DIVING/CLIMBING —
+// NOT a single-wall force-field fin dodged by steering to the other wall.
+// This REWORKS finding B-012 (sw7-19), which modelled the catwalk as one wall's
+// panel with a lateral (side) gate. That side gate is the defect.
 //
-// SUPERSEDES + INVERTS the story-14-7 suite (RETIRED:trench-catwalk-hazard.test.ts).
-// 14-7 made the (fabricated, channel-spanning) catwalk "cost exactly one
-// shield". B-012 rules that WRONG: the ROM's WSPANL contact is a GRAZE, not a
-// hard `lives-1`. That file is deleted; its "a pass registers a crash over a
-// real crossing" coverage is preserved below, re-seated to the graze contract.
+// -- WHAT THE ROM ACTUALLY DOES (WSPANL.MAC, 1983 source; radix 16) -----------
 //
-// -- WHAT THE ROM ACTUALLY DOES (WSPANL.MAC:186-215, .RADIX 16) ---------------
+// The panel collision runs TWICE per trench segment, once per wall:
+//   PNVLW  ;VIEW LEFT WALL PANELS   → LDD M$TY / IFLE ;?ON LEFT SIDE?   (:199)
+//   PNVRW  ;VIEW RIGHT WALL PANELS  → LDD M$TY / IFGE ;?ON RIGHT SIDE?  (:367)
+// BOTH are called for the same segment, so a force-field row has a LEFT panel AND
+// a RIGHT panel at the same height band. A pilot on the left hits the left panel;
+// a pilot who "steers to the right wall" just hits the right panel. There is no
+// lateral escape — the row spans the channel. The HIT gate is VERTICAL:
 //
-//   LDD  M.X0 / SUBD M$TX+M.U1 / CMPD #1000 / IFLE      ; panel within depth
-//     CMPA #TD$WFF / IFEQ                               ; a force field?
-//       LDD M$TY+M.U1 / IFLE          ;?ON LEFT SIDE?   ; ← SIDE GATE (pilot side)
-//         LDD M.Z0 / ADDD #200        ;TOP OF FORCE FIELD
-//         SUBD M$TZ+M.U1 / IFGE       ;?FORCE FIELD ABOVE PLAYER?
-//           SUBD #400 / IFLE          ;?BUT NOT TOO FAR? ← VERTICAL BAND ($400)
-//             LDD M.X0 / SUBD M$TX+M.U1 / SUBD #400
-//             IFLS                    ;?WITHIN FIRST HALF OF FORCE FIELD? ← DEPTH ($400)
-//               LDA #TD$WFG           ;THEN A HIT, CHANGE THE PICTURE TO BRITE
-//               JSR BG1GLW            ;GLOW the ship        (deferred A-018)
-//               JSR AUDCR             ;CRASH sound          → 'terrain-crash'
-//               STA S.ROL             ;ROLL the ship ±78    (deferred A-018)
+//   LDD M.Z0 / ADDD #200      ;TOP OF FORCE FIELD
+//   SUBD M$TZ / IFGE          ;?FORCE FIELD ABOVE PLAYER?     ← vertical
+//   SUBD #400 / IFLE          ;?BUT NOT TOO FAR?              ← $400 band (Z)
+//   LDD M.X0 / SUBD M$TX / SUBD #400 / IFLS ;?WITHIN FIRST HALF? ← depth
+//   → LDA #TD$WFG  ;HIT: glow + AUDCR crash + roll
 //
-// Three gates, then a GRAZE — glow + crash sound + roll, and NOTHING ELSE. There
-// is no `lives-1` here: the shield ACCOUNTING rides WSGLOW (score-shields / S-016
-// scope, a later story). Of the graze's three cues, only the crash sound (AUDCR
-// → our 'terrain-crash') is modelled today; the ship glow and roll are the
-// explicitly-deferred A-018 (state.ts glow field doc). So this story's whole
-// observable is: the contact GRAZES (fires 'terrain-crash') and costs NO shield.
+// and the panels themselves stack $400 apart in Z (`ADDD #400 ;MOVE UP TO NEXT
+// PANEL`, :240). So the dodge is to leave the band vertically — dive under a top
+// catwalk, climb over a bottom catwalk. `.WGD WFG`'s ";CATWALK COLOR WHEN
+// COLLIDED" (WSOBJ.MAC:1834) confirms WFF/WFG IS the catwalk; and TWDG92-96
+// (WSBASE.MAC:878-906) name the "8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM" —
+// a full row across the channel, seated at a top or bottom band.
 //
-// -- THE SIDE GATE, AND WHY THE OLD TEST CAN'T SEE IT -------------------------
+// -- WHAT B-012 GOT RIGHT, AND WHAT IT GOT WRONG ------------------------------
 //
-// The pilot is clamped to ±TRENCH_VIEW_HALF_W (±511) inside walls at
-// ±TRENCH_HALF_W (±1024), so he is ALWAYS ≥ 513 units from a wall. The old
-// collision is a CATWALK_HIT_RADIUS(=240) sphere around the obstacle's point, so
-// a WALL-MOUNTED field is simply unreachable by it — the old collision only ever
-// bit a CENTRED (x≈0) girder. The ROM gate is not a sphere: `IFLE ;?ON LEFT
-// SIDE?` blocks the WHOLE half-channel on the field's side (at its height slot
-// and depth), with no lateral-distance test. So the dodge is lateral (steer to
-// the OPPOSITE wall) or vertical (a different height slot) — never "hug centre".
+// RIGHT: the object identity (the catwalk IS the wall force field, TD$WFF/WFG)
+//   and the single-panel model shape (`.WP WFF`, a vertical fin) — unchanged, and
+//   still pinned by trench-force-field-rom.test.ts. NOT this story's concern.
+// WRONG: it placed ONE panel on ONE wall and gated the graze on the pilot's
+//   lateral side (`onFieldSide`), so steering to the far wall dodged it. The ROM
+//   places the row on BOTH walls at the band and never checks lateral distance —
+//   the graze is vertical-band-gated and channel-spanning.
 //
-// -- REPRESENTATION CONTRACT (defined here; Dev's grid-derived spawning meets it)
+// -- REPRESENTATION CONTRACT (declared here; Dev's grid-derived spawning meets it)
 //
-// A force-field hazard is a trench obstacle whose mounted wall is the SIGN of
-// pos[1] (native right: negative = left wall, positive = right wall; magnitude ≈ TRENCH_HALF_W).
-// The collision fires only when the pilot's lateral trenchView[1] is on that
-// same side, within the field's vertical band and depth window; the contact is a
-// graze ('terrain-crash', no shield). The EXACT band ($200 top offset, $400
-// height) and depth ($400) coordinates, and the grid slot→world-height mapping,
-// are Dev's to derive from the sw7-6 wedge grid (WSPANL.MAC:196-210) — this suite
-// pins the OBSERVABLE (which side/height grazes vs clears), not those literals.
+// A channel-spanning catwalk is a trench obstacle of kind 'catwalk' whose lateral
+// pos[1] is the channel CENTRE (0) — it is NOT mounted to a wall sign. pos[2] is
+// its band height (a top or a bottom band); pos[0] is its downrange depth. The
+// graze fires whenever the pilot's VERTICAL trenchView[2] is within the field's
+// band AND it is within the depth window — INDEPENDENT of the pilot's lateral
+// trenchView[1]. The contact is a GRAZE ('terrain-crash', NO shield — the shield
+// accounting rides WSGLOW, S-016 scope, a later story). The EXACT band ($200 top
+// offset / $400 height) and the grid slot→band-height map are Dev's to derive
+// from the wedge grid; this suite pins the OBSERVABLE (which HEIGHT grazes vs
+// clears, and that LATERAL side never matters), not those literals.
 
 import { describe, it, expect } from 'vitest'
 import { initialState, type GameState, type TrenchObstacle } from '../../src/core/state'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
-import {
-  TRENCH_HALF_W,
-  TRENCH_EYE_SEAT,
-  TRENCH_EYE_MIN,
-  TRENCH_EYE_MAX,
-} from '../../src/core/trench-channel'
+import { TRENCH_EYE_SEAT, TRENCH_EYE_MIN, TRENCH_EYE_MAX } from '../../src/core/trench-channel'
 import type { Vec3 } from '@shared/math3d'
 
 /**
- * An isolated trench holding ONLY the given force-field hazard(s) and no exhaust
- * port, seated at the given pilot viewpoint. No port ⇒ the force-field contact is
- * the only thing that can touch a shield, so the count is clean.
+ * An isolated trench holding ONLY the given catwalk hazard(s) and no exhaust
+ * port, seated at the given pilot viewpoint. No port ⇒ the catwalk contact is the
+ * only thing that can touch a shield, so the count is clean.
  */
 function trenchWith(obstacles: TrenchObstacle[], view: Vec3): GameState {
   return {
@@ -82,11 +75,18 @@ function trenchWith(obstacles: TrenchObstacle[], view: Vec3): GameState {
   }
 }
 
-/** A wall force field: mounted on `wall` (±TRENCH_HALF_W), height slot `y`, depth `z`. */
-const forceField = (wall: number, y: number, z: number): TrenchObstacle => ({ kind: 'catwalk', pos: [-z, wall, y] })
+/**
+ * A channel-spanning catwalk: seated at band height `y`, downrange `depth`
+ * (positive = ahead of the cockpit). Lateral pos[1] is the channel centre (0):
+ * the catwalk spans the width, so which wall the pilot hugs is immaterial.
+ */
+const catwalk = (y: number, depth = 1): TrenchObstacle => ({ kind: 'catwalk', pos: [depth, 0, y] })
 
-const LEFT_WALL = -TRENCH_HALF_W // -1024
-const RIGHT_WALL = TRENCH_HALF_W //  1024
+// Lateral pilot offsets, inside the ROM ±511 clamp. Vertical dodging is the only
+// dodge, so these must ALL graze an in-band catwalk.
+const FAR_LEFT = -500
+const CENTRE = 0
+const FAR_RIGHT = 500
 const DT = 1 / 60
 
 /** Drive a hands-off pilot until the hazard clears (or a cap), reporting whether
@@ -102,70 +102,76 @@ function flyThrough(s0: GameState): { crashSeen: boolean; shieldsLost: number } 
   return { crashSeen, shieldsLost: lives0 - s.lives }
 }
 
-describe('sw7-19 / B-012 — the wall force field is a GRAZE, not a shield-costing bar', () => {
-  it('grazes a same-side pilot: fires terrain-crash but costs NO shield (inverts 14-7)', () => {
-    // Left-wall field at the pilot's seat height, just downrange; pilot on the
-    // left half. RED today: the CATWALK_HIT_RADIUS sphere never reaches a wall
-    // field, so no crash fires at all — `crashSeen` is false. Once side-gated it
-    // grazes, and the graze must NOT spend a shield (the 14-7 contract, inverted).
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [0, -300, TRENCH_EYE_SEAT])
+describe('sw11-3 — the catwalk spans the channel: vertical-band graze, NO lateral dodge', () => {
+  it('grazes an in-band pilot and costs NO shield (the graze contract, preserved)', () => {
+    // A catwalk at the pilot's height, just downrange; pilot centred at that
+    // height. It grazes (crash sound), and a graze spends no shield (WSGLOW/S-016
+    // scope, not this story).
+    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, CENTRE, TRENCH_EYE_SEAT])
     const { crashSeen, shieldsLost } = flyThrough(s0)
-    expect(crashSeen, 'the force field grazes the same-side pilot').toBe(true)
-    expect(shieldsLost, 'a graze costs no shield (WSGLOW/S-016 scope, not this story)').toBe(0)
+    expect(crashSeen, 'the catwalk grazes the in-band pilot').toBe(true)
+    expect(shieldsLost, 'a graze costs no shield').toBe(0)
   })
 
-  it('is side-gated: it grazes a same-side pilot but a pilot on the OPPOSITE wall flies clear', () => {
-    // The ROM `IFLE ;?ON LEFT SIDE?` mirror. Same left-wall field; move only the
-    // pilot's side. Both halves in one test so neither can pass alone: a coin/
-    // full-width bar would hit (or miss) both sides identically.
-    const field = () => [forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)]
-    const sameSide = flyThrough(trenchWith(field(), [0, -300, TRENCH_EYE_SEAT]))
-    const oppositeSide = flyThrough(trenchWith(field(), [0, 300, TRENCH_EYE_SEAT]))
-
-    expect(sameSide.crashSeen, 'same-side pilot grazes').toBe(true)
-    expect(oppositeSide.crashSeen, 'opposite-wall pilot flies clear').toBe(false)
-    expect(oppositeSide.shieldsLost, 'no contact ⇒ no shield').toBe(0)
+  it('is CHANNEL-SPANNING: grazes a left, a centre AND a right pilot at band height', () => {
+    // The headline of sw11-3. The catwalk spans the width, so lateral position
+    // cannot dodge it. RED against B-012: a centred (pos[1]=0) field side-gates to
+    // trenchView[1] >= 0, so the FAR-LEFT pilot flies clear today. All three must
+    // graze once the lateral gate is gone.
+    for (const lateral of [FAR_LEFT, CENTRE, FAR_RIGHT]) {
+      const { crashSeen } = flyThrough(trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, lateral, TRENCH_EYE_SEAT]))
+      expect(crashSeen, `a pilot at lateral ${lateral}, in the band, grazes`).toBe(true)
+    }
   })
 
-  it('a right-wall field mirrors it — grazes a right pilot, clears a left pilot', () => {
-    // The complementary wall, so a hardcoded "always left" gate cannot pass this
-    // suite. sign(pos[1]) selects the wall.
-    const field = () => [forceField(RIGHT_WALL, TRENCH_EYE_SEAT, -1)]
-    const rightPilot = flyThrough(trenchWith(field(), [0, 300, TRENCH_EYE_SEAT]))
-    const leftPilot = flyThrough(trenchWith(field(), [0, -300, TRENCH_EYE_SEAT]))
-
-    expect(rightPilot.crashSeen, 'same-side (right) pilot grazes').toBe(true)
-    expect(leftPilot.crashSeen, 'opposite (left) pilot flies clear').toBe(false)
+  it('lateral steering is NOT a dodge: hugging the far wall at band height still grazes (inverts B-012)', () => {
+    // B-012 let a pilot dodge a left-wall field by holding the right wall. The
+    // spanning catwalk has no such escape: a pilot pinned to the far edge, still at
+    // the band height, grazes. RED today (the opposite side flies clear).
+    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT)], [0, FAR_LEFT, TRENCH_EYE_SEAT])
+    const { crashSeen, shieldsLost } = flyThrough(s0)
+    expect(crashSeen, 'no lateral escape from a channel-spanning catwalk').toBe(true)
+    expect(shieldsLost).toBe(0)
   })
 
-  it('the vertical dodge survives: a same-side pilot far from the field height flies clear', () => {
-    // A LOW field (seated at the dive floor) and a pilot climbed to the ceiling —
-    // separated in height by far more than any ROM band ($400) — must NOT graze,
-    // even though both are on the left. Robust to the exact band size (which Dev
-    // derives from the grid slot heights): the extreme is unambiguous.
-    const lowField = [forceField(LEFT_WALL, TRENCH_EYE_MIN, -1)]
-    const climbed = flyThrough(trenchWith(lowField, [0, -300, TRENCH_EYE_MAX]))
-    expect(climbed.crashSeen, 'a pilot a full channel above a low field is clear').toBe(false)
+  it('the vertical dodge clears it: a pilot a full channel away in HEIGHT flies clear, any side', () => {
+    // A LOW (bottom-band) catwalk and a pilot climbed to the ceiling — separated in
+    // height by far more than any ROM band ($400) — must NOT graze, even hugging the
+    // far wall. Robust to the exact band size: the extreme is unambiguous.
+    const climbed = flyThrough(trenchWith([catwalk(TRENCH_EYE_MIN)], [0, FAR_LEFT, TRENCH_EYE_MAX]))
+    expect(climbed.crashSeen, 'a pilot a full channel above a low catwalk is clear').toBe(false)
     expect(climbed.shieldsLost).toBe(0)
   })
 
-  it('does NOT graze while the field is still far downrange (guards an over-eager depth gate)', () => {
-    // One frame with the field parked deep in the channel: no sane depth gate
-    // (within the field's first $400) should register a hit this far out.
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -8000)], [0, -300, TRENCH_EYE_SEAT])
+  it('a TOP-band catwalk grazes a high pilot and clears a dived one — dodge is DIVE', () => {
+    // Both pilots centred, so only HEIGHT decides. A top-band catwalk (high y)
+    // grazes the pilot who rides high and clears the pilot who dives to the floor.
+    const topBand = () => [catwalk(TRENCH_EYE_MAX)]
+    const high = flyThrough(trenchWith(topBand(), [0, CENTRE, TRENCH_EYE_MAX]))
+    const dived = flyThrough(trenchWith(topBand(), [0, CENTRE, TRENCH_EYE_MIN]))
+    expect(high.crashSeen, 'a high pilot grazes the top catwalk').toBe(true)
+    expect(dived.crashSeen, 'diving to the floor clears the top catwalk').toBe(false)
+  })
+
+  it('a BOTTOM-band catwalk grazes a low pilot and clears a climbed one — dodge is CLIMB', () => {
+    // The mirror: a bottom-band catwalk (low y) grazes the low pilot and clears the
+    // one who climbs to the ceiling. Both bands exist (TWDG top/bottom), and neither
+    // dodge is lateral.
+    const bottomBand = () => [catwalk(TRENCH_EYE_MIN)]
+    const low = flyThrough(trenchWith(bottomBand(), [0, CENTRE, TRENCH_EYE_MIN]))
+    const climbed = flyThrough(trenchWith(bottomBand(), [0, CENTRE, TRENCH_EYE_MAX]))
+    expect(low.crashSeen, 'a low pilot grazes the bottom catwalk').toBe(true)
+    expect(climbed.crashSeen, 'climbing to the ceiling clears the bottom catwalk').toBe(false)
+  })
+
+  it('does NOT graze while the catwalk is still far downrange (guards an over-eager depth gate)', () => {
+    // One frame with the catwalk parked deep in the channel: no sane depth gate
+    // (within the field's first $400) should register a hit this far out — even for
+    // an in-band pilot.
+    const s0 = trenchWith([catwalk(TRENCH_EYE_SEAT, 8000)], [0, CENTRE, TRENCH_EYE_SEAT])
     const s1 = stepGame(s0, NO_INPUT, DT)
     expect(s1.events.some((e) => e.type === 'terrain-crash')).toBe(false)
     expect(s1.lives).toBe(s0.lives)
     expect(s1.trenchObstacles).toHaveLength(1) // still ahead, still airborne
-  })
-
-  it('the channel-spanning bar is gone: holding the opposite wall clears a single-wall field, no shield', () => {
-    // The headline of B-012 — our old bar could only be dodged by diving; the
-    // wall field is dodged by flying the OTHER wall. A pilot who holds the right
-    // wall past a left-wall field never crashes and never loses a shield.
-    const s0 = trenchWith([forceField(LEFT_WALL, TRENCH_EYE_SEAT, -1)], [0, 400, TRENCH_EYE_SEAT])
-    const { crashSeen, shieldsLost } = flyThrough(s0)
-    expect(crashSeen, 'opposite-wall run is clean').toBe(false)
-    expect(shieldsLost).toBe(0)
   })
 })
