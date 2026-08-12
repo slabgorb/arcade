@@ -7,6 +7,7 @@ sprint:
 
 completed_epics:
   - sw11
+  - ml1
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -64,4 +65,9 @@ completed_stories:
     epic: ml1
     title: 'Secondary source MAME milliped.cpp board facts as claims: master clock, EXACT refresh (resolve OQ-1 vs centipede 59.88593 Hz and record any /263-vs-/262 hedge verbatim), screen geometry, cabinet rotation, COLOR-RAM/palette wiring, picture-ROM part numbers 136013-106/107. MAME cited in prose only, never copied into the repo (GPL). Locate the milliped driver dir first (atari/).'
     points: 3
+    completed: '2026-08-12'
+  - id: ml2-3
+    epic: ml2
+    title: 'RAM-colour palette seam (the divergence from centipede): decode the palette from MAME milliped.cpp COLOR-RAM wiring (MLIRQ.MAC:242 CLRCH), NOT a resistor-DAC PROM. Pin the palette source as claims; cite milliped.cpp in prose, never copy (GPL).'
+    points: 5
     completed: '2026-08-12'
