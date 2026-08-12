@@ -51,14 +51,38 @@ export const CHAMPIONS_HEADING = 'JOUST CHAMPIONS'
  *  VERB itself is the cabinet-wide shared reducer (SH2-13). */
 export const MAX_INITIALS = 3
 
+/**
+ * jt11-6 — the entry screen's own budget: 7680 ticks (one tick = one video frame,
+ * core/frame's FRAME_HZ), so about 2 minutes 8 seconds.
+ *
+ * Measured in the Williams SYSTEM ROM, not in joust's game code: every joust
+ * revision only jumps to the high-score routine (`JMP GAMEND  CHECK FOR H.S.T.D.`,
+ * JOUSTRV4.SRC:688) and GAMEND is a 3-byte vector (EQU.SRC:237) into the shared
+ * system ROM vendored here as TB12REV1.SRC (identical in TB12REV3.SRC) — the same
+ * file the ENTINT note above cites. There, AMODE supervises the entry with a nap
+ * loop, TB12REV1.SRC:77-78:
+ *
+ *     CLR    .SAVEA,U   (PFUTZ ALTERATION, WAIT FOR  2 MIN 9 SEC)
+ *   1$ PCNAP  30        (OLD DATA 20)
+ *
+ * `CLR` seeds the counter at 0, so the first `DEC` wraps to $FF and the loop runs
+ * 256 iterations of 30 ticks: 256 * 30 = 7680. The line ABOVE it is the SUPERSEDED
+ * law and is commented out with a `********` prefix — `LDA #$FF (OLD TIME
+ * 255*20=5100TICKS = 1MIN 25 SEC)` — so 5100 is the wrong number to read here; its
+ * arithmetic is useful only as the tick scale (5100 ticks = 85 s ⇒ 60 ticks/s).
+ */
+export const ENTRY_TIMEOUT_TICKS = 7680
+
 /** Joust's persisted high-score row: the base shape plus the game's own domain
  *  field `wave` (null only for a migrated cross-origin row — see @shared/highscore). */
 export type JoustHighScore = HighScoreEntry<'wave'>
 
-/** The in-flight initials buffer the 'highscore' screen collects. Readonly:
- *  enterInitial returns a NEW buffer, never mutates. */
+/** The in-flight initials buffer the 'highscore' screen collects, plus the ticks
+ *  left on the entry (jt11-6). Readonly: enterInitial / tickEntry return a NEW
+ *  buffer, never mutate. The countdown is TICKS — core never reads a clock. */
 export interface HighScoreEntryBuffer {
   readonly initials: string
+  readonly ticksLeft: number
 }
 
 /**
@@ -85,9 +109,36 @@ export function promptForRank(rank: number): string {
   return rank === 1 ? PROMPT_CHAMPION : PROMPT_LESSER
 }
 
-/** A fresh empty initials buffer. Pure. */
+/** A fresh empty initials buffer with the full entry budget. Pure. */
 export function beginEntry(): HighScoreEntryBuffer {
-  return { initials: '' }
+  return { initials: '', ticksLeft: ENTRY_TIMEOUT_TICKS }
+}
+
+/**
+ * One video frame of the entry countdown: `ticksLeft` less one, floored at 0 (an
+ * exhausted budget returns the SAME buffer, the enterInitial no-op idiom). The
+ * shell spends this once per pumped frame — the ROM's AMODE loop does the same
+ * `DEC` on its own supervisor counter. Pure.
+ */
+export function tickEntry(entry: HighScoreEntryBuffer): HighScoreEntryBuffer {
+  if (entry.ticksLeft <= 0) return entry
+  return { ...entry, ticksLeft: entry.ticksLeft - 1 }
+}
+
+/** True once the entry budget has run out — the auto-commit gate. Pure. */
+export function isEntryExpired(entry: HighScoreEntryBuffer): boolean {
+  return entry.ticksLeft <= 0
+}
+
+/**
+ * The initials an EXPIRED entry commits: whatever was typed, padded to
+ * MAX_INITIALS with spaces. The padding is the ROM's own buffer convention — the
+ * `LDB #20 / LDA #CSPC` fill that pre-loads the entry buffer with spaces before a
+ * letter is entered (TB12REV1.SRC:1901-1905) — so an abandoned entry keeps the
+ * SCORE under a blank name rather than losing the row. Pure.
+ */
+export function timeoutInitials(entry: HighScoreEntryBuffer): string {
+  return entry.initials.padEnd(MAX_INITIALS, ' ')
 }
 
 /**
@@ -95,12 +146,14 @@ export function beginEntry(): HighScoreEntryBuffer {
  * is a single A–Z letter and the buffer is short of MAX_INITIALS, deletes the last
  * char on 'Backspace' (never past empty), and is inert for everything else —
  * digits, named keys, junk. A no-op returns the SAME buffer (so the shell can skip
- * state churn). Pure — the argument is never mutated.
+ * state churn). Typing does NOT restart the countdown — the remaining `ticksLeft`
+ * is carried, exactly as AMODE's supervisor counter is untouched by ENTINT. Pure —
+ * the argument is never mutated.
  */
 export function enterInitial(entry: HighScoreEntryBuffer, key: string): HighScoreEntryBuffer {
   const initials = stepNameEntry(entry.initials, key, MAX_INITIALS)
   if (initials === entry.initials) return entry
-  return { initials }
+  return { ...entry, initials }
 }
 
 /** True once the buffer holds exactly MAX_INITIALS chars — the commit gate. Pure. */
