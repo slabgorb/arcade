@@ -42,4 +42,8 @@ completed_stories:
     epic: ml1
     title: "brief.md — the five rom-source-study preflight answers, each cited to millipede/<FILE>.MAC:<line>: (0) revision/shipped set from 368X1.DOC ledger (program EPROMs 136013-101..104, picture -106/107) + link MILLI.LNK; (2) radix .RADIX 16 set MLDEF.MAC:2 inherited via .INCLUDE, trailing-period=decimal; (3) timebase architecture MLDEF.MAC:31 IRQ 4 PER FRAME (1 IN VBLANK), VBLANK D6 MLDEF.MAC:117, BIT VBLANK/BVS MLIRQ.MAC:708-709 — logic once/frame, exact rate left to ml1-4; (4) the MILLI.DOC/368XX.SB2 gap analysis. Sibling reuse of COIN65.MAC cited by diff as identical to centipede."
     points: 5
+  - id: jt11-2
+    epic: jt11
+    title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180, fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61, main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690 currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO core sim changes.'
+    points: 3
     completed: '2026-08-12'

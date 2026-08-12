@@ -653,26 +653,34 @@ export function awardWaveBounty(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// jt4-5 — THE DEV-OVERLAY READOUT (the epic closer's dev bar)
+// jt4-5 — THE HUD READOUT (born as the epic closer's dev bar, now the jt11-2
+// authentic HUD's data source)
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// The shell draws a dev-overlay of each player's score + lives and the wave. It reads the
-// core registers STRAIGHT off the GameState the shell steps — a PURE projection that cannot
-// drift from a shell-side copy (routing≠geometry: pinned by OUTPUT in tests/game-jt4-5.test.ts,
-// mutation-checked, not by a routing text-match). The authentic MESSAGE.SRC score display is
-// jt5 — this is the dev bar only.
+// The shell draws its HUD from this projection: each player's score registers and
+// lives, read STRAIGHT off the GameState the shell steps — a PURE projection that
+// cannot drift from a shell-side copy (routing≠geometry: pinned by OUTPUT in
+// tests/game-jt4-5.test.ts, mutation-checked, not by a routing text-match). Since
+// jt11-2 the consumer is the authentic FONT57/rider-icon HUD (shell/hudScreen),
+// which reads scoreBcd + lives; `wave` is still projected (and pinned by the jt4-5
+// tests) but the authentic HUD paints no wave number — only the retired dev bar did.
 
-/** One player's dev-overlay readout line — its id (1-based), score and lives. */
+/** One player's HUD readout line — its id (1-based), score registers and lives. */
 export interface OverlayPlayerReadout {
   /** 1-based player id (1 → ledger 0, 2 → ledger 1) — the P1/P2 label. */
   player: number
   /** The player's running score, read straight off its ledger. */
   score: number
+  /**
+   * The ledger's 6-digit BCD register, the very array (no copy) — jt11-2: the
+   * authentic HUD displays the DSCORE bytes, as the ROM's SCODSP does.
+   */
+  scoreBcd: readonly number[]
   /** The player's remaining lives (NSHIP-seeded), read straight off its ledger. */
   lives: number
 }
 
-/** The whole dev-overlay readout: the wave number + one line per player. */
+/** The whole HUD readout: the wave number + one line per player. */
 export interface OverlayReadout {
   /** The 1-based wave, read off the GameState (mirrored from the sim). */
   wave: number
@@ -681,13 +689,13 @@ export interface OverlayReadout {
 }
 
 /**
- * Project the dev-overlay readout from a GameState — a PURE selector reading each ledger's
- * score + lives and the wave STRAIGHT off the state (no copy, no clock). `players` is in
- * P1, P2 order with 1-based ids. Pure — the argument is untouched.
+ * Project the HUD readout from a GameState — a PURE selector reading each ledger's
+ * score registers + lives and the wave STRAIGHT off the state (no copy, no clock).
+ * `players` is in P1, P2 order with 1-based ids. Pure — the argument is untouched.
  */
 export function overlayReadout(game: GameState): OverlayReadout {
   return {
     wave: game.wave,
-    players: game.players.map((p, i) => ({ player: i + 1, score: p.score, lives: p.lives })),
+    players: game.players.map((p, i) => ({ player: i + 1, score: p.score, scoreBcd: p.scoreBcd, lives: p.lives })),
   }
 }
