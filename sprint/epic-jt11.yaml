@@ -20,10 +20,11 @@ stories:
     title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180, fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61, main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690 currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO core sim changes.'
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
   - id: jt11-3
     title: 'Ground arrests momentum (pure core, flight.ts only): velXIndex (the FLYX flight-velocity index, flight.ts:59) currently survives land->ground->takeoff untouched - land() flight.ts:416-431 reads it for FRCONV state selection but never writes it, stepGround flight.ts:327-370 moves via animation-phase posX deltas and never touches it, takeOff() flight.ts:378-387 restores it verbatim - so launch resumes the PREVIOUS flight airspeed. Fix consumes the dead ROM field: GROUND_STATES flyVel (interface flight.ts:84, rows flight.ts:118-131, JOUSTRV4.SRC:7163-7175; grep confirms flyVel written and read NOWHERE). takeOff() derives velXIndex from the current ground rung flyVel signed by facing (facing already threaded at frame.ts:262); land() resets velXIndex to the landed rung flyVel. Callers frame.ts:258/265 unchanged. Watch seeded-replay fixtures - this changes player trajectories.'
     points: 3
