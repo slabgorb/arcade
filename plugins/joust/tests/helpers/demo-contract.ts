@@ -260,7 +260,7 @@ export interface DemoModule {
    *   • the wave-1 message beats surfaced as `beat` events (the intro).
    * Pure — same seed, same DemoState.
    */
-  createWaveDemo(seed: number): DemoState
+  createWaveDemo(seed: number, playerCount?: number): DemoState
 
   /**
    * Advance the demo exactly one video frame: drive the scheduler (players +
