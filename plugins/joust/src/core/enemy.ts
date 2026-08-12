@@ -34,7 +34,22 @@ import {
   type PlayerInput,
   type WingEdge,
 } from './flight.js'
-import { BCK_Y_TABLE, applyCeiling, groundOutcome, wrapX } from './arena.js'
+import { BCK_Y_TABLE, applyCeiling, wrapX } from './arena.js'
+// jt11-5 — the enemy's ground checks and cliff look-ahead consume the MUTATED
+// arena (the jt3-2 seam): `groundOutcomeInState` vetoes a destroyed cliff's
+// landing bit, `backgroundActive` blanks a destroyed cliff's BCKXTB sample
+// (WCLFEW clears the RAM copy's bits, JOUSTRV4.SRC:2301-2325), and the arena
+// rides `groundMaskAt` so the burned bridge drops its granted $20.
+import {
+  backgroundActive,
+  groundOutcomeInState,
+  initialArenaState,
+  type ArenaState,
+} from './arena-state.js'
+
+/** jt11-5 — the no-arena default: bridge intact, nothing destroyed. Shared,
+ *  read-only, so per-wake ground checks do not allocate. */
+const PRISTINE_ARENA: ArenaState = initialArenaState()
 // uf1-2 — the per-wave difficulty seam. This closes a module CYCLE (difficulty.ts
 // imports `seedBudget` from here), which is safe only because neither module calls
 // across the cycle at import time: `waveValue` is invoked per decision, and
@@ -1204,7 +1219,12 @@ export function lavaGateFires(enemy: EnemyState, target: PlayerView | null): boo
  * reports `turned`; open air holds everything. Pure — the argument is never
  * mutated.
  */
-export function steerWake(enemy: EnemyState, target: PlayerView | null, bumpX = 0): SteerResult {
+export function steerWake(
+  enemy: EnemyState,
+  target: PlayerView | null,
+  bumpX = 0,
+  arena: ArenaState = PRISTINE_ARENA,
+): SteerResult {
   const held: SteerResult = { enemy, turned: false }
   if (!enemy.entity.airborne) return held
   const pixelY = enemy.entity.posY >> 8
@@ -1240,7 +1260,12 @@ export function steerWake(enemy: EnemyState, target: PlayerView | null, bumpX = 
   const len = enemy.brain === 'shadow' ? SHXLEN : B2XLEN
   // The (PVELY×8)>>8 projection (:4108-4118): sample where the bird is going.
   const sampleY = pixelY + ((velY * 8) >> 8)
-  if (bckMaskAt(enemy.entity.posX + len * dir, sampleY) === 0) return bumpFace(held)
+  const sample = bckMaskAt(enemy.entity.posX + len * dir, sampleY)
+  // jt11-5 — the ROM reads the RAM copy (BCKXD1), which WCLFEW has already
+  // stripped of a destroyed cliff's bits (:2301-2325); this port samples the
+  // immutable table, so the destruction is applied HERE through the jt3-2
+  // seam: a sample whose bits belong to a destroyed cliff is open air.
+  if (sample === 0 || !backgroundActive(arena, sample)) return bumpFace(held)
   return bumpFace({ enemy: { ...enemy, facing: dir > 0 ? -1 : 1 }, turned: true })
 }
 
@@ -1272,7 +1297,11 @@ export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1
 // duplicated rather than imported because flight.ts is generated (no hand-edit)
 // and importing frame.ts would form a cycle (frame.ts imports this module).
 
-function stepEntity(state: EntityState, input: PlayerInput): EntityState {
+function stepEntity(
+  state: EntityState,
+  input: PlayerInput,
+  arena: ArenaState = PRISTINE_ARENA,
+): EntityState {
   let s = state
 
   if (s.airborne) {
@@ -1284,14 +1313,20 @@ function stepEntity(state: EntityState, input: PlayerInput): EntityState {
     s = { ...s, posY: ceiling.posY, velY: ceiling.velY }
     s = { ...s, posX: wrapX(s.posX) }
 
-    const outcome = groundOutcome(groundMaskAt(s.posX, s.posY >> 8))
+    const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
   } else {
     s = stepGround(s, input)
     s = { ...s, posX: wrapX(s.posX) }
     if (input.flap) {
       s = takeOff(s)
-    } else if (groundOutcome(groundMaskAt(s.posX, (s.posY >> 8) + 1)).kind === 'airborne') {
+    } else if (
+      // jt11-5 — CKGND's EQ = on-the-ground holds for a PLATFORM only; LNDB7
+      // "INDICATE[s] NOT TO LAND" (JOUSTRV4.SRC:6764,6792), so a bird whose
+      // plank burned walks off exactly as frame.ts's player does.
+      groundOutcomeInState(arena, groundMaskAt(s.posX, (s.posY >> 8) + 1, arena)).kind !==
+      'platform'
+    ) {
       s = walkOff(s)
     }
   }
@@ -1449,10 +1484,20 @@ function lavaRecheckExits(enemy: EnemyState): boolean {
  */
 export function stepEnemyDetailed(
   enemy: EnemyState,
-  ctx?: { player?: PlayerView | null; wave?: number; lavaBehind?: boolean; bumpX?: number },
+  ctx?: {
+    player?: PlayerView | null
+    wave?: number
+    lavaBehind?: boolean
+    bumpX?: number
+    arena?: ArenaState
+  },
 ): { enemy: EnemyState; wingEdge: WingEdge } {
   const target = ctx?.player ?? null
   const wave = ctx?.wave ?? 1
+  // jt11-5 — the live arena, threaded like `player`/`wave`: only the caller
+  // (frame.ts, fed by the demo) holds it. Consumed by the cliff look-ahead
+  // (steerWake) and the flight/ground step (stepEntity).
+  const arena = ctx?.arena ?? PRISTINE_ARENA
   // jt9-48 — the collision shove jt9-17 parked on the process (`PBUMPX`),
   // threaded in like `player`/`wave` because only the caller (frame.ts) holds
   // the DemoProcess it rides. Spent by `B2DIR`/`SHDIR`'s bump-facing arm below.
@@ -1488,7 +1533,7 @@ export function stepEnemyDetailed(
   // the ROM the throttle blocks (`B2LE11`/`SHLEPB`) fall INTO the direction
   // routine, so B2DIR/SHDIR read (and may overwrite) the freshly-COMplemented
   // facing on the same wake.
-  const steered = steerWake(flipped, target, bumpX)
+  const steered = steerWake(flipped, target, bumpX, arena)
   const homed = steered.enemy
   // jt9-22 — BOLAVA (:3948-3964). An enemy already in the lava episode enters at
   // its stored `PJOY,U` address, which BYPASSES the whole brain/seek/wing
@@ -1622,7 +1667,7 @@ export function stepEnemyDetailed(
         ? { ...settled, pjoy: undefined }
         : settled
   return {
-    enemy: { ...phased, entity: stepEntity(phased.entity, input), prevFlapHeld: input.flapHeld },
+    enemy: { ...phased, entity: stepEntity(phased.entity, input, arena), prevFlapHeld: input.flapHeld },
     wingEdge: edge,
   }
 }

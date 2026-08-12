@@ -42,7 +42,13 @@ import {
   type EntityState,
   type PlayerInput,
 } from './flight.js'
-import { applyCeiling, groundOutcome, wrapX } from './arena.js'
+import { applyCeiling, wrapX } from './arena.js'
+// jt11-5 — landing/walk-off resolve through the MUTATED arena (the jt3-2 seam):
+// `groundOutcomeInState` vetoes a destroyed cliff's landing bit, and the arena
+// rides `groundMaskAt` so the burned bridge drops its granted $20. A caller
+// that threads no arena steps against the pristine one — bit-identical to the
+// old bare `groundOutcome` path.
+import { groundOutcomeInState, initialArenaState, type ArenaState } from './arena-state.js'
 import {
   stepEnemyDetailed,
   shouldPromote,
@@ -84,6 +90,13 @@ export type { EntityState, PlayerInput, EnemyState, IntelBudget }
  * simulation's only timebase.
  */
 export const FRAME_HZ = 8_000_000 / (512 * 260)
+
+/**
+ * jt11-5 — the arena a caller that threads none steps against: bridge intact,
+ * nothing destroyed. One shared instance (read-only by every consumer) so the
+ * per-entity, per-frame ground checks do not allocate.
+ */
+const PRISTINE_ARENA: ArenaState = initialArenaState()
 
 /** `PPRI` — a process's scheduling class. Primary steps before secondary. */
 export type ProcessClass = 'primary' | 'secondary'
@@ -242,7 +255,12 @@ const NEUTRAL_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
  * unchanged, so the jt1-5 seeded replay reproduces bit-for-bit now that players
  * are stepped from the process list instead of the demo's own loop.
  */
-function stepPlayerEntity(state: EntityState, input: PlayerInput, facing?: -1 | 1): EntityState {
+function stepPlayerEntity(
+  state: EntityState,
+  input: PlayerInput,
+  facing?: -1 | 1,
+  arena: ArenaState = PRISTINE_ARENA,
+): EntityState {
   let s = state
 
   if (s.airborne) {
@@ -254,7 +272,7 @@ function stepPlayerEntity(state: EntityState, input: PlayerInput, facing?: -1 | 
     s = { ...s, posY: ceiling.posY, velY: ceiling.velY }
     s = { ...s, posX: wrapX(s.posX) }
 
-    const outcome = groundOutcome(groundMaskAt(s.posX, s.posY >> 8))
+    const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
   } else {
     // Facing threaded through (jt2-9): a reversal (dir against facing) reaches the
@@ -263,7 +281,16 @@ function stepPlayerEntity(state: EntityState, input: PlayerInput, facing?: -1 | 
     s = { ...s, posX: wrapX(s.posX) }
     if (input.flap) {
       s = takeOff(s)
-    } else if (groundOutcome(groundMaskAt(s.posX, (s.posY >> 8) + 1)).kind === 'airborne') {
+    } else if (
+      // jt11-5 — CKGND's contract is EQ = on the ground for a PLATFORM only:
+      // LNDB7 ("LAVA TROLLS") returns NE, "INDICATE NOT TO LAND"
+      // (JOUSTRV4.SRC:6764,6792). So the walk-off fires on anything that is not
+      // a platform — a stander whose plank burned drops into the troll zone,
+      // which the old `=== 'airborne'` read could never see (pristine masks
+      // never put $80-without-$20 under a stander's feet).
+      groundOutcomeInState(arena, groundMaskAt(s.posX, (s.posY >> 8) + 1, arena)).kind !==
+      'platform'
+    ) {
       s = walkOff(s)
     }
   }
@@ -308,6 +335,7 @@ function runBehaviour(
   wave = 1,
   target?: PlayerView | null,
   lavaBehind = false,
+  arena: ArenaState = PRISTINE_ARENA,
 ): { process: Process; budget: IntelBudget; cue?: WingCue } {
   // jt9-11 — a bird in the lava troll's grip does not run normal flight: the LAVA
   // TROLL owns its fall now (PADGRA → ADDLAV, JOUSTRV4.SRC:1651). `demo.stepTrolls`
@@ -330,7 +358,7 @@ function runBehaviour(
     // neutral (JOUSTRV4.SRC:6451-6481). Facing lives on the PROCESS, so the
     // entity a solo scheduler run computes is unchanged (the routing≠geometry
     // drive pin compares entities, and it stays bit-identical).
-    const stepped = stepPlayerEntity(p.entity, input, facing)
+    const stepped = stepPlayerEntity(p.entity, input, facing, arena)
     // jt9-8: a wing transition RE-INITs the flap-lift budget (`CLR PTIMUP,U` —
     // GOFLIP :6185 on release, GOFLAP :6219 on press, and STFLY :6135→FLAST2 on
     // take-off), which is exactly when `wingEdge` fires. Applied AFTER the step's
@@ -379,7 +407,7 @@ function runBehaviour(
     // jt5-3: `stepEnemyDetailed` runs the SAME brain + flight step `stepEnemy`
     // does (it IS stepEnemy's implementation) and additionally reports the wing
     // edge that wake produced, from the `input.flap`/`flapHeld` only it sees.
-    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave, lavaBehind, bumpX: p.bumpX })
+    const stepped = stepEnemyDetailed(enemy, { player: target ?? null, wave, lavaBehind, bumpX: p.bumpX, arena })
     return {
       process: { ...p, enemy: stepped.enemy },
       budget: next,
@@ -389,7 +417,7 @@ function runBehaviour(
   // An egg is a scheduler process too (jt2-7): each wake integrates its fall
   // through the demo's `stepEgg` (the STEGG/EGGLPA loop + the BMI EGGBCK guard).
   if (p.kind === 'egg' && p.egg) {
-    return { process: { ...p, egg: stepEgg(p.egg) }, budget }
+    return { process: { ...p, egg: stepEgg(p.egg, arena) }, budget }
   }
   // A ptero/baiter flies each wake through the gravity-EXEMPT stepPteroFlight (jt3-4)
   // — ADDGRX skips the mount's `ADDB GRAV`, so posY integrates by VY untouched. It
@@ -415,13 +443,19 @@ function runBehaviour(
 export function stepFrame(
   state: GameState,
   inputs?: Record<number, PlayerInput>,
-  opts?: { wave?: number },
+  opts?: { wave?: number; arena?: ArenaState },
 ): GameState {
   // uf1-2 — the 1-based wave the enemy brains read their DYTBL dials at. It is a
   // PARAMETER, not a GameState field: the scheduler is a pure frame stepper and the
   // wave belongs to the demo layer above it. Defaults to 1, so every caller that
   // predates the per-wave difficulty seam keeps its exact previous behaviour.
   const wave = opts?.wave ?? 1
+  // jt11-5 — the demo's live ArenaState, a parameter for the same reason `wave`
+  // is: mid-game destruction belongs to the wave machine above this stepper.
+  // Threaded into every ground-mask consumer this frame drives (player pair,
+  // enemy stepEntity, egg fall). Defaults pristine — bit-identical behaviour
+  // for every caller that predates the seam.
+  const arena = opts?.arena ?? PRISTINE_ARENA
   const processes = state.processes
   const next: Process[] = new Array(processes.length)
   const woke: number[] = []
@@ -479,7 +513,7 @@ export function stepFrame(
       // frame — across both passes, and skipping napped processes, because a
       // napped process does not execute.
       const lavaBehind = lastRanKind === 'troll'
-      const ran = runBehaviour(p, budget, inputs, wave, target, lavaBehind)
+      const ran = runBehaviour(p, budget, inputs, wave, target, lavaBehind, arena)
       lastRanKind = p.kind
       next[i] = { ...ran.process, nap: p.period }
       budget = ran.budget

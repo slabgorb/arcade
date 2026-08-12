@@ -126,6 +126,16 @@ function entitySource(name: string): string | undefined {
  * incl. facing is DATA on the op; the mirror is the only canvas step).
  */
 function blitOp(op: DrawOp): void {
+  // jt11-5 — a `fill` op is a SOLID-COLOUR DMA rectangle (the BRIDGE/BRIDG2
+  // lava-shore planks, JOUSTRV4.SRC:1126-1127): no pixel source, no atlas
+  // block — paint it as the palette nibble the op carries, like drawIsland
+  // paints the island's grid nibbles.
+  if (op.kind === 'fill') {
+    const colour = colours[op.colour ?? 0]
+    logicalContext.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+    logicalContext.fillRect(op.x, op.y, op.width ?? 0, op.height ?? 0)
+    return
+  }
   const name = entitySource(op.name) ?? op.name
   if (op.facing === -1) {
     const slot = atlas.blocks[name]
