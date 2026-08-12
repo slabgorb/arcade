@@ -427,7 +427,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // own precondition (an egg really leaves and really scores; a knight really
   // dies; the wave really advances), so a re-baseline cannot quietly turn one
   // of them vacuous — the precondition fails first if the moment is not there.
-  it('a dying knight emits player-death (seed 0xface, frame 2054)', () => {
+  it('a dying knight emits player-death (seed 0xface, frame 957)', () => {
     // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1888 -> 2062.
@@ -473,15 +473,27 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // earliest 1209, for the same sibling coupling every prior move names: the
     // test below stages `death + 1` and audio-transporter-split.test.ts needs a
     // knight-TWO re-entry — 2055 is one. Seed, script, assertions unchanged.
-    const before = advanceTo(0xface, 2054)
-    const after = stepGame(before, inputsAt(2054))
+    //
+    // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE):
+    // 2054 -> 957. A grounded buzzard used to park a RIGHTWARD launch airspeed
+    // whichever way it was walking, so every left-facing takeoff went the wrong
+    // way; with the sign threaded, enemy trajectories — and with them both
+    // knights' kill timelines — reshape from the first grounded takeoff on.
+    // Re-swept this seed for this test's OWN precondition (a player process
+    // leaves the list): deaths at 604 (knight ONE), 957 (knight TWO), 2103
+    // (knight ONE), 3089 (knight TWO). 957 rather than the earliest 604, for the
+    // same sibling coupling every prior move names: the test below stages
+    // `death + 1` and audio-transporter-split.test.ts needs a knight-TWO
+    // re-entry — 958 is one. Seed, script, assertions unchanged.
+    const before = advanceTo(0xface, 957)
+    const after = stepGame(before, inputsAt(957))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 2055)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 958)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts), which is the ROM's CREP
     // re-create — DSNCRE → the re-created player's own transporter table.
@@ -521,15 +533,19 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // jt11-3 RE-BASELINE: 2370 -> 2055, riding the death above (still death + 1).
     // 2055 is the knight-TWO re-entry on this seed (measured off the process
     // list), so the SNPCR2 attribution survives a sixth move.
-    const before = advanceTo(0xface, 2055)
-    const after = stepGame(before, inputsAt(2055))
+    //
+    // jt11-11 RE-BASELINE: 2055 -> 958, riding the death above (still death + 1).
+    // Measured off the process list, 958 is still a knight-TWO re-entry, so the
+    // SNPCR2 attribution survives a seventh move.
+    const before = advanceTo(0xface, 958)
+    const after = stepGame(before, inputsAt(958))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 2866)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 5041)', () => {
     // jt11-4 RESHAPE (body, not baseline): this test used to assert the whole
     // complement materialises on the ADVANCE frame, which is exactly what the story
     // moved. The advance still happens and the same four buzzards still arrive —
@@ -592,8 +608,19 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // knights' kill timelines and wave 1 clears SOONER; re-swept the same 6000
     // frames for the same precondition (wave 1 -> 2 AND a complement dealt) —
     // 2866 (four buzzards) is now the earliest. Seed, script, assertions unchanged.
-    const before = advanceTo(0xface, 2866)
-    const advanceFrame = stepGame(before, inputsAt(2866))
+    //
+    // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE):
+    // 2866 -> 5041, AND THE SWEEP WINDOW HAD TO GROW AGAIN. Buzzards that take
+    // off in the direction they were walking are much harder on the knights, so
+    // this seed clears wave 1 far LATER: sweeping the customary 6000 frames still
+    // finds the advance, but the first 3200 do not contain it — the same
+    // "no frame satisfies it" artefact the jt9-8 note warns about. Re-swept 9000
+    // frames for this test's own precondition: frame 5041 (wave 1 -> 2) is the
+    // only advance, and the four buzzards are then served at 5102 / 5163 / 5224 /
+    // 5285 — the 61-frame WCREATE walk-in, comfortably inside the 320-frame
+    // window below. Seed, script, assertions unchanged.
+    const before = advanceTo(0xface, 5041)
+    const advanceFrame = stepGame(before, inputsAt(5041))
     expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     // jt11-4 — nothing materialises on the advance frame itself: the complement has
     // only just taken its numbers and owes the transporter its PCNAP 1
@@ -617,13 +644,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
     // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
     for (let i = 0; i < 320; i++) {
-      g = stepGame(g, inputsAt(2867 + i))
+      g = stepGame(g, inputsAt(5042 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)
       const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
       expect(
         cued,
-        `frame ${2867 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+        `frame ${5042 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
       ).toBe(fresh.length)
       totalArrived += fresh.length
       totalCues += cued
@@ -911,13 +938,23 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // scores 2600 (was 0) at the cost of two lives (5 -> 3), P2 scores 1050 (was
     // 1850) and is on 4 lives (was 3), and the process population thins to
     // enemy#256 plus both knights.
+    // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE): `rng`
+    // is STILL 2_006_456_271, through TEN consecutive re-baselines — signing an
+    // already-computed index changes how the birds fly, not the numbers the sim
+    // draws, which is exactly this group's law. `wave` still 1. Play moved, and
+    // HARDER: buzzards that launch the way they were walking press the knights
+    // instead of drifting rightward off them, so P1 falls from 2600 to 200 and
+    // from 3 lives to 1, and the arena now holds two HATCHED buzzards
+    // (enemy#4260097, enemy#4260098) beside enemy#256 rather than being thinned to
+    // enemy#256 alone. P2 is untouched on both counts (1050, 4 lives) — it is the
+    // idle knight and this seed's reshaped birds never reach it inside 2400 frames.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'enemy#256,player#2,player#1',
-      scores: [2600, 1050],
-      lives: [3, 4],
+      procs: 'enemy#256,enemy#4260098,player#2,enemy#4260097,player#1',
+      scores: [200, 1050],
+      lives: [1, 4],
     })
   })
 

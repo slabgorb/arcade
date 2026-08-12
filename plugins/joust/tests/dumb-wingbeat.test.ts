@@ -694,9 +694,26 @@ describe('AC6 — the dumb wing cue', () => {
       // is emitted by nobody. The sim's `rng` cursor is bit-identical through
       // this change (audio-events.test.ts AC3): the FLYVEL writes draw no
       // randomness.
-      0xbeef: { down: 169, playerDown: 154, playerUp: 153 },
+      // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE), and
+      // this one breaks the pattern every note above ends with, so read it rather
+      // than skimming it: the KNIGHT cue counts move too. Prior re-baselines in
+      // this table were enemy-only mechanisms and could honestly say "every
+      // scripted knight cue (154) is UNMOVED". This one cannot. A grounded buzzard
+      // used to park a RIGHTWARD launch airspeed whichever way it was walking, so
+      // fixing the sign reshapes enemy trajectories, which moves KNIGHT DEATH
+      // timing, which moves the scripted knight's own cue counts — exactly the
+      // coupling the jt9-9 note flagged ("they move only when knight-death timing
+      // shifts"). Measured over the same 2000 frames:
+      //   0xbeef  down 169 -> 174, playerDown 154 -> 153, playerUp 153 -> 151
+      //   0xface  down 155 -> 250, playerUp   153 -> 154 (playerDown unmoved)
+      //   0x2468  wholly UNMOVED (256 / 154 / 153)
+      // Every enemy count stays far above the >50 non-vacuity floor. The sim's
+      // `rng` cursor is bit-identical through this change (audio-events.test.ts
+      // AC3, tenth consecutive re-baseline with `rng` unmoved): signing an
+      // already-computed index draws no randomness.
+      0xbeef: { down: 174, playerDown: 153, playerUp: 151 },
       0x2468: { down: 256, playerDown: 154, playerUp: 153 },
-      0xface: { down: 155, playerDown: 154, playerUp: 153 },
+      0xface: { down: 250, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

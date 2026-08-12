@@ -191,9 +191,18 @@ describe('jt11-3 AC-2 — the ground step maintains velXIndex from the state row
   })
 
   it('the maintained index keeps the ladder invariant: even, within ±MAX', async () => {
-    // The facing-less legacy call (enemies) is NOT pinned to a sign here — the
-    // story scopes the player path, and the enemy caller threads no facing.
-    // Whatever the implementation writes must still be a legal FLYX index.
+    // The 2-arg legacy call reads a non-zero dir as forward and writes +flyVel;
+    // whatever the implementation writes must still be a legal FLYX index.
+    //
+    // jt11-11 retired this test's original deferral. It used to read "the
+    // facing-less legacy call (enemies) is NOT pinned to a sign here … the enemy
+    // caller threads no facing", which stopped being true when jt11-11 threaded
+    // PFACE into `enemy.ts`'s call: the enemy sign IS pinned now, in
+    // tests/enemy-ground-facing-jt11-11.test.ts, through `stepEnemyDetailed`.
+    // What survives here is the 2-arg OVERLOAD's own contract — no production
+    // caller is left on it (frame.ts's `stepPlayerEntity` and enemy.ts's
+    // `stepEntity` both pass facing), so this is the only thing keeping the
+    // legacy branch honest.
     const f = await loadFlight()
     for (const st of Object.values(f.GROUND_STATES)) {
       for (const dir of [-1, 0, 1] as const) {

@@ -899,7 +899,7 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x1035, frame 723: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0x1035, frame 505: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
     // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
@@ -1007,9 +1007,26 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // process, OSTXTP's REG.U) is pushed DOWN to y=130 and the knight UP to
     // y=126 — a buzzard walking through a standing knight, the same shape the
     // 0x2332/0x1b4a/0x1001 stagings carried. Every assertion unchanged.
-    const before = stepGame(advanceTo(0x1035, 722), inputsAt(722))
+    //
+    // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE): frame
+    // 723 -> 505, and THE SEED DID NOT HAVE TO MOVE this time. Re-swept the same
+    // [0x1000,0x1120) over 4000 frames by this test's own precondition (a stream
+    // of EXACTLY one `player-thud`, with a silent frame before): 27 seeds qualify
+    // and the earliest clean hit is frame 505, where 0x1035 is again the lowest of
+    // the seeds tied there (0x103a, 0x1071, 0x10ba, 0x10c7, 0x1108, 0x110c also
+    // tie) — so the existing seed is kept under the same "earliest frame, lowest
+    // seed" rule the jt11-3 note used. 505 % 13 = 11, not a flap frame, so no
+    // knight wing cue rides along. Re-verified enemy-vs-PLAYER from the process
+    // positions rather than assumed: entering frame 505 the buzzard `enemy#257`
+    // stands at (212,128) and the idle knight `player#2` at (200,128) — the same
+    // row — while `player#1` is far above at (214,59) and the other two buzzards
+    // are clear (enemy#256 at (173,135), enemy#258 at (119,129)). The bounce lands
+    // on that pair and nothing else: the buzzard, the earlier process (OSTXTP's
+    // REG.U), is pushed DOWN to y=130 and the knight UP to y=126 — the same shape
+    // every prior staging carried. Every assertion unchanged.
+    const before = stepGame(advanceTo(0x1035, 504), inputsAt(504))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1035, 723), inputsAt(723))
+    const fired = stepGame(advanceTo(0x1035, 505), inputsAt(505))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
