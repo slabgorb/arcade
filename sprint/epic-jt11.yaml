@@ -1,42 +1,13 @@
 id: jt11
 type: epic
-title: 'Joust — cabinet experience: start flow, HUD, landing physics, transporter
-  cadence, lava shore, high-score UX'
-description: 'Six player-reported cabinet defects, root-caused by Architect review
-  2026-08-12. Pattern: in five of six cases the correct ROM-cited machinery already
-  exists in-tree (often tested) and is simply unwired. (1) 1P/2P choice never reaches
-  the sim - createWaveDemo hardcodes both mounts (demo.ts:1229-1236) while createGame
-  only sizes ledgers (game.ts:318); orphan P2 mount cannot respawn, felt as one life.
-  (2) Attract exits only on Digit1/Digit2 (main.ts:422-426,500-503) with no on-screen
-  prompt - felt as keys dead / stuck in demo. (3) HUD is the jt-era dev bar fillText
-  (main.ts:169-180); FONT35 + PLY1R sprite are already wired/atlas-packed but unused
-  by it. (4) velXIndex survives land->ground->takeoff untouched (flight.ts:378-431);
-  the ROM walking-speed ladder flyVel (JOUSTRV4.SRC:7163-7175) is transcribed at flight.ts:118-131
-  and read NOWHERE. (5) Wave entry is a one-frame batch insert (demo.ts:2261-2271)
-  while the ROM serve-queue ServiceQueue/spawnProceeds (transporter.ts:149-202, JOUSTRV4.SRC:5615-5676)
-  is implemented+tested+unwired; ptero stagger (demo.ts:2303-2334) is the proven template.
-  (6) BRIDGE/BRIDG2 lava-shore fills (JOUSTRV4.SRC:1126-1127) never transcribed -
-  invisible solid ground at x 0-54/240-300 y211; destruction state computed every
-  wave (demo.ts:2249) but consumed only by the troll gate - groundOutcomeInState/bridgeGroundOutcome/backgroundActive
-  (arena-state.ts:172-199) have zero production callers. High-score wiring itself
-  verified CORRECT (write and lobby read both joust-high-scores via shared highScoreKey)
-  - the felt bug is the commit gate needing 3 initials + FLAP (main.ts:483-488). SEQUENCING:
-  jt11-4 and jt11-5 both edit demo.ts (disjoint regions) - do not run in parallel
-  checkouts.'
+title: 'Joust — cabinet experience: start flow, HUD, landing physics, transporter cadence, lava shore, high-score UX'
+description: 'Six player-reported cabinet defects, root-caused by Architect review 2026-08-12. Pattern: in five of six cases the correct ROM-cited machinery already exists in-tree (often tested) and is simply unwired. (1) 1P/2P choice never reaches the sim - createWaveDemo hardcodes both mounts (demo.ts:1229-1236) while createGame only sizes ledgers (game.ts:318); orphan P2 mount cannot respawn, felt as one life. (2) Attract exits only on Digit1/Digit2 (main.ts:422-426,500-503) with no on-screen prompt - felt as keys dead / stuck in demo. (3) HUD is the jt-era dev bar fillText (main.ts:169-180); FONT35 + PLY1R sprite are already wired/atlas-packed but unused by it. (4) velXIndex survives land->ground->takeoff untouched (flight.ts:378-431); the ROM walking-speed ladder flyVel (JOUSTRV4.SRC:7163-7175) is transcribed at flight.ts:118-131 and read NOWHERE. (5) Wave entry is a one-frame batch insert (demo.ts:2261-2271) while the ROM serve-queue ServiceQueue/spawnProceeds (transporter.ts:149-202, JOUSTRV4.SRC:5615-5676) is implemented+tested+unwired; ptero stagger (demo.ts:2303-2334) is the proven template. (6) BRIDGE/BRIDG2 lava-shore fills (JOUSTRV4.SRC:1126-1127) never transcribed - invisible solid ground at x 0-54/240-300 y211; destruction state computed every wave (demo.ts:2249) but consumed only by the troll gate - groundOutcomeInState/bridgeGroundOutcome/backgroundActive (arena-state.ts:172-199) have zero production callers. High-score wiring itself verified CORRECT (write and lobby read both joust-high-scores via shared highScoreKey) - the felt bug is the commit gate needing 3 initials + FLAP (main.ts:483-488). SEQUENCING: jt11-4 and jt11-5 both edit demo.ts (disjoint regions) - do not run in parallel checkouts.'
 priority: p1
 status: backlog
 repos: arcade
 stories:
   - id: jt11-1
-    title: 'Start experience: thread playerCount from createGame (game.ts:318, currently
-      dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID)
-      so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp
-      game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns.
-      Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only
-      on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select
-      screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract
-      self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying
-      (cabinet.ts:99-101) only.'
+    title: 'Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.'
     points: 5
     priority: p1
     status: done
@@ -46,32 +17,14 @@ stories:
     type: bug
     branch: feat/jt11-1-start-experience-player-count
   - id: jt11-2
-    title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180,
-      fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM
-      idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61,
-      main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits
-      font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed
-      PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already
-      exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690
-      currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO
-      core sim changes.'
+    title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180, fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61, main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690 currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO core sim changes.'
     points: 3
     priority: p1
     status: backlog
     repos: arcade
     workflow: tdd
   - id: jt11-3
-    title: 'Ground arrests momentum (pure core, flight.ts only): velXIndex (the FLYX
-      flight-velocity index, flight.ts:59) currently survives land->ground->takeoff
-      untouched - land() flight.ts:416-431 reads it for FRCONV state selection but never
-      writes it, stepGround flight.ts:327-370 moves via animation-phase posX deltas
-      and never touches it, takeOff() flight.ts:378-387 restores it verbatim - so launch
-      resumes the PREVIOUS flight airspeed. Fix consumes the dead ROM field: GROUND_STATES
-      flyVel (interface flight.ts:84, rows flight.ts:118-131, JOUSTRV4.SRC:7163-7175;
-      grep confirms flyVel written and read NOWHERE). takeOff() derives velXIndex from
-      the current ground rung flyVel signed by facing (facing already threaded at frame.ts:262);
-      land() resets velXIndex to the landed rung flyVel. Callers frame.ts:258/265 unchanged.
-      Watch seeded-replay fixtures - this changes player trajectories.'
+    title: 'Ground arrests momentum (pure core, flight.ts only): velXIndex (the FLYX flight-velocity index, flight.ts:59) currently survives land->ground->takeoff untouched - land() flight.ts:416-431 reads it for FRCONV state selection but never writes it, stepGround flight.ts:327-370 moves via animation-phase posX deltas and never touches it, takeOff() flight.ts:378-387 restores it verbatim - so launch resumes the PREVIOUS flight airspeed. Fix consumes the dead ROM field: GROUND_STATES flyVel (interface flight.ts:84, rows flight.ts:118-131, JOUSTRV4.SRC:7163-7175; grep confirms flyVel written and read NOWHERE). takeOff() derives velXIndex from the current ground rung flyVel signed by facing (facing already threaded at frame.ts:262); land() resets velXIndex to the landed rung flyVel. Callers frame.ts:258/265 unchanged. Watch seeded-replay fixtures - this changes player trajectories.'
     points: 3
     priority: p1
     status: backlog
@@ -79,44 +32,16 @@ stories:
     workflow: tdd
     type: bug
   - id: jt11-4
-    title: 'Enemies materialize one-by-one on the pads: replace the one-frame batch
-      insert (spawnWaveEnemies demo.ts:1209-1219; wave-1 construction demo.ts:1238-1242;
-      wave advance processes=[...processes,...arrivals] demo.ts:2261-2271 with per-enemy
-      cue loop 2268-2270) with a pending-arrival schedule on the proven ptero template
-      (pendingPteros countdown, demo.ts:2303-2334, PTERWV JOUSTRV4.SRC:2618-2624). Wire
-      the implemented-tested-UNWIRED transporter serving laws: ServiceQueue take-a-number
-      (newServiceQueue/takeEnemyNumber/enemyTurn/serveEnemy/nextServed transporter.ts:155-202,
-      NPSERV/LESERV JOUSTRV4.SRC:5615-5676) + spawnProceeds empty-third deferral (transporter.ts:149,
-      JOUSTRV4.SRC:5641-5654) - zero production callers today, demo.ts imports only
-      enterViaPads/beginMaterialise/stepMaterialise/PADS (demo.ts:91-101). Each enemy
-      beginMaterialise window (MATERIALISE_WINDOW demo.ts:406, birth demo.ts:598-599)
-      defers to its own release frame. enemyProcess factory and the materialise effect
-      unchanged - only insertion timing moves.'
+    title: 'Enemies materialize one-by-one on the pads: replace the one-frame batch insert (spawnWaveEnemies demo.ts:1209-1219; wave-1 construction demo.ts:1238-1242; wave advance processes=[...processes,...arrivals] demo.ts:2261-2271 with per-enemy cue loop 2268-2270) with a pending-arrival schedule on the proven ptero template (pendingPteros countdown, demo.ts:2303-2334, PTERWV JOUSTRV4.SRC:2618-2624). Wire the implemented-tested-UNWIRED transporter serving laws: ServiceQueue take-a-number (newServiceQueue/takeEnemyNumber/enemyTurn/serveEnemy/nextServed transporter.ts:155-202, NPSERV/LESERV JOUSTRV4.SRC:5615-5676) + spawnProceeds empty-third deferral (transporter.ts:149, JOUSTRV4.SRC:5641-5654) - zero production callers today, demo.ts imports only enterViaPads/beginMaterialise/stepMaterialise/PADS (demo.ts:91-101). Each enemy beginMaterialise window (MATERIALISE_WINDOW demo.ts:406, birth demo.ts:598-599) defers to its own release frame. enemyProcess factory and the materialise effect unchanged - only insertion timing moves.'
     points: 5
     priority: p1
-    status: in_progress
+    status: in_review
     repos: arcade
     workflow: tdd
     type: bug
     branch: feat/jt11-4-serve-queue-enemy-arrival-cadence
   - id: jt11-5
-    title: 'Lava shore + burn-off (TWO defects, sim and render): (A) render - transcribe
-      BRIDGE/BRIDG2 lava-shore planks (JOUSTRV4.SRC:1126-1127, solid-colour DMA fills
-      54x3 at 0,211 and 60x3 at 240,211 - NOT pictures, need a solid-fill DrawOp kind;
-      grep BRIDGE hits only timing constants arena.ts:131-132, troll.ts:17) so the ground
-      landMaskAtX asserts (flight.ts:210-214 bakes the LNDXUP or-0x20 CLIFF 5 LANDS
-      AT ALL POINTS constant, JOUSTRV4.SRC:987-989) is no longer invisible black at
-      x 0-54/240-300 y211. (B) sim - destruction is computed every wave (applyWaveDestruction
-      demo.ts:2249, wave-1 demo.ts:1254) but consumed ONLY by the troll gate (troll.ts:126-127):
-      make the dead queries the production path - groundOutcomeInState/bridgeGroundOutcome/backgroundActive
-      (arena-state.ts:172-199, zero callers) - by threading ArenaState into the ground-mask
-      consumers (frame.ts:257,266; enemy.ts:1287,1294; demo.ts:1285 all call pristine
-      groundOutcome), making the or-0x20 conditional on !bridgeBurned for bridge columns
-      (LAVAB per-column clear JOUSTRV4.SRC:5258-5264), and filtering drawList BACKGROUND_RECORDS
-      by arena.destroyedCliffs (demo.ts:2534-2549 currently unconditional, never reads
-      demo.arena). CLIF5 island itself is correctly indestructible (arena-state.ts:65-66)
-      and already renders. CLFDES crumble animation is jt11-7, NOT here. Shares demo.ts
-      with jt11-4 - sequence, do not parallel.'
+    title: 'Lava shore + burn-off (TWO defects, sim and render): (A) render - transcribe BRIDGE/BRIDG2 lava-shore planks (JOUSTRV4.SRC:1126-1127, solid-colour DMA fills 54x3 at 0,211 and 60x3 at 240,211 - NOT pictures, need a solid-fill DrawOp kind; grep BRIDGE hits only timing constants arena.ts:131-132, troll.ts:17) so the ground landMaskAtX asserts (flight.ts:210-214 bakes the LNDXUP or-0x20 CLIFF 5 LANDS AT ALL POINTS constant, JOUSTRV4.SRC:987-989) is no longer invisible black at x 0-54/240-300 y211. (B) sim - destruction is computed every wave (applyWaveDestruction demo.ts:2249, wave-1 demo.ts:1254) but consumed ONLY by the troll gate (troll.ts:126-127): make the dead queries the production path - groundOutcomeInState/bridgeGroundOutcome/backgroundActive (arena-state.ts:172-199, zero callers) - by threading ArenaState into the ground-mask consumers (frame.ts:257,266; enemy.ts:1287,1294; demo.ts:1285 all call pristine groundOutcome), making the or-0x20 conditional on !bridgeBurned for bridge columns (LAVAB per-column clear JOUSTRV4.SRC:5258-5264), and filtering drawList BACKGROUND_RECORDS by arena.destroyedCliffs (demo.ts:2534-2549 currently unconditional, never reads demo.arena). CLIF5 island itself is correctly indestructible (arena-state.ts:65-66) and already renders. CLFDES crumble animation is jt11-7, NOT here. Shares demo.ts with jt11-4 - sequence, do not parallel.'
     points: 8
     priority: p1
     status: backlog
@@ -124,17 +49,7 @@ stories:
     workflow: tdd
     type: bug
   - id: jt11-6
-    title: 'High-score entry UX: persistence wiring is verified CORRECT (game writes
-      and lobby reads the same joust-high-scores key via shared highScoreKey - highscore.ts:118-120,497,580-588;
-      lobby chain tiles.ts:109 -> storage.ts:42-43 -> readLocalTableRaw; qualify gate
-      afterGameOver cabinet.ts:119-122 wired to the persisted table main.ts:375, pinned
-      by highscore-wiring.test.ts:72-84). The felt bug is the commit gate: nothing saves
-      until exactly 3 initials entered AND FLAP (Space) pressed on a rising edge (main.ts:483-488)
-      - abandoning the entry screen writes nothing. Fix: on-screen instruction on the
-      entry screen (which keys cycle letters, PRESS FLAP TO CONFIRM) + a ROM-style entry
-      timeout that auto-commits the current initials so a walked-away qualifying score
-      still persists. Verify the ROM entry-timeout behavior in JOUSTRV4.SRC before choosing
-      the timeout law - cite it.'
+    title: 'High-score entry UX: persistence wiring is verified CORRECT (game writes and lobby reads the same joust-high-scores key via shared highScoreKey - highscore.ts:118-120,497,580-588; lobby chain tiles.ts:109 -> storage.ts:42-43 -> readLocalTableRaw; qualify gate afterGameOver cabinet.ts:119-122 wired to the persisted table main.ts:375, pinned by highscore-wiring.test.ts:72-84). The felt bug is the commit gate: nothing saves until exactly 3 initials entered AND FLAP (Space) pressed on a rising edge (main.ts:483-488) - abandoning the entry screen writes nothing. Fix: on-screen instruction on the entry screen (which keys cycle letters, PRESS FLAP TO CONFIRM) + a ROM-style entry timeout that auto-commits the current initials so a walked-away qualifying score still persists. Verify the ROM entry-timeout behavior in JOUSTRV4.SRC before choosing the timeout law - cite it.'
     points: 2
     priority: p1
     status: backlog
@@ -142,12 +57,7 @@ stories:
     workflow: tdd
     type: bug
   - id: jt11-7
-    title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble
-      CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend
-      (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits
-      only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes
-      destroyed cliffs vanish from physics and render, this story adds the visible crumble
-      transition between intact and gone. Requires jt11-5.'
+    title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
     points: 3
     priority: p3
     status: backlog
@@ -155,12 +65,7 @@ stories:
     workflow: tdd
     depends_on: jt11-5
   - id: jt11-8
-    title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2,
-      and a click/tap on the attract or select screen as a start gesture (routed Delivery
-      Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only
-      keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a
-      lobby-browser player may also reasonably click). Keep the rising-edge discipline
-      (prevStartHeld) for all new sources.'
+    title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2, and a click/tap on the attract or select screen as a start gesture (routed Delivery Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a lobby-browser player may also reasonably click). Keep the rising-edge discipline (prevStartHeld) for all new sources.'
     points: 2
     priority: p3
     status: backlog
