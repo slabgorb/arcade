@@ -85,9 +85,25 @@ async function loadScreen(): Promise<HighscoreScreenModule> {
       'the jt11-6 entry INSTRUCTION line is not in src/shell/highscoreScreen.ts yet — GREEN adds an ' +
         'exported ENTRY_INSTRUCTIONS presentation string (the jt11-1 START_PROMPT precedent: name the real ' +
         'browser keys — the A-Z letter keys and SPACE, joust\'s FLAP) and returns it as an `instructions` ' +
-        `LaidOutText in FONT35, non-null exactly while an entry prompt is showing. (${(e as Error).message})`,
+        `LaidOutText in FONT35, non-null exactly while an entry prompt is showing. (${detail(e)})`,
     )
   }
+}
+
+/** A caught `unknown`'s message, narrowed rather than cast (TS checklist #11 — a
+ *  rejected dynamic import is usually Error-shaped, but "usually" is not a type). */
+function detail(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
+
+/**
+ * The instruction line, or a self-describing throw. TS narrows the union here, so
+ * no test body needs a cast that asserts away the `null` pole it is testing.
+ */
+function requireInstructions(screen: Jt11_6Layout): LaidOutText {
+  const laid = screen.instructions
+  if (laid === null) throw new Error('the layout returned no `instructions` line while a prompt was showing')
+  return laid
 }
 
 function readMain(): string {
@@ -128,6 +144,17 @@ function highscorePumpBranch(src: string): string {
   }
 }
 
+/**
+ * Every `if (…)` CONDITION in the pump branch that tests the entry's expiry. The
+ * condition text only — the lazy `[^{]*?` stops at the `)` that abuts the brace,
+ * so `isEntryExpired(entry)`'s own inner paren does not end the capture.
+ */
+function expiryConditions(branch: string): string[] {
+  return [...branch.matchAll(/if\s*\(([^{]*?)\)\s*\{/g)]
+    .map((m) => m[1].trim())
+    .filter((condition) => condition.includes('isEntryExpired'))
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-A — the instruction line. The felt bug is that the commit gate is invisible:
 // a player who does not know that SPACE confirms has no way to learn it on screen.
@@ -137,7 +164,7 @@ describe('AC-A the entry screen carries an on-screen instruction line', () => {
     const { layoutHighscoreScreen, ENTRY_INSTRUCTIONS } = await loadScreen()
     const screen = layoutHighscoreScreen(GREEN, TABLE, 'ENTER YOUR INITIALS')
     expect(screen.instructions, 'the instruction line is laid out while entering').not.toBeNull()
-    const laid = screen.instructions as LaidOutText
+    const laid = requireInstructions(screen)
     // FONT35 is the tight score font the rows and the prompt use; FONT57 would be
     // the wide banner font, and a banner-width instruction line runs off the screen.
     expect(laid.height, 'FONT35 cell height').toBe(FONT35.cellHeight)
@@ -154,13 +181,13 @@ describe('AC-A the entry screen carries an on-screen instruction line', () => {
     // render with holes and nobody would see it in a test that only checks the string.
     const missing = [...ENTRY_INSTRUCTIONS].filter((ch) => FONT35.glyphFor(ch) === undefined)
     expect(missing, `FONT35 has no glyph for: ${missing.join(' ')}`).toEqual([])
-    const laid = layoutHighscoreScreen(GREEN, TABLE, 'ENTER YOUR INITIALS').instructions as LaidOutText
+    const laid = requireInstructions(layoutHighscoreScreen(GREEN, TABLE, 'ENTER YOUR INITIALS'))
     expect(laid.ops.length, 'one painted glyph per character').toBe(ENTRY_INSTRUCTIONS.length)
   })
 
   it('it fits across the logical screen, so it cannot be laid out off the edge', async () => {
     const { layoutHighscoreScreen } = await loadScreen()
-    const laid = layoutHighscoreScreen(GREEN, TABLE, 'ENTER YOUR INITIALS').instructions as LaidOutText
+    const laid = requireInstructions(layoutHighscoreScreen(GREEN, TABLE, 'ENTER YOUR INITIALS'))
     // The caller centres each line, so a line wider than the backbuffer is clipped at
     // BOTH ends — the exact failure a "just add more words" edit produces.
     expect(laid.width, `${LOGICAL_WIDTH}px of logical screen`).toBeLessThanOrEqual(LOGICAL_WIDTH)
@@ -238,6 +265,34 @@ describe('AC-B main.ts spends the entry timeout and auto-commits on expiry', () 
     // The whole point of the story: what commits is the CURRENT buffer, padded — not
     // a completeness check that drops a 0- or 2-letter walk-away on the floor.
     expect(branch, 'the expired commit uses timeoutInitials(entry)').toMatch(/timeoutInitials\(\s*entry\s*\)/)
+  })
+
+  it('the expiry commits UNCONDITIONALLY — completeness is the MANUAL gate and only the manual gate', () => {
+    // ─── This test exists because of a MUTANT that survived the whole suite ───
+    // Reviewer, 2026-08-12: adding `&& isEntryComplete(entry)` to the expiry branch
+    // restores the exact bug jt11-6 was filed to fix — a walked-away 0- or 2-letter
+    // entry evaporating — and every other test here stayed green, because they only
+    // prove `timeoutInitials(entry)` is MENTIONED in the branch. Padding to three
+    // characters is pointless if the commit is gated on already having three. TS
+    // checklist #15: "Every guard must be mutation-tested: delete the mechanism and
+    // require red." This is that guard; the mutant now reddens here.
+    const src = readMain()
+    const branch = highscorePumpBranch(src)
+
+    // Non-vacuity FIRST (#15's universally-quantified-loop trap): if the branch stops
+    // testing expiry at all, this fails here rather than passing over an empty set.
+    const conditions = expiryConditions(branch)
+    expect(conditions.length, 'exactly one condition in the pump branch tests isEntryExpired').toBe(1)
+
+    const [expiry] = conditions
+    expect(expiry, 'the expiry condition is the expiry test, nothing else').toBe('isEntryExpired(entry)')
+    expect(expiry, 'no completeness term is ANDed into the expiry').not.toMatch(/isEntryComplete/)
+    expect(expiry, 'and no hand-rolled length check stands in for one').not.toMatch(/length/)
+
+    // …and it cannot be smuggled INSIDE the branch body either: completeness is the
+    // manual confirm's gate and appears exactly once in the whole file.
+    const completeness = [...src.matchAll(/isEntryComplete\(/g)].length
+    expect(completeness, 'isEntryComplete( is called once in main.ts — the manual confirm only').toBe(1)
   })
 
   it('persistence still happens at exactly ONE call site — the auto-commit reuses the manual path', () => {

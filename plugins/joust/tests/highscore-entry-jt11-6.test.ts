@@ -39,9 +39,12 @@
 // law Williams replaced. The gate below asserts the constant is 7680 and NOT 5100.
 //
 // ─── ONE DELIBERATE DEVIATION, STATED UP FRONT ───────────────────────────────
-// On expiry the ROM does NOT commit: `2$ PKILL $42,$FF` kills the entry process and
-// falls into `JMP VATTRT` (TB12REV1.SRC:87-89), and the initials only reach CMOS
-// AFTER ENTINT returns carry-set (the CMOSMV stores at TB12REV1.SRC:1650-1660). So
+// On expiry the ROM does NOT commit: `2$ PKILL $42,$FF` (TB12REV1.SRC:89) kills the
+// entry process, naps, and BRANCHES BACK to `JMP VATTRT` — `BRA 3$` at :91, where 3$
+// sits ABOVE it at :87. (Not a fall-through: the JMP is earlier in the listing than
+// the PKILL that reaches it. jt5-7 is this repo's standing reminder that a positional
+// word can be false while its citation is perfectly correct.) And the initials only
+// reach CMOS AFTER ENTINT returns carry-set (the CMOSMV store at :1650-1652). So
 // the 1982 cabinet drops a walked-away score exactly as this port does today — the
 // felt bug is FAITHFUL. jt11-6's ruling is to keep the ROM's DURATION and change the
 // EXPIRY ACTION to an auto-commit, because a browser cabinet has no attendant and a
@@ -135,12 +138,18 @@ async function loadEntry(): Promise<EntryTimeoutModule> {
   } catch (e) {
     throw new Error(
       'the jt11-6 entry TIMEOUT is not in src/core/highscore.ts yet — GREEN adds ENTRY_TIMEOUT_TICKS ' +
-        '(7680 = 256 × `PCNAP 30`, TB12REV1.SRC:77-79 — NOT the commented-out 255×20=5100 old law), a ' +
+        '(7680 = 256 × `PCNAP 30`, TB12REV1.SRC:77-78 — NOT the commented-out 255×20=5100 old law), a ' +
         '`ticksLeft` field on the entry buffer seeded by beginEntry, tickEntry (one frame of countdown, ' +
         'floored at 0), isEntryExpired, and timeoutInitials (the buffer space-padded to MAX_INITIALS, ' +
-        `the ROM's CSPC fill). Keep it pure core — the countdown is TICKS, never a clock. (${(e as Error).message})`,
+        `the ROM's CSPC fill). Keep it pure core — the countdown is TICKS, never a clock. (${detail(e)})`,
     )
   }
+}
+
+/** A caught `unknown`'s message, narrowed rather than cast (TS checklist #11 — a
+ *  rejected dynamic import is usually Error-shaped, but "usually" is not a type). */
+function detail(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

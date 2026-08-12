@@ -62,6 +62,10 @@ export type JoustHighScore = HighScoreEntry<'wave'>
  *  enterInitial returns a NEW buffer, never mutates. */
 export interface HighScoreEntryBuffer {
   readonly initials: string
+  /** jt11-6 — the ticks left on this entry before it auto-commits. Seeded by
+   *  beginEntry from ENTRY_TIMEOUT_TICKS and spent by tickEntry; core counts
+   *  FRAMES, never milliseconds. */
+  readonly ticksLeft: number
 }
 
 export interface HighscoreModule {
@@ -74,6 +78,31 @@ export interface HighscoreModule {
   /** The 3-char initials convention — one of joust's per-cabinet NUMBERS; the
    *  entry VERB itself is the cabinet-wide shared reducer (SH2-13). */
   readonly MAX_INITIALS: number
+
+  // ─── jt11-6: the ENTRY TIMEOUT ──────────────────────────────────────────────
+  // The screen is escapable now: a budget runs down while it is up, and when it
+  // expires the current initials commit anyway, so a walked-away qualifying score
+  // persists. The DURATION is transcribed (AMODE's supervisor loop, 256 x
+  // `PCNAP 30` = 7680 ticks, TB12REV1.SRC:77-78); the auto-commit on expiry is
+  // this port's deliberate deviation — the ROM abandons the entry instead.
+
+  /** 7680 — 256 iterations of `PCNAP 30` (TB12REV1.SRC:77-78), about 2 minutes
+   *  8 seconds at core FRAME_HZ. NOT the commented-out 255x20=5100 old law. */
+  readonly ENTRY_TIMEOUT_TICKS: number
+
+  /** One video frame of the countdown: `ticksLeft` less one, floored at 0. An
+   *  exhausted budget returns the SAME buffer (the enterInitial no-op idiom).
+   *  Typing does not reset it. Pure. */
+  tickEntry(entry: HighScoreEntryBuffer): HighScoreEntryBuffer
+
+  /** True once the budget has run out — the auto-commit gate. Pure. */
+  isEntryExpired(entry: HighScoreEntryBuffer): boolean
+
+  /** The initials an EXPIRED entry commits: the buffer padded to MAX_INITIALS
+   *  with spaces — the ROM's own CSPC buffer fill (TB12REV1.SRC:1901-1902) — so
+   *  an abandoned entry keeps the SCORE under a blank name instead of losing the
+   *  row. Pure. */
+  timeoutInitials(entry: HighScoreEntryBuffer): string
 
   /**
    * The 1-based rank a `score` would occupy in `table` under insertHighScore's
@@ -90,7 +119,8 @@ export interface HighscoreModule {
    */
   promptForRank(rank: number): string
 
-  /** A fresh empty initials buffer: { initials: '' }. Pure. */
+  /** A fresh empty initials buffer with a full entry budget:
+   *  `{ initials: '', ticksLeft: ENTRY_TIMEOUT_TICKS }`. Pure. */
   beginEntry(): HighScoreEntryBuffer
 
   /**
@@ -102,7 +132,10 @@ export interface HighscoreModule {
    */
   enterInitial(entry: HighScoreEntryBuffer, key: string): HighScoreEntryBuffer
 
-  /** True once the buffer holds exactly MAX_INITIALS chars — the commit gate. Pure. */
+  /** True once the buffer holds exactly MAX_INITIALS chars — the MANUAL-confirm
+   *  gate. Since jt11-6 it is no longer the only way a row commits: an expired
+   *  entry auto-commits whatever is typed (isEntryExpired + timeoutInitials), and
+   *  deliberately does NOT consult this. Pure. */
   isEntryComplete(entry: HighScoreEntryBuffer): boolean
 
   /**
@@ -131,14 +164,28 @@ export async function loadHighscore(): Promise<HighscoreModule> {
   const specifier = ['..', '..', 'src', 'core', 'highscore.js'].join('/')
   try {
     const mod = (await import(/* @vite-ignore */ specifier)) as Partial<HighscoreModule>
-    const fns = ['rankForScore', 'promptForRank', 'beginEntry', 'enterInitial', 'isEntryComplete', 'commitEntry'] as const
+    const fns = [
+      'rankForScore',
+      'promptForRank',
+      'beginEntry',
+      'enterInitial',
+      'isEntryComplete',
+      'commitEntry',
+      // jt11-6 — the entry timeout's verbs. Listed here so the CONTRACT is what
+      // fails when the module drifts, rather than a test three files away.
+      'tickEntry',
+      'isEntryExpired',
+      'timeoutInitials',
+    ] as const
     for (const fn of fns) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
     for (const s of ['PROMPT_CHAMPION', 'PROMPT_LESSER', 'CHAMPIONS_HEADING'] as const) {
       if (typeof mod[s] !== 'string') throw new Error(`module has no \`${s}\` string export`)
     }
-    if (typeof mod.MAX_INITIALS !== 'number') throw new Error('module has no `MAX_INITIALS` number export')
+    for (const n of ['MAX_INITIALS', 'ENTRY_TIMEOUT_TICKS'] as const) {
+      if (typeof mod[n] !== 'number') throw new Error(`module has no \`${n}\` number export`)
+    }
     return mod as HighscoreModule
   } catch (e) {
     throw new Error(
