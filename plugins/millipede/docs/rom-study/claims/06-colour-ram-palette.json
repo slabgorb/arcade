@@ -1,0 +1,92 @@
+[
+ {
+  "id": "PAL-1",
+  "claim": "CLRCH is the colour-RAM initialisation routine \u2014 the palette is written by the program, not read from a PROM.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 242,
+   "verbatim": "\t.SBTTL\tCLRCH - COLOR RAM INITIALIZATION"
+  }
+ },
+ {
+  "id": "PAL-2",
+  "claim": "CLRCH begins by loading the background colour byte from BKGND.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 245,
+   "verbatim": "CLRCH:\tLDA BKGND"
+  }
+ },
+ {
+  "id": "PAL-3",
+  "claim": "The background byte is stored into colour-RAM slot ANCOL+8.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 246,
+   "verbatim": "\tSTA ANCOL+8\t\t;SET BACKGROUND"
+  }
+ },
+ {
+  "id": "PAL-4",
+  "claim": "Per-level colours are read out of the 99$ table, indexed 12 bytes per centipede level.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 264,
+   "verbatim": "\tLDA X,99$"
+  }
+ },
+ {
+  "id": "PAL-5",
+  "claim": "Colour-RAM slot ANCOL+5 is the inside-of-mushroom colour.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 265,
+   "verbatim": "\tSTA ANCOL+5\t\t;INSIDE OF MUSHROOM"
+  }
+ },
+ {
+  "id": "PAL-6",
+  "claim": "Colour-RAM slot ANCOL+6 is the outside-of-mushroom colour.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 270,
+   "verbatim": "\tSTA ANCOL+6\t\t;OUTSIDE OF MUSHROOM"
+  }
+ },
+ {
+  "id": "PAL-7",
+  "claim": "Motion-object colour-RAM slot MOCOL+1 is a centipede colour.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 276,
+   "verbatim": "\tSTA MOCOL+1\t\t;CENTIPEDE"
+  }
+ },
+ {
+  "id": "PAL-8",
+  "claim": "The immediate colour byte $1F is the programmers' RED \u2014 under the active-low wiring it drives only the three red lines.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 294,
+   "verbatim": "\tLDA I,1F\t\t;RED"
+  }
+ },
+ {
+  "id": "PAL-9",
+  "claim": "The immediate colour byte $00 is the programmers' WHITE \u2014 every output line driven.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 297,
+   "verbatim": "\tLDA I,0\t\t\t;WHITE"
+  }
+ },
+ {
+  "id": "PAL-10",
+  "claim": "The 99$ per-level colour table opens with the CENTIN=1 row: mushroom inside/outside and DDT colours.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 304,
+   "verbatim": "99$:\t.BYTE 1F,27,21\t\t;WHEN CENTIN=1 (MUCHROOMS-INSIDE,OUTSIDE,DDT)"
+  }
+ }
+]
