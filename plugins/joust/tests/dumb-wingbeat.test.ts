@@ -578,11 +578,20 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     // holds: (b) player#2 never leaves the ground; (c) enemy#257 is NOT in the
     // held-wings state, so the dumb wingbeat is still active. Values MEASURED on the
     // integrated (jt9-8 + jt9-43) tree, seed 0x2468, 400 frames.
+    //
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+    // audio-thud.test.ts AC7): `player#1` legitimately moves — it lands at
+    // frame 29 and every takeoff after that launches at the rung's speed, and by
+    // frame 400 the shifted horizontal timeline has moved its LATER landings
+    // too, so the vertical columns move with it (unlike the ≤200-frame anchors,
+    // whose moved rows are horizontal-only). Guards (b) and (c) hold unchanged:
+    // player#2 never leaves the ground, and enemy#257 is still FLYING
+    // (`53492,-15,…,1` — airborne), not in the held-wings state.
     const rows = entityDigest(0x2468, 400)
     const rowFor = (label: string): string | undefined => rows.find((r) => r.startsWith(label))
     expect(rows.length, 'the integrated-tree composition (PTIMUP arc + screen-precise collision)').toBe(5)
     expect(rowFor('player#1:'), 'player#1 flies the jt9-8 PTIMUP arc — re-init on its wing edges').toBe(
-      'player#1:2,11592,8,-2,0,8,1',
+      'player#1:172,15672,-16,2,64,8,1',
     )
     expect(rowFor('player#2:'), 'player#2 never leaves the ground in this replay').toBe(
       'player#2:200,32768,0,0,0,1,0',
@@ -660,9 +669,22 @@ describe('AC6 — the dumb wing cue', () => {
       // enemy-only and does not shift knight-death timing — and every count stays well
       // above the >50 floor. The sim's `rng` cursor is bit-identical through this
       // change (audio-events.test.ts AC3): a BOLEV divert draws no randomness.
-      0xbeef: { down: 143, playerDown: 154, playerUp: 154 },
-      0x2468: { down: 325, playerDown: 154, playerUp: 154 },
-      0xface: { down: 164, playerDown: 154, playerUp: 154 },
+      //
+      // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+      // audio-thud.test.ts AC7): rung-speed takeoffs reshape EVERY trajectory
+      // downstream of a landing, so the trajectory-dependent enemy counts move
+      // in both directions (0xbeef 143 -> 169, 0x2468 325 -> 256, 0xface
+      // 164 -> 155 — all still well above the >50 floor). The knight DOWN count
+      // (154, one per %13 flap frame) is unmoved on all three seeds; the UP
+      // count drops 154 -> 153 on all three for one measured, mechanism-level
+      // reason: each seed now has a knight death at frame 1209 whose re-entry
+      // lands on 1210 — a %13 == 1 release-edge frame — so exactly one wing-up
+      // is emitted by nobody. The sim's `rng` cursor is bit-identical through
+      // this change (audio-events.test.ts AC3): the FLYVEL writes draw no
+      // randomness.
+      0xbeef: { down: 169, playerDown: 154, playerUp: 153 },
+      0x2468: { down: 256, playerDown: 154, playerUp: 153 },
+      0xface: { down: 155, playerDown: 154, playerUp: 153 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

@@ -259,7 +259,12 @@ describe('AC2 — no promotion in seeded play ever carries a glide', () => {
     )
     expect(carrying, 'never reproduced on this script, before or after').toEqual([])
     const total = SEEDS.reduce((n, s) => n + sweepPromotions(s, 3000, scriptedInputs).promotions.length, 0)
-    expect(total, 'and it is not because nothing promotes here — 14 at setup').toBeGreaterThanOrEqual(10)
+    // jt11-3 RE-BASELINE: 14 -> 9 (0xbeef 2, 0x2468 4, 0xface 3). Rung-speed
+    // takeoffs reshape the scripted knight's kill timeline, so fewer birds
+    // survive to promote in the window. Still comfortably non-empty — the only
+    // thing this control proves — so the floor drops with it (kept below the
+    // measured 9), same as the jt9-24 move on the IDLE control above.
+    expect(total, 'and it is not because nothing promotes here — 9 at jt11-3').toBeGreaterThanOrEqual(8)
   })
 })
 

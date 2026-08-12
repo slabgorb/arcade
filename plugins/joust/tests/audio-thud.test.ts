@@ -883,7 +883,7 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x1001, frame 1401: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0x1035, frame 723: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
     // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
@@ -977,9 +977,23 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // frames for this test's precondition (a stream of EXACTLY one `player-thud` with a
     // silent frame before): 0x1007 frame 344 is the earliest clean hit. 344 % 13 = 6,
     // not a flap frame, so no knight wing cue rides along. Every assertion unchanged.
-    const before = stepGame(advanceTo(0x1007, 343), inputsAt(343))
+    //
+    // jt11-3 RE-BASELINE (ground consumes FLYVEL): seed 0x1007 frame 344 -> seed
+    // 0x1035 frame 723 — the SEED had to move again, the empty-solution case
+    // re-found by SWEEPING, not by relaxing either assertion. Re-swept
+    // [0x1000,0x1120) over 4000 frames by this test's own precondition: 0x1035
+    // frame 723 is the earliest clean hit (0x103a ties at 723; lowest seed kept).
+    // 723 % 13 = 8, not a flap frame, so no knight wing cue rides along.
+    // Verified enemy-vs-PLAYER from the process positions: entering frame 723
+    // the buzzard `enemy#257` stands at (213,128) and the idle knight `player#2`
+    // at (200,128) — the same row — while `player#1` is far away at (−3,44). The
+    // bounce lands on that pair and nothing else: the buzzard (the earlier
+    // process, OSTXTP's REG.U) is pushed DOWN to y=130 and the knight UP to
+    // y=126 — a buzzard walking through a standing knight, the same shape the
+    // 0x2332/0x1b4a/0x1001 stagings carried. Every assertion unchanged.
+    const before = stepGame(advanceTo(0x1035, 722), inputsAt(722))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1007, 344), inputsAt(344))
+    const fired = stepGame(advanceTo(0x1035, 723), inputsAt(723))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
@@ -1060,6 +1074,23 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
 //
 // A future change that moves an ENEMY row at these anchors without touching enemy
 // flight is a regression whatever it claims.
+//
+// jt11-3 RE-BASELINE (2026-08-12) — the ground consumes the STATE rows' FLYVEL:
+// `stepGround` maintains PVELX from the current rung (UPDNO2's `LDA 6,X /
+// STA PVELX,U`, negated by facing — JOUSTRV4.SRC:5997-6008) and `land()` seeds
+// it from the landed FRCONV rung, so a takeoff launches at the RUNG's speed
+// instead of resuming the pre-landing flight index. The justified line, both
+// halves measured: only entities that TOUCH GROUND inside the window may move,
+// and a moved row's signature is HORIZONTAL — posX/velXIndex (and velXFrac)
+// move while every vertical column (posY, velY) and timeUp are bit-identical,
+// until a divergent trajectory shifts a later landing itself. `rng` is UNMOVED
+// everywhere — still 2_006_456_271 at 0xbeef frame 2400, a ninth consecutive
+// re-baseline (the FLYVEL writes draw no randomness). First contacts re-swept,
+// not inferred:
+//
+//   seed 0xbeef      first non-killing contact at frame 119   (unmoved)
+//   seed 0xface      first non-killing contact at frame 119   (unmoved)
+//   seed 0x2468      NO contact at all inside 2000 frames     (unmoved)
 
 describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
   const fingerprint = (seed: number, frames: number) => {
@@ -1112,11 +1143,21 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // 79 -> 0 (the budget re-inited on this frame's wing edge) with the position
     // and velocity that follow from it. First contact re-measured by sweeping 1300
     // frames for a thud, not assumed: still frame 119, so the anchor does not move.
+    //
+    // jt11-3 RE-BASELINE (ground consumes FLYVEL — see the header note). The two
+    // rows that moved are exactly the two that touch ground inside the window —
+    // `player#1` (first landing: frame 29) and the dumb `enemy#257` (first
+    // landing: frame 15) — and both carry the story's signature: HORIZONTAL only
+    // (posX 71→110 with velXIndex −2→+2; posX 275→31), every vertical column and
+    // timeUp bit-identical. `player#2` stands from frame 49 but PLYBR's FLYVEL is
+    // 0, the value it already had. `enemy#256` (first grounded: 455) and
+    // `enemy#258` (never grounded in 2600 frames) are bit-identical, and so is
+    // every fingerprint field including `rng`.
     expect(entityDigest(0xbeef, 118)).toEqual([
-      'player#1:71,15592,-80,-2,0,0,1',
+      'player#1:110,15592,-80,2,0,0,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:89,32725,-62,8,64,60,1',
-      'enemy#257:275,33037,-39,8,0,41,1',
+      'enemy#257:31,33037,-39,8,0,41,1',
       'enemy#258:89,33219,18,8,64,60,1',
     ])
     expect(fingerprint(0xbeef, 118)).toEqual({
@@ -1166,8 +1207,17 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // `rng`, lives, wave and `player#2` do not. This seed is still thud-free
     // across 1300 frames (re-swept, not assumed), so 188 remains strictly
     // pre-contact.
+    //
+    // jt11-3 RE-BASELINE (ground consumes FLYVEL — see the header note). ONE row
+    // moved: `player#1`, the only entity that touches ground before frame 188
+    // (first landing: 29; the enemies' first groundings are 369, 495 and never).
+    // Its move is the story's horizontal signature exactly — posX 47→121 with
+    // velXIndex −2→+2, every vertical column and timeUp bit-identical. All three
+    // enemy rows, `player#2`, `rng`, procs, scores and lives are unchanged. This
+    // seed is still thud-free across 2000 frames (re-swept, not assumed), so 188
+    // remains strictly pre-contact.
     expect(entityDigest(0x2468, 188)).toEqual([
-      'player#1:47,14512,0,-2,0,4,1',
+      'player#1:121,14512,0,2,0,4,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:64,28338,-77,8,64,95,1',
       'enemy#257:252,53313,14,8,192,95,1',
@@ -1220,11 +1270,18 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // `enemy#256` moved: diverting off a blocked climb to level flight, it sinks on a
     // different arc here (`29844,-51` -> `30547,-40`; posX/velXIndex/timeUp unchanged).
     // `enemy#257`/`enemy#258` are unchanged.
+    //
+    // jt11-3 RE-BASELINE (ground consumes FLYVEL — see the header note). The
+    // frame-119 thud is UNMOVED (re-swept for a thud, not assumed), so 160 is
+    // still strictly post-contact. The two moved rows are the two ground-touchers
+    // — `player#1` (landed 29): posX 56→116 with velXIndex −4→0; `enemy#257`
+    // (landed 15): posX 14→73 — both horizontal-only, vertical columns and
+    // timeUp bit-identical. `player#2`, `enemy#256` and `enemy#258` are unchanged.
     expect(entityDigest(0xbeef, 160)).toEqual([
-      'player#1:56,14560,-32,-4,64,2,1',
+      'player#1:116,14560,-32,0,64,2,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:131,30547,-40,8,64,81,1',
-      'enemy#257:14,33111,-30,8,0,62,1',
+      'enemy#257:73,33111,-30,8,0,62,1',
       'enemy#258:131,34247,-49,8,64,81,1',
     ])
   })
@@ -1248,11 +1305,19 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     // 119 (re-swept for a thud), so 128 is still 119 + 9 and still strictly after
     // it. `player#1` alone moved — `timeUp` 89 -> 9 — and all three enemy rows are
     // bit-identical, the same bound the 0xbeef anchor above carries.
+    //
+    // jt11-3 RE-BASELINE (ground consumes FLYVEL — see the header note). First
+    // contact STILL frame 119 (re-swept), so 128 remains strictly post-contact.
+    // The two moved rows are this seed's two ground-touchers — `player#1`
+    // (landed 29): posX 68→112 with velXIndex −2→+2; `enemy#257` (landed 15):
+    // posX 285→41 — horizontal-only again, vertical columns and timeUp
+    // bit-identical. `player#2`, `enemy#256` (first grounded 413) and
+    // `enemy#258` (first grounded 239, after this anchor) are unchanged.
     expect(entityDigest(0xface, 128)).toEqual([
-      'player#1:68,15232,0,-2,128,9,1',
+      'player#1:112,15232,0,2,128,9,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:189,15895,-22,8,64,65,1',
-      'enemy#257:285,32962,1,8,0,46,1',
+      'enemy#257:41,32962,1,8,0,46,1',
       'enemy#258:189,20041,-32,8,64,65,1',
     ])
   })
