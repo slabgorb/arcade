@@ -28,7 +28,7 @@
  },
  {
   "id": "PAL-4",
-  "claim": "Per-level colours are read out of the 99$ table, indexed 12 bytes per centipede level.",
+  "claim": "Per-level colours are read out of the 99$ table by indexed load (the stride that forms the index is PAL-11).",
   "source": {
    "file": "MLIRQ.MAC",
    "line": 264,
@@ -87,6 +87,15 @@
    "file": "MLIRQ.MAC",
    "line": 304,
    "verbatim": "99$:\t.BYTE 1F,27,21\t\t;WHEN CENTIN=1 (MUCHROOMS-INSIDE,OUTSIDE,DDT)"
+  }
+ },
+ {
+  "id": "PAL-11",
+  "claim": "The 99$ table index is 12 bytes per centipede level - the ROM forms 12*(CENTIN-1) and says so in its own comment.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 262,
+   "verbatim": "\tADC TPIRQ2\t\t;12* INDEX"
   }
  }
 ]

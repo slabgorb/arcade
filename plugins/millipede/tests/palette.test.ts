@@ -126,9 +126,10 @@ describe('ml2-3 AC-2 — decodeColourByte speaks the RAM-colour wiring law', () 
   it('$00 (every line driven) is the hardware’s white: (255, 222, 255)', async () => {
     // Green tops out at MID+HIGH = $DE — the two-line channel is the wiring's
     // fingerprint. The 1982 source itself calls this byte WHITE (MLIRQ.MAC:297).
+    // (That the three weights sum to a full $FF channel is proven through
+    // production output by the $1F RED test below — r decodes to exactly 0xff.)
     const p = await loadPalette()
     expect(p.decodeColourByte(0x00)).toEqual({ r: LOW + MID + HIGH, g: MID + HIGH, b: LOW + MID + HIGH })
-    expect(LOW + MID + HIGH, 'the weights sum to a full channel').toBe(0xff)
   })
 
   it('$1F is the source’s own RED (MLIRQ.MAC:294): only the red lines driven', async () => {
@@ -192,11 +193,17 @@ describe('ml2-3 AC-3 — a colour-RAM byte is a byte', () => {
 // milliped_paletteram_w — a name is a citation, a statement is a copy.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('ml2-3 AC-4 — no MAME code crosses the GPL seam', () => {
+  // Review round 2 (F1): NO file is exempt — not even this one. A blanket
+  // self-exemption blinded the sweep to the one file a future contributor is
+  // most likely to paste MAME code into (mutation-proven). Instead, the
+  // identifier-shaped tokens are built by CONCATENATION so this file never
+  // contains them as scannable text; the expression-shaped tokens cannot match
+  // their own escaped regex source (the `\s*` spelling breaks the literal).
   const BANNED: readonly [string, RegExp][] = [
     ['the weight-sum expression', /0x21\s*\*\s*bit0/],
-    ['the pen writer', /set_pen_color/],
-    ['the paletteram member', /m_paletteram\s*\[/],
-    ['the rgb_t constructor', /rgb_t\s*\(/],
+    ['the pen writer', new RegExp('set_pen' + '_color')],
+    ['the paletteram member', new RegExp('m_palette' + 'ram\\s*\\[')],
+    ['the rgb_t constructor', new RegExp('rgb' + '_t\\s*\\(')],
     ['the inverted-shift idiom', /~data\s*>>\s*[0-9]\s*\)\s*&\s*0x01/],
   ]
 
@@ -208,8 +215,6 @@ describe('ml2-3 AC-4 — no MAME code crosses the GPL seam', () => {
         const p = join(dir, entry)
         if (statSync(p).isDirectory()) walk(p)
         else if (/\.(ts|mts|mjs|md|json|html)$/.test(entry)) {
-          // This guard file states the banned tokens on purpose; exempt itself.
-          if (p.endsWith('palette.test.ts')) continue
           if (token.test(readFileSync(p, 'utf8'))) hits.push(p)
         }
       }
@@ -218,3 +223,4 @@ describe('ml2-3 AC-4 — no MAME code crosses the GPL seam', () => {
     expect(hits, 'GPL: derive the law, never transcribe the code').toEqual([])
   })
 })
+

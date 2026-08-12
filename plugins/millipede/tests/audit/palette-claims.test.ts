@@ -24,9 +24,14 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { claimsDir, loadClaims } from './dossier-sweep'
 
-/** The CLRCH block in the vendored MLIRQ.MAC: the .SBTTL header (:242) through
- *  the `99$` per-level colour table that follows the RTS (measured this
- *  session; the table's last row sits well inside this fence). */
+/** The CLRCH block in the vendored MLIRQ.MAC: the .SBTTL header (:242)
+ *  through the OPENING of the `99$` per-level colour table. Review round 2
+ *  (F3) — the true extent, measured both sides: the table itself runs
+ *  MLIRQ.MAC:304-351 (one 12-byte row per CENTIN level, 1..12, `.PAGE` at
+ *  :352). 315 is a DELIBERATE narrow fence: it admits the routine, the
+ *  stride arithmetic, the RED/WHITE corroborators and the table's opening
+ *  rows — the CENTIN=4..12 continuation rows are outside it and are the
+ *  business of whichever story transcribes the full per-level table. */
 const CLRCH_FIRST = 242
 const CLRCH_LAST = 315
 
