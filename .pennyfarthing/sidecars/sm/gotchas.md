@@ -2624,3 +2624,29 @@ by name (`trench-traversal-speed.test.ts` cites WSMAIN.MAC:2654, hint says :2539
 excellent and fully carried the correction block); and copied the stale-29 description verbatim into
 `context-story-*.md` with NO correction banner — added a `> ⚠` banner at the top pointing to the
 session's measured Background rather than editing the copied description.
+
+---
+
+### GITFLOW claim is now ONE push on the feat branch, not a stamp-push to the default branch (corrects the POST-MONOREPO "two pushes" entry)
+
+**Situation:** setup for ml1-2 (2026-08-12). The POST-MONOREPO entry above says the claim is two
+pushes to one remote — `origin main` (epic stamp + context) and `origin <feat-branch>`. But arcade
+switched to **gitflow on 2026-08-06**: `develop` is the default branch and is PROTECTED by pf's
+branch-protection hook, and `main` is no longer the integration branch. There is no unprotected
+default branch to push a bare stamp commit to.
+
+**What worked:** after `sm-setup`, stamp `in_progress` (churned only my own shard — verify with
+`git diff --stat`), then commit BOTH the epic-YAML stamp AND `sprint/context/context-story-<id>.md`
+onto the already-checked-out feat branch and `git push -u origin <feat-branch>` — a single push. The
+feat branch is where the story's work (and its eventual PR into develop) lives anyway, so the claim
+riding it is correct, not a workaround. The decisive sibling probe (`git branch -r | grep <id>`)
+lights up identically. The branch-protection hook allows the commit because the session cwd is on the
+feat branch, not on `develop`.
+
+**Rule:** under gitflow, do NOT try to push the stamp to `develop`/`main` directly — it's blocked and
+unnecessary. One commit, one push, on the feat branch. Finish will later open the PR(s) into develop.
+
+**sm-setup notes (confirmed AGAIN on ml1-2):** left status at `backlog` (stamped by hand); **omitted
+`**Repos:**`** from the session (added by hand); phase-pointer count was exactly 1; context + branch
+both clean. A genuinely clean fresh-story setup otherwise — no stale-premise trap because the story's
+cited ROM lines ARE its work and the ml1-1 citation gate verifies them mechanically (don't pre-audit).

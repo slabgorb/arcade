@@ -32,11 +32,12 @@ export const romStudyDir = join(pluginRoot, 'docs', 'rom-study')
 export const claimsDir = join(romStudyDir, 'claims')
 
 /**
- * Every dossier file the coverage sweep scans. EMPTY until ml1-2 enrols brief.md
- * (and ml1-3 its files, …). An empty enrollment sweeps zero prose citations, so
- * the real-dossier gate passes today and gains teeth as the dossier lands.
+ * Every dossier file the coverage sweep scans. ml1-2 enrols brief.md (the first
+ * dossier file); ml1-3 adds its files, … Each enrolled file's every backticked
+ * prose citation must be pinned by a claim in claims/, or the real-dossier gate
+ * reddens.
  */
-export const DOSSIER_FILES: readonly string[] = []
+export const DOSSIER_FILES: readonly string[] = ['brief.md']
 
 /** A primary-source line citation extracted from the dossier prose. */
 export interface ProseCitation {

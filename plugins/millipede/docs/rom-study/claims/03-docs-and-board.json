@@ -1,0 +1,47 @@
+[
+  {
+    "id": "DG-1",
+    "claim": "The ledger names a design document MILLI.DOC, but it is absent from the vendored tree and embedded nowhere — a secondary-doc gap, not a ground-truth gap.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 39,
+      "verbatim": "Documentation file:  MILLI.DOC"
+    }
+  },
+  {
+    "id": "DG-2",
+    "claim": "The ledger names a picture source 368XX.SB2, also absent — the picture pixels come from the MAME 136013-106/107 set, not from this tree.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 41,
+      "verbatim": "Picture file:  368XX.SB2"
+    }
+  },
+  {
+    "id": "DG-3",
+    "claim": "Scoring ground truth is the code, not the missing doc: PTS is a 16-entry table (.BLKB 16., decimal by the trailing period) of per-critter points.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 398,
+      "verbatim": "PTS:\t.BLKB 16.\t\t;NUMBER OF POINTS FOR KILLING THIS CRITTER"
+    }
+  },
+  {
+    "id": "DG-4",
+    "claim": "Difficulty is an operator option-switch (DIP) setting documented in the source: D1=BEETLE DIFFICULTY.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 88,
+      "verbatim": "\t\t\t\t;D1=BEETLE DIFFICULTY"
+    }
+  },
+  {
+    "id": "DG-5",
+    "claim": "The difficulty option bits run through D6=SPIDER DIFFICULTY — the per-bit difficulty MLDEF documents in place of the missing MILLI.DOC.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 91,
+      "verbatim": "\t\t\t\t;D6=SPIDER DIFFICULTY"
+    }
+  }
+]

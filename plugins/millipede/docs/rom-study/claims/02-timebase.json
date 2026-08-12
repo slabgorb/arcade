@@ -1,0 +1,38 @@
+[
+  {
+    "id": "TB-1",
+    "claim": "The interrupt spec states IRQ 4 PER FRAME (1 IN VBLANK) — the same wording Centipede carries; game logic runs once per video frame.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 31,
+      "verbatim": ";INTERRUPT REQUIREMENTS:IRQ 4 PER FRAME (1 IN VBLANK)"
+    }
+  },
+  {
+    "id": "TB-2",
+    "claim": "VBLANK is bit D6 of ENDSCREEN (VBLANK =2000) — the flag the IRQ tests to pick out the one-in-four VBLANK interrupt.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 117,
+      "verbatim": "VBLANK\t=2000\t\t\t;ENDSCREEN (D6=1=ON)"
+    }
+  },
+  {
+    "id": "TB-3",
+    "claim": "The IRQ handler distinguishes the VBLANK pass by testing that D6 flag: BIT VBLANK.",
+    "source": {
+      "file": "MLIRQ.MAC",
+      "line": 708,
+      "verbatim": "\tBIT VBLANK"
+    }
+  },
+  {
+    "id": "TB-4",
+    "claim": "BVS branches when the machine is in VBLANK (WE ARE IN VBLANK), so the once-per-frame logic hangs off this branch.",
+    "source": {
+      "file": "MLIRQ.MAC",
+      "line": 709,
+      "verbatim": "\tBVS 5$\t\t\t;WE ARE IN VBLANK"
+    }
+  }
+]

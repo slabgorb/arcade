@@ -1,0 +1,74 @@
+[
+  {
+    "id": "RS-1",
+    "claim": "The ROM sign-off ledger identifies the game and build: project MILLIPEDE, dated Sept. 29 1982, version 1.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 7,
+      "verbatim": "Documentation Disk(s):  48A\t\tProject Name:  MILLIPEDE\t\t\tDate:  Sept. 29, 1982\t\tVersion:  1"
+    }
+  },
+  {
+    "id": "RS-2",
+    "claim": "The first of four program EPROMs, 136013-101, sits at PCB location H1 and CPU address 7000 (a 2532 4Kx8).",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 17,
+      "verbatim": "136013-101\tH1\t\tPROGRAM EPROM'S\t\t7000\t\t2532\t\t4KX8\t\tALL\t\t176F"
+    }
+  },
+  {
+    "id": "RS-3",
+    "claim": "The last program EPROM, 136013-104, at M/N1 maps to address 4000 — the set 101..104 tiles the program space down from 7000.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 20,
+      "verbatim": "136013-104\tM/N1\t\tPROGRAM EPROM'S\t\t4000\t\t2532\t\t4KX8\t\tALL\t\tCE95"
+    }
+  },
+  {
+    "id": "RS-4",
+    "claim": "The first picture EPROM, 136013-106, at N/P5 (a 2716 2Kx8) — the graphics ROMs, a separate set from the program EPROMs.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 22,
+      "verbatim": "136013-106\tN/P5\t\tPICTURE EPROM'S\t\t800\t\t2716\t\t2KX8\t\tALL\t\tD37D"
+    }
+  },
+  {
+    "id": "RS-5",
+    "claim": "The second picture EPROM, 136013-107, at R5 — with -106 these two hold the 8x8 stamps ml2 decodes from the MAME set.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 23,
+      "verbatim": "136013-107\tR5\t\tPICTURE EPROM'S\t\t0\t\t2716\t\t2KX8\t\tALL\t\t004F"
+    }
+  },
+  {
+    "id": "RS-6",
+    "claim": "The verification image is MILLI.LDA (control file 013X1.DAT) — the linked CPU program load image, not the picture pixels.",
+    "source": {
+      "file": "368X1.DOC",
+      "line": 10,
+      "verbatim": "Verification control filename:  013X1.DAT\t\tVerification file:  MILLI.LDA"
+    }
+  },
+  {
+    "id": "RS-7",
+    "claim": "The linker command builds the program image from MILLI, MLSUB, MLATR, CONWAY and MLCOIN.",
+    "source": {
+      "file": "MILLI.LNK",
+      "line": 1,
+      "verbatim": "MILLI,MLSUB,MLATR,CONWAY,MLCOIN/C"
+    }
+  },
+  {
+    "id": "RS-8",
+    "claim": "The link map continues with MLIRQ and MLTST — seven CPU modules linked into MILLI.LDA.",
+    "source": {
+      "file": "MILLI.LNK",
+      "line": 2,
+      "verbatim": "MLIRQ,MLTST"
+    }
+  }
+]

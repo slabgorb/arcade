@@ -1,0 +1,38 @@
+[
+  {
+    "id": "RX-1",
+    "claim": ".RADIX 16 is set once in the shared include MLDEF and inherited via .INCLUDE by every CPU module, so a bare literal is hex.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 2,
+      "verbatim": "\t.RADIX 16"
+    }
+  },
+  {
+    "id": "RX-2",
+    "claim": "The shared coin module COIN65 (assembled separately) sets its own .RADIX 16, space-indented in this file.",
+    "source": {
+      "file": "COIN65.MAC",
+      "line": 11,
+      "verbatim": "        .RADIX 16"
+    }
+  },
+  {
+    "id": "RX-3",
+    "claim": "COIN65 restores the caller radix on exit (.RADIX .RAD), the same save/restore Centipede documents.",
+    "source": {
+      "file": "COIN65.MAC",
+      "line": 662,
+      "verbatim": "\t.RADIX .RAD\t\t;RESTORE RADIX"
+    }
+  },
+  {
+    "id": "RX-4",
+    "claim": "NDDT =4 carries no trailing period, so it is hex four — the DDT-bomb count, a bare-hex equate.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 191,
+      "verbatim": "NDDT\t=4\t\t\t;NUMBER OF DDT BOMBS"
+    }
+  }
+]
