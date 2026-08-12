@@ -110,6 +110,16 @@ interface EntryTimeoutModule {
   /** The initials an EXPIRED entry commits: the buffer padded to MAX_INITIALS with
    *  the ROM's own CSPC space fill. Pure. */
   timeoutInitials(entry: TimedEntryBuffer): string
+  /** jt10-7's existing insert — declared here (not double-cast at the call site) so
+   *  the auto-commit can be proven to ride the SAME ordering as a manual confirm. */
+  commitEntry(table: readonly JoustRow[], initials: string, score: number, wave: number): JoustRow[]
+}
+
+/** Joust's persisted row, as commitEntry returns it. */
+interface JoustRow {
+  readonly name: string
+  readonly score: number
+  readonly wave: number
 }
 
 const NEW_MEMBERS = ['ENTRY_TIMEOUT_TICKS', 'tickEntry', 'isEntryExpired', 'timeoutInitials'] as const
@@ -318,16 +328,8 @@ describe('AC-B3 timeoutInitials — the buffer an expired entry commits', () => 
   })
 
   it('a timed-out commit really lands in the table, ahead of the scores it beats', async () => {
-    const { timeoutInitials, ...mod } = await loadEntry()
-    const { commitEntry } = mod as unknown as {
-      commitEntry(
-        table: readonly { name: string; score: number; wave: number }[],
-        initials: string,
-        score: number,
-        wave: number,
-      ): { name: string; score: number; wave: number }[]
-    }
-    const table = [
+    const { timeoutInitials, commitEntry } = await loadEntry()
+    const table: JoustRow[] = [
       { name: 'AAA', score: 5000, wave: 9 },
       { name: 'BBB', score: 1000, wave: 3 },
     ]
