@@ -40,10 +40,11 @@ stories:
     title: 'Secondary source MAME milliped.cpp board facts as claims: master clock, EXACT refresh (resolve OQ-1 vs centipede 59.88593 Hz and record any /263-vs-/262 hedge verbatim), screen geometry, cabinet rotation, COLOR-RAM/palette wiring, picture-ROM part numbers 136013-106/107. MAME cited in prose only, never copied into the repo (GPL). Locate the milliped driver dir first (atari/).'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: ml1-5
     title: 'Four-file scaffold + three registrations -> boots black canvas at /millipede/: copy plugins/joust/ (index.html, plugin.ts, package.json, tsconfig.json extends ../../tsconfig.json); add millipede to justfile games and vitest.config.ts GAMES; npm run gen:registry. Green npx vitest run --project millipede + npm run lint; visual boot check at http://127.0.0.1:5270/millipede/ (compare against a nonsense control path, not just a 200).'
     points: 5
