@@ -35,6 +35,7 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadGame } from './helpers/game-contract.js'
 import { loadDemo, type DemoState } from './helpers/demo-contract.js'
+import { waveComplement } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -45,8 +46,12 @@ function playerIds(state: DemoState): number[] {
   return state.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
 }
 
+/** The wave's COMPLEMENT — the birds on the pads plus the ones still holding a
+ *  transporter number (jt11-4 made arrival a queue, so at frame 0 they are all still
+ *  queued). The assertion below is about how many enemies the wave FIELDS versus the
+ *  player count, which is a fact about the wave row, not about arrival timing. */
 function enemyCount(state: DemoState): number {
-  return state.sim.processes.filter((p) => p.kind === 'enemy').length
+  return waveComplement(state)
 }
 
 /** main.ts source with line comments stripped, so a wiring assertion cannot be

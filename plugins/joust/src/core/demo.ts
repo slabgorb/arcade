@@ -105,9 +105,14 @@ import {
   enterPteroSides,
   beginMaterialise,
   stepMaterialise,
+  newServiceQueue,
+  takeEnemyNumber,
+  enemyTurn,
+  serveEnemy,
   PLAYER1_SPAWN,
   PLAYER2_SPAWN,
   type Materialisation,
+  type ServiceQueue,
   type TransporterPad,
 } from './transporter.js'
 import { COLLISION_TABLES, BACKGROUND_RECORDS, ENTITY_RECORDS } from './pictures.js'
@@ -397,6 +402,23 @@ export interface DemoState {
    * type-check (tsconfig includes tests) and a non-ptero wave simply carries none.
    */
   pendingPteros?: readonly PendingPtero[]
+  /**
+   * jt11-4 — the wave's ground enemies AWAITING SERVICE by the transporter. The ROM
+   * does not drop a wave's complement into the arena at once: each enemy takes a
+   * number (CREEM, JOUSTRV4.SRC:5663-5666) and waits in CRELP until it is that
+   * ticket's turn (:5667-5676), so the buzzards materialise ONE BY ONE on the pads.
+   * `stepDemo` serves them; an unserved enemy is not in `sim.processes` at all.
+   *
+   * OPTIONAL / default-empty, on the `pendingPteros` precedent, so hand-built
+   * `DemoState` literals in tests still type-check.
+   */
+  pendingEnemies?: readonly PendingEnemy[]
+  /**
+   * jt11-4 — the deli-counter counters the pending arrivals are served against
+   * (NPSERV/LPSERV/NESERV/LESERV, JOUSTRV4.SRC:5615-5676). Re-seeded per wave with
+   * every counter equal, so nobody is waiting and nobody is served.
+   */
+  serviceQueue?: ServiceQueue
 }
 
 /** The result of resolving ONE overlapping pair — the wiring over resolveJoust. */
@@ -687,6 +709,26 @@ interface PendingPtero {
  *  after this frame's flight/collision). In the ROM `SECCR PTERST` runs PTERST → BRA
  *  PTESTF at once; the port's one-frame settle matches every other freshly-spawned bird. */
 const PTERO_CREATE_NAP = 1
+
+/** jt11-4 — a wave enemy that has TAKEN A NUMBER but has not been served yet. The ROM's
+ *  CREEM stores the ticket in the enemy's own `PTIMX` (`LDA NESERV / STA PTIMX,U / INC
+ *  NESERV`, JOUSTRV4.SRC:5663-5666) and then spins in CRELP until that number comes up.
+ *  The `process` is the finished `enemyProcess` — built exactly as the batch insert built
+ *  it, so only the MOMENT of insertion moves — and `nap` is the `PCNAP 1` the enemy yields
+ *  between service attempts (JOUSTRV4.SRC:5667). An unserved enemy is absent from
+ *  `sim.processes`, hence neither drawn nor collidable: it has not materialised yet. */
+export interface PendingEnemy {
+  /** Named `arrival`, not `process`: `process.` is a Node global the src/core purity
+   *  guard rejects outright (jt1-1's boundary), whatever the identifier means locally. */
+  arrival: DemoProcess
+  ticket: number
+  nap: number
+}
+
+/** The `PCNAP 1` an enemy yields before each attempt on the transporter service
+ *  (`CRELP PCNAP 1`, JOUSTRV4.SRC:5667) — so an enemy created at the wave advance
+ *  cannot also be served on that same frame, and a failed attempt costs a frame. */
+const ENEMY_SERVE_NAP = 1
 
 /** A pterodactyl process — a PTEID secondary, NOT a scored ground enemy (no
  * enemyType, so it never carries a DVALUE type). jt3-4 spawns it; jt3-7 makes it
@@ -1242,6 +1284,79 @@ function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
 }
 
 /**
+ * jt11-4 — the wave's complement, split into what ENTERS NOW and what QUEUES for the
+ * transporter. The complement itself is still `spawnWaveEnemies`' — same ids, same
+ * DVALUE types, same pads, same `enemyProcess` — only the moment each one is inserted
+ * moves.
+ *
+ * A scored ground enemy is a transporter customer: it takes a number off NESERV
+ * (`takeEnemyNumber`, CREEM at JOUSTRV4.SRC:5663-5666) and is handed back as a
+ * `PendingEnemy` for `stepDemo` to serve. Tickets are drawn in entry order, which is
+ * the order `enterViaPads` assigned the pads.
+ *
+ * An EGG wave's complement is NOT: WAVEGG lays the eggs where they sit
+ * (JOUSTRV4.SRC:2737) — no ticket, no transporter, no materialisation window — so those
+ * processes come straight back as immediate arrivals, exactly as before this story.
+ */
+function pendingWaveEnemies(
+  waveNumber: number,
+  seed: number,
+  queue: ServiceQueue,
+): { immediate: DemoProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
+  const immediate: DemoProcess[] = []
+  const pending: PendingEnemy[] = []
+  let q = queue
+  for (const arrival of spawnWaveEnemies(waveNumber, seed)) {
+    if (arrival.kind !== 'enemy') {
+      immediate.push(arrival)
+      continue
+    }
+    const drawn = takeEnemyNumber(q)
+    q = drawn.queue
+    pending.push({ arrival, ticket: drawn.ticket, nap: ENEMY_SERVE_NAP })
+  }
+  return { immediate, pending, queue: q }
+}
+
+/**
+ * jt11-4 — one frame of the transporter service (CRELP, JOUSTRV4.SRC:5667-5676). Every
+ * waiting enemy yields its `PCNAP 1` first, so nobody is served on the frame they took
+ * their number. Once awake it presents its ticket: `enemyTurn` passes only when the
+ * number equals LESERV *and* no player is still holding an unserved number — the
+ * machine's "LET THEM FIND A TRANSPORTER 1ST" (:5672-5674). Serving advances LESERV
+ * (`INC LESERV`, :5724) so the next card comes up.
+ *
+ * ONE customer per frame. The ROM lets a later process in the same sweep see the
+ * incremented LESERV, but it also holds the pad itself: `GOTTR INC [TCURUSE,X]` marks
+ * the transporter in use (:5710) and the arrival stands on it for 30 frames
+ * (`LDA #30 / STA PFRAME`, :5726-5727), with `BNE CRELP` (:5709) sending an enemy back
+ * to nap when every pad is busy. This port models no pad-occupancy state, so the
+ * one-service-per-frame rule stands in for it — see the Delivery Findings.
+ */
+function serveEnemies(
+  pending: readonly PendingEnemy[],
+  queue: ServiceQueue,
+): { served: DemoProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
+  const served: DemoProcess[] = []
+  const stillPending: PendingEnemy[] = []
+  let q = queue
+  for (const pe of pending) {
+    if (pe.nap > 0) {
+      // Still napping — this frame is the yield, not an attempt.
+      stillPending.push({ ...pe, nap: pe.nap - 1 })
+    } else if (served.length === 0 && enemyTurn(q, pe.ticket)) {
+      served.push(pe.arrival)
+      q = serveEnemy(q)
+    } else {
+      // Attempted and failed (not its turn, or the operator is busy this frame):
+      // back to CRELP, eligible again next frame.
+      stillPending.push(pe)
+    }
+  }
+  return { served, pending: stillPending, queue: q }
+}
+
+/**
  * Assemble wave 1 deterministically under the SHELL's seed: the first
  * `playerCount` mounts from the spawn constants (default 2 — P1 and P2; a 1P
  * game gets P1 alone, jt11-1), the wave-1 enemy complement (three bounders)
@@ -1262,11 +1377,15 @@ export function createWaveDemo(seed: number, playerCount: number = 2): DemoState
     playerProcess(PLAYER2_ID, PLAYER2_SPAWN.x, PLAYER2_SPAWN.facing, PLAYER2_SPAWN.mount),
   ].slice(0, playerCount)
 
-  const enemies: DemoProcess[] = spawnWaveEnemies(1, seed)
+  // jt11-4 — wave 1's complement QUEUES for the transporter instead of standing in
+  // the arena from frame 0. Each buzzard takes a number and is served one at a time
+  // by `stepDemo` (CREEM/CRELP, JOUSTRV4.SRC:5663-5676); an egg wave's eggs, which
+  // no transporter serves, still enter immediately.
+  const entering = pendingWaveEnemies(1, seed, newServiceQueue())
 
   const sim: DemoSim = {
     frame: base.frame,
-    processes: [...players, ...enemies],
+    processes: [...players, ...entering.immediate],
     woke: base.woke,
     rng: base.rng,
     budget: seedWaveBudget(row),
@@ -1293,6 +1412,9 @@ export function createWaveDemo(seed: number, playerCount: number = 2): DemoState
     baiterClock: seedBaiterClock(1),
     // jt9-59 — wave 1's ptero schedule (nibble 0 → empty); PTERWV creates over time.
     pendingPteros: pendingWavePteros(1, seed),
+    // jt11-4 — wave 1's complement, waiting on its numbers.
+    pendingEnemies: entering.pending,
+    serviceQueue: entering.queue,
   }
 }
 
@@ -2072,6 +2194,10 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // below (reset to the new wave's schedule on an advance). Default-empty for a demo
   // that predates the field or a non-ptero wave.
   let pendingPteros: readonly PendingPtero[] = demo.pendingPteros ?? []
+  // jt11-4 — the transporter's waiting room and its counters, carried across the frame
+  // and re-seeded on an advance. Default-empty/fresh for a demo that predates the fields.
+  let pendingEnemies: readonly PendingEnemy[] = demo.pendingEnemies ?? []
+  let serviceQueue: ServiceQueue = demo.serviceQueue ?? newServiceQueue()
   // jt5-1 — the frame's cue stream starts from the collision pass's four moments
   // and gathers the rest below. A FRESH array every frame: nothing is carried in
   // from `demo.cues`, which is the whole point of the channel.
@@ -2227,7 +2353,13 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   const baiterDeaths = countBaiterDeaths(materialised, processes)
   if (baiterDeaths > 0) baiterClock = { ...baiterClock, nbait: baiterClock.nbait - baiterDeaths }
 
-  const enemiesLeft = processes.some((p) => p.kind === 'enemy')
+  // jt11-4 — an enemy still waiting on its number COUNTS AS LEFT. In the ROM the
+  // enemy's process is already running: CREEM created it and it is spinning in CRELP
+  // waiting for the transporter (JOUSTRV4.SRC:5663-5676). It has simply not
+  // materialised on a pad yet. Without this, a wave whose whole complement is still
+  // queued reads as CLEARED, advances on the spot, and re-seeds its own waiting room
+  // every frame — the wave never starts and nothing is ever served.
+  const enemiesLeft = processes.some((p) => p.kind === 'enemy') || pendingEnemies.length > 0
 
   // The 15 s growth cadence — WSMART grows once per 896 frames WHILE enemies live.
   if (growthDue(stepped.frame)) budget = growWanted(budget, enemiesLeft)
@@ -2291,17 +2423,22 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // cannot actually differ today — a wave is clearable only with no eggs left in it, and
     // a draw happens only while twelve of them are sitting there — but writing the stale
     // word here would be a latent fork in the stream waiting for that to stop being true.
-    const arrivals = spawnWaveEnemies(wave, rng)
-    // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) per buzzard on the pads. An EGG
-    // wave enters its complement as settled eggs instead — the machine's table has no
-    // egg-laid sound, so those arrive silently. The wave's PTERODACTYLS do NOT arrive
-    // here (jt9-59): PTERWV creates them one at a time, so each `ptero-arrives`
+    // jt11-4 — the complement takes its numbers HERE and is served over the following
+    // frames (CREEM/CRELP, JOUSTRV4.SRC:5663-5676), replacing the one-frame batch
+    // splice. The service queue is re-seeded per wave, exactly as the budget, the
+    // ptero schedule and the baiter clock are.
+    const entering = pendingWaveEnemies(wave, rng, newServiceQueue())
+    // SNECRE "ENEMY RE-CREATED (TRANSPORTER)" (:8103) fires per buzzard ON THE PADS —
+    // so it now sounds from the service tick below, on each enemy's OWN materialise
+    // frame, never as a burst on the advance frame. An EGG wave enters its complement
+    // as settled eggs instead — the machine's table has no egg-laid sound, so those
+    // arrive silently and immediately. The wave's PTERODACTYLS do NOT arrive here
+    // either (jt9-59): PTERWV creates them one at a time, so each `ptero-arrives`
     // (SNPTEI, the introduction scream, :8094) fires from the schedule tick below at
-    // that bird's create frame — not a burst of them on the advance frame.
-    for (const p of arrivals) {
-      if (p.kind === 'enemy') cues.push({ type: 'enemy-materialise' })
-    }
-    processes = [...processes, ...arrivals]
+    // that bird's create frame.
+    processes = [...processes, ...entering.immediate]
+    pendingEnemies = entering.pending
+    serviceQueue = entering.queue
     // jt9-59 — (re)seed this wave's PTERWV creation schedule off the same positional
     // `rng` word `spawnWaveEnemies` used (positional seed, `sim.rng` untouched — the
     // jt9-45 determinism model). Replaces any leftover from the wave that just cleared,
@@ -2342,6 +2479,21 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // `collisionPass` candidate — the fidelity fix over jt9-45's napping-but-present bird.
   // Runs after the advance block so a wave that just (re)seeded its schedule does not
   // create on the advance frame (its first countdown is a full 65-frame nap).
+  // jt11-4 — the transporter serves its queue (CRELP, JOUSTRV4.SRC:5667-5676). Like the
+  // PTERWV tick below, this runs AFTER the advance block, so a wave that just seeded its
+  // waiting room serves nobody on the advance frame — every enemy owes its `PCNAP 1`
+  // first. A served enemy is spliced in AFTER this frame's flight/collision, so it first
+  // flies next frame, and its SNECRE materialise cue sounds on its own arrival frame.
+  if (pendingEnemies.length > 0) {
+    const service = serveEnemies(pendingEnemies, serviceQueue)
+    pendingEnemies = service.pending
+    serviceQueue = service.queue
+    if (service.served.length > 0) {
+      processes = [...processes, ...service.served]
+      for (const _ of service.served) cues.push({ type: 'enemy-materialise' })
+    }
+  }
+
   if (pendingPteros.length > 0) {
     const stillPending: PendingPtero[] = []
     const created: DemoProcess[] = []
@@ -2383,7 +2535,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
   const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
-  return { sim, wave, events, cues, arena, baiterClock, pendingPteros }
+  return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue }
 }
 
 // ─── Round 2: pure render-SELECTION seams (routing≠geometry) ──────────────────

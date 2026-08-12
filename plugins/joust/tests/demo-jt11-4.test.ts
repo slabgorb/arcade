@@ -64,6 +64,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { createWaveDemo, stepDemo, drawList, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 // `WAVE_TABLE` wave 1 = 3 bounders, 0 pterodactyls; wave 2 = 4 bounders, 0
 // pterodactyls. Both complements are pure ground enemies, so nothing here is
@@ -77,10 +78,12 @@ const WINDOW = 400
 const enemiesOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const entityOps = (d: DemoState): number => drawList(d).filter((op) => op.kind === 'entity').length
 
-/** Park with the wave cleared of enemies: the next `stepDemo` clears-and-advances. */
+/** Park with the wave cleared of enemies: the next `stepDemo` clears-and-advances.
+ *  Wave 1's complement must be emptied out of the transporter's WAITING ROOM as well
+ *  as out of the arena — an enemy still holding a number is alive and holds the wave
+ *  open, exactly as its CRELP-spinning process does in the ROM. */
 function onTheBrinkOfWave2(seed: number): DemoState {
-  const base = createWaveDemo(seed)
-  return { ...base, sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') } }
+  return strippedToPlayers(createWaveDemo(seed))
 }
 
 interface ArrivalTimeline {

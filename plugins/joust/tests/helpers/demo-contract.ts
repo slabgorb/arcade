@@ -195,6 +195,16 @@ export interface DemoState {
    * this field is no longer write-only (the carried jt3-2 obligation).
    */
   arena: ArenaState
+  /**
+   * jt11-4: the wave's ground enemies AWAITING SERVICE by the transporter. A wave's
+   * complement is no longer spliced into `sim.processes` on one frame — each enemy
+   * takes a number (CREEM, JOUSTRV4.SRC:5663-5666) and waits in CRELP (:5667-5676)
+   * until it is served, so an unserved enemy sits HERE and is neither drawn nor
+   * collidable. Mirrored STRUCTURALLY (`arrival` opaque), on the same second-entry
+   * discipline as `cues` above; tests/helpers/wave-entry.ts is the seam that reads it.
+   * Optional, so a hand-built contract state need not carry one.
+   */
+  pendingEnemies?: readonly { arrival: unknown }[]
 }
 
 /**
