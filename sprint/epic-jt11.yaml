@@ -68,7 +68,7 @@ stories:
     workflow: tdd
     type: bug
     review_findings: "HIGH: the story's central law (an INCOMPLETE buffer auto-commits on timeout) is unguarded — mutant M8 (adding && isEntryComplete to the expiry branch) keeps the suite green, restoring the original bug; TS checklist #15 requires every guard be mutation-tested. Plus MEDIUM: the TEA contract file (tests/helpers/highscore-contract.ts) still describes the pre-jt11-6 module shape; two comments describe only one of the two commit paths. Plus LOW: catch(e) cast to Error without narrowing x2 (TS #11), 'as LaidOutText' without a null check x2 (TS #1), and 'falls into JMP VATTRT' should read 'branches back to'. Code behaviour itself is correct: preflight/security clean, all 8 ROM citations independently resolved, purity scanner green, 7 of 9 mutants die. Two out-of-scope gaps filed for follow-up: the in-flight initials are never painted at all, and the countdown only advances while the tab renders."
-    review_verdict: rejected
+    review_verdict: approved
   - id: jt11-7
     title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
     points: 3
