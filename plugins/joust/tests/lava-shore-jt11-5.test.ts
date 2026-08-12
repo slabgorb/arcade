@@ -53,6 +53,9 @@ import { loadArena } from './helpers/arena-contract.js'
 import { loadScheduler } from './helpers/scheduler-contract.js'
 import { loadEnemy, type EnemyState } from './helpers/enemy-contract.js'
 import { BACKGROUND_RECORDS } from '../src/core/pictures.js'
+// Review round 2 (F4): the z-order split the expected-order helper applies is
+// THE production predicate, not a re-derived 0xc0 literal that could desync.
+import { isForegroundArena } from '../src/core/demo.js'
 
 const SEED = 0x1234
 
@@ -157,8 +160,8 @@ const cliffOf = (rec: (typeof BACKGROUND_RECORDS)[number]): string => rec.name.s
 function survivingOps(destroyed: readonly string[]): ArenaOpShape[] {
   const gone = new Set(destroyed)
   const kept = BACKGROUND_RECORDS.filter((r) => !gone.has(cliffOf(r)))
-  const back = kept.filter((r) => (r.dest & 0xff) < 0xc0)
-  const fore = kept.filter((r) => (r.dest & 0xff) >= 0xc0)
+  const back = kept.filter((r) => !isForegroundArena(r.dest & 0xff))
+  const fore = kept.filter((r) => isForegroundArena(r.dest & 0xff))
   return [...back, ...fore].map(projected)
 }
 
@@ -538,6 +541,33 @@ describe('AC-6 — enemy and egg ground checks read the same arena', () => {
     }
   })
 
+  it('a GROUNDED enemy on the plank walks off the frame the bridge is burned (review F2)', async () => {
+    // Review round 2 — mutation M1 proved the enemy walk-off comparison
+    // (`kind !== 'platform'`, enemy.ts stepEntity) could silently revert to
+    // `=== 'airborne'` with the suite green. The discriminating fixture
+    // (probed): a GROUNDED targetless shadow never flaps — pristine it stands
+    // forever, so a burned-arm lift-off can only be the walk-off branch. The
+    // velY pin nails it to walkOff (no flap impulse), and the pristine control
+    // rules out a takeOff masking the comparison in both arms.
+    const E = await loadEnemy()
+    const arenaMod = await loadArenaState()
+    const burned = arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 3, 0x00)
+    const stander = (): EnemyState => ({
+      entity: entityAt(PLANK_L, 210, { airborne: false, groundState: 'stand' }),
+      facing: 1,
+      pchase: 1,
+      brain: 'shadow',
+      decision: 'shadow',
+    })
+
+    const held = E.stepEnemyDetailed(stander(), { player: null }).enemy
+    expect(held.entity.airborne, 'control: on the intact plank the shadow stands').toBe(false)
+
+    const dropped = E.stepEnemyDetailed(stander(), { player: null, arena: burned }).enemy
+    expect(dropped.entity.airborne, 'CKGND NE: the burned plank is not a platform').toBe(true)
+    expect(dropped.entity.velY, 'a walk-off, not a flap — no impulse').toBe(0)
+  })
+
   it('an egg reaching the burned plank finds no ledge and keeps falling', async () => {
     const demo = await loadDemo()
     const arenaMod = await loadArenaState()
@@ -586,6 +616,47 @@ describe('AC-6 — enemy and egg ground checks read the same arena', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// AC-8 (review round 2, F1) — THE DEMO LAYER THREADS ITS OWN ARENA. stepDemo
+//        must pass demo.arena into stepFrame: mutation M2 proved deleting that
+//        one option left the whole suite green while the production demo
+//        regressed to pristine ground physics. A brainless egg process is the
+//        deterministic witness: driven through stepDemo (not stepFrame), it
+//        settles on the plank only if the frame it rides received THIS demo's
+//        arena.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('AC-8 — stepDemo passes demo.arena into the frame it drives', () => {
+  const eggProc = (): DemoProcess => ({
+    id: 0x7001,
+    cls: 'secondary',
+    nap: 1,
+    period: 1,
+    kind: 'egg',
+    egg: eggOf({ posX: PLANK_L, posY: 210 << 8, velX: 0, velY: 0x40 }),
+  })
+
+  const withEgg = (d: DemoState): DemoState => ({
+    ...d,
+    sim: { ...d.sim, processes: [...d.sim.processes, eggProc()] },
+  })
+
+  it('control: on the intact wave-1 demo the plank egg settles through stepDemo', async () => {
+    const demo = await loadDemo()
+    const d = demo.stepDemo(withEgg(demo.createWaveDemo(SEED)))
+    expect(d.sim.processes.find((p) => p.id === 0x7001)?.egg?.settled).toBe(true)
+  })
+
+  it('with the demo arena burned, the same egg finds no plank — through stepDemo itself', async () => {
+    const demo = await loadDemo()
+    const fresh = demo.createWaveDemo(SEED)
+    const burned: DemoState = withEgg({ ...fresh, arena: { ...fresh.arena, bridgeBurned: true } })
+    const d = demo.stepDemo(burned)
+    const egg = d.sim.processes.find((p) => p.id === 0x7001)?.egg
+    expect(egg?.settled, 'stepDemo must hand ITS arena to stepFrame').toBe(false)
+    expect(egg && egg.posY, 'the fall keeps integrating').toBeGreaterThan(210 << 8)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC-7 — THE LOOK-AHEAD CONSUMES IT (backgroundActive). A destroyed cliff's
 //        BCKXTB bits are inactive; the steer turn at its side stops firing.
 // ═════════════════════════════════════════════════════════════════════════════
@@ -627,5 +698,20 @@ describe('AC-7 — steerWake honours destroyed cliffs’ background bits', () =>
     expect(unrelated.destroyedBackgroundBits & 0x02).toBe(0)
     const r = E.steerWake(hunter(), null, 0, unrelated)
     expect(r.turned, 'CLIF1R still stands — still a wall').toBe(true)
+  })
+
+  it('the multi-bit law: ANY destroyed bit in the sample clears it (review F5)', async () => {
+    // No real (x,y) produces a sample mixing destroyed and live bits today
+    // (verified against BCK_X/BCK_Y by two independent probes in review round
+    // 1), so this pins the exported query's law synthetically: any overlap
+    // with destroyedBackgroundBits deactivates the whole sample; no overlap
+    // leaves it live.
+    const arenaMod = await loadArenaState()
+    const clif2Gone = arenaMod.applyWaveDestruction(arenaMod.initialArenaState(), 1, 0x40)
+    expect(clif2Gone.destroyedBackgroundBits, 'premise: CLIF2 clears $04').toBe(0x04)
+    expect(arenaMod.backgroundActive(clif2Gone, 0x06), 'mixed $04|$02: any-overlap clears').toBe(
+      false,
+    )
+    expect(arenaMod.backgroundActive(clif2Gone, 0x02), 'disjoint $02: still a wall').toBe(true)
   })
 })

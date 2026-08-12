@@ -49,7 +49,7 @@ import {
 
 /** jt11-5 — the no-arena default: bridge intact, nothing destroyed. Shared,
  *  read-only, so per-wake ground checks do not allocate. */
-const PRISTINE_ARENA: ArenaState = initialArenaState()
+const PRISTINE_ARENA: ArenaState = Object.freeze(initialArenaState())
 // uf1-2 — the per-wave difficulty seam. This closes a module CYCLE (difficulty.ts
 // imports `seedBudget` from here), which is safe only because neither module calls
 // across the cycle at import time: `waveValue` is invoked per decision, and

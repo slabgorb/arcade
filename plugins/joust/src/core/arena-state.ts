@@ -110,13 +110,13 @@ export interface SecondVariantTrace {
  */
 export interface ArenaState {
   /** The bridge solid-fill is gone (latching). */
-  bridgeBurned: boolean
+  readonly bridgeBurned: boolean
   /** Labels of cliffs currently destroyed (a subset of the four destructible). */
-  destroyedCliffs: readonly string[]
+  readonly destroyedCliffs: readonly string[]
   /** OR of destroyed cliffs' landing bits — vetoes a landing dispatch. */
-  destroyedLandingBits: number
+  readonly destroyedLandingBits: number
   /** OR of destroyed cliffs' background-collision bits. */
-  destroyedBackgroundBits: number
+  readonly destroyedBackgroundBits: number
 }
 
 /**

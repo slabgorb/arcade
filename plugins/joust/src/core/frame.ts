@@ -96,7 +96,7 @@ export const FRAME_HZ = 8_000_000 / (512 * 260)
  * nothing destroyed. One shared instance (read-only by every consumer) so the
  * per-entity, per-frame ground checks do not allocate.
  */
-const PRISTINE_ARENA: ArenaState = initialArenaState()
+const PRISTINE_ARENA: ArenaState = Object.freeze(initialArenaState())
 
 /** `PPRI` — a process's scheduling class. Primary steps before secondary. */
 export type ProcessClass = 'primary' | 'secondary'

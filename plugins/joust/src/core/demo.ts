@@ -41,7 +41,7 @@ import {
 
 /** jt11-5 — the no-arena default: bridge intact, nothing destroyed. Shared,
  *  read-only, so per-frame egg checks do not allocate. */
-const PRISTINE_ARENA: ArenaState = initialArenaState()
+const PRISTINE_ARENA: ArenaState = Object.freeze(initialArenaState())
 import {
   bounceEgg,
   eggSettles,
@@ -2526,7 +2526,13 @@ export function enemyDrawList(p: DemoProcess): string[] {
  * distinct (compacted `COMCL5`, separately un-compacted, excluded from the manual
  * CLIF1L..CLIF5 loop), which is consistent with singling out the bottom tier but
  * does not derive 0xC0. True per-tier depth is underivable from the source. */
-function isForegroundArena(destY: number): boolean {
+/**
+ * The jt3-7 z-order split: arena records whose dest row is at/below $C0 paint
+ * AFTER the sprites (the bottom island occludes entities behind its front
+ * edge). Exported since jt11-5 review round 2 (F4) so the AC-3 filter test
+ * pins its expected order to THIS predicate rather than a re-derived literal.
+ */
+export function isForegroundArena(destY: number): boolean {
   return destY >= 0xc0
 }
 
