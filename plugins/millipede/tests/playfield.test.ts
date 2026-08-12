@@ -165,6 +165,17 @@ describe('ml2-4 AC-4 — drawStampPlayfield renders the full stamp sheet', () =>
     expect(checked).toBe(256 * 64)
   })
 
+  // Review F1 (ml2-4): the per-pixel test derives its expectation from this
+  // same export, so a silent swap of the ink literals kept the whole suite
+  // green (mutation-proven) while render.ts's header still cited the CLRCH
+  // bytes. Dev's visual call is MADE now — pin it, so the literal can no
+  // longer drift from the prose that justifies it ($FF dark, $1F RED
+  // MLIRQ.MAC:294, $E7 from the 99$ table, $00 WHITE :297).
+  it('PLAYFIELD_COLOUR_BYTES is the CLRCH-derived literal the header cites', async () => {
+    const { PLAYFIELD_COLOUR_BYTES } = await loadRender()
+    expect([...PLAYFIELD_COLOUR_BYTES]).toEqual([0xff, 0x1f, 0xe7, 0x00])
+  })
+
   it('PLAYFIELD_COLOUR_BYTES: four valid bytes; 0 decodes black, 1..3 distinct non-black', async () => {
     const { PLAYFIELD_COLOUR_BYTES } = await loadRender()
     expect(PLAYFIELD_COLOUR_BYTES.length).toBe(4)
