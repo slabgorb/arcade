@@ -2327,3 +2327,29 @@ quotes that figure in two places (the quick-start command and the degraded-mode 
 either mode, so there is no honest reason for them to differ. `grep -n` for the old value before
 editing rather than fixing the first hit; and take the new number from running the checker, not
 from arithmetic on the old one.
+
+---
+
+### rom-study claims: GENERATE the `verbatim` from the vendored source, never hand-type it (ml1-2)
+
+**Situation:** GREEN for ml1-2 — author brief.md + 21 `claims/*.json` whose `verbatim` must re-open
+byte-for-byte against `reference/original-source/millipede/`. The lines carry tabs, 8-space indents
+(`COIN65.MAC:11`), and internal tabs before comments (`PTS:\t.BLKB 16.\t\t;…`). Hand-typing 21 of
+those is exactly how the Centipede study drifted — a wrong tab or an off-by-one line is invisible
+until the checker byte-fails.
+
+**What worked:** a throwaway scratchpad script (NOT committed) with a table of `[id, file, line,
+claim]` that reads each line straight out of the vendored file and writes the JSON — so `verbatim ==
+source line` by construction. Then `node plugins/<game>/tools/audit/check-citations.mjs` →
+`all claims verified` BEFORE writing a word of prose. Zero transcription, zero drift. The checker
+compares `.trimEnd()` both sides, so store the raw line trimmed of trailing whitespace only; leading
+tabs/spaces MUST survive.
+
+**Prose side, same story:** cite bare `FILE:LINE` in backticks (matches the sweep + the oracle), and a
+file NAMED-but-ABSENT from the tree (here MILLI.DOC, 368XX.SB2) is PROSE only — no `:line` — with the
+LEDGER line that names it (`368X1.DOC:39`/`:41`) as the resolving cite. Backticking `MILLI.DOC:39`
+would make the sweep demand a claim the byte gate then fails. TEA's suite is built to keep you out of
+that hole; don't climb into it.
+
+**Reusable for ml1-3/ml1-4 and every rom-study claims story:** table-driven generate → run the
+checker → author prose. Line numbers come from `sed -n 'Np'`/the checker, never arithmetic.

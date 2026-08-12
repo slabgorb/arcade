@@ -4238,3 +4238,35 @@ the correction as a `[Conflict]` Delivery Finding so Dev and the archived AC don
 `runBehaviour` writes every wake) and feed the one input — the step IS the edge, with no played-in press
 perturbing the measured velY. A lone player also removes all entity-collision noise; only the ground
 matters, so stage in the open-air scanline band (33–68 at posX 0; ceiling is pixel 32, ground ~69).
+
+---
+
+### rom-source-study preflight docs: a file NAMED-but-ABSENT is a PROSE gap, never a resolving citation — cite the ledger line that names it (ml1-2)
+
+**Situation:** RED for ml1-2 (millipede `brief.md`, the five preflight answers). Answer (3) is the
+gap analysis: `MILLI.DOC` (design doc) and `368XX.SB2` (picture source) are named in the ROM sign-off
+ledger `368X1.DOC` but are NOT in the vendored tree.
+
+**The trap the citation gate sets for the Dev who writes these docs:** the dossier-sweep grammar is
+`` `FILE:LINESPEC` `` where FILE ends `.MAC/.DOC/.MAP/.LNK`. So a well-meaning `` `MILLI.DOC:39` ``
+IS extracted as a citation → the coverage gate demands a covering claim → the claim byte-fails because
+`MILLI.DOC` is not in the tree. And `368XX.SB2` is the opposite failure: `.SB2` is NOT in the grammar,
+so a claim on it is swept by NOTHING (invisible, ungated). Either way the gap answer's "evidence"
+degrades — one reddens confusingly, the other silently.
+
+**The correct shape (also what the sibling centipede brief does):** cite the ledger line that NAMES
+the absent file — `368X1.DOC:39` names MILLI.DOC, `:41` names 368XX.SB2 — and write the gap-file names
+themselves as **bare prose** (no `:line`, or a code span with no colon). The real ground truth the gap
+displaces goes to a live code line: scoring → `PTS: .BLKB 16.` `MLDEF.MAC:398`, not the missing doc.
+
+**What the RED test does about it:** it requires the bare NAMES `MILLI.DOC`/`368XX.SB2` to appear in
+prose and requires `368X1.DOC` + `MLDEF.MAC:398` as resolving citations — and deliberately does NOT
+require a `:line` cite for either gap file, to keep Dev out of the hole rather than spring it in review.
+Reusable for every later preflight doc (ml1-3 subsystems, ml1-4 MAME): any "named in the ledger,
+absent from the tree" fact is prose-with-a-ledger-cite, not a citation to the absent file.
+
+**Also (scope):** ml1-1 removed the `counts`/CountAssertion machinery and its comments say "ml1-2
+re-adds it." It doesn't NEED to: brief.md's numbers (`NDDT =4`, `.BLKB 16.`, EPROM part #s) live
+inside the cited line's `verbatim`, so a plain byte-verified claim pins them. Only a claim that
+tallies operands across `.BYTE` lines (the sound path) earns that machinery. Don't port removed code
+on the strength of a forward-looking comment — check whether THIS story's claims actually tally.

@@ -2960,3 +2960,37 @@ than me", quoting two of my own mutants, and flagged it as an unexplainable envi
 It handled it correctly (re-ran everything against a verified-clean tree), but the report cost a
 paragraph and could easily have been read as a real finding. Either run the battery after preflight
 returns, or tell preflight it is coming.
+
+---
+
+### A git-checkout-based mutation battery CLOBBERS your own uncommitted in-phase fixes — commit reviewer fixes BEFORE re-running it (ml1-2)
+
+**Situation:** Reviewing ml1-2 (millipede brief.md dossier). I applied LOW in-phase fixes (test floors,
+a difficulty-prose tighten in brief.md + claims) while UNCOMMITTED, then re-ran my mutation battery. The
+battery mutates a file, runs the suite, and restores with `git checkout -- <file>`. One mutation targeted
+`brief.md` (add an uncovered citation) and its cleanup `git checkout -- brief.md` reverted brief.md to
+**HEAD** — silently discarding my uncommitted difficulty-prose fix. The claims edit survived (different
+file, not checked out), leaving brief.md and its claims INCONSISTENT. Caught only because the harness
+echoed the reverted file back; a blind commit would have shipped the split.
+
+**Rule:** a mutation/teeth battery that restores via `git checkout --` reverts to HEAD, not to your
+working tree. So **commit your in-phase fixes first**, THEN run the battery — its checkout then restores
+to the committed-with-fixes state, not over your fixes. (Same root cause as the dev-side "git checkout
+clobbers uncommitted mutation" gotcha, but it bites the Reviewer specifically because in-phase fixes are
+uncommitted at the moment you want to re-confirm teeth.) Belt: `git status` after the battery must be
+clean; if a file you edited is missing from the pre-battery `git status`, the battery ate it.
+
+### Reviewing a rom-study dossier story: the checker proves verbatim, YOU must prove meaning
+
+**Recipe that worked (hand-covering the disabled test/comment/edge subagents):**
+1. **Semantic fidelity** — the citation checker only proves each `verbatim` re-opens byte-for-byte; it
+   does NOT prove the claim's ASSERTION matches the line's meaning. Lay every claim beside its real
+   vendored line (`sed`/a read-only node script) and read each pair. This is where a plausible-but-loose
+   claim hides — here "difficulty is equated" against lines that are DIP-bit COMMENTS under `OPTSW0`.
+2. **Coverage cross-check** — extract every backticked citation from the prose, diff against the claim
+   set: every citation covered, no ORPHAN claims, and any "named-but-absent" file (MILLI.DOC/368XX.SB2)
+   is PROSE-only (not extracted as a resolving citation — verify mechanically, don't eyeball).
+3. **Teeth** — a coverage/byte gate is easy to write vacuously. Mutate: drift a verbatim (byte gate
+   reddens?), add an uncovered citation (coverage reddens?), un-enrol the file (enrolment reddens?).
+4. **CI path** — run with the vendored dir pointed at nowhere; `.skipIf` must skip the byte blocks with
+   NO `reference/` read (deploy-red trap) while the tree-free coverage gate still bites.
