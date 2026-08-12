@@ -37,7 +37,7 @@ export const claimsDir = join(romStudyDir, 'claims')
  * prose citation must be pinned by a claim in claims/, or the real-dossier gate
  * reddens.
  */
-export const DOSSIER_FILES: readonly string[] = ['brief.md']
+export const DOSSIER_FILES: readonly string[] = ['brief.md', 'glossary.md', 'subsystems.md', 'open-questions.md']
 
 /** A primary-source line citation extracted from the dossier prose. */
 export interface ProseCitation {
