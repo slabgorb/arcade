@@ -35,7 +35,7 @@
 // Cited in prose only; nothing in this file is copied from MAME source.
 
 import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs'
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { crc32 } from 'node:zlib'
@@ -43,10 +43,11 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { loadClaims } from './dossier-sweep.js'
 
-// ─── Local type shims ────────────────────────────────────────────────────────────
-// Declared here, not imported from the not-yet-extended checker, so this suite
-// COMPILES today: the real .d.mts Claim is TEXT-only until GREEN adds the byte
-// variant. GREEN's byte shape becomes canonical; this mirrors the pac-man contract.
+// ─── Local fixture types ─────────────────────────────────────────────────────────
+// A NARROWED view of the byte arm of `check-citations.d.mts`'s `Claim.source` union,
+// used to build byte-citation fixtures inline (a required `bytes`, not the text|byte
+// union). Kept local so a fixture reads as a plain object literal; it mirrors the
+// pac-man byte-citation contract.
 interface ByteSource {
   file: string
   offset: number
@@ -193,6 +194,31 @@ describe('citation checker — byte teeth over a present binary (ml2-1 AC2/AC4)'
       rmSync(emptyRoot, { recursive: true, force: true })
     }
   })
+
+  it('REFUSES a PATHFUL / traversal-shaped byte citation loudly — the licence-wall skip is bare-filenames only', async () => {
+    // The skip is ONLY for a bare filename absent everywhere (the walled EPROM on CI).
+    // A `../…` byte citation must be REFUSED with an error, exactly as the text path
+    // refuses an escaping path (cp1-2/cp1-3, ml1-1 S1) — never silently reported clean.
+    const checkClaims = await loadChecker()
+    const base = mkdtempSync(join(tmpdir(), 'ml2-1-esc-'))
+    try {
+      const tree = join(base, 'tree')
+      mkdirSync(tree, { recursive: true })
+      writeFileSync(join(base, 'SECRET.rom'), Buffer.from([1, 2, 3, 4])) // sibling of tree → OUTSIDE
+      // The escape: ../SECRET.rom resolves OUTSIDE the tree. Without the guard it would
+      // silently skip (no read escapes, but the citation is reported as clean/verified).
+      const escape: ByteClaim = { id: 'BT-ESC', claim: 'traversal', source: { file: '../SECRET.rom', offset: 0, bytes: [1, 2] } }
+      expect(
+        checkClaims([escape], { vendoredRoot: tree }).join('\n'),
+        'a byte citation whose path escapes the vendored tree must be refused, not silently accepted',
+      ).toMatch(/BT-ESC/)
+      // And a bare `..` (the exact S1 shape the text path hardened) is likewise refused.
+      const dotdot: ByteClaim = { id: 'BT-DOTDOT', claim: 'dir', source: { file: '..', offset: 0, bytes: [1] } }
+      expect(checkClaims([dotdot], { vendoredRoot: tree }).join('\n')).toMatch(/BT-DOTDOT/)
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
+  })
 })
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -200,19 +226,27 @@ describe('citation checker — byte teeth over a present binary (ml2-1 AC2/AC4)'
 // ───────────────────────────────────────────────────────────────────────────────
 describe('dossier — provenance byte claims for both picture EPROMs (ml2-1 AC3)', () => {
   it('records a byte citation pinning each of 136013-106.p5 and 136013-107.r5', () => {
-    const byteClaims = (loadClaims() as unknown as Array<{ id: string; claim: string; source: unknown }>).filter(isByteClaim)
+    const byteClaims = loadClaims().filter(isByteClaim)
     for (const e of EPROMS) {
       const forFile = byteClaims.filter((c) => c.source.file === e.file && c.source.bytes.length > 0)
       expect(forFile.length, `no byte claim pins ${e.file} — GREEN records one in docs/rom-study/claims/`).toBeGreaterThan(0)
     }
   })
 
-  it('records the MAME CRC32 + centiped.cpp provenance for each EPROM', () => {
-    const byteClaims = (loadClaims() as unknown as Array<{ id: string; claim: string; source: unknown; corroboration?: unknown }>).filter(isByteClaim)
+  it('records the MAME CRC32 + centiped.cpp provenance in a STRUCTURED corroboration for each EPROM', () => {
+    // Assert against the `corroboration` FIELD, not the whole serialized claim: a token
+    // check over the entire claim passes when the CRC/driver are merely name-dropped in
+    // the free-text `claim` prose with no corroboration recorded at all. Provenance (AC3)
+    // means a structured, checkable citation of where the identity comes from.
+    const byteClaims = loadClaims().filter(isByteClaim)
     for (const e of EPROMS) {
-      const blob = JSON.stringify(byteClaims.filter((c) => c.source.file === e.file)).toLowerCase()
-      expect(blob, `provenance for ${e.file} must record its MAME CRC32 ${e.crc32}`).toContain(e.crc32)
-      expect(blob, `provenance for ${e.file} must cite the MAME driver centiped.cpp`).toContain('centiped.cpp')
+      const forFile = byteClaims.filter((c) => c.source.file === e.file)
+      expect(forFile.length, `no byte claim pins ${e.file}`).toBeGreaterThan(0)
+      const withProv = forFile.filter((c) => c.corroboration !== undefined && c.corroboration !== null)
+      expect(withProv.length, `${e.file} must carry a corroboration object recording provenance (not just prose)`).toBeGreaterThan(0)
+      const corr = JSON.stringify(withProv.map((c) => c.corroboration)).toLowerCase()
+      expect(corr, `${e.file} corroboration must record its MAME CRC32 ${e.crc32}`).toContain(e.crc32)
+      expect(corr, `${e.file} corroboration must cite the MAME driver centiped.cpp`).toContain('centiped.cpp')
     }
   })
 })
@@ -251,8 +285,8 @@ describe.skipIf(!allRomsPresent)('vendored bytes — the real picture EPROMs mat
 
   it('every recorded graphics byte claim re-opens byte-for-byte against the vendored EPROM', async () => {
     const checkClaims = await loadChecker()
-    const graphics = (loadClaims() as unknown as Array<{ id: string; claim: string; source: unknown; corroboration?: unknown }>).filter(
-      (c) => isByteClaim(c) && EPROMS.some((e) => (c.source as ByteSource).file === e.file),
+    const graphics = loadClaims().filter(
+      (c): c is ByteClaim => isByteClaim(c) && EPROMS.some((e) => c.source.file === e.file),
     )
     expect(graphics.length, 'expected graphics byte claims once GREEN records provenance').toBeGreaterThan(0)
     expect(checkClaims(graphics, { vendoredRoot })).toEqual([])
