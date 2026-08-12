@@ -40,7 +40,8 @@ stories:
     title: 'Secondary source MAME milliped.cpp board facts as claims: master clock, EXACT refresh (resolve OQ-1 vs centipede 59.88593 Hz and record any /263-vs-/262 hedge verbatim), screen geometry, cabinet rotation, COLOR-RAM/palette wiring, picture-ROM part numbers 136013-106/107. MAME cited in prose only, never copied into the repo (GPL). Locate the milliped driver dir first (atari/).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
   - id: ml1-5
