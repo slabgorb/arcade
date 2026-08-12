@@ -165,8 +165,12 @@ export interface FlightModule {
   wingEdge(wasAirborne: boolean, prevFlapHeld: boolean, input: PlayerInput): 'down' | 'up' | null
 
   // ─── Ground ───────────────────────────────────────────────────────────────
-  /** One frame of ground movement: state advance + the ORRUN X delta. */
-  stepGround(state: EntityState, input: PlayerInput): EntityState
+  /**
+   * One frame of ground movement: state advance + the ORRUN X delta. `facing`
+   * (PFACE, threaded by the caller since jt2-9) makes the transitions
+   * facing-relative; the contract lagged the module until jt11-3 needed it.
+   */
+  stepGround(state: EntityState, input: PlayerInput, facing?: -1 | 1): EntityState
 
   /** Flap-initiated takeoff: VY = −$0080 AND a 1-pixel lift (`STFLY`, :6123). */
   takeOff(state: EntityState): EntityState

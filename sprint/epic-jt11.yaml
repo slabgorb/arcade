@@ -29,10 +29,13 @@ stories:
     title: 'Ground arrests momentum (pure core, flight.ts only): velXIndex (the FLYX flight-velocity index, flight.ts:59) currently survives land->ground->takeoff untouched - land() flight.ts:416-431 reads it for FRCONV state selection but never writes it, stepGround flight.ts:327-370 moves via animation-phase posX deltas and never touches it, takeOff() flight.ts:378-387 restores it verbatim - so launch resumes the PREVIOUS flight airspeed. Fix consumes the dead ROM field: GROUND_STATES flyVel (interface flight.ts:84, rows flight.ts:118-131, JOUSTRV4.SRC:7163-7175; grep confirms flyVel written and read NOWHERE). takeOff() derives velXIndex from the current ground rung flyVel signed by facing (facing already threaded at frame.ts:262); land() resets velXIndex to the landed rung flyVel. Callers frame.ts:258/265 unchanged. Watch seeded-replay fixtures - this changes player trajectories.'
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
     type: bug
+    branch: feat/jt11-3-ground-arrests-momentum
   - id: jt11-4
     title: 'Enemies materialize one-by-one on the pads: replace the one-frame batch insert (spawnWaveEnemies demo.ts:1209-1219; wave-1 construction demo.ts:1238-1242; wave advance processes=[...processes,...arrivals] demo.ts:2261-2271 with per-enemy cue loop 2268-2270) with a pending-arrival schedule on the proven ptero template (pendingPteros countdown, demo.ts:2303-2334, PTERWV JOUSTRV4.SRC:2618-2624). Wire the implemented-tested-UNWIRED transporter serving laws: ServiceQueue take-a-number (newServiceQueue/takeEnemyNumber/enemyTurn/serveEnemy/nextServed transporter.ts:155-202, NPSERV/LESERV JOUSTRV4.SRC:5615-5676) + spawnProceeds empty-third deferral (transporter.ts:149, JOUSTRV4.SRC:5641-5654) - zero production callers today, demo.ts imports only enterViaPads/beginMaterialise/stepMaterialise/PADS (demo.ts:91-101). Each enemy beginMaterialise window (MATERIALISE_WINDOW demo.ts:406, birth demo.ts:598-599) defers to its own release frame. enemyProcess factory and the materialise effect unchanged - only insertion timing moves.'
     points: 5
@@ -87,3 +90,10 @@ stories:
     repos: arcade
     workflow: tdd
     type: chore
+  - id: jt11-11
+    title: 'Enemy facing for ground velXIndex: enemy.ts stepEntity calls the 2-arg stepGround (no facing), so since jt11-3 a grounded enemy velXIndex is always +flyVel and a left-moving enemy takes off with a rightward airspeed. Thread the enemy own facing into its stepGround call (verify against the ROM enemy ground loop, which signs PVELX by PFACE like UPDNO2). Filed from jt11-3 review routing; the facing-less sign is deliberately unpinned in ground-momentum.test.ts pending this story.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd

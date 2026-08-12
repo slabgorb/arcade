@@ -315,7 +315,11 @@ export function tickTimeUp(timeUp: number): number {
 
 /**
  * One frame of ground movement: the STATE row's transition for the joystick
- * direction, plus the X delta.
+ * direction, plus the X delta. `facing` (PFACE, threaded by the caller since
+ * jt2-9) makes the transitions facing-relative. The return also maintains
+ * `velXIndex` from the NEW state row's flyVel, negated for a left facing —
+ * the UPDNO2 write (jt11-3) — so this, not takeOff(), is what determines the
+ * launch airspeed a subsequent takeoff inherits.
  *
  * LIMITATION, stated rather than hidden: the ROM selects its per-frame delta
  * from `ORRUN` indexed by `PFRAME` (:7191-7196), the run-animation phase.
@@ -360,12 +364,22 @@ export function stepGround(state: EntityState, input: PlayerInput, facing?: -1 |
   const skidding = next.call === 'SKIDR'
   const delta = skidding ? SKID_DELTA : running ? ORRUN_DELTAS[nextPhase] : 0
 
+  // UPDNO2 (:5997-6008): every ground position update parks the CURRENT state
+  // row's FLYVEL byte in PVELX — `LDA 6,X / STA PVELX,U`, "UPDATE FICTISIOUS
+  // VELX FOR BUMPING" — then negates it for a left-facing mount (`LDA PFACE,U /
+  // BPL PL2RIT / NEG PVELX,U`). Takeoff (STFLY) never writes PVELX, so this
+  // maintained value IS the launch airspeed: the ground arrests momentum here
+  // or nowhere (jt11-3). `| 0` keeps −0 out of serialized replays. A facing-less
+  // legacy caller reads as forward, as the transition rule above already does.
+  const velXIndex = (facing === -1 ? -next.flyVel : next.flyVel) | 0
+
   return {
     ...state,
     groundState: next.id,
     animPhase: running ? nextPhase : 0,
     posX: state.posX + delta * input.dir,
     plantZ: skidding ? SKID_PLANT_Z : state.plantZ,
+    velXIndex,
   }
 }
 
@@ -415,6 +429,7 @@ export function walkOff(state: EntityState): EntityState {
  */
 export function land(state: EntityState, platform: { snapY: number }): EntityState {
   const speed = Math.min(Math.abs(state.velXIndex) / 2, FRCONV.length - 1)
+  const rung = FRCONV[speed]
   return {
     ...state,
     posY: platform.snapY << 8,
@@ -426,7 +441,12 @@ export function land(state: EntityState, platform: { snapY: number }): EntitySta
     timeUp: 1,
     airborne: false,
     animPhase: 0,
-    groundState: FRCONV[speed],
+    groundState: rung,
+    // jt11-3: the landed rung's FLYVEL seeds PVELX — the incoming flight
+    // airspeed dies at touchdown (its magnitude routed through FRCONV above;
+    // selection reads the INCOMING index, so this write must come after).
+    // The next ground step's UPDNO2 write re-signs it by facing.
+    velXIndex: GROUND_STATES[rung].flyVel,
   }
 }
 
