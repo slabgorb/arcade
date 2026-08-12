@@ -804,8 +804,20 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // still supplies the disagreeing pair (knight 1 at 1210, knight 2 at 2055);
     // 0xbeef's knight-2 line moves 2103 -> 224. The sibling audio-events
     // fixture (death 2054 / re-entry 2055) is re-baselined in step.
-    expect(materialisedIdsAt(0xface, 1210), 'seed 0xface frame 1210 re-enters knight 1').toEqual([1])
-    expect(materialisedIdsAt(0xface, 2055), 'seed 0xface frame 2055 re-enters knight 2').toEqual([2])
+    //
+    // jt11-11 RE-BASELINE (the enemy ground step signs velXIndex by PFACE): the
+    // 0xface pair moves 1210 -> 605 (knight 1) and 2055 -> 958 (knight 2).
+    // Buzzards now launch the way they were walking, so both knights' timelines
+    // move from the first grounded enemy takeoff on. Re-swept by this test's own
+    // precondition (which knight ids appear in the process list that were not
+    // there the frame before), never by nudging:
+    //   0xface re-entries: 605->1, 958->2, 2104->1, 3090->2
+    // Same "earliest that re-enters knight N" rule as every prior move, and
+    // 0xface still supplies the disagreeing pair. 0xbeef's 224->2 line is
+    // UNMOVED and was re-run, not assumed. The sibling audio-events fixture
+    // (death 957 / re-entry 958) is re-baselined in step.
+    expect(materialisedIdsAt(0xface, 605), 'seed 0xface frame 605 re-enters knight 1').toEqual([1])
+    expect(materialisedIdsAt(0xface, 958), 'seed 0xface frame 958 re-enters knight 2').toEqual([2])
     expect(materialisedIdsAt(0xbeef, 224), 'seed 0xbeef frame 224 re-enters knight 2').toEqual([2])
   })
 
@@ -820,8 +832,9 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // because 0xbeef no longer re-enters knight 1 under screen-precise collision.
     // jt11-3 RE-BASELINE: knight 2 at 2055, knight 1 at 1210 (the re-swept
     // earliest of each — see the sweep table in the test above).
-    expect(materialiseEventsAt(0xface, 2055).map((e) => e.player)).toEqual([2])
-    expect(materialiseEventsAt(0xface, 1210).map((e) => e.player)).toEqual([1])
+    // jt11-11 RE-BASELINE: knight 2 at 958, knight 1 at 605 (same sweep table).
+    expect(materialiseEventsAt(0xface, 958).map((e) => e.player)).toEqual([2])
+    expect(materialiseEventsAt(0xface, 605).map((e) => e.player)).toEqual([1])
   })
 
   it('the payload is the LOOP’s id, not a constant — the two frames disagree', async () => {
@@ -833,8 +846,11 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // both (0xbeef no longer offers both knights under screen-precise collision).
     // jt11-3 RE-BASELINE: 2370 -> 2055 and 259 -> 1210, riding the sweep above;
     // the two frames still disagree.
-    const two = materialiseEventsAt(0xface, 2055).map((e) => e.player)
-    const one = materialiseEventsAt(0xface, 1210).map((e) => e.player)
+    // jt11-11 RE-BASELINE: 2055 -> 958 and 1210 -> 605, riding the sweep above;
+    // the two frames still disagree, so a hardcoded `player: 1` still cannot pass
+    // both.
+    const two = materialiseEventsAt(0xface, 958).map((e) => e.player)
+    const one = materialiseEventsAt(0xface, 605).map((e) => e.player)
     expect(two, 'precondition: both frames emit').toHaveLength(1)
     expect(one).toHaveLength(1)
     expect(two[0], 'a constant would make these equal').not.toBe(one[0])
@@ -850,8 +866,11 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // where it now holds.
     // jt11-3 RE-BASELINE: 2370 -> 2055 — still 0xface's knight-TWO re-entry
     // (riding the re-swept table above), so the assertion is kept, not weakened.
-    const events = materialiseEventsAt(0xface, 2055)
-    expect(events, 'precondition: frame 2055 still emits the moment').toHaveLength(1)
+    // jt11-11 RE-BASELINE: 2055 -> 958 — still 0xface's knight-TWO re-entry
+    // (measured off the process list), so the SNPCR2 assertion is kept, not
+    // weakened, at the frame where it now holds.
+    const events = materialiseEventsAt(0xface, 958)
+    expect(events, 'precondition: frame 958 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
 

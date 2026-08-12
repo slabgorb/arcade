@@ -1301,6 +1301,11 @@ function stepEntity(
   state: EntityState,
   input: PlayerInput,
   arena: ArenaState = PRISTINE_ARENA,
+  // jt11-11 — REQUIRED, not optional with a default. `EntityState` carries no
+  // facing (flight.ts is generated), so PFACE can only arrive from the caller;
+  // an optional one here is exactly the hole this story closes, and with a
+  // single call site there is nothing to weaken it for.
+  facing: -1 | 1,
 ): EntityState {
   let s = state
 
@@ -1316,7 +1321,16 @@ function stepEntity(
     const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
   } else {
-    s = stepGround(s, input)
+    // jt11-11 — the enemy's own PFACE signs the maintained PVELX. There is no
+    // separate enemy ground loop to cite: CREEM's enemy process ends
+    // `BRA PLYRS2` (JOUSTRV4.SRC:5904-5906) INSIDE the shared "MAIN
+    // RUNNING/STANDING/SKIDDING LOOP" (:5946-5948), so a buzzard executes
+    // UPDNO2 itself — `LDA 6,X / STA PVELX,U` (:6000-6001) then
+    // `LDA PFACE,U / BPL PL2RIT / NEG PVELX,U` (:6006-6008) — with `U` on its
+    // own workspace. Before this the facing-less call parked +flyVel for every
+    // enemy, so a left-walking bird took off rightward (STFLY inherits PVELX
+    // verbatim).
+    s = stepGround(s, input, facing)
     s = { ...s, posX: wrapX(s.posX) }
     if (input.flap) {
       s = takeOff(s)
@@ -1667,7 +1681,15 @@ export function stepEnemyDetailed(
         ? { ...settled, pjoy: undefined }
         : settled
   return {
-    enemy: { ...phased, entity: stepEntity(phased.entity, input, arena), prevFlapHeld: input.flapHeld },
+    // jt11-11 — `phased.facing` is the POST-brain facing, which is the ROM's own
+    // read order: PFACE is read at UPDNO2 (:6006) after `JSR [PJOY,U]` (:5951),
+    // so a wake that re-aimed (BODIR / B2DIR / SHDIRA's bump-facing) signs this
+    // wake's PVELX with the NEW facing, not the one it woke up with.
+    enemy: {
+      ...phased,
+      entity: stepEntity(phased.entity, input, arena, phased.facing),
+      prevFlapHeld: input.flapHeld,
+    },
     wingEdge: edge,
   }
 }

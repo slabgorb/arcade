@@ -9,7 +9,7 @@ Enemy facing for ground velXIndex: enemy.ts stepEntity calls the 2-arg stepGroun
 - **Points:** 2
 - **Priority:** p2
 - **Workflow:** tdd
-- **Repo:** arcade (game: joust)
+- **Repo:** arcade
 - **Epic:** jt11 — Joust cabinet experience: start flow, HUD, landing physics, transporter cadence, lava shore, high-score UX
 - **Filed from:** jt11-3 review routing
 
