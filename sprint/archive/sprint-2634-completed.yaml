@@ -5,7 +5,8 @@ sprint:
   jira_sprint_name: "TO Sprint 2634"
   goal: Smoothing out the game factory (Millipede ml1)
 
-completed_epics: []
+completed_epics:
+  - sw11
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -30,5 +31,10 @@ completed_stories:
   - id: jt11-1
     epic: jt11
     title: 'Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.'
+    points: 5
+    completed: '2026-08-12'
+  - id: sw11-3
+    epic: sw11
+    title: "Trench catwalks are horizontal channel-spanning DIVIDERS (catwalk at top/bottom), not single-wall force-field fins — correct finding B-012. The 1983 source proves catwalks are structures ACROSS the channel: WSBASE.MAC TWDG92-96 name '8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM' and the coaching text is 'TRENCH CATWALK'/'AVOID CATWALKS' (TCMES.MAC:560/620); the collision the ROM checks is VERTICAL (WSPANL.MAC:201-209 'FORCE FIELD ABOVE PLAYER?' / 'WITHIN FIRST HALF?'), i.e. dodge by diving/climbing. Finding B-012 (sw7-19) instead identified .WP WFF 'WALL FORCE FIELD' as the catwalk and modeled it as a single vertical fin on ONE wall dodged LATERALLY (models.ts TRENCH_CATWALK; sim.ts onFieldSide graze). Rework: model the catwalk as a channel-spanning member seated in a top or bottom band across the divider; change the graze from side-gated (steer to other wall) to vertical-band-gated (dive/climb); re-point the streaming/placement; update the B-012 docs/findings and the pinned tests (trench-viewpoint, trench-force-field-hazard, trench-forcefield-streaming). Start with the rom-fidelity-audit skill to nail the WFF/WFG-vs-catwalk distinction before RED. Follows sw11-2, which corrected the wall-gun/square orientation and left the catwalk standing and mirrored as an interim."
     points: 5
     completed: '2026-08-12'
