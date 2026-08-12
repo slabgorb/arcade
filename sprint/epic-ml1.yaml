@@ -21,10 +21,11 @@ stories:
     title: "brief.md — the five rom-source-study preflight answers, each cited to millipede/<FILE>.MAC:<line>: (0) revision/shipped set from 368X1.DOC ledger (program EPROMs 136013-101..104, picture -106/107) + link MILLI.LNK; (2) radix .RADIX 16 set MLDEF.MAC:2 inherited via .INCLUDE, trailing-period=decimal; (3) timebase architecture MLDEF.MAC:31 IRQ 4 PER FRAME (1 IN VBLANK), VBLANK D6 MLDEF.MAC:117, BIT VBLANK/BVS MLIRQ.MAC:708-709 — logic once/frame, exact rate left to ml1-4; (4) the MILLI.DOC/368XX.SB2 gap analysis. Sibling reuse of COIN65.MAC cited by diff as identical to centipede."
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
   - id: ml1-3
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (beetle/spider/earwig/inchworm/mosquito/dragonfly/DDT/poison-mushroom); subsystem -> owning file + .SBTTL line (MILLI.MAC BEEMV/BEETL/EARWIG/FLYMV/MOSQT/SPDMV/WRMMV/SHOOT/MOVE/MOTION/EXPLOD/CENTPC, MLIRQ SOUNDS/CLRCH/IRQ/JOYS, MLATR MODE FE/FF, CONWAY INICON/MASTER); OQ-1..OQ-4 (exact refresh, MILLI.DOC, graphics+RAM-colour, trackball-vs-joystick input MLIRQ.MAC:897).'
     points: 3
