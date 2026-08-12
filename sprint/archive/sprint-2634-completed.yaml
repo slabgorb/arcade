@@ -81,3 +81,8 @@ completed_stories:
     title: 'Pure 8x8 stamp decode primitive in src/shell/gfx-rom.ts: (Uint8Array) -> plain pixel data, 2-bit planar like centipede CENPIC, no fetch/DOM/canvas so it runs under vitest AND the bake script. Byte-equality decode tests.'
     points: 5
     completed: '2026-08-12'
+  - id: jt11-4
+    epic: jt11
+    title: 'Enemies materialize one-by-one on the pads: replace the one-frame batch insert (spawnWaveEnemies sim.ts:1209-1219; wave-1 construction sim.ts:1238-1242; wave advance processes=[...processes,...arrivals] sim.ts:2261-2271 with per-enemy cue loop 2268-2270) with a pending-arrival schedule on the proven ptero template (pendingPteros countdown, sim.ts:2303-2334, PTERWV JOUSTRV4.SRC:2618-2624). Wire the implemented-tested-UNWIRED transporter serving laws: ServiceQueue take-a-number (newServiceQueue/takeEnemyNumber/enemyTurn/serveEnemy/nextServed transporter.ts:155-202, NPSERV/LESERV JOUSTRV4.SRC:5615-5676) (NOT spawnProceeds: STRUCK jt11-4 - JOUSTRV4.SRC:5641-5654 is inside CREPLY, the PLAYER create path reached via CMPA #PLYID / BEQ CREPLY :5670-5671; the enemy path CREEM :5663-5666 + CRELP :5667-5677 has no AREA test at all. Arrival cadence is WCREATE PCNAP 61, :2187-2207, not the CRELP PCNAP 1 retry.) - zero production callers today, sim.ts imports only enterViaPads/beginMaterialise/stepMaterialise/PADS (sim.ts:91-101). Each enemy beginMaterialise window (MATERIALISE_WINDOW sim.ts:406, birth sim.ts:598-599) defers to its own release frame. enemyProcess factory and the materialise effect unchanged - only insertion timing moves.'
+    points: 5
+    completed: '2026-08-12'
