@@ -33,7 +33,10 @@ const hasEgg = (d: DemoState): boolean => eggCount(d) > 0
 /** One forced wave advance at the demo level: strip to players (a cleared wave) + step. */
 function forceAdvance(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState): DemoState {
   const players = demo.sim.processes.filter((p) => p.kind === 'player')
-  return d.stepDemo({ ...demo, sim: { ...demo.sim, processes: players }, events: [] })
+  // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and holds
+  // the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it for
+  // ~61*count frames.
+  return d.stepDemo({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [], events: [] })
 }
 function advanceTo(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState, target: number): DemoState {
   let s = demo

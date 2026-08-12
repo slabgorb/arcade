@@ -614,7 +614,9 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     let g = advanceFrame
     let totalArrived = 0
     let totalCues = 0
-    for (let i = 0; i < 30; i++) {
+    // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
+    // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
+    for (let i = 0; i < 320; i++) {
       g = stepGame(g, inputsAt(2867 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)

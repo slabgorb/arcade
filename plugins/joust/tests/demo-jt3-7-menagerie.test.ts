@@ -65,7 +65,11 @@ const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({
 
 function forceAdvance(step: (d: DemoState) => DemoState, demo: DemoState): DemoState {
   const players = demo.sim.processes.filter((p: DemoProcess) => p.kind === 'player')
-  return step({ ...demo, sim: { ...demo.sim, processes: players } })
+  // jt11-4: the waiting room goes with the strip. An enemy still holding a transporter
+  // number is alive and holds the wave open, and WCREATE's `PCNAP 61` means the
+  // complement takes ~61 frames PER BIRD to walk in — so a strip that leaves the queue
+  // behind does not clear the wave inside any sane guard.
+  return step({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [] })
 }
 
 function advanceTo(step: (d: DemoState) => DemoState, demo: DemoState, target: number): DemoState {
@@ -351,7 +355,7 @@ describe('AC-1 — the demo spawns the live troll at the troll wave (RED: never 
     // been served onto the pads — it binds the nearest BIRD, and on the advance frame
     // itself the arena holds only knights. Step to its spawn frame; the assertion (a
     // live troll on the wave-4 slice) is unchanged.
-    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+    for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
       d = demo.stepDemo(d)
     }
     expect(

@@ -30,7 +30,10 @@ const SEED = 0x1234
  */
 function forceAdvance(step: (d: DemoState) => DemoState, demo: DemoState): DemoState {
   const players = demo.sim.processes.filter((p: DemoProcess) => p.kind === 'player')
-  const stripped: DemoState = { ...demo, sim: { ...demo.sim, processes: players } }
+  // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and holds
+  // the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it for
+  // ~61*count frames.
+  const stripped: DemoState = { ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [] }
   return step(stripped)
 }
 

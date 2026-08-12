@@ -414,7 +414,7 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
     // jt11-4: the troll is armed on the advance and rises once that wave's complement
     // has been served onto the pads, so it is not yet present on the advance frame
     // `advanceToWave` returns. Step to its rise — the combatant this test needs.
-    for (let i = 0; i < 12 && !at.sim.processes.some((p) => p.kind === 'troll'); i++) {
+    for (let i = 0; i < 200 && !at.sim.processes.some((p) => p.kind === 'troll'); i++) {
       at = stepDemo(at, {})
     }
     expect(

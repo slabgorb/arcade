@@ -208,7 +208,7 @@ async function trollWaveFarPlayers(): Promise<{ d: DemoState; step: (d: DemoStat
   // troll is captured on the frame it is CREATED, and `stepTrolls` runs at the top of
   // the following frame, so its `entity.posX` is still exactly `trollProcess`'s
   // creation value — the same untouched-hand observation, one or two frames later.
-  for (let i = 0; i < 8 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+  for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
     d = dmod.stepDemo(d)
   }
   return { d, step: dmod.stepDemo }

@@ -44,6 +44,7 @@ import { createState, spawn, stepFrame, type GameState } from '../src/core/frame
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { loadTarget, type TargetModule, type TargetState } from './helpers/target-contract.js'
 import { loadHoming, type HomingModule } from './helpers/homing-contract.js'
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1a2b_3c4d
 const NEUTRAL: PlayerInput = { dir: 0, flap: false, flapHeld: false }
@@ -124,9 +125,12 @@ function primedBounder(): DemoProcess {
 }
 
 /** Craft a two-process demo: the high player at `playerVelXIndex`, the primed
- * bounder below it, and the jt8-1 aggro state with P1 already out of grace. */
+ * bounder below it, and the jt8-1 aggro state with P1 already out of grace.
+ * Since jt11-4 "two-process" also means emptying the transporter's waiting room:
+ * replacing `processes` alone would leave the wave's real complement queued, and
+ * `theEnemy`'s `find` would eventually pick up a stranger stepping off a pad. */
 function craft(playerVelXIndex: number): DemoState {
-  const base = createWaveDemo(SEED)
+  const base = withNoPendingEnemies(createWaveDemo(SEED))
   const targets: TargetState = T.registerPlayer(T.seedTargets(), 1, 0)
   return {
     ...base,
@@ -357,7 +361,12 @@ function reversalsInPlay(
   stage?: (d: DemoState) => DemoState,
   inputs: (frame: number) => Record<number, PlayerInput> = chaseInput,
 ): number {
-  let d = createWaveDemo(seed)
+  // Seated at frame 0, the arrangement this measurement was calibrated against.
+  // jt11-4 staggers arrivals by 61 frames apiece, which would silently shorten
+  // each bird's run — the homing counter needs matched wakes to ACCUMULATE, and a
+  // buzzard that lands on frame 183 gets a third fewer of them. That is a fact
+  // about the arrival cadence, not about the throttle this suite is measuring.
+  let d = seatWaveInstantly(createWaveDemo(seed))
   if (stage) d = stage(d)
   const facing = new Map<number, -1 | 1>()
   let reversals = 0

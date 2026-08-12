@@ -113,6 +113,10 @@ async function advanceTo(seed: number, target: number): Promise<DemoState> {
   for (let g = 0; s.wave < target && g < 200; g++) {
     s = dmod.stepDemo({
       ...s,
+      // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and
+      // holds the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it
+      // for ~61*count frames.
+      pendingEnemies: [],
       sim: { ...s.sim, processes: s.sim.processes.filter((p) => p.kind === 'player') },
       events: [],
     })

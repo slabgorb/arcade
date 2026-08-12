@@ -732,9 +732,29 @@ export interface PendingEnemy {
 }
 
 /** The `PCNAP 1` an enemy yields before each attempt on the transporter service
- *  (`CRELP PCNAP 1`, JOUSTRV4.SRC:5667) — so an enemy created at the wave advance
- *  cannot also be served on that same frame, and a failed attempt costs a frame. */
+ *  (`CRELP PCNAP 1`, JOUSTRV4.SRC:5667) — so a failed attempt costs a frame. */
 const ENEMY_SERVE_NAP = 1
+
+/**
+ * `61` — the `PCNAP 61` WCREATE parks between creating each of a wave's enemies:
+ *
+ *     WCREATE  STA   PDELAY,U      ; how many to make
+ *     10$      PCNAP 61            ; nap 61 FIRST
+ *              SECCR CREEM,EMYID   ; then create ONE enemy
+ *              INC   NENEMY
+ *              …
+ *     20$      DEC   PDELAY,U
+ *              BNE   10$           ; …and go round again
+ *                                       (JOUSTRV4.SRC:2187-2207)
+ *
+ * DECIMAL frames, exactly as PTERWV's `PCNAP 65` is (`PTERO_STAGGER_FRAMES`). This —
+ * not the ticket queue — is what a player SEES: enemy i is created
+ * `ENEMY_STAGGER_FRAMES * (i + 1)` frames into the wave, so the complement walks in
+ * about a second apart instead of landing in one blink. The CREEM/CRELP service queue
+ * then decides, per bird, WHICH pad it steps off and whether it must wait for a
+ * knight ahead of it; nap-THEN-create, so nobody arrives on the advance frame.
+ */
+const ENEMY_STAGGER_FRAMES = 61
 
 /** A pterodactyl process — a PTEID secondary, NOT a scored ground enemy (no
  * enemyType, so it never carries a DVALUE type). jt3-4 spawns it; jt3-7 makes it
@@ -1319,7 +1339,9 @@ function pendingWaveEnemies(
     }
     const drawn = takeEnemyNumber(q)
     q = drawn.queue
-    pending.push({ arrival, ticket: drawn.ticket, nap: ENEMY_SERVE_NAP })
+    // WCREATE's `PCNAP 61` per bird: the i-th is created 61*(i+1) frames in — the
+    // stagger a player actually sees. It joins the transporter queue only then.
+    pending.push({ arrival, ticket: drawn.ticket, nap: ENEMY_STAGGER_FRAMES * (pending.length + 1) })
   }
   return { immediate, pending, queue: q }
 }
@@ -1355,8 +1377,8 @@ function serveEnemies(
       q = serveEnemy(q)
     } else {
       // Attempted and failed (not its turn, or the operator is busy this frame):
-      // back to CRELP, eligible again next frame.
-      stillPending.push(pe)
+      // back to CRELP for another `PCNAP 1`, eligible again next frame.
+      stillPending.push({ ...pe, nap: ENEMY_SERVE_NAP - 1 })
     }
   }
   return { served, pending: stillPending, queue: q }
@@ -2513,12 +2535,12 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // CLIF5) rather than from an arena that holds only knights. On the advance frame
   // itself nobody has been served yet, so this simply waits a frame or two — which is
   // also when the ROM's troll has something worth grabbing.
-  // It waits for the WHOLE complement, not merely the first bird. `pickTrollVictim`
-  // binds the nearest bird and a knight is a perfectly good victim (LNDB7 grabs player
-  // OR enemy), so rising into a half-served arena would hand it whichever knight
-  // happened to be closest before the buzzards had landed — the same wrong answer as
-  // rising on the advance frame, just one frame later.
-  if (trollArmed && pendingEnemies.length === 0 && !processes.some((p) => p.kind === 'troll')) {
+  // It waits for a BIRD, not merely for the advance. `pickTrollVictim` binds the
+  // nearest bird and a knight is a perfectly good victim (LNDB7 grabs player OR
+  // enemy), so rising into an empty arena would hand it a knight by default rather
+  // than by proximity. One buzzard on the pads is enough to make the choice real —
+  // waiting for the whole complement would park the troll for `61 * count` frames.
+  if (trollArmed && processes.some((p) => p.kind === 'enemy') && !processes.some((p) => p.kind === 'troll')) {
     const victim = pickTrollVictim(processes)
     if (victim) {
       processes = insertTroll(processes, trollProcess(wave, victim))

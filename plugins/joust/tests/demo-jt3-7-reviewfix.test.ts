@@ -226,6 +226,11 @@ describe('N1 — resolvePteroAttack over-kills the exact-column LEFT-facer (JOUS
 function clearEnemies(d: DemoState): DemoState {
   return {
     ...d,
+    // jt11-4: "clear the enemies" now has to include the ones that have taken a
+    // transporter number but not yet materialised — they are alive and hold the wave
+    // open, and WCREATE's `PCNAP 61` per bird means the wave would otherwise sit there
+    // for ~61*count frames before it could clear.
+    pendingEnemies: [],
     sim: {
       ...d.sim,
       processes: d.sim.processes.filter(

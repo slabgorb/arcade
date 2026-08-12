@@ -52,6 +52,11 @@ async function stepToFirstKill(
   maxFrames = 400,
 ) {
   let game = g.createGame(SEED)
+  // jt11-4: every window built on this helper was measured against a wave whose
+  // complement stood in the arena from frame 0 (the ~frame-145 kill below). The birds
+  // now walk in on WCREATE's `PCNAP 61` cadence, so seat them — no RNG spent, no clock
+  // advanced — and each measured frame anchor holds exactly as before.
+  game = { ...game, sim: seatWaveInstantly(game.sim) }
   for (let f = 1; f <= maxFrames; f++) {
     game = g.stepGame(game, input)
     if (game.sim.events.some((e) => e.kind === 'score')) return { game, frame: f }
@@ -201,6 +206,11 @@ describe('AC-4 — determinism and an honest drain', () => {
     const input: Record<number, PlayerInput> = { 2: flap(-1) }
     const run = () => {
       let game = g.createGame(SEED)
+      // jt11-4: the ~frame-145 kill this window relies on was measured when the wave's
+      // three bounders stood in the arena from frame 0. They now walk in on WCREATE's
+      // `PCNAP 61` cadence, so the third is not even out of the transporter by 145.
+      // Seat them — no RNG spent, no clock advanced — and the measured window holds.
+      game = { ...game, sim: seatWaveInstantly(game.sim) }
       for (let i = 0; i < 200; i++) game = g.stepGame(game, input)
       return game
     }

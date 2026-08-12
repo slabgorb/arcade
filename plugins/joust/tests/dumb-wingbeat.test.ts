@@ -145,6 +145,12 @@ const scripted = (frame: number): PlayerInput => {
  *  replay digest, in the shape audio-flap.test.ts and audio-thud.test.ts use. */
 function entityDigest(seed: number, frames: number): string[] {
   let g: GameState = createGame(seed)
+  // jt11-4, exactly as `cueCensus` below: these digests are FROZEN fingerprints of a
+  // seeded replay, measured when a wave's complement stood in the arena from frame 0.
+  // The birds now walk in on WCREATE's `PCNAP 61` cadence, so the fixture restores the
+  // arrangement they were measured against — seating spends no RNG and advances no
+  // clock, leaving the replay bit-identical rather than re-baselined.
+  g = { ...g, sim: seatWaveInstantly(g.sim) }
   for (let f = 0; f < frames; f++) g = stepGame(g, { 1: scripted(f), 2: IDLE })
   return g.sim.sim.processes.map((p) => {
     const e = p.entity ?? p.enemy?.entity

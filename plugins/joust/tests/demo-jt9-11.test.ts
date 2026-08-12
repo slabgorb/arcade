@@ -216,7 +216,7 @@ describe('jt9-11 AC-1 — the spawned troll binds the in-range bird as its victi
     // actually been served onto the pads — it grabs the nearest BIRD, and on the
     // advance frame the only bird in the arena is the parked knight, so rising there
     // would bind by default rather than by proximity. Step to its real spawn frame.
-    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+    for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
       d = dmod.stepDemo(d)
     }
     return { d, step: dmod.stepDemo }
@@ -496,7 +496,7 @@ describe('jt9-11 AC-6 — a spawned troll sits immediately before the process it
     // jt11-4: it rises once the complement has been served (see the AC-1 fixture).
     // The knight is parked ON CLIF5_X, so it is still the nearest bird when the troll
     // finally picks — the binding this test is about is unchanged, only its frame.
-    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+    for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
       d = dmod.stepDemo(d)
     }
     const t = trollsIn(d)[0]
