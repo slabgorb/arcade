@@ -10,9 +10,12 @@ stories:
     title: 'Two-POKEY, eight-channel sound driver in core/shell: port the SOUNDS routine (MLIRQ.MAC:8) over the CHAN table (MLDEF.MAC:311), writing AUDF0/AUDC0 (MLDEF.MAC:83-84) and AUDF1/AUDC1 (:96-97), lower/upper POKEY by channel (MLIRQ.MAC:58). Reuse @shared/synth + centipede sound.md; the sweep IS the effect (not a static beep).'
     points: 8
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
+    review_verdict: approved
   - id: ml6-2
     title: 'Wire sfx to core events + gate audio on first user gesture (autoplay policy): map millipede/critter/DDT/bonus-life (CHAN11 bonus-life sound MLDEF.MAC:323) events to the driver; verify audio actually plays in a real browser (silent-feature trap), not just a green vitest.'
     points: 5
