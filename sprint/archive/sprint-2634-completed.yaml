@@ -97,3 +97,8 @@ completed_stories:
     title: 'Enemy facing for ground velXIndex: enemy.ts stepEntity calls the 2-arg stepGround (no facing), so since jt11-3 a grounded enemy velXIndex is always +flyVel and a left-moving enemy takes off with a rightward airspeed. Thread the enemy own facing into its stepGround call (verify against the ROM enemy ground loop, which signs PVELX by PFACE like UPDNO2). Filed from jt11-3 review routing; the facing-less sign is deliberately unpinned in ground-momentum.test.ts pending this story.'
     points: 2
     completed: '2026-08-12'
+  - id: ml6-1
+    epic: ml6
+    title: 'Two-POKEY, eight-channel sound driver in core/shell: port the SOUNDS routine (MLIRQ.MAC:8) over the CHAN table (MLDEF.MAC:311), writing AUDF0/AUDC0 (MLDEF.MAC:83-84) and AUDF1/AUDC1 (:96-97), lower/upper POKEY by channel (MLIRQ.MAC:58). Reuse @shared/synth + centipede sound.md; the sweep IS the effect (not a static beep).'
+    points: 8
+    completed: '2026-08-12'
