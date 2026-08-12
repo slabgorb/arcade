@@ -1199,11 +1199,19 @@ describe('jt5-3 — jt2 replays still reproduce bit for bit', () => {
     // unchanged). Every other row — both players and `enemy#257`/`enemy#258` — is
     // bit-identical, and the sim's `rng` cursor is unmoved (audio-events.test.ts AC3):
     // a BOLEV divert draws no randomness. Re-measured on the integrated tree.
+    //
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+    // audio-thud.test.ts's AC7 header for the full ruling): the two moved rows
+    // are the window's two ground-touchers, `player#1` (first landing frame 29:
+    // posX 42→122 with velXIndex −4→0) and the dumb `enemy#257` (first landing
+    // frame 15: posX 54→113) — HORIZONTAL columns only, every vertical column
+    // and timeUp bit-identical. `player#2`, `enemy#256`, `enemy#258` and the
+    // sim's `rng` cursor are unmoved: the FLYVEL writes draw no randomness.
     expect(entityDigest(0xbeef, 200)).toEqual([
-      'player#1:42,14656,0,-4,192,3,1',
+      'player#1:122,14656,0,0,192,3,1',
       'player#2:200,32768,0,0,0,1,0',
       'enemy#256:171,30017,-13,8,64,101,1',
-      'enemy#257:54,33030,-15,8,0,82,1',
+      'enemy#257:113,33030,-15,8,0,82,1',
       'enemy#258:171,33756,-20,8,64,101,1',
     ])
   })

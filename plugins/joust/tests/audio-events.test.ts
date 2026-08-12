@@ -352,7 +352,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     expect(kindsOf(after)).toContain('enemy-death')
   })
 
-  it('a collected egg emits egg-collected (seed 0x1234, frame 273)', () => {
+  it('a collected egg emits egg-collected (seed 0x1234, frame 416)', () => {
     // jt8-7 RE-BASELINE: 516 -> 523. Same seed, same script; the mask-gated catch
     // (the egg must now overlap CEGGUP's 7 scanlines, not just the 16px box) simply
     // delays which egg a knight drifts into. Measured, not guessed.
@@ -366,8 +366,15 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // script and the assertion's INTENT (an egg COLLECTED, not merely removed) are
     // unchanged; only the seed and the scoring ledger moved to the one ordinary play
     // still feeds under screen-precise collision.
-    const before = advanceTo(0x1234, 273)
-    const after = stepGame(before, inputsAt(273))
+    //
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+    // audio-thud.test.ts AC7): 273 -> 416. The scripted knight lands, runs and
+    // takes off on rung speeds now, so its whole horizontal timeline moves.
+    // Re-swept 1500 frames of this seed for THIS test's precondition (an egg
+    // leaves the process list AND player 1 scores): frame 416 is the earliest,
+    // banking the same 750. Seed, script and every assertion unchanged.
+    const before = advanceTo(0x1234, 416)
+    const after = stepGame(before, inputsAt(416))
     expect(countOf(after, 'egg'), 'precondition: an egg really leaves on this frame').toBe(
       countOf(before, 'egg') - 1,
     )
@@ -409,7 +416,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
   // own precondition (an egg really leaves and really scores; a knight really
   // dies; the wave really advances), so a re-baseline cannot quietly turn one
   // of them vacuous — the precondition fails first if the moment is not there.
-  it('a dying knight emits player-death (seed 0xface, frame 1402)', () => {
+  it('a dying knight emits player-death (seed 0xface, frame 2054)', () => {
     // jt8-7 RE-BASELINE: 1938 -> 1810 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1888 -> 2062.
@@ -447,15 +454,23 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // stages `death + 1` and audio-transporter-split.test.ts needs knight TWO: 258 is a
     // knight-ONE death, while 2369 is a knight-TWO death whose 2370 re-entry is a
     // knight-TWO re-entry. Seed, script and every assertion unchanged.
-    const before = advanceTo(0xface, 2369)
-    const after = stepGame(before, inputsAt(2369))
+    //
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+    // audio-thud.test.ts AC7): 2369 -> 2054. Re-swept 6000 frames for this
+    // test's precondition (a player process leaves): deaths at 1209 (knight
+    // ONE), 2054 (knight TWO), 3201, 3900, 5710, 5969. 2054 rather than the
+    // earliest 1209, for the same sibling coupling every prior move names: the
+    // test below stages `death + 1` and audio-transporter-split.test.ts needs a
+    // knight-TWO re-entry — 2055 is one. Seed, script, assertions unchanged.
+    const before = advanceTo(0xface, 2054)
+    const after = stepGame(before, inputsAt(2054))
     expect(countOf(after, 'player'), 'precondition: a knight really dies on this frame').toBe(
       countOf(before, 'player') - 1,
     )
     expect(kindsOf(after)).toContain('player-death')
   })
 
-  it('the transporter re-entry emits player-materialise (seed 0xface, frame 2370)', () => {
+  it('the transporter re-entry emits player-materialise (seed 0xface, frame 2055)', () => {
     // The frame AFTER the death: `stepGame`'s respawn re-enters the spent knight
     // through the transporter (game.ts), which is the ROM's CREP
     // re-create — DSNCRE → the re-created player's own transporter table.
@@ -491,15 +506,19 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // jt9-43 RE-BASELINE: 1403 -> 2370, riding the death above (still death + 1). 2370
     // is the knight-TWO re-entry on this seed (measured off the process list), so the
     // SNPCR2 attribution survives a fifth move for the same reason it survived the rest.
-    const before = advanceTo(0xface, 2370)
-    const after = stepGame(before, inputsAt(2370))
+    //
+    // jt11-3 RE-BASELINE: 2370 -> 2055, riding the death above (still death + 1).
+    // 2055 is the knight-TWO re-entry on this seed (measured off the process
+    // list), so the SNPCR2 attribution survives a sixth move.
+    const before = advanceTo(0xface, 2055)
+    const after = stepGame(before, inputsAt(2055))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 4654)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 2866)', () => {
     // jt8-7 RE-BASELINE: 1614 -> 1641 (see the block comment above).
     //
     // jt5-8 RE-BASELINE: 1726 -> 1900.
@@ -550,8 +569,14 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // buzzard trajectories and wave 1 clears SOONER again; re-swept the same 6000 frames
     // for the same precondition (wave 1 -> 2 AND a complement dealt) — 4047 (four
     // buzzards) is now the earliest. Seed, script and every assertion unchanged.
-    const before = advanceTo(0xface, 4047)
-    const after = stepGame(before, inputsAt(4047))
+    //
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL — see
+    // audio-thud.test.ts AC7): 4047 -> 2866. Rung-speed takeoffs reshape both
+    // knights' kill timelines and wave 1 clears SOONER; re-swept the same 6000
+    // frames for the same precondition (wave 1 -> 2 AND a complement dealt) —
+    // 2866 (four buzzards) is now the earliest. Seed, script, assertions unchanged.
+    const before = advanceTo(0xface, 2866)
+    const after = stepGame(before, inputsAt(2866))
     expect(after.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     const arrived = countOf(after, 'enemy') - countOf(before, 'enemy')
     expect(arrived, 'precondition: the new wave really deals a complement').toBeGreaterThan(0)
@@ -825,13 +850,21 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // reshaped bounder paths change which enemy survives and the kill credit — P1 now
     // scores 0 (was 1250) and P2 1850 (was 1050), P2 is down to 3 lives (was 4), and the
     // process population holds enemy#256 in place of enemy#4260097.
+    // jt11-3 RE-BASELINE (ground consumes the STATE rows' FLYVEL): `rng` is STILL
+    // 2_006_456_271, through NINE consecutive re-baselines — a takeoff that
+    // launches at the rung's speed changes how the birds fly, not the numbers the
+    // sim draws, which is exactly this group's law. `wave` still 1. Play moved:
+    // rung-speed takeoffs reshape the scripted knight's kill timeline, so P1 now
+    // scores 2600 (was 0) at the cost of two lives (5 -> 3), P2 scores 1050 (was
+    // 1850) and is on 4 lives (was 3), and the process population thins to
+    // enemy#256 plus both knights.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'player#1,enemy#256,enemy#4260098,player#2',
-      scores: [0, 1850],
-      lives: [5, 3],
+      procs: 'enemy#256,player#2,player#1',
+      scores: [2600, 1050],
+      lives: [3, 4],
     })
   })
 
