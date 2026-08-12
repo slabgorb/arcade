@@ -27,3 +27,8 @@ completed_stories:
     title: 'Citation gate + src/core purity test FIRST (TDD): port centipede tools/audit/check-citations.mjs to a single-sided millipede checker (drop the ours side) + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
     points: 5
     completed: '2026-08-12'
+  - id: jt11-1
+    epic: jt11
+    title: 'Start experience: thread playerCount from createGame (game.ts:318, currently dropped) into createWaveDemo (demo.ts:1229-1236, hardcodes PLAYER1_ID+PLAYER2_ID) so a 1P game spawns ONE knight - downstream (lives=NSHIP game.ts:322, death clamp game.ts:257, respawn game.ts:479-499) already keys off ledger count and self-aligns. Attract page gains a visible PRESS 1 OR 2 TO START prompt (attract exits only on Digit1/Digit2 main.ts:422-426,500-503; START labels render only on the select screen selectScreen.ts:20-22, unreachable without knowing the key). Boot/attract self-play keeps two mounts (main.ts:354) - count enters via select->startPlaying (cabinet.ts:99-101) only.'
+    points: 5
+    completed: '2026-08-12'
