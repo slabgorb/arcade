@@ -74,7 +74,7 @@ const WAVE_1_ENEMIES = 3
 const WAVE_2_ENEMIES = 4
 /** Long enough for any sane per-turn cadence to seat a 4-enemy complement. */
 const WINDOW = 400
-/** WCREATE's `PCNAP 61` between creating each of a wave's enemies (JOUSTRV4.SRC:2189)
+/** WCREATE's `PCNAP 61` between creating each of a wave's enemies (JOUSTRV4.SRC:2191)
  *  — decimal frames, the stagger a player actually sees. Mirrored here rather than
  *  imported so the suite pins the ROM figure, not whatever `sim.ts` happens to hold. */
 const ENEMY_STAGGER_FRAMES = 61
@@ -248,9 +248,43 @@ describe('jt11-4 — the wave advance queues its complement instead of splicing 
       expect(
         frames[i] - frames[i - 1],
         `enemy ${i} must arrive at least ${ENEMY_STAGGER_FRAMES} frames after enemy ${i - 1} ` +
-          `(WCREATE PCNAP 61, JOUSTRV4.SRC:2189); frames were ${frames.join(',')}`,
+          `(WCREATE PCNAP 61, JOUSTRV4.SRC:2191); frames were ${frames.join(',')}`,
       ).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)
     }
+  })
+
+  it('two birds awake on the same frame: one is served, the other retries the NEXT frame', () => {
+    // The transporter serves ONE customer per frame (`GOTTR INC [TCURUSE,X]` marks
+    // the pad in use, JOUSTRV4.SRC:5710), so a contended frame must defer the loser
+    // rather than seat both. Production never reaches this arm on its own — the
+    // seeded naps are 61 apart, so exactly one bird is ever awake — which is why it
+    // is driven here from a hand-woken waiting room. It also pins the RETRY delay:
+    // the loser goes back to CRELP having already spent this frame as its `PCNAP 1`
+    // (JOUSTRV4.SRC:5667-5676), so it is eligible on the very next frame, not the
+    // one after. A retry that re-naps for a full frame would push it to +2.
+    const advanced = stepSim(onTheBrinkOfWave2(SEED), {})
+    const room = advanced.pendingEnemies ?? []
+    expect(room.length, 'premise: the advance seeds a waiting room to wake').toBeGreaterThanOrEqual(2)
+    const contended: SimState = {
+      ...advanced,
+      pendingEnemies: room.map((pe, i) => (i < 2 ? { ...pe, nap: 0 } : pe)),
+    }
+
+    const first = stepSim(contended, {})
+    expect(
+      enemiesOf(first).length - enemiesOf(contended).length,
+      'exactly one bird may leave the pads on a contended frame',
+    ).toBe(1)
+    expect(
+      (first.pendingEnemies ?? []).length,
+      'the loser stays in the waiting room — it is not dropped',
+    ).toBe(room.length - 1)
+
+    const second = stepSim(first, {})
+    expect(
+      enemiesOf(second).length - enemiesOf(first).length,
+      'the loser retried with no fresh nap, so it is served on the very next frame',
+    ).toBe(1)
   })
 
   it('an unserved enemy is absent from the draw list too — it does not exist yet', () => {
@@ -347,8 +381,19 @@ describe('jt11-4 — deferring the troll must not suppress it', () => {
     expect(rose, 'the troll must still rise on a normal wave').toBeGreaterThanOrEqual(0)
     expect(
       rose,
-      `it must wait for the first arrival (WCREATE PCNAP 61, JOUSTRV4.SRC:2189); rose on frame ${rose}`,
+      `it must wait for the first arrival (WCREATE PCNAP 61, JOUSTRV4.SRC:2191); rose on frame ${rose}`,
     ).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)
+    // …and it must wait for the FIRST arrival, not the last. A lower bound alone
+    // cannot tell those apart: gate the rise on the waiting room EMPTYING instead
+    // of on a bird being served and the troll arrives on frame 366 rather than 61,
+    // with every other assertion in this file still green (measured, round-2
+    // review). That is the `61 * count` park the gate's own comment in sim.ts
+    // exists to rule out, so the window is pinned on both sides.
+    expect(
+      rose,
+      `one served bird is enough — waiting for the whole complement parks the troll ` +
+        `for 61 * count frames; rose on frame ${rose}`,
+    ).toBeLessThanOrEqual(ENEMY_STAGGER_FRAMES + 2)
   })
 
   it('wave 5 (an EGG wave): the troll rises anyway — no bird is ever coming', () => {
@@ -379,7 +424,7 @@ describe('jt11-4 — deferring the troll must not suppress it', () => {
 
 /** sim.ts with comments stripped — a name inside a comment must never satisfy a
  *  wiring guard (block comments first, then line comments). */
-function demoSourceSansComments(): string {
+function simSourceSansComments(): string {
   const path = fileURLToPath(new URL('../src/core/sim.ts', import.meta.url))
   return readFileSync(path, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
@@ -392,8 +437,8 @@ function demoSourceSansComments(): string {
  *  over the comment-stripped text alone stays green with every call site deleted
  *  (the lang-review #25 failure mode). What is left here is call sites and nothing
  *  else. */
-function demoSourceSansImports(): string {
-  return demoSourceSansComments().replace(/import\s*(?:type\s*)?\{[^}]*\}\s*from\s*'[^']*'/g, ' ')
+function simSourceSansImports(): string {
+  return simSourceSansComments().replace(/import\s*(?:type\s*)?\{[^}]*\}\s*from\s*'[^']*'/g, ' ')
 }
 
 describe('jt11-4 — the ServiceQueue stops being dead code', () => {
@@ -403,7 +448,7 @@ describe('jt11-4 — the ServiceQueue stops being dead code', () => {
     // Today sim.ts imports only `enterViaPads`, `beginMaterialise`,
     // `stepMaterialise` and `PADS` — the whole take-a-number law has zero
     // production callers. Wiring it is the story.
-    const src = demoSourceSansImports()
+    const src = simSourceSansImports()
     expect(
       new RegExp(`\\b${fn}\\s*\\(`).test(src),
       `${fn} must be INVOKED in sim.ts — outside comments, and not merely imported`,
@@ -412,10 +457,10 @@ describe('jt11-4 — the ServiceQueue stops being dead code', () => {
 
   it('the call-site guard above cannot be satisfied by the import block alone', () => {
     // The guard's own non-vacuity check: the transporter import really does list
-    // all four names, so if `demoSourceSansImports` ever stopped stripping it the
+    // all four names, so if `simSourceSansImports` ever stopped stripping it the
     // test above would go back to proving nothing.
-    const stripped = demoSourceSansImports()
-    const importBlock = /import\s*\{([^}]*)\}\s*from\s*'\.\/transporter\.js'/.exec(demoSourceSansComments())
+    const stripped = simSourceSansImports()
+    const importBlock = /import\s*\{([^}]*)\}\s*from\s*'\.\/transporter\.js'/.exec(simSourceSansComments())
     expect(importBlock, 'sim.ts must import from ./transporter.js').not.toBeNull()
     expect(
       /import\s*\{[^}]*\}\s*from\s*'\.\/transporter\.js'/.test(stripped),
@@ -424,7 +469,7 @@ describe('jt11-4 — the ServiceQueue stops being dead code', () => {
   })
 
   it('the serving law is imported from the transporter module, not re-implemented locally', () => {
-    const src = demoSourceSansComments()
+    const src = simSourceSansComments()
     // Guards against Dev satisfying the check above by writing a private copy of
     // the queue in sim.ts — the point is to consume the transcribed, ROM-cited
     // implementation that already exists.

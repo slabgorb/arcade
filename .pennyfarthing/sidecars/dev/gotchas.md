@@ -2464,7 +2464,7 @@ frames 1,2,3,4 passes all of it — and shipped, green, while completely failing
 too FAST, one of the assertions must carry the number:
 
 ```ts
-expect(frames[i] - frames[i - 1]).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)  // WCREATE PCNAP 61, :2189
+expect(frames[i] - frames[i - 1]).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)  // WCREATE PCNAP 61, :2191
 ```
 
 The tell that this is real coverage and not ceremony: collapsing the stagger to 1 frame left **16 of
