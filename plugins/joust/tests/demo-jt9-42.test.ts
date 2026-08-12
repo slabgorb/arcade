@@ -50,6 +50,7 @@ import {
   type EntityState,
 } from './helpers/demo-contract.js'
 import { loadTroll } from './helpers/troll-contract.js'
+import { waveComplement, withNoPendingEnemies } from './helpers/wave-entry.js'
 import { waveValue } from '../src/core/difficulty.js'
 
 // The story's own reproduction seed (forceAdvance to wave 4, seed 0x1234).
@@ -149,16 +150,19 @@ function trollProc(victimId: number, posX: number, pixelY: number, over: Partial
 async function stagedDemo(processes: DemoProcess[], wave = TROLL_WAVE): Promise<DemoState> {
   const dmod = await loadDemo()
   const base = dmod.createWaveDemo(SEED)
-  return {
+  // Replacing `processes` used to evict wave 1's complement along with the list it
+  // stood in. Since jt11-4 that complement waits in the transporter's queue instead,
+  // out of reach of the replacement, and would materialise a bird a frame into a
+  // fixture whose whole point is a two-process PPREV ordering. Empty the waiting room.
+  return withNoPendingEnemies({
     ...base,
     wave,
     sim: { ...base.sim, processes },
     arena: { ...base.arena, bridgeBurned: true },
-  }
+  })
 }
 
 const trollsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const byId = (d: DemoState, id: number): DemoProcess | undefined => d.sim.processes.find((p) => p.id === id)
 
 /** A process's grab-point X, wherever its flight state lives (player→`entity`,
@@ -177,19 +181,36 @@ async function trollWaveFarPlayers(): Promise<{ d: DemoState; step: (d: DemoStat
   const dmod = await loadDemo()
   let d = dmod.createWaveDemo(SEED)
   // Two live players parked at the right edge, far outside every pad's reach.
-  const park = (s: DemoState): DemoState => ({
-    ...s,
-    sim: {
-      ...s.sim,
-      processes: [
-        playerAt(1, FAR_PLAYER_X, 120),
-        playerAt(2, FAR_PLAYER_X + 2, 120),
-      ],
-    },
-  })
+  // jt11-4: an enemy still holding a transporter number counts as ALIVE, so
+  // stripping the list to the parked players no longer clears the wave by itself —
+  // the waiting room has to go with it for the advance to happen at all.
+  const park = (s: DemoState): DemoState =>
+    withNoPendingEnemies({
+      ...s,
+      sim: {
+        ...s.sim,
+        processes: [
+          playerAt(1, FAR_PLAYER_X, 120),
+          playerAt(2, FAR_PLAYER_X + 2, 120),
+        ],
+      },
+    })
   d = dmod.stepDemo(park(d)) // → wave 2
   d = dmod.stepDemo(park(d)) // → wave 3 (bridge burns)
   d = dmod.stepDemo(park(d)) // → wave 4 (the troll wave)
+  // jt11-4: the troll no longer rises on the advance frame itself, because on that
+  // frame the arena holds nothing but the two parked knights — wave 4's complement is
+  // still queued at the transporter, every bird holding its number. The spawn is armed
+  // at the advance and fires on the first frame there is a BIRD to grab, which is what
+  // keeps `pickTrollVictim` choosing the nearest enemy instead of a parked player.
+  //
+  // Stepping to that frame preserves every assertion below, jt9-58's included: the
+  // troll is captured on the frame it is CREATED, and `stepTrolls` runs at the top of
+  // the following frame, so its `entity.posX` is still exactly `trollProcess`'s
+  // creation value — the same untouched-hand observation, one or two frames later.
+  for (let i = 0; i < 8 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+    d = dmod.stepDemo(d)
+  }
   return { d, step: dmod.stepDemo }
 }
 
@@ -201,7 +222,10 @@ describe('jt9-42 F1-A — pickTrollVictim binds the nearest bird, enemy included
   it('reaches the troll wave with an enemy complement and a spawned troll', async () => {
     const { d } = await trollWaveFarPlayers()
     expect(d.wave, 'the forced advance reached the troll wave').toBe(TROLL_WAVE)
-    expect(enemiesIn(d).length, 'wave 4 entered a live enemy complement').toBeGreaterThan(0)
+    // jt11-4 — "the wave fields enemies" is a fact about the wave row, not about how
+    // far through the transporter's queue this frame happens to be, so count the
+    // whole complement: the birds on the pads plus the ones still holding a number.
+    expect(waveComplement(d), 'wave 4 entered a live enemy complement').toBeGreaterThan(0)
     expect(trollsIn(d).length, 'a lava troll spawned at wave 4').toBe(1)
   })
 

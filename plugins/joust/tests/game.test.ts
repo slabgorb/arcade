@@ -22,6 +22,7 @@ import { loadGame, type PlayerLedger, type GameScoreEvent, type PlayerInput } fr
 import { loadDemo } from './helpers/demo-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
 import { loadPtero } from './helpers/ptero-contract.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
@@ -290,7 +291,12 @@ describe('AC-3 integration — a real kill through stepGame credits the right le
     // ledger (here ledger 1), never the other. Detect the kill as a >=500 jump (a bounder), not
     // the 50-for-dying death credit P2 also books.
     const input: Record<number, PlayerInput> = { 1: flap(1), 2: flap(-1) }
+    // jt11-4: the wave's bounders now queue for the transporter and materialise one
+    // per frame. Seat them at frame 0 — the arrangement this seeded kill window was
+    // measured against — which spends no RNG and advances no clock, so the replay
+    // (and the re-baselined ~frame 315 joust) is unchanged.
     let game = g.createGame(SEED)
+    game = { ...game, sim: seatWaveInstantly(game.sim) }
     let killed = false
     let prevP2 = 0
     for (let f = 1; f <= 400 && !killed; f++) {

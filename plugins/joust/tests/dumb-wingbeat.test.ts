@@ -65,6 +65,7 @@ import {
 } from '../src/core/enemy.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { loadShellInput } from './helpers/render-contract.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fixtures
@@ -156,7 +157,12 @@ function entityDigest(seed: number, frames: number): string[] {
 /** Count every cue kind emitted across a seeded replay. */
 function cueCensus(seed: number, frames: number): Map<string, number> {
   const tally = new Map<string, number>()
+  // jt11-4: the wave's enemies now queue for the transporter and materialise one per
+  // frame. These counts are a FROZEN fingerprint of a seeded replay, so the fixture
+  // restores the frame-0 arrangement they were measured against — seating spends no
+  // RNG and advances no clock, leaving the replay bit-identical.
   let g: GameState = createGame(seed)
+  g = { ...g, sim: seatWaveInstantly(g.sim) }
   for (let f = 0; f < frames; f++) {
     g = stepGame(g, { 1: scripted(f), 2: IDLE })
     for (const e of g.events) tally.set(e.type as string, (tally.get(e.type as string) ?? 0) + 1)

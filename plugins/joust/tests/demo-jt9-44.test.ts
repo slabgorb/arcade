@@ -34,6 +34,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 // WAVE_TABLE[42] (wave 43): 7 lords + 3 pterodactyls, status 0xbb. `(0xbb & 0x0e)
@@ -53,11 +54,10 @@ const coord = (p: DemoProcess): string => `${p.entity?.posX},${p.entity?.posY}`
  *  very next step advances into the WPTERO wave and its ptero schedule is seeded. */
 function onTheBrinkOfThePteroWave(): DemoState {
   const base = createWaveDemo(SEED)
-  return {
-    ...base,
-    wave: WAVE_BEFORE_PTERO_WAVE,
-    sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') },
-  }
+  // jt11-4: a ground enemy still holding a transporter number is alive, so clearing
+  // to players only counts as a cleared wave once the waiting room is emptied too —
+  // otherwise the next step serves an arrival instead of advancing into WPTERO.
+  return strippedToPlayers({ ...base, wave: WAVE_BEFORE_PTERO_WAVE })
 }
 
 /** Hush every non-player, non-ptero process (the wave's lords) so the wave stays open

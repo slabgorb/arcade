@@ -40,6 +40,7 @@ import {
   type EnemyType,
 } from './helpers/demo-contract.js'
 import { sourceLines, parseStatement, vendoredAvailable } from './helpers/joust-source.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 const ROM = 'JOUSTRV4.SRC'
@@ -231,7 +232,10 @@ describe('jt9-46 AC-1 — enemyDrawList stacks a rider on the mount, and drawLis
     // a real wave enemy carries a rider, so the user sees a knight on every buzzard.
     const r = await loadEnemyDrawList()
     const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    // jt11-4: wave 1's enemies wait for the transporter rather than standing on the
+    // pads at frame 0; seat them so a REAL wave enemy is there to be drawn (the
+    // arrival cadence itself is not what this guard is about).
+    const base = seatWaveInstantly(dmod.createWaveDemo(SEED))
     const fresh = base.sim.processes.find((p) => p.kind === 'enemy')
     expect(fresh, 'wave 1 sends in ground enemies').toBeDefined()
 

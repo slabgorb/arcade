@@ -58,6 +58,7 @@ import {
   type EntityState,
 } from './helpers/demo-contract.js'
 import { loadTroll } from './helpers/troll-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 const PLAYER1_ID = 1
@@ -125,13 +126,18 @@ function trollProc(victimId: number, posX: number, pixelY: number, over: Partial
 async function stagedDemo(processes: DemoProcess[], wave = 4, arena?: Partial<DemoState['arena']>): Promise<DemoState> {
   const dmod = await loadDemo()
   const base = dmod.createWaveDemo(SEED)
-  return {
+  // Replacing `processes` used to be the whole of the isolation: wave 1's enemies
+  // stood in that list and went out with it. Since jt11-4 they wait in the
+  // transporter's queue instead, so the replacement no longer reaches them and they
+  // would materialise, one a frame, into a fixture that stages its own cast. Empty
+  // the waiting room too — nobody is coming but the processes named here.
+  return withNoPendingEnemies({
     ...base,
     wave,
     sim: { ...base.sim, processes },
     // The troll is only active once the bridge has burned (wave >= 4).
     arena: { ...base.arena, bridgeBurned: true, ...arena },
-  }
+  })
 }
 
 const trollsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
@@ -194,13 +200,25 @@ describe('jt9-11 AC-1 — the spawned troll binds the in-range bird as its victi
     const dmod = await loadDemo()
     let d = dmod.createWaveDemo(SEED)
     // Keep a single player, parked on the island, across each forced advance.
-    const park = (s: DemoState): DemoState => ({
-      ...s,
-      sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, victimX, 120)] },
-    })
+    // jt11-4: an enemy still holding a transporter number counts as ALIVE (its
+    // process is running CRELP in the ROM too), so stripping the list to the parked
+    // player no longer clears the wave on its own — the waiting room has to be
+    // emptied with it, which is the whole of the "force an advance" idiom now.
+    const park = (s: DemoState): DemoState =>
+      withNoPendingEnemies({
+        ...s,
+        sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, victimX, 120)] },
+      })
     d = dmod.stepDemo(park(d)) // → wave 2
     d = dmod.stepDemo(park(d)) // → wave 3 (bridge burns)
     d = dmod.stepDemo(park(d)) // → wave 4 (the troll wave — trollSpawnable true)
+    // jt11-4: the troll is ARMED on the advance and rises once wave 4's complement has
+    // actually been served onto the pads — it grabs the nearest BIRD, and on the
+    // advance frame the only bird in the arena is the parked knight, so rising there
+    // would bind by default rather than by proximity. Step to its real spawn frame.
+    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+      d = dmod.stepDemo(d)
+    }
     return { d, step: dmod.stepDemo }
   }
 
@@ -462,18 +480,25 @@ describe('jt9-11 AC-6 — a spawned troll sits immediately before the process it
     const dmod = await loadDemo()
     let d = dmod.createWaveDemo(SEED)
     // Park a single player on the island so the wave can CLEAR and advance (a live
-    // enemy would hold the wave open). At the wave-4 spawn the freshly-arrived wave
-    // enemies are in the list too, so jt9-1's insertTroll (splice before the first
-    // ENEMY) puts the troll AFTER the player; this story must splice before the
-    // troll's bound VICTIM — the player — so the troll leads it, and no enemy
-    // precedes the troll.
-    const park = (s: DemoState): DemoState => ({
-      ...s,
-      sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, CLIF5_X, 120)] },
-    })
+    // enemy — including, since jt11-4, one still holding a transporter number —
+    // would hold the wave open, hence the emptied waiting room). jt9-1's insertTroll
+    // spliced before the first ENEMY, which put the troll AFTER the player; this
+    // story must splice before the troll's bound VICTIM — the player — so the troll
+    // leads it, and no enemy precedes the troll.
+    const park = (s: DemoState): DemoState =>
+      withNoPendingEnemies({
+        ...s,
+        sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, CLIF5_X, 120)] },
+      })
     d = dmod.stepDemo(park(d)) // wave 2
     d = dmod.stepDemo(park(d)) // wave 3
-    d = dmod.stepDemo(park(d)) // wave 4 — troll spawns, binds the player, arrivals appended
+    d = dmod.stepDemo(park(d)) // wave 4 — the troll is armed here
+    // jt11-4: it rises once the complement has been served (see the AC-1 fixture).
+    // The knight is parked ON CLIF5_X, so it is still the nearest bird when the troll
+    // finally picks — the binding this test is about is unchanged, only its frame.
+    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+      d = dmod.stepDemo(d)
+    }
     const t = trollsIn(d)[0]
     expect(t, 'a troll spawned at wave 4').toBeDefined()
     const procs = d.sim.processes

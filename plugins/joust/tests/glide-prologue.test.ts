@@ -29,6 +29,7 @@ import { linet, promote, seedBudget, stepEnemyDetailed, type EnemyState } from '
 import type { PlayerInput } from '../src/core/flight.js'
 import { waveValue } from '../src/core/difficulty.js'
 import { createWaveDemo, stepDemo, type DemoState, type DemoProcess } from '../src/core/demo.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 // ─── the two harnesses, named so the difference is impossible to lose ────────
 
@@ -354,15 +355,39 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
    *  demo-troll.test.ts idiom, re-used so the wave arithmetic is not re-derived. */
   const forceAdvance = (d: DemoState): DemoState => {
     const players = d.sim.processes.filter((p) => p.kind === 'player')
-    return stepDemo({ ...d, sim: { ...d.sim, processes: players }, events: [] })
+    // jt11-4: an enemy still holding a transporter number is alive and holds the wave
+    // open, so the strip must take the waiting room with it or nothing ever clears.
+    return stepDemo({ ...d, sim: { ...d.sim, processes: players }, pendingEnemies: [], events: [] })
+  }
+
+  /** Wave 4 at its very START — the advance has just happened, so the complement is
+   *  fresh and nothing has run yet. jt11-4: `atTrollWave` below must step past this
+   *  point for the troll to rise, which ages the birds; a test about a bird's SEEDED
+   *  state wants this frame, not that one. */
+  const atTrollWaveStart = (seed: number): DemoState => {
+    let d = createWaveDemo(seed)
+    let guard = 0
+    while (d.wave < 4) {
+      d = forceAdvance(d)
+      if (++guard > 60) throw new Error(`no troll wave by wave ${d.wave}`)
+    }
+    return d
   }
 
   const atTrollWave = (seed: number): DemoState => {
     let d = createWaveDemo(seed)
     let guard = 0
-    while (!d.sim.processes.some((p) => p.kind === 'troll')) {
+    // Force advances until the troll WAVE is reached, then step normally: the troll is
+    // armed at the advance and rises once that wave's complement has actually been
+    // served onto the pads (jt11-4). Forcing further advances would keep stripping the
+    // arena bare, so the troll would never find a bird to grab.
+    while (d.wave < 4) {
       d = forceAdvance(d)
-      if (++guard > 60) throw new Error(`no troll by wave ${d.wave}`)
+      if (++guard > 60) throw new Error(`no troll wave by wave ${d.wave}`)
+    }
+    while (!d.sim.processes.some((p) => p.kind === 'troll')) {
+      d = stepDemo(d)
+      if (++guard > 120) throw new Error(`no troll by wave ${d.wave}`)
     }
     return d
   }
@@ -411,8 +436,13 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
   })
 
   it('the looker channel is fed from real adjacency, not hard-coded', () => {
-    const d = atTrollWave(0x1234)
-    const stepped = stepDemo(d)
+    // jt11-4: taken at the wave's START. This assertion is about the SEEDED looker
+    // countdown, so the birds must not have run yet — and waiting for the troll to
+    // rise (as `atTrollWave` now must) would age them several frames. Seating the
+    // whole complement here restores the exact pre-queue wave-start arrangement, so
+    // the one step exercises every LINET bird's looker channel as before.
+    const d = atTrollWaveStart(0x1234)
+    const stepped = stepDemo(seatWaveInstantly(d))
     const procs = stepped.sim.processes
     const dumb = procs.filter((p) => p.kind === 'enemy' && p.enemy?.brain === 'linet')
     expect(dumb.length, 'floor — there must be dumb birds to carry a countdown').toBeGreaterThan(0)

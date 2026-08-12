@@ -39,6 +39,7 @@
 import { describe, it, expect } from 'vitest'
 import { loadGameLoop, loadGameFull } from './helpers/game-contract.js'
 import { loadDemo } from './helpers/demo-contract.js'
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 import type { GameState, PlayerLedger, PlayerInput } from './helpers/game-contract.js'
 import type { DemoProcess, EntityState } from './helpers/demo-contract.js'
 
@@ -98,10 +99,29 @@ function pteroProc(id: number, posX: number, pixelY: number): DemoProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: 1, collisionEnabled: true, entity: entity({ posX, posY: pixelY << 8 }) }
 }
 
-/** Replace the wrapped sim's process list (a constructed sim state), clearing events. */
+/**
+ * Replace the wrapped sim's process list (a constructed sim state), clearing events.
+ *
+ * jt11-4 — it empties the transporter's WAITING ROOM too. A constructed process list
+ * means exactly these processes: before jt11-4 the wave's complement was already in
+ * `sim.processes`, so overwriting the list removed it, but a queued arrival now lives
+ * outside the list and would both hold the wave open (an enemy holding a number counts
+ * as alive) and materialise a frame or two later, into the middle of the probe.
+ */
 function withProcesses(game: GameState, procs: DemoProcess[]): GameState {
-  return { ...game, sim: { ...game.sim, sim: { ...game.sim.sim, processes: procs }, events: [] } }
+  return {
+    ...game,
+    sim: { ...withNoPendingEnemies(game.sim), sim: { ...game.sim.sim, processes: procs }, events: [] },
+  }
 }
+
+/**
+ * jt11-4 — seat the wave's queued arrivals AT ONCE, the exact pre-queue frame-0
+ * arrangement (no RNG spent, no clock advanced). The fixtures below that pick a
+ * "materialising wave-1 enemy" out of `sim.processes` to hold a wave open need the
+ * complement standing there, which is what `createGame` used to hand back.
+ */
+const seated = (game: GameState): GameState => ({ ...game, sim: seatWaveInstantly(game.sim) })
 
 /** Put the wrapped sim (and the mirrored GameState) on a chosen BCD wave. */
 function atWave(game: GameState, wave: number): GameState {
@@ -125,7 +145,7 @@ describe('jt4-5 RESPAWN — a mount death with lives left re-enters (ROM CREP/DE
     // seam. P2 keeps 2 lives after the death, so the ROM DECLIV→BEQ falls THROUGH to a
     // re-create. A materialising enemy (collisions OFF) holds the wave open so a
     // survivor-only wave does not clear and churn.
-    const base = g.createGame(SEED)
+    const base = seated(g.createGame(SEED)) // jt11-4: the complement queues; seat it to pick one
     const p1 = playerProc(1, 100, 100, 1, 'ostrich')
     const p2 = playerProc(2, 104, 108, -1, 'stork')
     const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy')
@@ -154,7 +174,7 @@ describe('jt4-5 RESPAWN — a mount death with lives left re-enters (ROM CREP/DE
     // P2 on its LAST life (1) loses the partner-joust: DECLIV takes it to 0 → BEQ PLYDIE
     // → the man is GONE. It must NEVER re-enter. (Negative control: green in the RED
     // phase because nothing respawns yet; it BITES if respawn ever ignores the 0 gate.)
-    const base = g.createGame(SEED)
+    const base = seated(g.createGame(SEED)) // jt11-4: seat the queued complement (hold enemy)
     const p1 = playerProc(1, 100, 100, 1, 'ostrich')
     const p2 = playerProc(2, 104, 108, -1, 'stork')
     const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as DemoProcess
@@ -329,7 +349,7 @@ describe('jt4-5 round-2 — game-over reached THROUGH a respawn cycle (Reviewer 
     // P1 (higher) wins the partner-joust; P2 (8px lower) dies with lives left and RE-ENTERS at
     // PLAYER2_SPAWN (x=200), far from P1 — so nothing re-kills it and we can watch its window
     // CLOSE. A materialising wave-1 enemy holds the wave open (it does not reach the spawn).
-    const base = g.createGame(SEED)
+    const base = seated(g.createGame(SEED)) // jt11-4: seat the queued complement (hold enemy)
     const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as DemoProcess
     expect(holdEnemy, 'wave 1 supplies a materialising enemy to hold the wave open').toBeTruthy()
     let game: GameState = {

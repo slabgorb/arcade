@@ -32,6 +32,7 @@ import { loadGameLoop } from './helpers/game-contract.js'
 import { loadDemo } from './helpers/demo-contract.js'
 import type { GameState, PlayerLedger, PlayerInput } from './helpers/game-contract.js'
 import type { DemoProcess, EntityState } from './helpers/demo-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const NSHIP = 5
@@ -62,10 +63,16 @@ function withProcesses(game: GameState, procs: DemoProcess[]): GameState {
 const livePlayers = (game: GameState): number[] =>
   game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
 
-/** One forced wave advance: strip the sim to its players (a CLEARED wave) and step. */
+/**
+ * One forced wave advance: strip the sim to its players (a CLEARED wave) and step.
+ *
+ * jt11-4 made arrival a queue, and an enemy still holding a transporter number is
+ * ALIVE — so the strip alone no longer clears the wave; the waiting room goes too.
+ */
 function forceAdvance(g: Awaited<ReturnType<typeof loadGameLoop>>, game: GameState): GameState {
   const players = game.sim.sim.processes.filter((p) => p.kind === 'player')
-  return g.stepGame(withProcesses(game, players))
+  const stripped = withProcesses(game, players)
+  return g.stepGame({ ...stripped, sim: withNoPendingEnemies(stripped.sim) })
 }
 
 /** Advance a game to a target 1-based wave via forced clears (deterministic). */
@@ -287,7 +294,11 @@ describe('jt4-3 carry — a LIVE gladiator partner-kill is detected + awarded th
       id: 2, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: -1, mount: 'stork',
       collisionEnabled: true, entity: entity({ posX: 104, posY: 108 << 8 }),
     }
-    const stepped = g.stepGame(withProcesses(atWave4, [p1, p2]))
+    // jt11-4: wave 4's complement is queued in the transporter's waiting room rather
+    // than standing on the pads, and a queued enemy is alive — empty it, or "no
+    // enemies" is not true and the wave does not clear.
+    const knightsOnly = withProcesses(atWave4, [p1, p2])
+    const stepped = g.stepGame({ ...knightsOnly, sim: withNoPendingEnemies(knightsOnly.sim) })
     const bounty = g.decodeDvalue('SCRHUN', 0x30)
     expect(livePlayers(stepped).includes(2), 'P2 lost the partner-joust and was removed').toBe(false)
     expect(stepped.wave, 'the gladiator wave cleared and advanced').toBe(5)

@@ -30,6 +30,7 @@ import { loadDemo } from './helpers/demo-contract.js'
 import { loadBaiter } from './helpers/baiter-contract.js'
 import type { DemoProcess, DemoState, EntityState } from './helpers/demo-contract.js'
 import type { BaiterClock } from './helpers/baiter-contract.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
@@ -98,7 +99,10 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
     const baiter = await loadBaiter()
     // Cap FULL (NBAIT = MAX_BAITERS). An enemy is kept so the wave does not clear (a clear
     // would re-seed the clock and hide the settle). The player lance-kills the baiter.
-    const base = demo.createWaveDemo(SEED)
+    // jt11-4: wave 1's enemies queue for the transporter instead of standing on the
+    // pads at frame 0. Seating them restores the pre-queue frame-0 arrangement this
+    // controlled fixture picks its held-open enemy out of.
+    const base = seatWaveInstantly(demo.createWaveDemo(SEED))
     const anEnemy = base.sim.processes.find((p) => p.kind === 'enemy')
     expect(anEnemy, 'wave 1 supplies a ground enemy to hold the wave open').toBeTruthy()
     const state: DemoWithClock = {
@@ -122,7 +126,9 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
     // NBAIT at the cap and a send-off armed (cbait 1). With the swarm stuck at MAX_BAITERS the
     // EMYOK cap check (CMPA #3-1 / BHI) refuses every send-off forever; only the DBAIT settle
     // on the kill drops NBAIT so the next nap-tick can send a new baiter.
-    const base = demo.createWaveDemo(SEED)
+    // jt11-4: seat the queued arrivals — the fixture wants ONE held-open enemy in a
+    // controlled process list, not the arrival cadence.
+    const base = seatWaveInstantly(demo.createWaveDemo(SEED))
     const anEnemy = base.sim.processes.find((p) => p.kind === 'enemy')!
     let d: DemoState = {
       ...base,

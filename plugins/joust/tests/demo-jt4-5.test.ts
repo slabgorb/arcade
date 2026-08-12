@@ -22,6 +22,7 @@ import { describe, it, expect } from 'vitest'
 import { loadDemo } from './helpers/demo-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
 import type { DemoState } from './helpers/demo-contract.js'
+import { waveComplement } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
@@ -92,7 +93,10 @@ describe('jt4-5 egg wave — the complement enters as EGGS, not materialising gr
     const atWave2 = advanceTo(demo, demo.createWaveDemo(SEED), 2)
     expect(atWave2.wave, 'reached a non-egg wave').toBe(2)
     expect(hasEgg(atWave2), 'a co-op wave enters ground enemies, not eggs').toBe(false)
-    expect(enemyCount(atWave2), 'and it does enter its ground complement').toBeGreaterThan(0)
+    // jt11-4: on the advance frame the ground complement is still queued for the
+    // transporter, so count the pads plus the waiting room — the point here is that a
+    // non-egg wave fields GROUND ENEMIES at all, not when each one materialises.
+    expect(waveComplement(atWave2), 'and it does enter its ground complement').toBeGreaterThan(0)
   })
 })
 

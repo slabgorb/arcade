@@ -64,6 +64,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { loadDemo, type DemoProcess, type DemoState, type EggState } from './helpers/demo-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 import { loadDifficulty } from './helpers/difficulty-contract.js'
 import { loadEgg } from './helpers/egg-contract.js'
 
@@ -135,10 +136,15 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
  * A demo staged with exactly these processes at `wave`. The player sits far from
  * the egg (posX 20 vs the egg's 100+) so no catch pass can collect it — these
  * tests are about MATURATION, and a collected egg would prove nothing about it.
+ *
+ * EXACTLY these processes means the waiting room is emptied too (jt11-4): the wave's
+ * enemies now queue for the transporter instead of standing in `sim.processes`, so
+ * overwriting the process list no longer removes them — they would materialise a frame
+ * or two in and land in the `enemiesIn` counts these pins read.
  */
 async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState> {
   const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
+  const base = withNoPendingEnemies(dmod.createWaveDemo(SEED))
   return { ...base, wave, sim: { ...base.sim, processes } }
 }
 

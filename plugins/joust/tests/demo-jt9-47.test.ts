@@ -40,6 +40,7 @@ import {
 } from './helpers/demo-contract.js'
 import { loadEgg, type EggVictim } from './helpers/egg-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -59,12 +60,19 @@ const SCORE_FOR: Record<EnemyType, number> = {
 
 const ALL_SPECIES = ['bounder', 'hunter', 'shadowLord'] as const
 
-/** Replace a demo's process list, clearing the event log (jt9-46 idiom). */
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({
-  ...d,
-  sim: { ...d.sim, processes: procs },
-  events: [],
-})
+/** Replace a demo's process list, clearing the event log (jt9-46 idiom).
+ *
+ *  jt11-4 — the wave's ground complement now waits on the transporter instead of
+ *  standing in `sim.processes`, so emptying the process list is no longer enough to
+ *  isolate the subject: the queue would be served over the next few frames and the
+ *  `find(p => p.kind === 'enemy')` searches below would seize a wave buzzard instead
+ *  of the remount under test. Send the waiting room away too — nobody is coming. */
+const only = (d: DemoState, procs: DemoProcess[]): DemoState =>
+  withNoPendingEnemies({
+    ...d,
+    sim: { ...d.sim, processes: procs },
+    events: [],
+  })
 
 /**
  * A SETTLED egg primed to hatch on the next frame, carrying `species` as the

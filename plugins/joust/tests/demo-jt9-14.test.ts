@@ -45,6 +45,7 @@
 import { describe, it, expect } from 'vitest'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
 import { broadPhase, type CollisionBox } from '../src/core/joust.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 import type { EntityState } from '../src/core/flight.js'
 
 const SEED = 0x1234
@@ -62,9 +63,16 @@ function entity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** Only [player, ptero, wave-anchor] in the sim — the anchor holds the wave open
- *  without ever colliding (jt5-16's idiom); nothing else can resolve. */
+ *  without ever colliding (jt5-16's idiom); nothing else can resolve.
+ *
+ *  Since jt11-4 the wave's ground enemies take a number and wait for the
+ *  transporter, so a fresh `createWaveDemo` has NONE of them in `sim.processes`.
+ *  `seatWaveInstantly` puts the complement on the pads with no frame stepped —
+ *  the exact frame-0 arrangement this fixture was written against — so there is
+ *  an anchor to borrow, and the waiting room is left empty so no straggler
+ *  materialises mid-window and resolves a contact of its own. */
 function only(procs: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+  const base = seatWaveInstantly(createWaveDemo(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {

@@ -66,6 +66,7 @@ import { loadGame } from './helpers/game-contract.js'
 import { loadFlight, type PlayerInput } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
 import { loadDifficulty } from './helpers/difficulty-contract.js'
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -135,10 +136,12 @@ function waveHolder(): DemoProcess {
   return { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
 }
 
-const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState => ({
-  ...d,
-  sim: { ...d.sim, processes: procs },
-})
+// Every staged pin here means "these processes and nothing else". jt11-4 put the
+// wave's arrivals in a waiting room OUTSIDE `sim.processes` (they materialise one per
+// frame), so replacing the process list alone would let uninvited bounders walk into
+// a staged fixture a few frames in — the waiting room is emptied with it.
+const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState =>
+  withNoPendingEnemies({ ...d, sim: { ...d.sim, processes: procs } })
 
 const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
@@ -515,7 +518,13 @@ describe('jt8-4 integration — the egg you take straight off your own kill', ()
     const SEED_1234 = 0x1234
     const input: Record<number, PlayerInput> = { 2: { dir: -1, flap: true, flapHeld: true } }
 
+    // jt11-4: seat the wave's arrivals at frame 0 — the pre-queue arrangement these
+    // probed frame numbers were measured against. Seating spends no RNG and advances
+    // no clock, so the seeded trajectory (and f146/f147) is unchanged; letting the
+    // birds trickle in over the first frames would shift it for reasons this test is
+    // not about.
     let game = gmod.createGame(SEED_1234)
+    game = { ...game, sim: seatWaveInstantly(game.sim) }
     let killValue = 0
     for (let f = 1; f <= 146; f++) game = gmod.stepGame(game, input)
 

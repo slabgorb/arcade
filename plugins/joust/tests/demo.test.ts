@@ -35,6 +35,7 @@ import { loadWave } from './helpers/wave-contract.js'
 import { loadTransporter } from './helpers/transporter-contract.js'
 import { loadEgg } from './helpers/egg-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
+import { waveComplement, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -118,9 +119,13 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
     // The enemy complement is the wave-1 row's bounders+hunters+lords+ptero — 3
     // bounders — via enterViaPads. Tie the count to the transcribed law, never a
     // bare literal.
+    // jt11-4: the complement is unchanged, but it no longer stands on the pads at
+    // frame 0 — each enemy takes a number and the transporter serves one per frame.
+    // `waveComplement` counts the pads AND the waiting room, which is the wave-row
+    // fact this assertion has always been about.
     const complement = trans.waveEnemyComplement(wave.waveRowAt(1))
     expect(complement, 'wave 1 is three bounders').toBe(3)
-    expect(enemies(demo).length, 'three enemy processes entered via pads').toBe(complement)
+    expect(waveComplement(demo), 'three enemies are fielded via the pads').toBe(complement)
   })
 
   it('seeds the intelligence budget from wave 1s pursuit nibble (wsmart=1, nsmart=0)', async () => {
@@ -278,7 +283,9 @@ describe('AC-1 — the frame loop drives the growth oracle', () => {
     const dmod = await loadDemo()
     const wave = await loadWave()
     const demo = dmod.createWaveDemo(SEED)
-    const noEnemies = withProcesses(demo, [])
+    // jt11-4: an enemy still holding a transporter number is ALIVE, so emptying the
+    // process list is no longer an empty sim — the waiting room has to go too.
+    const noEnemies = withNoPendingEnemies(withProcesses(demo, []))
     const after = await stepN(noEnemies, wave.CIA_GROWTH_FRAMES + 4)
     expect(after.sim.budget.wsmart, 'no enemies ⇒ the timer grows nothing').toBe(1)
   })

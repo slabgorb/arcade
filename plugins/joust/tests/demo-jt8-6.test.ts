@@ -65,6 +65,7 @@ import {
 } from './helpers/demo-contract.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -149,9 +150,13 @@ const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState =
  * A sim staged so the NEXT `stepDemo` clears the wave: `clearable` (demo.ts)
  * wants no enemy, no egg, and a live player. Everything else about the state is
  * the real `createWaveDemo` product.
+ *
+ * jt11-4 — an enemy still holding a transporter number counts as ALIVE (its process
+ * is running CRELP in the ROM too), so emptying `sim.processes` no longer empties the
+ * wave. The waiting room has to be cleared out alongside it, or nothing advances.
  */
 const clearableWith = (d: DemoState, players: readonly DemoProcess[]): DemoState =>
-  withProcesses(d, players)
+  withNoPendingEnemies(withProcesses(d, players))
 
 const playersOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
 

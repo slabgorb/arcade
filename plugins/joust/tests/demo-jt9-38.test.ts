@@ -37,6 +37,7 @@ import { describe, it, expect } from 'vitest'
 import { loadDemo, type DemoProcess, type DemoState } from './helpers/demo-contract.js'
 import { loadWave, type WaveRow } from './helpers/wave-contract.js'
 import type { EggState } from './helpers/egg-contract.js'
+import { strippedToPlayers, waveComplement, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const PLAYER1_ID = 1
@@ -171,7 +172,10 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
 async function stagedDemo(processes: DemoProcess[], wave: number): Promise<DemoState> {
   const dmod = await loadDemo()
   const base = dmod.createWaveDemo(SEED)
-  return { ...base, wave, sim: { ...base.sim, processes }, events: [] }
+  // jt11-4: "exactly these processes" now also means an empty transporter waiting
+  // room — a queued arrival is outside `sim.processes` and would materialise into
+  // the staging a frame or two in.
+  return withNoPendingEnemies({ ...base, wave, sim: { ...base.sim, processes }, events: [] })
 }
 
 const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
@@ -189,11 +193,9 @@ async function advanceTo(target: number): Promise<DemoState> {
   const dmod = await loadDemo()
   let s = dmod.createWaveDemo(SEED)
   for (let g = 0; s.wave < target && g < 90; g++) {
-    s = dmod.stepDemo({
-      ...s,
-      sim: { ...s.sim, processes: s.sim.processes.filter((p) => p.kind === 'player') },
-      events: [],
-    })
+    // jt11-4: an enemy still holding a transporter number counts as alive, so the
+    // strip-to-players idiom clears the wave only once the waiting room goes with it.
+    s = dmod.stepDemo({ ...strippedToPlayers(s), events: [] })
   }
   if (s.wave !== target) throw new Error(`wave ${target} is not reachable on the BCD counter (stopped at ${s.wave})`)
   return s
@@ -324,7 +326,10 @@ describe('AC-2 — an egg wave deals the ROM\'s TWELVE eggs (JOUSTRV4.SRC:2778-2
     // The negative control: KILLS "spawn twelve eggs on every wave".
     const at = await advanceTo(NON_EGG_WAVE)
     expect(eggsIn(at).length, 'a non-egg wave enters ground enemies, not eggs').toBe(0)
-    expect(enemiesIn(at).length, 'and it does enter its ground complement').toBeGreaterThan(0)
+    // jt11-4: on the advance frame the ground complement is queued for the
+    // transporter rather than standing on the pads, so count the pads AND the queue —
+    // the control is that a non-egg wave fields GROUND ENEMIES at all.
+    expect(waveComplement(at), 'and it does enter its ground complement').toBeGreaterThan(0)
   })
 
   it('the twelve are SPREAD across the pads, not piled on one spot', async () => {

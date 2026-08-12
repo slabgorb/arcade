@@ -47,6 +47,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 import { loadClaims, type Claim } from './helpers/claims.js'
 import type { EntityState } from '../src/core/flight.js'
 import type { EnemyState } from '../src/core/enemy.js'
@@ -115,9 +116,15 @@ function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
   }
 }
 
-/** Base players + ONE materialising base enemy (the wave-open anchor) + subjects. */
+/** Base players + ONE materialising base enemy (the wave-open anchor) + subjects.
+ *
+ *  jt11-4 made the wave's ground enemies queue for the transporter, so a fresh
+ *  `createWaveDemo` fields none of them in `sim.processes` yet. `seatWaveInstantly`
+ *  restores the pre-jt11-4 frame-0 arrangement without stepping a frame or spending
+ *  RNG — an anchor to borrow, and an EMPTY waiting room, so no straggler arrives
+ *  behind our backs and thuds into the staged pair. */
 function stage(extras: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+  const base = seatWaveInstantly(createWaveDemo(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {

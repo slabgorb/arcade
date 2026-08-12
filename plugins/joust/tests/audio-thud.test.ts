@@ -117,6 +117,13 @@ import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audi
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import type { EnemyState } from '../src/core/enemy.js'
+// jt11-4 — a wave's enemies take a transporter number and are served one per frame
+// (CREEM/CRELP, JOUSTRV4.SRC:5663-5676), so a fresh demo/game holds NO buzzards until
+// the following frames. Every measured frame and every frozen digest below assumes
+// the whole complement standing from frame 0; `seatWaveInstantly` puts it back
+// without stepping a frame or spending a draw, and `withNoPendingEnemies` keeps the
+// staged two-body fixtures to the bodies they name.
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const vendoredRoot =
@@ -230,9 +237,11 @@ const playerProcess = (id: number, e: EntityState, nap = FROZEN): DemoProcess =>
 })
 
 /** A demo whose process list is exactly the one handed in. `budget` is pinned so
- *  no buzzard is promoted out of LINET mid-window. */
+ *  no buzzard is promoted out of LINET mid-window. jt11-4 — the waiting room is
+ *  emptied too, or the wave's own complement materialises into the window one bird
+ *  per frame and the list stops being "exactly the one handed in". */
 function stage(processes: DemoProcess[]): DemoState {
-  const base = createWaveDemo(0x1234)
+  const base = withNoPendingEnemies(createWaveDemo(0x1234))
   return {
     ...base,
     sim: { ...base.sim, processes, budget: { nsmart: 0, wsmart: 0 } },
@@ -250,6 +259,10 @@ const pixelYOf = (d: DemoState, id: number): number | undefined => {
   const e = entityOf(d, id)
   return e === undefined ? undefined : e.posY >> 8
 }
+
+/** jt11-4 — the wave's complement on the pads at frame 0, no frame stepped and no
+ *  RNG spent: the arrangement every measured frame and frozen digest here assumes. */
+const seatedGame = (g: GameState): GameState => ({ ...g, sim: seatWaveInstantly(g.sim) })
 
 const A = 0xa01
 const B = 0xa02
@@ -871,7 +884,10 @@ describe('jt5-4 — the sim RESOLVES what the thud announces', () => {
 
 describe('jt5-4 — the thuds happen in ordinary play', () => {
   const advanceTo = (seed: number, frame: number): GameState => {
-    let g = createGame(seed)
+    // jt11-4 — seated at frame 0: the measured contact frames below are coordinates
+    // in a run where the complement is on the pads from the start, not observations
+    // of the arrival cadence (which demo-jt11-4.test.ts owns).
+    let g = seatedGame(createGame(seed))
     for (let i = 0; i < frame; i++) g = stepGame(g, inputsAt(i))
     return g
   }
@@ -1000,7 +1016,10 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
 
   it('a replayed seed emits an identical per-frame thud stream', () => {
     const run = (seed: number): string[][] => {
-      let g = createGame(seed)
+      // jt11-4 — seated, so the 200-frame window still contains this seed's
+      // frame-119 thud and the non-vacuity check below is not left comparing two
+      // empty runs.
+      let g = seatedGame(createGame(seed))
       const perFrame: string[][] = []
       for (let f = 0; f < 200; f++) {
         g = stepGame(g, inputsAt(f))
@@ -1094,7 +1113,11 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
 
 describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
   const fingerprint = (seed: number, frames: number) => {
-    let g = createGame(seed)
+    // jt11-4 — seated at frame 0, so the anchors below stay the FROZEN pins they
+    // have been through six re-baselines instead of re-measuring the arrival
+    // cadence. Verified: every row and every fingerprint field, `rng` included, is
+    // bit-identical to the jt9-50 values once the complement is seated.
+    let g = seatedGame(createGame(seed))
     for (let i = 0; i < frames; i++) g = stepGame(g, inputsAt(i))
     return {
       frame: g.sim.sim.frame,
@@ -1106,7 +1129,8 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
     }
   }
   const entityDigest = (seed: number, frames: number): string[] => {
-    let g = createGame(seed)
+    // jt11-4 — seated at frame 0, for the same reason `fingerprint` above is.
+    let g = seatedGame(createGame(seed))
     for (let f = 0; f < frames; f++) g = stepGame(g, inputsAt(f))
     return g.sim.sim.processes.map((p) => {
       const e = p.entity ?? p.enemy?.entity

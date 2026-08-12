@@ -39,6 +39,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
 // jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
 // loader jt8-3 extracted. Behaviour-preserving.
@@ -120,7 +121,13 @@ function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
  * stacked pteros behind our backs.
  */
 function stage(extras: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+  // jt11-4 made the ground complement take a number and wait on the transporter, so
+  // frame 0 hands back an EMPTY arena and there is no anchor to find. Seat the whole
+  // waiting room at once — the exact pre-jt11-4 frame-0 arrangement, no frame stepped
+  // and no RNG spent — so the anchor below is the same buzzard it always was. (It also
+  // empties the queue, which matters here: an un-served enemy still counts as alive,
+  // and the anchor is this fixture's own, hushed, wave-open lock.)
+  const base = seatWaveInstantly(createWaveDemo(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {

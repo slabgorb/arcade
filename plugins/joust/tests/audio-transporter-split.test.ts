@@ -104,6 +104,12 @@ import { load } from './helpers/dynamic-load'
 import { createGame, stepGame } from '../src/core/game.js'
 import type { GameState } from '../src/core/game.js'
 import type { PlayerInput } from '../src/core/flight.js'
+// jt11-4 — a wave's enemies take a transporter number and are served one per frame
+// (CREEM/CRELP, JOUSTRV4.SRC:5663-5676), so `createGame` hands back an arena with no
+// buzzards in it. The knight re-entry frames staged below were measured against the
+// complement standing from frame 0, and this file is about which KNIGHT re-enters,
+// not about when the buzzards do — so the waiting room is seated at frame 0.
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -340,9 +346,13 @@ const inputsAt = (frame: number): Record<number, PlayerInput> => ({ 1: scripted(
 const playerIds = (g: GameState): number[] =>
   g.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => (p as { id?: number }).id ?? -1)
 
-/** Step to `frame` (exclusive), then take that frame. Returns both states. */
+/** Step to `frame` (exclusive), then take that frame. Returns both states.
+ *  jt11-4 — the wave's complement is seated on the pads at frame 0 (no frame
+ *  stepped, no draw spent), which is the arrangement the staged frames below were
+ *  measured in; without it the birds arrive later and every knight timeline moves. */
 function frameAt(seed: number, frame: number): { before: GameState; after: GameState } {
-  let g = createGame(seed)
+  const fresh = createGame(seed)
+  let g: GameState = { ...fresh, sim: seatWaveInstantly(fresh.sim) }
   for (let i = 0; i < frame; i++) g = stepGame(g, inputsAt(i))
   return { before: g, after: stepGame(g, inputsAt(frame)) }
 }

@@ -38,6 +38,7 @@ import {
   type DrawOp,
   type EggState,
 } from './helpers/demo-contract.js'
+import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 const PLAYER1_ID = 1
@@ -134,7 +135,11 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
 async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState> {
   const dmod = await loadDemo()
   const base = dmod.createWaveDemo(SEED)
-  return { ...base, wave, sim: { ...base.sim, processes } }
+  // jt11-4: the wave's enemies now queue for the transporter OUTSIDE `sim.processes`
+  // and materialise one per frame, so a staged fixture has to empty the waiting room
+  // as well — otherwise a bounder walks into the cutscene and ends these frame walks
+  // (which stop on the first enemy) long before the egg has hatched.
+  return withNoPendingEnemies({ ...base, wave, sim: { ...base.sim, processes } })
 }
 const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const eggOp = (ops: DrawOp[]): DrawOp | undefined =>

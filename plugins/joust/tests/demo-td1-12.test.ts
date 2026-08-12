@@ -41,12 +41,14 @@ import { describe, it, expect } from 'vitest'
 import { loadDemo, type DemoState, type DemoProcess } from './helpers/demo-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
 import { loadGameFull, type GameState } from './helpers/game-contract.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
 // ─── Regime-neutral driving ──────────────────────────────────────────────────
 
-const players = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
+// (the local `players` projection retired with jt11-4: `strippedToPlayers` owns that
+//  half of the clear-the-board idiom now, and the waiting room the other half)
 const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 
@@ -58,12 +60,17 @@ const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.ki
  * odometer: N advances from the wave-1 seed ⇒ the cabinet is on its (N+1)th wave,
  * BCD or decimal. Throws if the advance did not happen — a silent non-advance would
  * make every downstream ordinal wrong and the test vacuously green.
+ *
+ * jt11-4 — stripping the board to its knights is no longer the whole of "no enemies":
+ * an enemy still holding a transporter number counts as alive (it is running CRELP in
+ * the ROM too), so the waiting room has to be emptied alongside `sim.processes`.
+ * `strippedToPlayers` is exactly that pair, and the odometer stays regime-neutral.
  */
 const advance = (
   demo: Awaited<ReturnType<typeof loadDemo>>,
   d: DemoState,
 ): DemoState => {
-  let s: DemoState = { ...d, sim: { ...d.sim, processes: players(d) } }
+  let s: DemoState = strippedToPlayers(d)
   const before = s.wave
   for (let i = 0; i < 6 && s.wave === before; i++) s = demo.stepDemo(s)
   if (s.wave === before) throw new Error('the cleared wave did not advance — staging is wrong')
@@ -81,15 +88,14 @@ const demoAtNthWave = (demo: Awaited<ReturnType<typeof loadDemo>>, n: number): D
  * The game-layer twin of `advance`, so the overlay readout is driven, not hand-set.
  * `GameState.sim` is a DemoState, so the board lives two levels down at
  * `g.sim.sim.processes`; clear it there and stepGame delegates the advance to stepDemo.
+ * jt11-4 — and the transporter's waiting room, `g.sim.pendingEnemies`, empties with it
+ * (see `advance` above); `strippedToPlayers` does both on the DemoState.
  */
 const advanceGame = (
   game: Awaited<ReturnType<typeof loadGameFull>>,
   g: GameState,
 ): GameState => {
-  let s: GameState = {
-    ...g,
-    sim: { ...g.sim, sim: { ...g.sim.sim, processes: players(g.sim) } },
-  }
+  let s: GameState = { ...g, sim: strippedToPlayers(g.sim) }
   const before = s.sim.wave
   for (let i = 0; i < 6 && s.sim.wave === before; i++) s = game.stepGame(s)
   if (s.sim.wave === before) throw new Error('the cleared wave did not advance (game layer)')

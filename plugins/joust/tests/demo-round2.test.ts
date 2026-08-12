@@ -32,6 +32,7 @@ import {
 } from './helpers/demo-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
 import { loadTransporter } from './helpers/transporter-contract.js'
+import { seatWaveInstantly, strippedToPlayers, waveComplement } from './helpers/wave-entry.js'
 
 const SEED = 0x1234_5678
 
@@ -217,7 +218,9 @@ describe('Round 2 Rail 2c — drawList orders foreground platforms in front of e
 describe('Round 2 Rail 3 — createWaveDemo output', () => {
   it('all three wave-1 enemies carry enemyType bounder (kills the drop mutant)', async () => {
     const dmod = await loadDemo()
-    const demo = dmod.createWaveDemo(SEED)
+    // jt11-4: wave 1's three enemies are queued at frame 0; seat them so this rail
+    // goes on reading the same three processes it always did.
+    const demo = seatWaveInstantly(dmod.createWaveDemo(SEED))
     const types = enemies(demo).map((e) => e.enemyType)
     expect(types.length, 'wave 1 is three enemies').toBe(3)
     expect(types.every((t) => t === 'bounder'), 'every wave-1 enemy is a bounder').toBe(true)
@@ -251,11 +254,14 @@ describe('Round 2 Rail 3 — createWaveDemo output', () => {
 //   Current gap: stepDemo returns `wave` unchanged, so the demo is stuck on wave 1.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('Round 2 Rail 4 — the wave advances when it is cleared', () => {
-  /** A demo whose wave has been cleared (no enemies remain), players still live. */
-  const cleared = (demo: DemoState): DemoState => ({
-    ...demo,
-    sim: { ...demo.sim, processes: players(demo) },
-  })
+  /**
+   * A demo whose wave has been cleared (no enemies remain), players still live.
+   *
+   * jt11-4: an enemy still holding a transporter number is alive (its process runs
+   * CRELP), so stripping the process list to the players is only half the clear —
+   * `strippedToPlayers` empties the waiting room too.
+   */
+  const cleared = (demo: DemoState): DemoState => strippedToPlayers(demo)
 
   it('when the last enemy is gone, the demo advances to wave 2 and the wave-2 complement enters', async () => {
     const dmod = await loadDemo()
@@ -268,7 +274,9 @@ describe('Round 2 Rail 4 — the wave advances when it is cleared', () => {
     expect(d.wave, 'a cleared wave advances — nextWaveBcd(1) = 2').toBe(2)
     const complement2 = trans.waveEnemyComplement(wave.waveRowAt(2))
     expect(complement2, 'wave 2 is four bounders').toBe(4)
-    expect(enemies(d).length, 'the wave-2 complement enters via pads').toBe(complement2)
+    // jt11-4: the new wave's complement takes numbers on the advance frame and is
+    // served one per frame after it, so count the pads plus the waiting room.
+    expect(waveComplement(d), 'the wave-2 complement enters via pads').toBe(complement2)
   })
 
   it('the wave-2 spawn is a real, deterministic complement under the seed', async () => {
@@ -276,7 +284,9 @@ describe('Round 2 Rail 4 — the wave advances when it is cleared', () => {
     const advance = (): string => {
       let d = cleared(dmod.createWaveDemo(SEED))
       for (let i = 0; i < 4 && d.wave === 1; i++) d = dmod.stepDemo(d)
-      return JSON.stringify(enemies(d).map((e) => e.enemy?.entity.posX))
+      // jt11-4: seat the queued arrivals so the LAYOUT is readable on the advance
+      // frame, exactly as it was before arrivals were staggered.
+      return JSON.stringify(enemies(seatWaveInstantly(d)).map((e) => e.enemy?.entity.posX))
     }
     const layout = advance()
     expect(layout, 'wave 2 must enter a real complement, not stay empty').not.toBe('[]')

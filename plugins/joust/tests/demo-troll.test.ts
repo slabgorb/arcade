@@ -22,8 +22,9 @@
 // existing call-site against regression.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, type DemoState, type DemoProcess } from './helpers/demo-contract.js'
+import { loadDemo, type DemoState } from './helpers/demo-contract.js'
 import { loadTroll } from './helpers/troll-contract.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
@@ -31,10 +32,13 @@ const SEED = 0x1234
  * Force ONE wave advance: strip the live enemies/eggs so the wave is "cleared",
  * keep the players and the SAME arena, and step once — stepDemo advances the wave
  * and RE-APPLIES wave destruction to `demo.arena` (the call-site under test).
+ *
+ * jt11-4: an enemy waiting for the transporter is alive (its process runs CRELP), so
+ * "cleared" now means the waiting room is empty as well as the arena — hence
+ * `strippedToPlayers` rather than a bare filter of `sim.processes`.
  */
 function forceAdvance(step: (d: DemoState) => DemoState, demo: DemoState): DemoState {
-  const players = demo.sim.processes.filter((p: DemoProcess) => p.kind === 'player')
-  const stripped: DemoState = { ...demo, sim: { ...demo.sim, processes: players } }
+  const stripped: DemoState = strippedToPlayers(demo)
   return step(stripped)
 }
 

@@ -414,6 +414,12 @@ export interface DemoState {
    */
   pendingEnemies?: readonly PendingEnemy[]
   /**
+   * jt11-4 — this wave owes a lava troll that has not risen yet. Armed on the wave
+   * advance (when `trollSpawnable` holds) and spent on the first frame the transporter
+   * has put a bird in the arena for it to grab. Optional / default-false.
+   */
+  trollArmed?: boolean
+  /**
    * jt11-4 — the deli-counter counters the pending arrivals are served against
    * (NPSERV/LPSERV/NESERV/LESERV, JOUSTRV4.SRC:5615-5676). Re-seeded per wave with
    * every counter equal, so nobody is waiting and nobody is served.
@@ -2198,6 +2204,11 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // and re-seeded on an advance. Default-empty/fresh for a demo that predates the fields.
   let pendingEnemies: readonly PendingEnemy[] = demo.pendingEnemies ?? []
   let serviceQueue: ServiceQueue = demo.serviceQueue ?? newServiceQueue()
+  // jt11-4 — this wave's lava troll is owed but not yet risen. Armed on the advance,
+  // spent on the first frame there is a bird to grab. A LATCH, not a live predicate:
+  // once this wave's troll has risen the debt is paid, so a troll that dies or escapes
+  // is not instantly replaced (`stepTrolls` removal + LAVNBR, jt3-7 N2).
+  let trollArmed: boolean = demo.trollArmed ?? false
   // jt5-1 — the frame's cue stream starts from the collision pass's four moments
   // and gathers the rest below. A FRESH array every frame: nothing is carried in
   // from `demo.cues`, which is the whole point of the channel.
@@ -2445,13 +2456,16 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     // exactly as the baiter clock and budget re-seed here.
     pendingPteros = pendingWavePteros(wave, rng)
     // Once the bridge has burned and the troll wave (4) is reached, the lava troll
-    // rises off CLIF5 and grabs the nearest player (jt3-3 trollSpawnable; jt9-11 gives
+    // rises off CLIF5 and grabs the nearest bird (jt3-3 trollSpawnable; jt9-11 gives
     // it a real victim). Only ONE live troll at a time (LAVNBR): the spawn guard, plus
     // `stepTrolls` removing it on escape/lava-death, keeps it from stacking (jt3-7 N2).
-    if (trollSpawnable(arena, wave) && !processes.some((p) => p.kind === 'troll')) {
-      const victim = pickTrollVictim(processes)
-      if (victim) processes = insertTroll(processes, trollProcess(wave, victim))
-    }
+    //
+    // jt11-4 — the spawn is ARMED here and fires below, once the wave it belongs to has
+    // actually arrived. It used to run inline, which worked only because the complement
+    // was spliced into `processes` a few lines above: with arrivals queued, `processes`
+    // holds nothing but knights at this instant, so an inline spawn would grab a PLAYER
+    // every single time — reintroducing exactly the F1 defect jt9-42 was filed to fix.
+    trollArmed = trollSpawnable(arena, wave)
     budget = seedWaveBudget(waveRowAt(wave))
     // WBEGIN re-seeds the baiter schedule each wave (JOUSTRV4.SRC:2081-2089).
     baiterClock = seedBaiterClock(wave)
@@ -2491,6 +2505,24 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     if (service.served.length > 0) {
       processes = [...processes, ...service.served]
       for (const _ of service.served) cues.push({ type: 'enemy-materialise' })
+    }
+  }
+
+  // jt11-4 — the armed troll rises. Deferred to AFTER the transporter has served, so
+  // `pickTrollVictim` chooses from the wave's real complement (the nearest bird to
+  // CLIF5) rather than from an arena that holds only knights. On the advance frame
+  // itself nobody has been served yet, so this simply waits a frame or two — which is
+  // also when the ROM's troll has something worth grabbing.
+  // It waits for the WHOLE complement, not merely the first bird. `pickTrollVictim`
+  // binds the nearest bird and a knight is a perfectly good victim (LNDB7 grabs player
+  // OR enemy), so rising into a half-served arena would hand it whichever knight
+  // happened to be closest before the buzzards had landed — the same wrong answer as
+  // rising on the advance frame, just one frame later.
+  if (trollArmed && pendingEnemies.length === 0 && !processes.some((p) => p.kind === 'troll')) {
+    const victim = pickTrollVictim(processes)
+    if (victim) {
+      processes = insertTroll(processes, trollProcess(wave, victim))
+      trollArmed = false
     }
   }
 
@@ -2535,7 +2567,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
   const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
-  return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue }
+  return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue, trollArmed }
 }
 
 // ─── Round 2: pure render-SELECTION seams (routing≠geometry) ──────────────────

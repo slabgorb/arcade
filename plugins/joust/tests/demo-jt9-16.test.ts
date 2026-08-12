@@ -49,6 +49,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { seatWaveInstantly } from './helpers/wave-entry.js'
 import type { EntityState } from '../src/core/flight.js'
 
 const SEED = 0x1234
@@ -90,9 +91,15 @@ function ptero(id: number, x: number): DemoProcess {
  * return that frame's cue types. Napping does not gate collision eligibility —
  * collisionPass scans every player/enemy/ptero with collisionEnabled — so the
  * frozen pile-up is resolved exactly as staged.
+ *
+ * Since jt11-4 the wave's ground enemies wait for the transporter rather than
+ * standing on the pads at frame 0, so `seatWaveInstantly` seats the complement —
+ * no frame stepped, no RNG spent — to hand this fixture its anchor and to leave
+ * the waiting room empty, so the one measured frame resolves the staged pile-up
+ * alone and no arrival adds a cue of its own.
  */
 function frameCues(procs: DemoProcess[]): string[] {
-  const base = createWaveDemo(SEED)
+  const base = seatWaveInstantly(createWaveDemo(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   const frozen = [...procs, anchor].map((p) => ({ ...p, nap: 100_000 }))

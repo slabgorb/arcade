@@ -41,6 +41,11 @@ import { describe, it, expect } from 'vitest'
 import { createWaveDemo, stepDemo, type DemoState, type DemoProcess } from '../src/core/demo.js'
 import { createGame, stepGame, type GameState, type PlayerLedger } from '../src/core/game.js'
 import { waveRowAt, dispatchWaveType } from '../src/core/wave.js'
+// jt11-4 — a wave's enemies take a number and WAIT for the transporter (CREEM/CRELP,
+// JOUSTRV4.SRC:5663-5676). One still holding its number counts as alive (its process
+// is running CRELP in the ROM too), so stripping `sim.processes` to the knights no
+// longer clears a wave by itself — the waiting room has to be emptied with it.
+import { strippedToPlayers, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const IDLE = { dir: 0 as const, flap: false, flapHeld: false }
 const inputs = { 1: IDLE, 2: IDLE }
@@ -53,11 +58,10 @@ const count = (d: DemoState, kind: string): number =>
   d.sim.processes.filter((p) => p.kind === kind).length
 
 /** Strip the sim to its players, so the next step finds the wave CLEARED. The
- *  jt4-4 forced-advance idiom (demo-troll.test.ts), reused rather than reinvented. */
-const stripToPlayers = (d: DemoState): DemoState => ({
-  ...d,
-  sim: { ...d.sim, processes: d.sim.processes.filter((p) => p.kind === 'player') },
-})
+ *  jt4-4 forced-advance idiom (demo-troll.test.ts), reused rather than reinvented —
+ *  and since jt11-4 that idiom is `strippedToPlayers`, which empties the
+ *  transporter's waiting room along with the arena. */
+const stripToPlayers = (d: DemoState): DemoState => strippedToPlayers(d)
 
 /**
  * Force the demo forward until `wave` is the wave about to END, collecting every
@@ -366,11 +370,10 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
     return {
       ...g,
       guards,
-      sim: {
-        ...g.sim,
-        wave,
-        sim: { ...g.sim.sim, processes: g.sim.sim.processes.filter((p) => p.kind === 'player') },
-      },
+      // jt11-4 — `strippedToPlayers` rather than a bare process filter: wave 4's
+      // complement is queued for the transporter, and a queued enemy holds the wave
+      // open just as a standing one does.
+      sim: { ...strippedToPlayers(g.sim), wave },
     }
   }
 
@@ -407,7 +410,13 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
     // combatant (so the clear is FOUGHT and the bonus is really awarded) but is
     // neither enemy nor egg, so it does not hold the wave open — which is what
     // makes a co-op award observable in one step.
-    const { at } = advanceToWave(0xbeef, 7)
+    let at = advanceToWave(0xbeef, 7).at
+    // jt11-4: the troll is armed on the advance and rises once that wave's complement
+    // has been served onto the pads, so it is not yet present on the advance frame
+    // `advanceToWave` returns. Step to its rise — the combatant this test needs.
+    for (let i = 0; i < 12 && !at.sim.processes.some((p) => p.kind === 'troll'); i++) {
+      at = stepDemo(at, {})
+    }
     expect(
       dispatchWaveType(waveRowAt(7).status, { p1: true, p2: true }),
       'precondition: wave 7 really is a co-op wave',
@@ -433,13 +442,14 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
   })
 })
 
-/** Players + any troll: a fought clear that still clears in one step. */
+/** Players + any troll: a fought clear that still clears in one step. jt11-4 — the
+ *  waiting room goes with the arena, or the wave's queued buzzards hold it open. */
 function stripToPlayersKeepingTroll(d: DemoState): DemoState {
-  return {
+  return withNoPendingEnemies({
     ...d,
     sim: {
       ...d.sim,
       processes: d.sim.processes.filter((p) => p.kind === 'player' || p.kind === 'troll'),
     },
-  }
+  })
 }

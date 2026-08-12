@@ -22,6 +22,7 @@ import { broadPhase, type CollisionBox } from '../src/core/joust.js'
 import type { EntityState } from '../src/core/flight.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
+import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const box = (x: number, top: number): CollisionBox => ({ x, y: top, w: 16, h: 16 })
@@ -36,9 +37,13 @@ function entity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** [staged procs + one ground enemy anchor] — the anchor holds the wave open
- *  without colliding (jt5-16/jt9-14 idiom); budget zeroed so nothing spawns. */
+ *  without colliding (jt5-16/jt9-14 idiom); budget zeroed so nothing spawns.
+ *  jt11-4: wave 1's complement now queues for the transporter rather than standing in
+ *  `sim.processes`, so seat it first to pick the anchor out. Seating also empties the
+ *  waiting room, which keeps "only these processes" literally true — an unserved enemy
+ *  would otherwise materialise into the middle of the three-frame contact probe. */
 function only(procs: DemoProcess[]): DemoState {
-  const base = createWaveDemo(SEED)
+  const base = seatWaveInstantly(createWaveDemo(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {
@@ -152,7 +157,9 @@ async function eggCatch(dy: number, dx: number): Promise<{ caught: boolean; boxe
     },
   }
   const anchor: DemoProcess = { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
-  const base = createWaveDemo(SEED)
+  // jt11-4: this staging brings its OWN anchor and overwrites the process list, so the
+  // queued wave complement must go too — it is not part of "one player, one egg".
+  const base = withNoPendingEnemies(createWaveDemo(SEED))
   const staged: DemoState = {
     ...base,
     sim: { ...base.sim, processes: [playerAt(1, x, y), eggProc, anchor] },

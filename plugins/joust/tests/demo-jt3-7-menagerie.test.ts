@@ -344,9 +344,16 @@ describe('AC-1 — the demo spawns the live troll at the troll wave (RED: never 
 
   it('driving past the wave-3 burn to wave 4 puts a live troll on the slice', async () => {
     const demo = await loadDemo()
-    const d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 4)
+    let d = advanceTo(demo.stepDemo, demo.createWaveDemo(SEED), 4)
     expect(d.wave).toBe(4)
     expect(d.arena.bridgeBurned, 'the bridge has burned by wave 4').toBe(true)
+    // jt11-4: the troll is armed at the advance and rises once wave 4's complement has
+    // been served onto the pads — it binds the nearest BIRD, and on the advance frame
+    // itself the arena holds only knights. Step to its spawn frame; the assertion (a
+    // live troll on the wave-4 slice) is unchanged.
+    for (let i = 0; i < 12 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
+      d = demo.stepDemo(d)
+    }
     expect(
       d.sim.processes.some((p) => p.kind === 'troll'),
       'wave 4 with a burned bridge spawns the lava troll off CLIF5 (trollSpawnable consumed)',

@@ -39,6 +39,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createWaveDemo, stepDemo, drawList, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { strippedToPlayers } from './helpers/wave-entry.js'
 
 // WAVE_TABLE[42] (wave 43): status 0xbb → WJSRTB index 5 = WPTERO, 3 pterodactyls.
 // Same fixture as demo-jt9-44 / demo-jt9-45: park one wave before the ptero wave,
@@ -56,14 +57,12 @@ const collidablePteros = (d: DemoState): DemoProcess[] => pterosOf(d).filter((p)
 const pteroDrawOps = (d: DemoState): number =>
   drawList(d).filter((op) => op.kind === 'entity' && op.name.startsWith('PT')).length
 
-/** Park on the brink of the WPTERO wave, players only — the next step advances in. */
+/** Park on the brink of the WPTERO wave, players only — the next step advances in.
+ *  jt11-4: an enemy still holding a transporter number counts as alive (its process is
+ *  running CRELP), so the strip to players must empty the waiting room too or the wave
+ *  never clears — `strippedToPlayers` is that complete idiom. */
 function onTheBrinkOfThePteroWave(seed: number): DemoState {
-  const base = createWaveDemo(seed)
-  return {
-    ...base,
-    wave: WAVE_BEFORE_PTERO_WAVE,
-    sim: { ...base.sim, processes: base.sim.processes.filter((p) => p.kind === 'player') },
-  }
+  return { ...strippedToPlayers(createWaveDemo(seed)), wave: WAVE_BEFORE_PTERO_WAVE }
 }
 
 /** Hush every non-player, non-ptero process (the wave's lords) so nothing bumps a
