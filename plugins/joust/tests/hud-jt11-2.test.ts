@@ -9,7 +9,7 @@
 // ─── MEASURED CORRECTION TO THE STORY TITLE (the title is the spec, but its
 // premise was measured first): the score font is FONT57, NOT FONT35. ──────────
 // The mainline score display SCODSP (JOUSTRV4.SRC:7444-7487) draws each digit
-// through BCDMSN/BCDLSN (JOUSTRV4.SRC:7495-7519) from `[FONT5]` with a $0307
+// through BCDMSN/BCDLSN (JOUSTRV4.SRC:7492-7515) from `[FONT5]` with a $0307
 // DMA window — "FONT SIZE IS 6X7 PIXELS" — and FONT5 is initialised from the
 // MESSAGE ROM vector `FDB FONT57` (MESSAGE.SRC:37, "FOR BILL SO HE CAN USE THE
 // NUMBERS"): digits L0-L9 (MESSAGE.SRC:347-443), 23-byte stride, 6x7 cells.
@@ -257,6 +257,11 @@ describe('AC-3 layoutHud — lives as rider icons along the bottom row', () => {
     const eight = layoutHud(readout({ lives: 8 }), palette16()).players[0]
     expect(eight.lives.length, 'the sixth man onward exists but does not paint').toBe(5)
     expect(eight.lives[4], 'the fifth icon lands at x=114+4*6').toEqual({ name: 'PLY1R', x: 138, y: 217 })
+    // The exact boundary, independent of the far-above-cap case (round-2 [TEST]
+    // finding): five lives is five icons — not four (an off-by-one under the
+    // cap) and not gated away by a > vs >= slip at the bound.
+    const five = layoutHud(readout({ lives: 5 }), palette16()).players[0]
+    expect(five.lives.length, 'lives=5 paints exactly 5 icons').toBe(5)
     const none = layoutHud(readout({ lives: 0 }), palette16()).players[0]
     expect(none.lives, 'no lives, no icons').toEqual([])
   })
@@ -296,10 +301,7 @@ describe('AC-3 layoutHud — lives as rider icons along the bottom row', () => {
 describe('AC-4 overlayReadout — each player line carries its BCD register', () => {
   it('players[i].scoreBcd IS the ledger register (identity — a projection, not a copy)', () => {
     const state: GameState = createGame(0x1234)
-    // The structural cast keeps repo lint green while the selector type has no
-    // scoreBcd yet (RED must fail in vitest, not in tsc — CI lints before it
-    // tests); the identity assertion is red either way until Dev extends it.
-    const r = overlayReadout(state) as unknown as { players: { scoreBcd: readonly number[] }[] }
+    const r = overlayReadout(state)
     expect(r.players[0].scoreBcd, 'P1 line hands the shell the very DSCORE bytes').toBe(state.players[0].scoreBcd)
     expect(r.players[1].scoreBcd, 'P2 line likewise').toBe(state.players[1].scoreBcd)
   })
