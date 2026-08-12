@@ -30,7 +30,8 @@ stories:
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (beetle/spider/earwig/inchworm/mosquito/dragonfly/DDT/poison-mushroom); subsystem -> owning file + .SBTTL line (MILLI.MAC BEEMV/BEETL/EARWIG/FLYMV/MOSQT/SPDMV/WRMMV/SHOOT/MOVE/MOTION/EXPLOD/CENTPC, MLIRQ SOUNDS/CLRCH/IRQ/JOYS, MLATR MODE FE/FF, CONWAY INICON/MASTER); OQ-1..OQ-4 (exact refresh, MILLI.DOC, graphics+RAM-colour, trackball-vs-joystick input MLIRQ.MAC:897).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-12'
     repos: arcade
     workflow: tdd
   - id: ml1-4
