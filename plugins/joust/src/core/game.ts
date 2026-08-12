@@ -662,12 +662,17 @@ export function awardWaveBounty(
 // mutation-checked, not by a routing text-match). The authentic MESSAGE.SRC score display is
 // jt5 — this is the dev bar only.
 
-/** One player's dev-overlay readout line — its id (1-based), score and lives. */
+/** One player's HUD readout line — its id (1-based), score registers and lives. */
 export interface OverlayPlayerReadout {
   /** 1-based player id (1 → ledger 0, 2 → ledger 1) — the P1/P2 label. */
   player: number
   /** The player's running score, read straight off its ledger. */
   score: number
+  /**
+   * The ledger's 6-digit BCD register, the very array (no copy) — jt11-2: the
+   * authentic HUD displays the DSCORE bytes, as the ROM's SCODSP does.
+   */
+  scoreBcd: readonly number[]
   /** The player's remaining lives (NSHIP-seeded), read straight off its ledger. */
   lives: number
 }
@@ -688,6 +693,6 @@ export interface OverlayReadout {
 export function overlayReadout(game: GameState): OverlayReadout {
   return {
     wave: game.wave,
-    players: game.players.map((p, i) => ({ player: i + 1, score: p.score, lives: p.lives })),
+    players: game.players.map((p, i) => ({ player: i + 1, score: p.score, scoreBcd: p.scoreBcd, lives: p.lives })),
   }
 }
