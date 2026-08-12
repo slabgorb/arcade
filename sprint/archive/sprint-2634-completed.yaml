@@ -47,3 +47,8 @@ completed_stories:
     title: 'Authentic HUD (shell-only): replace drawOverlay dev bar (main.ts:169-180, fillText 8px monospace, self-described stand-in at main.ts:164-167) with the ROM idiom - score digits in FONT35 via the existing layoutText/paintText pair (fontRender.ts:51-61, main.ts:194-206; FONT35 is the score font per font35.ts:5 with all ten digits font35.ts:59-146), lives as stacked ostrich-rider icons via existing blit of atlas-packed PLY1R (pictures.ts:1097, blit main.ts:105-111) along the bottom row. Core already exposes score/scoreBcd/lives (PlayerLedger game.ts:55-64; overlayReadout game.ts:664-690 currently drops scoreBcd - extend the selector if BCD-exact digits wanted). NO core sim changes.'
     points: 3
     completed: '2026-08-12'
+  - id: ml1-3
+    epic: ml1
+    title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (beetle/spider/earwig/inchworm/mosquito/dragonfly/DDT/poison-mushroom); subsystem -> owning file + .SBTTL line (MILLI.MAC BEEMV/BEETL/EARWIG/FLYMV/MOSQT/SPDMV/WRMMV/SHOOT/MOVE/MOTION/EXPLOD/CENTPC, MLIRQ SOUNDS/CLRCH/IRQ/JOYS, MLATR MODE FE/FF, CONWAY INICON/MASTER); OQ-1..OQ-4 (exact refresh, MILLI.DOC, graphics+RAM-colour, trackball-vs-joystick input MLIRQ.MAC:897).'
+    points: 3
+    completed: '2026-08-12'
