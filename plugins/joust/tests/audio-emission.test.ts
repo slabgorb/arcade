@@ -38,7 +38,7 @@
 // test that does not first prove the moment can pass by firing on everything.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoState, type DemoProcess } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimState, type SimProcess } from '../src/core/sim.js'
 import { createGame, stepGame, type GameState, type PlayerLedger } from '../src/core/game.js'
 import { waveRowAt, dispatchWaveType } from '../src/core/wave.js'
 // jt11-4 — a wave's enemies take a number and WAIT for the transporter (CREEM/CRELP,
@@ -52,28 +52,28 @@ const inputs = { 1: IDLE, 2: IDLE }
 
 /** This frame's cue kinds, off the state the shell actually reads. */
 const kindsOf = (g: GameState): string[] => g.events.map((e) => e.type)
-const simKinds = (d: DemoState): string[] => d.cues.map((c) => c.type)
+const simKinds = (d: SimState): string[] => d.cues.map((c) => c.type)
 
-const count = (d: DemoState, kind: string): number =>
+const count = (d: SimState, kind: string): number =>
   d.sim.processes.filter((p) => p.kind === kind).length
 
 /** Strip the sim to its players, so the next step finds the wave CLEARED. The
  *  jt4-4 forced-advance idiom (demo-troll.test.ts), reused rather than reinvented —
  *  and since jt11-4 that idiom is `strippedToPlayers`, which empties the
  *  transporter's waiting room along with the arena. */
-const stripToPlayers = (d: DemoState): DemoState => strippedToPlayers(d)
+const stripToPlayers = (d: SimState): SimState => strippedToPlayers(d)
 
 /**
  * Force the demo forward until `wave` is the wave about to END, collecting every
  * frame's cues on the way. Returns the state SITTING on that wave, so a caller
  * steps once more and observes the advance off it.
  */
-function advanceToWave(seed: number, wave: number): { at: DemoState; seen: string[] } {
-  let d = createWaveDemo(seed)
+function advanceToWave(seed: number, wave: number): { at: SimState; seen: string[] } {
+  let d = createWaveSim(seed)
   const seen: string[] = []
   for (let guard = 0; guard < 200 && d.wave < wave; guard++) {
     d = stripToPlayers(d)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
     seen.push(...simKinds(d))
   }
   expect(d.wave, `staging failed: never reached wave ${wave}`).toBe(wave)
@@ -89,7 +89,7 @@ describe('jt5-1 — cliff-destroyed is EMITTED when a wave takes a cliff out', (
     // Wave 6 is the first whose status grows `destroyedCliffs` (the bridge burns
     // at wave 3, which is a different thing and has no cue).
     const { at } = advanceToWave(0xbeef, 5)
-    const stepped = stepDemo(stripToPlayers(at), {})
+    const stepped = stepSim(stripToPlayers(at), {})
 
     expect(stepped.wave, 'precondition: the wave really advanced').toBe(6)
     const gained = stepped.arena.destroyedCliffs.filter(
@@ -102,7 +102,7 @@ describe('jt5-1 — cliff-destroyed is EMITTED when a wave takes a cliff out', (
   it('a wave that destroys nothing new is SILENT', () => {
     // The control. Without it, an emitter that fired on every advance would pass
     // the test above. Wave 1 -> 2 destroys no cliff.
-    const first = stepDemo(stripToPlayers(createWaveDemo(0xbeef)), {})
+    const first = stepSim(stripToPlayers(createWaveSim(0xbeef)), {})
     expect(first.wave, 'precondition: this is a real advance').toBe(2)
     expect(
       first.arena.destroyedCliffs,
@@ -122,12 +122,12 @@ describe('jt5-1 — cliff-destroyed is EMITTED when a wave takes a cliff out', (
     // whether it stays BCD or becomes an ordinal is td1-12's open question. A
     // test that hardcoded "wave 10" would be asserting against the side of that
     // question it happened to be written on.
-    let d = createWaveDemo(0xbeef)
+    let d = createWaveSim(0xbeef)
     let rebuilds = 0
     let gains = 0
     for (let n = 0; n < 60 && rebuilds === 0; n++) {
       const before = d.arena.destroyedCliffs
-      d = stepDemo(stripToPlayers(d), {})
+      d = stepSim(stripToPlayers(d), {})
       const after = d.arena.destroyedCliffs
       const gained = after.filter((c) => !before.includes(c))
       const lost = before.filter((c) => !after.includes(c))
@@ -157,7 +157,7 @@ describe('jt5-1 — ptero-arrives is EMITTED when a pterodactyl enters', () => {
   // spawns. The invariant that survives, and is stronger: over the whole entry window,
   // ptero-arrives fires EXACTLY once per new bird on the frame that bird appears — never
   // a burst, never a miss — and the wave really creates its full ptero complement.
-  const hushNonPteros = (d: DemoState): DemoState => ({
+  const hushNonPteros = (d: SimState): SimState => ({
     ...d,
     sim: {
       ...d.sim,
@@ -171,7 +171,7 @@ describe('jt5-1 — ptero-arrives is EMITTED when a pterodactyl enters', () => {
     // Wave 43 (status 0xbb → WPTERO) sends THREE pteros, so "per bird" is genuinely
     // plural. Sit on wave 42, step once to advance in, then walk the 65-frame cadence.
     const { at } = advanceToWave(0xbeef, 42)
-    let d = stepDemo(stripToPlayers(at), {}) // frame 0: the advance into wave 43
+    let d = stepSim(stripToPlayers(at), {}) // frame 0: the advance into wave 43
     expect(d.wave, 'precondition: the wave really advanced').toBe(43)
     expect(
       dispatchWaveType(waveRowAt(43).status, { p1: true, p2: true }),
@@ -195,7 +195,7 @@ describe('jt5-1 — ptero-arrives is EMITTED when a pterodactyl enters', () => {
         screams,
         `SNPTEI must fire exactly once per new bird (frame ${f}): ${newBirdsThisFrame} new, ${screams} screams`,
       ).toBe(newBirdsThisFrame)
-      d = stepDemo(hushNonPteros(d), {})
+      d = stepSim(hushNonPteros(d), {})
     }
     // The WAVE really created its three pterodactyls (ids in the wave namespace, below
     // the 0x30_0000 baiter namespace) — one SNPTEI each, spread across the window.
@@ -209,7 +209,7 @@ describe('jt5-1 — egg-hatched is EMITTED when a settled wave egg matures', () 
     // Wave 5 enters its complement AS EGGS (WAVEGG). Each settled egg matures
     // into a remount buzzard, which is the moment SNEGGH marks.
     const { at } = advanceToWave(0xbeef, 4)
-    let d = stepDemo(stripToPlayers(at), {})
+    let d = stepSim(stripToPlayers(at), {})
     expect(d.wave, 'precondition: the wave really advanced').toBe(5)
     expect(count(d, 'egg'), 'precondition: the egg wave really entered as eggs').toBeGreaterThan(0)
 
@@ -218,12 +218,12 @@ describe('jt5-1 — egg-hatched is EMITTED when a settled wave egg matures', () 
     // than becoming a buzzard on the same frame; the remount flies in ~112 frames
     // later. So the precondition on the cue frame is that eggs BEGAN hatching
     // (hatchRow set), not that an egg left and an enemy arrived.
-    const hatchingCount = (s: DemoState): number =>
+    const hatchingCount = (s: SimState): number =>
       s.sim.processes.filter((p) => p.kind === 'egg' && p.egg?.hatchRow !== undefined).length
     let hatches = 0
     let sawEggsBeginHatching = false
     for (let f = 0; f < 2000 && hatches === 0; f++) {
-      const next = stepDemo(d, inputs)
+      const next = stepSim(d, inputs)
       const n = simKinds(next).filter((k) => k === 'egg-hatched').length
       if (n > 0) {
         // The precondition, checked on the very frame the cue claims it: eggs began
@@ -254,13 +254,13 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
    *  1px-wide overlap survives a shift, so dx=4 became a MISS. The screen-X delta
    *  is placed at the minimum `facingInto` still admits (JOUSTRV4.SRC:4994): a
    *  right-facer keeps COLDX=0 (0 IS a kill via BPL), a left-facer needs COLDX<0. */
-  function stage(offset: number): DemoState {
-    const d = stepDemo(createWaveDemo(0x1234), {})
+  function stage(offset: number): SimState {
+    const d = stepSim(createWaveSim(0x1234), {})
     const knight = d.sim.processes.find((p) => p.kind === 'player')
     if (!knight?.entity) throw new Error('staging: no live knight')
     const e = knight.entity
     const facing = knight.facing ?? 1
-    const ptero: DemoProcess = {
+    const ptero: SimProcess = {
       id: 0x900,
       cls: 'secondary',
       nap: 1,
@@ -280,7 +280,7 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
     // lanceOffset 8-9 within the 10±2 glide band, so offset 10 (the old value)
     // is now a mask MISS. Offset 9 keeps a real, mask-consulted kill — green
     // on both the pre- and post-jt9-14 tree. See demo-jt9-14.test.ts.
-    const stepped = stepDemo(stage(9), inputs)
+    const stepped = stepSim(stage(9), inputs)
     expect(
       count(stepped, 'dissolve'),
       'precondition: the ptero really died (a dissolve replaced it)',
@@ -303,7 +303,7 @@ describe('jt5-1 — ptero-death is EMITTED, and is not the player death next doo
     // dies). The old value 14 was a box-only contact the mask now rejects, so
     // post-jt9-14 nothing would happen and the `not.toContain` would pass
     // vacuously. Push it past the mask (|dy|≥10) and neither entity dies.
-    const stepped = stepDemo(stage(5), inputs)
+    const stepped = stepSim(stage(5), inputs)
     expect(count(stepped, 'player'), 'precondition: the knight really died').toBe(0)
     expect(simKinds(stepped)).toContain('player-death')
     expect(simKinds(stepped)).not.toContain('ptero-death')
@@ -415,7 +415,7 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
     // has been served onto the pads, so it is not yet present on the advance frame
     // `advanceToWave` returns. Step to its rise — the combatant this test needs.
     for (let i = 0; i < 200 && !at.sim.processes.some((p) => p.kind === 'troll'); i++) {
-      at = stepDemo(at, {})
+      at = stepSim(at, {})
     }
     expect(
       dispatchWaveType(waveRowAt(7).status, { p1: true, p2: true }),
@@ -444,7 +444,7 @@ describe('jt5-1 — wave-bounty is the GLADIATOR claim only, as the ROM has it',
 
 /** Players + any troll: a fought clear that still clears in one step. jt11-4 — the
  *  waiting room goes with the arena, or the wave's queued buzzards hold it open. */
-function stripToPlayersKeepingTroll(d: DemoState): DemoState {
+function stripToPlayersKeepingTroll(d: SimState): SimState {
   return withNoPendingEnemies({
     ...d,
     sim: {

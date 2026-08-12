@@ -1,9 +1,9 @@
 // tests/demo-jt4-4.test.ts
 //
 // Story jt4-4 — RED phase (Leeloo / TEA). The SIM-behaviour half of the loop story:
-// the demo.ts concerns the session layer's stepGame drives but does not own —
+// the sim.ts concerns the session layer's stepGame drives but does not own —
 //
-//   1. DBAIT baiter removal + the NBAIT settle-on-entry (deferred by jt3, demo.ts).
+//   1. DBAIT baiter removal + the NBAIT settle-on-entry (deferred by jt3, sim.ts).
 //      A baiter that dissolves is REMOVED and the NBAIT count SETTLES so the max-3
 //      cap (PCHASE=−1, CMPA #3-1, JOUSTRV4.SRC:2108-2113) frees a slot instead of the
 //      swarm holding forever — the ROM DECrements NBAIT on the baiter's death entry
@@ -18,27 +18,27 @@
 //      2737-2776), not as materialising ground enemies. jt4-3 built the predicate
 //      (eggWaveSpawnsEggs); jt4-4 wires it, as spawnWavePteros wires the ptero count.
 //
-// demo.ts already exists, so these redden on the MISSING BEHAVIOUR (a clean assertion
+// sim.ts already exists, so these redden on the MISSING BEHAVIOUR (a clean assertion
 // red), not a module-resolution trace. The `baiter`/`baiterClock` fields live on the
-// real demo.ts (jt3-5/3-7) but not on the jt2-7 demo-contract, so — as the jt3-7
+// real sim.ts (jt3-5/3-7) but not on the jt2-7 sim-contract, so — as the jt3-7
 // menagerie suite does — they are reached through local structural views. The source
 // re-derivation + JT44-* claims live in tests/game-loop-source.test.ts. Each test
 // NAMES the mutant it kills.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import { loadBaiter } from './helpers/baiter-contract.js'
-import type { DemoProcess, DemoState, EntityState } from './helpers/demo-contract.js'
+import type { SimProcess, SimState, EntityState } from './helpers/sim-contract.js'
 import type { BaiterClock } from './helpers/baiter-contract.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
-// The real demo.ts carries `baiter` on a ptero process (jt3-5) and `baiterClock` on
-// the DemoState (jt3-5) — fields the frozen jt2-7 contract never grew. These local
+// The real sim.ts carries `baiter` on a ptero process (jt3-5) and `baiterClock` on
+// the SimState (jt3-5) — fields the frozen jt2-7 contract never grew. These local
 // views read/write them without weakening the shared contract.
-type BaiterProc = DemoProcess & { baiter?: boolean }
-type DemoWithClock = DemoState & { baiterClock?: BaiterClock }
+type BaiterProc = SimProcess & { baiter?: boolean }
+type DemoWithClock = SimState & { baiterClock?: BaiterClock }
 
 function entity(over: Partial<EntityState> = {}): EntityState {
   return {
@@ -47,19 +47,19 @@ function entity(over: Partial<EntityState> = {}): EntityState {
   }
 }
 
-const liveBaiters = (d: DemoState): DemoProcess[] =>
+const liveBaiters = (d: SimState): SimProcess[] =>
   d.sim.processes.filter((p) => p.kind === 'ptero' && (p as BaiterProc).baiter === true)
-const hasEgg = (d: DemoState): boolean => d.sim.processes.some((p) => p.kind === 'egg')
+const hasEgg = (d: SimState): boolean => d.sim.processes.some((p) => p.kind === 'egg')
 
 /** One forced wave advance at the demo level: strip to players (a cleared wave) + step. */
-function forceAdvance(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState): DemoState {
+function forceAdvance(d: Awaited<ReturnType<typeof loadSim>>, demo: SimState): SimState {
   const players = demo.sim.processes.filter((p) => p.kind === 'player')
   // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and holds
   // the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it for
   // ~61*count frames.
-  return d.stepDemo({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [], events: [] })
+  return d.stepSim({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [], events: [] })
 }
-function advanceTo(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState, target: number): DemoState {
+function advanceTo(d: Awaited<ReturnType<typeof loadSim>>, demo: SimState, target: number): SimState {
   let s = demo
   let guard = 0
   while (s.wave < target) {
@@ -74,7 +74,7 @@ function advanceTo(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState, tar
  *  narrowPhase after broadPhase (the ROM's BPCOL→OSTHIT gate, JOUSTRV4.SRC:4944-4952),
  *  and CWNG3R×PT1RC overlap only at lanceOffset 8-9 — offset 10 became a mask MISS.
  *  Offset 9 is in the band AND the mask (green pre- and post-jt9-14). */
-function lancePlayer(): DemoProcess {
+function lancePlayer(): SimProcess {
   return {
     id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true, entity: entity({ posX: 100, posY: 109 << 8 }),
@@ -98,14 +98,14 @@ function baiterVictim(): BaiterProc {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a slot', () => {
   it('killing a baiter DECREMENTS the on-screen count (NBAIT settles on the death entry)', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const baiter = await loadBaiter()
     // Cap FULL (NBAIT = MAX_BAITERS). An enemy is kept so the wave does not clear (a clear
     // would re-seed the clock and hide the settle). The player lance-kills the baiter.
     // jt11-4: wave 1's enemies queue for the transporter instead of standing on the
     // pads at frame 0. Seating them restores the pre-queue frame-0 arrangement this
     // controlled fixture picks its held-open enemy out of.
-    const base = seatWaveInstantly(demo.createWaveDemo(SEED))
+    const base = seatWaveInstantly(demo.createWaveSim(SEED))
     const anEnemy = base.sim.processes.find((p) => p.kind === 'enemy')
     expect(anEnemy, 'wave 1 supplies a ground enemy to hold the wave open').toBeTruthy()
     const state: DemoWithClock = {
@@ -114,7 +114,7 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
       events: [],
       baiterClock: { cbait: 999, nbait: baiter.MAX_BAITERS, pbaitn: 0 },
     }
-    const stepped = demo.stepDemo(state) as DemoWithClock
+    const stepped = demo.stepSim(state) as DemoWithClock
     // The killed baiter is no longer a live baiter (it enters the dissolve) — the removal half.
     expect(liveBaiters(stepped).length, 'the killed baiter is removed from the live count').toBe(0)
     expect(stepped.wave, 'the enemy held the wave open (no re-seed)').toBe(base.wave)
@@ -124,16 +124,16 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
   })
 
   it('fill the cap, kill one, spawn again — the freed slot lets a new baiter send off', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const baiter = await loadBaiter()
     // NBAIT at the cap and a send-off armed (cbait 1). With the swarm stuck at MAX_BAITERS the
     // EMYOK cap check (CMPA #3-1 / BHI) refuses every send-off forever; only the DBAIT settle
     // on the kill drops NBAIT so the next nap-tick can send a new baiter.
     // jt11-4: seat the queued arrivals — the fixture wants ONE held-open enemy in a
     // controlled process list, not the arrival cadence.
-    const base = seatWaveInstantly(demo.createWaveDemo(SEED))
+    const base = seatWaveInstantly(demo.createWaveSim(SEED))
     const anEnemy = base.sim.processes.find((p) => p.kind === 'enemy')!
-    let d: DemoState = {
+    let d: SimState = {
       ...base,
       sim: { ...base.sim, processes: [lancePlayer(), baiterVictim(), anEnemy] },
       events: [],
@@ -141,7 +141,7 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
     } as DemoWithClock
     let fresh = 0
     for (let f = 1; f <= 16; f++) {
-      d = demo.stepDemo(d)
+      d = demo.stepSim(d)
       // A freshly SENT baiter rides the per-frame send-off id namespace (0x30_0000+frame),
       // distinct from the killed baiter (0x0880).
       fresh = d.sim.processes.filter(
@@ -159,24 +159,24 @@ describe('DBAIT — a dissolved baiter settles NBAIT so the max-3 cap frees a sl
 // ─────────────────────────────────────────────────────────────────────────────
 describe('partner-kill detection — collisionPass emits a distinguishable partner-kill event', () => {
   it('when one player kills another, a partner-kill event names the WINNER (not a silent removal)', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // P1 (higher on screen) wins the lance-height joust; P2 (8px lower) dies. Today the loser
     // is removed SILENTLY (no event) — jt4-3 could not tell an enemy-kill from a partner-kill.
-    const p1: DemoProcess = {
+    const p1: SimProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
       collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8 }),
     }
-    const p2: DemoProcess = {
+    const p2: SimProcess = {
       id: 2, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: -1, mount: 'stork',
       collisionEnabled: true, entity: entity({ posX: 104, posY: 108 << 8 }),
     }
-    const base = demo.createWaveDemo(SEED)
-    const stepped = demo.stepDemo({ ...base, sim: { ...base.sim, processes: [p1, p2] }, events: [] })
+    const base = demo.createWaveSim(SEED)
+    const stepped = demo.stepSim({ ...base, sim: { ...base.sim, processes: [p1, p2] }, events: [] })
     // Non-vacuous: the kill actually happened (P2 removed) so the missing thing is the EVENT.
     const survivors = stepped.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
     expect(survivors, 'P1 wins the partner-joust; P2 is removed').toEqual([1])
     // The distinguishable event the session layer needs to drive recordPartnerKill. A widened
-    // view — the new variant is not in the jt2-7 DemoEvent union the contract froze.
+    // view — the new variant is not in the jt2-7 SimEvent union the contract froze.
     const events = stepped.events as readonly { kind: string; winner?: number; loser?: number }[]
     const pk = events.find((e) => e.kind === 'partnerKill')
     expect(pk, 'collisionPass emits a partnerKill event on a PvP kill (not a silent removal)').toBeTruthy()
@@ -191,20 +191,20 @@ describe('partner-kill detection — collisionPass emits a distinguishable partn
 // ─────────────────────────────────────────────────────────────────────────────
 describe('egg-hatch spawn — the egg wave (wave 5, $08) spawns its complement as EGGS', () => {
   it('wave 5 enters egg processes (WAVEGG), not the materialising ground enemies', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // Wave 5's status $08 dispatches to the 'egg' type. eggWaveSpawnsEggs is built (jt4-3) but
     // NOT wired into spawnWaveEnemies — today wave 5 still materialises bounders. WAVEGG
     // (JOUSTRV4.SRC:2737) enters the wave AS EGGS instead. Kills "the egg wave is unwired".
-    const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
+    const atWave5 = advanceTo(demo, demo.createWaveSim(SEED), 5)
     expect(atWave5.wave, 'reached the egg wave').toBe(5)
     expect(hasEgg(atWave5), 'the egg wave hatches its complement from eggs (WAVEGG wired)').toBe(true)
   })
 
   it('a NON-egg wave spawns NO eggs — the wiring is keyed on the egg type, not always-on', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // Wave 2 (status $04, co-op) is not an egg wave — its complement enters as ground enemies.
     // Kills "spawnWaveEnemies now spawns eggs for every wave".
-    const atWave2 = advanceTo(demo, demo.createWaveDemo(SEED), 2)
+    const atWave2 = advanceTo(demo, demo.createWaveSim(SEED), 2)
     expect(atWave2.wave, 'reached a non-egg wave').toBe(2)
     expect(hasEgg(atWave2), 'a co-op wave spawns ground enemies, not eggs').toBe(false)
   })

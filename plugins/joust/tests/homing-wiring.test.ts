@@ -39,7 +39,7 @@
 //      all — measured zero flips over 20,000 frames on two seeds.
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createWaveDemo, stepDemo, drawList, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, drawList, type SimProcess, type SimState } from '../src/core/sim.js'
 import { createState, spawn, stepFrame, type GameState } from '../src/core/frame.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { loadTarget, type TargetModule, type TargetState } from './helpers/target-contract.js'
@@ -85,7 +85,7 @@ function airborneAt(posX: number, pixelY: number, velXIndex: number): EntityStat
  * and the bounder reversed mid up-seek — an off-level tick the ROM never performs;
  * that is the behaviour jt9-49 retired.) `velXIndex` is the ONLY thing that varies
  * between the two runs below. */
-function player(velXIndex: number): DemoProcess {
+function player(velXIndex: number): SimProcess {
   return {
     id: 1,
     cls: 'primary',
@@ -100,14 +100,14 @@ function player(velXIndex: number): DemoProcess {
 
 /** A PROMOTED bounder, saturated at +MAXVX, primed one matched wake from a flip,
  * and far enough in X that it never jousts the player. */
-function primedBounder(): DemoProcess {
+function primedBounder(): SimProcess {
   return {
     id: 0x100,
     cls: 'secondary',
     nap: 1,
     period: 1,
     kind: 'enemy',
-    // The RED carried an `as unknown as DemoProcess['enemy']` cast here because
+    // The RED carried an `as unknown as SimProcess['enemy']` cast here because
     // `homing` did not exist on the real EnemyState yet. GREEN landed it, so the
     // cast is gone — and this literal typechecking unassisted IS the proof the
     // field arrived on the src type, not just on the test contract.
@@ -129,8 +129,8 @@ function primedBounder(): DemoProcess {
  * Since jt11-4 "two-process" also means emptying the transporter's waiting room:
  * replacing `processes` alone would leave the wave's real complement queued, and
  * `theEnemy`'s `find` would eventually pick up a stranger stepping off a pad. */
-function craft(playerVelXIndex: number): DemoState {
-  const base = withNoPendingEnemies(createWaveDemo(SEED))
+function craft(playerVelXIndex: number): SimState {
+  const base = withNoPendingEnemies(createWaveSim(SEED))
   const targets: TargetState = T.registerPlayer(T.seedTargets(), 1, 0)
   return {
     ...base,
@@ -138,14 +138,14 @@ function craft(playerVelXIndex: number): DemoState {
   }
 }
 
-const theEnemy = (d: DemoState): DemoProcess | undefined => d.sim.processes.find((p) => p.kind === 'enemy')
+const theEnemy = (d: SimState): SimProcess | undefined => d.sim.processes.find((p) => p.kind === 'enemy')
 
 /** Step `frames` frames and report every distinct facing the bounder held. */
-function facingsOver(demo: DemoState, frames: number): Array<-1 | 1> {
+function facingsOver(demo: SimState, frames: number): Array<-1 | 1> {
   const seen: Array<-1 | 1> = []
   let d = demo
   for (let f = 0; f < frames; f++) {
-    d = stepDemo(d, { 1: NEUTRAL })
+    d = stepSim(d, { 1: NEUTRAL })
     const e = theEnemy(d)
     expect(e, 'the bounder must survive the window (no joust, no lava)').toBeDefined()
     const facing = e?.enemy?.facing
@@ -194,7 +194,7 @@ describe('AC-1 — the target’s velXIndex is plumbed all the way to the thrott
     // the "control" would be proving something else entirely.
     const a = craft(MAXVX).sim.processes
     const b = craft(0).sim.processes
-    const strip = (ps: readonly DemoProcess[]): string =>
+    const strip = (ps: readonly SimProcess[]): string =>
       JSON.stringify(ps.map((p) => (p.kind === 'player' ? { ...p, entity: { ...p.entity, velXIndex: 'X' } } : p)))
     expect(strip(a)).toBe(strip(b))
   })
@@ -206,17 +206,17 @@ describe('AC-1 — the target’s velXIndex is plumbed all the way to the thrott
 describe('AC-2 — the new facing survives the frame and reaches the draw list', () => {
   it('the enemy PROCESS carries the flipped facing (not just a local in the brain)', () => {
     let d = craft(MAXVX)
-    for (let f = 0; f < 4; f++) d = stepDemo(d, { 1: NEUTRAL })
+    for (let f = 0; f < 4; f++) d = stepSim(d, { 1: NEUTRAL })
     expect(theEnemy(d)?.enemy?.facing, 'frame.ts wrote the new facing back').toBe(-1)
   })
 
-  it('and the buzzard is DRAWN facing the new way (demo.ts tags the op from enemy.facing)', () => {
+  it('and the buzzard is DRAWN facing the new way (sim.ts tags the op from enemy.facing)', () => {
     // routing ≠ geometry: a flip that never reaches the render op is a flip the
     // player cannot see. `drawList` tags each entity op with `p.enemy.facing`
-    // (demo.ts). `DrawOp` carries no id, so the discriminator is the FACING
+    // (sim.ts). `DrawOp` carries no id, so the discriminator is the FACING
     // SET across entity ops: the player holds facing +1 in both runs (NEUTRAL
     // input, dir 0 ⇒ facing held), so a −1 anywhere in the set is the bounder.
-    const entityFacings = (d: DemoState): Array<number | undefined> =>
+    const entityFacings = (d: SimState): Array<number | undefined> =>
       drawList(d)
         .filter((op) => op.kind === 'entity')
         .map((op) => op.facing)
@@ -224,8 +224,8 @@ describe('AC-2 — the new facing survives the frame and reaches the draw list',
     let flipped = craft(MAXVX)
     let held = craft(0)
     for (let f = 0; f < 4; f++) {
-      flipped = stepDemo(flipped, { 1: NEUTRAL })
-      held = stepDemo(held, { 1: NEUTRAL })
+      flipped = stepSim(flipped, { 1: NEUTRAL })
+      held = stepSim(held, { 1: NEUTRAL })
     }
     expect(entityFacings(flipped).length, 'entities are on screen at all').toBeGreaterThan(0)
     expect(entityFacings(flipped), 'the reversed bounder is drawn facing left').toContain(-1)
@@ -238,12 +238,12 @@ describe('AC-2 — the new facing survives the frame and reaches the draw list',
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-3 — no aggro state ⇒ no target ⇒ no flip (the jt2 replays hold)', () => {
   it('an enemy stepped with no `targets` on the sim never reverses', () => {
-    // `DemoSim.targets` is REQUIRED (demo.ts) — a demo always carries aggro
+    // `SimCore.targets` is REQUIRED (sim.ts) — a demo always carries aggro
     // state — so the bare path is the raw jt2-1 scheduler, where `GameState.targets`
     // is optional and `stepFrame` hands every enemy `target = null`. That is the
     // shape every pre-jt8 seeded scheduler replay runs in, so a flip here would
     // move baselines the whole jt2 suite depends on.
-    // No cast: `DemoProcess` is structurally assignable to `Process` (round-2
+    // No cast: `SimProcess` is structurally assignable to `Process` (round-2
     // Reviewer [LOW][RULE]/[SEC] — the `as unknown as Process` double-cast was
     // gratuitous, and a cast here would hide exactly the kind of shape drift
     // this test exists to catch).
@@ -341,7 +341,7 @@ function idleInput(): Record<number, PlayerInput> {
  * enters. Not "hold" — once a matched wake ticks it the counter walks 255, 254,
  * … on its own, exactly as round 1's build did (round-2 review [LOW][DOC]).
  */
-function stageRound1Seed(d: DemoState): DemoState {
+function stageRound1Seed(d: SimState): SimState {
   return {
     ...d,
     sim: {
@@ -358,7 +358,7 @@ function stageRound1Seed(d: DemoState): DemoState {
 /** Play a seeded wave-1 demo and count how many times an enemy changed facing. */
 function reversalsInPlay(
   seed: number,
-  stage?: (d: DemoState) => DemoState,
+  stage?: (d: SimState) => SimState,
   inputs: (frame: number) => Record<number, PlayerInput> = chaseInput,
 ): number {
   // Seated at frame 0, the arrangement this measurement was calibrated against.
@@ -366,12 +366,12 @@ function reversalsInPlay(
   // each bird's run — the homing counter needs matched wakes to ACCUMULATE, and a
   // buzzard that lands on frame 183 gets a third fewer of them. That is a fact
   // about the arrival cadence, not about the throttle this suite is measuring.
-  let d = seatWaveInstantly(createWaveDemo(seed))
+  let d = seatWaveInstantly(createWaveSim(seed))
   if (stage) d = stage(d)
   const facing = new Map<number, -1 | 1>()
   let reversals = 0
   for (let f = 0; f < PLAY_FRAMES; f++) {
-    d = stepDemo(d, inputs(f))
+    d = stepSim(d, inputs(f))
     if (stage) d = stage(d)
     for (const p of d.sim.processes) {
       if (p.kind !== 'enemy' || !p.enemy) continue
@@ -394,8 +394,8 @@ describe('AC-4 — a buzzard actually turns around in a real seeded game', () =>
     'seed $seed: some enemy reverses within $frames frames of ordinary play',
     ({ value }) => {
       // The question round 1 never asked. Nothing is primed, nothing is
-      // synthesised: these are the enemies `createWaveDemo` spawns, stepped by
-      // `stepDemo`, with a player chasing them up the FLYX ladder (see
+      // synthesised: these are the enemies `createWaveSim` spawns, stepped by
+      // `stepSim`, with a player chasing them up the FLYX ladder (see
       // `chaseInput` for why a wanderer no longer meets the rung). jt8-2 RED
       // measured 0 reversals over 20,000 frames because the born counter was
       // 129 matched wakes from a flip and no enemy ever accumulates that many.
@@ -451,11 +451,11 @@ describe('AC-4 — a buzzard actually turns around in a real seeded game', () =>
     // Guards the pair against drifting apart, the same way AC-1's pair is
     // guarded: strip the workspace and the staged demo must be byte-identical to
     // the unstaged one.
-    const strip = (d: DemoState): string =>
+    const strip = (d: SimState): string =>
       JSON.stringify(
         d.sim.processes.map((p) => (p.kind === 'enemy' && p.enemy ? { ...p, enemy: { ...p.enemy, homing: 'X' } } : p)),
       )
-    const plain = createWaveDemo(PLAY_SEEDS[0])
+    const plain = createWaveSim(PLAY_SEEDS[0])
     expect(strip(stageRound1Seed(plain))).toBe(strip(plain))
   })
 })

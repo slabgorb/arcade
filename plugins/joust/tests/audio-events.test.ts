@@ -16,9 +16,9 @@
 // sprint/context/context-epic-jt5.md). It is pinned at `GameState.events`
 // because that is the seam the shell actually reads: main.ts steps
 // `stepGame` and nothing else. Two of the eleven moments (extra-man, wave-
-// bounty) are resolved by the SESSION layer in game.ts, not by `stepDemo` at
-// all, so a stream homed on `DemoState` could not carry them. Whether Dev also
-// grows a field on `DemoState` to carry the sim's own moments upward is Dev's
+// bounty) are resolved by the SESSION layer in game.ts, not by `stepSim` at
+// all, so a stream homed on `SimState` could not carry them. Whether Dev also
+// grows a field on `SimState` to carry the sim's own moments upward is Dev's
 // choice; these tests do not look.
 //
 // ─── WHY THE events.ts IMPORT IS COMPUTED ────────────────────────────────────
@@ -26,7 +26,7 @@
 // `npm run lint` (tsc --noEmit) clean. A literal `import('../src/core/events')`
 // — static OR dynamic — is TS2307 while the file is absent. So the specifier is
 // assembled at runtime: tsc cannot resolve a non-literal, vitest can. game.ts
-// and demo.ts DO exist, so those are imported normally and only the new
+// and sim.ts DO exist, so those are imported normally and only the new
 // `events` FIELD is reached through a widening type.
 //
 // ─── THE TWO TRAPS THIS FILE IS BUILT AROUND ─────────────────────────────────
@@ -39,9 +39,9 @@
 //     so both streams still match while every cue re-fires forever. The clear
 //     needs its own, different test — `the stream is REBUILT each frame` below
 //     — which steps past a triggering frame and demands the event be GONE.
-//     This trap is not hypothetical here: joust's EXISTING `DemoState.events`
+//     This trap is not hypothetical here: joust's EXISTING `SimState.events`
 //     log is append-and-cap (`[...demo.events, ...collided.events]
-//     .slice(-EVENT_LOG_CAP)`, demo.ts, the cap declared 32 at demo.ts —
+//     .slice(-EVENT_LOG_CAP)`, sim.ts, the cap declared 32 at sim.ts —
 //     this cited `:1173` and a literal `slice(-32)` from jt5-1 until jt5-4
 //     re-anchored it), and `stepGame` only tells this frame's entries from last
 //     frame's by a reference-set delta (game.ts). A cue channel built
@@ -178,7 +178,7 @@ const countOf = (g: GameState, kind: string): number =>
 // Eleven moments, each one a REAL Williams sound table with the machine's own
 // comment on it, and each one reachable in this port. The ROM's whole sound set
 // is 38 tables (JOUSTRV4.SRC:8051-8131, under the format header at :8045-8049);
-// these are the entries whose moment `stepDemo`/`stepGame` actually resolves
+// these are the entries whose moment `stepSim`/`stepGame` actually resolves
 // today. The ROM citations live in tests/audio-rom-citations.test.ts, which
 // byte-opens every one of them.
 //
@@ -743,8 +743,8 @@ describe('jt5-1 AC3 — the stream is REBUILT each frame, never carried forward'
     ).toEqual([])
   })
 
-  it('the stream is NOT joust’s capped DemoState.events log wearing a new name', () => {
-    // `demo.ts` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
+  it('the stream is NOT joust’s capped SimState.events log wearing a new name', () => {
+    // `sim.ts` keeps the last EVENT_LOG_CAP (32) entries of an append-only log and nothing
     // clears it per frame. If the cue channel were that log — or derived from it
     // by the reference-set delta game.ts uses — a quiet frame would still
     // report the last kill. Compare the two ON THE SAME QUIET FRAME: the sim log

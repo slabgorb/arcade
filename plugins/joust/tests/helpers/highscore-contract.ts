@@ -1,7 +1,7 @@
 // tests/helpers/highscore-contract.ts
 //
 // Story jt10-7 — the CONTRACT for src/core/highscore.ts, TEA-authored (Tyr). Same
-// seam epic jt has used since jt1-2 (loadGame / loadDemo / loadFont / loadCabinet /
+// seam epic jt has used since jt1-2 (loadGame / loadSim / loadFont / loadCabinet /
 // loadSelect): TEA states the module shape and pins behaviour + citation gate in
 // tests/highscore.test.ts; Dev (Loki) writes the module.
 //

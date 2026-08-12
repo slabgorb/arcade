@@ -388,10 +388,10 @@ describe('AC5 — SHUPVY is consulted every wake; HUUPVY only at expiry, and re-
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC7 — the sim stays deterministic across the cadence change', () => {
   it('replays a seeded wave bit-for-bit from the same seed', async () => {
-    const demo = await import('../src/core/demo.js')
+    const demo = await import('../src/core/sim.js')
     const run = (): unknown => {
-      let s = demo.createWaveDemo(0x51ce)
-      for (let i = 0; i < 240; i++) s = demo.stepDemo(s)
+      let s = demo.createWaveSim(0x51ce)
+      for (let i = 0; i < 240; i++) s = demo.stepSim(s)
       return JSON.parse(JSON.stringify(s))
     }
     // This is NOT a re-baseline pin — it deliberately holds no recorded digest,
@@ -413,10 +413,10 @@ describe('AC7 — the sim stays deterministic across the cadence change', () => 
     // them every frame yields 149 up-seek frames. That is the jt5-10 re-apply
     // rule, and skipping it is what made the first draft of this test compare
     // two empty arrays and pass for the wrong reason.
-    const demo = await import('../src/core/demo.js')
+    const demo = await import('../src/core/sim.js')
 
     interface Proc { kind: string; enemy?: { seek?: { mode: string } } }
-    type Demo = ReturnType<typeof demo.createWaveDemo>
+    type Demo = ReturnType<typeof demo.createWaveSim>
 
     type Process = Demo['sim']['processes'][number]
     const park = (s: Demo): Demo => ({
@@ -431,11 +431,11 @@ describe('AC7 — the sim stays deterministic across the cadence change', () => 
     })
 
     const play = (wave: number): { trace: string; upFrames: number } => {
-      let s: Demo = park({ ...demo.createWaveDemo(0x51ce), wave })
+      let s: Demo = park({ ...demo.createWaveSim(0x51ce), wave })
       let upFrames = 0
       const trace: string[] = []
       for (let i = 0; i < 240; i++) {
-        s = park(demo.stepDemo(s))
+        s = park(demo.stepSim(s))
         const enemies = (s.sim.processes as unknown as Proc[]).filter((p) => p.kind === 'enemy')
         upFrames += enemies.filter((p) => p.enemy?.seek?.mode === 'up').length
         trace.push(

@@ -37,9 +37,9 @@
 // (3) `eggsLeft` CANNOT REACH ZERO IN THIS PORT, so AC-3's trigger is
 //     unreachable as the story states it. Both producers hard-code the count:
 //     `resolveContacts` passes `eggsLeft: EGGS_PER_ENEMY` on every kill
-//     (demo.ts) and `settledWaveEgg` sets `EGGS_PER_ENEMY` (demo.ts),
+//     (sim.ts) and `settledWaveEgg` sets `EGGS_PER_ENEMY` (sim.ts),
 //     `EnemyState` carries no PEGG field at all, and `remountEnemyProcess`
-//     (demo.ts) builds a fresh enemy that remembers nothing. So every
+//     (sim.ts) builds a fresh enemy that remembers nothing. So every
 //     kill-egg in the running game is born with 3 and dies with 3; permadeath
 //     and the last-egg score are both dead code paths.
 //
@@ -53,7 +53,7 @@
 //     AC-3 therefore needs the PEGG carry FIRST. The pins below state it as an
 //     observable over a full kill → egg → hatch → kill cycle, seam-agnostic
 //     about where Dev homes the field (on `EnemyState`, or beside `budget` on
-//     `DemoSim` — jt8-1's precedent), exactly as jt8-4 did for DEGGS.
+//     `SimCore` — jt8-1's precedent), exactly as jt8-4 did for DEGGS.
 //
 // ─── WHAT THESE PINS KILL ────────────────────────────────────────────────────
 // Every assertion names the mutant it forbids. Expected values are read out of
@@ -63,7 +63,7 @@
 // separately so a broken `waveValue` cannot make the oracle vacuous.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, type DemoProcess, type DemoState, type EggState } from './helpers/demo-contract.js'
+import { loadSim, type SimProcess, type SimState, type EggState } from './helpers/sim-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
 import { loadDifficulty } from './helpers/difficulty-contract.js'
 import { loadEgg } from './helpers/egg-contract.js'
@@ -91,12 +91,12 @@ function eggOf(over: Partial<EggState>): EggState {
 }
 
 /** A SETTLED kill-egg process — the `$1_0000+` namespace, and NO `waveEgg` tag. */
-function killEggProc(id: number, over: Partial<EggState> = {}): DemoProcess {
+function killEggProc(id: number, over: Partial<EggState> = {}): SimProcess {
   return { id: 0x1_0000 + id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf(over) }
 }
 
 /** A SETTLED wave-egg process — the complement namespace, tagged `waveEgg`. */
-function waveEggProc(id: number, over: Partial<EggState> = {}): DemoProcess {
+function waveEggProc(id: number, over: Partial<EggState> = {}): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -108,7 +108,7 @@ function waveEggProc(id: number, over: Partial<EggState> = {}): DemoProcess {
   }
 }
 
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -142,22 +142,22 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
  * overwriting the process list no longer removes them — they would materialise a frame
  * or two in and land in the `enemiesIn` counts these pins read.
  */
-async function stagedDemo(processes: DemoProcess[], wave = 1): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = withNoPendingEnemies(dmod.createWaveDemo(SEED))
+async function stagedDemo(processes: SimProcess[], wave = 1): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = withNoPendingEnemies(dmod.createWaveSim(SEED))
   return { ...base, wave, sim: { ...base.sim, processes } }
 }
 
 /** Step `n` frames with neutral input. */
-async function run(demo: DemoState, n: number): Promise<DemoState> {
-  const dmod = await loadDemo()
+async function run(demo: SimState, n: number): Promise<SimState> {
+  const dmod = await loadSim()
   let d = demo
-  for (let f = 0; f < n; f++) d = dmod.stepDemo(d)
+  for (let f = 0; f < n; f++) d = dmod.stepSim(d)
   return d
 }
 
-const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const eggsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+const enemiesIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC-1 — the EGGWT / EGGWT2 wait, counted in PCNAP-12 naps
@@ -165,7 +165,7 @@ const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) =>
 
 describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :2761)', () => {
   it('exposes the PCNAP-12 nap length as a cited constant, not a bare 1', async () => {
-    const dmod = (await loadDemo()) as unknown as Record<string, unknown>
+    const dmod = (await loadSim()) as unknown as Record<string, unknown>
     // KILLS: a per-frame decrement. `PCNAP 12` (:3227) is the cost of ONE
     // `DEC PJOYT,U` (:3236), so the nap length is the unit the wait is counted
     // in. 1 here would make every egg hatch twelve times too fast.
@@ -187,7 +187,7 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
   })
 
   it('does NOT hatch a settled wave egg on the frame it is already settled', async () => {
-    // TODAY THIS IS THE WHOLE BUG: stepDemo's self-clear hatch (demo.ts)
+    // TODAY THIS IS THE WHOLE BUG: stepSim's self-clear hatch (sim.ts)
     // matures a settled wave egg on the very next frame, with no wait at all.
     // KILLS: shipping the timer as a field nothing reads.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), waveEggProc(0x100)])
@@ -198,7 +198,7 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
 
   it('hatches a settled WAVE egg after EGGWT2 naps — and not a nap sooner', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const nap = dmod.EGG_WAIT_NAP_FRAMES
     // EGGWT2 is the EGG-WAVE initial wait (`LDB EGGWT2  INITIAL EGG WAITING
     // TIME`, :2761; RAMDEF.SRC:395 "EGG WAVES"). Wiring EGGWT here instead is
@@ -227,7 +227,7 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
 
   it('hatches a settled KILL egg after EGGWT naps — the LANDING wait, not the wave one', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const nap = dmod.EGG_WAIT_NAP_FRAMES
     // EGGLND is reached by ANY egg that lands (:3224), so a kill-egg's wait is
     // EGGWT. KILLS: one row wired to both paths — EGGWT2 (56) would fire this
@@ -279,10 +279,10 @@ describe('AC-1 — a settled egg WAITS before it hatches (EGGWT :3224 / EGGWT2 :
 describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg gate goes)', () => {
   it('matures an uncollected kill-egg into a remounting buzzard', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
-    // THE STORY'S CENTRE. `stepDemo` filters on `p.waveEgg === true`
-    // (demo.ts), so today a kill-egg sits settled forever. Nothing in
+    // THE STORY'S CENTRE. `stepSim` filters on `p.waveEgg === true`
+    // (sim.ts), so today a kill-egg sits settled forever. Nothing in
     // JOUSTRV4.SRC privileges a wave egg's maturation over a kill egg's —
     // EGGLND is one routine and reaches both.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1)])
@@ -295,7 +295,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
   it('enters that buzzard from the FARTHER edge, like every other remount', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const egg = await loadEgg()
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // KILLS: a kill-egg hatch that skips `remountEntryEdge` and drops the bird
@@ -312,9 +312,9 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
   it('stops holding the wave open PERMANENTLY — the egg leaves, a killable bird replaces it', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     // The gate is `!enemiesLeft && !processes.some(egg) && some(player)`
-    // (demo.ts). A kill-egg that can never mature sits in the second
+    // (sim.ts). A kill-egg that can never mature sits in the second
     // clause forever, so wave N cannot end however well the players play. After
     // the fix the egg leaves and what holds the wave is a LIVE BUZZARD — which
     // play can remove. That is the whole difference, and it is why this is a
@@ -336,7 +336,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
   it('CONTROL — before the wait expires the egg is still there, still holding wave 1', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // The positive control for the test above: an implementation that DELETED
     // the egg on frame 1 would satisfy "no egg is holding the wave any more".
@@ -350,7 +350,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
   it('a PERMADEATH egg (eggsLeft 0) never hatches — and the ROM leaves it lying there', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // `willHatch` is false at zero (`BNE 1$`, :3002 — the 4th egg is the
     // enemy's permanent death), and DEATH3 still CREATES that egg: the zero
@@ -384,7 +384,7 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
   it('the hatch reads the wave — a LATE wave egg hatches strictly sooner (the EGGWT walk)', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     // AC-1's headline claim is that EGGWT walks $40 -> $10, so "late-wave eggs
     // hatch four times sooner". Nothing tested it END TO END: the DYTBL oracle
     // above proves `waveValue` walks, but that is the difficulty engine, which
@@ -421,9 +421,9 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
 
 describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
   it('takes the kill-egg count from the VICTIM, not from a hard-coded 4', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
-    // `resolveContacts` (demo.ts) passes `eggsLeft: EGGS_PER_ENEMY`
+    // `resolveContacts` (sim.ts) passes `eggsLeft: EGGS_PER_ENEMY`
     // unconditionally, so a bird on its LAST egg still yields a 3-left egg and
     // the count never walks down. The ROM transfers the victim's own count and
     // decrements it (`LDA PEGG,U / STA PEGG,Y / DEC PEGG,Y`, :2999-3001).
@@ -443,10 +443,10 @@ describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
 
   it('MAINTAINS the count into the remounted bird (:3251-3252)', async () => {
     const diff = await loadDifficulty()
-    const dmod = (await loadDemo()) as unknown as Record<string, number>
+    const dmod = (await loadSim()) as unknown as Record<string, number>
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
     // `LDA PEGG,U / STA PEGG,Y  MAINTAIN NBR OF EGGS LEFT IN THE BIRD`.
-    // `remountEnemyProcess` (demo.ts) builds an EnemyState with no such
+    // `remountEnemyProcess` (sim.ts) builds an EnemyState with no such
     // field, so today the cycle resets to a full 4 every time and permadeath is
     // unreachable in play. Seam-agnostic: read back through whatever accessor
     // Dev lands, but the OBSERVABLE is that a 2-left egg makes a 2-left bird.
@@ -460,7 +460,7 @@ describe('AC-3 — the egg count CARRIES (PEGG :2999-3001, :3251-3252)', () => {
 
 describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => {
   it('scores the last egg on the kill — no catch needed', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     // DEATH3: when the transferred count decrements to ZERO the ROM does not
     // leave an egg to be collected at all — it scores immediately to the victor:
@@ -470,8 +470,8 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
     //
     // THE SEAM: `ContactResult` already carries the kill `score` but has no
     // event channel, so the egg award has nowhere to go. This pin specifies
-    // `events` on it, matching how the rest of demo.ts surfaces scores. Dev may
-    // home it elsewhere provided the stepDemo-level observable is identical —
+    // `events` on it, matching how the rest of sim.ts surfaces scores. Dev may
+    // home it elsewhere provided the stepSim-level observable is identical —
     // that latitude is recorded in the TEA Assessment.
     const r = dmod.resolveContacts(enemyVictim(120, 40, 1), playerVictor(120, 30))
     const eggScores = eggScoresOf(r)
@@ -482,7 +482,7 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
   })
 
   it('CONTROL — an enemy with eggs still to come scores nothing (the BNE at :3002)', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // `BNE 1$  BR=YOU CAN GET MORE EGGS` skips the whole scoring block while the
     // count is nonzero. KILLS: scoring every kill — the permissive mutant that
     // would otherwise satisfy the pin above.
@@ -497,10 +497,10 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
     // suite at review. The ladder is per-PLAYER and per-wave (jt8-6), so a
     // knight who has already taken eggs this wave is further up it.
     //
-    // Staged through stepDemo because the attribution lives in `collisionPass`,
+    // Staged through stepSim because the attribution lives in `collisionPass`,
     // which is module-private: a player already holding `eggHits: 2` kills an
     // enemy on its LAST egg, so the award must be the THIRD rung, not the first.
-    const victim: DemoProcess = {
+    const victim: SimProcess = {
       id: 900,
       cls: 'secondary',
       nap: 1,
@@ -528,7 +528,7 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
         eggsLeft: 1,
       },
     }
-    const killer: DemoProcess = { ...playerAt(PLAYER1_ID, 120, 30), eggHits: 2 }
+    const killer: SimProcess = { ...playerAt(PLAYER1_ID, 120, 30), eggHits: 2 }
     const demo = await stagedDemo([killer, victim])
     const after = await run(demo, 1)
 
@@ -547,7 +547,7 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
   })
 
   it('THE VICTOR GUARD — U zero (no victor) skips EGGSCR, as a PURE law', async () => {
-    const dmod = (await loadDemo()) as unknown as Record<string, unknown>
+    const dmod = (await loadSim()) as unknown as Record<string, unknown>
     // `LDU ,S  GET VICTORS WORKSPACE` then `BEQ 1$` (:3004-3005): U is zero when
     // nothing killed the enemy, and the ROM skips EGGSCR entirely.
     //
@@ -573,7 +573,7 @@ describe('AC-4 — EGGSCR on the KILL, and the victor guard (BEQ :3005)', () => 
 /**
  * A dying ENEMY carrying `eggsLeft` — the DEATH3 victim. `eggsLeft` is the field
  * this story adds to the collision entity so `resolveContacts` can transfer the
- * count instead of hard-coding 4 (demo.ts); it is absent today, which is
+ * count instead of hard-coding 4 (sim.ts); it is absent today, which is
  * why the AC-3/AC-4 pins are red.
  */
 function enemyVictim(posX: number, pixelY: number, eggsLeft: number) {
@@ -622,7 +622,7 @@ function eggScoresOf(r: unknown): Array<{ kind: string; reason?: string; value?:
  * state (the `homing`/`seek`/`plavt` optional-field precedent) or on the
  * process. Returns `undefined` when nothing carries it — which is today.
  */
-function eggsLeftOf(p: DemoProcess | undefined): number | undefined {
+function eggsLeftOf(p: SimProcess | undefined): number | undefined {
   if (!p) return undefined
   const onEnemy = (p.enemy as unknown as { eggsLeft?: number } | undefined)?.eggsLeft
   const onProc = (p as unknown as { eggsLeft?: number }).eggsLeft

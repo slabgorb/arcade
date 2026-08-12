@@ -36,9 +36,9 @@
 //     pixels, the bird dies in the lava.
 //
 // ─── WHAT DEV BUILDS (the contract this file and demo-jt9-11-source.test.ts pin) ─
-// A `kind:'troll'` DemoProcess gains `victimId` (the PJOY binding) and `grip`
+// A `kind:'troll'` SimProcess gains `victimId` (the PJOY binding) and `grip`
 // (`TrollGrip`, present only after the grab commits) — both mirrored in
-// tests/helpers/demo-contract.ts. stepDemo grows: (1) the LNDB7 landing→spawn, (2)
+// tests/helpers/sim-contract.ts. stepSim grows: (1) the LNDB7 landing→spawn, (2)
 // the LT1HT rise/track/grab animation, (3) the per-frame grip driving the victim,
 // and (4) the break-free score + lava death. `troll.beginGrip/stepGrip/
 // escalateGrip/escapeScoreEvent` become its production callers. LAVGRA/LAVTIM are
@@ -52,11 +52,11 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EntityState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadTroll } from './helpers/troll-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
@@ -89,7 +89,7 @@ function entityAt(posX: number, pixelY: number, over: Partial<EntityState> = {})
   }
 }
 
-function playerAt(id: number, posX: number, pixelY: number, over: Partial<EntityState> = {}): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number, over: Partial<EntityState> = {}): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -108,7 +108,7 @@ function playerAt(id: number, posX: number, pixelY: number, over: Partial<Entity
  *   • after the grab commits: pass a `grip`.
  * `victimId` is the PJOY binding — the id of the player/enemy it holds.
  */
-function trollProc(victimId: number, posX: number, pixelY: number, over: Partial<DemoProcess> = {}): DemoProcess {
+function trollProc(victimId: number, posX: number, pixelY: number, over: Partial<SimProcess> = {}): SimProcess {
   return {
     id: 0x15_0000 + victimId, // LAVID-flavoured, clear of the enemy/ptero namespaces
     cls: 'secondary',
@@ -123,9 +123,9 @@ function trollProc(victimId: number, posX: number, pixelY: number, over: Partial
   }
 }
 
-async function stagedDemo(processes: DemoProcess[], wave = 4, arena?: Partial<DemoState['arena']>): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
+async function stagedDemo(processes: SimProcess[], wave = 4, arena?: Partial<SimState['arena']>): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = dmod.createWaveSim(SEED)
   // Replacing `processes` used to be the whole of the isolation: wave 1's enemies
   // stood in that list and went out with it. Since jt11-4 they wait in the
   // transporter's queue instead, so the replacement no longer reaches them and they
@@ -140,9 +140,9 @@ async function stagedDemo(processes: DemoProcess[], wave = 4, arena?: Partial<De
   })
 }
 
-const trollsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
-const byId = (d: DemoState, id: number): DemoProcess | undefined => d.sim.processes.find((p) => p.id === id)
-const pixelY = (p?: DemoProcess): number => (p?.entity ? p.entity.posY >> 8 : NaN)
+const trollsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
+const byId = (d: SimState, id: number): SimProcess | undefined => d.sim.processes.find((p) => p.id === id)
+const pixelY = (p?: SimProcess): number => (p?.entity ? p.entity.posY >> 8 : NaN)
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC-0 — THE PARROT IS DEAD: the grip core has, today, NO production caller
@@ -151,16 +151,16 @@ const pixelY = (p?: DemoProcess): number => (p?.entity ? p.entity.posY >> 8 : Na
 // This is the whole story in one assertion. A source scan, not a behaviour probe,
 // because "has a caller" is a fact about the SOURCE — and a behaviour test alone
 // could pass on a mock. It reddens now (zero callers) and can only green by wiring
-// the real functions into demo.ts. A dead call (`void beginGrip`) would satisfy a
+// the real functions into sim.ts. A dead call (`void beginGrip`) would satisfy a
 // naive grep, so the behaviour suites below are what stop that.
 describe('jt9-11 AC-0 — beginGrip/stepGrip/escalateGrip/escapeScoreEvent get a production caller', () => {
   const demoSrc = (): string =>
-    readFileSync(fileURLToPath(new URL('../src/core/demo.ts', import.meta.url)), 'utf8')
+    readFileSync(fileURLToPath(new URL('../src/core/sim.ts', import.meta.url)), 'utf8')
   const frameSrc = (): string =>
     readFileSync(fileURLToPath(new URL('../src/core/frame.ts', import.meta.url)), 'utf8')
 
   for (const fn of ['beginGrip', 'stepGrip', 'escalateGrip', 'escapeScoreEvent'] as const) {
-    it(`\`${fn}\` is called from production (demo.ts or frame.ts), not just troll.ts`, () => {
+    it(`\`${fn}\` is called from production (sim.ts or frame.ts), not just troll.ts`, () => {
       const src = demoSrc() + '\n' + frameSrc()
       // A CALL, not a mere mention: `fn(` somewhere in the wiring. RED today — the
       // grip is a pure core exercised only by its own tests.
@@ -169,12 +169,12 @@ describe('jt9-11 AC-0 — beginGrip/stepGrip/escalateGrip/escapeScoreEvent get a
     })
   }
 
-  it('demo.ts imports the grip functions (not just trollSpawnable) from ./troll.js', () => {
-    // demo.ts already imports `trollSpawnable`; the RED here is that the GRIP core is
+  it('sim.ts imports the grip functions (not just trollSpawnable) from ./troll.js', () => {
+    // sim.ts already imports `trollSpawnable`; the RED here is that the GRIP core is
     // not among the imported names. Match the import binding list and require the
     // grab entry point in it.
     const m = demoSrc().match(/import\s*\{([^}]*)\}\s*from\s*'\.\/troll\.js'/)
-    expect(m, 'demo.ts must import from ./troll.js').not.toBeNull()
+    expect(m, 'sim.ts must import from ./troll.js').not.toBeNull()
     const names = (m?.[1] ?? '').split(',').map((s) => s.trim())
     expect(names, 'the grip entry point must be imported for wiring').toContain('beginGrip')
   })
@@ -187,39 +187,39 @@ describe('jt9-11 AC-0 — beginGrip/stepGrip/escalateGrip/escapeScoreEvent get a
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // The CLIF5 lava island the hand grabs off sits mid-screen; the placeholder troll
-// entity stands at posX 148 (demo.ts trollEntity). A bird within the hand's
+// entity stands at posX 148 (sim.ts trollEntity). A bird within the hand's
 // horizontal reach of that spot is the grab target. We drive the real spawn with
 // the demo-troll.test.ts `forceAdvance` idiom (strip the wave clear, keep players,
 // advance to the troll wave) so nothing about the wave arithmetic is re-derived.
 describe('jt9-11 AC-1 — the spawned troll binds the in-range bird as its victim', () => {
-  const CLIF5_X = 148 // demo.ts trollEntity's resting X on the bottom island
+  const CLIF5_X = 148 // sim.ts trollEntity's resting X on the bottom island
 
   /** Advance a fresh demo to the troll wave (4), keeping ONE player parked in the
    *  troll's reach so the spawn has a bird to bind. Returns the demo at wave 4. */
-  async function trollWaveWithVictim(victimX = CLIF5_X): Promise<{ d: DemoState; step: (d: DemoState) => DemoState }> {
-    const dmod = await loadDemo()
-    let d = dmod.createWaveDemo(SEED)
+  async function trollWaveWithVictim(victimX = CLIF5_X): Promise<{ d: SimState; step: (d: SimState) => SimState }> {
+    const dmod = await loadSim()
+    let d = dmod.createWaveSim(SEED)
     // Keep a single player, parked on the island, across each forced advance.
     // jt11-4: an enemy still holding a transporter number counts as ALIVE (its
     // process is running CRELP in the ROM too), so stripping the list to the parked
     // player no longer clears the wave on its own — the waiting room has to be
     // emptied with it, which is the whole of the "force an advance" idiom now.
-    const park = (s: DemoState): DemoState =>
+    const park = (s: SimState): SimState =>
       withNoPendingEnemies({
         ...s,
         sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, victimX, 120)] },
       })
-    d = dmod.stepDemo(park(d)) // → wave 2
-    d = dmod.stepDemo(park(d)) // → wave 3 (bridge burns)
-    d = dmod.stepDemo(park(d)) // → wave 4 (the troll wave — trollSpawnable true)
+    d = dmod.stepSim(park(d)) // → wave 2
+    d = dmod.stepSim(park(d)) // → wave 3 (bridge burns)
+    d = dmod.stepSim(park(d)) // → wave 4 (the troll wave — trollSpawnable true)
     // jt11-4: the troll is ARMED on the advance and rises once wave 4's complement has
     // actually been served onto the pads — it grabs the nearest BIRD, and on the
     // advance frame the only bird in the arena is the parked knight, so rising there
     // would bind by default rather than by proximity. Step to its real spawn frame.
     for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
     }
-    return { d, step: dmod.stepDemo }
+    return { d, step: dmod.stepSim }
   }
 
   it('reaches wave 4 and spawns a troll (the jt3-3 gate is unchanged)', async () => {
@@ -256,7 +256,7 @@ describe('jt9-11 AC-1 — the spawned troll binds the in-range bird as its victi
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can grab', () => {
   it('phase 1: PFRAME extends 0→5*6 on the LAVTIM cadence, one step per timer expiry', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // A troll on the floor, victim well above: the hand must first EXTEND (animPhase
     // steps through the GRAB frames) before it starts closing the Y gap. animPhase is
     // PFRAME/6, so it visits 0..5 (the extended frame) in order.
@@ -265,7 +265,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
 
     const phases: number[] = []
     for (let f = 0; f < 120; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       const t = trollsIn(d)[0]
       const ph = t?.entity?.animPhase
       if (ph !== undefined && phases[phases.length - 1] !== ph) phases.push(ph)
@@ -279,7 +279,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
   })
 
   it('phase 2: once extended, the hand closes the Y gap toward victim pixelY + 3, 1px per frame', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // Stage the hand already extended (animPhase 5) and BELOW its victim, so the only
     // thing left is the raise: the hand pixel-Y must DECREASE toward victim+3.
     const victimY = HAND_START_Y - 20
@@ -290,7 +290,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
     ])
 
     const first = pixelY(trollsIn(d)[0])
-    d = dmod.stepDemo(d)
+    d = dmod.stepSim(d)
     const second = pixelY(trollsIn(d)[0])
     // The hand starts below (larger pixelY) and rises toward the victim — pixelY falls
     // by exactly one per frame (DEC PPOSY+1,U), not a snap.
@@ -299,7 +299,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
   })
 
   it('the grab COMMITS only when the hand reaches victim pixelY + 3 (CMPB PPOSY equal → LT1GRP)', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // Hand extended and ONE pixel short of the grip point: the next frame should land
     // it on victim+3 and commit the grip. Grip is absent until that frame.
     const victimY = 120
@@ -315,7 +315,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
 
     let committedAtY: number | null = null
     for (let f = 0; f < 10 && committedAtY === null; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       const t = trollsIn(d)[0]
       if (t?.grip) committedAtY = pixelY(t)
     }
@@ -330,8 +330,8 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and drives the victim', () => {
   /** Stage a troll already at the grip point so the next step commits the grab. */
-  async function aboutToGrab(wave: number): Promise<{ d: DemoState; step: (d: DemoState) => DemoState }> {
-    const dmod = await loadDemo()
+  async function aboutToGrab(wave: number): Promise<{ d: SimState; step: (d: SimState) => SimState }> {
+    const dmod = await loadSim()
     const victimY = 120
     const gripY = victimY + GRIP_Y_OFFSET
     const d = await stagedDemo(
@@ -341,7 +341,7 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
       ],
       wave,
     )
-    return { d, step: dmod.stepDemo }
+    return { d, step: dmod.stepSim }
   }
 
   it('beginGrip seeds pull = the wave LAVGRA and killTimer = the 30s grace', async () => {
@@ -350,7 +350,7 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
       waveValue(name: string, wave: number): number
     }
     let { d, step } = await aboutToGrab(4)
-    let grip: DemoProcess['grip']
+    let grip: SimProcess['grip']
     for (let f = 0; f < 10 && !grip; f++) {
       d = step(d)
       grip = trollsIn(d)[0]?.grip
@@ -368,12 +368,12 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
     // The whole point of the repoint (ADDGRA → ADDLAV): the victim held by the troll
     // accelerates downward by the grip pull each frame. Compared against the same bird
     // ungripped, the gripped one's downward VY is strictly greater after a few frames.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // Ungripped control: a lone falling player, no troll.
     let control = await stagedDemo([playerAt(PLAYER1_ID, 100, 120, { velY: 0 })])
     let { d: gripped, step } = await aboutToGrab(4)
     for (let f = 0; f < 6; f++) {
-      control = dmod.stepDemo(control)
+      control = dmod.stepSim(control)
       gripped = step(gripped)
     }
     const controlVY = byId(control, PLAYER1_ID)?.entity?.velY ?? 0
@@ -385,7 +385,7 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
   it('the grip escalates: after the grace, pull grows toward the $500 cap (escalateGrip is live)', async () => {
     const troll = await loadTroll()
     let { d, step } = await aboutToGrab(4)
-    let grip: DemoProcess['grip']
+    let grip: SimProcess['grip']
     for (let f = 0; f < 10 && !grip; f++) {
       d = step(d)
       grip = trollsIn(d)[0]?.grip
@@ -413,9 +413,9 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-11 AC-4 — a gripped victim can break free for 50 points or be pulled into the lava', () => {
   /** Stage a COMMITTED grip directly (grip present, hand at the grip point). */
-  async function committed(gripOver: Partial<NonNullable<DemoProcess['grip']>> = {}, inputs = false) {
+  async function committed(gripOver: Partial<NonNullable<SimProcess['grip']>> = {}, inputs = false) {
     const troll = await loadTroll()
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const victimY = 120
     const gripY = victimY + GRIP_Y_OFFSET
     const base = troll.beginGrip(4)
@@ -426,7 +426,7 @@ describe('jt9-11 AC-4 — a gripped victim can break free for 50 points or be pu
         entity: entityAt(98, gripY, { animPhase: EXTENDED_FRAME / 6 }),
       }),
     ])
-    return { d, step: (s: DemoState) => dmod.stepDemo(s, inputs ? { [PLAYER1_ID]: { dir: 0, flap: true, flapHeld: false } } : undefined) }
+    return { d, step: (s: SimState) => dmod.stepSim(s, inputs ? { [PLAYER1_ID]: { dir: 0, flap: true, flapHeld: false } } : undefined) }
   }
 
   it('sustained upward flap breaks the victim free and awards a {value:50, reason:"escape"} event', async () => {
@@ -477,27 +477,27 @@ describe('jt9-11 AC-6 — a spawned troll sits immediately before the process it
   const CLIF5_X = 148
 
   it('the troll is spliced directly BEFORE its bound victim, not merely before the first enemy', async () => {
-    const dmod = await loadDemo()
-    let d = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    let d = dmod.createWaveSim(SEED)
     // Park a single player on the island so the wave can CLEAR and advance (a live
     // enemy — including, since jt11-4, one still holding a transporter number —
     // would hold the wave open, hence the emptied waiting room). jt9-1's insertTroll
     // spliced before the first ENEMY, which put the troll AFTER the player; this
     // story must splice before the troll's bound VICTIM — the player — so the troll
     // leads it, and no enemy precedes the troll.
-    const park = (s: DemoState): DemoState =>
+    const park = (s: SimState): SimState =>
       withNoPendingEnemies({
         ...s,
         sim: { ...s.sim, processes: [playerAt(PLAYER1_ID, CLIF5_X, 120)] },
       })
-    d = dmod.stepDemo(park(d)) // wave 2
-    d = dmod.stepDemo(park(d)) // wave 3
-    d = dmod.stepDemo(park(d)) // wave 4 — the troll is armed here
+    d = dmod.stepSim(park(d)) // wave 2
+    d = dmod.stepSim(park(d)) // wave 3
+    d = dmod.stepSim(park(d)) // wave 4 — the troll is armed here
     // jt11-4: it rises once the complement has been served (see the AC-1 fixture).
     // The knight is parked ON CLIF5_X, so it is still the nearest bird when the troll
     // finally picks — the binding this test is about is unchanged, only its frame.
     for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
     }
     const t = trollsIn(d)[0]
     expect(t, 'a troll spawned at wave 4').toBeDefined()

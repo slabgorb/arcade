@@ -28,7 +28,7 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { linet, promote, seedBudget, stepEnemyDetailed, type EnemyState } from '../src/core/enemy.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { waveValue } from '../src/core/difficulty.js'
-import { createWaveDemo, stepDemo, type DemoState, type DemoProcess } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimState, type SimProcess } from '../src/core/sim.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 
 // ─── the two harnesses, named so the difference is impossible to lose ────────
@@ -353,19 +353,19 @@ describe('AC3 — the lava-troll looker, the second entry into the flapping wake
 describe('AC3 — a spawned troll is reachable by the looker, not stranded at the list end', () => {
   /** One forced wave advance: strip to players (a cleared wave) and step. The
    *  demo-troll.test.ts idiom, re-used so the wave arithmetic is not re-derived. */
-  const forceAdvance = (d: DemoState): DemoState => {
+  const forceAdvance = (d: SimState): SimState => {
     const players = d.sim.processes.filter((p) => p.kind === 'player')
     // jt11-4: an enemy still holding a transporter number is alive and holds the wave
     // open, so the strip must take the waiting room with it or nothing ever clears.
-    return stepDemo({ ...d, sim: { ...d.sim, processes: players }, pendingEnemies: [], events: [] })
+    return stepSim({ ...d, sim: { ...d.sim, processes: players }, pendingEnemies: [], events: [] })
   }
 
   /** Wave 4 at its very START — the advance has just happened, so the complement is
    *  fresh and nothing has run yet. jt11-4: `atTrollWave` below must step past this
    *  point for the troll to rise, which ages the birds; a test about a bird's SEEDED
    *  state wants this frame, not that one. */
-  const atTrollWaveStart = (seed: number): DemoState => {
-    let d = createWaveDemo(seed)
+  const atTrollWaveStart = (seed: number): SimState => {
+    let d = createWaveSim(seed)
     let guard = 0
     while (d.wave < 4) {
       d = forceAdvance(d)
@@ -374,8 +374,8 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     return d
   }
 
-  const atTrollWave = (seed: number): DemoState => {
-    let d = createWaveDemo(seed)
+  const atTrollWave = (seed: number): SimState => {
+    let d = createWaveSim(seed)
     let guard = 0
     // Force advances until the troll WAVE is reached, then step normally: the troll is
     // armed at the advance and rises once that wave's complement has actually been
@@ -386,7 +386,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
       if (++guard > 60) throw new Error(`no troll wave by wave ${d.wave}`)
     }
     while (!d.sim.processes.some((p) => p.kind === 'troll')) {
-      d = stepDemo(d)
+      d = stepSim(d)
       if (++guard > 120) throw new Error(`no troll by wave ${d.wave}`)
     }
     return d
@@ -394,7 +394,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
 
   it('the troll precedes its BOUND VICTIM — BEFORE, not after (jt9-11 gives it a real victim)', () => {
     // jt9-1 placed the troll before the FIRST ENEMY because it had no victim to pick
-    // (demo.ts insertTroll: `processes.findIndex(kind === 'enemy')`). jt9-11 gives
+    // (sim.ts insertTroll: `processes.findIndex(kind === 'enemy')`). jt9-11 gives
     // the troll a real `victimId` (PJOY), so the splice point is now THAT process —
     // whatever its kind — per `:6778 LDU PPREV  AFTER PREVIOUS PROCESS (BEFORE THIS
     // ONE)`. Asserting against the bound victim's INDEX (not its kind) is what tells a
@@ -442,7 +442,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     // whole complement here restores the exact pre-queue wave-start arrangement, so
     // the one step exercises every LINET bird's looker channel as before.
     const d = atTrollWaveStart(0x1234)
-    const stepped = stepDemo(seatWaveInstantly(d))
+    const stepped = stepSim(seatWaveInstantly(d))
     const procs = stepped.sim.processes
     const dumb = procs.filter((p) => p.kind === 'enemy' && p.enemy?.brain === 'linet')
     expect(dumb.length, 'floor — there must be dumb birds to carry a countdown').toBeGreaterThan(0)
@@ -475,7 +475,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
     }
     expect(linet(enemy).flap, 'precondition: the lane decision declines').toBe(false)
 
-    const troll: DemoProcess = {
+    const troll: SimProcess = {
       id: 0xc0,
       cls: 'secondary',
       nap: 1,
@@ -484,7 +484,7 @@ describe('AC3 — a spawned troll is reachable by the looker, not stranded at th
       facing: 1,
       collisionEnabled: false,
       entity: entityAt(0xa0, 0, 0),
-    } as DemoProcess
+    } as SimProcess
     const bird = {
       id: 0x900,
       cls: 'secondary' as const,

@@ -35,7 +35,7 @@ import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { boundr, b2undr, shadow, stepEnemyDetailed, type EnemyState, type PlayerView } from '../src/core/enemy.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { waveValue } from '../src/core/difficulty.js'
-import type { DemoProcess } from '../src/core/demo.js'
+import type { SimProcess } from '../src/core/sim.js'
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
@@ -281,7 +281,7 @@ describe('AC5 — PPREV is COMPUTED: a troll before a promoted smart bird change
     const enemy: EnemyState = smart('boundr', { plavt: 1 })
     expect(boundr(enemy, player(0x85), 1).flap, 'precondition: the seek declines').toBe(false)
 
-    const troll: DemoProcess = {
+    const troll: SimProcess = {
       id: 0xc0,
       cls: 'secondary',
       nap: 1,
@@ -290,7 +290,7 @@ describe('AC5 — PPREV is COMPUTED: a troll before a promoted smart bird change
       facing: 1,
       collisionEnabled: false,
       entity: entityAt(0xa0, 0),
-    } as DemoProcess
+    } as SimProcess
     const bird = {
       id: 0x900,
       cls: 'secondary' as const,
@@ -323,10 +323,10 @@ describe('AC5 — PPREV is COMPUTED: a troll before a promoted smart bird change
     // The floor beside the differ-assertion: proves the difference above is the
     // BEFORE ordering firing the looker, not the AFTER ordering perturbing it.
     const enemy: EnemyState = smart('boundr', { plavt: 1 })
-    const troll: DemoProcess = {
+    const troll: SimProcess = {
       id: 0xc0, cls: 'secondary', nap: 1, period: 1, kind: 'troll', facing: 1,
       collisionEnabled: false, entity: entityAt(0xa0, 0),
-    } as DemoProcess
+    } as SimProcess
     const bird = {
       id: 0x900, cls: 'secondary' as const, nap: 1, period: 1, kind: 'enemy' as const,
       enemy, collisionEnabled: false,

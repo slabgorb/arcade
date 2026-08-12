@@ -4,7 +4,7 @@
 // seam + the ENTITY_RECORDS count floor + provenance for the new menagerie frames.
 //
 // ─── THE SILENT-NO-LIFT SEAM (jt2-9 HIGH, epic seed 4) ───────────────────────
-// posOffset(name) (demo.ts) does ENTITY_RECORDS.find(r => r.name === name) and
+// posOffset(name) (sim.ts) does ENTITY_RECORDS.find(r => r.name === name) and
 // returns {0,0} when the frame is NOT recorded — a SILENT no-lift. A render fix
 // keyed on ENTITY_RECORDS no-lifts frames MISSING from the table. jt2-9 round 2
 // already added the P2 STORK mount records (SRUNSR/SRUN1-4R/SFLY1R), so the stork
@@ -47,10 +47,10 @@ import {
 } from './helpers/joust-source.js'
 import { loadPictures } from './helpers/pictures-contract.js'
 import {
-  loadDemoRender,
-  type DemoProcess,
+  loadSimRender,
+  type SimProcess,
   type EntityState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -115,7 +115,7 @@ function entity(posX: number, pixelY: number, airborne: boolean, animPhase = 0):
   }
 }
 
-function player(mount: 'ostrich' | 'stork', airborne: boolean, animPhase: number): DemoProcess {
+function player(mount: 'ostrich' | 'stork', airborne: boolean, animPhase: number): SimProcess {
   return {
     id: mount === 'stork' ? 2 : 1,
     cls: 'primary',
@@ -131,8 +131,8 @@ function player(mount: 'ostrich' | 'stork', airborne: boolean, animPhase: number
 
 /** Every mount frame `playerDrawList` can emit for a mount, via the REAL selection. */
 async function emittedMountFrames(mount: 'ostrich' | 'stork'): Promise<string[]> {
-  const r = await loadDemoRender()
-  const states: DemoProcess[] = [
+  const r = await loadSimRender()
+  const states: SimProcess[] = [
     player(mount, true, 0), //   airborne  → SFLY1R / ORFLAP
     player(mount, false, 0), //  standing  → SRUNSR / ORSTND
     player(mount, false, 1), //  run 1..4  → SRUN1R.. / ORRUN1..

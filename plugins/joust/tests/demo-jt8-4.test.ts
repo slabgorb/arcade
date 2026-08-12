@@ -3,11 +3,11 @@
 // Story jt8-4 — RED phase (Han Solo / TEA). EGG COLLECTION: the player-vs-egg
 // catch pass (PLYEGG :3009 / EGGSCR :3030-3095).
 //
-// RED today: `collisionPass` (demo.ts) filters its participants to
-// `p.kind === 'player' || p.kind === 'enemy'` (demo.ts) — an egg process
+// RED today: `collisionPass` (sim.ts) filters its participants to
+// `p.kind === 'player' || p.kind === 'enemy'` (sim.ts) — an egg process
 // is not eligible for ANY collision, so a player can stand inside an egg forever.
-// Nothing emits a `reason:'egg'` score event; the variant exists in the DemoEvent
-// union (demo.ts) with no producer.
+// Nothing emits a `reason:'egg'` score event; the variant exists in the SimEvent
+// union (sim.ts) with no producer.
 //
 // ─── REUSE-FIRST, AND THE ONE PLACE IT BITES ─────────────────────────────────
 // The story is explicit that the scoring ladder and the air bonus already exist
@@ -36,7 +36,7 @@
 // at `ORG $0` (:101-113) — per-PLAYER state, indirected, and never reset by
 // EGGSCR. Our port stores `hitCount` on the EGG instead (egg.ts), where BOTH
 // producers hard-code it to 0 (`spawnEgg` egg.ts, `settledWaveEgg`
-// demo.ts) and nothing ever writes it back. So `eggScoreEvents` today can
+// sim.ts) and nothing ever writes it back. So `eggScoreEvents` today can
 // only ever compute `eggValue(bumpEggHits(0))` = 250: the 500/750/1000 rungs are
 // unreachable in the running game, and AC-2's "the ladder value follows the hit
 // count" is unsatisfiable through the egg's own field no matter how the catch
@@ -45,7 +45,7 @@
 // Hence the ladder-climb pins below are stated as OBSERVABLES over successive
 // catches, deliberately seam-AGNOSTIC about where Dev homes the counter (a field
 // on the player process, a per-player record beside `budget`/`targets` on
-// DemoSim — jt8-1's precedent). What they forbid is the counter living on a
+// SimCore — jt8-1's precedent). What they forbid is the counter living on a
 // per-egg field that resets with every egg.
 //
 // ─── WHAT EACH PIN KILLS ─────────────────────────────────────────────────────
@@ -56,11 +56,11 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadEgg } from './helpers/egg-contract.js'
 import { loadGame } from './helpers/game-contract.js'
 import { loadFlight, type PlayerInput } from './helpers/flight-contract.js'
@@ -76,7 +76,7 @@ const PLAYER2_ID = 2
 // ─── Staging ─────────────────────────────────────────────────────────────────
 
 /** A player process at an exact pixel position — the catcher. */
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -117,22 +117,22 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts). */
-function eggProcAt(id: number, over: Partial<EggState>): DemoProcess {
+/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, sim.ts). */
+function eggProcAt(id: number, over: Partial<EggState>): SimProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf(over) }
 }
 
 /**
- * An inert wave-HOLDER. `enemiesLeft` (demo.ts) only asks whether some
+ * An inert wave-HOLDER. `enemiesLeft` (sim.ts) only asks whether some
  * process has `kind:'enemy'`, while both the frame stepper (frame.ts,
- * `&& p.enemy`) and `toJoustEntity` (demo.ts) require an `enemy` payload —
+ * `&& p.enemy`) and `toJoustEntity` (sim.ts) require an `enemy` payload —
  * so a payload-less enemy process holds the wave open, is never stepped, and can
  * never joust the catcher. Without it a caught last egg CLEARS the wave
- * (demo.ts) and the advance spawns a fresh complement mid-test — and
+ * (sim.ts) and the advance spawns a fresh complement mid-test — and
  * wave 5 is the EGG wave, which would deal new eggs into the middle of the
  * ladder walk.
  */
-function waveHolder(): DemoProcess {
+function waveHolder(): SimProcess {
   return { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
 }
 
@@ -140,14 +140,14 @@ function waveHolder(): DemoProcess {
 // wave's arrivals in a waiting room OUTSIDE `sim.processes` (they materialise one per
 // frame), so replacing the process list alone would let uninvited bounders walk into
 // a staged fixture a few frames in — the waiting room is emptied with it.
-const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState =>
+const withProcesses = (d: SimState, procs: readonly SimProcess[]): SimState =>
   withNoPendingEnemies({ ...d, sim: { ...d.sim, processes: procs } })
 
-const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
-const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const eggs = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+const enemies = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 
 /** The `reason:'egg'` score VALUES the frame that produced `after` emitted. */
-function eggValuesOf(before: DemoState, after: DemoState): number[] {
+function eggValuesOf(before: SimState, after: SimState): number[] {
   const prior = new Set(before.events)
   return after.events
     .filter((e) => !prior.has(e))
@@ -158,8 +158,8 @@ function eggValuesOf(before: DemoState, after: DemoState): number[] {
 
 /** The `reason:'egg'` events (values + attribution) the frame emitted. */
 function eggEventsOf(
-  before: DemoState,
-  after: DemoState,
+  before: SimState,
+  after: SimState,
 ): { value: number; player?: number }[] {
   const prior = new Set(before.events)
   return after.events
@@ -211,16 +211,16 @@ describe('jt8-4 AC-1 — collisionPass gains a player-vs-egg pass (PLYEGG :3009)
     // Kills the do-nothing mutant (today's code: eggs are not collision-eligible)
     // and the "score but leave the egg" mutant — the ROM stops the egg colliding
     // in the same breath as it scores (EGGWAK ANDA #$7F, :3092-3094).
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0001, { posX: x, posY: y << 8 }),
       waveHolder(),
     ])
     expect(eggs(demo).length, 'staged with exactly one egg').toBe(1)
 
-    const after = dmod.stepDemo(demo)
+    const after = dmod.stepSim(demo)
 
     expect(eggValuesOf(demo, after).length, 'the catch emitted at least one egg score').toBeGreaterThan(0)
     expect(eggs(after).length, 'the caught egg is gone').toBe(0)
@@ -229,16 +229,16 @@ describe('jt8-4 AC-1 — collisionPass gains a player-vs-egg pass (PLYEGG :3009)
   it('a player NOWHERE NEAR an egg does not collect it — the pass is positional', async () => {
     // Kills the "eat every egg on the board each frame" mutant, which would pass
     // every other test in this file.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
-      // Two full box-widths away horizontally (ENTITY_BOX_W = 16, demo.ts).
+      // Two full box-widths away horizontally (ENTITY_BOX_W = 16, sim.ts).
       eggProcAt(0x1_0002, { posX: x + 64, posY: y << 8, settled: true, pfeet: 1 }),
       waveHolder(),
     ])
 
-    const after = dmod.stepDemo(demo)
+    const after = dmod.stepSim(demo)
 
     expect(eggValuesOf(demo, after), 'a distant egg is not scored').toEqual([])
     expect(eggs(after).length, 'a distant egg survives').toBe(1)
@@ -247,19 +247,19 @@ describe('jt8-4 AC-1 — collisionPass gains a player-vs-egg pass (PLYEGG :3009)
   it('the catch is scored ONCE, not once per frame while the player sits there', async () => {
     // Kills the "flag it non-colliding but keep the process" mutant: the egg would
     // be re-scored (or the wave held open) on every subsequent frame.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0003, { posX: x, posY: y << 8 }),
       waveHolder(),
     ])
 
-    const first = dmod.stepDemo(demo)
+    const first = dmod.stepSim(demo)
     const firstValues = eggValuesOf(demo, first)
     expect(firstValues.length, 'the first frame scored the egg').toBeGreaterThan(0)
 
-    const second = dmod.stepDemo(first)
+    const second = dmod.stepSim(first)
     expect(eggValuesOf(first, second), 'no second helping from the same egg').toEqual([])
   })
 })
@@ -270,16 +270,16 @@ describe('jt8-4 AC-1 — collisionPass gains a player-vs-egg pass (PLYEGG :3009)
 describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, :3097-3104)', () => {
   it('a MID-AIR catch (PFEET=0) scores the ladder PLUS the cited 500', async () => {
     // Oracle is egg.ts, not a literal: AIR_CATCH_BONUS + eggValue(bumpEggHits(0)).
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findAir()
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0004, { posX: x, posY: y << 8, pfeet: 0, settled: false }),
       waveHolder(),
     ])
 
-    const after = dmod.stepDemo(demo)
+    const after = dmod.stepSim(demo)
     const values = eggValuesOf(demo, after)
 
     const firstRung = egg.eggValue(egg.bumpEggHits(0))
@@ -290,16 +290,16 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
   it('a SETTLED catch (PFEET nonzero) scores the ladder ONLY — no 500', async () => {
     // Kills the "always add 500" mutant and the "never add 500" mutant together
     // with the test above.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0005, { posX: x, posY: y << 8, pfeet: 1, settled: true }),
       waveHolder(),
     ])
 
-    const after = dmod.stepDemo(demo)
+    const after = dmod.stepSim(demo)
     const values = eggValuesOf(demo, after)
 
     expect(sum(values), 'the bounced egg pays the ladder alone').toBe(egg.eggValue(egg.bumpEggHits(0)))
@@ -308,16 +308,16 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
 
   it('the ladder CLIMBS across successive catches by the same player, then PEGS at the cap', async () => {
     // THE STORY'S CENTRE. Today every egg carries hitCount 0 (spawnEgg egg.ts,
-    // settledWaveEgg demo.ts) and nothing writes it back, so a per-egg counter
+    // settledWaveEgg sim.ts) and nothing writes it back, so a per-egg counter
     // pays the first rung forever. This kills that mutant — and it also kills a
     // counter that climbs but never pegs (the CMPB #4 / BHS cap, :3043).
     //
     // Settled eggs throughout, so the air bonus cannot mask a rung.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
 
-    let state = withProcesses(dmod.createWaveDemo(SEED), [playerAt(PLAYER1_ID, x, y), waveHolder()])
+    let state = withProcesses(dmod.createWaveSim(SEED), [playerAt(PLAYER1_ID, x, y), waveHolder()])
     const collected: number[] = []
 
     for (let n = 0; n < 5; n++) {
@@ -325,7 +325,7 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
         ...state.sim.processes.filter((p) => p.kind !== 'egg'),
         eggProcAt(0x1_0100 + n, { posX: x, posY: y << 8, pfeet: 1, settled: true }),
       ])
-      const stepped = dmod.stepDemo(staged)
+      const stepped = dmod.stepSim(staged)
       collected.push(sum(eggValuesOf(staged, stepped)))
       state = stepped
     }
@@ -347,13 +347,13 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
     // The DEGGS counter hangs off PDECSN,U (:3033) — the CATCHING player's own
     // decision block. Kills the "one global egg counter" mutant, which climbs
     // correctly for a solo pilot and silently steals P2's first rung in co-op.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
 
     // P1 and P2 staged far apart; each catches its own egg on its own frame.
     const p2x = x + 96
-    let state = withProcesses(dmod.createWaveDemo(SEED), [
+    let state = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       playerAt(PLAYER2_ID, p2x, y),
       waveHolder(),
@@ -366,7 +366,7 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
         ...state.sim.processes.filter((p) => p.kind !== 'egg'),
         eggProcAt(0x1_0200 + n, { posX: x, posY: y << 8, pfeet: 1, settled: true }),
       ])
-      const stepped = dmod.stepDemo(staged)
+      const stepped = dmod.stepSim(staged)
       p1Values.push(sum(eggValuesOf(staged, stepped)))
       state = stepped
     }
@@ -380,7 +380,7 @@ describe('jt8-4 AC-2 — the EGGVAL ladder and the PFEET air bonus (:3063-3069, 
       ...state.sim.processes.filter((p) => p.kind !== 'egg'),
       eggProcAt(0x1_02ff, { posX: p2x, posY: y << 8, pfeet: 1, settled: true }),
     ])
-    const stepped = dmod.stepDemo(staged)
+    const stepped = dmod.stepSim(staged)
     const p2Events = eggEventsOf(staged, stepped)
 
     expect(sum(p2Events.map((e) => e.value)), "P2's first catch is P2's FIRST rung").toBe(
@@ -428,17 +428,17 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     // EGGSCR's `LDY PDIST,X` / `LDD #AUTOFF / STD PJOY,Y` (:3078-3087) sends the
     // inbound bird away when its rider is collected. Our port has no in-transit
     // riderless bird — a SETTLED wave egg matures straight into a remount enemy in
-    // the same stepDemo (demo.ts) — so the reachable analogue is this: an
+    // the same stepSim (sim.ts) — so the reachable analogue is this: an
     // egg caught this frame must not ALSO hatch this frame.
     //
-    // This is the ordering pin. collisionPass (demo.ts) already runs before the
+    // This is the ordering pin. collisionPass (sim.ts) already runs before the
     // hatch flatMap (:988), so a catch that REMOVES the egg is safe; a catch that
     // merely marks the egg non-colliding leaves it visible to the flatMap and the
     // player gets both the score and a fresh enemy. That mutant dies here.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findLedge()
 
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       {
         ...eggProcAt(0x1_0400, { posX: x, posY: y << 8, pfeet: 1, settled: true, eggsLeft: 3 }),
@@ -448,7 +448,7 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     ])
     const enemiesBefore = enemies(demo).length
 
-    const after = dmod.stepDemo(demo)
+    const after = dmod.stepSim(demo)
 
     expect(eggValuesOf(demo, after).length, 'the wave egg was in fact caught').toBeGreaterThan(0)
     expect(eggs(after).length, 'and it is gone').toBe(0)
@@ -469,11 +469,11 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     // so this runs the wait out and then asserts exactly what it always did.
     // The wait is READ from the row rather than typed as a literal, so it
     // follows the difficulty walk instead of pinning wave 1 forever.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const diff = await loadDifficulty()
     const { x, y } = await findLedge()
 
-    const demo = withProcesses(dmod.createWaveDemo(SEED), [
+    const demo = withProcesses(dmod.createWaveSim(SEED), [
       // The player is far away — nothing is caught.
       playerAt(PLAYER1_ID, x + 96, y),
       {
@@ -489,7 +489,7 @@ describe('jt8-4 AC-3 — the catching player is credited; the remount is cancell
     const waitFrames =
       diff.waveValue('EGGWT2', 1) * dmod.EGG_WAIT_NAP_FRAMES + dmod.EGG_HATCH_ANIM_FRAMES
     let after = demo
-    for (let f = 0; f < waitFrames; f++) after = dmod.stepDemo(after)
+    for (let f = 0; f < waitFrames; f++) after = dmod.stepSim(after)
 
     expect(eggValuesOf(demo, after), 'nothing was caught').toEqual([])
     expect(enemies(after).length, 'the untouched wave egg still matures into its remount').toBe(1)
@@ -552,12 +552,12 @@ describe('jt8-4 AC-4 — a seeded catch run replays its score events exactly', (
     // A seeded PRNG makes "it is deterministic" cheap, so this asserts the
     // sequence against the egg.ts ladder as well as against itself — a frozen sim
     // that catches nothing would satisfy self-equality alone.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
 
     const run = (): number[] => {
-      let state = withProcesses(dmod.createWaveDemo(SEED), [
+      let state = withProcesses(dmod.createWaveSim(SEED), [
         playerAt(PLAYER1_ID, x, y),
         waveHolder(),
       ])
@@ -567,7 +567,7 @@ describe('jt8-4 AC-4 — a seeded catch run replays its score events exactly', (
           ...state.sim.processes.filter((p) => p.kind !== 'egg'),
           eggProcAt(0x1_0600 + n, { posX: x, posY: y << 8, pfeet: 1, settled: true }),
         ])
-        const stepped = dmod.stepDemo(staged)
+        const stepped = dmod.stepSim(staged)
         values.push(...eggValuesOf(staged, stepped))
         state = stepped
       }

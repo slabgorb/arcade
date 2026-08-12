@@ -33,7 +33,7 @@ A NOTE ON THAT COUNT, because the first draft of this filing got it wrong. SM in
 
 WHY IT WAS DESCOPED, and it is a real reason rather than a scoping shrug. The shortening draws from VRAND, i.e. it CONSUMES THE WAVE'S RNG STREAM once per affected egg. jt9-38 already carried a determinism question, and folding this in would have moved the seeded fixtures a second time inside one story while its own AC-7 fixtures were still being measured.
 
-WHAT THE PORT LOOKS LIKE TODAY. plugins/joust/src/core/demo.ts's spawnWaveEggs deals twelve eggs (6 + 6, JOUSTRV4.SRC:2778-2779 and :2805-2806) and seeds NO waitFrames on any of them; the hatch pass in stepDemo lazily resolves each egg's wait via eggWaitFrames('EGGWT2', waveOrdinal). Measured on the real seeded demo at wave 5, seeds 0x1234/0xbeef/0x2468: all twelve mature on the SAME frame, f=624. That simultaneity is exactly what PWHCH exists to break up, and it is also why jt9-38's population gate is so visible — six hatch and six defer on one frame. With PWHCH the first three would arrive earlier and the pile-up would soften.
+WHAT THE PORT LOOKS LIKE TODAY. plugins/joust/src/core/sim.ts's spawnWaveEggs deals twelve eggs (6 + 6, JOUSTRV4.SRC:2778-2779 and :2805-2806) and seeds NO waitFrames on any of them; the hatch pass in stepSim lazily resolves each egg's wait via eggWaitFrames('EGGWT2', waveOrdinal). Measured on the real seeded demo at wave 5, seeds 0x1234/0xbeef/0x2468: all twelve mature on the SAME frame, f=624. That simultaneity is exactly what PWHCH exists to break up, and it is also why jt9-38's population gate is so visible — six hatch and six defer on one frame. With PWHCH the first three would arrive earlier and the pile-up would soften.
 
 ACCEPTANCE, and the traps.
  - Model the shortened wait for the first N eggs an egg wave deals (N derived from the DEC/BMI, not from the ROM's comment — see above), drawn from the run's seeded RNG so it stays deterministic.
@@ -67,8 +67,8 @@ seeded play reaches only wave 1-2 in 3000 frames while the first egg wave is
 wave 5).
 
 **Touch points:**
-- `plugins/joust/src/core/demo.ts` — `spawnWaveEggs`, the hatch pass in
-  `stepDemo`, `eggWaitFrames`.
+- `plugins/joust/src/core/sim.ts` — `spawnWaveEggs`, the hatch pass in
+  `stepSim`, `eggWaitFrames`.
 - `plugins/joust/tests/demo-jt9-38.test.ts` — its AC-2/AC-4 block: the
   twelve-at-once fixture stages `waitFrames` explicitly and should be
   unaffected, but seeded observations will move.

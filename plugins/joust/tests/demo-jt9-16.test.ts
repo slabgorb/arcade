@@ -3,7 +3,7 @@
 // Story jt9-16 — RED phase (Leeloo / TEA). THE TWO THUD PATHS RETURN OPPOSITE
 // CARRY: the ROM's collision scan CONTINUES after an enemy thud (SNETHD) and
 // ABORTS the current object's whole remaining scan after a person tie (SNPTHD).
-// The port's inner pair loop (demo.ts) `continue`s for BOTH cues, so it
+// The port's inner pair loop (sim.ts) `continue`s for BOTH cues, so it
 // models neither.
 //
 // ─── WHAT THE MACHINE DOES (verified against the ROM, not assumed) ────────────
@@ -48,7 +48,7 @@
 // already abandoned.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 import type { EntityState } from '../src/core/flight.js'
 
@@ -69,14 +69,14 @@ function entity(over: Partial<EntityState> = {}): EntityState {
   }
 }
 
-function player(id: number, x: number): DemoProcess {
+function player(id: number, x: number): SimProcess {
   return {
     id, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
     collisionEnabled: true, entity: entity({ posX: x }),
   }
 }
 
-function ptero(id: number, x: number): DemoProcess {
+function ptero(id: number, x: number): SimProcess {
   return {
     id, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: 1,
     collisionEnabled: true, entity: entity({ posX: x }),
@@ -85,7 +85,7 @@ function ptero(id: number, x: number): DemoProcess {
 
 /**
  * Stage `procs` plus a wave-1 ground enemy (the jt5-16 anchor — it holds the wave
- * open so stepDemo does not advance/spawn; a ptero-only fixture has no live enemy
+ * open so stepSim does not advance/spawn; a ptero-only fixture has no live enemy
  * of its own). FREEZE every process by napping it far past this frame so nothing
  * drifts before collisionPass reads the staged positions, then run ONE frame and
  * return that frame's cue types. Napping does not gate collision eligibility —
@@ -98,18 +98,18 @@ function ptero(id: number, x: number): DemoProcess {
  * the waiting room empty, so the one measured frame resolves the staged pile-up
  * alone and no arrival adds a cue of its own.
  */
-function frameCues(procs: DemoProcess[]): string[] {
-  const base = seatWaveInstantly(createWaveDemo(SEED))
+function frameCues(procs: SimProcess[]): string[] {
+  const base = seatWaveInstantly(createWaveSim(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   const frozen = [...procs, anchor].map((p) => ({ ...p, nap: 100_000 }))
-  const state: DemoState = {
+  const state: SimState = {
     ...base,
     sim: { ...base.sim, processes: frozen, budget: { nsmart: 0, wsmart: 0 } },
     events: [],
     cues: [],
   }
-  const d = stepDemo(state, {})
+  const d = stepSim(state, {})
   return d.cues.map((c) => c.type as string)
 }
 

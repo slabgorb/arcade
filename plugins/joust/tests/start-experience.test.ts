@@ -6,20 +6,20 @@
 // Root cause (Architect review 2026-08-12, sprint/context/context-story-jt11-1.md):
 // the 1P/2P choice threads readSelectInput → selectPlayerCount → startPlaying →
 // createGame(seed, count) correctly, but game.ts drops `count` before the sim —
-// createWaveDemo(seed) hardcodes BOTH player mounts. The orphan P2 mount has no
+// createWaveSim(seed) hardcodes BOTH player mounts. The orphan P2 mount has no
 // ledger behind it: its death is misattributed to P1's ledger (ledgerIndex clamp)
 // and respawn iterates ledgers only, so it behaves as a knight with exactly one
 // life. Lives-per-ledger (NSHIP = 5) is already correct and is NOT retuned here.
 //
 // Contract this suite pins (Dev implements):
-//   • createWaveDemo(seed, playerCount = 2) spawns exactly `playerCount` player
+//   • createWaveSim(seed, playerCount = 2) spawns exactly `playerCount` player
 //     processes (ids 1..count from the transporter spawn constants) — enemies
 //     unchanged;
 //   • createGame(seed, playerCount) threads its count into the sim, so ledgers
 //     and mounts can never diverge again;
 //   • the default stays 2 — boot/attract self-play (main.ts) deliberately shows
 //     the two-knight co-op demo, and the existing game.test.ts pins
-//     createGame(SEED).sim toEqual createWaveDemo(SEED);
+//     createGame(SEED).sim toEqual createWaveSim(SEED);
 //   • the attract cycle carries a visible start prompt: attractScreen exports
 //     START_PROMPT ('PRESS 1 OR 2 TO START' — a PRESENTATION string, not a ROM
 //     transcription: the cabinet had physical start buttons, the browser has
@@ -34,7 +34,7 @@ import { readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadGame } from './helpers/game-contract.js'
-import { loadDemo, type DemoState } from './helpers/demo-contract.js'
+import { loadSim, type SimState } from './helpers/sim-contract.js'
 import { waveComplement } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
@@ -42,7 +42,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 
 /** The ids of the player processes, in process order — IDENTITY, not a count,
  *  so a regenerated or re-numbered mount cannot satisfy it. */
-function playerIds(state: DemoState): number[] {
+function playerIds(state: SimState): number[] {
   return state.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
 }
 
@@ -50,7 +50,7 @@ function playerIds(state: DemoState): number[] {
  *  transporter number (jt11-4 made arrival a queue, so at frame 0 they are all still
  *  queued). The assertion below is about how many enemies the wave FIELDS versus the
  *  player count, which is a fact about the wave row, not about arrival timing. */
-function enemyCount(state: DemoState): number {
+function enemyCount(state: SimState): number {
   return waveComplement(state)
 }
 
@@ -68,36 +68,36 @@ function mainCode(): string {
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1 — one player selected means ONE knight in the sim
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-1 — createWaveDemo/createGame honour the player count', () => {
-  it('createWaveDemo(seed, 1) spawns exactly player 1 — no orphan P2 mount', async () => {
-    const d = await loadDemo()
-    // Kills the root cause itself: demo.ts hardcoding both PLAYER1_ID and
+describe('AC-1 — createWaveSim/createGame honour the player count', () => {
+  it('createWaveSim(seed, 1) spawns exactly player 1 — no orphan P2 mount', async () => {
+    const d = await loadSim()
+    // Kills the root cause itself: sim.ts hardcoding both PLAYER1_ID and
     // PLAYER2_ID regardless of the coin-up choice.
     expect(
-      playerIds(d.createWaveDemo(SEED, 1)),
+      playerIds(d.createWaveSim(SEED, 1)),
       'a 1P sim holds exactly the P1 mount — [1], by identity',
     ).toEqual([1])
   })
 
-  it('createWaveDemo(seed, 2) still spawns both knights, P1 then P2', async () => {
-    const d = await loadDemo()
+  it('createWaveSim(seed, 2) still spawns both knights, P1 then P2', async () => {
+    const d = await loadSim()
     // Kills the over-correction mutant: a count plumbed as "always one".
-    expect(playerIds(d.createWaveDemo(SEED, 2)), '2P keeps [1, 2]').toEqual([1, 2])
+    expect(playerIds(d.createWaveSim(SEED, 2)), '2P keeps [1, 2]').toEqual([1, 2])
   })
 
-  it('createWaveDemo(seed) defaults to two knights — the attract/boot contract', async () => {
-    const d = await loadDemo()
+  it('createWaveSim(seed) defaults to two knights — the attract/boot contract', async () => {
+    const d = await loadSim()
     // Kills the default-flip mutant: boot/attract self-play (main.ts boots the
     // cabinet with a bare createGame(SEED)) must keep showing the co-op demo.
-    expect(playerIds(d.createWaveDemo(SEED)), 'bare call keeps [1, 2]').toEqual([1, 2])
+    expect(playerIds(d.createWaveSim(SEED)), 'bare call keeps [1, 2]').toEqual([1, 2])
   })
 
   it('a 1P sim keeps the full wave-1 enemy complement (three bounders)', async () => {
-    const d = await loadDemo()
+    const d = await loadSim()
     // Kills the over-filter mutant: dropping P2 by filtering processes AFTER
     // assembly could eat an enemy; the enemy complement is count-independent.
-    expect(enemyCount(d.createWaveDemo(SEED, 1)), '3 bounders, count-independent').toBe(3)
-    expect(enemyCount(d.createWaveDemo(SEED, 2)), '3 bounders in 2P too').toBe(3)
+    expect(enemyCount(d.createWaveSim(SEED, 1)), '3 bounders, count-independent').toBe(3)
+    expect(enemyCount(d.createWaveSim(SEED, 2)), '3 bounders in 2P too').toBe(3)
   })
 
   it('createGame(seed, 1) threads the count into the sim — ledgers and mounts agree', async () => {
@@ -105,20 +105,20 @@ describe('AC-1 — createWaveDemo/createGame honour the player count', () => {
     const game = g.createGame(SEED, 1)
     expect(game.players.length, 'one ledger (already correct pre-fix)').toBe(1)
     expect(game.players[0].lives, 'NSHIP = 5 lives on the one ledger — NOT retuned').toBe(5)
-    // Kills the actual defect: createGame calling createWaveDemo(seed) without
+    // Kills the actual defect: createGame calling createWaveSim(seed) without
     // the count, leaving a ledger-less P2 mount that dies once and never returns.
     expect(
-      playerIds(game.sim as unknown as DemoState),
+      playerIds(game.sim as unknown as SimState),
       'the sim under a 1P game holds exactly the P1 mount',
     ).toEqual([1])
   })
 
-  it('createGame(seed, 1).sim IS createWaveDemo(seed, 1) — no parallel sim for the 1P path', async () => {
+  it('createGame(seed, 1).sim IS createWaveSim(seed, 1) — no parallel sim for the 1P path', async () => {
     const g = await loadGame()
-    const d = await loadDemo()
+    const d = await loadSim()
     // The jt4-1 no-second-sim pin, restated for the counted path. (Green while
     // BOTH sides ignore the count; it bites the moment either side diverges.)
-    expect(g.createGame(SEED, 1).sim).toEqual(d.createWaveDemo(SEED, 1))
+    expect(g.createGame(SEED, 1).sim).toEqual(d.createWaveSim(SEED, 1))
   })
 
   it('no P2 mount ever appears across 240 stepped frames of a 1P game', async () => {
@@ -132,18 +132,18 @@ describe('AC-1 — createWaveDemo/createGame honour the player count', () => {
     // is structural, not proven by this loop.
     for (let f = 0; f < 240; f++) {
       game = g.stepGame(game, {})
-      const ids = playerIds(game.sim as unknown as DemoState)
+      const ids = playerIds(game.sim as unknown as SimState)
       if (ids.some((id) => id === 2)) {
         expect.fail(`frame ${f + 1}: a P2 mount appeared in a 1P game (ids: ${ids.join(',')})`)
       }
     }
-    expect(playerIds(game.sim as unknown as DemoState)).not.toContain(2)
+    expect(playerIds(game.sim as unknown as SimState)).not.toContain(2)
   })
 
   it('a 2P game is untouched: both mounts live at assembly and after 240 frames', async () => {
     const g = await loadGame()
     let game = g.createGame(SEED, 2)
-    expect(playerIds(game.sim as unknown as DemoState)).toEqual([1, 2])
+    expect(playerIds(game.sim as unknown as SimState)).toEqual([1, 2])
     for (let f = 0; f < 240; f++) game = g.stepGame(game, {})
     // P2 may be dead-and-rematerialising at any instant, but the ledger count
     // never changes; the regression this kills is a count leak into 2P.

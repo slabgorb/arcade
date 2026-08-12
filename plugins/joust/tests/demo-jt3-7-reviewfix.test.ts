@@ -35,7 +35,7 @@
 // NO kill — whereas `coldx <= 0` KILLS it. The left branch must be strict `coldx < 0`.
 //
 // ─── N2 (FOLD-IN) — live trolls accumulate one-per-wave ──────────────────────
-// demo.ts `if (trollSpawnable(arena, wave))` fires on every wave-clear once
+// sim.ts `if (trollSpawnable(arena, wave))` fires on every wave-clear once
 // bridgeBurned latches (wave≥4), with no "already a live troll" guard and nothing
 // removing a troll → ~5 stacked trolls by wave 8. GREEN adds
 // `&& !processes.some(p => p.kind === 'troll')`.
@@ -49,7 +49,7 @@ import { fileURLToPath } from 'node:url'
 import { loadRender } from './helpers/render-contract.js'
 import { loadPictures } from './helpers/pictures-contract.js'
 import { loadPtero, type JoustEntity, type PteroEntity } from './helpers/ptero-contract.js'
-import { loadDemo, type DemoState, type DemoProcess } from './helpers/demo-contract.js'
+import { loadSim, type SimState, type SimProcess } from './helpers/sim-contract.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SEED = 0x1234
@@ -215,7 +215,7 @@ describe('N1 — resolvePteroAttack over-kills the exact-column LEFT-facer (JOUS
 
 // ═════════════════════════════════════════════════════════════════════════════
 // N2 — live trolls must not accumulate one-per-wave (RED).
-//   Drives the REAL stepDemo across waves 4→8. The menagerie suite's forceAdvance
+//   Drives the REAL stepSim across waves 4→8. The menagerie suite's forceAdvance
 //   strips to PLAYERS ONLY between steps — which drops the accumulated trolls each
 //   frame and MASKS the leak. This driver clears only enemies/eggs (to force wave
 //   clears) and KEEPS trolls/pteros, so the stacking is observable, as the ROM run
@@ -223,7 +223,7 @@ describe('N1 — resolvePteroAttack over-kills the exact-column LEFT-facer (JOUS
 // ═════════════════════════════════════════════════════════════════════════════
 
 /** Force a wave-clear WITHOUT hiding the leak: drop enemies+eggs, keep everything else. */
-function clearEnemies(d: DemoState): DemoState {
+function clearEnemies(d: SimState): SimState {
   return {
     ...d,
     // jt11-4: "clear the enemies" now has to include the ones that have taken a
@@ -234,20 +234,20 @@ function clearEnemies(d: DemoState): DemoState {
     sim: {
       ...d.sim,
       processes: d.sim.processes.filter(
-        (p: DemoProcess) => p.kind !== 'enemy' && p.kind !== 'egg',
+        (p: SimProcess) => p.kind !== 'enemy' && p.kind !== 'egg',
       ),
     },
   }
 }
 
-describe('N2 — live trolls do not stack one-per-wave through the real stepDemo (RED)', () => {
+describe('N2 — live trolls do not stack one-per-wave through the real stepSim (RED)', () => {
   it('at most one kind:troll process exists at any point driving waves 4→8', async () => {
-    const demo = await loadDemo()
-    let d = demo.createWaveDemo(SEED)
+    const demo = await loadSim()
+    let d = demo.createWaveSim(SEED)
     let maxTrolls = 0
     let guard = 0
     while (d.wave < 8) {
-      d = demo.stepDemo(clearEnemies(d))
+      d = demo.stepSim(clearEnemies(d))
       const trolls = d.sim.processes.filter((p) => p.kind === 'troll').length
       maxTrolls = Math.max(maxTrolls, trolls)
       if (++guard > 300) throw new Error(`stuck advancing waves at wave ${d.wave}`)

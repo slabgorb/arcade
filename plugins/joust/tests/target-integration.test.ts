@@ -2,14 +2,14 @@
 //
 // Story jt8-1 — round-1 review fix (Reviewer [TEST-HIGH]). The headline behaviour
 // of jt8-1 — enemies actually acquire a player to hunt — rides entirely on
-// demo.ts `reconcileTargets`, which the module suite (target.test.ts) never
+// sim.ts `reconcileTargets`, which the module suite (target.test.ts) never
 // exercises: it pins the pure `registerPlayer`/`removeTarget` LAWS, but not the
-// stepDemo path that CALLS them against the live process list. A one-line mutation
+// stepSim path that CALLS them against the live process list. A one-line mutation
 // `if (false) t = registerPlayer(...)` in reconcileTargets makes every enemy hunt
 // NOBODY in real play, yet leaves the whole suite green (the reviewer's only proof
 // was a probe that was deleted after use). This file is that proof, committed.
 //
-// It drives the REAL assembled sim (createWaveDemo → stepDemo) and pins:
+// It drives the REAL assembled sim (createWaveSim → stepSim) and pins:
 //   1. a fresh wave registers BOTH knights into the aggro slots, each with the
 //      full TARTIM grace — the registration line the mutation deletes.
 //   2. when a knight leaves the process list (death), reconcile drops its slot and
@@ -17,7 +17,7 @@
 //      the sim, not the pure law in isolation.
 
 import { describe, it, expect } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { TARTIM } from '../src/core/target.js'
 import type { PlayerInput } from '../src/core/flight.js'
 
@@ -26,8 +26,8 @@ const NEUTRAL: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 const INPUTS: Record<number, PlayerInput> = { 1: NEUTRAL, 2: NEUTRAL }
 
 describe('jt8-1 integration — reconcileTargets registers and drops slots through the real sim', () => {
-  it('a fresh createWaveDemo registers BOTH knights with the full TARTIM grace after one step', () => {
-    const demo0 = createWaveDemo(SEED)
+  it('a fresh createWaveSim registers BOTH knights with the full TARTIM grace after one step', () => {
+    const demo0 = createWaveSim(SEED)
     // Seeded empty — no enemy can lock on before the first reconcile.
     expect(demo0.sim.targets, 'the wave seeds with empty slots').toEqual({
       tarply: null,
@@ -36,7 +36,7 @@ describe('jt8-1 integration — reconcileTargets registers and drops slots throu
       tartm2: 0,
     })
 
-    const demo1 = stepDemo(demo0, INPUTS)
+    const demo1 = stepSim(demo0, INPUTS)
     const t = demo1.sim.targets
     // Both live knights are now slotted (ids 1 and 2), each armed with TARTIM. The
     // mutation `if (false) t = registerPlayer(...)` in reconcileTargets leaves this
@@ -49,23 +49,23 @@ describe('jt8-1 integration — reconcileTargets registers and drops slots throu
 
   it('a knight leaving the process list drops its slot and shifts the survivor up (death-shift)', () => {
     // Register both knights through one real step (the empty seed → both slotted).
-    const registered = stepDemo(createWaveDemo(SEED), INPUTS)
+    const registered = stepSim(createWaveSim(SEED), INPUTS)
     const before = registered.sim.targets
     expect(before.tarply, 'precondition: both registered').toBe(1)
     expect(before.tarpl2).toBe(2)
 
     // P1 "dies": remove its process from the sim, keep P2 (+ the materialising
     // enemies). The next reconcile sees only P2 live and must shift it into the
-    // primary slot — the STPLY death-shift, exercised through stepDemo.
-    const withoutP1: DemoProcess[] = registered.sim.processes.filter(
+    // primary slot — the STPLY death-shift, exercised through stepSim.
+    const withoutP1: SimProcess[] = registered.sim.processes.filter(
       (p) => !(p.kind === 'player' && p.id === 1),
     )
-    const bereaved: DemoState = {
+    const bereaved: SimState = {
       ...registered,
       sim: { ...registered.sim, processes: withoutP1 },
     }
 
-    const after = stepDemo(bereaved, { 2: NEUTRAL })
+    const after = stepSim(bereaved, { 2: NEUTRAL })
     const t = after.sim.targets
     expect(t.tarply, 'P2 shifts up into the primary slot').toBe(2)
     expect(t.tarpl2, 'the secondary slot is cleared').toBeNull()

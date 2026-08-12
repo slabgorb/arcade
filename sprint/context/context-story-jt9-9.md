@@ -14,7 +14,7 @@ Three mechanisms were merged into one story on 2026-08-03 by Architect grooming:
 
 ### (1) The EGGWT/EGGWT2 wait timer
 
-`eggProcess` (`demo.ts:902`, spawned at `:1160` from a joust kill) carries `eggsLeft` but no wait timer. `stepDemo`'s self-clear hatch (`demo.ts:1288`) matures only wave eggs with `waveEgg === true`. Kill-eggs have no hatch maturation at all. The ROM walks `EGGWT` from `$40` down to `$10` (a walk of late-wave eggs hatching four times sooner), reading `EGGWT` at settlement time (`EGGLND`, JOUSTRV4.SRC:3224) and `EGGWT2` at wave spawn (`ORG $0` decision block, :2761). The port has neither. This mechanism gives settlement time hatch pressure per wave.
+`eggProcess` (`sim.ts:902`, spawned at `:1160` from a joust kill) carries `eggsLeft` but no wait timer. `stepSim`'s self-clear hatch (`sim.ts:1288`) matures only wave eggs with `waveEgg === true`. Kill-eggs have no hatch maturation at all. The ROM walks `EGGWT` from `$40` down to `$10` (a walk of late-wave eggs hatching four times sooner), reading `EGGWT` at settlement time (`EGGLND`, JOUSTRV4.SRC:3224) and `EGGWT2` at wave spawn (`ORG $0` decision block, :2761). The port has neither. This mechanism gives settlement time hatch pressure per wave.
 
 **ROM citations (verified at setup):**
 - EGGWT: `JOUSTRV4.SRC:3224` `EGGLND LDA EGGWT GET CURRENT WAIT TIME`
@@ -22,7 +22,7 @@ Three mechanisms were merged into one story on 2026-08-03 by Architect grooming:
 
 ### (2) The kill-egg hatch — uncollected eggs eventually mature
 
-`eggProcess` carries no `waveEgg: true` tag, so `stepDemo`'s self-clear hatch (`:1288`, filtering for `p.waveEgg === true && willHatch(p.egg)`) never matures kill-eggs. They sit `settled` with `willHatch === true` forever, blocking the wave-clear gate (`:1322`, `!processes.some((p) => p.kind === 'egg')`). The ROM privileges no wave egg's maturation over a kill egg's — in the machine an uncollected egg hatches into a remounting buzzard regardless of provenance. The fix: remove the `waveEgg === true` check. Kill-eggs will now self-mature under the SAME hatch law that matured wave eggs.
+`eggProcess` carries no `waveEgg: true` tag, so `stepSim`'s self-clear hatch (`:1288`, filtering for `p.waveEgg === true && willHatch(p.egg)`) never matures kill-eggs. They sit `settled` with `willHatch === true` forever, blocking the wave-clear gate (`:1322`, `!processes.some((p) => p.kind === 'egg')`). The ROM privileges no wave egg's maturation over a kill egg's — in the machine an uncollected egg hatches into a remounting buzzard regardless of provenance. The fix: remove the `waveEgg === true` check. Kill-eggs will now self-mature under the SAME hatch law that matured wave eggs.
 
 **ROM citation (verified at setup):**
 - EGGLND: `JOUSTRV4.SRC:3224-3278` (the entire settlement and hatch routine)
@@ -56,9 +56,9 @@ The port implements the decrement (`spawnEgg` `eggsLeft: victim.eggsLeft - 1`, `
 
 ## Implementation Order (FIXED AND NOT THE ORDER DESCRIBED)
 
-1. **FIRST:** Wire EGGWT/EGGWT2 wait timer to the egg settle. Add `waitTimer?: number` to `EggState`, read EGGWT at settlement time (`settledWaveEgg`), advance by one per frame in `stepDemo`'s egg driver. Mature when timer expires.
+1. **FIRST:** Wire EGGWT/EGGWT2 wait timer to the egg settle. Add `waitTimer?: number` to `EggState`, read EGGWT at settlement time (`settledWaveEgg`), advance by one per frame in `stepSim`'s egg driver. Mature when timer expires.
 
-2. **SECOND:** Open the hatch to kill-eggs. Remove the `waveEgg === true` check from `stepDemo:1288`. Kill-eggs will now self-mature.
+2. **SECOND:** Open the hatch to kill-eggs. Remove the `waveEgg === true` check from `stepSim:1288`. Kill-eggs will now self-mature.
 
 3. **THIRD:** Add the EGGSCR kill-scoring pass. When an enemy's last egg (`eggsLeft → 0`) transfers, emit the score event routed to the correct player, with the victor guard logic.
 
@@ -123,12 +123,12 @@ any digest. If they do not, the digest was the only guard and re-baselining it s
 
 **AC-1: EGGWT/EGGWT2 timer wired**
 - `EggState` carries `waitTimer?: number`, initialized by `settledWaveEgg` from the wave-spawn EGGWT2 read.
-- `stepDemo`'s egg-process frame driver decrements the timer by 1 per frame when the egg is settled and timer > 0.
+- `stepSim`'s egg-process frame driver decrements the timer by 1 per frame when the egg is settled and timer > 0.
 - `willHatch(egg)` returns true when timer reaches zero AND `eggsLeft > 0`. A settled egg with timer > 0 does NOT hatch.
 - Late-wave eggs hatch sooner: the ROM reads EGGWT `:3224` at settlement, walking it downward per wave. The port reads EGGWT2 (the per-wave initial) at `settledWaveEgg` time and decrements by 1 per frame, matching the ROM's per-frame decrement (`:3267-3269`).
 
 **AC-2: Kill-eggs now self-mature**
-- Remove the `waveEgg === true` gate from `stepDemo:1288`. All eggs (wave and kill alike) now mature when `settled && willHatch(egg)`.
+- Remove the `waveEgg === true` gate from `stepSim:1288`. All eggs (wave and kill alike) now mature when `settled && willHatch(egg)`.
 - Kill-eggs will hatch into remounting enemies, clearing the wave if no other entities remain.
 - A settled kill-egg with `waitTimer === 0 && eggsLeft > 0` matures into a remount enemy, surfacing the egg-hatched cue.
 

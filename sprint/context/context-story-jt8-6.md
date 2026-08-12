@@ -13,7 +13,7 @@
 >   every death, so the reported symptom (250 after a respawn) is faithful and `eggHits` stays on the
 >   player process. Re-homing it would be a fidelity regression, and the suite guards against it.
 > - **AC-5 (wave/game reset out of scope) — DROPPED; that boundary IS the defect.** `WNRM CLR
->   EGGS1/EGGS2` (:1979-1980) clears at every wave start, while `stepDemo`'s advance carries the player
+>   EGGS1/EGGS2` (:1979-1980) clears at every wave start, while `stepSim`'s advance carries the player
 >   processes forward — probed at 750 where the ROM pays 250. The whole fix is that one clear.
 > - AC-3 (per-player init), AC-4 (event path unchanged) and AC-6 (determinism/purity) stand.
 >
@@ -38,19 +38,19 @@ The egg-ladder counter (eggHits) currently rides the player **process** and rese
 
 **Reproduction:** A player with 3 prior egg catches scores 1000 on the next catch, then dies and respawns. On the identical staging, the reborn player scores 250 (rung 1) instead of continuing from rung 4.
 
-**Root cause:** `respawnPlayerProcess` (demo.ts:333) builds a fresh player process via `playerProcess()`. The eggHits counter has only three sites in `src/` — declaration at demo.ts:167, read at :904, write at :905 — none of which carry the value across process replacement. game.ts:439 appends the fresh process after respawn.
+**Root cause:** `respawnPlayerProcess` (sim.ts:333) builds a fresh player process via `playerProcess()`. The eggHits counter has only three sites in `src/` — declaration at sim.ts:167, read at :904, write at :905 — none of which carry the value across process replacement. game.ts:439 appends the fresh process after respawn.
 
 **ROM evidence:** `DEGGS RMB 2` is declared at JOUSTRV4.SRC:113 inside the `* DECISION BLOCK *` (ORG $0, :101-113) alongside `DSCORE` and `DCRE` ("DECISION TO BE RECREATED BY WHOM"). A player's score survives their death; the block is the persistent per-player identity, so the counter does too.
 
 ## Acceptance Criteria
 
-1. **eggHits counter homed on DemoSim per-player record:** The counter is moved from the player process (`DemoProcess.eggHits?`) to a new per-player record on `DemoSim` (following the jt8-1 `targets` precedent). The `targets` field at demo.ts:205 shows the pattern: a carried field on `DemoSim`, initialized by `createWaveDemo`, advanced/reconciled in `stepDemo`. The eggHits record must mirror this structure. Pinned by test.
+1. **eggHits counter homed on DemoSim per-player record:** The counter is moved from the player process (`SimProcess.eggHits?`) to a new per-player record on `DemoSim` (following the jt8-1 `targets` precedent). The `targets` field at sim.ts:205 shows the pattern: a carried field on `DemoSim`, initialized by `createWaveSim`, advanced/reconciled in `stepSim`. The eggHits record must mirror this structure. Pinned by test.
 
 2. **Counter survives player respawn:** A player with eggHits=3 dies and respawns; the counter persists at 3 (not reset to 0/undefined). The reproduction case is verified: f(N) same staging with 3 prior hits → 1000 score, then respawn → f(N+k) same staging → 1000 score (not 250). Cited (JOUSTRV4.SRC:113, DCRE field as evidence of persistent per-player identity). Seeded run, mutation-checked.
 
-3. **Counter is initialized per player on demo creation:** `createWaveDemo` seeds the new per-player eggHits record for each player (or it remains zero/empty). On the first catch, the counter advances from 0 → 1 and pays the first rung. Verified by test across multiple waves.
+3. **Counter is initialized per player on demo creation:** `createWaveSim` seeds the new per-player eggHits record for each player (or it remains zero/empty). On the first catch, the counter advances from 0 → 1 and pays the first rung. Verified by test across multiple waves.
 
-4. **Event emission path unchanged:** The call site in `collisionPass` (demo.ts:904-905) reads the counter from the sim, bumps it, and writes it back. No changes to the signature or semantics of the read/write — the counter's HOME changes, not the usage. The five-catch ladder walk from jt8-4 tests remain green (ladder climbs per player, rungs peg at 1000, one player's rungs never advance the other's).
+4. **Event emission path unchanged:** The call site in `collisionPass` (sim.ts:904-905) reads the counter from the sim, bumps it, and writes it back. No changes to the signature or semantics of the read/write — the counter's HOME changes, not the usage. The five-catch ladder walk from jt8-4 tests remain green (ladder climbs per player, rungs peg at 1000, one player's rungs never advance the other's).
 
 5. **Wave/game reset scope is OUT of scope:** The decision-block initialiser (where the ROM clears the counter) was not chased in the parent jt8-4 review. This story does NOT test or specify cross-wave or cross-life reset behaviour. A per-player record on `DemoSim` will be replaced when a new wave demo is created, which covers the practical wave boundary; the game-level boundary and the ROM's literal initialization remain unresolved and belong to a follow-up. Recorded as an open question (see Design Deviations).
 
@@ -62,23 +62,23 @@ The egg-ladder counter (eggHits) currently rides the player **process** and rese
 
 | Location | Current state | Role |
 |----------|---------------|------|
-| `demo.ts:167` | `eggHits?: number` on DemoProcess | OLD: per-process counter (problem) |
-| `demo.ts:204-206` | `DemoSim` interface | WHERE: add per-player record here |
-| `demo.ts:333` | `respawnPlayerProcess()` | WHERE: fresh process loses old counter |
-| `demo.ts:904` | `const hits = bumpEggHits(self.eggHits ?? 0)` | READ: current per-process read |
-| `demo.ts:905` | `self = { ...self, eggHits: hits }` | WRITE: current per-process write |
+| `sim.ts:167` | `eggHits?: number` on SimProcess | OLD: per-process counter (problem) |
+| `sim.ts:204-206` | `DemoSim` interface | WHERE: add per-player record here |
+| `sim.ts:333` | `respawnPlayerProcess()` | WHERE: fresh process loses old counter |
+| `sim.ts:904` | `const hits = bumpEggHits(self.eggHits ?? 0)` | READ: current per-process read |
+| `sim.ts:905` | `self = { ...self, eggHits: hits }` | WRITE: current per-process write |
 | `game.ts:439` | `processes = [...processes, respawnPlayerProcess(id)]` | APPEND: fresh process with undefined eggHits |
 
 ## Reuse / Citation Pattern (Precedents)
 
 ### jt8-1 targets record (the pattern to follow)
 
-File: `joust/src/core/demo.ts`
+File: `joust/src/core/sim.ts`
 
 - **DemoSim carries the record:** Line 205, `readonly targets: TargetState` — a carried field on the sim
-- **Initialization:** `demo.ts:632`, `targets: seedTargets()` — seeded in `createWaveDemo`
-- **Step advancement:** `demo.ts:1018`, `const tickedTargets = tickTargetTimers(demo.sim.targets)` — ticked in `stepFrame`
-- **Reconciliation:** `demo.ts:1120`, `const targets = reconcileTargets(tickedTargets, processes)` — reconciled in `stepDemo` to handle process changes
+- **Initialization:** `sim.ts:632`, `targets: seedTargets()` — seeded in `createWaveSim`
+- **Step advancement:** `sim.ts:1018`, `const tickedTargets = tickTargetTimers(demo.sim.targets)` — ticked in `stepFrame`
+- **Reconciliation:** `sim.ts:1120`, `const targets = reconcileTargets(tickedTargets, processes)` — reconciled in `stepSim` to handle process changes
 
 **Pattern:** A carried field on DemoSim that persists across process rebuilds and is updated in lockstep with the sim's step.
 

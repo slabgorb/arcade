@@ -1,4 +1,4 @@
-// src/core/demo.ts
+// src/core/sim.ts
 //
 // Story jt2-7 (GREEN, Julia) — the wave-1 DEMO wiring: the integration story that
 // turns jt2-1..jt2-6's pure cores into a playable slice the shell can draw. This
@@ -15,7 +15,7 @@
 // an earlier story's citations suite. The three TEA Delivery Findings are resolved
 // as follows (see the SM/Dev session assessment):
 //   1. ENEMY DVALUE TYPE — the shared `EnemyState` has no type field; the demo
-//      carries `enemyType` on the PROCESS (DemoProcess.enemyType), set from the
+//      carries `enemyType` on the PROCESS (SimProcess.enemyType), set from the
 //      wave row's bounder/hunter/lord counts. joust.killScore reads it.
 //   2. PLAYER FACING — the shared (generated) flight `EntityState` cannot grow a
 //      facing field; the demo carries `facing` on the PLAYER PROCESS, sourced from
@@ -135,7 +135,7 @@ import {
 // story's egg variant, the enemy DVALUE type, the player facing (Finding #2), the
 // materialisation collision bit, and the private materialisation-window state.
 
-export interface DemoProcess {
+export interface SimProcess {
   /** `PID` — unique, non-zero. */
   id: number
   /** `PPRI` — primary steps before secondary. */
@@ -204,7 +204,7 @@ export interface DemoProcess {
    *
    * It marks ELIGIBILITY, not an amount. The draw itself is taken once, at the hop that
    * resolves this egg's wait, for the same reason jt9-9 seeds the wait there: the wait
-   * depends on the wave, and `stepDemo`'s hatch block resolves it from `demo.wave` (the
+   * depends on the wave, and `stepSim`'s hatch block resolves it from `demo.wave` (the
    * decimal wave ordinal — td1-12 / Option B) at the frame the egg matures, not at
    * placement. Absent on every kill-egg, so a DEATH3 egg is never pre-mature — in the
    * machine PWHCH is long spent by the time one exists.
@@ -246,7 +246,7 @@ export interface DemoProcess {
    * So the ladder climbs only within ONE life of ONE wave. The death boundary needs no
    * code here — a death removes the process and `respawnPlayerProcess` builds a fresh
    * one, so the credit dies with the man, which is why this count must NOT be re-homed
-   * somewhere that outlives the process. The wave boundary IS explicit, in `stepDemo`'s
+   * somewhere that outlives the process. The wave boundary IS explicit, in `stepSim`'s
    * advance. Both are pinned by tests/demo-jt8-6.test.ts.
    */
   eggHits?: number
@@ -331,19 +331,19 @@ export interface DrawOp {
 }
 
 /** The demo's simulation state — the jt2-1 GameState, egg variant live. */
-export interface DemoSim {
+export interface SimCore {
   readonly frame: number
-  readonly processes: readonly DemoProcess[]
+  readonly processes: readonly SimProcess[]
   readonly woke: readonly number[]
   readonly rng: number
   readonly budget: IntelBudget
   /** jt8-1 — the enemy AGGRO state (SELPLY/TARPLY/TARTM, target.ts), carried like
-   * `budget`. Seeded empty by `createWaveDemo`; `stepDemo` ticks + reconciles it. */
+   * `budget`. Seeded empty by `createWaveSim`; `stepSim` ticks + reconciles it. */
   readonly targets: TargetState
 }
 
 /** A console/dev-overlay event — score values (DVALUE/EGGVAL) and message beats. */
-export type DemoEvent =
+export type SimEvent =
   // `player` attributes a kill to the scoring player's id (jt4-1's game.ts drain
   // credits the right ledger — the co-op independence). Optional so pre-jt4 event
   // literals still typecheck; collisionPass always sets it on a real kill.
@@ -359,20 +359,20 @@ export type DemoEvent =
   | { kind: 'partnerKill'; winner: number; loser: number }
 
 /** The whole demo: the sim, the 1-based wave, and the console/overlay event log. */
-export interface DemoState {
-  sim: DemoSim
+export interface SimState {
+  sim: SimCore
   wave: number
-  events: readonly DemoEvent[]
+  events: readonly SimEvent[]
   /**
    * The mutable per-run arena (jt3-2): which cliffs/bridge are currently gone. The
-   * wave EVENT updates it — seeded from wave 1 in `createWaveDemo`, re-applied on
-   * every wave advance in `stepDemo` — so the wave-3 bridge burn + high-nibble
+   * wave EVENT updates it — seeded from wave 1 in `createWaveSim`, re-applied on
+   * every wave advance in `stepSim` — so the wave-3 bridge burn + high-nibble
    * cliff destruction flow through the arena-state seam, not the frozen exports.
    */
   arena: ArenaState
   /**
    * jt5-1 — THIS FRAME's audio cue stream, and nothing else's. Rebuilt from
-   * scratch by every `stepDemo`, so a moment that stopped happening stops
+   * scratch by every `stepSim`, so a moment that stopped happening stops
    * sounding on the very next frame.
    *
    * Deliberately NOT the `events` log above, which is a different thing wearing
@@ -394,11 +394,11 @@ export interface DemoState {
    * jt9-59 — the wave's pterodactyls AWAITING CREATION. The ROM's PTERWV creates a
    * wave's pteros one at a time, `PCNAP 65` between each (JOUSTRV4.SRC:2618), so a
    * not-yet-created ptero is neither drawn nor collidable — it does not exist yet.
-   * `stepDemo` ticks each countdown and splices in the real `pteroProcess` on the
+   * `stepSim` ticks each countdown and splices in the real `pteroProcess` on the
    * frame it fires (superseding jt9-45's nap-delay, where all `count` pteros stood
    * rendered + collision-eligible at their edges from the advance frame).
    *
-   * OPTIONAL / default-empty so hand-built `DemoState` literals in tests still
+   * OPTIONAL / default-empty so hand-built `SimState` literals in tests still
    * type-check (tsconfig includes tests) and a non-ptero wave simply carries none.
    */
   pendingPteros?: readonly PendingPtero[]
@@ -407,10 +407,10 @@ export interface DemoState {
    * does not drop a wave's complement into the arena at once: each enemy takes a
    * number (CREEM, JOUSTRV4.SRC:5663-5666) and waits in CRELP until it is that
    * ticket's turn (:5667-5676), so the buzzards materialise ONE BY ONE on the pads.
-   * `stepDemo` serves them; an unserved enemy is not in `sim.processes` at all.
+   * `stepSim` serves them; an unserved enemy is not in `sim.processes` at all.
    *
    * OPTIONAL / default-empty, on the `pendingPteros` precedent, so hand-built
-   * `DemoState` literals in tests still type-check.
+   * `SimState` literals in tests still type-check.
    */
   pendingEnemies?: readonly PendingEnemy[]
   /**
@@ -442,7 +442,7 @@ export interface ContactResult {
    * here — `collisionPass` re-issues it against the winning player at their real
    * DEGGS position.
    */
-  events: DemoEvent[]
+  events: SimEvent[]
 }
 
 // ─── Demo tuning (shell-facing, NOT a transcribed ROM law) ───────────────────
@@ -576,7 +576,7 @@ function playerProcess(
   posX: number,
   facing: Facing,
   mount: 'ostrich' | 'stork',
-): DemoProcess {
+): SimProcess {
   return { id, cls: 'primary', nap: 1, period: 1, kind: 'player', entity: playerEntity(posX), facing, mount }
 }
 
@@ -593,7 +593,7 @@ function playerProcess(
  * (game.ts stepGame) owns the lives ledger and the zero-lives gate; this only builds the
  * re-created process. Pure. `playerId` is 1 (P1) or 2 (P2).
  */
-export function respawnPlayerProcess(playerId: number): DemoProcess {
+export function respawnPlayerProcess(playerId: number): SimProcess {
   const spawn = playerId === PLAYER2_ID ? PLAYER2_SPAWN : PLAYER1_SPAWN
   return {
     ...playerProcess(playerId, spawn.x, spawn.facing, spawn.mount),
@@ -636,7 +636,7 @@ function enemyState(pad: TransporterPad, type: EnemyType): EnemyState {
   }
 }
 
-function enemyProcess(id: number, pad: TransporterPad, period: number, type: EnemyType): DemoProcess {
+function enemyProcess(id: number, pad: TransporterPad, period: number, type: EnemyType): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -697,7 +697,7 @@ interface PteroEntry {
 
 /** jt9-59 — a wave ptero the PTERWV schedule has not created YET: its resolved PTERST
  *  entry (side edge X, cliff-lane Y, FLYXP velocity rung, face) held with a `countdown`
- *  of frames until its `SECCR PTERST` (JOUSTRV4.SRC:2618). `stepDemo` decrements the
+ *  of frames until its `SECCR PTERST` (JOUSTRV4.SRC:2618). `stepSim` decrements the
  *  countdown and, when it fires, builds the real `pteroProcess`. The entry data is the
  *  same `enterPteroSides`/lane data `spawnWavePteros` computed before — determinism is
  *  unchanged (positional `seed`, `sim.rng` untouched); only the MOMENT of creation moves. */
@@ -726,7 +726,7 @@ const PTERO_CREATE_NAP = 1
 export interface PendingEnemy {
   /** Named `arrival`, not `process`: `process.` is a Node global the src/core purity
    *  guard rejects outright (jt1-1's boundary), whatever the identifier means locally. */
-  arrival: DemoProcess
+  arrival: SimProcess
   ticket: number
   nap: number
 }
@@ -762,7 +762,7 @@ const ENEMY_STAGGER_FRAMES = 61
  * collides with a player through resolvePteroAttack (the lance-height joust). jt9-45 —
  * a wave ptero overrides the shared flight entity with its PTERST/PTERWV entry (see
  * spawnWavePteros); the baiter's single ptero (baiterProcess) keeps the bare default. */
-function pteroProcess(id: number, entry: PteroEntry): DemoProcess {
+function pteroProcess(id: number, entry: PteroEntry): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -783,7 +783,7 @@ function pteroProcess(id: number, entry: PteroEntry): DemoProcess {
 /** A BAITER process (jt3-5): jt3-4's ptero tagged `baiter` (PCHASE ≠ 0) — the
  * anti-stall pterodactyl the send-off clock scrambles when a player camps a wave.
  * Shares the ptero's gravity-exempt flight and the lance-height joust. */
-function baiterProcess(id: number): DemoProcess {
+function baiterProcess(id: number): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -839,7 +839,7 @@ function trollEntity(victimX: number): EntityState {
  * jt9-11 gives it a real `victimId`, so the splice point is now THAT process. If the
  * victim is not in the list the troll goes at the end (unobservable, as before).
  */
-function insertTroll(processes: readonly DemoProcess[], troll: DemoProcess): DemoProcess[] {
+function insertTroll(processes: readonly SimProcess[], troll: SimProcess): SimProcess[] {
   const at = processes.findIndex((p) => p.id === troll.victimId)
   if (at < 0) return [...processes, troll]
   return [...processes.slice(0, at), troll, ...processes.slice(at)]
@@ -849,7 +849,7 @@ function insertTroll(processes: readonly DemoProcess[], troll: DemoProcess): Dem
  * on `entity`, an ENEMY on `enemy.entity`. jt9-42: LNDB7 (JOUSTRV4.SRC:6764) grabs a
  * player ($80+PLYID) OR an enemy ($80+EMYID), so both the victim search and the hand
  * placement read here. Undefined for any other kind — a ptero/baiter is not grabbable. */
-function birdPosX(p: DemoProcess): number | undefined {
+function birdPosX(p: SimProcess): number | undefined {
   if (p.kind === 'player') return p.entity?.posX
   if (p.kind === 'enemy') return p.enemy?.entity.posX
   return undefined
@@ -860,7 +860,7 @@ function birdPosX(p: DemoProcess): number | undefined {
  * of the ground enemies (< $80) and the pteros ($80+); `victimId` is the PJOY
  * finger-print (:6781) and `handTimer` primes the LT1HT animation. jt9-42: the hand
  * tracks the victim's X for a player OR enemy victim (`birdPosX`). */
-function trollProcess(wave: number, victim: DemoProcess): DemoProcess {
+function trollProcess(wave: number, victim: SimProcess): SimProcess {
   return {
     id: 0x100 * wave + 0xc0,
     cls: 'secondary',
@@ -880,8 +880,8 @@ function trollProcess(wave: number, victim: DemoProcess): DemoProcess {
  * jt9-42 broadened this from player-only: an enemy victim is what puts an enemy
  * immediately after the troll in wake order, restoring the lava-troll looker's
  * PPREV reachability (jt9-1). Null if no grabbable bird is present. */
-function pickTrollVictim(processes: readonly DemoProcess[]): DemoProcess | null {
-  let best: DemoProcess | null = null
+function pickTrollVictim(processes: readonly SimProcess[]): SimProcess | null {
+  let best: SimProcess | null = null
   let bestDist = Infinity
   for (const p of processes) {
     const posX = birdPosX(p)
@@ -914,16 +914,16 @@ function pickTrollVictim(processes: readonly DemoProcess[]): DemoProcess | null 
  *     terminal removes the troll (VSUCIDE / LT2DIE).
  */
 function stepTrolls(
-  processes: readonly DemoProcess[],
+  processes: readonly SimProcess[],
   wave: number,
   inputs?: Record<number, PlayerInput>,
-): { processes: DemoProcess[]; events: DemoEvent[] } {
+): { processes: SimProcess[]; events: SimEvent[] } {
   if (!processes.some((p) => p.kind === 'troll')) return { processes: [...processes], events: [] }
 
   const lavtim = Math.max(1, waveValue('LAVTIM', wave))
   const lavgra = waveValue('LAVGRA', wave)
-  const events: DemoEvent[] = []
-  const byId = new Map<number, DemoProcess>(processes.map((p) => [p.id, { ...p }]))
+  const events: SimEvent[] = []
+  const byId = new Map<number, SimProcess>(processes.map((p) => [p.id, { ...p }]))
   const removed = new Set<number>()
 
   for (const src of processes) {
@@ -993,7 +993,7 @@ function stepTrolls(
     // Fast path: nothing moved a process in/out — still return the updated copies.
     return { processes: processes.map((p) => byId.get(p.id) ?? p), events }
   }
-  const out: DemoProcess[] = []
+  const out: SimProcess[] = []
   for (const p of processes) {
     if (removed.has(p.id)) continue
     out.push(byId.get(p.id) ?? p)
@@ -1032,13 +1032,13 @@ const PTERO_STAGGER_FRAMES = 65
  *     `SECCR PTERST`, so bird i is CREATED `PTERO_STAGGER_FRAMES*(i+1)` frames after
  *     the advance — nap-THEN-create. An un-created bird is NOT in `sim.processes`, so
  *     (unlike jt9-45's napping-but-present model) it is neither drawn nor collidable
- *     until its create frame. `stepDemo` owns the countdown tick.
+ *     until its create frame. `stepSim` owns the countdown tick.
  *   • Y (jt9-44): the three cliff-appear lanes stand, cycled by index (AC6).
  *
  * `seed` is the same positional wave-entry seed `enterViaPads` takes (the running `rng`
  * word at the advance) — used as a local mulberry seed, NOT consumed off `sim.rng`, so
  * the frame RNG stream is untouched and no downstream draw forks. Returns the PENDING
- * arrivals (not live processes): `stepDemo` creates each `pteroProcess` when it fires.
+ * arrivals (not live processes): `stepSim` creates each `pteroProcess` when it fires.
  */
 function pendingWavePteros(waveNumber: number, seed: number): PendingPtero[] {
   const row = waveRowAt(waveNumber)
@@ -1164,7 +1164,7 @@ const vrandFrom = (value: number): number => Math.floor(value * 128)
  * until its EGGWT2 wait runs out and it hatches.
  *
  * The wait is NOT seeded here. It depends on the wave, so the seeding happens in
- * `stepDemo`'s hatch block, which reads `demo.wave` (the decimal wave ordinal —
+ * `stepSim`'s hatch block, which reads `demo.wave` (the decimal wave ordinal —
  * td1-12 / Option B) at the frame an egg actually matures rather than at placement.
  * An unseeded `waitFrames` means exactly that: not seeded yet.
  */
@@ -1218,13 +1218,13 @@ function settledWaveEgg(posX: number, feetY: number): EggState {
  * CREGG at JOUSTRV4.SRC:2888-2894), which draws from the wave's RNG and is deliberately
  * out of jt9-38's scope — see the story's Delivery Findings.
  */
-function spawnWaveEggs(waveNumber: number): DemoProcess[] {
+function spawnWaveEggs(waveNumber: number): SimProcess[] {
   // Both sixes are literal immediates in the ROM; neither reads the wave row.
   const EGG_WAVE_EGGS = 6 + 6
-  const eggs: DemoProcess[] = []
+  const eggs: SimProcess[] = []
   for (let i = 0; i < EGG_WAVE_EGGS; i++) {
     const pad = PADS[i % PADS.length]
-    // `waveEgg` tags the complement egg so the self-clear hatch (stepDemo) serves it the
+    // `waveEgg` tags the complement egg so the self-clear hatch (stepSim) serves it the
     // EGGWT2 egg-wave wait rather than the EGGWT a landing egg takes. Since jt9-9 the tag no
     // longer decides WHETHER the egg matures — every settled egg does.
     //
@@ -1249,7 +1249,7 @@ function spawnWaveEggs(waveNumber: number): DemoProcess[] {
  * both DROPS an egg and RAISES an enemy — the egg wave is no longer a permanent egg-lock; it can
  * be fought and cleared. Its id rides a namespace clear of every live process. Pure.
  */
-function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
+function remountEnemyProcess(id: number, egg: EggState): SimProcess {
   const entry = remountEntryEdge(egg.posX)
   // jt9-47 — the remount restores the species that laid the egg (PID carried
   // across EGGLND/MOUNRI), not a fixed bounder. A WAVEGG wave egg has no laying
@@ -1287,16 +1287,16 @@ function remountEnemyProcess(id: number, egg: EggState): DemoProcess {
  * carrying its EMYTIM period, DVALUE type, and a materialisation window (collisions
  * off until it exits). The wave's PTERODACTYLS are NOT here (jt9-59): PTERWV creates
  * them one at a time over the following ~195 frames, so they enter through the
- * `pendingWavePteros` schedule `stepDemo` ticks, not as advance-frame processes. Ids
+ * `pendingWavePteros` schedule `stepSim` ticks, not as advance-frame processes. Ids
  * are namespaced by wave so they never collide across a wave advance. Used by
- * `createWaveDemo` and the wave advance.
+ * `createWaveSim` and the wave advance.
  *
  * jt4-4: an EGG wave enters its complement AS EGGS instead of ground enemies (WAVEGG,
  * JOUSTRV4.SRC:2737) — the predicate flows through jt2-5's `dispatchWaveType` (the shape
- * game.ts exposes as `eggWaveSpawnsEggs`; demo.ts consults dispatch directly to stay off the
+ * game.ts exposes as `eggWaveSpawnsEggs`; sim.ts consults dispatch directly to stay off the
  * game.ts import cycle). Egg does NOT degrade by player-count, so an egg wave stays one solo.
  */
-function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
+function spawnWaveEnemies(waveNumber: number, seed: number): SimProcess[] {
   const row = waveRowAt(waveNumber)
   if (dispatchWaveType(row.status, { p1: true, p2: true }) === 'egg') {
     return spawnWaveEggs(waveNumber)
@@ -1317,7 +1317,7 @@ function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
  *
  * A scored ground enemy is a transporter customer: it takes a number off NESERV
  * (`takeEnemyNumber`, CREEM at JOUSTRV4.SRC:5663-5666) and is handed back as a
- * `PendingEnemy` for `stepDemo` to serve. Tickets are drawn in entry order, which is
+ * `PendingEnemy` for `stepSim` to serve. Tickets are drawn in entry order, which is
  * the order `enterViaPads` assigned the pads.
  *
  * An EGG wave's complement is NOT: WAVEGG lays the eggs where they sit
@@ -1328,8 +1328,8 @@ function pendingWaveEnemies(
   waveNumber: number,
   seed: number,
   queue: ServiceQueue,
-): { immediate: DemoProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
-  const immediate: DemoProcess[] = []
+): { immediate: SimProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
+  const immediate: SimProcess[] = []
   const pending: PendingEnemy[] = []
   let q = queue
   for (const arrival of spawnWaveEnemies(waveNumber, seed)) {
@@ -1364,8 +1364,8 @@ function pendingWaveEnemies(
 function serveEnemies(
   pending: readonly PendingEnemy[],
   queue: ServiceQueue,
-): { served: DemoProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
-  const served: DemoProcess[] = []
+): { served: SimProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
+  const served: SimProcess[] = []
   const stillPending: PendingEnemy[] = []
   let q = queue
   for (const pe of pending) {
@@ -1391,39 +1391,39 @@ function serveEnemies(
  * entered via pads, each with `period = emytimForWave(1) = 2` and collisions
  * disabled while materialising, the budget seeded from the pursuit nibble, and
  * the intro message beats surfaced as `beat` events. Pure — same seed and
- * count, same DemoState.
+ * count, same SimState.
  */
-export function createWaveDemo(seed: number, playerCount: number = 2): DemoState {
+export function createWaveSim(seed: number, playerCount: number = 2): SimState {
   const row = waveRowAt(1)
   const base = createState(seed)
 
   // jt11-1 — only the coin-up's chosen mounts enter the sim. A 1P game gets P1
   // alone; the pre-fix orphan P2 mount had no ledger behind it, so it died once
   // and could never respawn ("the second player has one life").
-  const players: DemoProcess[] = [
+  const players: SimProcess[] = [
     playerProcess(PLAYER1_ID, PLAYER1_SPAWN.x, PLAYER1_SPAWN.facing, PLAYER1_SPAWN.mount),
     playerProcess(PLAYER2_ID, PLAYER2_SPAWN.x, PLAYER2_SPAWN.facing, PLAYER2_SPAWN.mount),
   ].slice(0, playerCount)
 
   // jt11-4 — wave 1's complement QUEUES for the transporter instead of standing in
   // the arena from frame 0. Each buzzard takes a number and is served one at a time
-  // by `stepDemo` (CREEM/CRELP, JOUSTRV4.SRC:5663-5676); an egg wave's eggs, which
+  // by `stepSim` (CREEM/CRELP, JOUSTRV4.SRC:5663-5676); an egg wave's eggs, which
   // no transporter serves, still enter immediately.
   const entering = pendingWaveEnemies(1, seed, newServiceQueue())
 
-  const sim: DemoSim = {
+  const sim: SimCore = {
     frame: base.frame,
     processes: [...players, ...entering.immediate],
     woke: base.woke,
     rng: base.rng,
     budget: seedWaveBudget(row),
-    // Empty; the first stepDemo reconcile registers the live players (STPLY) with
+    // Empty; the first stepSim reconcile registers the live players (STPLY) with
     // their TARTIM grace, so enemies do not lock on for the first ~1.5 s.
     targets: seedTargets(),
   }
 
   const beats = waveBeats(dispatchWaveType(row.status, { p1: true, p2: true }))
-  const events: DemoEvent[] = beats.map((b) => ({ kind: 'beat', message: b.message }))
+  const events: SimEvent[] = beats.map((b) => ({ kind: 'beat', message: b.message }))
 
   const arena = applyWaveDestruction(initialArenaState(), 1, row.status)
 
@@ -1494,7 +1494,7 @@ export function hatchEgg(egg: EggState): RemountEntry | null {
  * masks in COLLISION_TABLES are used (BWNG1R/BWNG2R are dangling ENTITY_RECORDS
  * references, no table). Returns null for a non-participant.
  */
-function collisionMaskFor(p: DemoProcess): string | null {
+function collisionMaskFor(p: SimProcess): string | null {
   if (p.kind === 'enemy' && p.enemy) return p.enemy.entity.airborne ? 'BWNG3R' : 'BSTNDR'
   if (p.kind === 'player' && p.entity) return p.entity.airborne ? 'CWNG3R' : 'CSTN4R'
   if (p.kind === 'ptero' && p.entity) return 'PT1RC'
@@ -1502,7 +1502,7 @@ function collisionMaskFor(p: DemoProcess): string | null {
 }
 
 /** A joust participant from a demo process (jt5-16: pteros too), or null. */
-function toJoustEntity(p: DemoProcess): JoustEntity | null {
+function toJoustEntity(p: SimProcess): JoustEntity | null {
   if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
     const e = p.entity
     return {
@@ -1552,7 +1552,7 @@ function toJoustEntity(p: DemoProcess): JoustEntity | null {
  * values, so writing them back is a no-op; only a real horizontal arm changes
  * them. `plantZ`/`groundState`/`animPhase` are untouched.
  */
-function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
+function withBounced(p: SimProcess, resolved: JoustEntity): SimProcess {
   if ((p.kind === 'player' || p.kind === 'ptero') && p.entity) {
     return {
       ...p,
@@ -1588,7 +1588,7 @@ function withBounced(p: DemoProcess, resolved: JoustEntity): DemoProcess {
  * ELEFT(−10)/ERIGHT(292) wrap the flight step applies — to keep a bird that drains
  * across the horizontal seam inside the arena this frame rather than one frame late.
  */
-function drainProcessBumpX(p: DemoProcess): DemoProcess {
+function drainProcessBumpX(p: SimProcess): SimProcess {
   const bump = p.bumpX ?? 0
   if (bump === 0) return p
   const { applied, remaining } = drainBumpX(bump)
@@ -1655,13 +1655,13 @@ function eggBox(e: EggState): CollisionBox {
 /** The jt3-4 ptero as a lance-height joust participant. `attackFrame` false — a live
  * wave ptero/baiter glides (10±2 band); the FLY3 attacking window is not modelled
  * on the demo process, so a plain glide-band contact is the resolvable case. */
-function toPteroEntity(p: DemoProcess): PteroEntity | null {
+function toPteroEntity(p: SimProcess): PteroEntity | null {
   if (p.kind !== 'ptero' || !p.entity) return null
   return { posX: p.entity.posX, posY: p.entity.posY, facing: p.facing ?? 1, attackFrame: false }
 }
 
 /** The egg process a dying enemy leaves behind (DEATH3 → a scheduler egg). */
-function eggProcess(id: number, egg: EggState): DemoProcess {
+function eggProcess(id: number, egg: EggState): SimProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg }
 }
 
@@ -1672,7 +1672,7 @@ function eggProcess(id: number, egg: EggState): DemoProcess {
  * A baiter tags the DissolveState so the (jt4) baiter count can settle on entry.
  * Its id rides a separate namespace so it never collides with a live process.
  */
-function dissolveProcess(ptero: DemoProcess): DemoProcess {
+function dissolveProcess(ptero: SimProcess): SimProcess {
   return {
     id: 0x2_0000 + ptero.id,
     cls: 'secondary',
@@ -1691,17 +1691,17 @@ function dissolveProcess(ptero: DemoProcess): DemoProcess {
  * a dying enemy stood, and surfaces the kill score. A materialising enemy
  * (collisionEnabled === false) cannot be jousted. Pure — a new list is returned.
  */
-function collisionPass(processes: readonly DemoProcess[]): {
-  processes: DemoProcess[]
-  events: DemoEvent[]
+function collisionPass(processes: readonly SimProcess[]): {
+  processes: SimProcess[]
+  events: SimEvent[]
   cues: GameEvent[]
 } {
   const eligible = processes.filter(
     (p) => (p.kind === 'player' || p.kind === 'enemy' || p.kind === 'ptero') && p.collisionEnabled !== false,
   ) // jt5-16 admits the ptero — OSTHT2's law, settled by jt5-10 (the note at the foot of this file)
   const removed = new Set<number>()
-  const spawned: DemoProcess[] = []
-  const events: DemoEvent[] = []
+  const spawned: SimProcess[] = []
+  const events: SimEvent[] = []
   // jt5-1/jt5-4 — cues are emitted where the outcome is DECIDED, never
   // reconstructed from a process diff (six of the seventeen cued moments).
   const cues: GameEvent[] = []
@@ -1715,7 +1715,7 @@ function collisionPass(processes: readonly DemoProcess[]): {
   // gave it a SECOND writer: the DEATH3 last-egg award in the joust pass above
   // bumps the same counter, and both passes must see one another's bumps or a
   // knight who takes a last egg and then catches one pays the same rung twice.
-  const caught = new Map<number, DemoProcess>()
+  const caught = new Map<number, SimProcess>()
 
   for (let i = 0; i < eligible.length; i++) {
     for (let j = i + 1; j < eligible.length; j++) {
@@ -1966,7 +1966,7 @@ function collisionPass(processes: readonly DemoProcess[]): {
       // sends that bird off-screen (`LDD #AUTOFF ... STD PJOY,Y`) and drops the enemy
       // count (`DEC NENEMY  THIS GUY IS NO LONGER AN ENEMY`, :3078-3087). This port's
       // reachable form: the collect REMOVES the egg here, before the maturation flatMap
-      // below ever runs (collisionPass precedes it in stepDemo), so no buzzard spawns at
+      // below ever runs (collisionPass precedes it in stepSim), so no buzzard spawns at
       // walk-off (AUTOFF) and `population`/NENEMY drops (the flatMap counts hatchRow-set
       // eggs; the removed one leaves the count). jt9-25 had made a hatchRow-set egg
       // non-collectible to hold the seed-0xface fingerprints still — a simplification the
@@ -2083,7 +2083,7 @@ export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
   // `BNE 1$  BR=YOU CAN GET MORE EGGS` (:3002): while the decremented count is
   // nonzero the ROM leaves the egg to be collected and scores nothing here. Only
   // the LAST one — the decrement that reaches zero — pays out on the kill.
-  const events: DemoEvent[] = []
+  const events: SimEvent[] = []
   if (egg !== null && egg.eggsLeft === 0) {
     // A JOUST always has a victor — `outcome.winner` — so U is nonzero on this
     // path and the BEQ falls through. The victor-less case the guard exists for
@@ -2109,7 +2109,7 @@ export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
  * :230). So a re-entered knight becomes VULNERABLE again when the window ENDS and the loop can
  * close through play (Reviewer Ruling #1). A process without an active window passes through.
  */
-function advanceMaterialisation(p: DemoProcess): DemoProcess {
+function advanceMaterialisation(p: SimProcess): SimProcess {
   if (!p.mat || (p.kind !== 'enemy' && p.kind !== 'player')) return p
   const mat = stepMaterialise(p.mat, NEUTRAL_INPUT)
   return { ...p, mat, collisionEnabled: mat.collisionsEnabled }
@@ -2121,8 +2121,8 @@ function advanceMaterialisation(p: DemoProcess): DemoProcess {
  * collisionPass kill (it becomes a baiter-tagged dissolve), so a disappearance is exactly one
  * PTEKLL `DEC NBAIT` settle (JOUSTRV4.SRC:1370-1372). Pure.
  */
-function countBaiterDeaths(before: readonly DemoProcess[], after: readonly DemoProcess[]): number {
-  const isLiveBaiter = (p: DemoProcess): boolean => p.kind === 'ptero' && p.baiter === true
+function countBaiterDeaths(before: readonly SimProcess[], after: readonly SimProcess[]): number {
+  const isLiveBaiter = (p: SimProcess): boolean => p.kind === 'ptero' && p.baiter === true
   const afterIds = new Set(after.filter(isLiveBaiter).map((p) => p.id))
   let deaths = 0
   for (const p of before) if (isLiveBaiter(p) && !afterIds.has(p.id)) deaths++
@@ -2136,11 +2136,11 @@ function countBaiterDeaths(before: readonly DemoProcess[], after: readonly DemoP
  * enemy cannot lock on for ~1.5 s. Idempotent for an already-slotted player.
  *
  * A respawn is re-registered with a ONE-FRAME LAG: game.ts re-enters the
- * re-materialising process, and THIS reconcile — running on the NEXT stepDemo —
+ * re-materialising process, and THIS reconcile — running on the NEXT stepSim —
  * arms its fresh grace. The lag is deterministic and harmless (the knight is
  * collision-safe while it materialises anyway), not an instantaneous re-arm. Pure.
  */
-function reconcileTargets(targets: TargetState, processes: readonly DemoProcess[]): TargetState {
+function reconcileTargets(targets: TargetState, processes: readonly SimProcess[]): TargetState {
   // A live player is a `kind:'player'` process that still carries its flight entity —
   // the SAME liveness predicate frame.ts uses to gather the selectable players
   // (frame.ts:322), so reconcile and selection never disagree on who is on-screen.
@@ -2167,7 +2167,7 @@ function reconcileTargets(targets: TargetState, processes: readonly DemoProcess[
  * never mutated. There is NO second stepping path: players ride the identical
  * `stepFrame` a solo scheduler run does.
  */
-export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>): DemoState {
+export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): SimState {
   // jt8-1: tick the grace timers FIRST (the ROM decrements them in PLYCOL, a
   // process that runs BEFORE the collisionable players / enemies), so an enemy's
   // SELPLY this frame reads the just-decremented timer.
@@ -2213,8 +2213,8 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
     { wave: waveOrdinal, arena: demo.arena },
   )
 
-  const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as DemoProcess))
-  const materialised = drainedProcesses.map((p) => advanceMaterialisation(p as DemoProcess))
+  const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as SimProcess))
+  const materialised = drainedProcesses.map((p) => advanceMaterialisation(p as SimProcess))
   const collided = collisionPass(materialised)
 
   let wave = demo.wave
@@ -2300,7 +2300,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
    * draw. Called only where `waitFrames` is still unseeded, so a deferred egg re-primed to
    * one nap never draws again and the cut is spent exactly once per egg.
    */
-  const seedEggWait = (p: DemoProcess): number => {
+  const seedEggWait = (p: SimProcess): number => {
     const base = eggWaitFrames(p.waveEgg === true ? 'EGGWT2' : 'EGGWT', waveOrdinal)
     if (p.prematureHatch !== true) return base
     const drawn = draw({ ...stepped, rng })
@@ -2550,7 +2550,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
 
   if (pendingPteros.length > 0) {
     const stillPending: PendingPtero[] = []
-    const created: DemoProcess[] = []
+    const created: SimProcess[] = []
     for (const pp of pendingPteros) {
       const countdown = pp.countdown - 1
       if (countdown <= 0) {
@@ -2578,7 +2578,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
   // with its TARTIM grace. Idempotent for an already-slotted player.
   const targets = reconcileTargets(tickedTargets, processes)
 
-  const sim: DemoSim = {
+  const sim: SimCore = {
     frame: stepped.frame,
     processes,
     woke: stepped.woke,
@@ -2607,7 +2607,7 @@ export function stepDemo(demo: DemoState, inputs?: Record<number, PlayerInput>):
  * record; `drawList` tags each op with the entity's `facing` and the shell
  * mirrors a left-facer at the blit (jt2-9 — the flip is DATA, not by-eye). Pure.
  */
-export function enemyFrame(p: DemoProcess): string {
+export function enemyFrame(p: SimProcess): string {
   const e = p.enemy?.entity
   if (!e || e.airborne) return 'BRFLAP'
   const phase = e.animPhase ?? 0
@@ -2620,7 +2620,7 @@ export function enemyFrame(p: DemoProcess): string {
  * The name resolves to its IPTERO POSOFF record (PT1R..PT3L) so `entityOp` lifts it
  * off its feet onto the flight line — the seed-4 no-lift, closed for the ptero. Pure.
  */
-export function pteroFrame(p: DemoProcess): string {
+export function pteroFrame(p: SimProcess): string {
   const suffix = (p.facing ?? 1) < 0 ? 'L' : 'R'
   const idx = ((p.entity?.animPhase ?? 0) % 3) + 1 // PT1..PT3
   return `PT${idx}${suffix}`
@@ -2631,7 +2631,7 @@ export function pteroFrame(p: DemoProcess): string {
  * The name resolves to its ILAVAT POSOFF record so the hand is lifted as it grips
  * off CLIF5. Right-facing record; the shell mirrors a left-facer at the blit. Pure.
  */
-export function trollFrame(p: DemoProcess): string {
+export function trollFrame(p: SimProcess): string {
   const idx = ((p.entity?.animPhase ?? 0) % 6) + 1 // GRAB1..GRAB6
   return `GRAB${idx}`
 }
@@ -2656,7 +2656,7 @@ export function dissolveFrame(): string {
  * has. The enemyFrame/pteroFrame/trollFrame idiom; the shell blits what it returns.
  * Pure.
  */
-export function eggFrame(p: DemoProcess): string {
+export function eggFrame(p: SimProcess): string {
   const row = p.egg?.hatchRow
   if (row === undefined) return 'EGGI'
   const offset = EGGTBL[Math.min(row, EGGTBL.length - 1)][0]
@@ -2682,7 +2682,7 @@ function mountFrame(mount: 'ostrich' | 'stork', e: EntityState): string {
  * (under), the PLY* knight on top. The mount is an ostrich block for P1 / a stork
  * block for P2 (the mount the user reported missing entirely). Pure.
  */
-export function playerDrawList(p: DemoProcess): string[] {
+export function playerDrawList(p: SimProcess): string[] {
   if (!p.entity) return []
   const mount = p.mount ?? 'ostrich'
   // The rider colour distinguishes the players: P1 (ostrich) is the colour-5
@@ -2718,7 +2718,7 @@ const ENEMY_RIDER: Readonly<Record<EnemyType, string>> = Object.freeze({
  * remount buzzard for free — it is a `kind:'enemy'` process. Pure DATA; the shell
  * blits both and mirrors a left-facer from the op's facing.
  */
-export function enemyDrawList(p: DemoProcess): string[] {
+export function enemyDrawList(p: SimProcess): string[] {
   const type = p.enemyType ?? 'bounder'
   return [enemyFrame(p), ENEMY_RIDER[type]]
 }
@@ -2776,7 +2776,7 @@ function entityOp(name: string, posX: number, feetY: number, facing: Facing): Dr
  * sprites (the user's z-order bug); this list draws some arena AFTER the entities.
  * Pure.
  */
-export function drawList(demo: DemoState): DrawOp[] {
+export function drawList(demo: SimState): DrawOp[] {
   const back: DrawOp[] = []
   const fore: DrawOp[] = []
   // jt11-5 — the BRIDGE/BRIDG2 lava-shore planks (JOUSTRV4.SRC:1126-1127):
@@ -2860,7 +2860,7 @@ export function drawList(demo: DemoState): DrawOp[] {
 // entity-bearing arm (party `enemy` — the PID class bit, :4961), and a
 // ptero/ptero pair resolves through the SAME enemy bounce as a buzzard pair.
 //
-// This note stays at the foot of the module deliberately: `demo.ts:N` citations
+// This note stays at the foot of the module deliberately: `sim.ts:N` citations
 // in other suites and in ARCHIVED sessions are permanent records, so the gap's
 // history is corrected here rather than deleted.
 //

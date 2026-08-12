@@ -8,7 +8,7 @@
 // and pins the demo's transcription against it.
 //
 // ─── THE DOUBLE-ENTRY (the jt1-3 tautology trap) ─────────────────────────────
-// Dev transcribes the hand-animation constants into src/core/demo.ts one way; this
+// Dev transcribes the hand-animation constants into src/core/sim.ts one way; this
 // file reads them out of JOUSTRV4.SRC another way, and the gate is that the two
 // agree. A derivation that re-bakes its own misreading cannot pass a reader it did
 // not write.
@@ -39,8 +39,8 @@ function operandOf(n: number, op: string): string {
 const FLOOR = 0xdf
 
 /**
- * jt9-11's new demo.ts constant exports, with a self-describing RED (local loader).
- * GREEN adds them to src/core/demo.ts as it wires the LT1HT hand animation.
+ * jt9-11's new sim.ts constant exports, with a self-describing RED (local loader).
+ * GREEN adds them to src/core/sim.ts as it wires the LT1HT hand animation.
  */
 interface TrollWiringConsts {
   TROLL_HAND_START_Y: number
@@ -57,11 +57,11 @@ const REQUIRED = [
   'TROLL_FRAME_STEP',
 ] as const
 async function loadWiringConsts(): Promise<TrollWiringConsts> {
-  const mod = (await import(['..', '..', 'src', 'core', 'demo.js'].join('/'))) as Record<string, unknown>
+  const mod = (await import(['..', '..', 'src', 'core', 'sim.js'].join('/'))) as Record<string, unknown>
   const missing = REQUIRED.filter((k) => typeof mod[k] !== 'number')
   if (missing.length) {
     throw new Error(
-      `jt9-11 not built — demo.ts must export the LT1HT hand-animation constants ` +
+      `jt9-11 not built — sim.ts must export the LT1HT hand-animation constants ` +
         `${missing.join(', ')}. GREEN transcribes them from JOUSTRV4.SRC: the hand starts ` +
         `at FLOOR-9 (:6783), offset -2 in X from its victim (:6786), extends to frame 5*6 ` +
         `(:1614) in steps of 6 (:1623), and grabs at victim pixelY + (10-7) (:1629).`,

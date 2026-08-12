@@ -3,7 +3,7 @@
 // Story jt2-9 — RED phase (Leeloo / TEA). The user's jt2-7 playtest follow-up.
 // Every gap below is source-confirmed on HEAD a755096 (the jt2-7 merge); these
 // rails fail against the CURRENT code and Dev (Julia) greens them. The pre-
-// existing 1018 stay green — these use the round-2 render seams + stepDemo.
+// existing 1018 stay green — these use the round-2 render seams + stepSim.
 //
 // The FIVE items (source anchors in the assessment):
 //   (1) LEDGE SEAT — sprites sit a full POSOFF too low; the render ignores each
@@ -19,7 +19,7 @@
 //       skid (PLANTZ=2). So the fix is (2), NOT an OSTBO law change. THIS FILE.
 //   (4) render polish — per-tier z-depth / mount alignment / run cadence (rails in
 //       demo-jt2-9-anchor.test.ts, ROM-derived).
-//   (5) leftovers — DemoState.events grows UNBOUNDED (stepDemo appends every
+//   (5) leftovers — SimState.events grows UNBOUNDED (stepSim appends every
 //       frame, main.ts never drains). THIS FILE.
 //
 // ROUTING ≠ GEOMETRY (MEMORY): the facing FLIP is pinned as DATA on the drawList
@@ -30,15 +30,15 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  loadDemoRender,
-  type DemoState,
-  type DemoProcess,
-  type DemoEvent,
+  loadSim,
+  loadSimRender,
+  type SimState,
+  type SimProcess,
+  type SimEvent,
   type EntityState,
   type EnemyState,
   type JoustEntity,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
 import type { PlayerInput } from './helpers/flight-contract.js'
 
@@ -68,7 +68,7 @@ function playerProcess(
   facing: -1 | 1,
   over: Partial<EntityState> = {},
   airborne = true,
-): DemoProcess {
+): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -92,19 +92,19 @@ function enemyStateAt(posX: number, pixelY: number, airborne: boolean, facing: -
   }
 }
 
-function enemyProcess(id: number, state: EnemyState): DemoProcess {
+function enemyProcess(id: number, state: EnemyState): SimProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemyType: 'bounder', collisionEnabled: true, enemy: state }
 }
 
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
+const only = (d: SimState, procs: SimProcess[]): SimState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
 
 const input = (dir: -1 | 0 | 1): PlayerInput => ({ dir, flap: false, flapHeld: false })
 
 /** Step a demo N frames threading one player's fixed input; returns that player each frame's end. */
-async function drivePlayer(demo: DemoState, playerId: number, dir: -1 | 0 | 1, frames: number): Promise<DemoProcess> {
-  const dmod = await loadDemo()
+async function drivePlayer(demo: SimState, playerId: number, dir: -1 | 0 | 1, frames: number): Promise<SimProcess> {
+  const dmod = await loadSim()
   let d = demo
-  for (let i = 0; i < frames; i++) d = dmod.stepDemo(d, { [playerId]: input(dir) })
+  for (let i = 0; i < frames; i++) d = dmod.stepSim(d, { [playerId]: input(dir) })
   const p = d.sim.processes.find((q) => q.id === playerId)
   if (!p) throw new Error(`player ${playerId} vanished mid-drive`)
   return p
@@ -121,8 +121,8 @@ async function drivePlayer(demo: DemoState, playerId: number, dir: -1 | 0 | 1, f
 //   facing dies, and a facing that only flips one way dies.
 describe('jt2-9 item 2a — air: direction input flips facing (PFACE)', () => {
   it('a right-facer pressing LEFT ends up facing left; then pressing RIGHT faces right again', async () => {
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
     const p0 = playerProcess(1, 146, 1) // airborne, facing right
 
     const leftFaced = await drivePlayer(only(base, [p0]), 1, -1, 4)
@@ -134,8 +134,8 @@ describe('jt2-9 item 2a — air: direction input flips facing (PFACE)', () => {
   })
 
   it('neutral input (dir 0) PRESERVES facing for BOTH directions — a reset-to-default bug dies', async () => {
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
     // A right-facer stays right AND a left-facer stays left. Testing only the
     // right-facer would let `nextFacing = dir === 0 ? 1 : …` (reset-to-right) pass,
     // since 1 coincides with the start — so pin the LEFT case too (Reviewer round 2).
@@ -155,8 +155,8 @@ describe('jt2-9 item 2a — air: direction input flips facing (PFACE)', () => {
 //   stays grounded while it turns).
 describe('jt2-9 item 2b — ground: reversing reaches the skid chain (jt2-3, until now unreachable)', () => {
   it('a grounded player who reverses against its facing skids — plantZ becomes 2 (SKID_PLANT_Z)', async () => {
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
     // Grounded on the bottom island, running right, facing right.
     const grounded = playerProcess(1, 146, 1, { posY: 210 << 8, groundState: 'PLYER', animPhase: 2 }, false)
 
@@ -165,7 +165,7 @@ describe('jt2-9 item 2b — ground: reversing reaches the skid chain (jt2-3, unt
     let skidded = false
     let stayedGrounded = false
     for (let i = 0; i < 6; i++) {
-      d = dmod.stepDemo(d, { 1: input(-1) })
+      d = dmod.stepSim(d, { 1: input(-1) })
       const p = d.sim.processes.find((q) => q.id === 1)
       if (p?.entity && !p.entity.airborne) stayedGrounded = true
       if (p?.entity?.plantZ === 2) skidded = true
@@ -175,13 +175,13 @@ describe('jt2-9 item 2b — ground: reversing reaches the skid chain (jt2-3, unt
   })
 
   it('a grounded player running WITH its facing never skids — plantZ stays 0 (the control)', async () => {
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
     const grounded = playerProcess(1, 146, 1, { posY: 210 << 8, groundState: 'PLYER', animPhase: 2 }, false)
     let d = only(base, [grounded])
     let everSkidded = false
     for (let i = 0; i < 6; i++) {
-      d = dmod.stepDemo(d, { 1: input(1) }) // WITH facing → onPlus, the run chain
+      d = dmod.stepSim(d, { 1: input(1) }) // WITH facing → onPlus, the run chain
       const p = d.sim.processes.find((q) => q.id === 1)
       if (p?.entity?.plantZ === 2) everSkidded = true
     }
@@ -196,9 +196,9 @@ describe('jt2-9 item 2b — ground: reversing reaches the skid chain (jt2-3, unt
 //   from the pure list, not trusted at the canvas.)
 describe('jt2-9 item 2c — drawList carries facing on entity ops (the shell flips from data)', () => {
   it('a LEFT-facing player yields entity ops with facing −1; a RIGHT-facer yields +1', async () => {
-    const r = await loadDemoRender()
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const r = await loadSimRender()
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
 
     const left = only(base, [playerProcess(1, 146, -1)])
     const right = only(base, [playerProcess(1, 146, 1)])
@@ -218,9 +218,9 @@ describe('jt2-9 item 2c — drawList carries facing on entity ops (the shell fli
   })
 
   it('a LEFT-facing enemy also carries facing −1 (buzzards face their travel too)', async () => {
-    const r = await loadDemoRender()
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const r = await loadSimRender()
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
     const enemyLeft = only(base, [enemyProcess(0x40, enemyStateAt(150, 90, true, -1))])
     const ents = r.drawList(enemyLeft).filter((op) => op.kind === 'entity')
     expect(ents.length, 'the enemy must produce an entity op').toBeGreaterThan(0)
@@ -237,13 +237,13 @@ describe('jt2-9 item 2c — drawList carries facing on entity ops (the shell fli
 //   index 7 (a swap) — so P1→PLYR1 / P2→PLYR2 is the ROM's two-player colouring.
 //   The mount already distinguishes them (ostrich P1 / stork P2).
 describe('jt2-9 item 2d — P1 and P2 ride DIFFERENT-coloured riders (not both yellow)', () => {
-  const withMount = (id: number, mount: 'ostrich' | 'stork'): DemoProcess => ({
+  const withMount = (id: number, mount: 'ostrich' | 'stork'): SimProcess => ({
     id, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount,
     collisionEnabled: true, entity: entityAt(100 + id, 90, true),
   })
 
   it('P1 (ostrich) rides PLYR1, P2 (stork) rides PLYR2 — the second (top) layer differs', async () => {
-    const r = await loadDemoRender()
+    const r = await loadSimRender()
     const p1 = r.playerDrawList(withMount(1, 'ostrich'))
     const p2 = r.playerDrawList(withMount(2, 'stork'))
     expect(p1[1], 'P1 rides the colour-5 rider PLYR1').toBe('PLYR1')
@@ -309,9 +309,9 @@ describe('jt2-9 item 3 — the joust stays HEIGHT-ONLY (facing is not a joust te
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ITEM 5a — DemoState.events must not grow UNBOUNDED
+// ITEM 5a — SimState.events must not grow UNBOUNDED
 // ═════════════════════════════════════════════════════════════════════════════
-//   Gap: stepDemo returns `events: [...demo.events, ...collided.events]` — it only
+//   Gap: stepSim returns `events: [...demo.events, ...collided.events]` — it only
 //   ever APPENDS, and main.ts never drains it, so a long session leaks the whole
 //   score/beat history. The fix caps (keep last K) or drains (per-frame, main.ts
 //   consumes). Prove the unboundedness directly: seed a large log, step ONE no-
@@ -320,18 +320,18 @@ describe('jt2-9 item 3 — the joust stays HEIGHT-ONLY (facing is not a joust te
 //   fails.
 describe('jt2-9 item 5a — the event log is capped/drained, not unbounded', () => {
   it('one no-contact step does not carry a large pre-existing log forward unchanged', async () => {
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
 
     // Seed 200 stale score events — the leak a long session would have accrued.
-    const stale: DemoEvent[] = Array.from({ length: 200 }, () => ({
+    const stale: SimEvent[] = Array.from({ length: 200 }, () => ({
       kind: 'score' as const,
       value: 500,
       reason: 'kill' as const,
     }))
     // Wave-1 enemies are still materialising (collisions off) and the players sit
     // apart, so this frame resolves NO contact — collided.events is empty.
-    const stepped = dmod.stepDemo({ ...base, events: stale })
+    const stepped = dmod.stepSim({ ...base, events: stale })
 
     expect(
       stepped.events.length,
@@ -341,20 +341,20 @@ describe('jt2-9 item 5a — the event log is capped/drained, not unbounded', () 
   })
 
   it('a SEEDED log stays capped across a long run — the cap holds every frame, not just once', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // Seed a log far larger than any sane cap, then run 400 frames. Neutral input
-    // adds no events, so an UNCAPPED stepDemo would carry all 300 forward unchanged
+    // adds no events, so an UNCAPPED stepSim would carry all 300 forward unchanged
     // (Reviewer round 2: the old no-seed version only ever saw 2 events → vacuous).
-    const stale: DemoEvent[] = Array.from({ length: 300 }, () => ({ kind: 'score' as const, value: 500, reason: 'kill' as const }))
-    let d: DemoState = { ...dmod.createWaveDemo(SEED), events: stale }
-    // Track the peak AFTER stepping — the cap governs stepDemo's OUTPUT, so the very
+    const stale: SimEvent[] = Array.from({ length: 300 }, () => ({ kind: 'score' as const, value: 500, reason: 'kill' as const }))
+    let d: SimState = { ...dmod.createWaveSim(SEED), events: stale }
+    // Track the peak AFTER stepping — the cap governs stepSim's OUTPUT, so the very
     // first step must already collapse the 300 seed to the cap and hold it there.
     let maxAfterStep = 0
     for (let i = 0; i < 400; i++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       maxAfterStep = Math.max(maxAfterStep, d.events.length)
     }
     expect(d.events.length, `events reached ${d.events.length} at the end`).toBeLessThanOrEqual(64)
-    expect(maxAfterStep, `a stepped log peaked at ${maxAfterStep} — an uncapped stepDemo would carry all 300 forward`).toBeLessThanOrEqual(64)
+    expect(maxAfterStep, `a stepped log peaked at ${maxAfterStep} — an uncapped stepSim would carry all 300 forward`).toBeLessThanOrEqual(64)
   })
 })

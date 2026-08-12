@@ -3,7 +3,7 @@
 // Story jt4-4 — RED phase (Leeloo / TEA). The BEHAVIOUR suite for the FOURTH and
 // final game.ts session-layer module of epic jt4: GAME-OVER (the GOVER tri-state),
 // the WAVE-TO-WAVE LOOP consolidated under stepGame, and the jt4-3 arm/detect/award
-// loop gone LIVE. (The demo.ts sim concerns — DBAIT baiter removal + the WAVEGG
+// loop gone LIVE. (The sim.ts sim concerns — DBAIT baiter removal + the WAVEGG
 // egg-hatch spawn + the collisionPass partner-kill EVENT — are pinned in the
 // companion tests/demo-jt4-4.test.ts; the source re-derivation + JT44-* claim
 // coverage in tests/game-loop-source.test.ts.)
@@ -14,7 +14,7 @@
 //      two independent ledgers: a player at ZERO lives is OUT and WAITS; the game
 //      reaches OVER only when EVERY player is out. Proven at 1P and 2P.
 //   2. AC-2 — the wave-to-wave loop runs under `stepGame` with score/lives/gover on
-//      the SINGLE `stepDemo`-wrapping sim step (no second stepping path — the jt2-1
+//      the SINGLE `stepSim`-wrapping sim step (no second stepping path — the jt2-1
 //      one-sim seam); a seeded game replays bit-for-bit and a forced wave advance
 //      rides the ledgers on the one step.
 //   3. Forward-carried from jt4-3 (all in scope this story): the live gladiator
@@ -29,9 +29,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { loadGameLoop } from './helpers/game-contract.js'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import type { GameState, PlayerLedger, PlayerInput } from './helpers/game-contract.js'
-import type { DemoProcess, EntityState } from './helpers/demo-contract.js'
+import type { SimProcess, EntityState } from './helpers/sim-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
@@ -52,14 +52,14 @@ function entity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** Replace the wrapped sim's process list (a constructed sim state), clearing events. */
-function withProcesses(game: GameState, procs: DemoProcess[]): GameState {
+function withProcesses(game: GameState, procs: SimProcess[]): GameState {
   return {
     ...game,
     sim: { ...game.sim, sim: { ...game.sim.sim, processes: procs }, events: [] },
   }
 }
 
-/** Live player process ids inside the wrapped sim (GameState.sim is a DemoState). */
+/** Live player process ids inside the wrapped sim (GameState.sim is a SimState). */
 const livePlayers = (game: GameState): number[] =>
   game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
 
@@ -204,20 +204,20 @@ describe('AC-1 integration — stepGame settles out/gover from the live sim', ()
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-2 — the wave-to-wave loop consolidated under stepGame (the one-sim seam).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-2 the loop — score/lives/gover ride the SINGLE stepDemo-wrapping sim step', () => {
-  it('stepGame delegates ALL stepping to stepDemo — the wrapped sim is bit-identical (no second path)', async () => {
+describe('AC-2 the loop — score/lives/gover ride the SINGLE stepSim-wrapping sim step', () => {
+  it('stepGame delegates ALL stepping to stepSim — the wrapped sim is bit-identical (no second path)', async () => {
     const g = await loadGameLoop()
-    const d = await loadDemo()
+    const d = await loadSim()
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     let game = g.createGame(SEED)
-    let sim = d.createWaveDemo(SEED)
+    let sim = d.createWaveSim(SEED)
     for (let i = 0; i < 30; i++) {
       game = g.stepGame(game, input)
-      sim = d.stepDemo(sim, input)
+      sim = d.stepSim(sim, input)
     }
     // The jt2-1 one-sim seam: a forked/divergent stepping path in the consolidated loop
-    // would make game.sim drift from a raw stepDemo. They must stay byte-identical.
-    expect(game.sim, 'stepGame wraps stepDemo — no divergent second stepping path').toEqual(sim)
+    // would make game.sim drift from a raw stepSim. They must stay byte-identical.
+    expect(game.sim, 'stepGame wraps stepSim — no divergent second stepping path').toEqual(sim)
   })
 
   it('a seeded stepGame run replays bit-for-bit (score + lives + gover + sim)', async () => {
@@ -286,11 +286,11 @@ describe('jt4-3 carry — a LIVE gladiator partner-kill is detected + awarded th
     // Inject two knights positioned so P1 (higher on screen) wins the partner-joust and P2
     // dies; with no enemies the wave then CLEARS on the same step. The consolidated loop must
     // record the partner-kill (recordPartnerKill) BEFORE awarding the ending wave's bounty.
-    const p1: DemoProcess = {
+    const p1: SimProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
       collisionEnabled: true, entity: entity({ posX: 100, posY: 100 << 8 }),
     }
-    const p2: DemoProcess = {
+    const p2: SimProcess = {
       id: 2, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: -1, mount: 'stork',
       collisionEnabled: true, entity: entity({ posX: 104, posY: 108 << 8 }),
     }

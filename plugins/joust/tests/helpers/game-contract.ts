@@ -8,19 +8,19 @@
 // tests/game-source.test.ts.
 //
 // ─── WHAT jt4-1 ADDS: THE SESSION LAYER ABOVE THE SIM ────────────────────────
-// jt2/jt3 built the deterministic SIM (demo.ts / stepDemo). Score VALUES are
+// jt2/jt3 built the deterministic SIM (sim.ts / stepSim). Score VALUES are
 // already emitted as events (joust.killScore, egg.eggScoreEvents,
-// ptero.pteroScoreEvent) and then THROWN AWAY — demo.ts caps the event log and
+// ptero.pteroScoreEvent) and then THROWN AWAY — sim.ts caps the event log and
 // says so ("nothing drains it until the jt4 score display"). game.ts is that
 // missing drain: ONE new module holding per-session state above the per-frame
-// sim, and a stepGame that WRAPS stepDemo (no second stepping path — the jt2-1
+// sim, and a stepGame that WRAPS stepSim (no second stepping path — the jt2-1
 // one-sim seam) and DRAINS its score events into per-player BCD registers.
 //
-//   • createGame(seed) → a GameState whose `sim` is a real createWaveDemo(seed)
-//     DemoState, plus TWO independent player ledgers (the ROM co-op shape —
+//   • createGame(seed) → a GameState whose `sim` is a real createWaveSim(seed)
+//     SimState, plus TWO independent player ledgers (the ROM co-op shape —
 //     each player its OWN score; lives/gover are jt4-2 / jt4-4 and only carry
 //     placeholder fields here).
-//   • stepGame(game) delegates to stepDemo for the sim (bit-identical) and then
+//   • stepGame(game) delegates to stepSim for the sim (bit-identical) and then
 //     credits the frame's score events to the right ledger.
 //
 // ─── THE BCD LAW (JOUSTRV4.SRC:7340-7366) — SCRHUN vs SCRTEN, the BACKWARDS trap ─
@@ -49,14 +49,14 @@
 // ─── UNITS / IDS ─────────────────────────────────────────────────────────────
 //   • A player id is its process id: PLAYER1_ID = 1 (ledger 0), PLAYER2_ID = 2
 //     (ledger 1). The demo's PLAYER1_SPAWN / PLAYER2_SPAWN carry these.
-//   • A GameScoreEvent is the demo's DemoEvent score PLUS the scoring player.
-//     The demo's own DemoEvent carries NO player (the drain GAP — see the source
+//   • A GameScoreEvent is the demo's SimEvent score PLUS the scoring player.
+//     The demo's own SimEvent carries NO player (the drain GAP — see the source
 //     suite's finding); stepGame must attribute from the joust winner.
 
-import type { DemoState, PlayerInput } from './demo-contract.js'
+import type { SimState, PlayerInput } from './sim-contract.js'
 import type { ResolvedWaveType, RawWaveType, PlayersAlive } from './wave-contract.js'
 
-export type { DemoState, PlayerInput, ResolvedWaveType, RawWaveType, PlayersAlive }
+export type { SimState, PlayerInput, ResolvedWaveType, RawWaveType, PlayersAlive }
 
 /**
  * One player's session ledger. Only `score` (numeric total) and `scoreBcd` (the
@@ -90,7 +90,7 @@ export interface PlayerLedger {
 
 /**
  * The whole game session: the ledgers, the loop scalars, and the wrapped sim.
- * `sim` is a real DemoState — stepGame delegates every frame of stepping to it.
+ * `sim` is a real SimState — stepGame delegates every frame of stepping to it.
  */
 export interface GameState {
   /** One ledger per player, index 0 = P1, index 1 = P2 (the co-op shape). */
@@ -99,8 +99,8 @@ export interface GameState {
   gover: number
   /** 1-based wave, mirrored from the sim. */
   wave: number
-  /** The wrapped deterministic sim (createWaveDemo / stepDemo). */
-  sim: DemoState
+  /** The wrapped deterministic sim (createWaveSim / stepSim). */
+  sim: SimState
   /**
    * jt4-3 — the two per-player partner-kill counters PLYG1/PLYG2 (the polarity
    * trap). Seeded to `{ plyg1: 0, plyg2: 0 }` at game start — the PATC11 "GAME START
@@ -149,14 +149,14 @@ export interface GameModule {
   creditScoreEvents(players: readonly PlayerLedger[], events: readonly GameScoreEvent[]): PlayerLedger[]
 
   /**
-   * A fresh game: `sim` = createWaveDemo(seed), `playerCount` ledgers (default 2)
+   * A fresh game: `sim` = createWaveSim(seed), `playerCount` ledgers (default 2)
    * at score 0. Deterministic — same seed, same GameState. Pure.
    */
   createGame(seed: number, playerCount?: number): GameState
 
   /**
-   * One frame: delegate stepping to stepDemo (the produced `sim` is bit-identical
-   * to a raw stepDemo — no second stepping path), then drain the frame's score
+   * One frame: delegate stepping to stepSim (the produced `sim` is bit-identical
+   * to a raw stepSim — no second stepping path), then drain the frame's score
    * events into the ledgers. Pure — the argument is never mutated.
    *
    * jt4-2 EXTENSION: stepGame also BOOKS a mount death — a player process that was
@@ -200,7 +200,7 @@ export async function loadGame(): Promise<GameModule> {
         'satisfying tests/helpers/game-contract.ts: the SCRHUN/SCRTEN decodeDvalue ' +
         '(the BACKWARDS tens|hundreds packing), scoreToBcd (the DSCORE byte order), ' +
         'creditScoreEvents (the per-player drain — a P1 kill never moves P2), and ' +
-        'createGame/stepGame (stepGame WRAPS stepDemo — no second stepping path). ' +
+        'createGame/stepGame (stepGame WRAPS stepSim — no second stepping path). ' +
         `Also commit docs/rom-study/claims/game.json (JT41-*). (${(e as Error).message})`,
     )
   }
@@ -244,7 +244,7 @@ export async function loadGameExtra(): Promise<GameModule> {
 //
 //   • the EGG wave spawns its wave AS EGGS (WAVEGG, JOUSTRV4.SRC:2737) — a status→
 //     spawn predicate flowing THROUGH dispatchWaveType, the exact shape jt3-4's
-//     `pteroWaveSpawnCount` uses (Dev wires it into demo.ts's spawn path as
+//     `pteroWaveSpawnCount` uses (Dev wires it into sim.ts's spawn path as
 //     `spawnWavePteros` wires the ptero count);
 //   • the GLADIATOR wave ARMS PvP (WGLAD, JOUSTRV4.SRC:2697-2716) — the guards armed
 //     to −1 when the wave dispatches to 'gladiator';
@@ -391,7 +391,7 @@ export async function loadGameBounty(): Promise<GameBountyModule> {
           ':2642-2661, survival deathless :2674-2693, gladiator first-killer :4691-4698); ' +
           '`waveTypeBehaviour(type)` (all six carry a behaviour or the RTS no-op); ' +
           '`eggWaveSpawnsEggs(status, players)` (WAVEGG through dispatchWaveType, :2590/2737, ' +
-          'wired into demo.ts like spawnWavePteros); seed GameState.guards to {plyg1:0,plyg2:0} ' +
+          'wired into sim.ts like spawnWavePteros); seed GameState.guards to {plyg1:0,plyg2:0} ' +
           'in createGame (PATC11 boot cleanup, :6282-6284). Also commit ' +
           `docs/rom-study/claims/game-bounty.json (JT43-*). (module has no \`${fn}\` export)`,
       )
@@ -415,15 +415,15 @@ export async function loadGameBounty(): Promise<GameBountyModule> {
 //     two independent ledgers: a player at ZERO lives is OUT and WAITS; the game
 //     reaches OVER only when EVERY player is out (the epic's co-op ruling).
 //   • THE WAVE-TO-WAVE LOOP is consolidated under `stepGame` — score, lives and
-//     gover all ride the ONE `stepDemo`-wrapping sim step (the jt2-1 one-sim seam,
+//     gover all ride the ONE `stepSim`-wrapping sim step (the jt2-1 one-sim seam,
 //     no divergent second stepping path); a seeded multi-wave game replays
 //     bit-for-bit.
 //   • The jt4-3 arm/detect/award loop goes LIVE: `stepGame` arms the PLYG guards at
 //     each wave start (armWaveGuards by the resolved wave type), records a live
-//     partner-kill from demo.ts's new collisionPass event (recordPartnerKill), and
+//     partner-kill from sim.ts's new collisionPass event (recordPartnerKill), and
 //     awards the wave bounty at wave end (awardWaveBounty) — all inside the single
 //     step. DBAIT (baiter removal + the nbait settle) and the WAVEGG egg-hatch
-//     spawn are demo.ts sim concerns pinned in tests/demo-jt4-4.test.ts.
+//     spawn are sim.ts sim concerns pinned in tests/demo-jt4-4.test.ts.
 //
 // The GOVER surface is the only NEW game.ts EXPORT (`settleGameOver` + the three
 // GOVER_* constants) — the arm/detect/award loop reuses jt4-3's exports, wired into
@@ -432,7 +432,7 @@ export async function loadGameBounty(): Promise<GameBountyModule> {
 /**
  * The jt4-4 surface — the jt4-1/2/3 module PLUS the GOVER tri-state game-over seam.
  * The loop-consolidation, the arm/detect/award wiring, DBAIT and the egg-hatch
- * spawn are BEHAVIOUR changes to existing exports (stepGame / stepDemo /
+ * spawn are BEHAVIOUR changes to existing exports (stepGame / stepSim /
  * collisionPass / spawnWaveEnemies), not new functions.
  */
 export interface GameLoopModule extends GameBountyModule {
@@ -491,7 +491,7 @@ export async function loadGameLoop(): Promise<GameLoopModule> {
         'settleGameOver into stepGame (recompute out/gover each frame from lives), consolidate ' +
         'the wave-to-wave loop under stepGame (arm PLYG guards at wave start, record the live ' +
         'partner-kill from collisionPass, award the wave bounty at wave end), and commit ' +
-        'docs/rom-study/claims/game-loop.json (JT44-*). Also close the demo.ts DBAIT settle + ' +
+        'docs/rom-study/claims/game-loop.json (JT44-*). Also close the sim.ts DBAIT settle + ' +
         'the WAVEGG egg-hatch spawn (tests/demo-jt4-4.test.ts). ' +
         `(GOVER surface absent)`,
     )
@@ -547,7 +547,7 @@ export interface OverlayReadout {
  * BEHAVIOUR change to `stepGame` (no new export), so it is pinned through stepGame,
  * not a new function; `overlayReadout` is the only new export.
  */
-export interface GameDemoModule extends GameLoopModule {
+export interface GameFullModule extends GameLoopModule {
   /**
    * Project the dev-overlay readout from a GameState — a PURE selector reading each
    * ledger's score + lives and the wave STRAIGHT off the state (no copy, no clock).
@@ -565,8 +565,8 @@ export interface GameDemoModule extends GameLoopModule {
  *
  * RED today: src/core/game.ts exports no `overlayReadout`, so this throws.
  */
-export async function loadGameFull(): Promise<GameDemoModule> {
-  const base = (await loadGameLoop()) as Partial<GameDemoModule>
+export async function loadGameFull(): Promise<GameFullModule> {
+  const base = (await loadGameLoop()) as Partial<GameFullModule>
   if (typeof base.overlayReadout !== 'function') {
     throw new Error(
       'jt4-5 dev-overlay readout not built yet — GREEN (Korben) extends ' +
@@ -583,5 +583,5 @@ export async function loadGameFull(): Promise<GameDemoModule> {
         `commit docs/rom-study/claims/game-jt4-5.json (JT45-*). (overlayReadout export absent)`,
     )
   }
-  return base as GameDemoModule
+  return base as GameFullModule
 }

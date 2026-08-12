@@ -294,7 +294,7 @@ describe('jt10-4 the shell wires the scheduler under attract (AC-3/AC-4, source 
   // AC-4 (the self-play demo actually RUNS under attract) is a runtime/canvas
   // behaviour the design spec assigns to a HUMAN smoke test; its mechanical RED
   // driver is the scheduler-import test above (the shell cannot show a demo page it
-  // does not drive). A source scan for "stepDemo/pumpFrames somewhere in main.ts"
+  // does not drive). A source scan for "stepSim/pumpFrames somewhere in main.ts"
   // was DELETED here as vacuous — it went green on jt10-5's attract PLACEHOLDER,
   // proving nothing about the demo running under attract. Recorded in the session.
 

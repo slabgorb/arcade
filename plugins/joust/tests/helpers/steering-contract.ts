@@ -109,7 +109,7 @@ export interface SteeringModule {
    *     `turned: true`; open air changes nothing.
    *
    * jt9-48 — the THIRD parameter is `bumpX`, the collision shove jt9-17 parked
-   * on the `DemoProcess` (`PBUMPX,U`). B2DIRA (:4148-4150) / SHDIRA (:4379-4381)
+   * on the `SimProcess` (`PBUMPX,U`). B2DIRA (:4148-4150) / SHDIRA (:4379-4381)
    * are the tails EVERY B2DIR/SHDIR path funnels through before the aim: the
    * parked branch (`BEQ B2DIRA` :4105/:4336), open air (`BEQ B2DIRA`
    * :4121/:4352/:4370), AND a cliff turn (`B2DICL`/`SHDICL` fall THROUGH into

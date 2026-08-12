@@ -37,7 +37,7 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 import { loadClaims, claimCovers } from './helpers/claims.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const demoPath = join(repoRoot, 'src', 'core', 'demo.ts')
+const demoPath = join(repoRoot, 'src', 'core', 'sim.ts')
 
 /** Still local: the verbatim re-read below basenames a claim's own `source.file`. */
 const basename = (p: string): string => p.split('/').pop() ?? p
@@ -215,7 +215,7 @@ describe('jt8-6 — the "it persists" overclaim is retired', () => {
     expect(stated).toBe(true)
   })
 
-  it('demo.ts’s eggHits doc-block names the reset sites it is bounded by', () => {
+  it('sim.ts’s eggHits doc-block names the reset sites it is bounded by', () => {
     // The field's own documentation is where the next reader forms their model of
     // its lifetime. jt8-4's block explains the HOME thoroughly and says only
     // "persists — EGGSCR never resets it", which is how this story got misfiled.

@@ -41,7 +41,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createHash } from 'node:crypto'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { createState, spawn, stepFrame, type GameState } from '../src/core/frame.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { BCK_X_TABLE, X_TABLE_ORIGIN } from '../src/core/flight.js'
@@ -70,7 +70,7 @@ const bck = (x: number, y: number): number =>
 
 /** Retype every enemy process as a PROMOTED HUNTER — re-applied each frame so
  * late materialisations are staged too. Positions, counters, facings untouched. */
-function stageHunters(d: DemoState): DemoState {
+function stageHunters(d: SimState): SimState {
   return {
     ...d,
     sim: {
@@ -99,7 +99,7 @@ interface EnemySnap {
   readonly bumpX: number
 }
 
-const snapOf = (p: DemoProcess): EnemySnap | null =>
+const snapOf = (p: SimProcess): EnemySnap | null =>
   p.kind === 'enemy' && p.enemy
     ? {
         posX: p.enemy.entity.posX,
@@ -125,13 +125,13 @@ interface SteerTurn {
 }
 
 /** Play a seeded demo and collect every STEERING-attributed facing change. */
-function steeringTurns(seed: number, stage?: (d: DemoState) => DemoState): SteerTurn[] {
-  let d = createWaveDemo(seed)
+function steeringTurns(seed: number, stage?: (d: SimState) => SimState): SteerTurn[] {
+  let d = createWaveSim(seed)
   if (stage) d = stage(d)
   const turns: SteerTurn[] = []
   let prev = new Map<number, EnemySnap>()
   for (let f = 0; f < PLAY_FRAMES; f++) {
-    d = stepDemo(d, idle())
+    d = stepSim(d, idle())
     if (stage) d = stage(d)
     const now = new Map<number, EnemySnap>()
     for (const p of d.sim.processes) {
@@ -217,9 +217,9 @@ describe('the look-ahead fires in play — staged hunters, ordinary (idle) input
   )
 
   it('fixture self-check: staging changes ONLY the enemy typing fields', () => {
-    const raw = createWaveDemo(PLAY_SEEDS[0]).sim.processes
-    const staged = stageHunters(createWaveDemo(PLAY_SEEDS[0])).sim.processes
-    const strip = (ps: readonly DemoProcess[]): string =>
+    const raw = createWaveSim(PLAY_SEEDS[0]).sim.processes
+    const staged = stageHunters(createWaveSim(PLAY_SEEDS[0])).sim.processes
+    const strip = (ps: readonly SimProcess[]): string =>
       JSON.stringify(
         ps.map((p) =>
           p.kind === 'enemy' && p.enemy
@@ -241,10 +241,10 @@ describe('the look-ahead fires in play — staged hunters, ordinary (idle) input
 describe('AC-4 — a seeded steering run is deterministic', () => {
   /** Hash a run's full enemy trajectory (positions, facings, counters). */
   function trajectoryHash(seed: number): string {
-    let d = stageHunters(createWaveDemo(seed))
+    let d = stageHunters(createWaveSim(seed))
     const h = createHash('sha1')
     for (let f = 0; f < 400; f++) {
-      d = stageHunters(stepDemo(d, idle()))
+      d = stageHunters(stepSim(d, idle()))
       for (const p of d.sim.processes) {
         if (p.kind !== 'enemy' || !p.enemy) continue
         h.update(
@@ -267,7 +267,7 @@ describe('AC-4 — a seeded steering run is deterministic', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // jt9-48 — the PARKED BUMP REACHES THE FACING through the real pipeline. jt9-17
-// parked `PBUMPX` on `DemoProcess.bumpX` and left it inert (a Delivery Finding,
+// parked `PBUMPX` on `SimProcess.bumpX` and left it inert (a Delivery Finding,
 // not wired). This proves the shove is plumbed from the process, through
 // frame.ts's enemy step, into `steerWake`'s bump arg, and out as the new
 // facing — the exact hop jt9-17 skipped. `steerWake` unit-pins the LAW; this
@@ -294,9 +294,9 @@ function airborneAt(posX: number, pixelY: number, velXIndex: number): EntityStat
 }
 
 /** A lone hunter carrying a parked shove, facing the OPPOSITE way so the flip
- * is observable. `bumpX` rides on the DemoProcess, exactly where jt9-17 parks
+ * is observable. `bumpX` rides on the SimProcess, exactly where jt9-17 parks
  * it. Isolated at x=200/high so nothing jousts it and re-parks a bump. */
-function shovedHunter(bumpX: number, facing: -1 | 1 = -1, brain: 'b2undr' | 'boundr' = 'b2undr'): DemoProcess {
+function shovedHunter(bumpX: number, facing: -1 | 1 = -1, brain: 'b2undr' | 'boundr' = 'b2undr'): SimProcess {
   return {
     id: 0x200,
     cls: 'secondary',
@@ -316,9 +316,9 @@ function shovedHunter(bumpX: number, facing: -1 | 1 = -1, brain: 'b2undr' | 'bou
   }
 }
 
-const theEnemy = (ps: readonly DemoProcess[]): DemoProcess | undefined => ps.find((p) => p.kind === 'enemy')
+const theEnemy = (ps: readonly SimProcess[]): SimProcess | undefined => ps.find((p) => p.kind === 'enemy')
 
-describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play', () => {
+describe('jt9-48 — the SimProcess.bumpX shove drives the enemy facing in play', () => {
   it('BARE frame.ts: a hunter carrying a rightward shove faces RIGHT after one step (the wiring is closed)', () => {
     // stepFrame is the raw scheduler (no drain, target = null): it proves
     // frame.ts hands the process's `bumpX` to the enemy step. A hunter parked
@@ -328,7 +328,7 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
     // in play (organic shoves are ≤5); the sign is all the arm reads.
     let s: GameState = spawn(createState(SEED), shovedHunter(3, -1))
     s = stepFrame(s)
-    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'frame.ts plumbed p.bumpX to the arm').toBe(1)
+    expect(theEnemy(s.processes as readonly SimProcess[])?.enemy?.facing, 'frame.ts plumbed p.bumpX to the arm').toBe(1)
   })
 
   it('BARE frame.ts CONTROL: the same hunter with NO shove holds its facing', () => {
@@ -336,16 +336,16 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
     // idle hunter has nothing to turn it, so a LEFT facer stays LEFT.
     let s: GameState = spawn(createState(SEED), shovedHunter(0, -1))
     s = stepFrame(s)
-    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'no shove ⇒ facing frozen').toBe(-1)
+    expect(theEnemy(s.processes as readonly SimProcess[])?.enemy?.facing, 'no shove ⇒ facing frozen').toBe(-1)
   })
 
   it('BARE frame.ts CONTROL: a BOUNDER carrying the same shove does NOT turn (no BODIR bump arm)', () => {
     let s: GameState = spawn(createState(SEED), shovedHunter(3, -1, 'boundr'))
     s = stepFrame(s)
-    expect(theEnemy(s.processes as readonly DemoProcess[])?.enemy?.facing, 'the bounder has no PBUMPX arm').toBe(-1)
+    expect(theEnemy(s.processes as readonly SimProcess[])?.enemy?.facing, 'the bounder has no PBUMPX arm').toBe(-1)
   })
 
-  it('FULL stepDemo: an ORGANIC ≤3 shove faces the bird through the full pipeline (reads pre-drain)', () => {
+  it('FULL stepSim: an ORGANIC ≤3 shove faces the bird through the full pipeline (reads pre-drain)', () => {
     // jt9-61: the drain (`drainProcessBumpX`) now runs in the MOVEMENT phase,
     // AFTER the brain — mirroring the ROM's WRAPX-after-B2DIRA order. So the brain
     // reads the FULL pre-drain PBUMPX, and even a magnitude-3 organic shove (the
@@ -353,17 +353,17 @@ describe('jt9-48 — the DemoProcess.bumpX shove drives the enemy facing in play
     // BECAUSE the OLD top-of-frame drain would have spent a ≤3 shove to 0 before
     // the brain saw it) faces the bird. Isolated processes: just the hunter, so no
     // joust re-parks a bump under us.
-    const base = createWaveDemo(SEED)
-    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(3, -1)] } }
-    d = stepDemo(d, {})
+    const base = createWaveSim(SEED)
+    let d: SimState = { ...base, sim: { ...base.sim, processes: [shovedHunter(3, -1)] } }
+    d = stepSim(d, {})
     expect(theEnemy(d.sim.processes)?.enemy, 'the hunter survived the frame').toBeDefined()
     expect(theEnemy(d.sim.processes)?.enemy?.facing, 'the parked shove reached the facing through the full pipeline').toBe(1)
   })
 
-  it('FULL stepDemo CONTROL: an unshoved hunter in the same isolated demo holds its facing', () => {
-    const base = createWaveDemo(SEED)
-    let d: DemoState = { ...base, sim: { ...base.sim, processes: [shovedHunter(0, -1)] } }
-    d = stepDemo(d, {})
+  it('FULL stepSim CONTROL: an unshoved hunter in the same isolated demo holds its facing', () => {
+    const base = createWaveSim(SEED)
+    let d: SimState = { ...base, sim: { ...base.sim, processes: [shovedHunter(0, -1)] } }
+    d = stepSim(d, {})
     expect(theEnemy(d.sim.processes)?.enemy?.facing, 'no shove ⇒ the pipeline changes nothing').toBe(-1)
   })
 })
@@ -386,7 +386,7 @@ beforeAll(async () => {
 
 /** Player 1, airborne, targetable, a few px from the shadow in Y (SHLEP short
  * range) and far in X so the two never joust and re-park a bump. */
-function playerBeside(): DemoProcess {
+function playerBeside(): SimProcess {
   return {
     id: 1,
     cls: 'primary',
@@ -401,7 +401,7 @@ function playerBeside(): DemoProcess {
 
 /** A HUNTING shadow (brain 'shadow', pchase 1) carrying a parked shove, facing
  * the opposite way so the flip is observable. High above the lava, parked. */
-function shovedShadow(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
+function shovedShadow(bumpX: number, facing: -1 | 1 = -1): SimProcess {
   return {
     id: 0x300,
     cls: 'secondary',
@@ -421,19 +421,19 @@ function shovedShadow(bumpX: number, facing: -1 | 1 = -1): DemoProcess {
   }
 }
 
-describe('jt9-60 — the DemoProcess.bumpX shove drives a HUNTING shadow’s facing in play', () => {
-  it('FULL stepDemo: a hunting shadow carrying a rightward shove faces RIGHT after one step (SHLEP → SHDIRA)', () => {
+describe('jt9-60 — the SimProcess.bumpX shove drives a HUNTING shadow’s facing in play', () => {
+  it('FULL stepSim: a hunting shadow carrying a rightward shove faces RIGHT after one step (SHLEP → SHDIRA)', () => {
     // A targetable player rides the sim, so the shadow HUNTS (target ≠ null) and
     // takes the SHLEP line-track into SHDIRA. The only driver is the shove: LEFT
     // facer + an organic +3 ⇒ RIGHT, read pre-drain and through the whole pipeline
     // (jt9-61 retarget: was bumpX 16, an over-margin play never produces).
-    const base = createWaveDemo(SEED)
+    const base = createWaveSim(SEED)
     const targets: TargetState = TGT.registerPlayer(TGT.seedTargets(), 1, 0)
-    let d: DemoState = {
+    let d: SimState = {
       ...base,
       sim: { ...base.sim, processes: [playerBeside(), shovedShadow(3, -1)], targets },
     }
-    d = stepDemo(d, { 1: NEUTRAL })
+    d = stepSim(d, { 1: NEUTRAL })
     expect(theEnemy(d.sim.processes)?.enemy, 'the shadow survived the frame').toBeDefined()
     expect(
       theEnemy(d.sim.processes)?.enemy?.facing,
@@ -441,16 +441,16 @@ describe('jt9-60 — the DemoProcess.bumpX shove drives a HUNTING shadow’s fac
     ).toBe(1)
   })
 
-  it('FULL stepDemo CONTROL: the same hunting shadow with NO shove holds its LEFT facing', () => {
+  it('FULL stepSim CONTROL: the same hunting shadow with NO shove holds its LEFT facing', () => {
     // Green before AND after: without the shove the SHLEP wake writes no PFACE,
     // so the LEFT facer stays LEFT — isolates `bumpX` as the sole cause.
-    const base = createWaveDemo(SEED)
+    const base = createWaveSim(SEED)
     const targets: TargetState = TGT.registerPlayer(TGT.seedTargets(), 1, 0)
-    let d: DemoState = {
+    let d: SimState = {
       ...base,
       sim: { ...base.sim, processes: [playerBeside(), shovedShadow(0, -1)], targets },
     }
-    d = stepDemo(d, { 1: NEUTRAL })
+    d = stepSim(d, { 1: NEUTRAL })
     expect(theEnemy(d.sim.processes)?.enemy?.facing, 'no shove ⇒ the hunting shadow holds facing').toBe(-1)
   })
 })

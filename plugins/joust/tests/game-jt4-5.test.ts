@@ -38,10 +38,10 @@
 
 import { describe, it, expect } from 'vitest'
 import { loadGameLoop, loadGameFull } from './helpers/game-contract.js'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import { seatWaveInstantly, withNoPendingEnemies } from './helpers/wave-entry.js'
 import type { GameState, PlayerLedger, PlayerInput } from './helpers/game-contract.js'
-import type { DemoProcess, EntityState } from './helpers/demo-contract.js'
+import type { SimProcess, EntityState } from './helpers/sim-contract.js'
 
 const SEED = 0x1234
 const NSHIP = 5
@@ -60,17 +60,17 @@ function entity(over: Partial<EntityState> = {}): EntityState {
   }
 }
 
-function playerProc(id: number, posX: number, pixelY: number, facing: -1 | 1, mount: 'ostrich' | 'stork'): DemoProcess {
+function playerProc(id: number, posX: number, pixelY: number, facing: -1 | 1, mount: 'ostrich' | 'stork'): SimProcess {
   return { id, cls: 'primary', nap: 1, period: 1, kind: 'player', facing, mount, collisionEnabled: true, entity: entity({ posX, posY: pixelY << 8 }) }
 }
 
 /** A materialised (collision-ON) ground enemy at a chosen position — a real killer. */
-function enemyProc(id: number, posX: number, pixelY: number): DemoProcess {
+function enemyProc(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemyType: 'bounder', collisionEnabled: true,
     // The enemy carries a mind riding the flight core (the shape enemyProcess builds).
     enemy: { entity: entity({ posX, posY: pixelY << 8 }), facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' },
-  } as unknown as DemoProcess
+  } as unknown as SimProcess
 }
 
 /**
@@ -84,18 +84,18 @@ function enemyProc(id: number, posX: number, pixelY: number): DemoProcess {
  * BODNVY and gravity drops it onto the knight — the exact pre-uf1-8 fall these
  * probes were measured with, now staged explicitly.
  */
-function divingEnemyProc(id: number, posX: number, pixelY: number): DemoProcess {
+function divingEnemyProc(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemyType: 'bounder', collisionEnabled: true,
     enemy: {
       entity: entity({ posX, posY: pixelY << 8 }), facing: 1, pchase: 1, brain: 'boundr',
       decision: 'boundr', seek: { mode: 'down', pdist: -3584 },
     },
-  } as unknown as DemoProcess
+  } as unknown as SimProcess
 }
 
 /** A stationary pterodactyl (velX index 0 — holds its X) as a wave's lone combatant. */
-function pteroProc(id: number, posX: number, pixelY: number): DemoProcess {
+function pteroProc(id: number, posX: number, pixelY: number): SimProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'ptero', facing: 1, collisionEnabled: true, entity: entity({ posX, posY: pixelY << 8 }) }
 }
 
@@ -108,7 +108,7 @@ function pteroProc(id: number, posX: number, pixelY: number): DemoProcess {
  * outside the list and would both hold the wave open (an enemy holding a number counts
  * as alive) and materialise a frame or two later, into the middle of the probe.
  */
-function withProcesses(game: GameState, procs: DemoProcess[]): GameState {
+function withProcesses(game: GameState, procs: SimProcess[]): GameState {
   return {
     ...game,
     sim: { ...withNoPendingEnemies(game.sim), sim: { ...game.sim.sim, processes: procs }, events: [] },
@@ -151,7 +151,7 @@ describe('jt4-5 RESPAWN — a mount death with lives left re-enters (ROM CREP/DE
     const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy')
     expect(holdEnemy, 'wave 1 supplies a materialising enemy to hold the wave open').toBeTruthy()
     let game: GameState = {
-      ...withProcesses(base, [p1, p2, holdEnemy as DemoProcess]),
+      ...withProcesses(base, [p1, p2, holdEnemy as SimProcess]),
       players: [{ ...base.players[0], lives: NSHIP }, { ...base.players[1], lives: 3 }],
     }
     // First step: P1 kills P2 (real death) — P2 drops to 1 process, lives 3→2, still IN.
@@ -177,7 +177,7 @@ describe('jt4-5 RESPAWN — a mount death with lives left re-enters (ROM CREP/DE
     const base = seated(g.createGame(SEED)) // jt11-4: seat the queued complement (hold enemy)
     const p1 = playerProc(1, 100, 100, 1, 'ostrich')
     const p2 = playerProc(2, 104, 108, -1, 'stork')
-    const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as DemoProcess
+    const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as SimProcess
     let game: GameState = {
       ...withProcesses(base, [p1, p2, holdEnemy]),
       players: [{ ...base.players[0], lives: NSHIP }, { ...base.players[1], lives: 1 }],
@@ -279,7 +279,7 @@ describe('jt4-5 game-over — reached through REAL played deaths (hardening: not
 //   ABORTS it early — transporter.ts, `collisionsEnabled:true` on both exits).
 //   So the ROM knight becomes vulnerable again shortly after re-entry and CAN lose all
 //   its lives. Round-1's re-entry returns `collisionEnabled:false` with NO `mat` window
-//   (demo.ts) — a PERMANENT shield that never re-enables, so a re-entered knight
+//   (sim.ts) — a PERMANENT shield that never re-enables, so a re-entered knight
 //   is an immortal ghost and all-out is unreachable. RED until Dev gives the re-entry a
 //   re-enabling window.
 //
@@ -350,7 +350,7 @@ describe('jt4-5 round-2 — game-over reached THROUGH a respawn cycle (Reviewer 
     // PLAYER2_SPAWN (x=200), far from P1 — so nothing re-kills it and we can watch its window
     // CLOSE. A materialising wave-1 enemy holds the wave open (it does not reach the spawn).
     const base = seated(g.createGame(SEED)) // jt11-4: seat the queued complement (hold enemy)
-    const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as DemoProcess
+    const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as SimProcess
     expect(holdEnemy, 'wave 1 supplies a materialising enemy to hold the wave open').toBeTruthy()
     let game: GameState = {
       ...withProcesses(base, [
@@ -578,18 +578,18 @@ describe('jt4-5 dev-overlay — overlayReadout projects score/lives/wave from th
   })
 })
 
-// A structural sanity check on the loader wiring (mirrors the jt4-4 loadDemo usage).
+// A structural sanity check on the loader wiring (mirrors the jt4-4 loadSim usage).
 describe('jt4-5 — the demo drives the identical sim (the one-sim seam holds through the closer)', () => {
-  it('stepGame still delegates ALL stepping to stepDemo — no divergent second path', async () => {
+  it('stepGame still delegates ALL stepping to stepSim — no divergent second path', async () => {
     const g = await loadGameLoop()
-    const d = await loadDemo()
+    const d = await loadSim()
     const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
     let game = g.createGame(SEED)
-    let sim = d.createWaveDemo(SEED)
+    let sim = d.createWaveSim(SEED)
     for (let i = 0; i < 30; i++) {
       game = g.stepGame(game, input)
-      sim = d.stepDemo(sim, input)
+      sim = d.stepSim(sim, input)
     }
-    expect(game.sim, 'the wrapped sim stays bit-identical to a raw stepDemo').toEqual(sim)
+    expect(game.sim, 'the wrapped sim stays bit-identical to a raw stepSim').toEqual(sim)
   })
 })

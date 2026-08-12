@@ -191,7 +191,7 @@ describe('AC-3 death — bookDeath drops one own-life and credits the SCRTEN $50
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-3 INTEGRATION — a REAL mount death through stepGame's full wiring.
-// The isolated bookDeath tests pin the mechanic; this drives demo.ts's collisionPass
+// The isolated bookDeath tests pin the mechanic; this drives sim.ts's collisionPass
 // (a player loses a joust → its process is REMOVED, never respawned) and proves
 // stepGame detects that removal and books BOTH the life-loss and the 50. Under SEED
 // 0x1234 with the players driven apart, P1 loses a joust and dies (jt9-43 RE-BASELINE:
@@ -199,7 +199,7 @@ describe('AC-3 death — bookDeath drops one own-life and credits the SCRTEN $50
 // so the death frame ADDS exactly 50 on top of whatever P1 had banked.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-3 integration — a real sim death books the life-loss + the 50 through stepGame', () => {
-  // A live P1 process in the wrapped sim (GameState.sim is a DemoState → .sim.processes).
+  // A live P1 process in the wrapped sim (GameState.sim is a SimState → .sim.processes).
   const hasP1 = (game: { sim: { sim: { processes: readonly { kind: string; id: number }[] } } }): boolean =>
     game.sim.sim.processes.some((p) => p.kind === 'player' && p.id === 1)
 

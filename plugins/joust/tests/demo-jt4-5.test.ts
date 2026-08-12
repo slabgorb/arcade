@@ -14,31 +14,31 @@
 //      remountEntryEdge are already cited laws — jt2-4 — just never driven off a
 //      settled wave egg). RED today: `stepEgg` leaves a settled egg put forever.
 //
-// demo.ts already exists, so these redden on MISSING BEHAVIOUR (a clean assertion
+// sim.ts already exists, so these redden on MISSING BEHAVIOUR (a clean assertion
 // red), not a module-resolution trace. The complement size is derived from the wave
 // module (loadWave) rather than a magic literal. Each test NAMES the mutant it kills.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
-import type { DemoState } from './helpers/demo-contract.js'
+import type { SimState } from './helpers/sim-contract.js'
 import { waveComplement } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 
-const eggCount = (d: DemoState): number => d.sim.processes.filter((p) => p.kind === 'egg').length
-const enemyCount = (d: DemoState): number => d.sim.processes.filter((p) => p.kind === 'enemy').length
-const hasEgg = (d: DemoState): boolean => eggCount(d) > 0
+const eggCount = (d: SimState): number => d.sim.processes.filter((p) => p.kind === 'egg').length
+const enemyCount = (d: SimState): number => d.sim.processes.filter((p) => p.kind === 'enemy').length
+const hasEgg = (d: SimState): boolean => eggCount(d) > 0
 
 /** One forced wave advance at the demo level: strip to players (a cleared wave) + step. */
-function forceAdvance(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState): DemoState {
+function forceAdvance(d: Awaited<ReturnType<typeof loadSim>>, demo: SimState): SimState {
   const players = demo.sim.processes.filter((p) => p.kind === 'player')
   // jt11-4: the waiting room goes with the strip — a ticket-holder is alive and holds
   // the wave open, and WCREATE's `PCNAP 61` per bird means it would hold it for
   // ~61*count frames.
-  return d.stepDemo({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [], events: [] })
+  return d.stepSim({ ...demo, sim: { ...demo.sim, processes: players }, pendingEnemies: [], events: [] })
 }
-function advanceTo(d: Awaited<ReturnType<typeof loadDemo>>, demo: DemoState, target: number): DemoState {
+function advanceTo(d: Awaited<ReturnType<typeof loadSim>>, demo: SimState, target: number): SimState {
   let s = demo
   let guard = 0
   while (s.wave < target) {
@@ -61,7 +61,7 @@ async function groundComplement(wave: number): Promise<number> {
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt4-5 egg wave — the complement enters as EGGS, not materialising ground enemies (hardening)', () => {
   it("wave 5 enters the ROM's TWELVE eggs and ZERO ground enemies", async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // ⚠ INVERTED BY jt9-38 (in ITS RED, deliberately). This assertion previously read
     // `toBe(expected)` — the wave's ground complement — which was the best reading
     // available to jt4-5. The ROM's WAVEGG does not derive the egg count from the row at
@@ -80,7 +80,7 @@ describe('jt4-5 egg wave — the complement enters as EGGS, not materialising gr
     // Still kills what it always killed ("the egg wave spawns eggs AND the usual
     // bounders", "it spawns just one token egg") and now also kills "the count still
     // tracks the row": wave 5's complement is 6, and twelve is not it.
-    const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
+    const atWave5 = advanceTo(demo, demo.createWaveSim(SEED), 5)
     expect(atWave5.wave, 'reached the egg wave').toBe(5)
     const complement = await groundComplement(5)
     expect(complement, 'wave 5 has a real ground complement — and it is NOT the egg count').toBe(6)
@@ -90,10 +90,10 @@ describe('jt4-5 egg wave — the complement enters as EGGS, not materialising gr
   })
 
   it('a NON-egg wave (2, co-op) enters ground enemies and NO eggs — the wiring is egg-typed', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     // The negative control: wave 2 is co-op, not an egg wave. Kills "spawnWaveEnemies now
     // spawns eggs for every wave" (an always-on egg spawn would redden here).
-    const atWave2 = advanceTo(demo, demo.createWaveDemo(SEED), 2)
+    const atWave2 = advanceTo(demo, demo.createWaveSim(SEED), 2)
     expect(atWave2.wave, 'reached a non-egg wave').toBe(2)
     expect(hasEgg(atWave2), 'a co-op wave enters ground enemies, not eggs').toBe(false)
     // jt11-4: on the advance frame the ground complement is still queued for the
@@ -110,8 +110,8 @@ describe('jt4-5 egg wave — the complement enters as EGGS, not materialising gr
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt4-5 egg wave — settled wave eggs HATCH→remount so the wave is not a permanent egg-lock', () => {
   it('the settled wave eggs eventually hatch (the egg count drops from its entry count)', async () => {
-    const demo = await loadDemo()
-    const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
+    const demo = await loadSim()
+    const atWave5 = advanceTo(demo, demo.createWaveSim(SEED), 5)
     const entryEggs = eggCount(atWave5)
     expect(entryEggs, 'the egg wave enters holding a full complement of eggs').toBeGreaterThan(0)
     // The eggs are SETTLED, so nothing but a HATCH can reduce their count (they do not
@@ -122,15 +122,15 @@ describe('jt4-5 egg wave — settled wave eggs HATCH→remount so the wave is no
     let d = atWave5
     let hatched = false
     for (let f = 1; f <= 1500 && !hatched; f++) {
-      d = demo.stepDemo(d)
+      d = demo.stepSim(d)
       if (eggCount(d) < entryEggs) hatched = true
     }
     expect(hatched, 'a settled wave egg hatches within the window — the wave is not egg-locked').toBe(true)
   })
 
   it('the hatch puts a live buzzard back in play (a remount enemy appears as an egg leaves)', async () => {
-    const demo = await loadDemo()
-    const atWave5 = advanceTo(demo, demo.createWaveDemo(SEED), 5)
+    const demo = await loadSim()
+    const atWave5 = advanceTo(demo, demo.createWaveSim(SEED), 5)
     const entryEggs = eggCount(atWave5)
     // The remount is a buzzard flying back in (the FARTHER-edge remount, egg.ts) — a
     // live `enemy` process. So a hatch both DROPS an egg and RAISES an enemy: the wave
@@ -138,7 +138,7 @@ describe('jt4-5 egg wave — settled wave eggs HATCH→remount so the wave is no
     let d = atWave5
     let sawRemount = false
     for (let f = 1; f <= 1500 && !sawRemount; f++) {
-      d = demo.stepDemo(d)
+      d = demo.stepSim(d)
       if (eggCount(d) < entryEggs && enemyCount(d) > 0) sawRemount = true
     }
     expect(sawRemount, 'a hatched wave egg remounts a live buzzard (enemy) so the wave can be cleared').toBe(true)

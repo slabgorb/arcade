@@ -85,8 +85,8 @@ harness of four, and the filing did not say which. Measured, 3000 frames × thre
 |---|---|---|---|
 | `createGame` + **both players IDLE** | **11** | **1** — 0x2468 **f=2688 proc 514** → `boundr`, `pjoy-entering={kind:'glide'}` | 317 / 366 / 220 |
 | `createGame` + the `scripted` inputs | 14 | **0** | 441 / 254 / 466 |
-| `createWaveDemo` + `scripted` | 6 | 0 | 320 / 132 / 202 |
-| `createWaveDemo` + idle | 10 | 0 | 320 / 292 / 220 |
+| `createWaveSim` + `scripted` | 6 | 0 | 320 / 132 / 202 |
+| `createWaveSim` + idle | 10 | 0 | 320 / 292 / 220 |
 
 **The trap.** `scripted` / `inputsAt` (`flap = frame % 13 === 0`, `dir = DIRS[frame % 5]`) is the
 shared jt5-1/jt5-3 script, the vocabulary of every audio test in this plugin, and the coordinate

@@ -45,7 +45,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 import { loadClaims, type Claim } from './helpers/claims.js'
@@ -66,7 +66,7 @@ const CTRL_B = 0xc21
 const TIE_PTERO = 0xc30 // level pair — the BPL-includes-zero boundary
 const TIE_BUZZ = 0xc31
 
-const cueKinds = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
+const cueKinds = (d: SimState): string[] => d.cues.map((c) => c.type as string)
 
 /** The gravity-exempt hover: velXIndex 0 and velY 0, so flight moves NOTHING —
  *  any Y displacement in the window below is the bump's alone. */
@@ -87,7 +87,7 @@ function flightEntity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** A live wave pterodactyl, exactly as pteroProcess spawns one (collision ON). */
-function pteroAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
+function pteroAt(id: number, over: Partial<EntityState> = {}): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -101,7 +101,7 @@ function pteroAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
 }
 
 /** A live airborne buzzard (bounder), collision ON — the bird species PTEBRD bumps. */
-function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
+function buzzardAt(id: number, over: Partial<EntityState> = {}): SimProcess {
   const entity = flightEntity(over)
   const enemy: EnemyState = { entity, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }
   return {
@@ -119,12 +119,12 @@ function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
 /** Base players + ONE materialising base enemy (the wave-open anchor) + subjects.
  *
  *  jt11-4 made the wave's ground enemies queue for the transporter, so a fresh
- *  `createWaveDemo` fields none of them in `sim.processes` yet. `seatWaveInstantly`
+ *  `createWaveSim` fields none of them in `sim.processes` yet. `seatWaveInstantly`
  *  restores the pre-jt11-4 frame-0 arrangement without stepping a frame or spending
  *  RNG — an anchor to borrow, and an EMPTY waiting room, so no straggler arrives
  *  behind our backs and thuds into the staged pair. */
-function stage(extras: DemoProcess[]): DemoState {
-  const base = seatWaveInstantly(createWaveDemo(SEED))
+function stage(extras: SimProcess[]): SimState {
+  const base = seatWaveInstantly(createWaveSim(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {
@@ -138,7 +138,7 @@ function stage(extras: DemoProcess[]): DemoState {
 }
 
 /** hush, re-applied every frame: nap everything but the players and the keep-set. */
-function hush(d: DemoState, keep: ReadonlySet<number>): DemoState {
+function hush(d: SimState, keep: ReadonlySet<number>): SimState {
   return {
     ...d,
     sim: {
@@ -150,11 +150,11 @@ function hush(d: DemoState, keep: ReadonlySet<number>): DemoState {
   }
 }
 
-const procOf = (d: DemoState, id: number): DemoProcess | undefined =>
+const procOf = (d: SimState, id: number): SimProcess | undefined =>
   d.sim.processes.find((p) => p.id === id)
 
 /** The subject's pixel position, whichever side of the process shape it lives on. */
-function pixelPos(d: DemoState, id: number): { x: number; y: number } {
+function pixelPos(d: SimState, id: number): { x: number; y: number } {
   const p = procOf(d, id)
   const e = p?.entity ?? p?.enemy?.entity
   if (!e) throw new Error(`process ${id} is gone or carries no entity`)
@@ -170,7 +170,7 @@ const overlapping = (a: { x: number; y: number }, b: { x: number; y: number }): 
  * the frame BEFORE the thud step and AFTER it, and every death cue seen.
  */
 function runToThud(
-  d0: DemoState,
+  d0: SimState,
   birdId: number,
   pteroId: number,
 ): {
@@ -180,7 +180,7 @@ function runToThud(
   pteroBefore: number
   pteroAfter: number
   deaths: string[]
-  final: DemoState
+  final: SimState
 } {
   const keep = new Set([birdId, pteroId])
   let d = d0
@@ -198,7 +198,7 @@ function runToThud(
     expect(overlapping(bBird, bPtero), `frame ${f}: the pair overlaps`).toBe(true)
 
     d = hush(d, keep)
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
     const kinds = cueKinds(d)
     deaths.push(...kinds.filter((k) => k.endsWith('-death')))
     if (kinds.includes('enemy-thud')) {
@@ -298,7 +298,7 @@ describe('jt9-15 — PTEBRD: the BIRD on top is driven UP by a hard 5', () => {
     const all: string[] = []
     for (let f = 0; f < 6 && !all.includes('enemy-thud'); f++) {
       d = hush(d, keep)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       all.push(...cueKinds(d))
     }
     expect(all, 'two overlapping buzzards must reach enemy-thud').toContain('enemy-thud')
@@ -314,14 +314,14 @@ describe('jt9-15 — PTEBRD: the BIRD on top is driven UP by a hard 5', () => {
 const readSrc = (...parts: string[]): string => readFileSync(join(root, 'src', ...parts), 'utf8')
 const jt915Claims = (): Claim[] => loadClaims().filter((c) => c.id?.startsWith('JT915-'))
 
-describe('jt9-15 — demo.ts records that PTEBRD landed', () => {
-  it('demo.ts names jt9-15 as the story that built the ptero/bird routing', () => {
+describe('jt9-15 — sim.ts records that PTEBRD landed', () => {
+  it('sim.ts names jt9-15 as the story that built the ptero/bird routing', () => {
     // The mixed-pair skip's comment ('ptero-buzzard is PTEBRD (:5034), unbuilt
     // here') goes FALSE the moment this mechanic lands. The routing site must be
     // annotated with the story that built it; the citation, not the wording, is
     // what is pinned.
-    const src = readSrc('core', 'demo.ts')
-    expect(src, 'demo.ts must name jt9-15 as the story that routed the ptero/bird pair').toContain(
+    const src = readSrc('core', 'sim.ts')
+    expect(src, 'sim.ts must name jt9-15 as the story that routed the ptero/bird pair').toContain(
       'jt9-15',
     )
   })

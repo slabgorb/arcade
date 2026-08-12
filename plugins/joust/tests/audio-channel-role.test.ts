@@ -706,7 +706,7 @@ describe('jt9-28 AC5/AC6 — every TOTALITY cue count in the audio subsystem is 
 // elsewhere in the same file is still caught.
 const SEVENTEEN_OK: Record<string, RegExp[]> = {
   'events.ts': [/seventeen moments/i, /sixteen of the seventeen/i], // 17 EVENT KINDS
-  'demo.ts': [/seventeen cued moments/i], // 17 event-emission moments
+  'sim.ts': [/seventeen cued moments/i], // 17 event-emission moments
   'audio-transporter-split.test.ts': [/seventeen-plus-one/i], // means 18
 }
 
@@ -739,7 +739,7 @@ describe('jt9-28 AC6 — no stale "seventeen" cue total survives in the audio su
       'a stale cue total must be flagged',
     ).not.toEqual([])
     expect(
-      staleSeventeens('demo.ts', flatten('six of the seventeen cued moments')),
+      staleSeventeens('sim.ts', flatten('six of the seventeen cued moments')),
       'the event-emission idiom must be spared',
     ).toEqual([])
 

@@ -19,13 +19,13 @@
 // cannot even be built — a clean feature-absent red. GREEN (Korben) builds the
 // aggro core AND threads `selectTarget` into the enemy step so the seek fires.
 //
-// TEA CONTRACT DECISION: the aggro state rides the sim (`DemoSim`) as `targets`,
+// TEA CONTRACT DECISION: the aggro state rides the sim (`SimCore`) as `targets`,
 // the same carried-field seat `budget` already occupies — that is the object
 // `stepFrame` receives, so the enemy step can reach it. If Dev seats it
 // elsewhere, this fixture is where the change surfaces.
 
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import type { EntityState, PlayerInput } from '../src/core/flight.js'
 import { loadTarget, type TargetModule, type TargetState } from './helpers/target-contract.js'
 
@@ -54,7 +54,7 @@ function airborneAt(posX: number, pixelY: number): EntityState {
 }
 
 /** Player 1, airborne HIGH (small pixelY = up). */
-function playerAbove(): DemoProcess {
+function playerAbove(): SimProcess {
   return {
     id: 1,
     cls: 'primary',
@@ -69,7 +69,7 @@ function playerAbove(): DemoProcess {
 
 /** A PROMOTED bounder (pchase 1, boundr brain) airborne BELOW the player, and far
  * enough in X that the two never joust. */
-function promotedBounderBelow(): DemoProcess {
+function promotedBounderBelow(): SimProcess {
   return {
     id: 0x100,
     cls: 'secondary',
@@ -88,18 +88,18 @@ function promotedBounderBelow(): DemoProcess {
   }
 }
 
-function theEnemy(demo: DemoState): DemoProcess | undefined {
+function theEnemy(demo: SimState): SimProcess | undefined {
   return demo.sim.processes.find((p) => p.kind === 'enemy')
 }
 
 describe('AC-4 — a smart enemy flaps toward a targetable player once the target is wired', () => {
   it('a promoted bounder below a targetable player gains upward velocity (velY < 0)', () => {
-    const base = createWaveDemo(SEED)
+    const base = createWaveSim(SEED)
     // Player 1 is registered and OUT of grace (targetable): grace 0.
     const targets: TargetState = T.registerPlayer(T.seedTargets(), 1, 0)
     // Craft a two-process sim: the above-player and the below-bounder, plus the
     // aggro state on the carried `targets` seat.
-    const crafted: DemoState = {
+    const crafted: SimState = {
       ...base,
       sim: { ...base.sim, processes: [playerAbove(), promotedBounderBelow()], targets },
     }
@@ -108,7 +108,7 @@ describe('AC-4 — a smart enemy flaps toward a targetable player once the targe
     let minVelY = Number.POSITIVE_INFINITY
     let stayedAirborne = true
     for (let f = 0; f < 6; f++) {
-      demo = stepDemo(demo, { 1: NEUTRAL })
+      demo = stepSim(demo, { 1: NEUTRAL })
       const enemy = theEnemy(demo)
       expect(enemy, 'the bounder must survive the window (no joust)').toBeDefined()
       const e = enemy?.enemy?.entity

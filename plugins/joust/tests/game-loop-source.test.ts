@@ -121,7 +121,7 @@ describe.skipIf(!vendoredAvailable)('egg-wave source — WAVEGG spawns eggs (JOU
   it('the module routes the egg wave to the spawn-eggs behaviour', async () => {
     const g = await loadGameLoop()
     expect(g.waveTypeBehaviour('egg'), 'egg → spawn-eggs').toBe('spawnEggs')
-    // The predicate that the demo.ts spawn path now consumes (WAVEGG through the dispatch).
+    // The predicate that the sim.ts spawn path now consumes (WAVEGG through the dispatch).
     expect(g.eggWaveSpawnsEggs(0x08, { p1: true, p2: true }), 'status $08 is an egg wave').toBe(true)
   })
 })

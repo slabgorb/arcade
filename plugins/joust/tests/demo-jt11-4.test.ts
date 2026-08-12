@@ -6,7 +6,7 @@
 //
 // ─── WHAT THE PORT DOES TODAY (the defect) ──────────────────────────────────
 // `spawnWaveEnemies` builds the whole complement and hands it back as a finished
-// array. Both callers insert that array WHOLE, on ONE frame: `createWaveDemo`
+// array. Both callers insert that array WHOLE, on ONE frame: `createWaveSim`
 // seeds `sim.processes` with it, and the wave advance splices it
 // (`processes = [...processes, ...arrivals]`) while pushing one
 // `enemy-materialise` cue per enemy in the same tick. Three buzzards appear in
@@ -55,7 +55,7 @@
 //
 // ─── THE OBSERVABLE, fix-agnostic ───────────────────────────────────────────
 // Nothing below calls a scheduler directly or names a field Dev has to invent.
-// The suite drives `createWaveDemo`/`stepDemo` and reads the enemies PRESENT in
+// The suite drives `createWaveSim`/`stepSim` and reads the enemies PRESENT in
 // `sim.processes` per frame — the exact set `drawList` blits and `collisionPass`
 // admits. A faithful serve-queue port shows the enemy count CLIMBING one at a
 // time; the batch insert shows the whole complement standing on frame 0.
@@ -63,7 +63,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { createWaveDemo, stepDemo, drawList, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, drawList, type SimProcess, type SimState } from '../src/core/sim.js'
 import { strippedToPlayers } from './helpers/wave-entry.js'
 
 // `WAVE_TABLE` wave 1 = 3 bounders, 0 pterodactyls; wave 2 = 4 bounders, 0
@@ -75,15 +75,15 @@ const WAVE_2_ENEMIES = 4
 /** Long enough for any sane per-turn cadence to seat a 4-enemy complement. */
 const WINDOW = 400
 
-const enemiesOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
-const entityOps = (d: DemoState): number => drawList(d).filter((op) => op.kind === 'entity').length
+const enemiesOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const entityOps = (d: SimState): number => drawList(d).filter((op) => op.kind === 'entity').length
 
-/** Park with the wave cleared of enemies: the next `stepDemo` clears-and-advances.
+/** Park with the wave cleared of enemies: the next `stepSim` clears-and-advances.
  *  Wave 1's complement must be emptied out of the transporter's WAITING ROOM as well
  *  as out of the arena — an enemy still holding a number is alive and holds the wave
  *  open, exactly as its CRELP-spinning process does in the ROM. */
-function onTheBrinkOfWave2(seed: number): DemoState {
-  return strippedToPlayers(createWaveDemo(seed))
+function onTheBrinkOfWave2(seed: number): SimState {
+  return strippedToPlayers(createWaveSim(seed))
 }
 
 interface ArrivalTimeline {
@@ -107,7 +107,7 @@ interface ArrivalTimeline {
  * arrival schedule plays out — the wave must stay open for the whole window,
  * exactly the fixture discipline demo-jt9-59 uses for the ptero stagger.
  */
-function walkArrivals(start: DemoState, frames = WINDOW): ArrivalTimeline {
+function walkArrivals(start: SimState, frames = WINDOW): ArrivalTimeline {
   let d = start
   const presentCount: number[] = []
   const drawOps: number[] = []
@@ -134,7 +134,7 @@ function walkArrivals(start: DemoState, frames = WINDOW): ArrivalTimeline {
         processes: d.sim.processes.map((p) => (p.kind === 'enemy' ? { ...p, nap: 100_000 } : p)),
       },
     }
-    d = stepDemo(d, {})
+    d = stepSim(d, {})
   }
   return { presentCount, drawOps, firstSeen, arrivalOrder, napLeftOnArrival, typeOf }
 }
@@ -143,20 +143,20 @@ function walkArrivals(start: DemoState, frames = WINDOW): ArrivalTimeline {
 const arrivalFrames = (t: ArrivalTimeline): number[] => [...new Set(t.firstSeen.values())].sort((a, b) => a - b)
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wave 1 — the complement `createWaveDemo` assembles
+// Wave 1 — the complement `createWaveSim` assembles
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('jt11-4 — wave 1 enters through the transporter queue, not as a frame-0 batch', () => {
   it('no ground enemy stands in the arena on frame 0 — each waits its turn to be served', () => {
-    const d = createWaveDemo(SEED)
-    // Today `createWaveDemo` seeds `sim.processes` with the whole complement, so
+    const d = createWaveSim(SEED)
+    // Today `createWaveSim` seeds `sim.processes` with the whole complement, so
     // this reads 3. The ROM's enemy holds a ticket and naps at least one PCNAP
     // before it can be served (CRELP, JOUSTRV4.SRC:5667).
     expect(enemiesOf(d), 'a fresh wave-1 demo must not have its complement already standing').toHaveLength(0)
   })
 
   it('wave 1 seats all three bounders, one at a time', () => {
-    const t = walkArrivals(createWaveDemo(SEED))
+    const t = walkArrivals(createWaveSim(SEED))
     expect(t.firstSeen.size, 'the wave-1 complement must still arrive in full').toBe(WAVE_1_ENEMIES)
     expect(t.presentCount[0], 'none present on frame 0').toBe(0)
     for (let f = 1; f < t.presentCount.length; f++) {
@@ -179,7 +179,7 @@ describe('jt11-4 — wave 1 enters through the transporter queue, not as a frame
 
 describe('jt11-4 — the wave advance queues its complement instead of splicing it whole', () => {
   it('the advance frame inserts NO enemy — the batch splice is gone', () => {
-    const advanced = stepDemo(onTheBrinkOfWave2(SEED), {})
+    const advanced = stepSim(onTheBrinkOfWave2(SEED), {})
     // `processes = [...processes, ...arrivals]` puts all four of wave 2's
     // bounders in on this single frame today.
     expect(advanced.wave, 'the fixture must actually have advanced into wave 2').toBe(2)
@@ -187,7 +187,7 @@ describe('jt11-4 — the wave advance queues its complement instead of splicing 
   })
 
   it('wave 2 serves its four bounders one at a time, never two in a frame', () => {
-    const t = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     expect(t.firstSeen.size, "wave 2's complement must still arrive in full").toBe(WAVE_2_ENEMIES)
     // Without this, the batch insert satisfies the per-frame delta below
     // vacuously: a complement that is ALREADY seated on frame 0 never steps.
@@ -206,7 +206,7 @@ describe('jt11-4 — the wave advance queues its complement instead of splicing 
   })
 
   it('the enemies are served in TICKET order, each on a strictly later frame than the last', () => {
-    const t = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     const frames = t.arrivalOrder.map((id) => t.firstSeen.get(id) ?? -1)
     // A queue serves one number at a time: no two enemies share an arrival frame.
     for (let i = 1; i < frames.length; i++) {
@@ -225,7 +225,7 @@ describe('jt11-4 — the wave advance queues its complement instead of splicing 
   })
 
   it('an unserved enemy is absent from the draw list too — it does not exist yet', () => {
-    const t = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     // `drawList` iterates `sim.processes`, so absence from the process list is
     // absence from the screen. The op count must therefore CLIMB as the
     // complement is served, not start at its maximum.
@@ -247,7 +247,7 @@ describe('jt11-4 — only the insertion TIMING moves', () => {
   it('the same complement arrives: same ids, same types, same count as the batch built', () => {
     // The story is explicit that `enemyProcess` and the materialise effect are
     // untouched. Wave 2 is four bounders with ids 0x200 + index.
-    const t = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     const ids = [...t.firstSeen.keys()].sort((a, b) => a - b)
     expect(ids, "wave 2's four enemies keep their wave-namespaced ids").toEqual([0x200, 0x201, 0x202, 0x203])
     for (const id of ids) {
@@ -261,7 +261,7 @@ describe('jt11-4 — only the insertion TIMING moves', () => {
     // holds it, the later arrivals surface with an already-decremented window.
     // Every enemy first seen with the SAME napLeft proves each window began when
     // that enemy was served (`beginMaterialise(MATERIALISE_WINDOW)`).
-    const t = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     const naps = [...t.napLeftOnArrival.values()]
     expect(naps, 'the fixture must have observed every arrival').toHaveLength(WAVE_2_ENEMIES)
     for (const n of naps) {
@@ -271,8 +271,8 @@ describe('jt11-4 — only the insertion TIMING moves', () => {
   })
 
   it('the arrival schedule is deterministic — the same seed replays the same frames', () => {
-    const a = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
-    const b = walkArrivals(stepDemo(onTheBrinkOfWave2(SEED), {}))
+    const a = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
+    const b = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     expect([...b.firstSeen.entries()]).toEqual([...a.firstSeen.entries()])
   })
 })
@@ -281,10 +281,10 @@ describe('jt11-4 — only the insertion TIMING moves', () => {
 // AC-9 — the dead serving law gains a production caller
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** demo.ts with comments stripped — a name inside a comment must never satisfy a
+/** sim.ts with comments stripped — a name inside a comment must never satisfy a
  *  wiring guard (block comments first, then line comments). */
 function demoSourceSansComments(): string {
-  const path = fileURLToPath(new URL('../src/core/demo.ts', import.meta.url))
+  const path = fileURLToPath(new URL('../src/core/sim.ts', import.meta.url))
   return readFileSync(path, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
@@ -293,27 +293,27 @@ function demoSourceSansComments(): string {
 describe('jt11-4 — the ServiceQueue stops being dead code', () => {
   const SERVING_LAW = ['newServiceQueue', 'takeEnemyNumber', 'enemyTurn', 'serveEnemy'] as const
 
-  it.each(SERVING_LAW)('demo.ts calls %s in production code, not just tests', (fn) => {
-    // Today demo.ts imports only `enterViaPads`, `beginMaterialise`,
+  it.each(SERVING_LAW)('sim.ts calls %s in production code, not just tests', (fn) => {
+    // Today sim.ts imports only `enterViaPads`, `beginMaterialise`,
     // `stepMaterialise` and `PADS` — the whole take-a-number law has zero
     // production callers. Wiring it is the story.
     const src = demoSourceSansComments()
-    expect(src.includes(fn), `${fn} must have a real caller in demo.ts, outside comments`).toBe(true)
+    expect(src.includes(fn), `${fn} must have a real caller in sim.ts, outside comments`).toBe(true)
   })
 
   it('the serving law is imported from the transporter module, not re-implemented locally', () => {
     const src = demoSourceSansComments()
     // Guards against Dev satisfying the check above by writing a private copy of
-    // the queue in demo.ts — the point is to consume the transcribed, ROM-cited
+    // the queue in sim.ts — the point is to consume the transcribed, ROM-cited
     // implementation that already exists.
     for (const fn of SERVING_LAW) {
       expect(
         new RegExp(`function\\s+${fn}\\b`).test(src),
-        `${fn} must be imported from ./transporter.js, not redefined in demo.ts`,
+        `${fn} must be imported from ./transporter.js, not redefined in sim.ts`,
       ).toBe(false)
     }
     const importBlock = /import\s*\{([^}]*)\}\s*from\s*'\.\/transporter\.js'/.exec(src)
-    expect(importBlock, 'demo.ts must import from ./transporter.js').not.toBeNull()
+    expect(importBlock, 'sim.ts must import from ./transporter.js').not.toBeNull()
     for (const fn of SERVING_LAW) {
       expect(importBlock?.[1].includes(fn), `${fn} must appear in the transporter import`).toBe(true)
     }

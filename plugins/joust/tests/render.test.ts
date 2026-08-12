@@ -346,11 +346,11 @@ describe('AC-1 — the demo page is wired', () => {
   it('main.ts drives the loop and draws through the render shell', () => {
     const main = readFileSync(join(repoRoot, 'src', 'main.ts'), 'utf8')
     // MIGRATION LINEAGE — jt1-6 → jt2-7 → jt4-5. jt1-6 pinned `/stepFlight|stepGround/` (a
-    // hand-rolled flight loop); jt2-7 widened it to `/stepDemo/` when main.ts moved to driving the
+    // hand-rolled flight loop); jt2-7 widened it to `/stepSim/` when main.ts moved to driving the
     // pure core demo. jt4-5 SUPERSEDES that again (Reviewer Ruling #2): main.ts now steps the sim
-    // through the SESSION layer — `stepGame` (core/game), which WRAPS stepDemo over a
-    // createWaveDemo-built sim (the jt2-1 one-sim seam). `stepDemo` now lives ONLY in a main.ts
-    // doc-comment, so a `/stepDemo/` match was green scenery on a comment token asserting a
+    // through the SESSION layer — `stepGame` (core/game), which WRAPS stepSim over a
+    // createWaveSim-built sim (the jt2-1 one-sim seam). `stepSim` now lives ONLY in a main.ts
+    // doc-comment, so a `/stepSim/` match was green scenery on a comment token asserting a
     // now-false intent. Re-pinned to the CALL FORM `stepGame(` — present only in the real wiring,
     // never the comment — so it REDDENS if main.ts reverts to stepping the demo directly. (The full
     // session seam + core purity are pinned in tests/render-jt4-5.test.ts and tests/demo-source.ts.)

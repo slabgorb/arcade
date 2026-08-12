@@ -13,7 +13,7 @@ Game-over + the loop + DBAIT — GOVER tri-state, per-player out, stepGame conso
 - **Epic:** Joust — game structure (the game loop): 2P co-op ledgers, all six wave types, BCD scoring, extra men, game-over
 
 ## Problem
-The session layer closes the loop. GOVER goes tri-state — 0 = over, negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015); a player with no lives is OUT and waits, the game reaches over only when EVERY player is out. The wave-to-wave progression stepDemo already runs is CONSOLIDATED under stepGame so score/lives/gover ride the same single sim step (the jt2-1 one-sim seam — no divergent loop). DBAIT BAITER REMOVAL (deferred by jt3, demo.ts): a baiter that dissolves is REMOVED and the nbait count SETTLES on entry so the max-3 cap (PCHASE=-1, JOUSTRV4.SRC:2108-2113) frees a slot instead of the swarm holding forever; the baiter dissolve already tags itself for this count. Radix-cited + claims entries.
+The session layer closes the loop. GOVER goes tri-state — 0 = over, negative = running, positive $7F = attract simulation (JOUSTRV4.SRC:232-233,712,1015); a player with no lives is OUT and waits, the game reaches over only when EVERY player is out. The wave-to-wave progression stepSim already runs is CONSOLIDATED under stepGame so score/lives/gover ride the same single sim step (the jt2-1 one-sim seam — no divergent loop). DBAIT BAITER REMOVAL (deferred by jt3, sim.ts): a baiter that dissolves is REMOVED and the nbait count SETTLES on entry so the max-3 cap (PCHASE=-1, JOUSTRV4.SRC:2108-2113) frees a slot instead of the swarm holding forever; the baiter dissolve already tags itself for this count. Radix-cited + claims entries.
 
 ## Technical Approach
 _Approach hints to be refined by TEA/Dev. The story title above defines the
@@ -31,8 +31,8 @@ intended behavior._
 
 ## Forward-carried from jt4-3
 
-1. **Live partner-kill DETECTION** — a distinguishable partner-kill event on demo.ts collisionPass + the arm-at-wave-start/detect/award-at-wave-end loop in stepGame.
-2. **Egg-hatch spawn wiring** — wiring into demo.ts spawnWaveEnemies via the WAVEGG EGG1 placement transcription (JOUSTRV4.SRC:2737-2776).
+1. **Live partner-kill DETECTION** — a distinguishable partner-kill event on sim.ts collisionPass + the arm-at-wave-start/detect/award-at-wave-end loop in stepGame.
+2. **Egg-hatch spawn wiring** — wiring into sim.ts spawnWaveEnemies via the WAVEGG EGG1 placement transcription (JOUSTRV4.SRC:2737-2776).
 3. **Wave-5 egg-spawn integration test** — prove egg-wave mechanics across the five-wave sequence.
 4. **Live-gladiator-award integration test** — validate gladiator-wave scoring and bounty logic.
 5. **recordPartnerKill idempotence guard** — vs the $80 claimed marker (ROM DEC-keep-positive :4688 — test the incd<0 branch or remove it).

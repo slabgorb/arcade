@@ -112,7 +112,7 @@ the determinism + audio-cue re-baseline that follows.
 >   old title's claim, verbatim — reddens exactly **2** tests (run at setup on a clean tree,
 >   source restored, `git status` empty before and after).
 > - The only producers of a non-neutral `PlayerInput` are `input.ts:45` (human) and
->   `enemy.ts:1162` (enemy, fixed by uf1-9). `frame.ts:315` and `demo.ts:325` supply
+>   `enemy.ts:1162` (enemy, fixed by uf1-9). `frame.ts:315` and `sim.ts:325` supply
 >   `NEUTRAL_INPUT` as a **fallback only**, and joust has no autopilot.
 >
 > Two claims in the story as filed were therefore **FALSE** and have been removed from the board:

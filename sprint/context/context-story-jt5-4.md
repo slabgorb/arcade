@@ -13,7 +13,7 @@ The THUDs — apply the bounce collisionPass computes and discards, then cue it
 - **Epic:** Joust audio — the sound subsystem joust shipped without
 
 ## Problem
-Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8124, 'AT LEAST 1 PERSON THUD''ED', call site :5014 'PLAYERS COLIDE') and SNETHD (:8106, 'ENEMIES THUD', call site :5019 'ENEMIES COLIDE'). collisionPass computes the bounce outcome and DISCARDS it — 'if (contact.outcome.kind !== "kill") continue' (plugins/joust/src/core/demo.ts, the joust pair loop) — and bounceTop, bounceBottom and bounceHorizontal in joust.ts have ZERO production callers. So a non-killing collision currently does nothing at all: no push, no separation, no sound. The work is APPLYING the bounce first; the cue is the easy half and must not land without it, because a thud announcing a collision the sim does not resolve is an audible lie. Same disease as uf1-11's troll grip one layer over: a faithful, tested, cited pure core with no caller.
+Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8124, 'AT LEAST 1 PERSON THUD''ED', call site :5014 'PLAYERS COLIDE') and SNETHD (:8106, 'ENEMIES THUD', call site :5019 'ENEMIES COLIDE'). collisionPass computes the bounce outcome and DISCARDS it — 'if (contact.outcome.kind !== "kill") continue' (plugins/joust/src/core/sim.ts, the joust pair loop) — and bounceTop, bounceBottom and bounceHorizontal in joust.ts have ZERO production callers. So a non-killing collision currently does nothing at all: no push, no separation, no sound. The work is APPLYING the bounce first; the cue is the easy half and must not land without it, because a thud announcing a collision the sim does not resolve is an audible lie. Same disease as uf1-11's troll grip one layer over: a faithful, tested, cited pure core with no caller.
 
 ## Acceptance Criteria
 
@@ -25,7 +25,7 @@ Two ROM cues are blocked on physics the sim computes and throws away. SNPTHD (:8
 
 3. **Emit SNPTHD for player-height-tie collision:** When two players collide at the same height (`ha === hb` AND `contact.outcome.kind === 'bounce'`), emit the `player-thud` event kind so `audio-dispatch.ts` can map it to the SNPTHD cue.
 
-4. **Cue lands WITH the bounce, not after:** The thud event must be emitted in the same frame as the bounce is applied, in the collision-detection phase (demo.ts:986-994 / demo.ts:867), before the entity moves away.
+4. **Cue lands WITH the bounce, not after:** The thud event must be emitted in the same frame as the bounce is applied, in the collision-detection phase (sim.ts:986-994 / sim.ts:867), before the entity moves away.
 
 5. **Remove thud entries from the deferred array:** After this story, remove `'player-thud'`, `'enemy-thud'`, and `'thud'` from the `audio-events.test.ts` deferred array (leaving only `'troll-grab'` for uf1-10/uf1-11).
 
@@ -75,13 +75,13 @@ Today non-killing collisions are inert. After this story, they push birds apart.
 
 ## Related Stories (Already Filed)
 
-- **jt5-11** owns three unguarded wing-cue invariants. This story touches demo.ts:1109 (cue order); jt5-11 will pin the relative ordering.
+- **jt5-11** owns three unguarded wing-cue invariants. This story touches sim.ts:1109 (cue order); jt5-11 will pin the relative ordering.
 - **jt5-5** owns sound priority arbitration (SNPTHD priority 020, SNETHD priority 009). Record in `CUE_SOURCES` here; do NOT implement arbitration.
 
 ## Premises Verified in Tree
 
-✓ `demo.ts:867` reads exactly `if (contact.outcome.kind !== 'kill') continue`
-✓ `resolveContacts` (demo.ts:986-994) computes bounce but applies nothing
+✓ `sim.ts:867` reads exactly `if (contact.outcome.kind !== 'kill') continue`
+✓ `resolveContacts` (sim.ts:986-994) computes bounce but applies nothing
 ✓ `bounceTop` (joust.ts:229), `bounceBottom` (joust.ts:242), `bounceHorizontal` (joust.ts:256) have ZERO production callers
 ✓ `JOUSTRV4.SRC:8124` — SNPTHD / `:8106` — SNETHD both verified
 ✓ Both cues sit at call sites `:5014` (SNPTHD) and `:5019` (SNETHD)

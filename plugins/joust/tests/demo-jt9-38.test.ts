@@ -34,7 +34,7 @@
 // guard's nearest-preceding-filename rule cannot bind a ROM span to a .ts file.
 
 import { describe, it, expect } from 'vitest'
-import { loadDemo, type DemoProcess, type DemoState } from './helpers/demo-contract.js'
+import { loadSim, type SimProcess, type SimState } from './helpers/sim-contract.js'
 import { loadWave, type WaveRow } from './helpers/wave-contract.js'
 import type { EggState } from './helpers/egg-contract.js'
 import { strippedToPlayers, waveComplement, withNoPendingEnemies } from './helpers/wave-entry.js'
@@ -94,10 +94,10 @@ function eggOf(over: Partial<EggState>): EggState {
 
 /**
  * A settled WAVE egg one frame from maturity. `waitFrames: 1` means the next
- * `stepDemo` computes `remaining = 0` and reaches the hatch/defer decision — the
+ * `stepSim` computes `remaining = 0` and reaches the hatch/defer decision — the
  * ROM's `DEC PJOYT,U / BNE EGGLN2` falling through (JOUSTRV4.SRC:3236-3237).
  */
-function ripeEgg(id: number, posX = 100): DemoProcess {
+function ripeEgg(id: number, posX = 100): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -110,7 +110,7 @@ function ripeEgg(id: number, posX = 100): DemoProcess {
 }
 
 /** Payload-less enemy: holds a population slot without ever jousting (jt8-4/jt8-7 idiom). */
-const holder = (id: number): DemoProcess => ({
+const holder = (id: number): SimProcess => ({
   id,
   cls: 'secondary',
   nap: 1,
@@ -119,7 +119,7 @@ const holder = (id: number): DemoProcess => ({
 })
 
 /** The plugin's local widening for the baiter tag (mirrors demo-jt4-4.test.ts). */
-type BaiterProc = DemoProcess & { baiter?: boolean }
+type BaiterProc = SimProcess & { baiter?: boolean }
 
 /** A PTERODACTYL/baiter process. The ROM counts these on NBAIT (JOUSTRV4.SRC:2111), never NENEMY. */
 const ptero = (id: number, baiter: boolean): BaiterProc => ({
@@ -144,7 +144,7 @@ const ptero = (id: number, baiter: boolean): BaiterProc => ({
   },
 })
 
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -169,33 +169,33 @@ function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
 }
 
 /** A demo staged with exactly these processes at `wave`. The player sits far from every egg. */
-async function stagedDemo(processes: DemoProcess[], wave: number): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
+async function stagedDemo(processes: SimProcess[], wave: number): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = dmod.createWaveSim(SEED)
   // jt11-4: "exactly these processes" now also means an empty transporter waiting
   // room — a queued arrival is outside `sim.processes` and would materialise into
   // the staging a frame or two in.
   return withNoPendingEnemies({ ...base, wave, sim: { ...base.sim, processes }, events: [] })
 }
 
-const eggsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
-const enemiesIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const eggsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+const enemiesIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 // jt9-25 — a "hatch" now ADMITS the egg into the EGGMAN cutscene (hatchRow set at the
 // quota-passing frame, INC NENEMY there) rather than spawning the buzzard that frame;
 // the remount flies in EGG_HATCH_ANIM_FRAMES later. So the quota's effect is observed
 // as cutscene-entry, not as an enemy appearing. A deferred egg stays purely waiting.
-const hatchingIn = (d: DemoState): DemoProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow !== undefined)
-const waitingIn = (d: DemoState): DemoProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow === undefined)
-const pterosIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
+const hatchingIn = (d: SimState): SimProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow !== undefined)
+const waitingIn = (d: SimState): SimProcess[] => eggsIn(d).filter((p) => p.egg?.hatchRow === undefined)
+const pterosIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'ptero')
 
 /** Step to the given wave counter by clearing the arena (jt4-5's forced-advance idiom). */
-async function advanceTo(target: number): Promise<DemoState> {
-  const dmod = await loadDemo()
-  let s = dmod.createWaveDemo(SEED)
+async function advanceTo(target: number): Promise<SimState> {
+  const dmod = await loadSim()
+  let s = dmod.createWaveSim(SEED)
   for (let g = 0; s.wave < target && g < 90; g++) {
     // jt11-4: an enemy still holding a transporter number counts as alive, so the
     // strip-to-players idiom clears the wave only once the waiting room goes with it.
-    s = dmod.stepDemo({ ...strippedToPlayers(s), events: [] })
+    s = dmod.stepSim({ ...strippedToPlayers(s), events: [] })
   }
   if (s.wave !== target) throw new Error(`wave ${target} is not reachable on the BCD counter (stopped at ${s.wave})`)
   return s
@@ -369,7 +369,7 @@ describe('AC-2/4 — twelve simultaneous maturities against a quota of six', () 
     // KILLS, and this is the mutant a natural implementation actually ships:
     // "count the enemies ONCE before the hatch pass" — under it all twelve hatch.
     // Also kills "gate on <= WENEMY" (seven would hatch) and "no gate" (twelve).
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 12 }, (_, i) => ripeEgg(0x500 + i, 100 + i)),
@@ -378,7 +378,7 @@ describe('AC-2/4 — twelve simultaneous maturities against a quota of six', () 
     expect(eggsIn(before).length, 'staged with twelve ripe eggs').toBe(12)
     expect(enemiesIn(before).length, 'and an empty arena — the population starts at zero').toBe(0)
 
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(hatchingIn(after).length, 'the quota admits six into the hatch cutscene (WENEMY = 6 at wave 5)').toBe(6)
     expect(waitingIn(after).length, 'and the other six are DEFERRED, still purely waiting').toBe(6)
 
@@ -399,12 +399,12 @@ describe('AC-2/4 — twelve simultaneous maturities against a quota of six', () 
     // there must admit EIGHT, not six: the number tracks WENEMY rather than being a
     // second hard-coded constant.
     // KILLS "defer everything past six" and "hard-code the quota to 6".
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 12 }, (_, i) => ripeEgg(0x500 + i, 100 + i)),
     ]
-    const after = dmod.stepDemo(await stagedDemo(staged, EGG_WAVE_8))
+    const after = dmod.stepSim(await stagedDemo(staged, EGG_WAVE_8))
     expect(hatchingIn(after).length, 'wave 35 admits EIGHT into the cutscene — the quota is read, not hard-coded').toBe(8)
     expect(waitingIn(after).length, 'so four are deferred').toBe(4)
   })
@@ -422,7 +422,7 @@ describe('AC-3 — pterodactyls and baiters do NOT count toward the quota (NBAIT
     // that must STAY free.
     // KILLS "count every non-player process" and "count enemies + pteros" — either
     // gives 8 against a quota of 6 and the egg would be deferred.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 5 }, (_, i) => holder(0x7000 + i)),
@@ -435,7 +435,7 @@ describe('AC-3 — pterodactyls and baiters do NOT count toward the quota (NBAIT
     expect(enemiesIn(before).length, 'five enemies — one below the quota of six').toBe(5)
     expect(pterosIn(before).length, 'and three pteros staged alongside').toBe(3)
 
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(pterosIn(after).length, 'the pteros are still present at the decision frame').toBe(3)
     expect(hatchingIn(after).length, 'the egg hatched (entered the cutscene): pteros are not part of the population').toBe(1)
     expect(enemiesIn(after).length, 'the five enemies are unchanged — the remount flies in after the cutscene').toBe(5)
@@ -444,13 +444,13 @@ describe('AC-3 — pterodactyls and baiters do NOT count toward the quota (NBAIT
   it('CONTROL — six enemies and NO pteros defers, so the test above is discriminating', async () => {
     // Same fixture, one more enemy and no pteros. If this did not defer, the test
     // above would pass for a reason having nothing to do with pteros.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 6 }, (_, i) => holder(0x7000 + i)),
       ripeEgg(0x500),
     ]
-    const after = dmod.stepDemo(await stagedDemo(staged, EGG_WAVE_6))
+    const after = dmod.stepSim(await stagedDemo(staged, EGG_WAVE_6))
     expect(eggsIn(after).length, 'at quota, the egg is deferred').toBe(1)
     expect(eggsIn(after)[0]?.id, 'and it is the SAME egg').toBe(0x500)
   })
@@ -467,17 +467,17 @@ describe('AC-1/4 — a NORMAL wave never defers, however crowded (WENEMY = 255)'
     // egg matures the instant its timer runs out. That is FAITHFUL, not the defect.
     // KILLS the whole-story regression: "gate every wave on the row's nibble", under
     // which twenty enemies at wave 4 (nibble arithmetic = 6) would defer forever.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const w = await loadWave()
     expect(w.rawWaveType(w.waveRowAt(NON_EGG_WAVE).status), 'wave 4 is not an egg wave').not.toBe('egg')
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 20 }, (_, i) => holder(0x7000 + i)),
-      { ...ripeEgg(0x1_0500), waveEgg: undefined } as DemoProcess,
+      { ...ripeEgg(0x1_0500), waveEgg: undefined } as SimProcess,
     ]
     const before = await stagedDemo(staged, NON_EGG_WAVE)
     expect(enemiesIn(before).length, 'a very crowded normal wave').toBe(20)
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(hatchingIn(after).length, 'the kill-egg matured anyway (entered the cutscene) — a normal wave admits 255').toBe(1)
     expect(enemiesIn(after).length, 'the twenty enemies are unchanged — the buzzard flies in after the cutscene').toBe(20)
   })
@@ -489,7 +489,7 @@ describe('AC-1/4 — a NORMAL wave never defers, however crowded (WENEMY = 255)'
 
 describe('AC-4 — the quota lookup survives an OUT-OF-RANGE wave (the `demo.wave >= 1` guard)', () => {
   it('a settled egg maturing at wave 0 does not throw — the `>= 1` guard holds', async () => {
-    // `waveRowAt` refuses a wave < 1, and the egg-quota lookup in `stepDemo`'s hatch
+    // `waveRowAt` refuses a wave < 1, and the egg-quota lookup in `stepSim`'s hatch
     // block keys on `demo.wave`. Since td1-12 (Option B) `demo.wave` is the monotone
     // DECIMAL ordinal, so it is >= 1 in every real game and wave 0 is UNREACHABLE in
     // play — but that invariant is not local to the lookup, so the line carries a
@@ -502,26 +502,26 @@ describe('AC-4 — the quota lookup survives an OUT-OF-RANGE wave (the `demo.wav
     // WAVBCD byte, which rolled 0x99 -> 0x00 on the hundredth wave. td1-12 retired the
     // rollover — the counter is monotone now — so wave 0 no longer OCCURS; the guard
     // and this test remain only as belt-and-suspenders against an out-of-range wave.)
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const outOfRange = 0
     const staged = [playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)]
     const at = await stagedDemo(staged, outOfRange)
-    expect(() => dmod.stepDemo(at), 'an out-of-range wave must not take the cabinet down').not.toThrow()
+    expect(() => dmod.stepSim(at), 'an out-of-range wave must not take the cabinet down').not.toThrow()
   })
 
   it('CONTROL — the same fixture at an in-range wave hatches, so the test above is about the GUARD', async () => {
-    // Without this, the test above would pass just as well against a `stepDemo` that
+    // Without this, the test above would pass just as well against a `stepSim` that
     // had stopped hatching anything at all, anywhere. Wave 99 is a plain in-range
     // decimal wave (td1-12 / Option B), not the old BCD 0x99 counter.
-    const dmod = await loadDemo()
-    const after = dmod.stepDemo(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 99))
+    const dmod = await loadSim()
+    const after = dmod.stepSim(await stagedDemo([playerAt(PLAYER1_ID, 20, 40), ripeEgg(0x500)], 99))
     expect(hatchingIn(after).length, 'at wave 99 an unblocked egg still matures (enters the cutscene)').toBe(1)
   })
 
   it('the rollover fallback ADMITS — a crowded hundredth wave still hatches, it does not freeze', async () => {
     // ADDED AT FINISH, from the Reviewer's battery. The test above pins only that the
     // rolled counter does not THROW — and `.not.toThrow()` admits EVERY non-throwing
-    // value. Measured: substituting `: 0` for `: 255` in demo.ts left all 2627 tests
+    // value. Measured: substituting `: 0` for `: 255` in sim.ts left all 2627 tests
     // green, and `: 1` did too. A quota of 0 makes `population >= quota` true for every
     // egg forever, so on the hundredth wave no settled egg can ever hatch, the clear
     // gate wants no eggs, and the wave becomes unwinnable — a permanent soft-lock
@@ -530,7 +530,7 @@ describe('AC-4 — the quota lookup survives an OUT-OF-RANGE wave (the `demo.wav
     // 255 is WNRM's own normal-wave value (JOUSTRV4.SRC:1991-1992) and gates nothing, so
     // the right assertion is that the fallback ADMITS a hatch with the arena already
     // crowded. KILLS `: 0` and `: 1`; stays green on `: 255`.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 9 }, (_, i) => holder(0x7000 + i)),
@@ -538,7 +538,7 @@ describe('AC-4 — the quota lookup survives an OUT-OF-RANGE wave (the `demo.wav
     ]
     const before = await stagedDemo(staged, 0x00)
     expect(enemiesIn(before).length, 'nine enemies — well past any real wave quota').toBe(9)
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(hatchingIn(after).length, 'the hundredth wave ADMITS the hatch (into the cutscene) rather than freezing it').toBe(1)
     expect(enemiesIn(after).length, 'the nine enemies are unchanged — the remount joins them after the cutscene').toBe(9)
   })
@@ -558,7 +558,7 @@ describe('AC-5 — a deferred egg re-checks after ONE nap (JOUSTRV4.SRC:3238 + :
     // KILLS both wrong cadences: re-priming the FULL EGGWT2 wait (the egg would not
     // reappear for hundreds of frames) and re-checking on the NEXT frame (it would
     // hatch at +1).
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const nap = dmod.EGG_WAIT_NAP_FRAMES
     expect(nap, 'the nap quantum is the PCNAP 12 of JOUSTRV4.SRC:3227').toBe(12)
 
@@ -568,11 +568,11 @@ describe('AC-5 — a deferred egg re-checks after ONE nap (JOUSTRV4.SRC:3238 + :
       ...Array.from({ length: 6 }, (_, i) => holder(0x7000 + i)),
       ripeEgg(0x500),
     ]
-    const deferred = dmod.stepDemo(await stagedDemo(staged, EGG_WAVE_6))
+    const deferred = dmod.stepSim(await stagedDemo(staged, EGG_WAVE_6))
     expect(eggsIn(deferred).length, 'deferred at the quota').toBe(1)
 
     // Now clear the quota: strip the holders, keep the deferred egg exactly as it is.
-    let d: DemoState = {
+    let d: SimState = {
       ...deferred,
       sim: {
         ...deferred.sim,
@@ -583,7 +583,7 @@ describe('AC-5 — a deferred egg re-checks after ONE nap (JOUSTRV4.SRC:3238 + :
 
     const hatchedAt: number[] = []
     for (let f = 1; f <= 40 && hatchedAt.length === 0; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       // jt9-25 — "hatch" is the egg entering the cutscene (hatchRow set), the frame
       // the re-poll admits it; the buzzard itself flies in later and would confound
       // the cadence measurement.
@@ -596,19 +596,19 @@ describe('AC-5 — a deferred egg re-checks after ONE nap (JOUSTRV4.SRC:3238 + :
     // Stated separately so a fix that happens to hatch at +12 for some other reason
     // (say, a hard-coded countdown) still has to survive the frame-by-frame shape.
     // KILLS "waitFrames = 1 on defer".
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const staged = [
       playerAt(PLAYER1_ID, 20, 40),
       ...Array.from({ length: 6 }, (_, i) => holder(0x7000 + i)),
       ripeEgg(0x500),
     ]
-    const deferred = dmod.stepDemo(await stagedDemo(staged, EGG_WAVE_6))
-    let d: DemoState = {
+    const deferred = dmod.stepSim(await stagedDemo(staged, EGG_WAVE_6))
+    let d: SimState = {
       ...deferred,
       sim: { ...deferred.sim, processes: deferred.sim.processes.filter((p) => p.kind !== 'enemy') },
     }
     for (let f = 1; f < dmod.EGG_WAIT_NAP_FRAMES; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       expect(eggsIn(d).length, `the egg hatched at +${f}, inside the nap`).toBe(1)
       expect(eggsIn(d)[0]?.id, 'and it is still the same egg all the way through the nap').toBe(0x500)
     }

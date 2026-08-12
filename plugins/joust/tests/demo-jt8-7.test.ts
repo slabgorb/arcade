@@ -5,11 +5,11 @@
 // transcribe the six EGGI rows the port dropped.
 //
 // ─── RED TODAY ───────────────────────────────────────────────────────────────
-// `collisionPass`'s catch pass (demo.ts) runs
+// `collisionPass`'s catch pass (sim.ts) runs
 //     if (!broadPhase(collisionBox(catcher), eggBox(ep.egg))) continue
 // and then scores. There is no narrowPhase, so the egg's vertical reach is the
-// bare 16px ENTITY_BOX_H (demo.ts) rather than CEGGUP's 7 real scanlines.
-// The joust pass 140 lines above (demo.ts) already does broad THEN
+// bare 16px ENTITY_BOX_H (sim.ts) rather than CEGGUP's 7 real scanlines.
+// The joust pass 140 lines above (sim.ts) already does broad THEN
 // narrow — this story brings the catch to the same shape.
 //
 // ─── WHERE THE FIXTURES SIT, AND WHY (the jt8-3 rule) ────────────────────────
@@ -29,10 +29,10 @@
 // consulting the mask cannot satisfy both halves of either pair.
 //
 // ─── WHY THE FIXTURES ARE `settled: true` ────────────────────────────────────
-// `stepFrame` runs BEFORE `collisionPass` (demo.ts), so a falling egg
+// `stepFrame` runs BEFORE `collisionPass` (sim.ts), so a falling egg
 // is moved and re-accelerated (velY += GRAV = 4, posY += velY) before the catch
 // is tested — staged numbers would not be the numbers at collision time.
-// `stepEgg` returns a SETTLED egg completely untouched (demo.ts), so
+// `stepEgg` returns a SETTLED egg completely untouched (sim.ts), so
 // `settled: true` freezes BOTH posY and velY across the step and the staged
 // values ARE the collision-time values. Measured, not assumed. The player does
 // not drift either (velY 0, timeUp 1 — verified: playerTop is the staged y).
@@ -51,11 +51,11 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
 import { loadPictures } from './helpers/pictures-contract.js'
@@ -65,7 +65,7 @@ const PLAYER1_ID = 1
 
 // ─── Staging (mirrors demo-jt8-4.test.ts) ────────────────────────────────────
 
-function playerAt(id: number, posX: number, pixelY: number): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -105,7 +105,7 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-const eggProcAt = (id: number, over: Partial<EggState>): DemoProcess => ({
+const eggProcAt = (id: number, over: Partial<EggState>): SimProcess => ({
   id,
   cls: 'secondary',
   nap: 1,
@@ -115,7 +115,7 @@ const eggProcAt = (id: number, over: Partial<EggState>): DemoProcess => ({
 })
 
 /** Payload-less enemy: holds the wave open without ever jousting (jt8-4's idiom). */
-const waveHolder = (): DemoProcess => ({
+const waveHolder = (): SimProcess => ({
   id: 0x7000,
   cls: 'secondary',
   nap: 1,
@@ -123,14 +123,14 @@ const waveHolder = (): DemoProcess => ({
   kind: 'enemy',
 })
 
-const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState => ({
+const withProcesses = (d: SimState, procs: readonly SimProcess[]): SimState => ({
   ...d,
   sim: { ...d.sim, processes: procs },
 })
 
-const eggs = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
+const eggs = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'egg')
 
-function eggValuesOf(before: DemoState, after: DemoState): number[] {
+function eggValuesOf(before: SimState, after: SimState): number[] {
   const prior = new Set(before.events)
   return after.events
     .filter((e) => !prior.has(e))
@@ -164,15 +164,15 @@ async function caughtAt(
   dy: number,
   over: Partial<EggState> = {},
 ): Promise<{ caught: boolean; values: number[] }> {
-  const dmod = await loadDemo()
+  const dmod = await loadSim()
   const { x, y } = await findAir()
-  const before = withProcesses(dmod.createWaveDemo(SEED), [
+  const before = withProcesses(dmod.createWaveSim(SEED), [
     playerAt(PLAYER1_ID, x, y),
     eggProcAt(0x1_0001, { posX: x, posY: (y + dy) << 8, settled: true, pfeet: 1, ...over }),
     waveHolder(),
   ])
   expect(eggs(before).length, 'staged with exactly one egg').toBe(1)
-  const after = dmod.stepDemo(before)
+  const after = dmod.stepSim(before)
   return { caught: eggs(after).length === 0, values: eggValuesOf(before, after) }
 }
 
@@ -318,14 +318,14 @@ describe('jt8-7 AC-3/AC-4 — the catch pass runs narrowPhase after broadPhase',
     // PASSES TODAY. Kills the "delete broadPhase and rely on the mask" mutant:
     // the masks are only 7 and 13 rows, so a distant egg would also miss, but
     // the horizontal reach would become unbounded — narrowPhase ignores X.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const before = withProcesses(dmod.createWaveDemo(SEED), [
+    const before = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0002, { posX: x + 64, posY: y << 8, settled: true, pfeet: 1 }),
       waveHolder(),
     ])
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(eggs(after).length, 'an egg 64px away in X survives').toBe(1)
     expect(eggValuesOf(before, after), 'and scores nothing').toEqual([])
   })
@@ -333,14 +333,14 @@ describe('jt8-7 AC-3/AC-4 — the catch pass runs narrowPhase after broadPhase',
   it('a genuine catch still scores the ladder rung and emits exactly ONE cue', async () => {
     // PASSES TODAY. AC-4's "the catch still fires" half: the narrowPhase gate
     // must not disturb the jt8-4 scoring or the single SNEGG cue.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const before = withProcesses(dmod.createWaveDemo(SEED), [
+    const before = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0003, { posX: x, posY: y << 8, settled: true, pfeet: 1 }),
       waveHolder(),
     ])
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(eggValuesOf(before, after).length, 'the ladder rung is scored').toBeGreaterThan(0)
     expect(
       after.cues.filter((c) => c.type === 'egg-collected').length,
@@ -351,14 +351,14 @@ describe('jt8-7 AC-3/AC-4 — the catch pass runs narrowPhase after broadPhase',
   it('a MID-AIR catch still adds the 500 bonus through the mask gate', async () => {
     // PASSES TODAY. Guards the pfeet branch against a fix that reroutes the
     // catch and loses the bonus on the way.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const before = withProcesses(dmod.createWaveDemo(SEED), [
+    const before = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0004, { posX: x, posY: y << 8, settled: true, pfeet: 0 }),
       waveHolder(),
     ])
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     expect(eggValuesOf(before, after).length, 'ladder AND bonus are both emitted').toBe(2)
   })
 })
@@ -449,9 +449,9 @@ describe('jt8-7 AC-2 — the egg mask follows WEGG, not a hardcoded CEGGUP', () 
     // before the catch: staged velY 300 becomes 304 (still a fast fall) and the
     // egg descends exactly 1px, so a stage at dy=10 arrives at dy=11 — where
     // CEGGRT (velX=+4) cannot reach. Both numbers were measured, not assumed.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const before = withProcesses(dmod.createWaveDemo(SEED), [
+    const before = withProcesses(dmod.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, x, y),
       eggProcAt(0x1_0005, {
         posX: x,
@@ -463,7 +463,7 @@ describe('jt8-7 AC-2 — the egg mask follows WEGG, not a hardcoded CEGGUP', () 
       }),
       waveHolder(),
     ])
-    const after = dmod.stepDemo(before)
+    const after = dmod.stepSim(before)
     const survivor = eggs(after)[0]
     expect(survivor, 'the falling egg is NOT collected').toBeDefined()
     // Fixture premises, asserted rather than trusted (the jt8-3 rule).

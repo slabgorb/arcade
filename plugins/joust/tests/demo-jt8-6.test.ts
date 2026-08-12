@@ -23,7 +23,7 @@
 // ─── WHERE THE MISFILE CAME FROM, AND WHAT THE REAL DEFECT IS ────────────────
 // jt8-4 read the counter's lifetime off EGGSCR alone and concluded "EGGSCR never
 // resets it, so the count persists for that player" (claims/egg-catch.json
-// JT84-006, mirrored in demo.ts and demo-jt8-4-source.test.ts). The
+// JT84-006, mirrored in sim.ts and demo-jt8-4-source.test.ts). The
 // first clause is true; the second does not follow. `DEGGS` is a POINTER
 // (`LDY DEGGS,Y` then `LDB ,Y`, :3037/:3042 — the debug guard at :3039 reads
 // "SHOULD NEVER BE ZERO" because it is an address), and it points at the fixed
@@ -37,8 +37,8 @@
 // So the counter climbs only WITHIN one life of one wave. Our port gets the death
 // boundary right by construction (`eggHits` rides the player process; a death
 // removes it and `respawnPlayerProcess` builds a fresh one, so the credit dies
-// with the man) and gets the WAVE boundary WRONG: `stepDemo`'s advance carries
-// `processes` forward and only appends the new complement (demo.ts), so
+// with the man) and gets the WAVE boundary WRONG: `stepSim`'s advance carries
+// `processes` forward and only appends the new complement (sim.ts), so
 // the counter walks into the next wave. PROBED on this tree: a player holding 2
 // hits clears wave 1, and its first catch of wave 2 pays 750 where the ROM pays
 // 250.
@@ -50,7 +50,7 @@
 //
 // ─── WHY THE DEATH GUARD IS IN A RED SUITE THOUGH IT PASSES TODAY ────────────
 // The story's instruction — "re-home the count where it outlives a process (a
-// per-player record on DemoSim, the jt8-1 targets precedent)" — would BREAK the
+// per-player record on SimCore, the jt8-1 targets precedent)" — would BREAK the
 // death reset, because a record that outlives the process by design no longer
 // loses the credit when the man dies. Group 2 is the guard that makes that
 // regression loud. It is green on arrival, so its non-vacuity is proven by
@@ -58,11 +58,11 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
@@ -83,8 +83,8 @@ const RUNG_4 = 1000
 // suite that pinned the catch itself.
 
 /** A player process at an exact pixel position, optionally carrying ladder credit. */
-function playerAt(id: number, posX: number, pixelY: number, eggHits?: number): DemoProcess {
-  const p: DemoProcess = {
+function playerAt(id: number, posX: number, pixelY: number, eggHits?: number): SimProcess {
+  const p: SimProcess = {
     id,
     cls: 'primary',
     nap: 1,
@@ -126,8 +126,8 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, demo.ts). */
-function eggProcAt(id: number, over: Partial<EggState>): DemoProcess {
+/** An egg PROCESS in the kill-egg id namespace (`$1_0000+`, sim.ts). */
+function eggProcAt(id: number, over: Partial<EggState>): SimProcess {
   return { id, cls: 'secondary', nap: 1, period: 1, kind: 'egg', egg: eggOf(over) }
 }
 
@@ -137,38 +137,38 @@ function eggProcAt(id: number, over: Partial<EggState>): DemoProcess {
  * being unsteppable and unable to joust the catcher. jt8-4's factory, kept
  * verbatim; this suite needs its OPPOSITE too (see `clearableWith`).
  */
-function waveHolder(): DemoProcess {
+function waveHolder(): SimProcess {
   return { id: 0x7000, cls: 'secondary', nap: 1, period: 1, kind: 'enemy' }
 }
 
-const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState => ({
+const withProcesses = (d: SimState, procs: readonly SimProcess[]): SimState => ({
   ...d,
   sim: { ...d.sim, processes: procs },
 })
 
 /**
- * A sim staged so the NEXT `stepDemo` clears the wave: `clearable` (demo.ts)
+ * A sim staged so the NEXT `stepSim` clears the wave: `clearable` (sim.ts)
  * wants no enemy, no egg, and a live player. Everything else about the state is
- * the real `createWaveDemo` product.
+ * the real `createWaveSim` product.
  *
  * jt11-4 — an enemy still holding a transporter number counts as ALIVE (its process
  * is running CRELP in the ROM too), so emptying `sim.processes` no longer empties the
  * wave. The waiting room has to be cleared out alongside it, or nothing advances.
  */
-const clearableWith = (d: DemoState, players: readonly DemoProcess[]): DemoState =>
+const clearableWith = (d: SimState, players: readonly SimProcess[]): SimState =>
   withNoPendingEnemies(withProcesses(d, players))
 
-const playersOf = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
+const playersOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
 
-const playerNo = (d: DemoState, id: number): DemoProcess => {
+const playerNo = (d: SimState, id: number): SimProcess => {
   const p = playersOf(d).find((q) => q.id === id)
   if (!p) throw new Error(`player ${id} is not in the sim`)
   return p
 }
 
 /** The ladder credit a process carries, normalised — absent reads as zero, which
- *  is exactly how `collisionPass` reads it (`self.eggHits ?? 0`, demo.ts). */
-const creditOf = (p: DemoProcess): number => p.eggHits ?? 0
+ *  is exactly how `collisionPass` reads it (`self.eggHits ?? 0`, sim.ts). */
+const creditOf = (p: SimProcess): number => p.eggHits ?? 0
 
 /** Re-seat a process at a pixel position, keeping every other field — including
  *  whatever ladder credit it is carrying. Never rebuild the process: rebuilding
@@ -177,7 +177,7 @@ const creditOf = (p: DemoProcess): number => p.eggHits ?? 0
  *  `entity` is optional on the contract (an enemy-kind process has `enemy`
  *  instead), so this reports a mis-staged fixture rather than asserting non-null
  *  and failing later with an unreadable trace. */
-const seatedAt = (p: DemoProcess, posX: number, pixelY: number): DemoProcess => {
+const seatedAt = (p: SimProcess, posX: number, pixelY: number): SimProcess => {
   if (!p.entity) throw new Error(`process ${p.id} (${p.kind}) has no entity to re-seat`)
   return { ...p, entity: { ...p.entity, posX, posY: pixelY << 8 } }
 }
@@ -190,13 +190,13 @@ const seatedAt = (p: DemoProcess, posX: number, pixelY: number): DemoProcess => 
  * reads whatever credit a re-created man is actually born with. `mat` is not in
  * this contract because jt8-6 does not own it.
  */
-const readyToCatch = (p: DemoProcess): DemoProcess => {
-  const { mat: _window, ...rest } = p as DemoProcess & { mat?: unknown }
+const readyToCatch = (p: SimProcess): SimProcess => {
+  const { mat: _window, ...rest } = p as SimProcess & { mat?: unknown }
   return { ...rest, collisionEnabled: true }
 }
 
 /** The `reason:'egg'` score VALUES the frame that produced `after` emitted. */
-function eggValuesOf(before: DemoState, after: DemoState): number[] {
+function eggValuesOf(before: SimState, after: SimState): number[] {
   const prior = new Set(before.events)
   return after.events
     .filter((e) => !prior.has(e))
@@ -206,7 +206,7 @@ function eggValuesOf(before: DemoState, after: DemoState): number[] {
 }
 
 /** The `reason:'egg'` events with their attribution. */
-function eggEventsOf(before: DemoState, after: DemoState): { value: number; player?: number }[] {
+function eggEventsOf(before: SimState, after: SimState): { value: number; player?: number }[] {
   const prior = new Set(before.events)
   return after.events
     .filter((e) => !prior.has(e))
@@ -239,19 +239,19 @@ async function findAir(): Promise<{ x: number; y: number }> {
  * the measurement cannot trip an advance and reset the very thing under test.
  */
 async function catchOneEgg(
-  from: DemoState,
-  player: DemoProcess,
+  from: SimState,
+  player: SimProcess,
   air: { x: number; y: number },
-  others: readonly DemoProcess[] = [],
-): Promise<{ values: number[]; after: DemoState }> {
-  const demo = await loadDemo()
+  others: readonly SimProcess[] = [],
+): Promise<{ values: number[]; after: SimState }> {
+  const demo = await loadSim()
   const staged = withProcesses(from, [
     seatedAt(player, air.x, air.y),
     ...others,
     eggProcAt(0x1_0000, { posX: air.x, posY: air.y << 8 }),
     waveHolder(),
   ])
-  const after = demo.stepDemo(staged, {})
+  const after = demo.stepSim(staged, {})
   return { values: eggValuesOf(staged, after), after }
 }
 
@@ -265,26 +265,26 @@ async function catchOneEgg(
 
 describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)', () => {
   it('the counter is ZERO on the knight that walks into the next wave', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const before = clearableWith(demo.createWaveDemo(SEED), [
+    const before = clearableWith(demo.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, air.x, air.y, 3),
     ])
     expect(creditOf(playerNo(before, PLAYER1_ID))).toBe(3) // the staging is live
 
-    const after = demo.stepDemo(before, {})
+    const after = demo.stepSim(before, {})
 
     expect(after.wave).not.toBe(before.wave) // the wave really advanced
     expect(creditOf(playerNo(after, PLAYER1_ID))).toBe(0)
   })
 
   it('so the FIRST catch of the new wave pays the FIRST rung, not the fourth', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const before = clearableWith(demo.createWaveDemo(SEED), [
+    const before = clearableWith(demo.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, air.x, air.y, 3),
     ])
-    const advanced = demo.stepDemo(before, {})
+    const advanced = demo.stepSim(before, {})
     expect(advanced.wave).not.toBe(before.wave)
 
     // The SAME process object the advance produced — carrying whatever the
@@ -295,16 +295,16 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
   })
 
   it('EVERY advance clears it — the second wave boundary resets as hard as the first', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
 
     // Wave 1 → 2, then earn credit inside wave 2, then wave 2 → 3.
-    const first = demo.stepDemo(
-      clearableWith(demo.createWaveDemo(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 2)]),
+    const first = demo.stepSim(
+      clearableWith(demo.createWaveSim(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 2)]),
       {},
     )
     const veteran = { ...playerNo(first, PLAYER1_ID), eggHits: 3 }
-    const second = demo.stepDemo(clearableWith(first, [veteran]), {})
+    const second = demo.stepSim(clearableWith(first, [veteran]), {})
 
     expect(second.wave).not.toBe(first.wave)
     expect(creditOf(playerNo(second, PLAYER1_ID))).toBe(0)
@@ -314,13 +314,13 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
   })
 
   it('BOTH knights are cleared — EGGS1 and EGGS2 are separate CLRs (:1979, :1980)', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const before = clearableWith(demo.createWaveDemo(SEED), [
+    const before = clearableWith(demo.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, air.x, air.y, 3),
       playerAt(PLAYER2_ID, air.x + 40, air.y, 2),
     ])
-    const after = demo.stepDemo(before, {})
+    const after = demo.stepSim(before, {})
     expect(after.wave).not.toBe(before.wave)
 
     expect({
@@ -330,10 +330,10 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
   })
 
   it('and each of them then pays the first rung, credited to the right ledger', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const advanced = demo.stepDemo(
-      clearableWith(demo.createWaveDemo(SEED), [
+    const advanced = demo.stepSim(
+      clearableWith(demo.createWaveSim(SEED), [
         playerAt(PLAYER1_ID, air.x, air.y, 3),
         playerAt(PLAYER2_ID, air.x + 40, air.y, 2),
       ]),
@@ -347,7 +347,7 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
       eggProcAt(0x1_0000, { posX: air.x, posY: air.y << 8 }),
       waveHolder(),
     ])
-    const after = demo.stepDemo(staged, {})
+    const after = demo.stepSim(staged, {})
 
     expect(eggEventsOf(staged, after)).toEqual([{ value: RUNG_1, player: PLAYER2_ID }])
   })
@@ -355,23 +355,23 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
   it('the clear is scoped to the ADVANCE — an ordinary frame leaves the ladder alone', async () => {
     // The guard against "fix it by zeroing every frame", which would peg the
     // ladder at rung 1 forever and silently undo jt8-4's climb.
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const held = withProcesses(demo.createWaveDemo(SEED), [
+    const held = withProcesses(demo.createWaveSim(SEED), [
       playerAt(PLAYER1_ID, air.x, air.y, 2),
       waveHolder(), // the wave CANNOT clear this frame
     ])
-    const after = demo.stepDemo(held, {})
+    const after = demo.stepSim(held, {})
 
     expect(after.wave).toBe(held.wave) // nothing advanced
     expect(creditOf(playerNo(after, PLAYER1_ID))).toBe(2)
   })
 
   it('a within-wave catch still CLIMBS after a boundary reset — 250 then 500', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const advanced = demo.stepDemo(
-      clearableWith(demo.createWaveDemo(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 4)]),
+    const advanced = demo.stepSim(
+      clearableWith(demo.createWaveSim(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 4)]),
       {},
     )
 
@@ -389,26 +389,26 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
 //   dispatched on the LOSER's decision at :5071-5074 and :6563-6564.
 //
 //   GREEN ON ARRIVAL. This is the REGRESSION GUARD against implementing the
-//   story as filed — a counter re-homed onto DemoSim "so it outlives the
+//   story as filed — a counter re-homed onto SimCore "so it outlives the
 //   process" would keep the credit through a death and fail here.
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :4669/:4675)', () => {
   it('a re-created knight carries NO ladder credit (the CREP re-entry)', async () => {
-    const mod = (await import('../src/core/demo.js')) as {
-      respawnPlayerProcess: (id: number) => DemoProcess
+    const mod = (await import('../src/core/sim.js')) as {
+      respawnPlayerProcess: (id: number) => SimProcess
     }
     expect(creditOf(mod.respawnPlayerProcess(PLAYER1_ID))).toBe(0)
     expect(creditOf(mod.respawnPlayerProcess(PLAYER2_ID))).toBe(0)
   })
 
   it("the story's REPRODUCED case, in the ROM's direction: 1000 before the death, 250 after", async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const mod = (await import('../src/core/demo.js')) as {
-      respawnPlayerProcess: (id: number) => DemoProcess
+    const mod = (await import('../src/core/sim.js')) as {
+      respawnPlayerProcess: (id: number) => SimProcess
     }
-    const base = demo.createWaveDemo(SEED)
+    const base = demo.createWaveSim(SEED)
 
     // A veteran with three prior hits banks the fourth rung.
     const veteran = playerAt(PLAYER1_ID, air.x, air.y, 3)
@@ -434,15 +434,15 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
     // a per-player record that "outlives the process" has to restore the credit at
     // some frame, and this test looks at all of them. A design that keeps the
     // ladder off the process fails here even if its restore is late.
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const mod = (await import('../src/core/demo.js')) as {
-      respawnPlayerProcess: (id: number) => DemoProcess
+    const mod = (await import('../src/core/sim.js')) as {
+      respawnPlayerProcess: (id: number) => SimProcess
     }
 
     // Earn credit, then lose the man and re-create him.
     const veteran = await catchOneEgg(
-      demo.createWaveDemo(SEED),
+      demo.createWaveSim(SEED),
       playerAt(PLAYER1_ID, air.x, air.y, 3),
       air,
     )
@@ -453,18 +453,18 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
       waveHolder(), // hold the wave so no boundary reset can do this test's work
     ])
     for (let i = 0; i < 12; i++) {
-      state = demo.stepDemo(state, {})
+      state = demo.stepSim(state, {})
       expect(creditOf(playerNo(state, PLAYER1_ID))).toBe(0)
     }
   })
 
   it("one knight's death does not touch the OTHER's ladder — DEATH1 clears EGGS1 only", async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
-    const mod = (await import('../src/core/demo.js')) as {
-      respawnPlayerProcess: (id: number) => DemoProcess
+    const mod = (await import('../src/core/sim.js')) as {
+      respawnPlayerProcess: (id: number) => SimProcess
     }
-    const base = demo.createWaveDemo(SEED)
+    const base = demo.createWaveSim(SEED)
 
     // P1 dies and re-enters; P2 never left and is still holding two hits.
     const survivor = playerAt(PLAYER2_ID, air.x + 80, air.y, 2)
@@ -475,7 +475,7 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
       eggProcAt(0x1_0000, { posX: air.x, posY: air.y << 8 }),
       waveHolder(),
     ])
-    const after = demo.stepDemo(staged, {})
+    const after = demo.stepSim(staged, {})
 
     // P2's ladder is undisturbed: third rung, credited to P2.
     expect(eggEventsOf(staged, after)).toEqual([{ value: RUNG_3, player: PLAYER2_ID }])
@@ -487,9 +487,9 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('jt8-6 AC-3 — a fresh game starts both ladders at zero (:907, :912)', () => {
-  it('createWaveDemo hands out knights with no ladder credit', async () => {
-    const demo = await loadDemo()
-    const players = playersOf(demo.createWaveDemo(SEED))
+  it('createWaveSim hands out knights with no ladder credit', async () => {
+    const demo = await loadSim()
+    const players = playersOf(demo.createWaveSim(SEED))
     expect(players.length).toBeGreaterThan(0)
     // Name the offender rather than compare two arrays derived from the same list.
     expect(players.filter((p) => creditOf(p) !== 0).map((p) => p.id)).toEqual([])
@@ -498,12 +498,12 @@ describe('jt8-6 AC-3 — a fresh game starts both ladders at zero (:907, :912)',
 
 describe('jt8-6 AC-4 — the reset is deterministic', () => {
   it('two identical seeded runs across a wave advance emit the same egg scores', async () => {
-    const demo = await loadDemo()
+    const demo = await loadSim()
     const air = await findAir()
 
     const run = async (): Promise<number[]> => {
-      const advanced = demo.stepDemo(
-        clearableWith(demo.createWaveDemo(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 3)]),
+      const advanced = demo.stepSim(
+        clearableWith(demo.createWaveSim(SEED), [playerAt(PLAYER1_ID, air.x, air.y, 3)]),
         {},
       )
       const one = await catchOneEgg(advanced, playerNo(advanced, PLAYER1_ID), air)

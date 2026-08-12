@@ -304,7 +304,7 @@ export async function loadWave(): Promise<WaveModule> {
 
 /**
  * Load ONLY the uf1-2 round-2 BCD→decimal decode seam. Kept separate from
- * `loadWave` — exactly as `loadDemoRender` is kept separate from `loadDemo` — so
+ * `loadWave` — exactly as `loadSimRender` is kept separate from `loadSim` — so
  * the 60-odd tests that already exercise the wave machine stay green while this
  * one new export is still absent. Widening `loadWave`'s required list would redden
  * the whole wave suite for one missing function, which buys nothing and hides
@@ -324,7 +324,7 @@ export async function loadWaveBcd(): Promise<Pick<WaveModule, 'nextWaveBcd' | 'd
         '`decimalWaveFromBcd(counter)` to joust/src/core/wave.ts: the inverse of ' +
         "nextWaveBcd's packing (0x10 → 10), throwing on a non-BCD byte and mapping the " +
         'rolled-over 0x00 to the hundredth wave. It is the unit-carrying seam ' +
-        "`stepDemo` must put between the WAVBCD counter and the difficulty engine. " +
+        "`stepSim` must put between the WAVBCD counter and the difficulty engine. " +
         `(${(e as Error).message})`,
     )
   }

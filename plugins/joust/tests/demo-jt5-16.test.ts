@@ -21,7 +21,7 @@
 //                      ROM and deliberately NOT built here — it is a separate
 //                      unmeasured mechanic; the Delivery Finding filed this
 //                      phase demands its own story at finish.
-//   Group 3 (RED)    — the record: demo.ts names the story that closed the gap,
+//   Group 3 (RED)    — the record: sim.ts names the story that closed the gap,
 //                      and the claims registry carries the ptero-pair dispatch.
 //
 // Staging discipline (the jt5-10 Group 5 lessons, kept):
@@ -38,7 +38,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 import { sourceLines, vendoredAvailable } from './helpers/joust-source.js'
 // jt9-2 swept this suite's local pre-hardening claims plumbing onto the shared
@@ -62,7 +62,7 @@ const VS_BUZZ = 0xb22
 const VS_PTERO = 0xb23
 const LANCE_PTERO = 0xb30
 
-const cueKinds = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
+const cueKinds = (d: SimState): string[] => d.cues.map((c) => c.type as string)
 const DEATH_OR_THUD = /-death$|-thud$/
 
 /** The gravity-exempt hover: velXIndex 0 and velY 0, so stepPteroFlight moves
@@ -84,7 +84,7 @@ function flightEntity(over: Partial<EntityState> = {}): EntityState {
 }
 
 /** A live wave pterodactyl, exactly as pteroProcess spawns one (collision ON). */
-function pteroAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
+function pteroAt(id: number, over: Partial<EntityState> = {}): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -98,7 +98,7 @@ function pteroAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
 }
 
 /** A live airborne buzzard (bounder), collision ON — the control species. */
-function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
+function buzzardAt(id: number, over: Partial<EntityState> = {}): SimProcess {
   const entity = flightEntity(over)
   const enemy: EnemyState = { entity, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' }
   return {
@@ -120,14 +120,14 @@ function buzzardAt(id: number, over: Partial<EntityState> = {}): DemoProcess {
  * cleared only when NO 'enemy' remains — the wave can never advance and spawn
  * stacked pteros behind our backs.
  */
-function stage(extras: DemoProcess[]): DemoState {
+function stage(extras: SimProcess[]): SimState {
   // jt11-4 made the ground complement take a number and wait on the transporter, so
   // frame 0 hands back an EMPTY arena and there is no anchor to find. Seat the whole
   // waiting room at once — the exact pre-jt11-4 frame-0 arrangement, no frame stepped
   // and no RNG spent — so the anchor below is the same buzzard it always was. (It also
   // empties the queue, which matters here: an un-served enemy still counts as alive,
   // and the anchor is this fixture's own, hushed, wave-open lock.)
-  const base = seatWaveInstantly(createWaveDemo(SEED))
+  const base = seatWaveInstantly(createWaveSim(SEED))
   const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
   if (!anchor) throw new Error('wave 1 must supply a ground enemy to hold the wave open')
   return {
@@ -143,7 +143,7 @@ function stage(extras: DemoProcess[]): DemoState {
 /** jt5-10's hushAllBut, widened to a keep-SET (a collision needs two subjects).
  *  Re-applied every frame, because a process that did not exist at frame 0
  *  cannot be hushed at frame 0. */
-function hush(d: DemoState, keep: ReadonlySet<number>): DemoState {
+function hush(d: SimState, keep: ReadonlySet<number>): SimState {
   return {
     ...d,
     sim: {
@@ -155,11 +155,11 @@ function hush(d: DemoState, keep: ReadonlySet<number>): DemoState {
   }
 }
 
-const procOf = (d: DemoState, id: number): DemoProcess | undefined =>
+const procOf = (d: SimState, id: number): SimProcess | undefined =>
   d.sim.processes.find((p) => p.id === id)
 
 /** The subject's pixel position, whichever side of the process shape it lives on. */
-function pixelPos(d: DemoState, id: number): { x: number; y: number } {
+function pixelPos(d: SimState, id: number): { x: number; y: number } {
   const p = procOf(d, id)
   const e = p?.entity ?? p?.enemy?.entity
   if (!e) throw new Error(`process ${id} is gone or carries no entity`)
@@ -193,7 +193,7 @@ describe('jt5-16 AC1/AC2 — two pterodactyls reach SNETHD and the ordinary bump
       expect(overlapping(beforeHigh, beforeLow), `frame ${f}: the pair overlaps`).toBe(true)
 
       d = hush(d, keep)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       const kinds = cueKinds(d)
       forbidden.push(...kinds.filter((k) => k.endsWith('-death')))
 
@@ -240,7 +240,7 @@ describe('jt5-16 AC1/AC2 — two pterodactyls reach SNETHD and the ordinary bump
     const all: string[] = []
     for (let f = 0; f < 6 && !all.includes('enemy-thud'); f++) {
       d = hush(d, keep)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       all.push(...cueKinds(d))
     }
     expect(all, 'two overlapping buzzards must reach enemy-thud').toContain('enemy-thud')
@@ -267,7 +267,7 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
     // JOUSTRV4.SRC:4944-4952), and CWNG3R×PT1RC overlap only at lanceOffset 8-9,
     // so offset 10 became a mask MISS. Offset 9 is in the band AND the mask —
     // green on both the pre- and post-jt9-14 tree. See demo-jt9-14.test.ts.
-    const player: DemoProcess = {
+    const player: SimProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
       collisionEnabled: true, entity: flightEntity({ posX: 100, posY: 109 << 8 }),
     }
@@ -275,11 +275,11 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
     // PT1RC row 9 [8,15], and narrowPhase now folds COLDX — dx=4 shifts it to
     // [12,19], a MISS (the ROM rejects it too). Co-locating keeps the masks
     // superimposed at the lance row (COLDX=0 right-facer kill, JOUSTRV4.SRC:4994).
-    const ptero: DemoProcess = { ...pteroAt(LANCE_PTERO, { posX: 100, posY: 100 << 8 }), facing: -1 }
+    const ptero: SimProcess = { ...pteroAt(LANCE_PTERO, { posX: 100, posY: 100 << 8 }), facing: -1 }
     const base = stage([])
     const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
     if (!anchor) throw new Error('stage() always keeps the anchor')
-    let d: DemoState = {
+    let d: SimState = {
       ...base,
       sim: { ...base.sim, processes: [player, ptero, anchor] },
       events: [],
@@ -287,7 +287,7 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
     const seen: string[] = []
     for (let f = 0; f < 3; f++) {
       d = hush(d, new Set([LANCE_PTERO]))
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       seen.push(...cueKinds(d))
     }
     // The moment happened: the ptero died the jt3-4 way (dissolve, not vanish).
@@ -309,15 +309,15 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
     // Same height (lanceOffset 0, out of the 10±2 band) → the OSTBO fallback
     // the epic ruled the ptero wins. The pair loop resolving the same pair
     // would sound a SECOND player-death (or a thud) — the double-cue leak.
-    const player: DemoProcess = {
+    const player: SimProcess = {
       id: 1, cls: 'primary', nap: 1, period: 1, kind: 'player', facing: 1, mount: 'ostrich',
       collisionEnabled: true, entity: flightEntity({ posX: 100, posY: 100 << 8 }),
     }
-    const ptero: DemoProcess = { ...pteroAt(LANCE_PTERO, { posX: 104, posY: 100 << 8 }), facing: -1 }
+    const ptero: SimProcess = { ...pteroAt(LANCE_PTERO, { posX: 104, posY: 100 << 8 }), facing: -1 }
     const base = stage([])
     const anchor = base.sim.processes.find((p) => p.kind === 'enemy')
     if (!anchor) throw new Error('stage() always keeps the anchor')
-    let d: DemoState = {
+    let d: SimState = {
       ...base,
       sim: { ...base.sim, processes: [player, ptero, anchor] },
       events: [],
@@ -325,7 +325,7 @@ describe('jt5-16 AC4 — ptero-vs-PLAYER stays whole on resolvePteroAttack', () 
     const seen: string[] = []
     for (let f = 0; f < 3; f++) {
       d = hush(d, new Set([LANCE_PTERO]))
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       seen.push(...cueKinds(d))
     }
     expect(procOf(d, 1), 'the player loses the OSTBO fallback').toBeUndefined()
@@ -366,7 +366,7 @@ describe('jt5-16 scope fence FLIPPED (jt9-15) — ptero-vs-BUZZARD now routes th
       const bPtero = pixelPos(d, VS_PTERO)
       expect(overlapping(bBird, bPtero), `frame ${f}: the pair overlaps`).toBe(true)
       d = hush(d, keep)
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       const kinds = cueKinds(d)
       seen.push(...kinds)
       if (kinds.includes('enemy-thud')) {
@@ -398,14 +398,14 @@ const readSrc = (...parts: string[]): string => readFileSync(join(root, 'src', .
 
 const jt516Claims = (): Claim[] => loadClaims().filter((c) => c.id?.startsWith('JT516-'))
 
-describe('jt5-16 AC4 — demo.ts records the gap CLOSED', () => {
-  it('demo.ts names the story that closed the gap (the foot note goes true again)', () => {
-    // The KNOWN GAP block at the foot of demo.ts says the divergence is
+describe('jt5-16 AC4 — sim.ts records the gap CLOSED', () => {
+  it('sim.ts names the story that closed the gap (the foot note goes true again)', () => {
+    // The KNOWN GAP block at the foot of sim.ts says the divergence is
     // "recorded here rather than fixed" — prose that goes FALSE the moment the
     // mechanic lands. The record must be re-anchored to the story that closed
     // it; the citation (jt5-16), not the wording, is what is pinned.
-    const src = readSrc('core', 'demo.ts')
-    expect(src, 'demo.ts must name jt5-16 as the story that closed the gap').toContain('jt5-16')
+    const src = readSrc('core', 'sim.ts')
+    expect(src, 'sim.ts must name jt5-16 as the story that closed the gap').toContain('jt5-16')
   })
 })
 

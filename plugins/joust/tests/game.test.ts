@@ -19,7 +19,7 @@ import { readdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadGame, type PlayerLedger, type GameScoreEvent, type PlayerInput } from './helpers/game-contract.js'
-import { loadDemo } from './helpers/demo-contract.js'
+import { loadSim } from './helpers/sim-contract.js'
 import { loadJoust } from './helpers/joust-collision-contract.js'
 import { loadPtero } from './helpers/ptero-contract.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
@@ -65,32 +65,32 @@ async function stepToFirstKill(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-1 — game.ts exists; stepGame WRAPS stepDemo (one sim, no second path);
+// AC-1 — game.ts exists; stepGame WRAPS stepSim (one sim, no second path);
 //        the per-player registers are drained; the purity scanner sweeps game.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — the session layer wraps the sim, one stepping path', () => {
-  it('createGame builds two zeroed ledgers over a real createWaveDemo sim', async () => {
+  it('createGame builds two zeroed ledgers over a real createWaveSim sim', async () => {
     const g = await loadGame()
-    const d = await loadDemo()
+    const d = await loadSim()
     const game = g.createGame(SEED)
 
     expect(game.players.length, 'two knights = two ledgers (the ROM co-op shape)').toBe(2)
     expect(game.players.map((p) => p.score), 'both ledgers open at zero').toEqual([0, 0])
     expect(game.wave, 'the game opens on wave 1').toBe(1)
-    // The wrapped sim IS a createWaveDemo DemoState — not a re-implementation.
-    expect(game.sim, 'game.sim is a genuine createWaveDemo(seed) — no parallel sim').toEqual(
-      d.createWaveDemo(SEED),
+    // The wrapped sim IS a createWaveSim SimState — not a re-implementation.
+    expect(game.sim, 'game.sim is a genuine createWaveSim(seed) — no parallel sim').toEqual(
+      d.createWaveSim(SEED),
     )
   })
 
-  it('stepGame delegates stepping to stepDemo — the produced sim is bit-identical (no second stepping path)', async () => {
+  it('stepGame delegates stepping to stepSim — the produced sim is bit-identical (no second stepping path)', async () => {
     const g = await loadGame()
-    const d = await loadDemo()
+    const d = await loadSim()
     const stepped = g.stepGame(g.createGame(SEED))
     // Kills the mutant "game.ts re-implements the frame loop": if stepGame ran its
-    // OWN stepper the sim would drift from a raw stepDemo within a frame.
-    expect(stepped.sim, 'stepGame(game).sim === stepDemo(createWaveDemo(seed)) — ONE sim').toEqual(
-      d.stepDemo(d.createWaveDemo(SEED)),
+    // OWN stepper the sim would drift from a raw stepSim within a frame.
+    expect(stepped.sim, 'stepGame(game).sim === stepSim(createWaveSim(seed)) — ONE sim').toEqual(
+      d.stepSim(d.createWaveSim(SEED)),
     )
     expect(stepped.wave, 'the wave mirrors the sim').toBe(stepped.sim.wave)
   })
@@ -238,7 +238,7 @@ describe('AC-4 — determinism and an honest drain', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1/AC-3/AC-4 INTEGRATION — a REAL kill through stepGame's full wiring.
 // The pure creditScoreEvents tests above pin the drain in isolation; these drive
-// demo.ts's collisionPass -> winner.id attribution -> stepGame's event-diff ->
+// sim.ts's collisionPass -> winner.id attribution -> stepGame's event-diff ->
 // creditScoreEvents end-to-end. Each mutation-KILLS a specific bug the isolated
 // tests missed (Reviewer REJECT, jt4-1): hardcoding player=P1, dropping the
 // dedupe, and disconnecting the drain all leave the isolated suite green.

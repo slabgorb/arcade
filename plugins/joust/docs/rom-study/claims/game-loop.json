@@ -46,7 +46,7 @@
   },
   {
     "id": "JT44-006",
-    "claim": "AC-3 the DBAIT settle-on-death: a killed baiter DECrements NBAIT on the death entry — PTEKLL 'LDA PCHASE,U  KILLED A BAITER?' / BEQ PTEKL2 / 'DEC NBAIT' (JOUSTRV4.SRC:1370-1372). demo.ts settles NBAIT when a live baiter disappears (becomes a baiter-tagged dissolve), freeing a cap slot.",
+    "claim": "AC-3 the DBAIT settle-on-death: a killed baiter DECrements NBAIT on the death entry — PTEKLL 'LDA PCHASE,U  KILLED A BAITER?' / BEQ PTEKL2 / 'DEC NBAIT' (JOUSTRV4.SRC:1370-1372). sim.ts settles NBAIT when a live baiter disappears (becomes a baiter-tagged dissolve), freeing a cap slot.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 1370,
@@ -55,7 +55,7 @@
   },
   {
     "id": "JT44-007",
-    "claim": "the egg wave enters its complement AS EGGS: 'WAVEGG LDX #EGG1  EGG WAVE' (JOUSTRV4.SRC:2737). demo.ts's spawnWaveEnemies routes an egg-dispatch wave (status $08) to settled egg processes instead of materialising ground enemies.",
+    "claim": "the egg wave enters its complement AS EGGS: 'WAVEGG LDX #EGG1  EGG WAVE' (JOUSTRV4.SRC:2737). sim.ts's spawnWaveEnemies routes an egg-dispatch wave (status $08) to settled egg processes instead of materialising ground enemies.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 2737,

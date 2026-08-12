@@ -18,7 +18,7 @@ jt9-44 ported only the Y-lane spatial spread of the ptero wave spawn. The ROM im
 2. **TIME-stagger:** Pteros are created incrementally with ≥65-frame intervals, not all on the same frame (PTERWV `PCNAP 65` between creates, JOUSTRV4.SRC:2618).
 
 ## Technical Approach
-Port the random-side and time-stagger entry mechanics into `spawnWavePteros` (demo.ts). Both are seeded via the deterministic RNG (`@shared/rng` or joust core RNG). Budget for jt2 seeded-replay fingerprint moves per the jt9 standing rule; re-find every moved pin by sweeping for its own precondition.
+Port the random-side and time-stagger entry mechanics into `spawnWavePteros` (sim.ts). Both are seeded via the deterministic RNG (`@shared/rng` or joust core RNG). Budget for jt2 seeded-replay fingerprint moves per the jt9 standing rule; re-find every moved pin by sweeping for its own precondition.
 
 ## Scope
 - In scope: random entry side (VRAND-seeded branch per ptero), time-stagger (≥65-frame intervals), deterministic seeded replay, core purity.

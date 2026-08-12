@@ -58,8 +58,8 @@ import {
   type PlayerView,
 } from './enemy.js'
 // jt5-3: the wing cue this frame's flight stepping produced (or none). frame.ts
-// dispatches `GameEvent`s the same way demo.ts does — as DATA on the returned
-// state — so a wing edge detected here rides `GameState.cues` up to `stepDemo`
+// dispatches `GameEvent`s the same way sim.ts does — as DATA on the returned
+// state — so a wing edge detected here rides `GameState.cues` up to `stepSim`
 // exactly like collisionPass's cues already do.
 import type { GameEvent, GameEventKind } from './events.js'
 // jt8-1: the aggro subsystem. frame.ts asks it, per waking enemy, WHICH player to
@@ -70,9 +70,9 @@ import { selectTarget, type TargetState, type TargetPlayer } from './target.js'
 // jt2-7: the egg fall loop lives in the demo wiring (which names the BMI EGGBCK
 // guard + bounceEgg at its call site). frame.ts dispatches the `kind: 'egg'`
 // variant to it so an egg rides the SAME cooperative scheduler players/enemies do
-// — not a forked stepping path. This is a value cycle demo.ts ↔ frame.ts, safe
+// — not a forked stepping path. This is a value cycle sim.ts ↔ frame.ts, safe
 // because neither module calls the other at evaluation time, only at call time.
-import { stepEgg } from './demo.js'
+import { stepEgg } from './sim.js'
 import type { EggState } from './egg.js'
 // jt3-7: the ptero/baiter flight (gravity-exempt) and the death dissolve are pure
 // cores (jt3-4/jt3-6) that were INERT in the scheduler; frame.ts now dispatches
@@ -131,7 +131,7 @@ export interface ProcessSpec {
   /**
    * jt5-3 — a PLAYER process's wing-edge memory: the `flapHeld` LEVEL it
    * carried LAST FRAME (`CURJOY+1`, :6168-6169/:6195-6196). Lives on the
-   * process, like `facing` above and for the identical reason (demo.ts Finding
+   * process, like `facing` above and for the identical reason (sim.ts Finding
    * #2): the shared, GENERATED `EntityState` cannot safely grow it — the
    * scheduler.test.ts migration guard JSON-compares only `.entity` against a
    * pre-jt5-3 reference pipeline. Undefined reads as `false`.
@@ -139,7 +139,7 @@ export interface ProcessSpec {
   prevFlapHeld?: boolean
   /**
    * jt9-48 — `PBUMPX`, the collision shove a non-killing bounce (`OSTLR`) parks
-   * on a bird (jt9-17 first put it on `DemoProcess`; it is promoted here for the
+   * on a bird (jt9-17 first put it on `SimProcess`; it is promoted here for the
    * identical reason as `facing`/`prevFlapHeld` — a process-level field the
    * shared, GENERATED `EntityState` cannot grow). The enemy step hands it to
    * `B2DIR`/`SHDIR`'s bump-facing arm so the shove orients the bird. Absent → 0.
@@ -179,7 +179,7 @@ export interface GameState {
    * jt8-1 — the enemy AGGRO state (SELPLY/TARPLY/TARTM, target.ts), carried like
    * `budget`. OPTIONAL so a bare scheduler run (`createState`) needs no target
    * state: absent → every enemy is stepped with `player = null` (the pre-jt8-1
-   * behaviour). The demo seeds and advances it (`DemoSim.targets`).
+   * behaviour). The demo seeds and advances it (`SimCore.targets`).
    */
   readonly targets?: TargetState
   /**
@@ -187,7 +187,7 @@ export interface GameState {
    * the four wing cues — a player or enemy's press/release edge). The SAME
    * shape as `woke`: empty at creation, REBUILT from scratch every step, never
    * accumulated (`stepFrame` never READS `state.cues`, only builds a fresh
-   * one). `stepDemo` reads the RETURNED value and prepends it to its own cue
+   * one). `stepSim` reads the RETURNED value and prepends it to its own cue
    * stream.
    */
   readonly cues: readonly GameEvent[]

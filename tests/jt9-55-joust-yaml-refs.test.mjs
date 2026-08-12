@@ -221,10 +221,17 @@ test('checkRef discriminates: a real ref passes, fabricated bad refs fail', () =
   const bareUnresolvable = checkRef({ refPath: 'no-such-basename.ts', start: 1, end: 1 }, joustFiles);
   assert.equal(bareUnresolvable.ok, false, 'a bare name with zero joust candidates must be rejected');
 
-  // sim.ts exists in five OTHER games but not joust — a real example of the
-  // ambiguity class this suite exists to catch (see the header note).
-  const bareAmbiguousElsewhere = checkRef({ refPath: 'sim.ts', start: 1, end: 1 }, joustFiles);
-  assert.equal(bareAmbiguousElsewhere.ok, false, "'sim.ts' has no joust candidate and must be rejected, not silently skipped");
+  // `attract.ts` exists in OTHER games but not joust (which spells it
+  // `attract-scheduler.ts`) — a real example of the ambiguity class this suite
+  // exists to catch (see the header note).
+  //
+  // This control used to be `sim.ts`, on the premise that five other games had one
+  // and joust did not. jt11-4 retired that premise by renaming joust's misleadingly
+  // named `demo.ts` — the production simulation, not a demo — to `sim.ts`, which
+  // makes joust agree with the rest of the fleet and makes the old control assert a
+  // falsehood. Pick a basename joust genuinely lacks, not one it happens to lack today.
+  const bareAmbiguousElsewhere = checkRef({ refPath: 'attract.ts', start: 1, end: 1 }, joustFiles);
+  assert.equal(bareAmbiguousElsewhere.ok, false, "'attract.ts' has no joust candidate and must be rejected, not silently skipped");
 
   const rangeBackwards = checkRef({ refPath: 'plugins/joust/src/core/enemy.ts', start: 50, end: 10 }, joustFiles);
   assert.equal(rangeBackwards.ok, false, 'a range whose end precedes its start must be rejected');

@@ -117,7 +117,7 @@ participant.
 **This port cannot reach that arm.** `collisionPass`'s pair loop filters the eligible set:
 
 ```
-plugins/joust/src/core/demo.ts:859-861
+plugins/joust/src/core/sim.ts:859-861
 859:   const eligible = processes.filter(
 860:     (p) => (p.kind === 'player' || p.kind === 'enemy') && p.collisionEnabled !== false,
 861:   )
@@ -142,7 +142,7 @@ present, three pteros really coexist) and the ruling was: making pteros eligible
 is a **gameplay** change, not a cue change, and folding it into a 2-pointer misprices it.
 
 **Binding consequence for TEA and Dev: do NOT modify the eligible-set filter at
-`demo.ts:859-861` in this story.** The `SNETHD` obligation here is to *record and file*, not to
+`sim.ts:859-861` in this story.** The `SNETHD` obligation here is to *record and file*, not to
 build.
 
 ## Acceptance Criteria (DERIVED — the epic YAML holds none)
@@ -179,7 +179,7 @@ SM-authored proposals for TEA to challenge and refine, reproduced **verbatim and
    `SNETHD` at `:5019-5020` and then routes a ptero/ptero pair through `OSTH12` (`:5031-5033`) back
    to `OSTH11`'s ordinary bump, i.e. the ptero IS a full collision participant in the ROM — and
    states plainly that this port cannot reach that arm because `collisionPass` filters to
-   `player|enemy` (`plugins/joust/src/core/demo.ts:859-861`). A follow-up story owns the collision
+   `player|enemy` (`plugins/joust/src/core/sim.ts:859-861`). A follow-up story owns the collision
    change. **The follow-up must EXIST and its description must carry the finding**, not merely its
    title; per the jt5-5 finish lesson, "owned by X" is not a disposition until X's text says so.
 
@@ -249,7 +249,7 @@ Measured pointers only — the approach is TEA's and Dev's to settle.
 - `plugins/joust/src/core/events.ts` — the cue kinds. `enemy-wing-down`/`enemy-wing-up` at `:73-74`,
   `enemy-thud` at `:76`. The seam's ROM commentary starts at `:22`.
 - `plugins/joust/src/core/frame.ts:365-369` — where a ptero/baiter is stepped each wake.
-- `plugins/joust/src/core/demo.ts:859-861` — the eligible-set filter. **Out of scope by ruling.**
+- `plugins/joust/src/core/sim.ts:859-861` — the eligible-set filter. **Out of scope by ruling.**
 - `plugins/joust/src/core/baiter.ts:6` — the three-ptero cap.
 
 **In scope:** settling both ROM questions with cited proof; the code consequence of the wing-cue

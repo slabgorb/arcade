@@ -232,7 +232,7 @@ describe('AC-1 — the hunter turns AWAY at a cliff 31 px ahead, and slows', () 
 
 // ═════════════════════════════════════════════════════════════════════════════
 // jt9-48 — B2DIRA (:4148-4150) / SHDIRA (:4379-4381): the COLLISION-DRIVEN
-// bump-facing arm. jt9-17 parked `PBUMPX` (the OSTLR shove) on the DemoProcess
+// bump-facing arm. jt9-17 parked `PBUMPX` (the OSTLR shove) on the SimProcess
 // but never wired the facing arm that spends it. `B2DIR`/`SHDIR` funnel EVERY
 // airborne path through the B2DIRA/SHDIRA tail before the aim (SHFDIR/B2FDIR):
 //
@@ -247,7 +247,7 @@ describe('AC-1 — the hunter turns AWAY at a cliff 31 px ahead, and slows', () 
 // bump OVERRIDES even the turn-away it just wrote. `STA PFACE`: PFACE<0 is LEFT
 // (`BMI` :4152/:4383), ≥0 is RIGHT — so `facing = sign(bumpX)`, matching the
 // port's +1=right / −1=left. The shove passes in as steerWake's 3rd arg (the
-// value jt9-17 parked on `DemoProcess.bumpX`); it is NEVER reached when the
+// value jt9-17 parked on `SimProcess.bumpX`); it is NEVER reached when the
 // lava gate diverted the wake (B2DIRL/$D0), nor for the bounder/linet/grounded,
 // which return before the tail. The wiring — bump plumbed from the process to
 // this arg — is steering-wiring.test.ts; the source is steering-source.test.ts.
@@ -279,7 +279,7 @@ describe('jt9-48 — B2DIRA/SHDIRA spend PBUMPX: facing = sign(bump), the last w
   })
 
   it('an OMITTED bump (undefined — an unshoved process) is a no-op too', () => {
-    // The `DemoProcess.bumpX` field is optional; frame.ts hands `undefined` for
+    // The `SimProcess.bumpX` field is optional; frame.ts hands `undefined` for
     // a bird that never bounced. `undefined != 0` is true in JS, so a naive
     // `if (bumpX != 0)` would face `sign(undefined) = NaN` — this pins the
     // `?? 0` / explicit-zero handling (typescript.md #4).

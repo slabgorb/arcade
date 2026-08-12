@@ -3,7 +3,7 @@
 // Story jt11-4 — the fixture seam for the transporter's waiting room.
 //
 // Before jt11-4, a wave's ground enemies were spliced into `sim.processes` on ONE
-// frame: `createWaveDemo(seed)` handed back an arena with the whole complement
+// frame: `createWaveSim(seed)` handed back an arena with the whole complement
 // already standing on the pads, and so did the frame a wave advanced. Dozens of
 // suites lean on that — an egg test needs a bird to kill, an audio test needs a
 // wing to beat, a ptero test needs the wave held open.
@@ -20,10 +20,10 @@
 // change frame by frame, which is the real observable.
 
 // Typed STRUCTURALLY, against the least a caller must have, rather than by importing
-// `DemoState`. tests/helpers/demo-contract.ts deliberately keeps its own independent
+// `SimState`. tests/helpers/sim-contract.ts deliberately keeps its own independent
 // mirror of the demo types (the second-entry discipline pictures-gate.test.ts pins), so
-// a helper nominally bound to `src/core/demo.ts` would be unusable from every suite that
-// goes through `loadDemo()`. The generic parameter carries the caller's own state type
+// a helper nominally bound to `src/core/sim.ts` would be unusable from every suite that
+// goes through `loadSim()`. The generic parameter carries the caller's own state type
 // straight back out, so nothing widens.
 
 /** The least a demo state must expose for these helpers: an arena and a waiting room. */
@@ -32,7 +32,7 @@ export interface WaveEntryView {
   pendingEnemies?: readonly { arrival: unknown }[]
 }
 
-/** `stepDemo`, however the suite got hold of it (static import or `loadDemo()`). */
+/** `stepSim`, however the suite got hold of it (static import or `loadSim()`). */
 export type StepDemo<T> = (demo: T, inputs?: Record<number, never>) => T
 
 /** How many enemies are still holding a number, unserved. */

@@ -21,7 +21,7 @@ screenshot:
    enemies orbit the screen at a fixed altitude. In the trace, the one promoted
    bounder slid right, wrapped `287→13→…→65`, and sank toward the lava while the
    player sat at `x=100` — never once turning toward them.
-2. **Eggs cannot be collected.** `collisionPass` (`demo.ts`) makes only
+2. **Eggs cannot be collected.** `collisionPass` (`sim.ts`) makes only
    `player`/`enemy`/`ptero` eligible; there is **no player↔egg pass**. The
    entire egg scoring ladder (`egg.ts`, jt2-4 — `eggScoreEvents`,
    `airCatchBonus`, `bumpEggHits`) is pure, tested, and **never called**. A
@@ -108,7 +108,7 @@ how `IntelBudget` and `BaiterClock` already ride `DemoSim`/`DemoState`.
 | 2 | Wire target → enemy step | `frame.ts runBehaviour` | `stepEnemy(enemy,{player})`, `smartDecision` | one call-site change (compute this enemy's target, pass it) |
 | 3 | Horizontal homing | `enemy.ts` brains | `Decision.dir` / `facing` | `PFACE` nudge: copy target X-vel dir (throttled) + periodic flip |
 | 4 | Cliff look-ahead + shadow track | `enemy.ts` (`B2DIR`/`SHDIR`/`SHLEP`) | `arena.groundMaskAt`, existing lava-escape | project 31px, turn+slow at cliff; shadow player-line track |
-| 5 | Egg collection | `demo.ts collisionPass` (new player↔egg pass) | **all** of `egg.ts` + the `game.ts` `reason:'egg'` drain | overlap detect, remove egg, cancel remount |
+| 5 | Egg collection | `sim.ts collisionPass` (new player↔egg pass) | **all** of `egg.ts` + the `game.ts` `reason:'egg'` drain | overlap detect, remove egg, cancel remount |
 
 **Data flow.** `stepDemo` advances aggro state (timers tick, slots shift on the
 same death `collisionPass` already detects) → each enemy's `runBehaviour` asks

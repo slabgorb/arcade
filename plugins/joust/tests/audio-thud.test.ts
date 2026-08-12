@@ -88,7 +88,7 @@
 //
 // Everything in the DECLARATION group below is therefore necessary and NOT
 // sufficient. Every behavioural assertion in this file:
-//   • stages a real `stepDemo`/`stepGame` and reads `DemoState.cues` /
+//   • stages a real `stepSim`/`stepGame` and reads `SimState.cues` /
 //     `GameState.events` — the seam the shell actually plays from;
 //   • asserts an EXACT stream (`toEqual`), never `toContain`, so a cue on the
 //     wrong frame fails as loudly as one that never fires;
@@ -110,7 +110,7 @@ import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { createWaveDemo, stepDemo, type DemoProcess, type DemoState } from '../src/core/demo.js'
+import { createWaveSim, stepSim, type SimProcess, type SimState } from '../src/core/sim.js'
 import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { CHANNELS, CUE_SOURCES, SOUNDS, type CueSource } from '../src/shell/audio.js'
@@ -192,7 +192,7 @@ const scripted = (frame: number): PlayerInput => {
 }
 const inputsAt = (frame: number): Record<number, PlayerInput> => ({ 1: scripted(frame), 2: IDLE })
 
-const cuesOf = (d: DemoState): string[] => d.cues.map((c) => c.type as string)
+const cuesOf = (d: SimState): string[] => d.cues.map((c) => c.type as string)
 const eventsOf = (g: GameState): string[] => g.events.map((e) => e.type as string)
 const thudsOf = (kinds: string[]): string[] => kinds.filter((k) => THUD_KINDS.includes(k))
 
@@ -216,7 +216,7 @@ const entity = (posXpx: number, posYpx: number, velY: number, plantZ = 0): Entit
   animPhase: 0,
 })
 
-const enemyProcess = (id: number, e: EntityState, nap = FROZEN): DemoProcess => ({
+const enemyProcess = (id: number, e: EntityState, nap = FROZEN): SimProcess => ({
   id,
   cls: 'secondary',
   nap,
@@ -226,7 +226,7 @@ const enemyProcess = (id: number, e: EntityState, nap = FROZEN): DemoProcess => 
   enemy: { entity: e, facing: 1, pchase: 0, brain: 'linet', decision: 'boundr' } as EnemyState,
 })
 
-const playerProcess = (id: number, e: EntityState, nap = FROZEN): DemoProcess => ({
+const playerProcess = (id: number, e: EntityState, nap = FROZEN): SimProcess => ({
   id,
   cls: 'primary',
   nap,
@@ -240,22 +240,22 @@ const playerProcess = (id: number, e: EntityState, nap = FROZEN): DemoProcess =>
  *  no buzzard is promoted out of LINET mid-window. jt11-4 — the waiting room is
  *  emptied too, or the wave's own complement materialises into the window one bird
  *  per frame and the list stops being "exactly the one handed in". */
-function stage(processes: DemoProcess[]): DemoState {
-  const base = withNoPendingEnemies(createWaveDemo(0x1234))
+function stage(processes: SimProcess[]): SimState {
+  const base = withNoPendingEnemies(createWaveSim(0x1234))
   return {
     ...base,
     sim: { ...base.sim, processes, budget: { nsmart: 0, wsmart: 0 } },
   }
 }
 
-const procOf = (d: DemoState, id: number): DemoProcess | undefined =>
+const procOf = (d: SimState, id: number): SimProcess | undefined =>
   d.sim.processes.find((p) => p.id === id)
-const entityOf = (d: DemoState, id: number): EntityState | undefined => {
+const entityOf = (d: SimState, id: number): EntityState | undefined => {
   const p = procOf(d, id)
   return p?.entity ?? p?.enemy?.entity
 }
-const velYOf = (d: DemoState, id: number): number | undefined => entityOf(d, id)?.velY
-const pixelYOf = (d: DemoState, id: number): number | undefined => {
+const velYOf = (d: SimState, id: number): number | undefined => entityOf(d, id)?.velY
+const pixelYOf = (d: SimState, id: number): number | undefined => {
   const e = entityOf(d, id)
   return e === undefined ? undefined : e.posY >> 8
 }
@@ -271,7 +271,7 @@ const P2 = 2
 /** A third bird parked far away and frozen — nothing in a two-body bounce may
  *  reach it. Also keeps a wave-clear from firing in the player-only fixtures. */
 const FAR = 0xa99
-const farBird = (): DemoProcess => enemyProcess(FAR, entity(20, 40, 64))
+const farBird = (): SimProcess => enemyProcess(FAR, entity(20, 40, 64))
 
 /**
  * Descending at +64. `bounceTop` inverts and halves a DESCENDING velocity
@@ -515,13 +515,13 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
     // The staging honesty check, and the reason every `toEqual` below can be an
     // exact array. Green on arrival; it is what the assertions rest on.
     const before = stage([enemyProcess(A, entity(100, 92, DESCENDING)), enemyProcess(B, entity(104, 94, DESCENDING))])
-    const after = stepDemo(before, {})
+    const after = stepSim(before, {})
     expect(after.sim.processes.length, 'a bounce removes nobody and spawns nobody').toBe(2)
     expect(after.sim.processes.map((p) => p.id), 'and re-orders nobody').toEqual([A, B])
   })
 
   it('the thud fires, exactly once, on the frame of the contact', () => {
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         enemyProcess(A, entity(100, 92, DESCENDING)),
         enemyProcess(B, entity(104, 94, DESCENDING)),
@@ -533,9 +533,9 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
 
   it('and the SAME frame applies the bounce — the higher bird is thrown UP', () => {
     // Hazard A, in one assertion: the cue and the velocity change are read off
-    // ONE `stepDemo`. A implementation that emits and does not push fails here
+    // ONE `stepSim`. A implementation that emits and does not push fails here
     // with the cue assertion green.
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         enemyProcess(A, entity(100, 92, DESCENDING)), // higher on screen
         enemyProcess(B, entity(104, 94, DESCENDING)),
@@ -554,7 +554,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
   it('MIRROR the geometry and the roles SWAP — OSTBMP dispatches on screen Y', () => {
     // The discriminator against a hard-coded "the first one goes up". Same two
     // processes, same order, same velocities: only the Ys are exchanged.
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         enemyProcess(A, entity(100, 94, DESCENDING)),
         enemyProcess(B, entity(104, 92, DESCENDING)), // now B is the higher one
@@ -569,7 +569,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
   it('a RISING pair inverts the other one — the wrong-way guard, both ways', () => {
     // OSTXUP's `BLE 2$` (:5166) and OSTXDN's `BGE 2$` (:5178). With both birds
     // already climbing it is the DOWN one whose velocity is wrong-way.
-    const d = stepDemo(
+    const d = stepSim(
       stage([enemyProcess(A, entity(100, 92, RISING)), enemyProcess(B, entity(104, 94, RISING))]),
       {},
     )
@@ -593,7 +593,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
     // A up, never B — this used to be a symmetric `length === 1` count on both
     // sides, which cannot fail: flipping the tie's `<=` to `<` sent the rise to
     // B instead of A and the old assertion stayed green.
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         enemyProcess(A, entity(100, 94, DESCENDING)),
         enemyProcess(B, entity(104, 94, DESCENDING)),
@@ -631,7 +631,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
       higherFraction.posY,
       'precondition: they differ in raw sub-pixel value',
     ).not.toBe(lowerFraction.posY)
-    const d = stepDemo(
+    const d = stepSim(
       stage([enemyProcess(A, higherFraction), enemyProcess(B, lowerFraction)]),
       {},
     )
@@ -644,7 +644,7 @@ describe('jt5-4 — SNETHD: two enemies thud AND are pushed apart', () => {
   })
 
   it('TWO disjoint pairs on one frame thud TWICE — the loop does not stop at the first', () => {
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         enemyProcess(A, entity(100, 92, DESCENDING)),
         enemyProcess(B, entity(104, 94, DESCENDING)),
@@ -677,7 +677,7 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
    * where a walking buzzard meets a standing knight with nothing synthetic
    * about it.
    */
-  const tie = (skidderAtTop: boolean): DemoProcess[] =>
+  const tie = (skidderAtTop: boolean): SimProcess[] =>
     skidderAtTop
       ? [playerProcess(P1, entity(100, 92, DESCENDING, 2)), enemyProcess(A, entity(104, 94, DESCENDING, 0))]
       : [playerProcess(P1, entity(100, 94, DESCENDING, 0)), enemyProcess(A, entity(104, 92, DESCENDING, 2))]
@@ -686,13 +686,13 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     // The correction to the derived AC3. ":8124 AT LEAST 1 PERSON THUD'ED" and
     // ":5094 ENEMY VS. PLAYER". A rule keyed on "two players" leaves the
     // commonest tie in the game silent.
-    const d = stepDemo(stage(tie(true)), { [P1]: IDLE })
+    const d = stepSim(stage(tie(true)), { [P1]: IDLE })
     expect(cuesOf(d)).toEqual([PLAYER_THUD])
     expect(cuesOf(d), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
 
   it('two KNIGHTS at the same height thud too', () => {
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         playerProcess(P1, entity(100, 94, DESCENDING)),
         playerProcess(P2, entity(104, 94, DESCENDING)),
@@ -714,10 +714,10 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     //
     // This used to count `filter(v => v === UP_FROM_DESCENDING).length === 1` on
     // both birds, which is symmetric by construction and CANNOT FAIL: swapping
-    // `bounceBottom(a)`/`bounceTop(b)` at demo.ts inverted both roles and
+    // `bounceBottom(a)`/`bounceTop(b)` at sim.ts inverted both roles and
     // left it green. The count assertions are kept below the absolute ones —
     // they are what catches a bounce that separates NOBODY.
-    const d = stepDemo(stage(tie(true)), { [P1]: IDLE })
+    const d = stepSim(stage(tie(true)), { [P1]: IDLE })
     expect(cuesOf(d), 'precondition: the thud really fired on this frame').toEqual([PLAYER_THUD])
     expect(velYOf(d, A), 'A is X (eligible[1]): OSTXTP sends REG.X UP, :5108').toBe(
       UP_FROM_DESCENDING,
@@ -737,18 +737,18 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
     // Both stagings keep the SAME processes in the SAME order and only exchange
     // the two Ys; under the enemy path (above) that swap moves the rise from one
     // bird to the other, and here it must not.
-    const top = stepDemo(stage(tie(true)), { [P1]: IDLE })
-    const bottom = stepDemo(stage(tie(false)), { [P1]: IDLE })
+    const top = stepSim(stage(tie(true)), { [P1]: IDLE })
+    const bottom = stepSim(stage(tie(false)), { [P1]: IDLE })
     expect(cuesOf(top), 'precondition: staging A thuds').toEqual([PLAYER_THUD])
     expect(cuesOf(bottom), 'precondition: staging B thuds').toEqual([PLAYER_THUD])
 
-    const riser = (d: DemoState): number[] =>
+    const riser = (d: SimState): number[] =>
       [P1, A].filter((id) => velYOf(d, id) === UP_FROM_DESCENDING)
     expect(riser(top).length, 'precondition: A really bounced').toBe(1)
     expect(riser(bottom).length, 'precondition: B really bounced').toBe(1)
     // The ABSOLUTE pair carries the coverage; the relative assertion below is
     // kept for its failure message, not for unique reach. MEASURED both ways:
-    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at demo.ts)
+    //   • role INVERSION (swap bounceBottom(a)/bounceTop(b) at sim.ts)
     //     moves the rise in BOTH stagings at once, so the relative assertion
     //     stays green — only the absolute pair sees it.
     //   • GEOMETRY dispatch (make the person tie consult screen Y) diverges in
@@ -771,21 +771,21 @@ describe('jt5-4 — SNPTHD: a tie involving a PERSON', () => {
   it('the ENEMY path is the control — the SAME exchange DOES swap its roles', () => {
     // Without this, the assertion above is satisfied by an implementation that
     // ignores geometry everywhere, which would be wrong for SNETHD.
-    const top = stepDemo(
+    const top = stepSim(
       stage([
         enemyProcess(A, entity(100, 92, DESCENDING)),
         enemyProcess(B, entity(104, 94, DESCENDING)),
       ]),
       {},
     )
-    const bottom = stepDemo(
+    const bottom = stepSim(
       stage([
         enemyProcess(A, entity(100, 94, DESCENDING)),
         enemyProcess(B, entity(104, 92, DESCENDING)),
       ]),
       {},
     )
-    const riser = (d: DemoState): number[] =>
+    const riser = (d: SimState): number[] =>
       [A, B].filter((id) => velYOf(d, id) === UP_FROM_DESCENDING)
     expect(riser(top), 'precondition: the higher bird rose').toEqual([A])
     expect(riser(bottom), 'OSTBMP dispatches on screen Y, so the roles swap').toEqual([B])
@@ -800,7 +800,7 @@ describe('jt5-4 — the sim RESOLVES what the thud announces', () => {
   it('the SAME staging moved apart is silent AND still — the negative control', () => {
     // Without this, every "the bounce landed" assertion is satisfied by code
     // that mangles velocities unconditionally.
-    const d = stepDemo(
+    const d = stepSim(
       stage([enemyProcess(A, entity(100, 92, DESCENDING)), enemyProcess(B, entity(180, 94, DESCENDING))]),
       {},
     )
@@ -811,7 +811,7 @@ describe('jt5-4 — the sim RESOLVES what the thud announces', () => {
 
   it('a KILL is not a thud — the outcome fork stays a fork', () => {
     // Player above the buzzard: strictly smaller plantHeight WINS (:5011).
-    const d = stepDemo(
+    const d = stepSim(
       stage([
         playerProcess(P1, entity(100, 92, DESCENDING)),
         enemyProcess(A, entity(104, 94, DESCENDING)),
@@ -835,7 +835,7 @@ describe('jt5-4 — the sim RESOLVES what the thud announces', () => {
     let run = 0
     let maxSeparation = 0
     for (let f = 0; f < 120; f++) {
-      d = stepDemo(d, {})
+      d = stepSim(d, {})
       const ya = pixelYOf(d, A)
       const yb = pixelYOf(d, B)
       if (ya !== undefined && yb !== undefined) maxSeparation = Math.max(maxSeparation, Math.abs(ya - yb))
@@ -1356,13 +1356,13 @@ describe('jt5-4 — the re-baseline is bounded at the first contact', () => {
 describe('jt5-4 — a thud frame is a PHYSICS event and nothing else', () => {
   /** The same frame, with and without the contact. Everything the bounce is not
    *  allowed to touch must agree across the two. */
-  const withContact = (): DemoState =>
+  const withContact = (): SimState =>
     stage([
       enemyProcess(A, entity(100, 92, DESCENDING)),
       enemyProcess(B, entity(104, 94, DESCENDING)),
       farBird(),
     ])
-  const withoutContact = (): DemoState =>
+  const withoutContact = (): SimState =>
     stage([
       enemyProcess(A, entity(100, 92, DESCENDING)),
       enemyProcess(B, entity(180, 94, DESCENDING)),
@@ -1370,8 +1370,8 @@ describe('jt5-4 — a thud frame is a PHYSICS event and nothing else', () => {
     ])
 
   it('it draws no randomness — the rng cursor is the same either way', () => {
-    const hit = stepDemo(withContact(), {})
-    const miss = stepDemo(withoutContact(), {})
+    const hit = stepSim(withContact(), {})
+    const miss = stepSim(withoutContact(), {})
     expect(cuesOf(hit), 'precondition: one staging really thudded').toEqual([ENEMY_THUD])
     expect(cuesOf(miss), 'precondition: the other really did not').toEqual([])
     expect(hit.sim.rng, 'a bounce that consumes an rng draw desynchronises every replay').toBe(
@@ -1380,14 +1380,14 @@ describe('jt5-4 — a thud frame is a PHYSICS event and nothing else', () => {
   })
 
   it('it removes nobody, spawns nobody and re-orders nobody', () => {
-    const hit = stepDemo(withContact(), {})
+    const hit = stepSim(withContact(), {})
     expect(cuesOf(hit), 'precondition: the thud fired').toEqual([ENEMY_THUD])
     expect(hit.sim.processes.map((p) => p.id)).toEqual([A, B, FAR])
   })
 
   it('it does not touch a THIRD entity', () => {
-    const hit = stepDemo(withContact(), {})
-    const miss = stepDemo(withoutContact(), {})
+    const hit = stepSim(withContact(), {})
+    const miss = stepSim(withoutContact(), {})
     expect(cuesOf(hit), 'precondition: the thud fired').toEqual([ENEMY_THUD])
     expect(entityOf(hit, FAR), 'the bystander was bounced too').toEqual(entityOf(miss, FAR))
   })
@@ -1396,9 +1396,9 @@ describe('jt5-4 — a thud frame is a PHYSICS event and nothing else', () => {
     // jt5-1's rule, restated for this story's kinds: the trap replay determinism
     // cannot see, because a stale carry-forward is carried forward identically
     // in both runs.
-    const first = stepDemo(withContact(), {})
+    const first = stepSim(withContact(), {})
     expect(cuesOf(first), 'precondition: the thud fired').toEqual([ENEMY_THUD])
-    const apart: DemoState = {
+    const apart: SimState = {
       ...first,
       sim: {
         ...first.sim,
@@ -1407,7 +1407,7 @@ describe('jt5-4 — a thud frame is a PHYSICS event and nothing else', () => {
         ),
       },
     }
-    expect(thudsOf(cuesOf(stepDemo(apart, {}))), "'enemy-thud' survived a frame with no contact").toEqual(
+    expect(thudsOf(cuesOf(stepSim(apart, {}))), "'enemy-thud' survived a frame with no contact").toEqual(
       [],
     )
   })
@@ -1486,7 +1486,7 @@ describe('jt5-4 — the thuds leave jt5-1’s deferred list, and only the thuds'
 
 describe('jt9-3 — the frame’s cue stream is flight-first, collision-second', () => {
   // ─── THE MUTATION THIS GROUP FORBIDS ───────────────────────────────────────
-  // src/core/demo.ts, `stepDemo`:
+  // src/core/sim.ts, `stepSim`:
   //
   //   -  const cues: GameEvent[] = [...stepped.cues, ...collided.cues]
   //   +  const cues: GameEvent[] = [...collided.cues, ...stepped.cues]
@@ -1518,14 +1518,14 @@ describe('jt9-3 — the frame’s cue stream is flight-first, collision-second',
    * can influence the thud or vice versa. That is what makes the order of the
    * emitted pair a fact about the concatenation and about nothing else.
    */
-  const flapperAndTie = (): DemoProcess[] => [
+  const flapperAndTie = (): SimProcess[] => [
     playerProcess(P1, entity(20, 40, DESCENDING), 1),
     playerProcess(P2, entity(100, 94, DESCENDING)),
     enemyProcess(A, entity(104, 94, DESCENDING)),
   ]
 
   it('a frame that flaps AND thuds emits the wing edge first', () => {
-    const d = stepDemo(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE })
+    const d = stepSim(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE })
     expect(
       cuesOf(d),
       'the flight-stepping phase runs before collisionPass sees the frame, so its ' +
@@ -1537,7 +1537,7 @@ describe('jt9-3 — the frame’s cue stream is flight-first, collision-second',
     // Without this, the exact array above could be satisfied by a stream that is
     // right for a reason unrelated to the concatenation — a frame that emits only
     // one of the two, or emits them for the wrong causes.
-    const flapOnly = stepDemo(
+    const flapOnly = stepSim(
       stage([playerProcess(P1, entity(20, 40, DESCENDING), 1), enemyProcess(FAR, entity(240, 40, DESCENDING))]),
       { [P1]: PRESS },
     )
@@ -1545,7 +1545,7 @@ describe('jt9-3 — the frame’s cue stream is flight-first, collision-second',
       PLAYER_WING_DOWN,
     ])
 
-    const tieOnly = stepDemo(
+    const tieOnly = stepSim(
       stage([
         playerProcess(P2, entity(100, 94, DESCENDING)),
         enemyProcess(A, entity(104, 94, DESCENDING)),
@@ -1559,7 +1559,7 @@ describe('jt9-3 — the frame’s cue stream is flight-first, collision-second',
     // The same law stated as a relation rather than a literal array, so a future
     // story that legitimately adds a THIRD cue to this frame breaks the exact
     // assertion above without silently losing the ordering guarantee here.
-    const kinds = cuesOf(stepDemo(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE }))
+    const kinds = cuesOf(stepSim(stage(flapperAndTie()), { [P1]: PRESS, [P2]: IDLE }))
     const wing = kinds.indexOf(PLAYER_WING_DOWN)
     const thud = kinds.indexOf(PLAYER_THUD)
     expect(wing, 'the frame raised no wing cue at all — the comparison below is vacuous').toBeGreaterThanOrEqual(0)

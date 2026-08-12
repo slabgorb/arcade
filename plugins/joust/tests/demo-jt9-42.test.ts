@@ -7,7 +7,7 @@
 // Two findings from the jt9-11 review (2026-08-04):
 //
 //   ─── F1 (MEDIUM) — the looker never fires ────────────────────────────────────
-//   jt9-11 wired the grip with PLAYER-ONLY victims (demo.ts's `pickTrollVictim`).
+//   jt9-11 wired the grip with PLAYER-ONLY victims (sim.ts's `pickTrollVictim`).
 //   `insertTroll` splices the troll IMMEDIATELY BEFORE its victim, so with a player
 //   victim the process that runs right after the troll is always a PLAYER. jt9-1's
 //   lava-troll looker (enemy.ts's `lavaTrollLooker`, `LDX PPREV / CMPA #LAVID`,
@@ -34,7 +34,7 @@
 //   tests green — the double-integration (grip pull PLUS GRAV) was unpinned. F1-D
 //   and F2 pin it: a gripped victim's per-frame velY is the grip pull ALONE.
 //
-// stepDemo runs `stepFrame` (frame.ts) FIRST, then `stepTrolls` (demo.ts) SECOND.
+// stepSim runs `stepFrame` (frame.ts) FIRST, then `stepTrolls` (sim.ts) SECOND.
 // So under the skip a gripped victim leaves stepFrame untouched and stepTrolls sets
 // its velY; delete the skip and stepFrame integrates GRAV first, then stepGrip adds
 // the pull on top — a different velY. That divergence is what F1-D / F2 catch.
@@ -44,11 +44,11 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type EntityState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadTroll } from './helpers/troll-contract.js'
 import { waveComplement, withNoPendingEnemies } from './helpers/wave-entry.js'
 import { waveValue } from '../src/core/difficulty.js'
@@ -56,7 +56,7 @@ import { waveValue } from '../src/core/difficulty.js'
 // The story's own reproduction seed (forceAdvance to wave 4, seed 0x1234).
 const SEED = 0x1234
 const TROLL_WAVE = 4
-// demo.ts trollEntity's resting X on the bottom (CLIF5) island — the grab point
+// sim.ts trollEntity's resting X on the bottom (CLIF5) island — the grab point
 // `pickTrollVictim` measures nearness against.
 const CLIF5_X = 148
 // The four transporter pads a wave-4 enemy enters on (transporter.ts PADS):
@@ -83,7 +83,7 @@ function entityAt(posX: number, pixelY: number, over: Partial<EntityState> = {})
   }
 }
 
-function playerAt(id: number, posX: number, pixelY: number, over: Partial<DemoProcess> = {}): DemoProcess {
+function playerAt(id: number, posX: number, pixelY: number, over: Partial<SimProcess> = {}): SimProcess {
   return {
     id,
     cls: 'primary',
@@ -97,7 +97,7 @@ function playerAt(id: number, posX: number, pixelY: number, over: Partial<DemoPr
   }
 }
 
-/** A smart-brain DemoProcess whose lava-troll looker is ARMED: `plavt: 1` (the
+/** A smart-brain SimProcess whose lava-troll looker is ARMED: `plavt: 1` (the
  *  countdown expires and consults PPREV THIS wake) and no committed episode
  *  (`seek`/`pjoy` undefined → `smartBrainReDecides` true), so it enters its brain at
  *  the top where the looker lives. `posX` sets its nearness; `over` stages grip
@@ -108,8 +108,8 @@ function smartEnemyAt(
   posX: number,
   pixelY: number,
   brain: 'boundr' | 'shadow' = 'boundr',
-  over: Partial<DemoProcess> = {},
-): DemoProcess {
+  over: Partial<SimProcess> = {},
+): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -132,7 +132,7 @@ function smartEnemyAt(
 
 /** A lava troll bound to `victimId`, staged at a chosen point in its life. Pass a
  *  `grip` (via `over`) for a committed grab; otherwise the hand is still rising. */
-function trollProc(victimId: number, posX: number, pixelY: number, over: Partial<DemoProcess> = {}): DemoProcess {
+function trollProc(victimId: number, posX: number, pixelY: number, over: Partial<SimProcess> = {}): SimProcess {
   return {
     id: 0x15_0000 + victimId,
     cls: 'secondary',
@@ -147,9 +147,9 @@ function trollProc(victimId: number, posX: number, pixelY: number, over: Partial
   }
 }
 
-async function stagedDemo(processes: DemoProcess[], wave = TROLL_WAVE): Promise<DemoState> {
-  const dmod = await loadDemo()
-  const base = dmod.createWaveDemo(SEED)
+async function stagedDemo(processes: SimProcess[], wave = TROLL_WAVE): Promise<SimState> {
+  const dmod = await loadSim()
+  const base = dmod.createWaveSim(SEED)
   // Replacing `processes` used to evict wave 1's complement along with the list it
   // stood in. Since jt11-4 that complement waits in the transporter's queue instead,
   // out of reach of the replacement, and would materialise a bird a frame into a
@@ -162,13 +162,13 @@ async function stagedDemo(processes: DemoProcess[], wave = TROLL_WAVE): Promise<
   })
 }
 
-const trollsIn = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
-const byId = (d: DemoState, id: number): DemoProcess | undefined => d.sim.processes.find((p) => p.id === id)
+const trollsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
+const byId = (d: SimState, id: number): SimProcess | undefined => d.sim.processes.find((p) => p.id === id)
 
 /** A process's grab-point X, wherever its flight state lives (player→`entity`,
  *  enemy→`enemy.entity`) — the coordinate `pickTrollVictim`'s nearest-bird search
  *  must read for BOTH kinds once broadened. */
-function posXOf(p: DemoProcess): number | undefined {
+function posXOf(p: SimProcess): number | undefined {
   if (p.kind === 'player') return p.entity?.posX
   if (p.kind === 'enemy') return p.enemy?.entity.posX
   return undefined
@@ -177,14 +177,14 @@ function posXOf(p: DemoProcess): number | undefined {
 /** Drive a fresh demo to the troll wave the way demo-troll.test.ts does — strip the
  *  wave's enemies each advance so it CLEARS, but keep the players (re-pinned FAR from
  *  CLIF5 so a wave-4 enemy is always the nearest bird). Returns the wave-4 demo. */
-async function trollWaveFarPlayers(): Promise<{ d: DemoState; step: (d: DemoState) => DemoState }> {
-  const dmod = await loadDemo()
-  let d = dmod.createWaveDemo(SEED)
+async function trollWaveFarPlayers(): Promise<{ d: SimState; step: (d: SimState) => SimState }> {
+  const dmod = await loadSim()
+  let d = dmod.createWaveSim(SEED)
   // Two live players parked at the right edge, far outside every pad's reach.
   // jt11-4: an enemy still holding a transporter number counts as ALIVE, so
   // stripping the list to the parked players no longer clears the wave by itself —
   // the waiting room has to go with it for the advance to happen at all.
-  const park = (s: DemoState): DemoState =>
+  const park = (s: SimState): SimState =>
     withNoPendingEnemies({
       ...s,
       sim: {
@@ -195,9 +195,9 @@ async function trollWaveFarPlayers(): Promise<{ d: DemoState; step: (d: DemoStat
         ],
       },
     })
-  d = dmod.stepDemo(park(d)) // → wave 2
-  d = dmod.stepDemo(park(d)) // → wave 3 (bridge burns)
-  d = dmod.stepDemo(park(d)) // → wave 4 (the troll wave)
+  d = dmod.stepSim(park(d)) // → wave 2
+  d = dmod.stepSim(park(d)) // → wave 3 (bridge burns)
+  d = dmod.stepSim(park(d)) // → wave 4 (the troll wave)
   // jt11-4: the troll no longer rises on the advance frame itself, because on that
   // frame the arena holds nothing but the two parked knights — wave 4's complement is
   // still queued at the transporter, every bird holding its number. The spawn is armed
@@ -209,9 +209,9 @@ async function trollWaveFarPlayers(): Promise<{ d: DemoState; step: (d: DemoStat
   // the following frame, so its `entity.posX` is still exactly `trollProcess`'s
   // creation value — the same untouched-hand observation, one or two frames later.
   for (let i = 0; i < 200 && !d.sim.processes.some((p) => p.kind === 'troll'); i++) {
-    d = dmod.stepDemo(d)
+    d = dmod.stepSim(d)
   }
-  return { d, step: dmod.stepDemo }
+  return { d, step: dmod.stepSim }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -234,7 +234,7 @@ describe('jt9-42 F1-A — pickTrollVictim binds the nearest bird, enemy included
     // If this ever fails the players were not far enough / no enemy spawned near.
     const { d } = await trollWaveFarPlayers()
     const birds = d.sim.processes.filter((p) => p.kind === 'player' || p.kind === 'enemy')
-    let nearest: DemoProcess | undefined
+    let nearest: SimProcess | undefined
     let best = Infinity
     for (const b of birds) {
       const x = posXOf(b)
@@ -266,7 +266,7 @@ describe('jt9-42 F1-A — pickTrollVictim binds the nearest bird, enemy included
 //        `entity: trollEntity(birdPosX(victim) ?? TROLL_CLIF5_X)` collapsed to the
 //        bare constant `TROLL_CLIF5_X` and every jt9-42 test stayed green). F1-A
 //        already proves the bound victim is an enemy; this pins the X the troll's
-//        `entity` is CREATED with. `stepDemo` runs `stepTrolls` BEFORE the
+//        `entity` is CREATED with. `stepSim` runs `stepTrolls` BEFORE the
 //        wave-transition block that spawns the troll (`trollProcess`), so on the
 //        very frame `trollWaveFarPlayers()` lands on wave 4, the fresh troll's
 //        `entity.posX` has not yet been touched by the per-frame LT1HT rise
@@ -274,7 +274,7 @@ describe('jt9-42 F1-A — pickTrollVictim binds the nearest bird, enemy included
 //        creation value. That is the ONLY frame the constant-vs-tracked
 //        distinction survives to observe.
 // TROLL_X_OFFSET = -2 (`ADDD #-2`, JOUSTRV4.SRC:6786) — the hand's fixed offset
-// from its victim's grab-point X, mirrored here (not part of the DemoModule
+// from its victim's grab-point X, mirrored here (not part of the SimModule
 // contract) exactly as CLIF5_X mirrors TROLL_CLIF5_X above.
 // ═════════════════════════════════════════════════════════════════════════════
 const TROLL_X_OFFSET = -2
@@ -335,7 +335,7 @@ describe('jt9-42 F1-B — the troll runs immediately before an enemy (PPREV reac
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-42 F1-C — an ungripped enemy behind the troll actually looks (neighbour still sees it)', () => {
   it('a shadow arms its SHUPST climb only when the troll ran immediately before it', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // The troll points at a bird that is NOT this enemy (id far away) so `stepTrolls`
     // gives up on it and never touches the enemy — the ONLY channel between them is
     // the PPREV order frame.ts reads. A shadow is armed (plavt:1) and re-deciding; its
@@ -344,8 +344,8 @@ describe('jt9-42 F1-C — an ungripped enemy behind the troll actually looks (ne
     const enemy = () => smartEnemyAt(0x200, 100, 90, 'shadow')
     const troll = () => trollProc(0x9999, 98, 120)
 
-    const ordered = dmod.stepDemo(await stagedDemo([troll(), enemy()])) // troll → shadow
-    const reversed = dmod.stepDemo(await stagedDemo([enemy(), troll()])) // shadow → troll
+    const ordered = dmod.stepSim(await stagedDemo([troll(), enemy()])) // troll → shadow
+    const reversed = dmod.stepSim(await stagedDemo([enemy(), troll()])) // shadow → troll
 
     const e1 = byId(ordered, 0x200)?.enemy
     const e2 = byId(reversed, 0x200)?.enemy
@@ -368,7 +368,7 @@ describe('jt9-42 F1-C — an ungripped enemy behind the troll actually looks (ne
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt9-42 F1-D — a gripped enemy is skipped: its looker countdown is frozen', () => {
   it('a gripped enemy behind the troll does NOT tick its looker; an ungripped one reloads', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const troll = await loadTroll()
     const lavgra = waveValue('LAVGRA', TROLL_WAVE)
 
@@ -376,7 +376,7 @@ describe('jt9-42 F1-D — a gripped enemy is skipped: its looker countdown is fr
     // flight/looker core must skip it (`runBehaviour`'s grippedBy short-circuit), so its armed plavt stays put.
     const grippedEnemy = smartEnemyAt(0x300, 100, 120, 'boundr', { grippedBy: 0x15_0000 + 0x300 })
     const grippingTroll = trollProc(0x300, 98, 120, { grip: troll.beginGrip(lavgra) })
-    const gripped = dmod.stepDemo(await stagedDemo([grippingTroll, grippedEnemy]))
+    const gripped = dmod.stepSim(await stagedDemo([grippingTroll, grippedEnemy]))
     const g = byId(gripped, 0x300)?.enemy
     expect(g, 'the gripped enemy still exists').toBeDefined()
     expect(g?.plavt, 'the gripped enemy is skipped — its looker countdown is frozen at 1').toBe(1)
@@ -386,7 +386,7 @@ describe('jt9-42 F1-D — a gripped enemy is skipped: its looker countdown is fr
     // contrast that makes the frozen-at-1 above meaningful, not vacuous.
     const freeEnemy = smartEnemyAt(0x301, 100, 120)
     const risingTroll = trollProc(0x9999, 98, 120)
-    const free = dmod.stepDemo(await stagedDemo([risingTroll, freeEnemy]))
+    const free = dmod.stepSim(await stagedDemo([risingTroll, freeEnemy]))
     const f = byId(free, 0x301)?.enemy
     expect(f?.plavt, 'the ungripped enemy DID run its looker — plavt reloaded from LAVLAV').toBe(
       waveValue('LAVLAV', TROLL_WAVE),
@@ -396,7 +396,7 @@ describe('jt9-42 F1-D — a gripped enemy is skipped: its looker countdown is fr
 
 describe('jt9-42 F2 — a gripped victim falls by the grip pull ALONE, never grip + GRAV', () => {
   it("the gripped victim's per-frame velY equals stepGrip's, with no flight-core gravity added", async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const troll = await loadTroll()
     const lavgra = waveValue('LAVGRA', TROLL_WAVE)
 
@@ -410,7 +410,7 @@ describe('jt9-42 F2 — a gripped victim falls by the grip pull ALONE, never gri
     })
     const t = trollProc(1, 98, PIXEL_Y, { grip })
 
-    const after = dmod.stepDemo(await stagedDemo([t, victim]))
+    const after = dmod.stepSim(await stagedDemo([t, victim]))
     const got = byId(after, 1)?.entity?.velY
     expect(got, 'the victim is still held').toBeDefined()
 

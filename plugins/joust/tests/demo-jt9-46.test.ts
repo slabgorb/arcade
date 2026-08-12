@@ -30,15 +30,15 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
+  loadSim,
   loadEnemyDrawList,
-  type DemoState,
-  type DemoProcess,
+  type SimState,
+  type SimProcess,
   type DrawOp,
   type EntityState,
   type EnemyState,
   type EnemyType,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { sourceLines, parseStatement, vendoredAvailable } from './helpers/joust-source.js'
 import { seatWaveInstantly } from './helpers/wave-entry.js'
 
@@ -96,7 +96,7 @@ function enemyProc(
   pixelY: number,
   facing: -1 | 1 = 1,
   airborne = true,
-): DemoProcess {
+): SimProcess {
   const enemy: EnemyState = {
     entity: entityAt(posX, pixelY, airborne),
     facing,
@@ -108,7 +108,7 @@ function enemyProc(
 }
 
 /** A SETTLED wave egg primed to hatch on the next frame — matures into a remount. */
-function hatchingEggProc(id: number, posX: number, pixelY: number): DemoProcess {
+function hatchingEggProc(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
     cls: 'secondary',
@@ -132,7 +132,7 @@ function hatchingEggProc(id: number, posX: number, pixelY: number): DemoProcess 
 }
 
 /** Replace a demo's process list, clearing the event log. */
-const only = (d: DemoState, procs: DemoProcess[]): DemoState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
+const only = (d: SimState, procs: SimProcess[]): SimState => ({ ...d, sim: { ...d.sim, processes: procs }, events: [] })
 
 /** The entity ops in a draw list (the sprites), in order. */
 const entityOps = (ops: DrawOp[]): DrawOp[] => ops.filter((o) => o.kind === 'entity')
@@ -211,8 +211,8 @@ describe('jt9-46 AC-1 — enemyDrawList stacks a rider on the mount, and drawLis
     // emits today) collapses this to length 1 and reddens. Vary facing so a
     // constant tag dies (routing ≠ geometry — the flip is data on the op).
     const r = await loadEnemyDrawList()
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
 
     for (const facing of [1, -1] as const) {
       const ents = entityOps(r.drawList(only(base, [enemyProc(0x40, 'hunter', 150, 90, facing)])))
@@ -227,15 +227,15 @@ describe('jt9-46 AC-1 — enemyDrawList stacks a rider on the mount, and drawLis
   })
 
   it('a FRESH-WAVE enemy (wave 1 bounder) produces a rider op stacked on its BR* mount', async () => {
-    // Not a hand-built fixture: pull the actual enemy createWaveDemo spawned and
+    // Not a hand-built fixture: pull the actual enemy createWaveSim spawned and
     // isolate it so its two ops can be attributed. This is the AC-1 guard proper —
     // a real wave enemy carries a rider, so the user sees a knight on every buzzard.
     const r = await loadEnemyDrawList()
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     // jt11-4: wave 1's enemies wait for the transporter rather than standing on the
     // pads at frame 0; seat them so a REAL wave enemy is there to be drawn (the
     // arrival cadence itself is not what this guard is about).
-    const base = seatWaveInstantly(dmod.createWaveDemo(SEED))
+    const base = seatWaveInstantly(dmod.createWaveSim(SEED))
     const fresh = base.sim.processes.find((p) => p.kind === 'enemy')
     expect(fresh, 'wave 1 sends in ground enemies').toBeDefined()
 
@@ -281,12 +281,12 @@ describe('jt9-46 AC-4 — a matured-egg remount buzzard is drawn with a rider to
     // hardcodes it today (the jt9-47 follow-up — a hatched hunter/lord loses its
     // species). So this AC pins that the rider is DRAWN, not which species it is.
     const r = await loadEnemyDrawList()
-    const dmod = await loadDemo()
-    let d: DemoState = only(dmod.createWaveDemo(SEED), [hatchingEggProc(0x1_0001, 60, 40)])
+    const dmod = await loadSim()
+    let d: SimState = only(dmod.createWaveSim(SEED), [hatchingEggProc(0x1_0001, 60, 40)])
 
-    let remount: DemoProcess | undefined
+    let remount: SimProcess | undefined
     for (let f = 0; f < 600 && !remount; f++) {
-      d = dmod.stepDemo(d)
+      d = dmod.stepSim(d)
       remount = d.sim.processes.find((p) => p.kind === 'enemy')
     }
     expect(remount, 'the settled egg hatched into a remount buzzard').toBeDefined()
@@ -311,8 +311,8 @@ describe('jt9-46 AC-5 — the rider op carries the PLYR* record POSOFF (stacked,
     // alignment — 751 was authored over the ostrich/stork mount, not the BR* body —
     // is not asserted here. Confirm it with a `just serve` screenshot at /joust/.
     const r = await loadEnemyDrawList()
-    const dmod = await loadDemo()
-    const base = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
 
     const POSX = 150
     const PIXEL_Y = 90

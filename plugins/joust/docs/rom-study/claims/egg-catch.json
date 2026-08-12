@@ -10,7 +10,7 @@
   },
   {
     "id": "JT84-002",
-    "claim": "PLYEGG is the player-vs-egg collision entry point — 'COLISION DETECT WITH THE EGG'. The catch pass in demo.ts collisionPass is this routine. (JOUSTRV4.SRC:3009).",
+    "claim": "PLYEGG is the player-vs-egg collision entry point — 'COLISION DETECT WITH THE EGG'. The catch pass in sim.ts collisionPass is this routine. (JOUSTRV4.SRC:3009).",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 3009,

@@ -20,11 +20,11 @@ import { vendoredAvailable, sourceLines } from './helpers/joust-source.js'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ROM = 'JOUSTRV4.SRC'
 
-/** demo.ts with block and line comments removed — so a census of `narrowPhase(`
+/** sim.ts with block and line comments removed — so a census of `narrowPhase(`
  *  counts CALL SITES, never a mention of the word in a comment (the sidecar's
  *  "a guard that greps source reads your prose about the thing as the thing"). */
 function strippedDemoSource(): string {
-  const src = readFileSync(join(root, 'src', 'core', 'demo.ts'), 'utf8')
+  const src = readFileSync(join(root, 'src', 'core', 'sim.ts'), 'utf8')
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
 }
 
@@ -57,11 +57,11 @@ describe('jt9-14 — the ROM gates the player-vs-ptero dispatch on BPCOL', () =>
 //
 // The story's frame: "collisionPass has THREE overlap passes and only two of them
 // consult a mask." Re-derived from the SOURCE (not a hand list): the count of
-// narrowPhase call sites in demo.ts must reach three. RED today (two: the joust
+// narrowPhase call sites in sim.ts must reach three. RED today (two: the joust
 // pass and the jt8-7 egg catch); GREEN once the ptero pass is wired.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('jt9-14 — every overlap pass in demo.ts consults the mask', () => {
-  it('demo.ts calls narrowPhase from THREE call sites (joust, egg, and now ptero)', () => {
+describe('jt9-14 — every overlap pass in sim.ts consults the mask', () => {
+  it('sim.ts calls narrowPhase from THREE call sites (joust, egg, and now ptero)', () => {
     const calls = strippedDemoSource().match(/narrowPhase\(/g) ?? []
     expect(
       calls.length,

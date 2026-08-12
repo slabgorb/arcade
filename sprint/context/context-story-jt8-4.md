@@ -9,7 +9,7 @@ Egg collection — the player-vs-egg catch pass (PLYEGG/EGGSCR), ladder plus 500
 **Repos:** joust
 **Story ID:** jt8-4
 
-The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (demo.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087).
+The missing egg pickup — PLYEGG (:3009) / EGGSCR (:3030-3095). Add a player-vs-egg pass to collisionPass (sim.ts): on a player overlapping an egg, emit the egg score events via the EXISTING egg.ts core (eggScoreEvents = the EGGVAL ladder 250/500/750/1000 by hit count capped, :3097-3104, PLUS 500 if caught mid-air with PFEET==0, :3063-3069), attribute the score to the catching player (a score/reason:egg/player event the game.ts drain already credits to the right ledger), REMOVE the egg, and cancel any incoming remount bird (AUTOFF, :3078-3087).
 
 ## Critical Framing: REUSE-FIRST
 
@@ -24,7 +24,7 @@ The game.ts drain (story jt4-1) **already handles reason:egg**:
 - `creditScoreEvents(players, events)` processes events with `reason: 'egg'` and attributes them to the catching player (ledger at `ledgerIndex(player, 2)`), exactly like `reason: 'kill'` events from enemy deaths.
 
 **The only new code is:**
-1. The player-vs-egg collision pass (in `collisionPass`, `demo.ts`)
+1. The player-vs-egg collision pass (in `collisionPass`, `sim.ts`)
 2. Egg removal from the process list
 3. Cancellation of remount birds (AUTOFF, if any pending for that egg)
 
@@ -80,24 +80,24 @@ File: `joust/src/core/game.ts`
   - `reason: 'egg' | 'kill'` — tag (already supports 'egg')
   - `player: number` — process id (1 = P1 / ledger 0, 2 = P2 / ledger 1)
 
-### demo.ts — collisionPass structure and remount tracking
+### sim.ts — collisionPass structure and remount tracking
 
-File: `joust/src/core/demo.ts`
+File: `joust/src/core/sim.ts`
 
 - **`collisionPass(processes)` signature** (lines 757-852):
-  - Input: `processes: readonly DemoProcess[]` (all entities: players, enemies, eggs, pteros, etc.)
-  - Output: `{ processes: DemoProcess[], events: DemoEvent[] }`
+  - Input: `processes: readonly SimProcess[]` (all entities: players, enemies, eggs, pteros, etc.)
+  - Output: `{ processes: SimProcess[], events: DemoEvent[] }`
   - Current passes: player-vs-enemy (kills, egg spawns), player-vs-ptero (lance-height)
   - **Missing:** player-vs-egg catch pass
 
-- **`DemoProcess` type** (carry this identity):
+- **`SimProcess` type** (carry this identity):
   - `kind: 'egg'` — eggs are processes
   - `egg?: EggState` — the egg's state (when `kind === 'egg'`)
   - `id: number` — unique id (eggs: `0x1_0000 + loser.id` for kill-eggs)
 
 - **Remount tracking** (relevant context):
   - When an enemy dies → `spawnEgg(victim)` (jt2-4) → `eggProcess(id, egg)` added to processes
-  - Hatched buzzard created by `remountEnemyProcess(egg)` in demo.ts (separate seam)
+  - Hatched buzzard created by `remountEnemyProcess(egg)` in sim.ts (separate seam)
   - **AUTOFF cancellation** (`:3078-3087`): when an egg is caught, any pending remount for that egg must be cancelled
   - Remount identification: look for processes with `remountFor === egg.id` (or equivalent tracking)
 

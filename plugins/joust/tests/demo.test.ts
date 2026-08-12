@@ -6,8 +6,8 @@
 // that cannot diverge — not new ROM laws (those were transcribed and gated by the
 // earlier stories' citations suites; nothing here adds a claim).
 //
-// RED today: tests/helpers/demo-contract.ts::loadDemo throws "demo wiring not
-// built yet" because src/core/demo.ts does not exist — a clean feature-absent red,
+// RED today: tests/helpers/sim-contract.ts::loadSim throws "demo wiring not
+// built yet" because src/core/sim.ts does not exist — a clean feature-absent red,
 // per test, not an import trace.
 //
 // ─── ROUTING ≠ GEOMETRY (MEMORY) ─────────────────────────────────────────────
@@ -22,12 +22,12 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  loadDemo,
-  type DemoState,
-  type DemoProcess,
+  loadSim,
+  type SimState,
+  type SimProcess,
   type JoustEntity,
   type EggState,
-} from './helpers/demo-contract.js'
+} from './helpers/sim-contract.js'
 import { loadScheduler } from './helpers/scheduler-contract.js'
 import { loadFlight, type PlayerInput } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
@@ -76,36 +76,36 @@ function eggOf(over: Partial<EggState>): EggState {
   }
 }
 
-const enemies = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
-const players = (d: DemoState): DemoProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
+const enemies = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
+const players = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'player')
 
 /** Step a demo N frames threading a single (optional) fixed input map. */
 async function stepN(
-  demo: DemoState,
+  demo: SimState,
   n: number,
   inputs?: Record<number, PlayerInput>,
-): Promise<DemoState> {
-  const dmod = await loadDemo()
+): Promise<SimState> {
+  const dmod = await loadSim()
   let d = demo
-  for (let i = 0; i < n; i++) d = dmod.stepDemo(d, inputs)
+  for (let i = 0; i < n; i++) d = dmod.stepSim(d, inputs)
   return d
 }
 
 /** Replace the demo's process list (keeps sim/budget/rng), for controlled pins. */
-const withProcesses = (d: DemoState, procs: readonly DemoProcess[]): DemoState => ({
+const withProcesses = (d: SimState, procs: readonly SimProcess[]): SimState => ({
   ...d,
   sim: { ...d.sim, processes: procs },
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-1 — WAVE-1 ASSEMBLY. createWaveDemo builds wave 1 from the transcribed data.
+// AC-1 — WAVE-1 ASSEMBLY. createWaveSim builds wave 1 from the transcribed data.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
+describe('AC-1 — createWaveSim assembles wave 1 from the cores', () => {
   it('starts on wave 1 with both players and the transcribed enemy complement', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const trans = await loadTransporter()
     const wave = await loadWave()
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
 
     expect(demo.wave, 'the demo opens on wave 1').toBe(1)
 
@@ -129,9 +129,9 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
   })
 
   it('seeds the intelligence budget from wave 1s pursuit nibble (wsmart=1, nsmart=0)', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const wave = await loadWave()
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
     const seeded = wave.seedWaveBudget(wave.waveRowAt(1))
     expect(demo.sim.budget, 'budget = seedWaveBudget(row 1) — one law, not a re-derivation').toEqual(
       seeded,
@@ -146,9 +146,9 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
     // pinned in the enemy/scheduler suites; here we pin the WIRING SETS it from
     // the oracle. A mutant that hard-codes period 1 (enemies run full speed on
     // wave 1) dies here.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const wave = await loadWave()
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
     const emytim = wave.emytimForWave(1)
     expect(emytim, 'wave 1 EMYTIM is the slow divider').toBe(2)
     for (const e of enemies(demo)) {
@@ -160,7 +160,7 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
     // The TEXT SEAM: the wave machine emits WAVMSG beats; the shell renders NONE
     // of them here (fonts are jt4). Wave 1 status 0x02 → type 'intro' → INTRO1,
     // INTRO2. They must appear as `beat` EVENTS (data), never as drawn glyphs.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const wave = await loadWave()
     const row1 = wave.waveRowAt(1)
     const resolved = wave.dispatchWaveType(row1.status, { p1: true, p2: true })
@@ -168,14 +168,14 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
     expect(wanted.length, 'wave 1 emits intro beats').toBeGreaterThan(0)
 
     // Collect beat messages from creation and the first handful of frames.
-    let demo = dmod.createWaveDemo(SEED)
+    let demo = dmod.createWaveSim(SEED)
     const seen = new Set<string>()
-    const collect = (d: DemoState): void => {
+    const collect = (d: SimState): void => {
       for (const ev of d.events) if (ev.kind === 'beat') seen.add(ev.message)
     }
     collect(demo)
     for (let i = 0; i < 8; i++) {
-      demo = dmod.stepDemo(demo)
+      demo = dmod.stepSim(demo)
       collect(demo)
     }
     for (const m of wanted) {
@@ -192,9 +192,9 @@ describe('AC-1 — createWaveDemo assembles wave 1 from the cores', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — the demo and the sim do not diverge (jt2-1 carried seam)', () => {
   it('a player stepped by the demo matches a solo scheduler run bit-for-bit', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const sched = await loadScheduler()
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
 
     // P1 — identify by its spawn X, capture its exact process spec.
     const trans = await loadTransporter()
@@ -219,7 +219,7 @@ describe('AC-1 — the demo and the sim do not diverge (jt2-1 carried seam)', ()
     let demoS = demo
     let soloS = solo0
     for (let i = 0; i < 40; i++) {
-      demoS = dmod.stepDemo(demoS, input)
+      demoS = dmod.stepSim(demoS, input)
       soloS = sched.stepFrame(soloS, input)
     }
 
@@ -232,13 +232,13 @@ describe('AC-1 — the demo and the sim do not diverge (jt2-1 carried seam)', ()
     expect(demoP1, 'and it actually moved — the pin is not vacuous').not.toEqual(e0)
   })
 
-  it('advances the sim frame counter exactly one per stepDemo', async () => {
-    const dmod = await loadDemo()
-    let demo = dmod.createWaveDemo(SEED)
+  it('advances the sim frame counter exactly one per stepSim', async () => {
+    const dmod = await loadSim()
+    let demo = dmod.createWaveSim(SEED)
     const start = demo.sim.frame
-    demo = dmod.stepDemo(demo)
+    demo = dmod.stepSim(demo)
     expect(demo.sim.frame, 'one video frame per step').toBe(start + 1)
-    demo = dmod.stepDemo(demo)
+    demo = dmod.stepSim(demo)
     expect(demo.sim.frame).toBe(start + 2)
   })
 })
@@ -250,13 +250,13 @@ describe('AC-1 — the demo and the sim do not diverge (jt2-1 carried seam)', ()
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — the frame loop drives the growth oracle', () => {
   it('does NOT grow WSMART before the cadence, then grows it exactly once at 896', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const wave = await loadWave()
     expect(wave.CIA_GROWTH_FRAMES, 'the cadence is 112×8 frames').toBe(896)
 
     // Controlled: enemies only (no players ⇒ nothing kills them ⇒ ≥1 alive at the
     // cadence), so the pin is deterministic rather than emergent.
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
     const start = withProcesses(demo, enemies(demo))
     expect(start.sim.budget.wsmart, 'seeded WSMART').toBe(1)
 
@@ -264,7 +264,7 @@ describe('AC-1 — the frame loop drives the growth oracle', () => {
     expect(before.sim.budget.wsmart, 'no growth before the 896th frame').toBe(1)
     expect(enemies(before).length, 'the enemies are still alive at the cadence').toBeGreaterThan(0)
 
-    const at = dmod.stepDemo(before) // the 896th frame
+    const at = dmod.stepSim(before) // the 896th frame
     expect(at.sim.budget.wsmart, 'the 15 s timer fires once at 896 while enemies live').toBe(2)
   })
 
@@ -276,13 +276,13 @@ describe('AC-1 — the frame loop drives the growth oracle', () => {
     // spawn the next wave's complement — so a players-only sim no longer stays
     // enemy-free (the wave-2 buzzards enter and DO grow WSMART at 896). Rail 4's
     // `cleared` setup and this test's `playersOnly` setup are byte-identical, so no
-    // stepDemo can satisfy both. This test's own purpose — the growWanted
+    // stepSim can satisfy both. This test's own purpose — the growWanted
     // enemiesAlive GATE — is isolated from that new behaviour by driving an EMPTY
     // sim (no enemies AND no player to trigger the advance): the gate still holds
     // and the "grows regardless" mutant still dies (it would push WSMART to 2).
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const wave = await loadWave()
-    const demo = dmod.createWaveDemo(SEED)
+    const demo = dmod.createWaveSim(SEED)
     // jt11-4: an enemy still holding a transporter number is ALIVE, so emptying the
     // process list is no longer an empty sim — the waiting room has to go too.
     const noEnemies = withNoPendingEnemies(withProcesses(demo, []))
@@ -329,7 +329,7 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
   }
 
   it('a falling egg in open air descends (the fall is integrated)', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
     const before = eggOf({ posX: x, posY: y << 8, velY: 0x300 }) // ~3 px/frame down
     const after = dmod.stepEgg(before)
@@ -338,7 +338,7 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
   })
 
   it('a DOWNWARD egg that reaches a ledge bounces per the jt2-4 law and settles', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
     // Slow downward impact: bounceVelY($40) = −$10, which settles (≥ −$20).
@@ -353,7 +353,7 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
   it('a FAST downward impact bounces but does NOT settle (the SIGNED −$20 bound)', async () => {
     // signed-settle mutant: `abs(velY) ≤ $20` and `velY ≥ −$20` disagree here.
     // bounceVelY($200) = −$80, a fast UPWARD bounce → keeps bouncing, no settle.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
     const landed = dmod.stepEgg(eggOf({ posX: x, posY: y << 8, velX: 0, velY: 0x200 }))
@@ -365,7 +365,7 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
     // THE named mutant: dropping the `velY ≥ 0` guard would sign-flip a rising
     // egg POSITIVE (bounceVelY(−$40) = +$10) and wrongly settle it. The guarded
     // wiring leaves a rising egg rising.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const { x, y } = await findLedge()
     const rising = dmod.stepEgg(eggOf({ posX: x, posY: y << 8, velX: 0, velY: -0x40 }))
@@ -379,10 +379,10 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
   it('an egg IS a scheduler process the demo loop advances each frame', async () => {
     // Wiring, not law: an egg dropped into the process list must be integrated by
     // the SAME loop the players/enemies ride (kind:'egg' dispatch), not left inert.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const { x, y } = await findAir()
-    const demo = dmod.createWaveDemo(SEED)
-    const eggProc: DemoProcess = {
+    const demo = dmod.createWaveSim(SEED)
+    const eggProc: SimProcess = {
       id: 0x900,
       cls: 'secondary',
       nap: 1,
@@ -405,7 +405,7 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0', () => {
   it('an egg in the LEFT half hatches a buzzard entering from the RIGHT edge', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const leftX = egg.REMOUNT_HALF_X - 10
     const entry = dmod.hatchEgg(eggOf({ posX: leftX, settled: true, eggsLeft: 3 }))
@@ -416,7 +416,7 @@ describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0'
   })
 
   it('an egg in the RIGHT half hatches a buzzard entering from the LEFT edge', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const egg = await loadEgg()
     const rightX = egg.REMOUNT_HALF_X + 10
     const entry = dmod.hatchEgg(eggOf({ posX: rightX, settled: true, eggsLeft: 1 }))
@@ -426,7 +426,7 @@ describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0'
   })
 
   it('the 4th egg (eggsLeft 0) is permadeath — nothing hatches', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const entry = dmod.hatchEgg(eggOf({ posX: 100, settled: true, eggsLeft: 0 }))
     expect(entry, 'eggsLeft 0 is the enemys permanent death').toBeNull()
   })
@@ -440,7 +440,7 @@ describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0'
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — resolveContacts applies the joust between entities', () => {
   it('the higher entity (smaller plantHeight) WINS; only the LOSER is removed', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const joust = await loadJoust()
     const a = participant({ party: 'player', posY: 90 << 8 }) // higher on screen
     const b = participant({ party: 'enemy', enemyType: 'bounder', posY: 96 << 8, velX: 5, velY: 0x123 })
@@ -459,7 +459,7 @@ describe('AC-1 — resolveContacts applies the joust between entities', () => {
   })
 
   it('when the enemy is higher the PLAYER dies, and a player victim leaves no egg', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const a = participant({ party: 'player', posY: 100 << 8 }) // lower on screen
     const b = participant({ party: 'enemy', enemyType: 'bounder', posY: 90 << 8 })
     const r = dmod.resolveContacts(a, b)
@@ -471,7 +471,7 @@ describe('AC-1 — resolveContacts applies the joust between entities', () => {
 
   it('two enemies NEVER kill each other — they bounce and both survive', async () => {
     // enemies-never-kill / gladiator-both-out analogue: neither is removed.
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const a = participant({ party: 'enemy', enemyType: 'bounder', posY: 90 << 8 })
     const b = participant({ party: 'enemy', enemyType: 'hunter', posY: 100 << 8 })
     const r = dmod.resolveContacts(a, b)
@@ -489,8 +489,8 @@ describe('AC-1 — resolveContacts applies the joust between entities', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — materialising enemies are collision-safe until the window exits', () => {
   it('freshly-entered enemies start with collisions DISABLED', async () => {
-    const dmod = await loadDemo()
-    const demo = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const demo = dmod.createWaveSim(SEED)
     for (const e of enemies(demo)) {
       expect(e.collisionEnabled, 'a materialising enemy cannot be jousted').toBe(false)
     }
@@ -498,8 +498,8 @@ describe('AC-1 — materialising enemies are collision-safe until the window exi
 
   it('the window EXITS and re-enables collisions (PLYINT) — not inert forever', async () => {
     // Controlled: enemies only, so none die before the window closes.
-    const dmod = await loadDemo()
-    const demo = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const demo = dmod.createWaveSim(SEED)
     const enemiesOnly = withProcesses(demo, enemies(demo))
     const after = await stepN(enemiesOnly, 600)
     const surviving = enemies(after)
@@ -515,8 +515,8 @@ describe('AC-1 — materialising enemies are collision-safe until the window exi
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — P1 and P2 are both live', () => {
   it('both players persist across neutral frames (neither despawns)', async () => {
-    const dmod = await loadDemo()
-    const demo = dmod.createWaveDemo(SEED)
+    const dmod = await loadSim()
+    const demo = dmod.createWaveSim(SEED)
     expect(players(demo).length, 'two players at the start').toBe(2)
     const after = await stepN(demo, 30)
     expect(players(after).length, 'both still live after 30 neutral frames').toBe(2)
@@ -528,20 +528,20 @@ describe('AC-1 — P1 and P2 are both live', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-4 — the seeded wave-1 sequence is deterministic', () => {
   it('replays bit-for-bit from the same seed and inputs', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const run = (): string => {
-      let d = dmod.createWaveDemo(SEED)
-      for (let i = 0; i < 60; i++) d = dmod.stepDemo(d)
+      let d = dmod.createWaveSim(SEED)
+      for (let i = 0; i < 60; i++) d = dmod.stepSim(d)
       return JSON.stringify(d)
     }
     expect(run(), 'identical seed ⇒ identical wave').toBe(run())
   })
 
   it('a different seed produces a different wave (the seed actually threads)', async () => {
-    const dmod = await loadDemo()
+    const dmod = await loadSim()
     const run = (seed: number): string => {
-      let d = dmod.createWaveDemo(seed)
-      for (let i = 0; i < 60; i++) d = dmod.stepDemo(d)
+      let d = dmod.createWaveSim(seed)
+      for (let i = 0; i < 60; i++) d = dmod.stepSim(d)
       return JSON.stringify(d)
     }
     expect(run(SEED), 'the seed must actually change the run').not.toBe(run(0x0bad_f00d))
