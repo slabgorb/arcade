@@ -156,7 +156,13 @@ export function enterInitial(entry: HighScoreEntryBuffer, key: string): HighScor
   return { ...entry, initials }
 }
 
-/** True once the buffer holds exactly MAX_INITIALS chars — the commit gate. Pure. */
+/**
+ * True once the buffer holds exactly MAX_INITIALS chars — the MANUAL-confirm gate
+ * (the shell's FLAP rising edge asks this before committing). Since jt11-6 it is
+ * NOT the only road to a commit: an expired entry auto-commits whatever has been
+ * typed, via isEntryExpired + timeoutInitials, and deliberately does not consult
+ * this — committing an INCOMPLETE buffer is that path's whole point. Pure.
+ */
 export function isEntryComplete(entry: HighScoreEntryBuffer): boolean {
   return entry.initials.length === MAX_INITIALS
 }

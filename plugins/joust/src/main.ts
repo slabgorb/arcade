@@ -398,6 +398,11 @@ let highScoreTable: JoustHighScore[] = highScores.load()
 // arrive as keydown EVENTS through enterInitial; the flap RISING edge commits once
 // the buffer is complete. entryScore/entryWave are captured when 'highscore' is
 // entered; entryPrompt is the rank-selected line (champion vs lesser).
+//
+// jt11-6 — the buffer also carries a TICK BUDGET (beginEntry seeds it), and there
+// are now TWO ways it commits: that flap confirm, and the budget running out, which
+// commits whatever has been typed rather than requiring a complete buffer. Both go
+// through commitHighScore below, so there is still exactly one write.
 let entry = beginEntry()
 let entryScore = 0
 let entryWave = 1
