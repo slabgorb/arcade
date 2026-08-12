@@ -170,11 +170,10 @@ describe('AC-2 — the attract start prompt', () => {
     const prompt = mod.START_PROMPT as string
     // Kills the silent-skip mutant: layoutText SKIPS characters missing from the
     // font (fontRender.ts) — a font without '1'/'2' would render "PRESS  OR  TO
-    // START" and pass any non-empty check. Every non-space character must have
-    // produced a glyph op.
-    expect(laid.ops.length, 'one glyph op per non-space character').toBe(
-      prompt.replace(/ /g, '').length,
-    )
+    // START" and pass any non-empty check. FONT57 carries a glyph for EVERY
+    // character here including the space (LSPC, MESSAGE.SRC:444), so every
+    // character must have produced a glyph op; a missing digit means fewer ops.
+    expect(laid.ops.length, 'one glyph op per character (space has a glyph)').toBe(prompt.length)
     expect(laid.width, 'a laid-out prompt has width').toBeGreaterThan(0)
     expect(laid.colour, 'colour threads through unchanged').toEqual(colour)
   })

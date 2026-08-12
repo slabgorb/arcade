@@ -315,7 +315,7 @@ export function bookDeath(players: readonly PlayerLedger[], player: number): Pla
  * (default 2) at score 0. Deterministic — same seed, same GameState. Pure.
  */
 export function createGame(seed: number, playerCount: number = DEFAULT_PLAYER_COUNT): GameState {
-  const sim = createWaveDemo(seed)
+  const sim = createWaveDemo(seed, playerCount)
   const players: PlayerLedger[] = Array.from({ length: playerCount }, () => ({
     score: 0,
     scoreBcd: scoreToBcd(0),

@@ -33,3 +33,17 @@ export interface AttractBannerLayout {
 export function layoutAttractBanner(page: BannerPage, colour: Rgba): AttractBannerLayout {
   return { banner: layoutText('FONT57', BANNERS[page].text, colour) }
 }
+
+/**
+ * jt11-1 — the start prompt every attract page carries. A PRESENTATION string,
+ * not a ROM transcription: the 1982 cabinet had physical 1P/2P start buttons
+ * (MSPLY1/MSPLY2 label the SELECT screen), while the browser cabinet starts on
+ * the Digit1/Digit2 keys — so the attract cycle must NAME them or a player is
+ * stuck watching the demo. FONT57 carries the digits (MESSAGE.SRC glyphs).
+ */
+export const START_PROMPT = 'PRESS 1 OR 2 TO START'
+
+/** Lay the start prompt out in `colour` — FONT57, origin-relative, caller centres. */
+export function layoutStartPrompt(colour: Rgba): LaidOutText {
+  return layoutText('FONT57', START_PROMPT, colour)
+}
