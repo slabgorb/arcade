@@ -36,7 +36,12 @@
 //         flight's airspeed.
 //
 // Every expected value below is DERIVED from the GROUND_STATES table at run
-// time, never transcribed — mutating a row's flyVel reddens these tests.
+// time, so what these tests pin is the WIRING — that land()/stepGround()/
+// takeOff() actually consume the table (deleting either write reddens them;
+// mutation-verified in review). A wrong flyVel VALUE moves expected and actual
+// together here, so the values are pinned separately: by the transcription pin
+// directly below (the run-rung ladder hand-read from the ROM STATE rows), and
+// by the seeded fixture files, where a flyVel edit reddens five of them.
 
 import { describe, it, expect } from 'vitest'
 import { loadFlight, type EntityState, type PlayerInput } from './helpers/flight-contract.js'
@@ -64,7 +69,12 @@ function airborne(over: Partial<EntityState> = {}): EntityState {
   return grounded({ airborne: true, groundState: null, velY: 512, timeUp: 20, ...over })
 }
 
-/** The facing-relative transition rule stepGround documents (jt2-9). */
+/**
+ * The facing-relative transition rule stepGround documents (jt2-9). This
+ * re-derives stepGround's own dispatch, so the AC-2 sweeps below prove the
+ * flyVel WRITE, not the routing — the routing is independently pinned by
+ * concrete outcomes (facing flips, plantZ) in demo-jt2-9.test.ts.
+ */
 function expectedNext(
   states: Awaited<ReturnType<typeof loadFlight>>['GROUND_STATES'],
   id: string,
@@ -74,6 +84,20 @@ function expectedNext(
   const row = states[id]
   return dir === 0 ? row.onZero : dir === facing ? row.onPlus : row.onMinus
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The transcription pin — the one place in this file where the expected values
+// are NOT read from GROUND_STATES, so a mutated table entry reddens IN-FILE.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('jt11-3 — the FRCONV run-rung FLYVEL ladder, hand-read from the ROM', () => {
+  it('the five FRCONV rungs carry FLYVEL 0,2,4,6,8 (STATE rows, JOUSTRV4.SRC:7164-7168)', async () => {
+    // The STATE macro's 7th operand, transcribed by eye from the vendored
+    // source, deliberately NOT derived from the module: PLYBR 0, PLYCR 2,
+    // PLYDR 4, PLYER 6, PLYFR 8.
+    const f = await loadFlight()
+    expect(f.FRCONV.map((id) => f.GROUND_STATES[id].flyVel)).toEqual([0, 2, 4, 6, 8])
+  })
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-1 — land() resets velXIndex to the landed rung's flyVel.
@@ -150,7 +174,9 @@ describe('jt11-3 AC-2 — the ground step maintains velXIndex from the state row
         ).toBe(want)
         // PVELX is an integer byte in the ROM; there is no −0. A bare
         // `flyVel * facing` leaks Object.is-visible −0 into every standing
-        // left-facing frame and into serialized replay fixtures. Normalize.
+        // left-facing frame and into serialized replay fixtures. The toBe(want)
+        // above is the operative guard (vitest toBe is Object.is, so −0 ≠ 0);
+        // this line exists to NAME the trap so a future edit doesn't relax it.
         expect(Object.is(after.velXIndex, -0), 'no negative zero').toBe(false)
       }
     }

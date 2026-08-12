@@ -315,7 +315,11 @@ export function tickTimeUp(timeUp: number): number {
 
 /**
  * One frame of ground movement: the STATE row's transition for the joystick
- * direction, plus the X delta.
+ * direction, plus the X delta. `facing` (PFACE, threaded by the caller since
+ * jt2-9) makes the transitions facing-relative. The return also maintains
+ * `velXIndex` from the NEW state row's flyVel, negated for a left facing —
+ * the UPDNO2 write (jt11-3) — so this, not takeOff(), is what determines the
+ * launch airspeed a subsequent takeoff inherits.
  *
  * LIMITATION, stated rather than hidden: the ROM selects its per-frame delta
  * from `ORRUN` indexed by `PFRAME` (:7191-7196), the run-animation phase.
