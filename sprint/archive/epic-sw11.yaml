@@ -3,7 +3,7 @@ type: epic
 title: Star Wars trench — restore authentic return-fire lethality and seat the wall guns flush
 description: "Follow-up epic from the sw10 native-basis migration (archived). sw10-1/2/3 unified the trench onto the ROM-native world basis, which as a SIDE EFFECT made the wall guns' return fire connect for the first time: before sw10, trenchGunFireVelocity computed its lead on a depth axis (index 2) that disagreed with the gun positions, ship point and swept-collision (all since moved to index 0), so every base-gun shot flew off-axis and MISSED — the trench was accidentally survivable. With the basis unified the fire is functional, and the trench is now unplayable (~3 s to burn all 6 shields). Root cause is NOT a constant over-tune — every difficulty constant is ROM-cited and faithful (TGPROB cadence/threshold WSBASE.MAC:1224, range #6000, 0.5 s shield debounce S-016, 6 starting shields, gun density from the ROM pie tables). The defect is a MECHANISM divergence in the DOBASE/BSGUN/PANLIN/MOVPL port, on THREE independent axes (all detailed in sw11-1), the largest being AIM: the cabinet never leads the ship — it sprays a random-angle shell that heat-seeks weakly and often misses; our port fires a perfect analytic lead that never misses. REFERENCE AUTHORITY: the 1983 assembler source (~/Projects/star-wars-1983-source-text, WSBASE.MAC + WSGUNS.MAC) is the sole authority for this logic. MAME's starwars driver (~/Projects/mame/src/mame/atari/starwars.cpp) is hardware emulation only — matrix processor, math box, AVG vector PROM — that EXECUTES the real 6809 game ROM; it does not reimplement the trench gun logic (grep for trench/bunker/BSGUN in src/mame/atari/ returns nothing), so it corroborates only the coordinate scale we already port and adds no fire-mechanism detail. sw11-2 fixes the visual half of the same sw10 orient retirement: the wall guns render cantilevered off the wall because TRENCH_ORIENT was retired to IDENTITY and no per-wall seating/mirror replaced it."
 priority: p1
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: sw11-1
@@ -28,8 +28,10 @@ stories:
     title: "Trench catwalks are horizontal channel-spanning DIVIDERS (catwalk at top/bottom), not single-wall force-field fins — correct finding B-012. The 1983 source proves catwalks are structures ACROSS the channel: WSBASE.MAC TWDG92-96 name '8 PANEL DIVIDER WITH CATWALK AT TOP/BOTTOM' and the coaching text is 'TRENCH CATWALK'/'AVOID CATWALKS' (TCMES.MAC:560/620); the collision the ROM checks is VERTICAL (WSPANL.MAC:201-209 'FORCE FIELD ABOVE PLAYER?' / 'WITHIN FIRST HALF?'), i.e. dodge by diving/climbing. Finding B-012 (sw7-19) instead identified .WP WFF 'WALL FORCE FIELD' as the catwalk and modeled it as a single vertical fin on ONE wall dodged LATERALLY (models.ts TRENCH_CATWALK; sim.ts onFieldSide graze). Rework: model the catwalk as a channel-spanning member seated in a top or bottom band across the divider; change the graze from side-gated (steer to other wall) to vertical-band-gated (dive/climb); re-point the streaming/placement; update the B-012 docs/findings and the pinned tests (trench-viewpoint, trench-force-field-hazard, trench-forcefield-streaming). Start with the rom-fidelity-audit skill to nail the WFF/WFG-vs-catwalk distinction before RED. Follows sw11-2, which corrected the wall-gun/square orientation and left the catwalk standing and mirrored as an interim."
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-11'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-12'
     type: bug
+completed: '2026-08-12'
