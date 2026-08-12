@@ -1,0 +1,569 @@
+[
+ {
+  "id": "CW-1",
+  "claim": "INICON and MASTER are the CONWAY entry points the story ports.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 73,
+   "verbatim": "\t.GLOBL INICON,MASTER\t\t;CONWAY ENTRY POINTS"
+  }
+ },
+ {
+  "id": "CW-2",
+  "claim": "MASTER is the per-call master control program of the Life process.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 24,
+   "verbatim": "\t.SBTTL\tMASTER CONTROL PROGRAM"
+  }
+ },
+ {
+  "id": "CW-3",
+  "claim": "INICON starts by zeroing X and storing it to PHASE and CTEMP1 — the process begins in phase 0 at the playfield base.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 11,
+   "verbatim": "INICON:\tLDX #00"
+  }
+ },
+ {
+  "id": "CW-4",
+  "claim": "INICON stores X=1 to CDONE — initialising starts the process (CDONE: 0 idle, 1 active).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 15,
+   "verbatim": "\tSTX CDONE"
+  }
+ },
+ {
+  "id": "CW-5",
+  "claim": "INICON sets OBST high byte to $10: the sweep pointer starts at PLYFLD ($1000).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 16,
+   "verbatim": "\tLDX #10"
+  }
+ },
+ {
+  "id": "CW-6",
+  "claim": "INICON sets TEMP2 low byte to $BE (high byte $0F): TEMP2 = $0FBE = OBST − $42, anchoring the 5x5 template window two columns and two rows behind the swept cell.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 20,
+   "verbatim": "\tLDX #0BE"
+  }
+ },
+ {
+  "id": "CW-7",
+  "claim": "PHASE semantics: 0 is setup, 1..MAXPH−1 execute, MAXPH end.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 404,
+   "verbatim": "PHASE:\t.BLKB 1\t\t\t;0 IS SETUP 1 TO MAXPH-1 EXECUTE, MAXPH END"
+  }
+ },
+ {
+  "id": "CW-8",
+  "claim": "CDONE semantics: 0 is idle, 1 is active.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 407,
+   "verbatim": "CDONE:\t.BLKB 1\t\t\t;0 IS IDLE, 1 IS ACTIVE"
+  }
+ },
+ {
+  "id": "CW-9",
+  "claim": "MAXPH = 8 — the maximum number of growth tries.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 192,
+   "verbatim": "MAXPH\t=8\t\t\t;MAXIMUM NUMBER OF GROWTH TRIES"
+  }
+ },
+ {
+  "id": "CW-10",
+  "claim": "EDGE = 2 — the count of mushrooms assumed touching on a screen edge.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 193,
+   "verbatim": "EDGE\t=2\t\t\t;NUMBER OF MUSHROOMS TOUCHED ON THE EDGE"
+  }
+ },
+ {
+  "id": "CW-11",
+  "claim": "PLYFLD = $1000, 30 wide by 32 high — the field the sweep walks ($1000..$13BF, column stride $20).",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 103,
+   "verbatim": "PLYFLD\t=1000\t\t\t;30 WIDE BY 32 HIGH (400-7BF)"
+  }
+ },
+ {
+  "id": "CW-12",
+  "claim": "DDT = $6E is the first of two stamps for the DDT bomb; CONWAY tests for DDT and DDT+1.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 203,
+   "verbatim": "DDT\t=6E\t\t\t;FIRST OF 2 STAMPS FOR DDT BOMB"
+  }
+ },
+ {
+  "id": "CW-13",
+  "claim": "DEATHS = $71 — dying mushroom pictures ($71..$74).",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 205,
+   "verbatim": "DEATHS\t=71\t\t\t;DYING MUSHROOM PICTURES"
+  }
+ },
+ {
+  "id": "CW-14",
+  "claim": "GROWTH = $75 — growing mushroom pictures ($75..$77).",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 206,
+   "verbatim": "GROWTH\t=75\t\t\t;GROWING MUSHROOM PICTURES"
+  }
+ },
+ {
+  "id": "CW-15",
+  "claim": "POISON = $78 — poisoned mushroom pictures ($78..$7B).",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 207,
+   "verbatim": "POISON\t=78\t\t\t;POISONED MUSHROOM PICTURES"
+  }
+ },
+ {
+  "id": "CW-16",
+  "claim": "NORMAL = $7C — normal mushroom pictures ($7C..$7F, $7F fully grown).",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 208,
+   "verbatim": "NORMAL\t=7C\t\t\t;MUSHROOM PICTURES"
+  }
+ },
+ {
+  "id": "CW-17",
+  "claim": "MSKORA is 0 or $80 — the background bit CONWAY re-imposes as it rewrites cells.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 411,
+   "verbatim": "MSKORA:\t.BLKB 1\t\t\t;0 OR 80, IF WE PUT BACKGROUND BACK"
+  }
+ },
+ {
+  "id": "CW-18",
+  "claim": "MASTER skips rows $1E/$1F (the score rows) — \"REMOVE TOP TWO ROWS\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 35,
+   "verbatim": "\tBCS 100$\t\t;REMOVE TOP TWO ROWS"
+  }
+ },
+ {
+  "id": "CW-19",
+  "claim": "MASTER skips row 0 — the branch under \"REMOVE BOTTOM TWO ROWS\" fires for row < 1 only; row 1 is processed by GROWDIE/CLEANUP and gated out of STARTGR separately.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 37,
+   "verbatim": "\tBCC 100$\t\t;REMOVE BOTTOM TWO ROWS"
+  }
+ },
+ {
+  "id": "CW-20",
+  "claim": "Upright (CKIND bit 7 clear): rows below 7 are the player area — MSKORA becomes $80 there.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 46,
+   "verbatim": "\tCMP #07"
+  }
+ },
+ {
+  "id": "CW-21",
+  "claim": "Phase 0 masks the position with $0F — one MASTER call sweeps half a column (16 cells).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 74,
+   "verbatim": "\tAND #0F\t\t\t;WE DO 1/2 COLUMN AT A TIME"
+  }
+ },
+ {
+  "id": "CW-22",
+  "claim": "Non-zero phases mask with $1F — one MASTER call sweeps a full column (32 cells).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 76,
+   "verbatim": "\tAND #1F"
+  }
+ },
+ {
+  "id": "CW-23",
+  "claim": "The sweep ends when OBST reaches $13C0 (PLYFLD/256+3 pages, low byte $C0) — end of the 30-column field.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 83,
+   "verbatim": "\tCMP #PLYFLD/100+3"
+  }
+ },
+ {
+  "id": "CW-24",
+  "claim": "One way to end: a finished sweep in a non-zero phase with NGROWN=0 jumps PHASE to MAXPH — \"MUSHROOMS ALL GROWN\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 89,
+   "verbatim": "\tLDA #MAXPH\t\t;ONE WAY TO END"
+  }
+ },
+ {
+  "id": "CW-25",
+  "claim": "When the incremented PHASE reaches MAXPH+1, CDONE is cleared — \"TIMER RAN OUT, END CONWAY\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 103,
+   "verbatim": "\tSTA CDONE\t\t;TIMER RAN OUT, END CONWAY"
+  }
+ },
+ {
+  "id": "CW-26",
+  "claim": "STARTGR leaves rows $1E/$1F alone (top row and scores).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 167,
+   "verbatim": "\tCMP #20-2"
+  }
+ },
+ {
+  "id": "CW-27",
+  "claim": "STARTGR only proceeds for rows >= 2 (bottom row and message line left alone).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 169,
+   "verbatim": "\tCMP #2"
+  }
+ },
+ {
+  "id": "CW-28",
+  "claim": "COLMAX defaults to $A0 — the template spans 5 columns x $20.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 172,
+   "verbatim": "7$:\tLDA #0A0"
+  }
+ },
+ {
+  "id": "CW-29",
+  "claim": "Column 0: the template scan starts at index $0A (third template column) — two columns fall off the screen edge.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 184,
+   "verbatim": "\tLDX #0A"
+  }
+ },
+ {
+  "id": "CW-30",
+  "claim": "On the extreme edge columns MSHTTL is seeded with EDGE — mushrooms assumed off-screen.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 186,
+   "verbatim": "\tLDA #EDGE"
+  }
+ },
+ {
+  "id": "CW-31",
+  "claim": "Column 1: the template scan starts at index 5 (second template column).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 191,
+   "verbatim": "\tLDX #05"
+  }
+ },
+ {
+  "id": "CW-32",
+  "claim": "Column 29: COLMAX becomes $60 — only three template columns are scanned (plus the EDGE seed).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 204,
+   "verbatim": "\tLDA #60"
+  }
+ },
+ {
+  "id": "CW-33",
+  "claim": "Column 28: COLMAX becomes $80 — four template columns are scanned.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 209,
+   "verbatim": "\tLDA #80"
+  }
+ },
+ {
+  "id": "CW-34",
+  "claim": "GRCODE outer template row: corners are 2 (ignore), edge-adjacent cells are 1 (poison-forces-growth ring) — \"ANOTHER FAIRY RING\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 323,
+   "verbatim": "\t.BYTE 2,1,1,1,2\t\t;ANOTHER FAIRY RING"
+  }
+ },
+ {
+  "id": "CW-35",
+  "claim": "GRCODE middle row: the centre cell itself is 2 (ignored); the inner ring cells are 0 (straight Conway count).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 325,
+   "verbatim": "\t.BYTE 1,0,2,0,1"
+  }
+ },
+ {
+  "id": "CW-36",
+  "claim": "A DDT bomb stamp (DDT or DDT+1) in the inner ring sets MSHTTL bit 7.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 218,
+   "verbatim": "\tCMP #DDT"
+  }
+ },
+ {
+  "id": "CW-37",
+  "claim": "A poison mushroom in the inner ring ORs $20 into MSHTTL.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 230,
+   "verbatim": "\tLDA #20"
+  }
+ },
+ {
+  "id": "CW-38",
+  "claim": "A cell >= DEATHS counts as a neighbour UNLESS it is exactly GROWTH ($75) — a mushroom freshly birthed by this same in-place sweep must not count.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 237,
+   "verbatim": "\tBEQ 20$"
+  }
+ },
+ {
+  "id": "CW-39",
+  "claim": "A poison mushroom in a code-1 (outer ring) cell ORs $10 into MSHTTL — \"GO TO GROWTH SETUP\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 249,
+   "verbatim": "\tLDA #10"
+  }
+ },
+ {
+  "id": "CW-40",
+  "claim": "A blank never grows when the poison flag is set (MSHTTL & $7F >= $20).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 273,
+   "verbatim": "\tBCS 60$"
+  }
+ },
+ {
+  "id": "CW-41",
+  "claim": "A blank grows on a count of exactly 3, or on the forced-growth flag ($10) — \"GROW ON 3 OR 10\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 274,
+   "verbatim": "\tCMP #03\t\t\t;GROW ON 3 OR 10"
+  }
+ },
+ {
+  "id": "CW-42",
+  "claim": "A birth is planted through MUSHE1 with the GROWTH picture.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 280,
+   "verbatim": "\tJSR MUSHE1\t\t;CHANGE MUSHROOM COUNT"
+  }
+ },
+ {
+  "id": "CW-43",
+  "claim": "A non-blank below NORMAL is left alone (letters in attract, poison mushrooms, in-progress stages).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 285,
+   "verbatim": "\tBCC 60$\t\t\t;LEAVE IT ALONE (PROBABLY A LETTER IN ATTRACT)"
+  }
+ },
+ {
+  "id": "CW-44",
+  "claim": "A normal mushroom beside a DDT bomb becomes POISON+3.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 289,
+   "verbatim": "\tLDX #POISON+3"
+  }
+ },
+ {
+  "id": "CW-45",
+  "claim": "A normal mushroom with MSHTTL >= $20 (poison adjacency) dies.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 292,
+   "verbatim": "\tCMP #20"
+  }
+ },
+ {
+  "id": "CW-46",
+  "claim": "A normal mushroom with the forced-growth flag ($10..$1F) grows.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 294,
+   "verbatim": "\tCMP #10"
+  }
+ },
+ {
+  "id": "CW-47",
+  "claim": "A normal mushroom with zero neighbours dies.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 296,
+   "verbatim": "\tCMP #01"
+  }
+ },
+ {
+  "id": "CW-48",
+  "claim": "A normal mushroom with 4 or more neighbours dies — survival is 1..3, NOT the classic Conway 2..3.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 298,
+   "verbatim": "\tCMP #04"
+  }
+ },
+ {
+  "id": "CW-49",
+  "claim": "A fully-grown mushroom (NORMAL+3) that grows is left as-is.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 301,
+   "verbatim": "\tCMP #NORMAL+3\t\t;REPLACE IT WITH THE EQUIVALENT GROWTH"
+  }
+ },
+ {
+  "id": "CW-50",
+  "claim": "A damaged normal that grows maps via SEC SBC #NORMAL−1 (yields 1,2,3 with carry set)…",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 304,
+   "verbatim": "\tSBC #NORMAL-1\t\t;YIELDS 1, 2 OR 3, CARRY SET"
+  }
+ },
+ {
+  "id": "CW-51",
+  "claim": "…then LSR / ADC #GROWTH — $7C,$7D -> GROWTH+1 and $7E -> GROWTH+2.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 306,
+   "verbatim": "\tADC #GROWTH\t\t;YIELDS GROWTH+1 OR GROWTH+2"
+  }
+ },
+ {
+  "id": "CW-52",
+  "claim": "A dying normal maps to its equivalent death picture by subtracting NORMAL−DEATHS ($0B).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 311,
+   "verbatim": "\tSBC #NORMAL-DEATHS"
+  }
+ },
+ {
+  "id": "CW-53",
+  "claim": "A store of POISON+3+$80 is suppressed — \"NO POISON MUSHROOM IN PLAYER AREA\".",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 315,
+   "verbatim": "\tCMP #POISON+3+80"
+  }
+ },
+ {
+  "id": "CW-54",
+  "claim": "GROWDIE selects only growth and death stages (DEATHS <= v < POISON).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 134,
+   "verbatim": "\tCMP #DEATHS"
+  }
+ },
+ {
+  "id": "CW-55",
+  "claim": "A growth stage at POISON−1 completes to NORMAL+3 (fully grown) — without setting NGROWN.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 142,
+   "verbatim": "\tLDA #NORMAL+3\t\t;IF GROWN ALL THE WAY"
+  }
+ },
+ {
+  "id": "CW-56",
+  "claim": "A still-growing stage advances by 1 and stores the new value to NGROWN (activity marker).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 146,
+   "verbatim": "\tSTA NGROWN"
+  }
+ },
+ {
+  "id": "CW-57",
+  "claim": "A death stage at DEATHS calls MUSHDC (decrement mushroom count) and the cell dies totally to 0 — without setting NGROWN.",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 153,
+   "verbatim": "\tJSR MUSHDC\t\t;DECREMENT MUSHROOM COUNT"
+  }
+ },
+ {
+  "id": "CW-58",
+  "claim": "A still-dying stage decrements by 1 (and stores the new value to NGROWN).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 157,
+   "verbatim": "\tSBC #01\t\t\t;STILL DYING"
+  }
+ },
+ {
+  "id": "CW-59",
+  "claim": "CLEANUP runs when the player is prolonging the process (phase MAXPH).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 116,
+   "verbatim": "\t.SBTTL\tEND CONWAY IF PLAYER IS PROLONGING IT"
+  }
+ },
+ {
+  "id": "CW-60",
+  "claim": "CLEANUP replaces growth stages with the shot-away NORMAL stages by adding NORMAL−GROWTH (7).",
+  "source": {
+   "file": "CONWAY.MAC",
+   "line": 125,
+   "verbatim": "\tADC #NORMAL-GROWTH"
+  }
+ },
+ {
+  "id": "CW-61",
+  "claim": "MUSHE1 is the entry MUSHER falls into with a caller-chosen picture in Y — CONWAY passes GROWTH.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 742,
+   "verbatim": "MUSHE1\t=."
+  }
+ },
+ {
+  "id": "CW-62",
+  "claim": "MUSHE1 ORs the picture with the existing cell — \"LEAVE GREY BACKGROUND IF ANY\" (bit 7 preserved on a birth).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 770,
+   "verbatim": "\tORA NY,OBST\t\t;LEAVE GREY BACKGROUND IF ANY"
+  }
+ },
+ {
+  "id": "CW-63",
+  "claim": "MUSHDC decrements the mushroom count — the count seam GROWDIE calls at total death (deferred to the ml3-3 mushroom-field reducers).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 707,
+   "verbatim": "\t.SBTTL\tMUSHDC - DECREMENT COUNT OF MUSHROOMS"
+  }
+ }
+]
