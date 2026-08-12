@@ -37,7 +37,7 @@
   },
   {
     "id": "JT44-005",
-    "claim": "AC-3 the baiter tag: a sent-off baiter arms PCHASE = -1 — 'LDA #-1' / 'STA PCHASE,Y  BAITER TYPE PTERODACTYL'S' (JOUSTRV4.SRC:2112-2113), the PCHASE ne 0 tag the demo carries as DemoProcess.baiter and the DBAIT settle keys on.",
+    "claim": "AC-3 the baiter tag: a sent-off baiter arms PCHASE = -1 — 'LDA #-1' / 'STA PCHASE,Y  BAITER TYPE PTERODACTYL'S' (JOUSTRV4.SRC:2112-2113), the PCHASE ne 0 tag the demo carries as SimProcess.baiter and the DBAIT settle keys on.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 2113,

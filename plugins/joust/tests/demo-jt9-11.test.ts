@@ -45,7 +45,7 @@
 // read from `difficulty` (their ROW_DISPOSITION flips to `wired` — AC-5, pinned in
 // difficulty-wiring.test.ts).
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never
+// Node env on purpose (dynamic import of sim.js off disk). This header never
 // spells the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'

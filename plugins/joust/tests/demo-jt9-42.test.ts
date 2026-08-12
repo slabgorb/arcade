@@ -39,7 +39,7 @@
 // its velY; delete the skip and stepFrame integrates GRAV first, then stepGrip adds
 // the pull on top — a different velY. That divergence is what F1-D / F2 catch.
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never
+// Node env on purpose (dynamic import of sim.js off disk). This header never
 // spells the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'

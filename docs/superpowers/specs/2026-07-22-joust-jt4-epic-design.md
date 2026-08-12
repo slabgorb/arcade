@@ -35,25 +35,25 @@ jt1/jt2/jt3 shipped the entire deterministic **simulation**: the process list
 lifecycle, transporters, the **wave machine core** (90-row `WAVTBL` decode +
 the 6-entry `WJSRTB` dispatch skeleton), the difficulty ramp (`DYTBL`/`IWAVE`),
 and the full menagerie (pterodactyl, baiters, lava troll, bridge/cliff
-destruction, the ptero dissolve). `stepDemo` (`joust/src/core/demo.ts`) already
+destruction, the ptero dissolve). `stepSim` (`joust/src/core/sim.ts`) already
 runs the whole **wave-clear → advance → spawn** loop deterministically.
 
 What the sim has never had is a layer *above* the frame: nothing accumulates a
 score, tracks a life, ends a game, or pays a wave bounty. The score **values**
 are already emitted as events — `joust.killScore`, `egg.eggScoreEvents`,
-`ptero.pteroScoreEvent` — and then *thrown away* (`demo.ts` caps the log and
+`ptero.pteroScoreEvent` — and then *thrown away* (`sim.ts` caps the log and
 notes the drain is owed). jt4 is exactly that missing layer.
 
 **Seeds already planted for this epic** (grepped, all binding):
 
-- score **accumulation** is owed — `demo.ts` (the event log "would otherwise
+- score **accumulation** is owed — `sim.ts` (the event log "would otherwise
   grow unbounded; nothing drains it"), `egg.ts` ("BCD scoring is jt4"),
   `dissolve.ts` ("scoring accumulation is jt4"), and the joust/egg/collision
   test contracts (events only; "BCD accumulation is jt4");
 - **extra men** is owed — the joust-collision contract ("display + extra men
   are jt4");
 - the **50-for-dying** credit (`JOUSTRV4.SRC:4730-4732`) was deferred by jt2;
-- **DBAIT baiter removal** is owed — `demo.ts` ("nbait settles at
+- **DBAIT baiter removal** is owed — `sim.ts` ("nbait settles at
   MAX_BAITERS and the swarm holds"; the baiter dissolve tags itself so "the
   (jt4) baiter count can settle on entry");
 - the **egg + gladiator wave-type behaviours** were explicitly deferred here by
@@ -66,8 +66,8 @@ notes the drain is owed). jt4 is exactly that missing layer.
   Score, lives, and game-over are *per-session* state that outlives any frame;
   the sim is *per-frame*. jt4 introduces one module (`game.ts`) holding
   `GameState { players: [{ score, lives, out }], gover, wave, sim }` and a
-  `stepGame` that wraps the existing `stepDemo` and **drains its event stream**
-  into the registers. The pure sim (`frame.ts`/`demo.ts`) is not rewritten; the
+  `stepGame` that wraps the existing `stepSim` and **drains its event stream**
+  into the registers. The pure sim (`frame.ts`/`sim.ts`) is not rewritten; the
   session state is created in jt4-1 and matured across the epic (its wave-to-
   wave loop consolidated in jt4-4). No promotion-refactor debt is deferred to
   the end. The purity guard sweeps `game.ts` the moment it lands.
@@ -119,7 +119,7 @@ notes the drain is owed). jt4 is exactly that missing layer.
 - **jt4-1 BCD scoring core** (3): the `game.ts` session layer + per-player
   6-digit BCD score registers; the `SCRHUN`/`SCRTEN` (tens-backwards, caveat)
   accumulation; drain the existing kill/egg/ptero event stream into the
-  registers. Closes the accumulation seeds in `demo.ts`/`egg.ts`/`dissolve.ts`
+  registers. Closes the accumulation seeds in `sim.ts`/`egg.ts`/`dissolve.ts`
   and the "display jt4 → accumulation jt4 / display jt5" prose correction.
   Cite `JOUSTRV4.SRC:7340-7366`, `:5563-5577`.
 - **jt4-2 Extra men** (2): per-player lives (`NSHIP` default 5), the `REPLAY`
@@ -134,7 +134,7 @@ notes the drain is owed). jt4 is exactly that missing layer.
   `JOUSTRV4.SRC:2586-2591,2628-2631,2697-2700,2642-2728,4691-4698,2634-2635,2703-2705,6282-6284`.
 - **jt4-4 Game-over + the loop + DBAIT** (2): the `GOVER` tri-state; per-player
   death → out → game-over; the wave-to-wave loop reading score/lives;
-  consolidate `stepDemo`'s loop under `stepGame`; **DBAIT baiter removal** +
+  consolidate `stepSim`'s loop under `stepGame`; **DBAIT baiter removal** +
   the nbait settle-on-entry. Cite `JOUSTRV4.SRC:232-233,712,1015`, baiter
   `:2108-2113`.
 - **jt4-5 Demo — "two knights, full loop"** (2): the epic demo on 5279 — two

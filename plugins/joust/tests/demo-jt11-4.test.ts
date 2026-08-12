@@ -74,6 +74,10 @@ const WAVE_1_ENEMIES = 3
 const WAVE_2_ENEMIES = 4
 /** Long enough for any sane per-turn cadence to seat a 4-enemy complement. */
 const WINDOW = 400
+/** WCREATE's `PCNAP 61` between creating each of a wave's enemies (JOUSTRV4.SRC:2189)
+ *  — decimal frames, the stagger a player actually sees. Mirrored here rather than
+ *  imported so the suite pins the ROM figure, not whatever `sim.ts` happens to hold. */
+const ENEMY_STAGGER_FRAMES = 61
 
 const enemiesOf = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'enemy')
 const entityOps = (d: SimState): number => drawList(d).filter((op) => op.kind === 'entity').length
@@ -224,6 +228,31 @@ describe('jt11-4 — the wave advance queues its complement instead of splicing 
     )
   })
 
+  it('consecutive arrivals are a WCREATE nap apart — the stagger has magnitude, not just order', () => {
+    // "Different frames" and "strictly later" are both satisfied by a 1-frame
+    // stagger, which is the batch insert with a limp: four birds still appear
+    // inside a fifteenth of a second. That implementation shipped earlier in this
+    // story and was green against every other assertion here while still failing
+    // the reported defect. WCREATE parks `PCNAP 61` BEFORE creating each enemy
+    // (`10$ PCNAP 61 / SECCR CREEM,EMYID`, JOUSTRV4.SRC:2187-2192), so the gap
+    // between consecutive arrivals is a full 61 frames — the same lower-bound
+    // idiom demo-jt9-59 pins for PTERWV's `PCNAP 65` ptero cadence.
+    const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
+    const frames = t.arrivalOrder.map((id) => t.firstSeen.get(id) ?? -1)
+    expect(frames, 'the fixture must have observed every arrival').toHaveLength(WAVE_2_ENEMIES)
+    expect(
+      frames[0],
+      `the first bird owes WCREATE's nap before it is even created; arrived on frame ${frames[0]}`,
+    ).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)
+    for (let i = 1; i < frames.length; i++) {
+      expect(
+        frames[i] - frames[i - 1],
+        `enemy ${i} must arrive at least ${ENEMY_STAGGER_FRAMES} frames after enemy ${i - 1} ` +
+          `(WCREATE PCNAP 61, JOUSTRV4.SRC:2189); frames were ${frames.join(',')}`,
+      ).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)
+    }
+  })
+
   it('an unserved enemy is absent from the draw list too — it does not exist yet', () => {
     const t = walkArrivals(stepSim(onTheBrinkOfWave2(SEED), {}))
     // `drawList` iterates `sim.processes`, so absence from the process list is
@@ -278,6 +307,73 @@ describe('jt11-4 — only the insertion TIMING moves', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// The deferred troll rise — and the wave it must NOT wait on
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Clear the wave and step: `stepSim` advances, re-applies wave destruction to the
+ *  arena, and re-arms the troll. The demo-troll suite's `forceAdvance` idiom. */
+function advanceIntoWave(target: number, seed: number): SimState {
+  let d = createWaveSim(seed)
+  for (let i = 0; d.wave < target; i++) {
+    if (i > 4 * target) throw new Error(`could not reach wave ${target}; stuck on ${d.wave}`)
+    d = stepSim(strippedToPlayers(d), {})
+  }
+  return d
+}
+
+/** Frame (0 = the advance frame itself) on which a troll first stands in the arena,
+ *  or -1 if none rose inside the window. */
+function firstTrollFrame(start: SimState, frames = WINDOW): number {
+  let d = start
+  for (let f = 0; f < frames; f++) {
+    if (d.sim.processes.some((p) => p.kind === 'troll')) return f
+    d = stepSim(d, {})
+  }
+  return -1
+}
+
+describe('jt11-4 — deferring the troll must not suppress it', () => {
+  it('wave 4 (a normal wave): the troll waits for a bird to be SERVED, not for the advance', () => {
+    // The intent of the deferral: `pickTrollVictim` binds the nearest bird, so
+    // rising into an arena of knights alone would grab a player by default rather
+    // than by proximity (the jt9-42 defect). It therefore waits out WCREATE's nap.
+    const d = advanceIntoWave(4, SEED)
+    expect(d.wave, 'the fixture must be standing on the troll wave').toBe(4)
+    expect(
+      d.sim.processes.some((p) => p.kind === 'enemy'),
+      'wave 4 seeds a waiting room — nobody is served on the advance frame',
+    ).toBe(false)
+    const rose = firstTrollFrame(d)
+    expect(rose, 'the troll must still rise on a normal wave').toBeGreaterThanOrEqual(0)
+    expect(
+      rose,
+      `it must wait for the first arrival (WCREATE PCNAP 61, JOUSTRV4.SRC:2189); rose on frame ${rose}`,
+    ).toBeGreaterThanOrEqual(ENEMY_STAGGER_FRAMES)
+  })
+
+  it('wave 5 (an EGG wave): the troll rises anyway — no bird is ever coming', () => {
+    // The regression this test exists for. An egg wave's complement is laid where
+    // it sits (WAVEGG, JOUSTRV4.SRC:2737): eggs take no ticket, so the waiting room
+    // is empty and no `kind:'enemy'` will EVER appear. A gate that waits for one
+    // parks the troll for the whole wave — and waves 5/10/15/20 past TROLL_WAVE=4
+    // are all egg waves, so one wave in five silently loses the feature.
+    const d = advanceIntoWave(5, SEED)
+    expect(d.wave, 'the fixture must be standing on the egg wave').toBe(5)
+    expect(
+      d.sim.processes.some((p) => p.kind === 'enemy'),
+      'an egg wave fields eggs, never a ground enemy — that is the whole trap',
+    ).toBe(false)
+    expect(
+      d.sim.processes.some((p) => p.kind === 'egg'),
+      'the fixture must actually have laid the egg complement',
+    ).toBe(true)
+    const rose = firstTrollFrame(d)
+    expect(rose, `no troll rose in ${WINDOW} frames of the egg wave`).toBeGreaterThanOrEqual(0)
+    expect(rose, 'with an empty waiting room there is nothing to wait FOR').toBeLessThanOrEqual(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC-9 — the dead serving law gains a production caller
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -290,6 +386,16 @@ function demoSourceSansComments(): string {
     .replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
+/** sim.ts with comments AND every `import { … } from '…'` block stripped. A name that
+ *  appears only because it was IMPORTED must not satisfy a wiring guard — the whole
+ *  serving law is listed verbatim in the transporter import, so a `src.includes(fn)`
+ *  over the comment-stripped text alone stays green with every call site deleted
+ *  (the lang-review #25 failure mode). What is left here is call sites and nothing
+ *  else. */
+function demoSourceSansImports(): string {
+  return demoSourceSansComments().replace(/import\s*(?:type\s*)?\{[^}]*\}\s*from\s*'[^']*'/g, ' ')
+}
+
 describe('jt11-4 — the ServiceQueue stops being dead code', () => {
   const SERVING_LAW = ['newServiceQueue', 'takeEnemyNumber', 'enemyTurn', 'serveEnemy'] as const
 
@@ -297,8 +403,24 @@ describe('jt11-4 — the ServiceQueue stops being dead code', () => {
     // Today sim.ts imports only `enterViaPads`, `beginMaterialise`,
     // `stepMaterialise` and `PADS` — the whole take-a-number law has zero
     // production callers. Wiring it is the story.
-    const src = demoSourceSansComments()
-    expect(src.includes(fn), `${fn} must have a real caller in sim.ts, outside comments`).toBe(true)
+    const src = demoSourceSansImports()
+    expect(
+      new RegExp(`\\b${fn}\\s*\\(`).test(src),
+      `${fn} must be INVOKED in sim.ts — outside comments, and not merely imported`,
+    ).toBe(true)
+  })
+
+  it('the call-site guard above cannot be satisfied by the import block alone', () => {
+    // The guard's own non-vacuity check: the transporter import really does list
+    // all four names, so if `demoSourceSansImports` ever stopped stripping it the
+    // test above would go back to proving nothing.
+    const stripped = demoSourceSansImports()
+    const importBlock = /import\s*\{([^}]*)\}\s*from\s*'\.\/transporter\.js'/.exec(demoSourceSansComments())
+    expect(importBlock, 'sim.ts must import from ./transporter.js').not.toBeNull()
+    expect(
+      /import\s*\{[^}]*\}\s*from\s*'\.\/transporter\.js'/.test(stripped),
+      'the transporter import must be gone from the text the call-site guard scans',
+    ).toBe(false)
   })
 
   it('the serving law is imported from the transporter module, not re-implemented locally', () => {

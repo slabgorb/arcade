@@ -26,7 +26,7 @@
 // EGGI_ROW_BYTES` on col1/col2 reads a height (11) or a nap as a row index. col0 is
 // divided by 6; col1 and col2 are NOT.
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'

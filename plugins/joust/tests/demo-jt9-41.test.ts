@@ -35,7 +35,7 @@
 //     never nudge a digest toward the new output.
 //  3. Update the stale jt9-25 comment at the catch-loop guard when removing it.
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'

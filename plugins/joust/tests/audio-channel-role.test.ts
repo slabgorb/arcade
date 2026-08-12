@@ -650,11 +650,46 @@ function audioFiles(): string[] {
         /\.(ts|mjs|cjs|js)$/.test(f) &&
         (/[/\\]audio/.test(f) ||
           /sample-bake[/\\]/.test(f) ||
-          /core[/\\](events|demo)\.ts$/.test(f)),
+          // jt11-4 renamed `core/demo.ts` → `core/sim.ts`. The rename sweep could
+          // not see this alternation (it is not the string `'demo.ts'`), so for one
+          // commit the selector silently matched neither name and the game's
+          // LARGEST cue-emitting file dropped out of both guards below — while
+          // `SEVENTEEN_OK` kept an entry for cues nothing was checking any more.
+          // Green tests, less coverage. `AUDIO_SCAN_REQUIRED` now fails loudly on
+          // exactly that, because the non-vacuity counts cannot: other files supply
+          // enough claims and "seventeen"s to keep them satisfied.
+          /core[/\\](events|sim)\.ts$/.test(f)),
     )
 }
 
+/** The files the selector MUST reach, whatever else it sweeps up — the read-set
+ *  jt9-28's AC5/AC6 guards were specified over. Repo-relative, matched against
+ *  `label()`. */
+const AUDIO_SCAN_REQUIRED = ['src/core/events.ts', 'src/core/sim.ts', 'src/shell/audio.ts'] as const
+
 const label = (f: string): string => f.replace(`${root}/`, '')
+
+describe('jt9-28 AC5/AC6 — the read-set selector cannot be silently narrowed', () => {
+  it('audioFiles() reaches every file the cue-count guards are specified over', () => {
+    const scanned = audioFiles().map(label)
+    for (const required of AUDIO_SCAN_REQUIRED) {
+      expect(
+        scanned,
+        `${required} must be inside the audio read-set — a rename or a regex edit dropped it, ` +
+          `which weakens both guards below without reddening either`,
+      ).toContain(required)
+    }
+  })
+
+  it('every SEVENTEEN_OK allow-list entry names a file that is actually scanned', () => {
+    // An allow-list entry for an UNSCANNED file is the fingerprint of exactly this
+    // failure: permission granted for cues no guard is reading any more.
+    const bases = new Set(audioFiles().map((f) => f.split('/').pop()!))
+    for (const base of Object.keys(SEVENTEEN_OK)) {
+      expect(bases, `SEVENTEEN_OK allows "seventeen" in ${base}, but no scanned file is named that`).toContain(base)
+    }
+  })
+})
 
 // A totality determiner/possessive immediately governing "N cues" — the claim
 // is about the WHOLE manifest. Only STRONG totalizers qualify: "the"/"these"/

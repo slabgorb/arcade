@@ -10,7 +10,7 @@
 //
 // jt11-4 made arrival a QUEUE: each enemy takes a number (CREEM,
 // JOUSTRV4.SRC:5663-5666) and waits in CRELP (:5667-5676) until the transporter
-// serves it, so an unserved enemy is in `demo.pendingEnemies`, NOT in
+// serves it, so an unserved enemy is in `state.pendingEnemies`, NOT in
 // `sim.processes` — it has not materialised yet, and is therefore neither drawn nor
 // collidable.
 //
@@ -21,23 +21,26 @@
 
 // Typed STRUCTURALLY, against the least a caller must have, rather than by importing
 // `SimState`. tests/helpers/sim-contract.ts deliberately keeps its own independent
-// mirror of the demo types (the second-entry discipline pictures-gate.test.ts pins), so
+// mirror of the sim types (the second-entry discipline pictures-gate.test.ts pins), so
 // a helper nominally bound to `src/core/sim.ts` would be unusable from every suite that
 // goes through `loadSim()`. The generic parameter carries the caller's own state type
 // straight back out, so nothing widens.
 
-/** The least a demo state must expose for these helpers: an arena and a waiting room. */
+/** The least a sim state must expose for these helpers: the processes list and the
+ *  waiting room. Deliberately NOT called an arena — `SimState.arena` is a real and
+ *  differently-scoped field (cliff/bridge destruction, jt3-2), and this view has no
+ *  such member. */
 export interface WaveEntryView {
   sim: { processes: readonly { kind: string }[] }
   pendingEnemies?: readonly { arrival: unknown }[]
 }
 
 /** `stepSim`, however the suite got hold of it (static import or `loadSim()`). */
-export type StepDemo<T> = (demo: T, inputs?: Record<number, never>) => T
+export type StepSim<T> = (state: T, inputs?: Record<number, never>) => T
 
 /** How many enemies are still holding a number, unserved. */
-export function pendingEnemyCount(demo: WaveEntryView): number {
-  return demo.pendingEnemies?.length ?? 0
+export function pendingEnemyCount(state: WaveEntryView): number {
+  return state.pendingEnemies?.length ?? 0
 }
 
 /**
@@ -45,8 +48,8 @@ export function pendingEnemyCount(demo: WaveEntryView): number {
  * Use this where a test means "this wave fields N enemies" — a fact about the wave
  * row, independent of how far through the arrival cadence the sim happens to be.
  */
-export function waveComplement(demo: WaveEntryView): number {
-  return demo.sim.processes.filter((p) => p.kind === 'enemy').length + pendingEnemyCount(demo)
+export function waveComplement(state: WaveEntryView): number {
+  return state.sim.processes.filter((p) => p.kind === 'enemy').length + pendingEnemyCount(state)
 }
 
 /**
@@ -62,12 +65,12 @@ export function waveComplement(demo: WaveEntryView): number {
  * Do NOT use it to assert anything about arrival cadence; it defeats the very
  * behaviour jt11-4 introduced. Use `seatWaveByStepping` if the frames matter.
  */
-export function seatWaveInstantly<T extends WaveEntryView>(demo: T): T {
-  const pending = demo.pendingEnemies ?? []
-  if (pending.length === 0) return demo
+export function seatWaveInstantly<T extends WaveEntryView>(state: T): T {
+  const pending = state.pendingEnemies ?? []
+  if (pending.length === 0) return state
   return {
-    ...demo,
-    sim: { ...demo.sim, processes: [...demo.sim.processes, ...pending.map((p) => p.arrival)] },
+    ...state,
+    sim: { ...state.sim, processes: [...state.sim.processes, ...pending.map((p) => p.arrival)] },
     pendingEnemies: [],
   } as T
 }
@@ -77,8 +80,8 @@ export function seatWaveInstantly<T extends WaveEntryView>(demo: T): T {
  * transporter has served everyone. Costs real frames — the arena moves — so prefer
  * `seatWaveInstantly` unless the test wants the enemies to have actually flown.
  */
-export function seatWaveByStepping<T extends WaveEntryView>(demo: T, step: StepDemo<T>, limit = 240): T {
-  let d = demo
+export function seatWaveByStepping<T extends WaveEntryView>(state: T, step: StepSim<T>, limit = 240): T {
+  let d = state
   for (let i = 0; i < limit && pendingEnemyCount(d) > 0; i++) d = step(d, {})
   if (pendingEnemyCount(d) > 0) {
     throw new Error(`the transporter still had ${pendingEnemyCount(d)} enemy(s) queued after ${limit} frames`)
@@ -94,14 +97,14 @@ export function seatWaveByStepping<T extends WaveEntryView>(demo: T, step: StepD
  * alive (it does in the ROM too: its process is running CRELP), so that strip alone
  * no longer clears the wave. Pair it with this.
  */
-export function withNoPendingEnemies<T extends WaveEntryView>(demo: T): T {
-  return { ...demo, pendingEnemies: [] }
+export function withNoPendingEnemies<T extends WaveEntryView>(state: T): T {
+  return { ...state, pendingEnemies: [] }
 }
 
 /** Strip to the live players AND empty the waiting room: the whole "force a clear" idiom. */
-export function strippedToPlayers<T extends WaveEntryView>(demo: T): T {
+export function strippedToPlayers<T extends WaveEntryView>(state: T): T {
   return {
-    ...withNoPendingEnemies(demo),
-    sim: { ...demo.sim, processes: demo.sim.processes.filter((p) => p.kind === 'player') },
+    ...withNoPendingEnemies(state),
+    sim: { ...state.sim, processes: state.sim.processes.filter((p) => p.kind === 'player') },
   } as T
 }

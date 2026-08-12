@@ -731,10 +731,6 @@ export interface PendingEnemy {
   nap: number
 }
 
-/** The `PCNAP 1` an enemy yields before each attempt on the transporter service
- *  (`CRELP PCNAP 1`, JOUSTRV4.SRC:5667) — so a failed attempt costs a frame. */
-const ENEMY_SERVE_NAP = 1
-
 /**
  * `61` — the `PCNAP 61` WCREATE parks between creating each of a wave's enemies:
  *
@@ -1377,8 +1373,10 @@ function serveEnemies(
       q = serveEnemy(q)
     } else {
       // Attempted and failed (not its turn, or the operator is busy this frame):
-      // back to CRELP for another `PCNAP 1`, eligible again next frame.
-      stillPending.push({ ...pe, nap: ENEMY_SERVE_NAP - 1 })
+      // back to CRELP, eligible again NEXT frame. Zero, not one, because the frame
+      // just spent IS the `PCNAP 1`: `BNE CRELP` lands on the nap and the failed
+      // attempt has already paid it (JOUSTRV4.SRC:5667-5676).
+      stillPending.push({ ...pe, nap: 0 })
     }
   }
   return { served, pending: stillPending, queue: q }
@@ -2540,7 +2538,22 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   // enemy), so rising into an empty arena would hand it a knight by default rather
   // than by proximity. One buzzard on the pads is enough to make the choice real —
   // waiting for the whole complement would park the troll for `61 * count` frames.
-  if (trollArmed && processes.some((p) => p.kind === 'enemy') && !processes.some((p) => p.kind === 'troll')) {
+  //
+  // …but it waits only while a bird is actually COMING. An EGG wave fields no
+  // transporter customers at all: WAVEGG lays its complement where it sits
+  // (JOUSTRV4.SRC:2737), so `pendingEnemies` is empty and no `kind:'enemy'` will ever
+  // appear — a baiter is `kind:'ptero'` and does not satisfy it either. Waiting for
+  // one there suppressed the troll for the WHOLE wave, and `dispatchWaveType` makes
+  // every fifth wave an egg wave (measured: 5, 10, 15, 20, 25, … all `status $08`),
+  // so one wave in five past TROLL_WAVE silently lost the feature. An empty waiting
+  // room therefore satisfies the gate outright — which is also what this port did
+  // before jt11-4: rise on the advance.
+  const arrivalsStillComing = pendingEnemies.length > 0
+  if (
+    trollArmed &&
+    (processes.some((p) => p.kind === 'enemy') || !arrivalsStillComing) &&
+    !processes.some((p) => p.kind === 'troll')
+  ) {
     const victim = pickTrollVictim(processes)
     if (victim) {
       processes = insertTroll(processes, trollProcess(wave, victim))

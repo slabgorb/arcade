@@ -28,7 +28,7 @@
 // bug and pass). Keep the raw 16-bit word in the record; the sign belongs in the
 // decoder, not the data (jt8-7's reviewed decision).
 //
-// Node env on purpose (dynamic import of demo.js off disk). This header never spells
+// Node env on purpose (dynamic import of sim.js off disk). This header never spells
 // the vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'

@@ -86,7 +86,7 @@ File: `joust/src/core/sim.ts`
 
 - **`collisionPass(processes)` signature** (lines 757-852):
   - Input: `processes: readonly SimProcess[]` (all entities: players, enemies, eggs, pteros, etc.)
-  - Output: `{ processes: SimProcess[], events: DemoEvent[] }`
+  - Output: `{ processes: SimProcess[], events: SimEvent[] }`
   - Current passes: player-vs-enemy (kills, egg spawns), player-vs-ptero (lance-height)
   - **Missing:** player-vs-egg catch pass
 

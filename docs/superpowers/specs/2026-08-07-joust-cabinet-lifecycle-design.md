@@ -26,12 +26,12 @@ loop back to attract are missing.
 |---|---|---|
 | `GOVER` tri-state (over / running / attract) + `settleGameOver` | **Shipped** (jt4-4) | `src/core/game.ts` |
 | Per-player `out` / `lives` co-op ledger | **Shipped** (jt4-2/jt4-4) | `src/core/game.ts` |
-| Self-play sim (the substrate for attract) | **Shipped** | `src/core/demo.ts` |
+| Self-play sim (the substrate for attract) | **Shipped** | `src/core/sim.ts` |
 | Fixed-timestep shell clock | **Shipped** | `src/shell/timebase.ts` (`pumpFrames`) |
 | Raster atlas/blit pipeline | **Shipped** | `src/shell/render.ts`, `main.ts` `blit`/`blitOp` |
 | Shared high-score storage + qualifies + initials buffer | **Shipped** | `@shared/highscore`, `@shared/name-entry` |
 
-**Reused, not rebuilt:** `GOVER`/`out`/`lives`/`settleGameOver`, `demo.ts`,
+**Reused, not rebuilt:** `GOVER`/`out`/`lives`/`settleGameOver`, `sim.ts`,
 `@shared/highscore`, the atlas/blit path, `pumpFrames`.
 
 ## Scope
@@ -123,7 +123,7 @@ font glyph — see Open Questions.
 | Screen | Reuses | New | ROM citation targets |
 |---|---|---|---|
 | Title | — | logo blit + `FONT57` text | JOUST logo pic, `MS17 'EXTRA MOUNT EVERY '`, `MS18 ',000 POINTS'`, `COPYRGT '(C) 1982…'` |
-| Attract self-play | `demo.ts`, `pumpFrames` | banner overlays + attract-page scheduler | `ATT.SRC` page sequence + colour cycle (`ATT.SRC:173`) |
+| Attract self-play | `sim.ts`, `pumpFrames` | banner overlays + attract-page scheduler | `ATT.SRC` page sequence + colour cycle (`ATT.SRC:173`) |
 | 1P/2P select | — | select overlay + credits row | `PLY1 $1D 'ONE PLAYER START'`, `PLY2 $1E 'TWO PLAYER START'`, `MSCRD $50 'CREDITS '` |
 | Game over | `GOVER` / `settleGameOver` | `GAME OVER` overlay + transition | `GAMEND` (`EQU.SRC:237`) |
 | High-score entry + table | `@shared/highscore`, `@shared/name-entry` | initials entry in joust font + `JOUST CHAMPIONS` table | `GODM $67 'ENTER THY NAME MY LORD!'`, `PEONM $68 'ENTER YOUR INITIALS'`, `JCH $4F 'JOUST CHAMPIONS'` |
@@ -141,7 +141,7 @@ Proposed epic **jt10** (jt1–jt9 taken). ~7 stories:
    the session; wire `GOVER`. No screens yet — pins the machine.
 3. **jt10-3 — Title screen.** JOUST logo transcription + title lines + colour
    cycle.
-4. **jt10-4 — Attract cycle.** Self-play (`demo.ts`) + banners + attract-page
+4. **jt10-4 — Attract cycle.** Self-play (`sim.ts`) + banners + attract-page
    scheduler. **Folds in / supersedes `ad1-4`** ("joust attract simulation — wire
    GOVER"), which is retired from epic `ad1` into this epic.
 5. **jt10-5 — 1P/2P select + credits + START.**

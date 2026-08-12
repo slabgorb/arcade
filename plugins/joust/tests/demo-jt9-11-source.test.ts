@@ -18,7 +18,7 @@
 // (describe.skipIf(!vendoredAvailable)). Every vendored read lives INSIDE an it()
 // body (the tp1-8 collection trap).
 //
-// Node env on purpose (dynamic import of demo.js). This header never spells the
+// Node env on purpose (dynamic import of sim.js). This header never spells the
 // vitest env directive as a token.
 
 import { describe, it, expect } from 'vitest'
