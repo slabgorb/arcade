@@ -1220,20 +1220,25 @@ function spawnWaveEnemies(waveNumber: number, seed: number): DemoProcess[] {
 }
 
 /**
- * Assemble wave 1 deterministically under the SHELL's seed: P1/P2 from the spawn
- * constants, the wave-1 enemy complement (three bounders) entered via pads, each
- * with `period = emytimForWave(1) = 2` and collisions disabled while materialising,
- * the budget seeded from the pursuit nibble, and the intro message beats surfaced
- * as `beat` events. Pure — same seed, same DemoState.
+ * Assemble wave 1 deterministically under the SHELL's seed: the first
+ * `playerCount` mounts from the spawn constants (default 2 — P1 and P2; a 1P
+ * game gets P1 alone, jt11-1), the wave-1 enemy complement (three bounders)
+ * entered via pads, each with `period = emytimForWave(1) = 2` and collisions
+ * disabled while materialising, the budget seeded from the pursuit nibble, and
+ * the intro message beats surfaced as `beat` events. Pure — same seed and
+ * count, same DemoState.
  */
-export function createWaveDemo(seed: number): DemoState {
+export function createWaveDemo(seed: number, playerCount: number = 2): DemoState {
   const row = waveRowAt(1)
   const base = createState(seed)
 
+  // jt11-1 — only the coin-up's chosen mounts enter the sim. A 1P game gets P1
+  // alone; the pre-fix orphan P2 mount had no ledger behind it, so it died once
+  // and could never respawn ("the second player has one life").
   const players: DemoProcess[] = [
     playerProcess(PLAYER1_ID, PLAYER1_SPAWN.x, PLAYER1_SPAWN.facing, PLAYER1_SPAWN.mount),
     playerProcess(PLAYER2_ID, PLAYER2_SPAWN.x, PLAYER2_SPAWN.facing, PLAYER2_SPAWN.mount),
-  ]
+  ].slice(0, playerCount)
 
   const enemies: DemoProcess[] = spawnWaveEnemies(1, seed)
 

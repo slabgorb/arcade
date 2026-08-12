@@ -311,11 +311,13 @@ export function bookDeath(players: readonly PlayerLedger[], player: number): Pla
 // ─── The session layer ──────────────────────────────────────────────────────
 
 /**
- * A fresh game: the sim is a real `createWaveDemo(seed)`, `playerCount` ledgers
- * (default 2) at score 0. Deterministic — same seed, same GameState. Pure.
+ * A fresh game: the sim is a real `createWaveDemo(seed, playerCount)` — the
+ * count reaches the sim, so ledgers and mounts cannot diverge (jt11-1) —
+ * with `playerCount` ledgers (default 2) at score 0. Deterministic — same
+ * seed and count, same GameState. Pure.
  */
 export function createGame(seed: number, playerCount: number = DEFAULT_PLAYER_COUNT): GameState {
-  const sim = createWaveDemo(seed)
+  const sim = createWaveDemo(seed, playerCount)
   const players: PlayerLedger[] = Array.from({ length: playerCount }, () => ({
     score: 0,
     scoreBcd: scoreToBcd(0),

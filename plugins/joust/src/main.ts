@@ -43,7 +43,7 @@ import { mountCanvas } from '@shared/host-helpers'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
 import { layoutGameOverScreen } from './shell/gameOverScreen.js'
-import { layoutAttractBanner } from './shell/attractScreen.js'
+import { layoutAttractBanner, layoutStartPrompt } from './shell/attractScreen.js'
 import { layoutTitleScreen, type TitleScreenLayout } from './shell/titleScreen.js'
 import { titleColorRow } from './core/title.js'
 import type { LaidOutText } from './shell/fontRender.js'
@@ -320,15 +320,25 @@ function paintSim(game: GameState): void {
 // banner (FONT57) centred on a STATIC background (the fixed colours[0] fill each frame).
 // The banner's TEXT colour steps with the scheduler's `colourPhase` (ATT.SRC:173, every 2.5 s).
 const ATTRACT_BANNER_Y = 108
+// jt11-1 — the start prompt paints LAST on every attract page (the demo page
+// included: that is where a new player is stuck without it). At y 228 it sits
+// INSIDE the island's painted rows — the decoded COMCL5 island spans y 211-243
+// (33 rows, measured in review) — and is legible only because it is painted
+// AFTER paintSim/drawIsland, over the bricks. Do not move this paint above the
+// sim paint, and do not trust an "island ends at 223" claim: that figure is a
+// CLIF5 sub-record, not the island.
+const ATTRACT_PROMPT_Y = 228
 function renderAttract(): void {
   const page = attract.page
+  const colour = colours[1 + (attract.colourPhase % (colours.length - 1))]
   if (page === 'demo') {
     paintSim(cabinet.game)
-    return
+  } else {
+    const { banner } = layoutAttractBanner(page, colour)
+    paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), ATTRACT_BANNER_Y)
   }
-  const colour = colours[1 + (attract.colourPhase % (colours.length - 1))]
-  const { banner } = layoutAttractBanner(page, colour)
-  paintText(banner, Math.round((LOGICAL_WIDTH - banner.width) / 2), ATTRACT_BANNER_Y)
+  const prompt = layoutStartPrompt(colour)
+  paintText(prompt, Math.round((LOGICAL_WIDTH - prompt.width) / 2), ATTRACT_PROMPT_Y)
 }
 
 // ─── The cabinet: booted to 'attract', stepping the SESSION layer once playing ──
