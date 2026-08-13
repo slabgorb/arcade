@@ -378,6 +378,10 @@ describe('spider — first-wave extra spiders (ml4-5)', () => {
     const m = await loadSpider()
     // allowance 8 → NCENT+1-8 = 5; BCS keeps 5 itself reserved for the train.
     expect(m.extraSpiderOpen(5, wave1(0x99))).toBe(false)
+    // SCORE2=20 is the clamp's own trigger (LSR lands on 8 EXACTLY, SD-58):
+    // without the >= clamp the allowance would be 11 and slot 5 would open —
+    // this is the one input that separates CMP I,08/BCC from a > misread.
+    expect(m.extraSpiderOpen(5, wave1(0x20)), 'the clamp bites at exactly 8').toBe(false)
   })
 
   it('an OPEN slot runs the normal countdown and spawn: slot 11 starts a spider at 100,000 (SD-11, SD-14/15)', async () => {
