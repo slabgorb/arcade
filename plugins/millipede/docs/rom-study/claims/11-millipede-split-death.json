@@ -1,0 +1,209 @@
+[
+  {
+    "id": "MS-1",
+    "claim": "OVRLAP walks the NCENT segment slots looking for a segment this head overlaps. ENTRY (X)=index of head; EXIT carry SET if an overlap occurs.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 897,
+      "verbatim": "\tLDY I,NCENT"
+    }
+  },
+  {
+    "id": "MS-2",
+    "claim": "OVRLAP only counts a candidate on the SAME scan line: it compares MOBJV[Y] against MOBJV[X] and skips (30$) when they differ.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 899,
+      "verbatim": "\tCMP X,MOBJV"
+    }
+  },
+  {
+    "id": "MS-3",
+    "claim": "OVRLAP skips a DEAD segment or a floating SCORE: a candidate whose colour MOBJC >= 0xC0 is ignored (this is why EXPLOD parks a finished score at colour 0xFF, MS-13).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 903,
+      "verbatim": "\tCMP I,0C0"
+    }
+  },
+  {
+    "id": "MS-4",
+    "claim": "OVRLAP never counts the head against itself: the candidate index Y is compared to the entry index (TEMP1=X) and skipped when equal (DO NOT COUNT US).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 906,
+      "verbatim": "\tBEQ 30$\t\t\t;DO NOT COUNT US"
+    }
+  },
+  {
+    "id": "MS-5",
+    "claim": "OVRLAP looks only AHEAD: it EORs the H-difference with the head's own MOBJDH so the in-front direction is normalised regardless of which way the head marches (LOOK ONLY IN FRONT OF US).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 910,
+      "verbatim": "\tEOR X,MOBJDH\t\t;LOOK ONLY IN FRONT OF US"
+    }
+  },
+  {
+    "id": "MS-6",
+    "claim": "OVRLAP declares an overlap when the direction-normalised H-difference is within the 0xF4 wrap window (BCS 40$ sets carry): a segment close ahead on the same line overlaps.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 911,
+      "verbatim": "\tCMP I,0F4"
+    }
+  },
+  {
+    "id": "MS-7",
+    "claim": "The split: a millipede reaching the bottom row (V < 9) triggers the promotion of its body tail to a fresh head (16$ '.. IF NOT AT BOTTOM').",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1561,
+      "verbatim": "16$:\tCMP I,9"
+    }
+  },
+  {
+    "id": "MS-8",
+    "claim": "The split promotes the tail of the body run (colour 0x3D bodies) to a new HEAD: MOBJC of the tail slot is set to 0x39 ('TURN ON COLOR FOR EYES') — a body becomes a head, so the train splits in two.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1590,
+      "verbatim": "\tSTA Y,MOBJC\t\t;TURN ON COLOR FOR EYES"
+    }
+  },
+  {
+    "id": "MS-9",
+    "claim": "The newly-promoted head REVERSES its horizontal direction: the tail's MOBJDH is complemented (JSR COMP) before it is stored (REVERSE HDIR).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1588,
+      "verbatim": "\tSTA Y,MOBJDH\t\t;REVERSE HDIR"
+    }
+  },
+  {
+    "id": "MS-10",
+    "claim": "The newly-promoted head does NOT descend for one line: its MOBJDV is set to 0 ('DV=0 FOR ONE LINE'); a tail which just split should not immediately turn.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1591,
+      "verbatim": "\tLDA I,0\t\t\t;DV=0 FOR ONE LINE"
+    }
+  },
+  {
+    "id": "MS-11",
+    "claim": "The promoted head's V is snapped onto a clean cell line before it becomes a head (ADC I,04 / AND I,0F8 — 'BE SURE TAIL STARTS ON THE RIGHT LINE').",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1585,
+      "verbatim": "\tSTA Y,MOBJV\t\t;BE SURE TAIL STARTS ON THE RIGHT LINE"
+    }
+  },
+  {
+    "id": "MS-12",
+    "claim": "EXPLOD sweeps all 16 motion-object slots (LDX I,15. — indices 0..15); the exploding player uses the last slot (15).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 765,
+      "verbatim": "EXPLOD:\tLDX I,15.\t\t;EXPLODING MUSHROOMS USES PLAYER'S SLOT"
+    }
+  },
+  {
+    "id": "MS-13",
+    "claim": "A finished explosion that displays a score parks the slot at colour 0xFF so OVRLAP will not treat it as a collidable segment (SET COLOR SO 'OVRLAP' DOES NOT DETECT COLLISION).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 793,
+      "verbatim": "\tSTA X,MOBJC\t\t;SET COLOR SO \"OVRLAP\" DOES NOT DETECT COLLISION"
+    }
+  },
+  {
+    "id": "MS-14",
+    "claim": "A displayed score is held on screen for a delay of 0xA0 (LEAVE SCORE OUT FOR AWHILE) before the slot is cleared.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 794,
+      "verbatim": "\tLDA I,0A0\t\t;LEAVE SCORE OUT FOR AWHILE"
+    }
+  },
+  {
+    "id": "MS-15",
+    "claim": "The player explosion runs off the PEXPLD countdown: EXPLOD decrements PEXPLD every frame it is called, and ends the explosion when it reaches 0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 805,
+      "verbatim": "\tDEC PEXPLD"
+    }
+  },
+  {
+    "id": "MS-16",
+    "claim": "Player-explosion phase 1 (PEXPLD in 0x50..0x60) is the FLASHING-COLORS phase: the ROM writes BKGND (full-screen background colour) each frame. This is the photosensitive-strobe hazard the freeze-friendly redesign (AC-4) must neutralise — the clone must NOT cycle a full-screen background here.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 809,
+      "verbatim": "\tCPX I,60-10"
+    }
+  },
+  {
+    "id": "MS-17",
+    "claim": "Player-explosion phase 2 (PEXPLD in 0x20..0x50) is the SPARKLE phase: the ROM writes PLAYC (the player's own colour), a localised effect, not a full-screen flash.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 819,
+      "verbatim": "\tCPX I,60-40"
+    }
+  },
+  {
+    "id": "MS-18",
+    "claim": "Player-explosion phase 3 (PEXPLD below 0x20) is the DYING sequence: the ROM writes PLAYP (the player picture) to collapse the player.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 832,
+      "verbatim": "\tSTA PLAYP\t\t;PLAYER DYING SEQUENCE"
+    }
+  },
+  {
+    "id": "MS-20",
+    "claim": "PLAY classifies the object as a SPIDER when SPDP is in the range 0x14..0x1C (a spider gets a wider, V-weighted hit box). Millipede segments are non-spiders and use the tight box.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1752,
+      "verbatim": "\tCMP I,14"
+    }
+  },
+  {
+    "id": "MS-21",
+    "claim": "PLAY (non-spider): a collision is impossible once the horizontal distance |objH - playerH| reaches 6 (CMP I,06 / BCS 25$ returns no-collision).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1769,
+      "verbatim": "10$:\tCMP I,06"
+    }
+  },
+  {
+    "id": "MS-22",
+    "claim": "PLAY: a collision is impossible once the vertical distance |objV - playerV| reaches 6 (CMP I,6 / BCS 25$).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1778,
+      "verbatim": "20$:\tCMP I,6"
+    }
+  },
+  {
+    "id": "MS-23",
+    "claim": "PLAY: the final hit test sums the axis distances (H + V, or H + 2*V for a spider) and requires the sum below 0x0A to register a hit (CMP I,0A / BCS 25$ is a miss).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1785,
+      "verbatim": "\tCMP I,0A"
+    }
+  },
+  {
+    "id": "MS-24",
+    "claim": "On a player hit PLAY arms the player explosion by storing 0x60 into PEXPLD (EXPLOSION SOUND FOR PLAYER) — the countdown MS-15/16/17/18 then plays out, and PLAY returns carry-clear (collision).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1802,
+      "verbatim": "\tSTA PEXPLD\t\t;EXPLOSION SOUND FOR PLAYER"
+    }
+  }
+]
