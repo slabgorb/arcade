@@ -20,6 +20,7 @@
 // can be indexed as one — otherwise every row after the first shears left.
 
 import { PALETTES, PIXEL_BLOCKS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
+import { CRUMBLE_FLAVOR, CRUMBLE_DEBRIS_FRAME_COUNT } from '../core/crumble.js'
 import { fitIntegerScale } from '@shared/view'
 
 /** The visible raster: 292x240 (MAME williams driver, schema-only claim). */
@@ -222,4 +223,47 @@ export function paintDissolve(
       context.fillRect(op.x + column, op.y + row, 1, 1)
     }
   }
+}
+
+/**
+ * Paint one CLFDES cliff-crumble frame (jt11-7 — the shell mile of the crumble).
+ *
+ * A `kind:'crumble'` op has no atlas block (its cliff's records were cleared at
+ * destruction — jt11-5's `destroyedCliffs` filter), so like the dissolve it takes
+ * a dedicated `fillRect` path over the vacated footprint the op carries
+ * (`x,y,width,height` from the cliff's BACKGROUND_RECORD). The tint is the `$2A`
+ * DMA flavor CLFDES writes while shaking (`LDA #$2A / STA WCDMA,X`,
+ * JOUSTRV4.SRC:4570-4571), taken as a palette index (its low nibble) — a
+ * transcribed value, never an invented hex.
+ *
+ * PROCEDURAL, not pixel-accurate: the ROM's five FIRSTI debris images are not yet
+ * transcribed (deferred, TEA finding), so the shape is a placeholder that reads
+ * the op's `phase`/`frame` so the transition is genuinely VISIBLE and animated —
+ *   • shake  — the footprint wobbles up on alternate frames (the BCKYUP jerk);
+ *   • debris — the footprint breaks into thinning, falling slices (five→one).
+ */
+export function paintCrumble(
+  context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>,
+  op: { x: number; y: number; width?: number; height?: number; phase?: string; frame?: number },
+  colours: readonly Rgba[],
+): void {
+  const w = op.width ?? 0
+  const h = op.height ?? 0
+  if (w <= 0 || h <= 0) return
+  const colour = colours[CRUMBLE_FLAVOR & 0x0f]
+  context.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  const frame = op.frame ?? 0
+  if (op.phase === 'debris') {
+    // Thinning, falling slices — five at frame 0 down to one at frame 4.
+    const remaining = CRUMBLE_DEBRIS_FRAME_COUNT - frame
+    const sliceH = Math.max(1, Math.floor(h / CRUMBLE_DEBRIS_FRAME_COUNT))
+    const drop = frame * 2
+    for (let i = 0; i < remaining; i++) {
+      context.fillRect(op.x, op.y + i * sliceH + drop, w, sliceH)
+    }
+    return
+  }
+  // shake — the whole cliff footprint, jittered up on alternate frames.
+  const jitter = (frame % 2) * 2
+  context.fillRect(op.x, op.y - jitter, w, h)
 }
