@@ -122,3 +122,8 @@ completed_stories:
     title: 'Dragonfly + mosquito reducers (cited): FLYMV enter/move dragonfly (MILLI.MAC:1004), MOSQT enter/move mosquito (MILLI.MAC:1324). PTS scoring.'
     points: 5
     completed: '2026-08-13'
+  - id: ml3-1
+    epic: ml3
+    title: 'Millipede head/body init + motion + turn as a pure reducer: CENTPC initialize picture/hpos/vpos/direction (MILLI.MAC:498), NEWHD new head (MLSUB.MAC:775), MOTION update (MILLI.MAC:1444). Cited against ROM values.'
+    points: 5
+    completed: '2026-08-13'

@@ -10,9 +10,11 @@ stories:
     title: 'Millipede head/body init + motion + turn as a pure reducer: CENTPC initialize picture/hpos/vpos/direction (MILLI.MAC:498), NEWHD new head (MLSUB.MAC:775), MOTION update (MILLI.MAC:1444). Cited against ROM values.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
   - id: ml3-2
     title: 'Millipede split-on-mushroom + EXPLOD segment/player explosion (MILLI.MAC:763) + player death/collision (PLAY MILLI.MAC:1744). Death effects designed freeze-friendly (no strobe) ahead of ml7 accessibility gate.'
     points: 5
