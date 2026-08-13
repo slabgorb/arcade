@@ -10,10 +10,11 @@ stories:
     title: 'Pure attract/play/death/game-over phase machine (unwired) from MLATR MODE FE/FF (MLATR.MAC:126/313) + attract action (MLATR.MAC:21). Route a qualifying game-over to the ml5 name-entry phase. Phase transitions via a forcePhase helper (bare phase-literal assignment reds tsc TS2367).'
     points: 5
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: ml7-2
     title: 'Wire runtime core->shell: frame loop drives stepGame; core events (render/audio/score) reach the shell render + the ml6 sound driver; input (trackball TBLMT MLSUB.MAC:1797; resolve trackball-vs-joystick ml1 OQ-4) feeds core. Small diffs, incremental.'
     points: 5
