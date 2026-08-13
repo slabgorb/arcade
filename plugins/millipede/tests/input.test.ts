@@ -13,7 +13,6 @@ import {
   createPlayer,
   PLAYER_H_MIN,
   PLAYER_H_MAX,
-  PLAYER_V_MIN,
   PLAYER_V_MAX,
   type PlayerState,
 } from '../src/core/input'
