@@ -122,6 +122,11 @@ completed_stories:
     title: 'Dragonfly + mosquito reducers (cited): FLYMV enter/move dragonfly (MILLI.MAC:1004), MOSQT enter/move mosquito (MILLI.MAC:1324). PTS scoring.'
     points: 5
     completed: '2026-08-13'
+  - id: ml3-1
+    epic: ml3
+    title: 'Millipede head/body init + motion + turn as a pure reducer: CENTPC initialize picture/hpos/vpos/direction (MILLI.MAC:498), NEWHD new head (MLSUB.MAC:775), MOTION update (MILLI.MAC:1444). Cited against ROM values.'
+    points: 5
+    completed: '2026-08-13'
   - id: jt11-7
     epic: jt11
     title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
