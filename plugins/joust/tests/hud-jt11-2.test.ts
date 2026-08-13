@@ -55,6 +55,7 @@ import { FONT35 } from '../src/core/font35.js'
 import { createGame, overlayReadout, type GameState } from '../src/core/game.js'
 import { buildGameAtlas } from '../src/shell/render.js'
 import type { LaidOutText } from '../src/shell/fontRender.js'
+import { frameLoopBody } from './helpers/frame-loop.js'
 
 const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src')
 const mainPath = join(srcDir, 'main.ts')
@@ -378,10 +379,10 @@ describe('AC-5 main.ts — the dev bar is replaced by the authentic HUD', () => 
     // real per-frame call satisfies this. The overlayReadout-per-frame pin lives
     // in render-jt4-5 and stays in force: keep an overlayReadout( call inside the
     // frame fn (e.g. drawHud(overlayReadout(...))) or that suite reddens.
-    const stripped = stripComments(readMain())
-    const loopStart = stripped.search(/\b(?:const|function|let)\s+frame\s*[=(]/)
-    expect(loopStart, 'main.ts declares the animation-frame loop fn (`frame`)').toBeGreaterThan(-1)
-    const loopBody = stripped.slice(loopStart)
+    // jt11-10 (b): bound to the frame fn's closing brace via the AST (helpers/frame-loop),
+    // then strip comments from THAT body — not a slice to EOF. A paint call outside the
+    // loop can no longer satisfy this even if a decl is added after `frame` in main.ts.
+    const loopBody = stripComments(frameLoopBody(readMain()))
     const hudCall = loopBody.search(/\b(?:drawHud|layoutHud)\s*\(/)
     expect(hudCall, 'the loop reaches the HUD painter (drawHud(...) or layoutHud(...)) per frame').toBeGreaterThan(
       -1,

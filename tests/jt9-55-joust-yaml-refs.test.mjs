@@ -240,7 +240,7 @@ test('checkRef discriminates: a real ref passes, fabricated bad refs fail', () =
   // game-SPECIFIC noun from ANOTHER title that joust has no conceivable module for:
   // volcano.ts (battlezone), mirv.ts (missile-command), scorpion.ts (centipede) or
   // trench-channel.ts (star-wars).
-  const CONTROL = 'attract.ts'; // jt11-10 GREEN: change to a noun joust cannot acquire (volcano.ts / mirv.ts / scorpion.ts / trench-channel.ts)
+  const CONTROL = 'volcano.ts'; // a battlezone noun joust has no conceivable module for — unlike attract.ts (joust has attract-scheduler.ts/attractScreen.ts), joust cannot acquire this
 
   // Durability of the control itself: its stem must not be a PREFIX of any joust
   // filename, or a future joust module could acquire it and flip the assertion

@@ -1,7 +1,7 @@
 // tests/render-jt4-5.test.ts
 //
 // Story jt4-5 — RED phase (Leeloo / TEA). The SHELL half of the epic closer: the
-// dev-overlay wiring, pinned as SOURCE TEXT (the jt1-6 / tempest tp1-39 / centipede
+// HUD wiring, pinned as SOURCE TEXT (the jt1-6 / tempest tp1-39 / centipede
 // cp1-6 `?raw` idiom, reviewer-blessed). A node runtime cannot boot a canvas or run
 // requestAnimationFrame — exactly the lines a render shell goes wrong on — so the
 // wiring is pinned by reading src as text. Every match is written to fail on a
@@ -17,16 +17,17 @@
 //   • main.ts now drives the SESSION layer (createGame / stepGame), not the raw sim
 //     (createWaveSim / stepSim) — the demo is two knights playing a full loop, so
 //     the shell must step the ledgers, not just the sim.
-//   • it draws a DEV-OVERLAY (score + lives + wave per player) from `overlayReadout`
+//   • it draws a HUD (score + lives + wave per player) from `overlayReadout`
 //     — the PURE projection off the very GameState it steps, so the readout cannot be
 //     a shell-side copy. The overlay's OUTPUT is pinned in tests/game-jt4-5.test.ts;
 //     here we pin that the shell READS the sim and invents no colours drawing it.
-//   • the authentic MESSAGE.SRC score display is jt5 — this is the dev bar only.
+//   • the authentic MESSAGE.SRC score display is jt5 — this is the HUD only.
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { frameLoopBody } from './helpers/frame-loop.js'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const mainPath = join(repoRoot, 'src', 'main.ts')
@@ -64,15 +65,15 @@ describe('jt4-5 shell — the demo is driven by the session layer stepGame (no s
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC — the dev-overlay reads the core registers STRAIGHT off the stepped state.
+// AC — the HUD reads the core registers STRAIGHT off the stepped state.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('jt4-5 shell — the dev-overlay reads the sim registers, not a shell-side copy', () => {
+describe('jt4-5 shell — the HUD reads the sim registers, not a shell-side copy', () => {
   it('main.ts draws the overlay from overlayReadout (the pure projection off the GameState)', () => {
     const src = mainSource()
     // The overlay must consume the pure projection of the state the shell steps — so it
     // shows the SAME score/lives/wave the sim holds (routing≠geometry: the OUTPUT is
     // pinned in game-jt4-5.test.ts; here the shell must actually reach for it). RED today.
-    expect(src, 'main.ts draws the dev-overlay from overlayReadout(game)').toMatch(/overlayReadout\s*\(/)
+    expect(src, 'main.ts draws the HUD from overlayReadout(game)').toMatch(/overlayReadout\s*\(/)
   })
 
   it('main.ts CALLS the overlay each frame INSIDE the animation loop (removing the per-frame draw reddens)', () => {
@@ -86,13 +87,13 @@ describe('jt4-5 shell — the dev-overlay reads the sim registers, not a shell-s
     // definitions (which precede the loop), so only a real per-frame CALL satisfies the match.
     // MUTATION-VERIFIED this round: deleting the `drawOverlay(game)` loop line reddens this test;
     // restoring it greens it.
-    const src = mainSource()
-    const loopStart = src.search(/\b(?:const|function|let)\s+frame\s*[=(]/)
-    expect(loopStart, 'main.ts must declare an animation-frame loop function (`frame`)').toBeGreaterThan(-1)
-    const loopBody = src.slice(loopStart)
+    // jt11-10 (b): bound to the frame fn's closing brace via the AST (helpers/frame-loop),
+    // not a slice to EOF — a `drawOverlay(`/`overlayReadout(` living OUTSIDE the loop can
+    // no longer satisfy this, even if a decl is one day added after `frame` in main.ts.
+    const loopBody = frameLoopBody(mainSource())
     expect(
       loopBody,
-      'the animation loop must CALL the dev-overlay every frame — drawOverlay(...) / ' +
+      'the animation loop must CALL the HUD every frame — drawOverlay(...) / ' +
         'overlayReadout(...) INSIDE the frame fn, not merely defined; removing the call reddens this',
     ).toMatch(/(?:drawOverlay|overlayReadout)\s*\(/)
   })
@@ -111,7 +112,7 @@ describe('jt4-5 shell — the dev-overlay reads the sim registers, not a shell-s
 // ─────────────────────────────────────────────────────────────────────────────
 // AC — no invented colours (the cp2-1 denylist scan, widened to the overlay).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('jt4-5 shell — the dev-overlay invents no colours (denylist stays clean)', () => {
+describe('jt4-5 shell — the HUD invents no colours (denylist stays clean)', () => {
   it('main.ts + render.ts carry no hard-coded colour literals after the overlay lands', () => {
     // The overlay draws TEXT, which needs a fillStyle — it must derive from COLOR1
     // (rgb(${...}) built from palette-decoded values), never a hex/rgb-literal/CSS name.

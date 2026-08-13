@@ -530,8 +530,8 @@ export function promote(
   // AC6 removed this function's `pjoy: undefined` because a dumb bird's PJOY is
   // only ever absent or a glide — and a glide can no longer reach here at all,
   // since `frame.ts` skips the promotion check while one is pending. That is
-  // true of production (both spawn sites pair `pchase: 0` with `brain: 'linet'`,
-  // `sim.ts:425` and `:654`, and nothing demotes) but nothing ENFORCED it, so
+  // true of production (both spawn sites pair `pchase: 0` with `brain: 'linet'` —
+  // `enemyState` and `remountEnemyProcess`, and nothing demotes) but nothing ENFORCED it, so
   // the deletion rested on an argued invariant rather than a checked one.
   // Constructed and measured during review: a `{pchase: 0, brain: 'boundr',
   // pjoy: {kind:'interval'}}` enemy carried that interval straight through into
