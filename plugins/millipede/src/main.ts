@@ -73,10 +73,12 @@ const frame = (): void => {
   // the family's (cp2-14): higher MOBJH is further LEFT (the OBSTAC 0xF7 fold,
   // mushroom.ts), higher MOBJV is further UP (ENTER_V 0xF8 = the top line).
   // A sprite picture p is the 8x16 tile pair 2p / 2p+1 at the base of the
-  // sheet (hardware sprite n reads tiles 2n/2n+1; the $80+ half is the
-  // alternate playfield graphics bank); the whole-frame rotation turns the
-  // vertical pair into a horizontal one, stored-top tile on the LEFT (the
-  // CCW turn — see render.ts). The visual playtest arbitrates this mapping.
+  // sheet — chosen by eye at the playtest (renders as the legged train), NOT
+  // cited to the ROM; what the $80+ half of the sheet holds is likewise
+  // UNMEASURED (plausibly an alternate graphics bank — an inference, nothing
+  // more; see the Reviewer's sprite-decode Delivery Finding). The whole-frame
+  // rotation turns the vertical pair into a horizontal one, stored-top tile
+  // on the LEFT (the CCW turn — see render.ts).
   for (const s of demo.segments) {
     const x = (0xf7 - s.h) & 0xff
     const y = (0xf8 - s.v) & 0xff

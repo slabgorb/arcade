@@ -62,8 +62,9 @@ function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: 
 /**
  * ml7-3, measured at the visual playtest (the playbook §4 ROT trap, caught by
  * eyes exactly as designed): the hardware maps a playfield CHAR CODE to a
- * sheet tile as 0x40 | (code & 0x3F). Two measurements pin it: sheet tile
- * $40 is the census's ONE all-blank stamp — and char 0 is the ROM's blank —
+ * sheet tile as 0x40 | (code & 0x3F). Two measurements pin it: char 0 — the
+ * ROM's blank — lands on tile $40, which IS all-blank (one of several blank
+ * tiles in the 256-tile sheet; the mapping is the evidence, not uniqueness),
  * and the field codes ($40-$7F: mushrooms, DDT, rocks) map to THEMSELVES,
  * which is why the ml2-4 census page could show correct mushrooms while the
  * font hid elsewhere: the DIGITZ codes $20-$29 live at tiles $60-$69, the

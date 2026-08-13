@@ -129,9 +129,10 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
     // AMENDED at the ml7-3 visual playtest (the playbook §4 catch this story
     // exists for): the RED draft assumed char code == census sheet index and
     // upright storage — the live page proved both wrong. Measured: the
-    // hardware tile for a char code is 0x40 | (code & 0x3F) (sheet tile $40
-    // is the census's ONE blank, matching char 0 = blank; field codes $40-$7F
-    // map to themselves, which is why census mushrooms looked right), and
+    // hardware tile for a char code is 0x40 | (code & 0x3F) (char 0 — the
+    // ROM's blank — lands on the all-blank tile $40, one of several blank
+    // tiles in the sheet; field codes $40-$7F map to themselves, which is
+    // why census mushrooms looked right), and
     // every tile is stored ROTATED for the vertical monitor — the blit must
     // turn it 90° CCW (tile $61 stores a sideways '1'; CCW stands it up).
     const { drawGridStamps, PLAYFIELD_COLOUR_BYTES } = await loadRender()

@@ -15,7 +15,7 @@
 // Claims: docs/rom-study/claims/16-hud.json (HD-*).
 
 import { ddtExploding, ddtOffset, ddtVacant, DDT_STAMP, type DdtEntry } from './ddt'
-import { PLYFLD_STRIDE } from './conway'
+import { PLYFLD_STRIDE, PLYFLD_WIDTH } from './conway'
 
 /** The single reserved HUD row: every display address below has row $1F. */
 export const HUD_ROW = 0x1f // PLYFLD+$1F & $1F (MLSUB.MAC:1915, HD-1)
@@ -51,7 +51,11 @@ export interface HudPlacement {
  * pairs and nothing more.
  */
 export function sixDigitStamps(value: number): readonly number[] {
-  const wrapped = ((Math.floor(value) % 1_000_000) + 1_000_000) % 1_000_000
+  // The ROM registers are three BCD bytes and cannot hold a non-finite value;
+  // fail SAFE to the zero display rather than minting NaN "stamps" (review
+  // round 1, rule #21 — the createMillipede clamp idiom).
+  const finite = Number.isFinite(value) ? value : 0
+  const wrapped = ((Math.floor(finite) % 1_000_000) + 1_000_000) % 1_000_000
   const stamps: number[] = []
   let suppress = true
   for (let i = 0; i < 6; i++) {
@@ -116,7 +120,14 @@ export function ddtPlacements(table: readonly DdtEntry[]): HudPlacement[] {
     const col = Math.floor(off / PLYFLD_STRIDE)
     const row = off % PLYFLD_STRIDE
     placements.push({ col, row, stamp: DDT_STAMP })
-    placements.push({ col: col + 1, row, stamp: DDT_STAMP + 1 })
+    // The neighbour stamp must stay on the 30-col grid. The ROM never faces
+    // this: its seed path rejects column-page 3 outright ("right edge",
+    // MLSUB.MAC DD-57), so DDTS2 cannot receive a col-29 entry — but this
+    // pure fn takes any table and asserts the invariant itself (review
+    // round 1, rule #21).
+    if (col + 1 < PLYFLD_WIDTH) {
+      placements.push({ col: col + 1, row, stamp: DDT_STAMP + 1 })
+    }
   }
   return placements
 }
