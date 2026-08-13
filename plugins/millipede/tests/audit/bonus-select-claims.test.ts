@@ -70,16 +70,18 @@ describe('ml5-2 — bonus + select constants are pinned as byte-verifiable claim
     ).toBe(true)
   })
 
-  it('the bonus-life mechanisms carry a real BL-* claim population (floor 8)', () => {
-    // BONUS1 selection + the words + the band comparator + advance + EXTRAL +
-    // cap + trap + lives DIP. Floor, not ceiling — Dev measures the exact lines.
-    expect(bonusClaims().length).toBeGreaterThanOrEqual(8)
+  it('the bonus-life mechanisms carry a real BL-* claim population (floor 25 — the shipped count)', () => {
+    // RED set a floor of 8; GREEN shipped 25 (BL-1..25, incl. the review
+    // round's BL-21..25 for the previously-uncited comment lines). The floor
+    // now sits AT the shipped count so a silent claim deletion reddens here —
+    // additions stay free (review round 1, rule #15).
+    expect(bonusClaims().length).toBeGreaterThanOrEqual(25)
   })
 
-  it('the select kernel carries a real SL-* claim population (floor 8)', () => {
-    // BONUSS index math + the rows + SELEC4 + MODE + the window steps/stops +
-    // applying a selection + the mushroom seed.
-    expect(selectClaims().length).toBeGreaterThanOrEqual(8)
+  it('the select kernel carries a real SL-* claim population (floor 23 — the shipped count)', () => {
+    // Same law: floor at the shipped SL-1..23 so deletions redden, additions
+    // stay free.
+    expect(selectClaims().length).toBeGreaterThanOrEqual(23)
   })
 
   it('the required field/branch anchors are all claimed', () => {

@@ -29,7 +29,7 @@
 //         // LIVES+1 = NLIVES untouched for player 2 (MLSUB.MAC:350-351)
 //     initialBonusTarget(optns1): { bonusL: number; bonusM: number }
 //         // game start seeds the first threshold = ONE increment (MLSUB.MAC:393-398)
-//     awardBonus(input): BonusResult   // the SCORNG tail, MLSUB.MAC:1076-1101
+//     awardBonus(input): BonusResult   // the SCORNG tail, MLSUB.MAC:1076-1103
 //
 //     interface BonusInput  { score1; score2; bonusL; bonusM; lives; optns1 }
 //     interface BonusResult { bonusL; bonusM; lives; extral; awarded }
@@ -244,6 +244,29 @@ describe('bonus — award consequences', () => {
     expect(r.extral).toBe(true)
     expect(r.bonusM, 'threshold += the none word 0x0200').toBe(0x04)
     expect(r.bonusL).toBe(0x00)
+  })
+
+  it('lives 5 is the last awardable rung — the cap is 6, not 5 (:1095-1098)', async () => {
+    const m = await loadBonus()
+    const r = m.awardBonus(input({ score1: 0x20, score2: 0x01, lives: 5 }))
+    expect(r.awarded, 'CMP I,6 on 5 is not equal — the award runs').toBe(true)
+    expect(r.lives).toBe(6)
+  })
+
+  it('the units-nibble BCD adjust fires on the carry-in leg — threshold 195,000 at the 15k DIP (review round 1)', async () => {
+    const m = await loadBonus()
+    // Every shipped increment ends in a zero nibble, so the low-byte add can
+    // never overflow its units digit — but the MID-byte add takes the low
+    // add's carry IN, and at threshold 0x1950 (195,000 — the 15k ladder's
+    // 13th rung, reachable in play) that carry lands on a 9:
+    //   low: 50 + 50 = 00, carry 1        mid: 19 + 01 + 1 = 21 (BCD)
+    // A binary add without the units adjust says 0x2B. This is the branch the
+    // review's mutation probe found dormant (lo > 9 in bcdAdd).
+    const r = m.awardBonus(
+      input({ optns1: 0x10, bonusL: 0x50, bonusM: 0x19, score1: 0x50, score2: 0x19, lives: 3 }),
+    )
+    expect(r.bonusL, 'BCD 50 + 50 = 00 with the carry out').toBe(0x00)
+    expect(r.bonusM, 'BCD 19 + 01 + carry = 21 — not the binary 2B').toBe(0x21)
   })
 
   it('lives above the cap take the cap path, not the ROM spin-trap (:1097 — the documented deviation)', async () => {

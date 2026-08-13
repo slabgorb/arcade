@@ -1,7 +1,7 @@
 // src/core/bonus.ts
 //
 // Story ml5-2 (GREEN) — BONUS LIFE + LIVES: the SCORNG bonus-life tail
-// (MLSUB.MAC:1076-1101) that ml5-1's `awardScore` deferred, plus the BONUS1
+// (MLSUB.MAC:1076-1103) that ml5-1's `awardScore` deferred, plus the BONUS1
 // increment selection (MLSUB.MAC:31-39), the BONUSV increment words
 // (MLTST.MAC:28), the DIP-selected starting lives (MLSUB.MAC:274-279) and the
 // game-start LIVES writes (MLSUB.MAC:350-351, :382-384). DLIVES
@@ -108,7 +108,7 @@ function bcdAdd(a: number, b: number, carry: number): { sum: number; carry: numb
 }
 
 /**
- * The SCORNG bonus-life tail (MLSUB.MAC:1076-1101), run after every in-game
+ * The SCORNG bonus-life tail (MLSUB.MAC:1076-1103), run after every in-game
  * score award. The band comparator (:1076-1080) either refuses or, on a hit:
  * the threshold advances by the increment FIRST (SED, :1081-1089), EXTRAL is
  * flagged (:1090-1091), and a life is added only if the bonus option is not

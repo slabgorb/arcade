@@ -87,7 +87,7 @@ function bcdAdd(a: number, b: number, carry: number): { sum: number; carry: numb
 }
 
 /** BCD word + the increment (the :1535-1543/:1559-1567 SED step, one rung). */
-function stepWord(word: number, inc: { low: number; mid: number }): number {
+function stepWord(word: number, inc: Readonly<{ low: number; mid: number }>): number {
   const lo = bcdAdd(word & 0xff, inc.low, 0)
   const mi = bcdAdd(word >> 8, inc.mid, lo.carry)
   return (mi.sum << 8) | lo.sum

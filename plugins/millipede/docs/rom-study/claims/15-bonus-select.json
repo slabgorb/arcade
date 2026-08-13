@@ -385,5 +385,50 @@
    "line": 1490,
    "verbatim": "\tLDA I,17\t\t;TOP ROW FOR MUSHROOMS"
   }
+ },
+ {
+  "id": "BL-21",
+  "claim": "The award path compares LIVES against the literal 6 — the cap the display shares.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1095,
+   "verbatim": "\tCMP I,6"
+  }
+ },
+ {
+  "id": "BL-22",
+  "claim": "BONUS skips the display entirely at option index 6 — no bonus selected.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 15,
+   "verbatim": "\tCPY I,06"
+  }
+ },
+ {
+  "id": "BL-23",
+  "claim": "SCORNG re-checks the option index against 6 before paying the life.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1092,
+   "verbatim": "\tCPY I,06"
+  }
+ },
+ {
+  "id": "BL-24",
+  "claim": "BONUS1 exits with the increment low byte — LDA Y,BONUSV.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 38,
+   "verbatim": "\tLDA Y,BONUSV\t\t;GET BONUS VALUE INCREMENT"
+  }
+ },
+ {
+  "id": "BL-25",
+  "claim": "BONUS reads the increment mid byte from BONUSV+1.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 12,
+   "verbatim": "\tLDA Y,BONUSV+1"
+  }
  }
 ]
