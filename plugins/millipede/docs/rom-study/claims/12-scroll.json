@@ -448,5 +448,14 @@
       "line": 1395,
       "verbatim": "\tSTA X,DDTADD\t\t;CLEAR ENTRY"
     }
+  },
+  {
+    "id": "SC-51",
+    "claim": "ROCK is picture code $70 \u2014 the indestructible feature, and exactly the CMP I,70 count threshold: a rock is the boundary value the mushroom-count bookkeeping must include.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 204,
+      "verbatim": "ROCK\t=70\t\t\t;INDESTRUCTIBLE FEATURE"
+    }
   }
 ]

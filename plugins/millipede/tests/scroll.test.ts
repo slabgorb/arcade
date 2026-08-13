@@ -237,6 +237,13 @@ describe('scrollDispatch — SCROLL (MLSUB.MAC:1113-1146)', () => {
     expect(mod.scrollDispatch(1, armedGate())).toEqual({ action: 'none', scrolc: 0 })
   })
 
+  it('a tick against a larger pending up-count still dispatches UP on the final sign (SC-14/17)', async () => {
+    const mod = await loadScroll()
+    // The tick decrements, but the counter is still positive — the action must
+    // come from the post-tick sign, not from the tick having fired.
+    expect(mod.scrollDispatch(2, armedGate())).toEqual({ action: 'up', scrolc: 1 })
+  })
+
   it('the tick fires only at phase $1E (SC-13)', async () => {
     const mod = await loadScroll()
     expect(mod.scrollDispatch(0, armedGate({ frame: 0x1d }))).toEqual({ action: 'none', scrolc: 0 })
@@ -315,10 +322,16 @@ describe('scrollDown — SCROLD (MLSUB.MAC:1152-1230), upright', () => {
     field[idx(3, 7)] = 0x79 // poison stage 1 -> row 6
     field[idx(4, 7)] = 0x71 // a death stage: NOT in the poison band, unconverted
     field[idx(5, 7)] = 0x7c // a normal: already past the band, unconverted
+    field[idx(6, 7)] = 0x78 // POISON itself — the band's INCLUSIVE lower edge (SC-30)
+    field[idx(7, 7)] = 0x77 // GROWTH+2 — one byte under the band, unconverted
+    field[idx(8, 7)] = 0x7b // the last poison stage — still inside the band
     mod.scrollDown(field, -1, createRng(QUIET_SEED))
     expect(field[idx(3, 6)]).toBe(0xfd) // ($79 | $80 | $04) — poison -> grey normal
     expect(field[idx(4, 6)]).toBe(0xf1) // ($71 | $80) — grey bit only
     expect(field[idx(5, 6)]).toBe(0xfc) // ($7C | $80) — grey bit only
+    expect(field[idx(6, 6)]).toBe(0xfc) // ($78 | $80 | $04) — CMP I,80+78 is inclusive
+    expect(field[idx(7, 6)]).toBe(0xf7) // ($77 | $80) — under the band, grey bit only
+    expect(field[idx(8, 6)]).toBe(0xff) // ($7B | $80 | $04) — last in-band value converts
   })
 
   it('a mushroom pushed off the bottom row decrements MUSH (SC-31/32)', async () => {
@@ -340,6 +353,28 @@ describe('scrollDown — SCROLD (MLSUB.MAC:1152-1230), upright', () => {
     const out = mod.scrollDown(field, -1, createRng(QUIET_SEED))
     expect(field[idx(7, 0x0b)]).toBe(0x7c)
     expect(field[idx(20, 0x13)]).toBe(0x7c)
+    expect(out.mush).toBe(1)
+    expect(out.mushTop).toBe(-1)
+  })
+
+  it('the $70 ROCK is exactly on the push-off count threshold; $6F is under it (SC-31, SC-51)', async () => {
+    const mod = await loadScroll()
+    const field = emptyField()
+    field[idx(2, 2)] = 0xf0 // grey ROCK: ($F0 & $7F) === $70 — counted (MLDEF.MAC:204)
+    field[idx(9, 2)] = 0xef // grey $6F (DDT+1): one byte under the threshold — not counted
+    const out = mod.scrollDown(field, -1, createRng(QUIET_SEED))
+    expect(out.mush).toBe(-1)
+    expect(out.mushTop).toBe(0)
+  })
+
+  it('the ROCK threshold holds at the down-scroll region boundaries too (SC-33/34, SC-51)', async () => {
+    const mod = await loadScroll()
+    const field = emptyField()
+    field[idx(7, 0x0c)] = 0x70 // ROCK -> row $0B: enters the bottom region, counted
+    field[idx(8, 0x0c)] = 0x6f // $6F -> row $0B: under the threshold, not counted
+    field[idx(20, 0x14)] = 0x70 // ROCK -> row $13: leaves the top region, counted
+    field[idx(21, 0x14)] = 0x6f // $6F -> row $13: under the threshold, not counted
+    const out = mod.scrollDown(field, -1, createRng(QUIET_SEED))
     expect(out.mush).toBe(1)
     expect(out.mushTop).toBe(-1)
   })
@@ -414,6 +449,28 @@ describe('scrollUp — SCROLU (MLSUB.MAC:1312-1378), upright', () => {
     const out = mod.scrollUp(field, 1)
     expect(field[idx(4, 0x0c)]).toBe(0x7c)
     expect(field[idx(25, 0x14)]).toBe(0x7c)
+    expect(out.mush).toBe(-1)
+    expect(out.mushTop).toBe(1)
+  })
+
+  it('the $70 ROCK is exactly on the up-scroll count threshold; $6F is under it (SC-45, SC-51)', async () => {
+    const mod = await loadScroll()
+    const field = emptyField()
+    field[idx(14, 0x1e)] = 0x70 // ROCK pushed off the top — counted (MLDEF.MAC:204)
+    field[idx(15, 0x1e)] = 0x6f // $6F pushed off — under the threshold, not counted
+    const out = mod.scrollUp(field, 1)
+    expect(out.mushTop).toBe(-1)
+    expect(out.mush).toBe(0)
+  })
+
+  it('the ROCK threshold holds at the up-scroll region boundaries too (SC-46/47, SC-51)', async () => {
+    const mod = await loadScroll()
+    const field = emptyField()
+    field[idx(4, 0x0b)] = 0x70 // ROCK -> row $0C: leaves the bottom region, counted
+    field[idx(5, 0x0b)] = 0x6f // $6F -> row $0C: under the threshold, not counted
+    field[idx(25, 0x13)] = 0x70 // ROCK -> row $14: enters the top region, counted
+    field[idx(26, 0x13)] = 0x6f // $6F -> row $14: under the threshold, not counted
+    const out = mod.scrollUp(field, 1)
     expect(out.mush).toBe(-1)
     expect(out.mushTop).toBe(1)
   })
