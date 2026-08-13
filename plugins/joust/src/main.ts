@@ -234,14 +234,20 @@ function renderSelectScreen(): void {
  * shell's (a human smoke test / reference capture tunes them).
  */
 function renderHighscoreScreen(): void {
-  const screen = layoutHighscoreScreen(colours[SELECT_COLOUR_INDEX], highScoreTable, entryPrompt)
+  // jt11-13 — thread the in-flight initials buffer in so the entry screen echoes
+  // every keystroke (the ROM's ENTRET → OUTHSC). Without entry.initials here the
+  // player types and nothing appears.
+  const screen = layoutHighscoreScreen(colours[SELECT_COLOUR_INDEX], highScoreTable, entryPrompt, entry.initials)
   const centred = (laid: LaidOutText): number => Math.round((LOGICAL_WIDTH - laid.width) / 2)
   paintText(screen.heading, centred(screen.heading), 32)
   screen.rows.forEach((row, i) => paintText(row, centred(row), 72 + i * 12))
   if (screen.prompt) paintText(screen.prompt, centred(screen.prompt), 210)
-  // jt11-6 — the key instructions, directly under the prompt (FONT35 is 5 rows
-  // tall, so 222 clears 210 and still sits inside the 240-row logical screen).
-  if (screen.instructions) paintText(screen.instructions, centred(screen.instructions), 222)
+  // jt11-13 — the typed initials, directly under the 'ENTER YOUR INITIALS' prompt so
+  // the player sees the letters appear where the prompt asks for them.
+  if (screen.entry) paintText(screen.entry, centred(screen.entry), 222)
+  // jt11-6 — the key instructions, below the entry line (FONT35 is 5 rows tall, so
+  // each line clears the one above and 234 still sits inside the 240-row screen).
+  if (screen.instructions) paintText(screen.instructions, centred(screen.instructions), 234)
 }
 
 // jt10-6 — the game-over banner colour (a transcribed COLOR1 index, as the select
