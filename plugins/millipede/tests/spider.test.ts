@@ -2,9 +2,10 @@
 //
 // Story ml4-1 — RED phase (TEA). THE SPIDER: `SPDMV — MOVE SPIDER`
 // (`MILLI.MAC:2295`, SD-1). Millipede runs up to 8 spiders in motion-object
-// slots 6..13 (SD-7/8), but outside the first-wave bonus feature only slots
-// 12..13 ever START one — slot 13 is reserved for spiders (SD-12) and slot 12
-// opens with score (SD-13/15). The spider zig-zags on a COUNT2 countdown,
+// slots 6..13 (SD-7/8): slot 13 is reserved for spiders (SD-12), slot 12
+// opens with score (SD-13/15), and — story ml4-5 — the centipede entries
+// 6..11 open one by one above 100,000 on a full first wave (SD-52..61, the
+// FIRST-WAVE EXTRA-SPIDER feature). The spider zig-zags on a COUNT2 countdown,
 // EATS every stamp from ROCK up (mushrooms, rocks, death stages — SD-37),
 // bounces between the bottom row and a score-driven ceiling (SD-38..43), and
 // scores by PROXIMITY when killed (SD-46..51). Its difficulty DIP is D6
@@ -19,6 +20,7 @@
 //
 //     SPIDER_SLOT_FIRST = 6, SPIDER_SLOT_END = 14   // MILLI.MAC:2303/:2314 (SD-7/8)
 //     SPIDER_SLOT_RESERVED = 13                     // :2350 (SD-12)
+//     NCENT = 12                                    // MLDEF.MAC:188 (SD-52)
 //     SPIDER_PIC = 0x14                             // :2397 (SD-24)
 //     SPIDER_COLOR = 0xb9                           // :2399 (SD-25)
 //     SPIDER_ENTER_V = 0x60                         // :2390 (SD-21)
@@ -35,6 +37,8 @@
 //       frame;                       // FRAME byte
 //       score1; score2;              // SCORE1 (BCD hundreds) / SCORE2 (BCD 10k)
 //       centin;                      // CENTIN
+//       dead;                        // DEAD — remaining centipede segments
+//                                    // (MLDEF.MAC:295, SD-53)
 //       playerAlive;                 // PLAYP/PEXPLD gate (:2299-2302, SD-6)
 //       hard;                        // OPTNS1 & 40 — the D6 DIP (SD-3)
 //       rnd0;                        // POKEY RND0 byte
@@ -42,12 +46,20 @@
 //
 //     isSpider(slot): boolean                        // :2304-2310 (SD-9/10)
 //     spiderSpeed(env): 1 | 2                        // :2367-2375 (SD-16..19)
+//     extraSpiderOpen(index, env): boolean           // :2321-2345 (SD-54..61)
+//         // the first-wave extra-spider gate for the centipede entries
+//         // (index < NCENT): centipede alive (DEAD ≠ 0, SD-55), CENTIN == 0C
+//         // exactly (SD-56), SCORE2 ≥ 10 binary — 100,000 (SD-57); allowance
+//         // min((SCORE2-10)>>1, 5) + 3 (SD-58/59); the slot opens only when
+//         // NCENT+1-allowance < index (SD-60/61). index ≥ NCENT is always
+//         // open — those slots go straight to the countdown (SD-54).
 //     mayStartSpider(index, env): boolean            // :2348-2363 (SD-12/13/14/15)
 //     trySpawnSpider(slot, index, env): boolean
-//         // the empty-slot path (:2318-2363 for slots ≥ NCENT + :2367-2400):
-//         // decrement COUNT2 (wrapping — a failed gate re-arms 256 frames,
-//         // SD-11); at zero, gate through mayStartSpider and write the slot
-//         // via startSpider. Slots 6..11 never start here (see SCOPE).
+//         // the empty-slot path (:2318-2363 + :2367-2400): a centipede entry
+//         // must pass extraSpiderOpen FIRST — a closed gate skips the DEC
+//         // entirely (the 11$ path, SD-54..61). Then decrement COUNT2
+//         // (wrapping — a failed gate re-arms 256 frames, SD-11); at zero,
+//         // gate through mayStartSpider and write the slot via startSpider.
 //     startSpider(slot, env): void                   // :2367-2400 spawn writes
 //     moveSpider(slot, env): { offscreen: boolean }
 //         // one SPDMV sweep for ONE live spider (:2401-2524): SPDMV1
@@ -63,14 +75,14 @@
 //     spiderTopLimit(score2): number                 // :2479-2503 (SD-39..43)
 //     spiderKill(spdV, playV, byDdt): { points; stamp }  // :2182-2210 (SD-46..51)
 //
-// ─── SCOPE (Delivery Findings, .session/ml4-1-session.md) ───────────────────
+// ─── SCOPE (Delivery Findings, .session/ml4-1-session.md + ml4-5) ───────────
 // • Upright cabinet only (the ml3-4 precedent): CKIND/CKF8 modelled clear —
 //   no cocktail V-reversal (:2377-2381), EOR CKF8 identity throughout.
-// • The FIRST-WAVE EXTRA-SPIDER feature (:2318-2345 — slots 6..11 open above
-//   100,000 on a full first wave, up to 8 concurrent spiders) is DESCOPED to
-//   a follow-up story; the routed finding carries it. Slots 12..13 — the
-//   whole roster outside that feature — are modelled fully.
-// • MODE (attract) gating and CHAN3 sound (:2402-2405) are ml7/ml6 seams.
+// • The FIRST-WAVE EXTRA-SPIDER feature (:2318-2345), descoped from ml4-1, is
+//   IN SCOPE as of ml4-5: slots 6..11 open above 100,000 on a full first
+//   wave, up to 8 concurrent spiders (SD-52..61).
+// • MODE (attract) gating (:2318-2319) and CHAN3 sound (:2402-2405) remain
+//   ml7/ml6 seams.
 //
 // ─── RADIX ──────────────────────────────────────────────────────────────────
 // MILLI.MAC inherits `.RADIX 16` — literals here are hex; a trailing period
@@ -107,6 +119,7 @@ interface SpiderEnv {
   score1: number
   score2: number
   centin: number
+  dead: number
   playerAlive: boolean
   hard: boolean
   rnd0: number
@@ -118,6 +131,7 @@ interface SpiderModule {
   SPIDER_SLOT_FIRST: number
   SPIDER_SLOT_END: number
   SPIDER_SLOT_RESERVED: number
+  NCENT: number
   SPIDER_PIC: number
   SPIDER_COLOR: number
   SPIDER_ENTER_V: number
@@ -128,6 +142,7 @@ interface SpiderModule {
   SPIDER_SCORE_VALUES: readonly number[]
   isSpider: (slot: Readonly<SpiderSlot>) => boolean
   spiderSpeed: (env: Readonly<SpiderEnv>) => number
+  extraSpiderOpen: (index: number, env: Readonly<SpiderEnv>) => boolean
   mayStartSpider: (index: number, env: Readonly<SpiderEnv>) => boolean
   trySpawnSpider: (slot: SpiderSlot, index: number, env: Readonly<SpiderEnv>) => boolean
   startSpider: (slot: SpiderSlot, env: Readonly<SpiderEnv>) => void
@@ -170,7 +185,7 @@ function spider(over: Partial<SpiderSlot> = {}): SpiderSlot {
 }
 
 function env(over: Partial<SpiderEnv> = {}): SpiderEnv {
-  return { frame: 0, score1: 0, score2: 0, centin: 0, playerAlive: true, hard: false, rnd0: 0, ...over }
+  return { frame: 0, score1: 0, score2: 0, centin: 0, dead: 0x0c, playerAlive: true, hard: false, rnd0: 0, ...over }
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -182,6 +197,7 @@ describe('spider — cited constants', () => {
     expect(m.SPIDER_SLOT_FIRST, 'scan start (MILLI.MAC:2303, SD-7)').toBe(6)
     expect(m.SPIDER_SLOT_END, 'scan end, exclusive (MILLI.MAC:2314, SD-8)').toBe(14)
     expect(m.SPIDER_SLOT_RESERVED, 'the spiders-only slot (MILLI.MAC:2350, SD-12)').toBe(13)
+    expect(m.NCENT, 'the centipede-entry boundary (MLDEF.MAC:188, SD-52)').toBe(12)
     expect(m.SPIDER_PIC, 'picture code (MILLI.MAC:2397, SD-24)').toBe(0x14)
     expect(m.SPIDER_COLOR, 'SPDC on-colour (MILLI.MAC:2399, SD-25)').toBe(0xb9)
     expect(m.SPIDER_ENTER_V, 'entry row (MILLI.MAC:2390, SD-21)').toBe(0x60)
@@ -245,13 +261,11 @@ describe('spider — start gates', () => {
     expect(m.mayStartSpider(12, env({ score2: 0x50, centin: 0x07 }))).toBe(true)
   })
 
-  it('slots 6..11 never start a spider here (the first-wave extra-spider path is the routed finding)', async () => {
+  it('a closed extra-spider gate never reaches these gates: slot 11 below 100,000 refuses at the 11$ path', async () => {
     const m = await loadSpider()
-    for (const index of [6, 7, 8, 9, 10, 11]) {
-      const slot = freeSlot({ count2: 1 })
-      expect(m.trySpawnSpider(slot, index, env({ score2: 0x99, centin: 12 })), `slot ${index}`).toBe(false)
-      expect(slot.color, `slot ${index} must stay free`).toBe(0)
-    }
+    const slot = freeSlot({ count2: 1 })
+    expect(m.trySpawnSpider(slot, 11, env({ score2: 0x0f, centin: 12 }))).toBe(false)
+    expect(slot.color, 'slot 11 must stay free below the floor').toBe(0)
   })
 
   it('the countdown decrements per call and only zero opens the gate (SD-11)', async () => {
@@ -285,6 +299,114 @@ describe('spider — start gates', () => {
     const slot = freeSlot({ count2: 1 })
     expect(m.trySpawnSpider(slot, 13, env({ playerAlive: false }))).toBe(false)
     expect(slot.count2, 'the routine RTSes at entry — no countdown either').toBe(1)
+  })
+})
+
+// ───────────────────────────────────────────────────────────────────────────────
+// The first-wave extra spiders (:2318-2345, SD-52..61) — story ml4-5
+//
+// A free slot BELOW NCENT is a centipede entry (SD-54): before its countdown
+// may even tick it must pass the extra-spider gates — centipede alive
+// (DEAD ≠ 0, SD-55), CENTIN == 0C exactly (SD-56), SCORE2 ≥ 10 binary
+// (100,000; SD-57). The allowance is min((SCORE2-10) >> 1, 5) + 3
+// (SD-58/59) — 3 at 100,000, 8 from 200,000 — and NCENT+1-allowance is the
+// last index the centipede KEEPS (SD-60): only indexes above it open
+// (SD-61). Hand-derived slot table (centin = 0C, dead ≠ 0):
+//
+//   SCORE2 10,11 → allowance 3 → slots {11}
+//   SCORE2 12    → allowance 4 → slots {10,11}
+//   SCORE2 14    → allowance 5 → slots {9..11}
+//   SCORE2 16    → allowance 6 → slots {8..11}
+//   SCORE2 18,19 → allowance 7 → slots {7..11}
+//   SCORE2 20+   → allowance 8 → slots {6..11}   (the LSR ≥ 8 clamp, SD-58)
+// ───────────────────────────────────────────────────────────────────────────────
+describe('spider — first-wave extra spiders (ml4-5)', () => {
+  /** The feature's happy environment: full first-wave train, segments alive. */
+  function wave1(score2: number, over: Partial<SpiderEnv> = {}): SpiderEnv {
+    return env({ score2, centin: 0x0c, dead: 0x0c, ...over })
+  }
+
+  it('slots at or above NCENT are always open — they go straight to the countdown (SD-54)', async () => {
+    const m = await loadSpider()
+    expect(m.extraSpiderOpen(12, env({ score2: 0, centin: 0, dead: 0 }))).toBe(true)
+    expect(m.extraSpiderOpen(13, env({ score2: 0, centin: 0, dead: 0 }))).toBe(true)
+  })
+
+  it('the allowance opens slots top-down as the score grows: the hand-derived table (SD-58..61)', async () => {
+    const m = await loadSpider()
+    const openFrom = (score2: number, first: number) => {
+      for (let index = 6; index < 12; index++) {
+        expect(
+          m.extraSpiderOpen(index, wave1(score2)),
+          `SCORE2 ${score2.toString(16)} slot ${index}`,
+        ).toBe(index >= first)
+      }
+    }
+    openFrom(0x10, 11) // 100k: allowance 3, slot 11 only
+    openFrom(0x11, 11) // 110k: (1)>>1 = 0 — still 3
+    openFrom(0x12, 10) // 120k: allowance 4
+    openFrom(0x14, 9) // 140k: allowance 5
+    openFrom(0x16, 8) // 160k: allowance 6
+    openFrom(0x18, 7) // 180k: allowance 7
+    openFrom(0x19, 7) // 190k: (9)>>1 = 4 — still 7, the last pre-clamp value
+    openFrom(0x20, 6) // 200k: LSR hits 8 → clamp 5 → allowance 8, all six
+    openFrom(0x99, 6) // and it stays clamped to the ceiling from there
+  })
+
+  it('below 100,000 no centipede entry opens — the SBC borrow refuses (SD-57)', async () => {
+    const m = await loadSpider()
+    for (let index = 6; index < 12; index++) {
+      expect(m.extraSpiderOpen(index, wave1(0x0f)), `slot ${index}`).toBe(false)
+    }
+    expect(m.extraSpiderOpen(11, wave1(0x00))).toBe(false)
+  })
+
+  it('CENTIN must be 0C EXACTLY — a shot-down train (0B) or an overfull one (0D) closes the feature (SD-56)', async () => {
+    const m = await loadSpider()
+    expect(m.extraSpiderOpen(11, wave1(0x99, { centin: 0x0b }))).toBe(false)
+    expect(m.extraSpiderOpen(11, wave1(0x99, { centin: 0x0d }))).toBe(false)
+    expect(m.extraSpiderOpen(11, wave1(0x99, { centin: 0x0c }))).toBe(true)
+  })
+
+  it('all centipede segments dead closes the feature — DEAD == 0 (SD-55)', async () => {
+    const m = await loadSpider()
+    expect(m.extraSpiderOpen(11, wave1(0x99, { dead: 0 }))).toBe(false)
+    expect(m.extraSpiderOpen(11, wave1(0x99, { dead: 1 }))).toBe(true)
+  })
+
+  it('slot 5 stays reserved even at the maximum allowance — the arithmetic floor is slot 6 (SD-60/61)', async () => {
+    const m = await loadSpider()
+    // allowance 8 → NCENT+1-8 = 5; BCS keeps 5 itself reserved for the train.
+    expect(m.extraSpiderOpen(5, wave1(0x99))).toBe(false)
+  })
+
+  it('an OPEN slot runs the normal countdown and spawn: slot 11 starts a spider at 100,000 (SD-11, SD-14/15)', async () => {
+    const m = await loadSpider()
+    const slot = freeSlot({ count2: 2 })
+    expect(m.trySpawnSpider(slot, 11, wave1(0x10)), 'first call only decrements').toBe(false)
+    expect(slot.count2).toBe(1)
+    // At zero the ordinary gates run: SCORE2 10 ≥ 3, (B0-10)>>4 = A < CENTIN C.
+    expect(m.trySpawnSpider(slot, 11, wave1(0x10))).toBe(true)
+    expect(slot.color, 'the start wrote the slot').toBe(0xb9)
+    expect(slot.v, 'entry row (SD-21)').toBe(0x60)
+  })
+
+  it('a CLOSED gate skips the countdown entirely — the 11$ path never reaches the DEC (SD-54..61)', async () => {
+    const m = await loadSpider()
+    const slot = freeSlot({ count2: 5 })
+    expect(m.trySpawnSpider(slot, 10, wave1(0x10)), 'slot 10 is reserved at 100,000').toBe(false)
+    expect(slot.count2, 'COUNT2 untouched — no re-arm drift while reserved').toBe(5)
+    expect(m.trySpawnSpider(slot, 10, wave1(0x12)), 'at 120,000 slot 10 opens').toBe(false)
+    expect(slot.count2, 'and only then does the countdown tick').toBe(4)
+  })
+
+  it('the whole roster can fill: at 200,000 every slot 6..13 starts a spider (SD-58/59)', async () => {
+    const m = await loadSpider()
+    for (let index = 6; index < 14; index++) {
+      const slot = freeSlot({ count2: 1 })
+      expect(m.trySpawnSpider(slot, index, wave1(0x20)), `slot ${index}`).toBe(true)
+      expect(slot.color, `slot ${index} live`).toBe(0xb9)
+    }
   })
 })
 

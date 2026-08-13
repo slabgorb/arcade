@@ -871,5 +871,95 @@
    "line": 2210,
    "verbatim": "99$:\t.BYTE 12,9,6,3,18\t;*100=SCORE"
   }
+ },
+ {
+  "id": "SD-52",
+  "claim": "NCENT is 12 decimal — motion-object slots 0..11 are centipede entries; the spider scan overlaps them at 6..11.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 188,
+   "verbatim": "NCENT\t=12.\t\t\t;NUMBER OF CENTIPEDES"
+  }
+ },
+ {
+  "id": "SD-53",
+  "claim": "DEAD is the per-player count of remaining centipede segments.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 295,
+   "verbatim": "DEAD:\t.BLKB 2\t\t\t;NUMBER OF REMAINING SEGMENTS"
+  }
+ },
+ {
+  "id": "SD-54",
+  "claim": "An empty slot below NCENT is a centipede entry: it must pass the first-wave extra-spider gates before its countdown may run; slots at NCENT and above go straight to the countdown.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2321,
+   "verbatim": "\tCPX I,NCENT"
+  }
+ },
+ {
+  "id": "SD-55",
+  "claim": "No extra spider starts once all centipede segments are dead (DEAD == 0 branches away).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2325,
+   "verbatim": "\tBEQ 11$\t\t\t;IF ALL CENTIPEDE SEGMENTS ARE DEAD"
+  }
+ },
+ {
+  "id": "SD-56",
+  "claim": "Extra spiders are a FIRST-WAVE feature: CENTIN must equal 0C exactly (a full 12-segment train).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2327,
+   "verbatim": "\tCMP I,0C"
+  }
+ },
+ {
+  "id": "SD-57",
+  "claim": "Below 100,000 there are no extra spiders: SCORE2 - 10 (binary SBC on the BCD 10k byte) borrowing branches away.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2332,
+   "verbatim": "\tBCC 11$\t\t\t;IF BELOW 100,000 NO EXTRA SPIDERS"
+  }
+ },
+ {
+  "id": "SD-58",
+  "claim": "The surplus (SCORE2 - 10) is halved (LSR); at 8 or more — 200,000 up — it clamps to 5.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2335,
+   "verbatim": "\tBCC 105$\t\t;IF BELOW 200,000"
+  }
+ },
+ {
+  "id": "SD-59",
+  "claim": "The spider allowance is the clamped half-surplus plus 3 — \"NUMBER OF SPIDERS ALLOWED\", 3 at 100,000 up to 8 at 200,000.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2338,
+   "verbatim": "\tADC I,3\t\t\t;NUMBER OF SPIDERS ALLOWED"
+  }
+ },
+ {
+  "id": "SD-60",
+  "claim": "NCENT+1 minus the allowance is the last slot index the centipede keeps.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2342,
+   "verbatim": "\tSBC TEMP1+1\t\t;LAST A CENTIPEDE INDEX USED BY CENTIPEDE"
+  }
+ },
+ {
+  "id": "SD-61",
+  "claim": "A slot at or below that boundary is reserved for the centipede (BCS refuses); only indexes ABOVE it may start an extra spider.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2344,
+   "verbatim": "\tBCS 11$\t\t\t;THIS ENTRY IS RESERVED FOR CENTIPEDE"
+  }
  }
 ]
