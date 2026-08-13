@@ -273,15 +273,23 @@ describe('ml3-1 CENTPC — the boot train enters (MT-1/4/5/6/8/9/10)', () => {
     expect(segs.filter(isHead), 'the boot train has exactly one head; the rest are body').toHaveLength(1)
   })
 
-  it('the 11 bodies are colour 0x3D, spaced 8px, pictures in 2..7 (MT-6/10/11/12)', async () => {
+  it('the 11 bodies are colour 0x3D, spaced 8px, leg-anim pictures cycling 2,1,0,7…(MT-6/10/11/12)', async () => {
     const m = await loadMillipede()
     const segs = m.createMillipede({ headingSign: -1 })
     const bodies = segs.slice(1)
     for (const b of bodies) {
       expect(b.color, 'bodies are colour 0x3D (MT-6)').toBe(BODY_COLOR)
-      expect(b.pic, 'a body picture is a leg-anim frame in 2..7 (MT-11/12)').toBeGreaterThanOrEqual(2)
-      expect(b.pic, 'a body picture is a leg-anim frame in 2..7 (MT-11/12)').toBeLessThan(SEGMENT_PIC_MAX)
+      expect(b.pic, 'a body picture is a valid leg-anim frame < 8 (MT-3)').toBeGreaterThanOrEqual(0)
+      expect(b.pic, 'a body picture is a valid leg-anim frame < 8 (MT-3)').toBeLessThan(SEGMENT_PIC_MAX)
     }
+    // MT-11/12: CENTPC seeds the first body picture at 2 (:580 "LDY I,2") then
+    // DECREMENTS it per body, reloading to 7 on underflow (:602-604 "DEY / BPL /
+    // LDY I,7") — the exact ROM cycle for 11 bodies is 2,1,0,7,6,5,4,3,2,1,0.
+    // (The earlier "2..7" range was a misread of this cited claim: the ROM does
+    // emit 0 and 1. Corrected in ml3-1 GREEN; see the session Delivery Findings.)
+    expect(bodies.map((b) => b.pic), 'the ROM leg-anim seed cycle 2,1,0,7,… (MT-11/12)').toEqual([
+      2, 1, 0, 7, 6, 5, 4, 3, 2, 1, 0,
+    ])
     for (let i = 1; i < segs.length; i++) {
       expect(Math.abs(segs[i].h - segs[i - 1].h), `slot ${i} sits 8px from slot ${i - 1} (MT-10)`).toBe(SEG_SPACING)
     }
