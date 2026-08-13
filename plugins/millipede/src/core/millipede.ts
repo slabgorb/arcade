@@ -301,3 +301,156 @@ export function newMillipedeHead(
   const next = count3 >= COUNT3_FLOOR ? count3 - COUNT3_STEP : count3
   return { seg, count1: next, count3: next }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story ml3-2 (GREEN, Korben) — the split-on-mushroom, the player collision and
+// the explosion advance, extending the ml3-1 train. Every constant below is cited
+// in docs/rom-study/claims/11-millipede-split-death.json (MS-1..MS-24), byte-cited
+// to the vendored 1982 source. See .session/ml3-2-session.md (TEA-1/2/3) for the
+// grounding of the split citation (OVRLAP, NOT CENTPC:498) and the freeze-friendly
+// AC-4 design.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// OVRLAP (MLSUB.MAC:896)
+export const OVRLAP_DEAD_MIN = 0xc0 // MS-3 (MLSUB.MAC:903 "CMP I,0C0") — colour >= this ⇒ dead/score, skipped
+export const OVRLAP_THRESHOLD = 0xf4 // MS-6 (MLSUB.MAC:911 "CMP I,0F4") — the in-front wrap window
+// The split (MILLI.MAC:1561-1592)
+export const SPLIT_BOTTOM_V = 0x09 // MS-7 (MILLI.MAC:1561 "CMP I,9") — split fires at the bottom row (V < 9)
+// EXPLOD (MILLI.MAC:765)
+export const EXPLODE_DONE = 0xfa // MS-15 (MILLI.MAC:769 "CPY I,0FA") — the explosion picture floor
+export const SCORE_PIC_LO = 0x28 // MS-13 (MILLI.MAC:772 "CPY I,28")
+export const SCORE_PIC_HI = 0x34 // MS-13 (MILLI.MAC:774 "CPY I,34")
+export const SCORE_COLOR = 0xff // MS-13 (MILLI.MAC:792 "LDA I,0FF") — parks a score so OVRLAP ignores it
+export const SCORE_DELAY = 0xa0 // MS-14 (MILLI.MAC:794 "LDA I,0A0")
+export const PEXPLD_FLASH_MIN = 0x50 // MS-16 (MILLI.MAC:809 "CPX I,60-10" ⇒ 0x60-0x10)
+export const PEXPLD_SPARKLE_MIN = 0x20 // MS-17 (MILLI.MAC:819 "CPX I,60-40" ⇒ 0x60-0x40)
+// PLAY (MILLI.MAC:1750)
+export const SPIDER_SPDP_LO = 0x14 // MS-20 (MILLI.MAC:1752 "CMP I,14")
+export const SPIDER_SPDP_HI = 0x1c // MS-20 (MILLI.MAC:1754 "CMP I,1C")
+export const SPIDER_HIT_DH_MAX = 10 // MS-20 (MILLI.MAC:1765 "CMP I,10." decimal) — the spider's wider H box
+export const HIT_DH_MAX = 0x06 // MS-21 (MILLI.MAC:1769 "CMP I,06") — non-spider: |dH| >= 6 ⇒ miss
+export const HIT_DV_MAX = 0x06 // MS-22 (MILLI.MAC:1778 "CMP I,6") — |dV| >= 6 ⇒ miss
+export const HIT_SUM_MAX = 0x0a // MS-23 (MILLI.MAC:1785 "CMP I,0A") — H+V (or H+2V) >= 0x0A ⇒ miss
+export const PLAY_DELAY = 0x10 // (MILLI.MAC:1795 "STA DELAY")
+export const PLAYER_EXPLODE_TIMER = 0x60 // MS-24 (MILLI.MAC:1802 "STA PEXPLD") — the death countdown seed
+
+/**
+ * OVRLAP (MLSUB.MAC:896-912): does the head at `headIndex` overlap another live
+ * segment just AHEAD of it on the SAME line? The ROM walks every slot and skips a
+ * candidate that is vacant (MS-2 colour 0), dead or a floating score (MS-3 colour
+ * >= 0xC0 — this is why EXPLOD parks a finished score at 0xFF, MS-13), or the head
+ * itself (MS-4). "Ahead" is normalised to the head's own march direction by EORing
+ * the H-difference with MOBJDH (MS-5 "LOOK ONLY IN FRONT OF US"); an overlap is a
+ * normalised difference within the 0xF4 wrap window (MS-6).
+ */
+export function checkOverlap(segs: readonly Segment[], headIndex: number): boolean {
+  const head = segs[headIndex]
+  for (let y = 0; y < segs.length; y++) {
+    if (y === headIndex) continue // MS-4 — DO NOT COUNT US
+    const c = segs[y]
+    if (c.color === VACANT_COLOR) continue // MS-2 — vacant slot
+    if (c.color >= OVRLAP_DEAD_MIN) continue // MS-3 — dead segment or a score
+    if (c.v !== head.v) continue // MS-2 — must be on the same line
+    // MS-5/6: (MOBJH[X] - MOBJH[Y]) EOR MOBJDH[X], compared against the 0xF4 window.
+    // The EOR with the whole signed step byte normalises "in front" for either heading.
+    const diff = (head.h - c.h) & 0xff
+    const normalised = (diff ^ (head.dh & 0xff)) & 0xff
+    if (normalised >= OVRLAP_THRESHOLD) return true
+  }
+  return false
+}
+
+/**
+ * The split (MILLI.MAC:1561-1592, the 163$/164$ block): when the head at
+ * `headIndex` turns at the bottom row, the TAIL of its contiguous body run is
+ * promoted to a fresh head so the train splits in two. The ROM scans forward from
+ * the head's first body while the NEXT slot is still a body, then promotes the last
+ * one: colour 0x39 (MS-8 "TURN ON COLOR FOR EYES"), horizontal direction reversed
+ * (MS-9, JSR COMP), MOBJDV 0 for one line (MS-10), and V snapped onto a clean cell
+ * boundary first (MS-11 "BE SURE TAIL STARTS ON THE RIGHT LINE"). A NEW array is
+ * returned; the caller is never mutated. If the slot after the head is not a body
+ * there is nothing to split, and the train is returned unchanged.
+ */
+export function splitOnTurn(segs: readonly Segment[], headIndex: number): Segment[] {
+  const out = segs.map((s) => ({ ...s }))
+  let y = headIndex + 1
+  if (y >= out.length || out[y].color !== BODY_COLOR) return out // no body run ⇒ no split
+  // advance to the tail: while the NEXT slot is still a body (165$ INY), keep going.
+  while (y + 1 < out.length && out[y + 1].color === BODY_COLOR) y++
+  const tail = out[y]
+  out[y] = {
+    ...tail,
+    v: (tail.v + 0x04) & 0xf8, // MS-11 — ADC I,04 / AND I,0F8, onto a cell line
+    dh: -tail.dh, // MS-9 — COMP reverses the heading
+    dv: 0, // MS-10 — DV=0 for one line
+    color: HEAD_COLOR, // MS-8 — a body becomes a head
+  }
+  return out
+}
+
+/**
+ * PLAY (MILLI.MAC:1750-1810): is `obj` overlapping the `player`? The non-spider box
+ * requires |dH| < 6 (MS-21), |dV| < 6 (MS-22) and the axis sum |dH|+|dV| < 0x0A
+ * (MS-23). A spider gets a wider horizontal reach (|dH| < 10, MS-20) and a
+ * V-weighted sum |dH| + 2*|dV| < 0x0A. On a hit the ROM stores 0x60 into PEXPLD to
+ * arm the player explosion (MS-24); the caller does that with PLAYER_EXPLODE_TIMER.
+ */
+export function checkPlayerCollision(
+  obj: { h: number; v: number },
+  player: { h: number; v: number },
+  isSpider = false,
+): boolean {
+  const dh = Math.abs(obj.h - player.h)
+  const dv = Math.abs(obj.v - player.v)
+  const dhMax = isSpider ? SPIDER_HIT_DH_MAX : HIT_DH_MAX // MS-20/21
+  if (dh >= dhMax) return false
+  if (dv >= HIT_DV_MAX) return false // MS-22
+  const sum = dh + (isSpider ? 2 * dv : dv) // MS-23 — H+V, or H+2V for a spider
+  return sum < HIT_SUM_MAX
+}
+
+/** The player-death sequence phase (EXPLOD player branch). */
+export type DeathPhase = 'idle' | 'flashing' | 'sparkle' | 'dying' | 'done'
+
+/**
+ * EXPLOD player branch (MILLI.MAC:803-838): advance one frame of the player death
+ * countdown. PEXPLD <= 0 is 'idle'. Otherwise it decrements by one (MS-15) and the
+ * phase is classified off the PRE-decrement value: the final tick is 'done' (the
+ * 60$ end), else >= 0x50 is 'flashing' (MS-16), >= 0x20 is 'sparkle' (MS-17), else
+ * 'dying' (MS-18).
+ *
+ * FREEZE-FRIENDLY (AC-4): the ROM's flashing phase writes the full-screen BKGND
+ * every frame — a photosensitive strobe. This reducer emits NO per-frame colour;
+ * `flashing` is a STEADY signal the shell renders as a static/dim freeze. For the
+ * project owner's photosensitive epilepsy, accessibility overrides ROM fidelity.
+ */
+export function stepPlayerDeath(pexpld: number): { pexpld: number; phase: DeathPhase; flashing: boolean } {
+  if (pexpld <= 0) return { pexpld, phase: 'idle', flashing: false }
+  const next = pexpld - 1 // MS-15 — DEC PEXPLD
+  if (next === 0) return { pexpld: next, phase: 'done', flashing: false } // 60$ END
+  if (pexpld >= PEXPLD_FLASH_MIN) return { pexpld: next, phase: 'flashing', flashing: true } // MS-16
+  if (pexpld >= PEXPLD_SPARKLE_MIN) return { pexpld: next, phase: 'sparkle', flashing: false } // MS-17
+  return { pexpld: next, phase: 'dying', flashing: false } // MS-18
+}
+
+/**
+ * EXPLOD segment branch (MILLI.MAC:765-799): advance one exploding segment. An
+ * explosion picture in (0xFA, 0xFF] counts DOWN toward the 0xFA floor. On reaching
+ * the floor the slot either parks as a floating score — colour 0xFF so OVRLAP
+ * ignores it (MS-13), showing the point value, held for 0xA0 (MS-14) — when
+ * `points` is given, or clears to a vacant slot (ROM: MOBJC=0, MOBJH=0). Returns a
+ * NEW segment; the input is not mutated. (The shot that STARTS an explosion is
+ * scoring — ml5 — and out of scope here.)
+ */
+export function stepSegmentExplosion(seg: Segment, points?: number): Segment {
+  if (seg.pic > EXPLODE_DONE) {
+    const next = seg.pic - 1
+    if (next > EXPLODE_DONE) return { ...seg, pic: next } // MS — still exploding, DEC the picture
+    // reached the 0xFA floor — finish
+    if (points !== undefined && points !== 0) {
+      return { ...seg, color: SCORE_COLOR, pic: points, dv: 0 } // MS-13/14 — park the score
+    }
+    return { ...seg, color: VACANT_COLOR, pic: 0, h: 0 } // 22$ — clear the slot
+  }
+  return { ...seg } // not mid-explosion — defensive no-op copy
+}
