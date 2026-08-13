@@ -2,10 +2,11 @@
 //
 // Story ml4-1 (GREEN) — THE SPIDER: `SPDMV — MOVE SPIDER` (MILLI.MAC:2295,
 // SD-1), ported line-by-line as a pure reducer. Millipede scans spiders in
-// motion-object slots 6..13 (SD-7/8), but outside the first-wave extra-spider
-// feature (descoped — see the ml4-1 Delivery Findings) only slots 12..13 ever
-// START one: slot 13 is reserved for spiders (SD-12), slot 12 opens with
-// score (SD-13/15). The spider zig-zags on its COUNT2 countdown, eats every
+// motion-object slots 6..13 (SD-7/8): slot 13 is reserved for spiders
+// (SD-12), slot 12 opens with score (SD-13/15), and — story ml4-5, the
+// FIRST-WAVE EXTRA-SPIDER feature (SD-52..61) — the centipede entries 6..11
+// open one by one above 100,000 on a full first wave (CENTIN=0C, segments
+// alive). The spider zig-zags on its COUNT2 countdown, eats every
 // stamp from ROCK up (SD-37), bounces between the bottom row and a
 // score-driven ceiling (SD-38..43), and scores by PROXIMITY when killed
 // (SD-46..51). Every constant carries an SD-* claim in
@@ -36,6 +37,8 @@
 export const SPIDER_SLOT_FIRST = 6
 export const SPIDER_SLOT_END = 14
 export const SPIDER_SLOT_RESERVED = 13
+/** NCENT (MLDEF.MAC:188, SD-52) — slots 0..11 are centipede entries. */
+export const NCENT = 12
 
 // ─── spawn writes (MILLI.MAC:2367-2400, SD-20..25) ──────────────────────────
 export const SPIDER_PIC = 0x14 // SPDP (:2397, SD-24)
@@ -88,6 +91,8 @@ export interface SpiderEnv {
   score2: number
   /** CENTIN (SD-15). */
   centin: number
+  /** DEAD — remaining centipede segments (MLDEF.MAC:295, SD-53); 0 = all dead. */
+  dead: number
   /** The PLAYP/PEXPLD gate (MILLI.MAC:2299-2302, SD-6). */
   playerAlive: boolean
   /** OPTNS1 & DIP_SPIDER_HARD — the D6 difficulty (SD-3). */
@@ -119,6 +124,27 @@ export function spiderSpeed(env: Readonly<SpiderEnv>): number {
 }
 
 /**
+ * The first-wave extra-spider gate (MILLI.MAC:2321-2345, SD-54..61) — story
+ * ml4-5. A free slot below NCENT is a centipede entry (SD-54): it opens only
+ * while segments remain (DEAD ≠ 0, SD-55), on a FULL first wave (CENTIN == 0C
+ * exactly, SD-56), at 100,000 up (SCORE2 ≥ 10 binary — the SBC borrow,
+ * SD-57). The allowance is min((SCORE2-10) >> 1, 5) + 3 (SD-58/59) and
+ * NCENT+1-allowance is the last index the centipede KEEPS (SD-60) — only
+ * indexes above it open (BCS refuses at or below, SD-61). Slots at NCENT and
+ * up go straight to the countdown.
+ */
+export function extraSpiderOpen(index: number, env: Readonly<SpiderEnv>): boolean {
+  if (index >= NCENT) return true // :2321-2322 (SD-54)
+  if (env.dead === 0) return false // :2323-2325 (SD-55)
+  if (env.centin !== 0x0c) return false // :2326-2328 (SD-56)
+  if (env.score2 < 0x10) return false // :2329-2332 (SD-57)
+  let a = ((env.score2 - 0x10) & 0xff) >> 1 // :2333 (SD-58)
+  if (a >= 0x08) a = 5 // :2334-2336 (SD-58) — the 200,000 clamp
+  const allowance = a + 3 // :2337-2339 (SD-59)
+  return NCENT + 1 - allowance < index // :2340-2344 (SD-60/61)
+}
+
+/**
  * The start gates for a slot whose countdown just expired
  * (MILLI.MAC:2348-2363): slot 13 always may (SD-12); others wait for 30,000
  * (SD-13) and the (B0 - SCORE2) >> 4 < CENTIN allowance (SD-14/15).
@@ -141,15 +167,17 @@ export function startSpider(slot: SpiderSlot, env: Readonly<SpiderEnv>): void {
 }
 
 /**
- * The empty-slot path (MILLI.MAC:2318-2363 for slots ≥ NCENT): decrement the
- * countdown — WRAPPING, so a failed gate re-arms a 256-frame wait (SD-11) —
- * and start through the gates at zero. Slots 6..11 never start here: that is
- * the descoped first-wave extra-spider feature (the routed ml4-1 finding).
+ * The empty-slot path (MILLI.MAC:2318-2363): a centipede entry must pass
+ * extraSpiderOpen FIRST — a closed gate takes the 11$ path and never reaches
+ * the DEC (SD-54..61). Then decrement the countdown — WRAPPING, so a failed
+ * gate at zero re-arms a 256-frame wait (SD-11) — and start through the
+ * gates at zero.
  */
 export function trySpawnSpider(slot: SpiderSlot, index: number, env: Readonly<SpiderEnv>): boolean {
   if (!env.playerAlive) return false // :2299-2302 (SD-6) — no countdown either
   if (slot.color !== 0) return false // occupied — the scan moves it instead
-  if (index < 12 || index >= SPIDER_SLOT_END) return false // :2321-2345 descoped
+  if (index >= SPIDER_SLOT_END) return false // :2314 — outside the scan
+  if (!extraSpiderOpen(index, env)) return false // :2321-2345 (SD-54..61)
   slot.count2 = (slot.count2 - 1) & 0xff // :2346-2347 (SD-11)
   if (slot.count2 !== 0) return false
   if (!mayStartSpider(index, env)) return false // COUNT2 sits at 0 and wraps next call

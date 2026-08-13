@@ -119,14 +119,14 @@ describe('ml3-7 — the ml3-3 mushroom reducers are enrolled as byte-verifiable 
   })
 
   // ── Dedup guards: the two already-claimed items are REUSED, not re-minted ────────
-  it('ROCK stays claimed by exactly {BT-33, SC-51} — this story adds no third ROCK claim', () => {
-    // Green on arrival: ROCK@MLDEF.MAC:204 is ALREADY covered twice, and SC-51 already
-    // carries the mushroom-count-threshold framing ml3-7 wants, so no re-mint is needed.
-    // If AC-5 is resolved by an architect-approved additional ROCK claim, that is a
-    // conscious decision — update this guard deliberately, do not let a duplicate slip
-    // in silently.
+  it('ROCK stays claimed by exactly {BT-33, DD-5, SC-51} — no further ROCK claim slips in', () => {
+    // ml3-7 pinned {BT-33, SC-51}; DD-5 was minted at the same line by ml4-4 (DDTS2's
+    // restore-write threshold — a distinct claim, its own reviewed PR) and the two PRs
+    // merged in crossed order (#331 before #328), so develop landed with this guard
+    // stale. Updated DELIBERATELY by ml4-5 to admit DD-5; the guard's law is
+    // unchanged — a fourth ROCK claim must not slip in silently.
     const rock = claimsAt('MLDEF.MAC', 204)
-    expect(rock.map((c) => c.id).sort()).toEqual(['BT-33', 'SC-51'])
+    expect(rock.map((c) => c.id).sort()).toEqual(['BT-33', 'DD-5', 'SC-51'])
   })
 
   it('the OBSTAC probe AND-mask stays claimed (BT-46 @ MLSUB.MAC:888)', () => {
