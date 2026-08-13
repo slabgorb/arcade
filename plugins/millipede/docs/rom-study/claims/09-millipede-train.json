@@ -1,0 +1,172 @@
+[
+  {
+    "id": "MT-1",
+    "claim": "NCENT is the motion-object segment count, 12. (decimal) — the millipede occupies 12 of the 16 motion-object slots (MOBJ* are .BLKB 16.).",
+    "source": { "file": "MLDEF.MAC", "line": 188, "verbatim": "NCENT\t=12.\t\t\t;NUMBER OF CENTIPEDES" }
+  },
+  {
+    "id": "MT-2",
+    "claim": "MOBJC (the per-slot COLOR byte) is the head/body/vacant discriminator, NOT a bit of MOBJP — unlike Centipede. A slot with MOBJC 0 is empty; MOTION skips it (BEQ 5$).",
+    "source": { "file": "MILLI.MAC", "line": 1455, "verbatim": "\tBEQ 5$\t\t\t;IF EMPTY ENTRY" }
+  },
+  {
+    "id": "MT-3",
+    "claim": "A slot is a millipede SEGMENT (head or body) iff its picture byte MOBJP < 8 — MOTION filters to segments with CMP I,08 / BCC (other critters use pictures >= 8).",
+    "source": { "file": "MILLI.MAC", "line": 1457, "verbatim": "\tCMP I,08" }
+  },
+  {
+    "id": "MT-4",
+    "claim": "CENTPC sets the head's initial picture to 0x03 (STA MOBJP ;HEAD PICTURE). MOBJP is the leg-animation frame index, cycled 0-7 by MOTION.",
+    "source": { "file": "MILLI.MAC", "line": 520, "verbatim": "5$:\tLDA I,03" }
+  },
+  {
+    "id": "MT-5",
+    "claim": "CENTPC sets the head COLOR to 0x39 (STA MOBJC ;SET COLOR FOR HEAD) — the value MOTION later tests to recognise a non-poisoned head (CMP I,39).",
+    "source": { "file": "MILLI.MAC", "line": 542, "verbatim": "\tLDA I,39" }
+  },
+  {
+    "id": "MT-6",
+    "claim": "CENTPC sets each BODY segment's COLOR to 0x3D (STA MOBJC ;SET COLOR FOR BODY) — MOTION tests CMP I,3D to recognise a body.",
+    "source": { "file": "MILLI.MAC", "line": 600, "verbatim": "\tLDA I,3D" }
+  },
+  {
+    "id": "MT-7",
+    "claim": "MOTION marks a head POISONED by testing MOBJC against 0x1B (CMP I,1B) — the poisoned-head colour that sends the head diving to the bottom of the screen.",
+    "source": { "file": "MILLI.MAC", "line": 1508, "verbatim": "10$:\tCMP I,1B" }
+  },
+  {
+    "id": "MT-8",
+    "claim": "CENTPC enters the head at VPOS 0xF8 (LDA I,0F8 / EOR CKF8 / STA MOBJV) — the top of the screen in upright mode (CKF8 = 0; the EOR is the cocktail vertical flip, dropped in the upright port).",
+    "source": { "file": "MILLI.MAC", "line": 537, "verbatim": "\tLDA I,0F8" }
+  },
+  {
+    "id": "MT-9",
+    "claim": "CENTPC enters the head at HPOS 0x80 (LDA I,80 / STA MOBJH ;HPOS) — horizontal centre.",
+    "source": { "file": "MILLI.MAC", "line": 540, "verbatim": "\tLDA I,80" }
+  },
+  {
+    "id": "MT-10",
+    "claim": "CENTPC spaces each body 8 pixels from the segment ahead: +8 when the copied heading is negative (LDA I,8), -8 when non-negative (LDA I,-8).",
+    "source": { "file": "MILLI.MAC", "line": 596, "verbatim": "30$:\tLDA I,-8" }
+  },
+  {
+    "id": "MT-11",
+    "claim": "CENTPC seeds the first body picture at 2 (LDY I,2 / STY MOBJP ;BODY PICTURE) and alternates it, reloading to 7 on underflow (LDY I,7 ;ALTERNATE BODY SEGMENTS).",
+    "source": { "file": "MILLI.MAC", "line": 580, "verbatim": "\tLDY I,2" }
+  },
+  {
+    "id": "MT-12",
+    "claim": "CENTPC's body-picture alternation reloads to 7 on underflow (LDY I,7 ;ALTERNATE BODY SEGMENTS).",
+    "source": { "file": "MILLI.MAC", "line": 604, "verbatim": "\tLDY I,7\t\t\t;ALTERNATE BODY SEGMENTS" }
+  },
+  {
+    "id": "MT-13",
+    "claim": "CENTPC chooses the initial heading sign from RND0 bit 1 in normal play (LDA RND0 / AND I,2) — unlike Centipede, which reads FRAME. (Special attract mode forces a rightward start.)",
+    "source": { "file": "MILLI.MAC", "line": 531, "verbatim": "\tAND I,2" }
+  },
+  {
+    "id": "MT-14",
+    "claim": "The per-wave cadence runs only while CENTIS >= 3: CMP I,03 / BCC 5$ ;IF CENTIS < 3 skips the whole length/speed block below that speed.",
+    "source": { "file": "MILLI.MAC", "line": 506, "verbatim": "\tBCC 5$\t\t\t;IF CENTIS < 3" }
+  },
+  {
+    "id": "MT-15",
+    "claim": "When CENTIN decrements to zero the length reloads to 0x0C (LDA I,0C / STA CENTIN ;LONG CENTI AGAIN).",
+    "source": { "file": "MILLI.MAC", "line": 511, "verbatim": "\tLDA I,0C" }
+  },
+  {
+    "id": "MT-16",
+    "claim": "Millipede resets CENTIS to fast (2) only once SCORE2 >= 2 (i.e. after 20000): CPY I,2 / BCC 4$ ;ONLY FAST CENTIPEDES AFTER 20000 — Centipede's threshold is 4 (after 40000). Below it CENTIS is 1.",
+    "source": { "file": "MILLI.MAC", "line": 517, "verbatim": "\tBCC 4$\t\t\t;ONLY FAST CENTIPEDES AFTER 20000" }
+  },
+  {
+    "id": "MT-17",
+    "claim": "MOTION animates the legs every OTHER frame — LDA FRAME / AND I,1 / BNE 7$ ;SLOW DOWN LEGS gates the picture advance on FRAME bit 0.",
+    "source": { "file": "MILLI.MAC", "line": 1464, "verbatim": "\tAND I,1" }
+  },
+  {
+    "id": "MT-18",
+    "claim": "The leg animation advances MOBJP by one and wraps it mod 8: ADC I,01 / AND I,7 / STA MOBJP ;MOVE LEGS.",
+    "source": { "file": "MILLI.MAC", "line": 1469, "verbatim": "\tAND I,7" }
+  },
+  {
+    "id": "MT-19",
+    "claim": "MOTION does not speed up (or reverse) a segment that is mid-drop: 71$: AND I,07 / BNE 15$ ;DON'T SPEED UP IF TURNING — a segment off the 8px cell boundary (V&7 != 0) is still descending.",
+    "source": { "file": "MILLI.MAC", "line": 1482, "verbatim": "\tBNE 15$\t\t\t;DON'T SPEED UP IF TURNING" }
+  },
+  {
+    "id": "MT-20",
+    "claim": "A BODY follows its leader down once the vertical gap reaches a full cell: (prev V) - (cur V), ABS, CMP I,08 / BCS 15$ ;DIFFERENCE=8 turns the body into the descent.",
+    "source": { "file": "MILLI.MAC", "line": 1504, "verbatim": "\tCMP I,08" }
+  },
+  {
+    "id": "MT-21",
+    "claim": "A head at the left screen edge is one whose HPOS >= 0xF0 (CMP I,0F0) — the edge that turns the head like a mushroom ahead.",
+    "source": { "file": "MILLI.MAC", "line": 1511, "verbatim": "\tCMP I,0F0" }
+  },
+  {
+    "id": "MT-22",
+    "claim": "A head at the right screen edge is one whose HPOS < 0x10 (11$: CMP I,10).",
+    "source": { "file": "MILLI.MAC", "line": 1519, "verbatim": "11$:\tCMP I,10" }
+  },
+  {
+    "id": "MT-23",
+    "claim": "The vertical step subtracts MOBJDV from MOBJV (SBC X,MOBJDV / STA MOBJV ;CHANGE VPOS) — a positive MOBJDV DESCENDS (V decreases; V=0xF8 is the top).",
+    "source": { "file": "MILLI.MAC", "line": 1603, "verbatim": "\tSBC X,MOBJDV" }
+  },
+  {
+    "id": "MT-24",
+    "claim": "The horizontal march adds MOBJDH to MOBJH every stepped frame (ADC X,MOBJH / STA MOBJH ;CHANGE HPOS), unconditionally — the coast-march, mid-drop included.",
+    "source": { "file": "MILLI.MAC", "line": 1607, "verbatim": "\tADC X,MOBJH" }
+  },
+  {
+    "id": "MT-25",
+    "claim": "The horizontal direction reverses only when the new VPOS lands on cell-phase 4: AND I,07 / CMP I,04 / BNE 30$ ;NOT TIME TO CHANGE DIRECTION, then JSR COMP / STA MOBJDH ;CHANGE DIRECTION.",
+    "source": { "file": "MILLI.MAC", "line": 1619, "verbatim": "\tCMP I,04" }
+  },
+  {
+    "id": "MT-26",
+    "claim": "MOTION arms NEWD (start adding new heads) when a head reaches the bottom row (STY NEWD ;START ADDING NEW HEADS, Y=1).",
+    "source": { "file": "MILLI.MAC", "line": 1479, "verbatim": "\tSTY NEWD\t\t;START ADDING NEW HEADS" }
+  },
+  {
+    "id": "MT-27",
+    "claim": "NEWHD makes a fresh head's picture 0 (LDA I,0 / STA MOBJP ;MAKE HEAD PICTURE) — a plain head, distinct from CENTPC's 0x03.",
+    "source": { "file": "MLSUB.MAC", "line": 797, "verbatim": "\tSTA Y,MOBJP\t\t;MAKE HEAD PICTURE" }
+  },
+  {
+    "id": "MT-28",
+    "claim": "NEWHD enters a fresh head at VPOS 0x40 (LDA I,40 / EOR CKF8 / STA MOBJV ;VPOS FOR NEW HEAD) — the player-zone entry row (CKF8 = 0 upright).",
+    "source": { "file": "MLSUB.MAC", "line": 800, "verbatim": "\tLDA I,40" }
+  },
+  {
+    "id": "MT-29",
+    "claim": "NEWHD's default entry side sets HPOS 0xFC and marches at MOBJDV 2 (LDA I,0FC / STA MOBJH ;HPOS FOR NEW HEAD; ORA I,2 / STA MOBJDV ;NEW CENTIPEDE GOES FAST).",
+    "source": { "file": "MLSUB.MAC", "line": 803, "verbatim": "\tLDA I,0FC" }
+  },
+  {
+    "id": "MT-30",
+    "claim": "NEWHD's mirror entry side (RND0 bit 1 clear) sets HPOS 0x04 and MOBJDH -2 (LDA I,4 / STA MOBJH; LDA I,-2 / STA MOBJDH). The default side keeps HPOS 0xFC with MOBJDH +2.",
+    "source": { "file": "MLSUB.MAC", "line": 817, "verbatim": "\tLDA I,4" }
+  },
+  {
+    "id": "MT-31",
+    "claim": "NEWHD ramps the head-spawn timer COUNT3 down by 8 each spawn until it floors at 0x60: CMP I,60 ;1 1/2 SECONDS / BCC 25$ ;SMALLEST VALUE WE ALLOW / SBC I,8.",
+    "source": { "file": "MLSUB.MAC", "line": 811, "verbatim": "\tSBC I,8" }
+  },
+  {
+    "id": "MT-32",
+    "claim": "NEWHD's COUNT3 floor is 0x60 (CMP I,60 ;1 1/2 SECONDS) — the smallest inter-spawn value the ramp allows.",
+    "source": { "file": "MLSUB.MAC", "line": 809, "verbatim": "\tCMP I,60\t\t;1 1/2 SECONDS" }
+  },
+  {
+    "id": "MT-33",
+    "claim": "MOTION speeds up the last surviving head only when exactly one segment is live: CMP Y,DEAD / BNE 78$ ;IF MORE THAN 1 LIVE SEGMENT skips the speed-up unless the live-segment count (DEAD, held per player) equals 1.",
+    "source": { "file": "MILLI.MAC", "line": 1486, "verbatim": "\tBNE 78$\t\t\t;IF MORE THAN 1 LIVE SEGMENT" }
+  },
+  {
+    "id": "MT-34",
+    "claim": "The last-head speed-up forces the per-frame step magnitude to 2 on both axes: LDA I,2 (a BPL sign test then chooses +2 or -2) followed by STA MOBJDH / STA MOBJDV ;SPEED UP LAST HEAD.",
+    "source": { "file": "MILLI.MAC", "line": 1487, "verbatim": "\tLDA I,2" }
+  }
+]
