@@ -172,3 +172,8 @@ completed_stories:
     title: 'Waves + scoring core (cited): per-wave difficulty BEETLA beetles-allowed (MLDEF.MAC:370) + DELAY between waves (MLDEF.MAC:286); SCORNG scoring (MLSUB.MAC:1040) + UPSCRE update scores on screen (MLSUB.MAC:1912), scoring pinned to PTS (MLDEF.MAC:398).'
     points: 5
     completed: '2026-08-13'
+  - id: ml4-4
+    epic: ml4
+    title: 'DDT bombs: DDTS add DDT bombs (MLSUB.MAC:420), BOMBS bomb player with bee/mosquito/dragonfly (MILLI.MAC:446), explosion clouds (CLOUD MLDEF.MAC:202, DDT stamps :203). NDDT=4 (MLDEF.MAC:191). Cited.'
+    points: 3
+    completed: '2026-08-13'
