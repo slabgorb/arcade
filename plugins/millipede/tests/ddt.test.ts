@@ -252,14 +252,14 @@ const MUSHROOM = 0x7c
 const intact = (off: number): DdtEntry => ({ lo: off & 0xff, hi: 0x10 | (off >> 8) })
 
 /** A table of four entries; overrides land by index (3 is swept FIRST). */
-function table(over: Partial<Record<number, DdtEntry>> = {}): DdtTable {
+function table(over: Record<number, DdtEntry> = {}): DdtTable {
   const t: DdtTable = [
     { lo: 0, hi: 0 },
     { lo: 0, hi: 0 },
     { lo: 0, hi: 0 },
     { lo: 0, hi: 0 },
   ]
-  for (const [i, e] of Object.entries(over)) t[Number(i)] = { ...(e as DdtEntry) }
+  for (const [i, e] of Object.entries(over)) t[Number(i)] = { ...e }
   return t
 }
 
@@ -592,6 +592,17 @@ describe('ddtShoot — SHOOT1 bomb branch (MILLI.MAC:1983-1985, 2014-2063)', () 
     expect(t[0]).toEqual({ lo: 0x6c, hi: 0xb4 })
   })
 
+  it('a grey-carrying stamp read still normalizes — the $7F mask is live (review F5)', async () => {
+    const m = await loadDdt()
+    const t = table({ 0: intact(0x0cd) })
+    const f = emptyField()
+    f[0x0cd] = DDT
+    f[0x0ed] = 0x80 | (DDT + 1) // the raw field byte a player-area hit reads
+    const r = m.ddtShoot(t, f, 0x0ed, 0x80 | (DDT + 1))
+    expect(r.kind).toBe('exploded')
+    expect(t[0]).toEqual({ lo: 0x6c, hi: 0xb4 })
+  })
+
   it("both cleared cells take the BASE cell's grey bit (MILLI.MAC:2046)", async () => {
     const m = await loadDdt()
     // Base grey, +$20 not: BOTH end $80.
@@ -678,11 +689,38 @@ describe('ddtExplosionStep — the FRAME&7 cloud machine (MILLI.MAC:841-905)', (
     f[0x6c + 0x60] = CLOUD // an old cloud — erasable
     f[0x6c + 0x61] = DDT // another bomb's base stamp — preserved
     f[0x6c + 0x62] = DDT + 1 // another bomb's second stamp — preserved
+    f[0x6c + 0x80] = 0x2d // CLOUD-1: still a letter — preserved (F1)
+    f[0x6c + 0x81] = 0x6d // DDT-1: still an erasable cloud — overwritten (F1)
     m.ddtExplosionStep(t, f, 0)
     expect(f[0x6c + 0x41]).toBe(0x05)
     expect(f[0x6c + 0x60]).toBe(0x34) // 97$ stamp overwrote the cloud
     expect(f[0x6c + 0x61]).toBe(DDT)
     expect(f[0x6c + 0x62]).toBe(DDT + 1)
+    // The classifier's own boundaries, pinned INSIDE the machine (review F1):
+    // $2D sits one below CLOUD (letter side), $6D one below DDT (cloud side).
+    expect(f[0x6c + 0x80]).toBe(0x2d)
+    expect(f[0x6c + 0x81]).toBe(0x32) // 97$ stamp overwrote the $6D cloud
+  })
+
+  it('MUSHD1 band edges sit AT $0B/$0C and $13/$14 (review F2, DD-47/48/49)', async () => {
+    const m = await loadDdt()
+    // Each case: a fresh exploding entry whose anchor puts offset $41 exactly
+    // on the target row ((lo + $41) & $1F), a mushroom there, one step.
+    const cases: Array<{ lo: number; row: number; mush: number; mushTop: number }> = [
+      { lo: 0x0a, row: 0x0b, mush: -1, mushTop: 0 }, // last bottom-region row
+      { lo: 0x0b, row: 0x0c, mush: 0, mushTop: 0 }, // first uncounted row
+      { lo: 0x12, row: 0x13, mush: 0, mushTop: 0 }, // last uncounted row
+      { lo: 0x13, row: 0x14, mush: 0, mushTop: -1 }, // first top-region row
+    ]
+    for (const c of cases) {
+      const t = table({ 0: { lo: c.lo, hi: 0xb4 } })
+      const f = emptyField()
+      const cell = c.lo + 0x41
+      expect(cell & 0x1f, `fixture row for lo $${c.lo.toString(16)}`).toBe(c.row)
+      f[cell] = MUSHROOM
+      const d = m.ddtExplosionStep(t, f, 0)
+      expect(d, `row $${c.row.toString(16)}`).toEqual({ mush: c.mush, mushTop: c.mushTop })
+    }
   })
 
   it('the boundary is AT DDT+2: $70 (a rock) is destroyed, $6F is not', async () => {
@@ -854,6 +892,18 @@ describe('bombs — the bomb-mode entry dispatcher (MILLI.MAC:449-488)', () => {
     expect(m.bombs(env({ centin: 2, rndPick: 6 }))).toEqual({ kind: 'enter', critter: 'dragonfly', delaySet: true })
   })
 
+  it('odd CENTIN values land in the SAME pair as their even sibling (review F6)', async () => {
+    const m = await loadDdt()
+    // rndPick 4 discriminates the adjacent codes: $83 (mask 6) -> 4 ->
+    // dragonfly, $81 (mask 2) -> 0 -> bee, $C0 -> mosquito, $80 -> dragonfly,
+    // $00 -> bee. A (centin+1)>>1 mis-shift lands in the NEXT pair and dies.
+    expect(m.bombs(env({ centin: 1, rndPick: 4 }))).toEqual({ kind: 'enter', critter: 'dragonfly', delaySet: true })
+    expect(m.bombs(env({ centin: 3, rndPick: 4 }))).toEqual({ kind: 'enter', critter: 'bee', delaySet: true })
+    expect(m.bombs(env({ centin: 5, rndPick: 4 }))).toEqual({ kind: 'enter', critter: 'mosquito', delaySet: true })
+    expect(m.bombs(env({ centin: 7, rndPick: 4 }))).toEqual({ kind: 'enter', critter: 'dragonfly', delaySet: true })
+    expect(m.bombs(env({ centin: 9, rndPick: 4 }))).toEqual({ kind: 'enter', critter: 'dragonfly', delaySet: true })
+  })
+
   it('the dispatch uses the SECOND rnd read — reusing the gate byte degenerates to always-bee', async () => {
     const m = await loadDdt()
     // The gate read passed with rnd0 = 0 (bits 0-2 clear by construction).
@@ -886,6 +936,14 @@ describe('bombModeStart — BOMBSL arming (MILLI.MAC:1916-1925)', () => {
     expect(m.bombModeStart(1, 5)).toBe(23) // 2 + 20 + 1, NOT 22
     expect(m.bombModeStart(1, 0x10)).toBe(28)
     expect(m.bombModeStart(1, 0x11)).toBe(29)
+  })
+
+  it('the result is a BYTE — the & $FF mask is live (review F4)', async () => {
+    const m = await loadDdt()
+    // In-domain byte score2 never reaches the wrap ((0xff>>1)+20+1 = 148), so
+    // this pins the mask DEFENSIVELY with an out-of-domain word: $1E0 >> 1 =
+    // $F0, + 20 + 0 = $104 -> the stored NOCENT byte is $04.
+    expect(m.bombModeStart(1, 0x1e0)).toBe(0x04)
   })
 })
 
@@ -938,6 +996,20 @@ describe('ddtScrollDown — the SCROLD DDT half (MLSUB.MAC:1231-1295, SC-49)', (
     expect(d.mushTop).toBe(-2)
     expect(f[0x25e]).toBe(DDT)
     expect(f[0x27e]).toBe(DDT + 1)
+  })
+
+  it('asymmetric seed overwrites count independently per cell (review F3)', async () => {
+    const m = await loadDdt()
+    // Only the BASE cell occupied -> exactly -1.
+    const t1 = table({ 3: intact(0x2f7), 2: intact(0x233), 1: intact(0x119) })
+    const f1 = emptyField()
+    f1[0x25e] = MUSHROOM
+    expect(m.ddtScrollDown(t1, f1, 0x40, 0x02).mushTop).toBe(-1)
+    // Only the +$20 cell occupied -> exactly -1.
+    const t2 = table({ 3: intact(0x2f7), 2: intact(0x233), 1: intact(0x119) })
+    const f2 = emptyField()
+    f2[0x27e] = MUSHROOM
+    expect(m.ddtScrollDown(t2, f2, 0x40, 0x02).mushTop).toBe(-1)
   })
 
   it('rnd1 & 3 === 3 rejects the seed — the right-edge page never hosts a bomb', async () => {

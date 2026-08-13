@@ -218,7 +218,10 @@ export function ddtShoot(table: DdtTable, field: Uint8Array, offset: number, sta
     field[base + 0x20] = grey // the SAME byte (DD-209)
     const anchor = base - DDT_ANCHOR_BACKSTEP // DD-210
     e.lo = anchor & 0xff
-    e.hi = DDT_EXPLOSION_START | (anchor >> 8) // DD-211
+    // anchor stays >= 0 for every legit bomb because the seed path keeps
+    // page-0 bombs at lo >= $80 (DD-61/62) and DDTST's own words sit above
+    // $61 — the & 0xff is defense-in-depth on that cross-function coupling.
+    e.hi = (DDT_EXPLOSION_START | (anchor >> 8)) & 0xff // DD-211
     return { kind: 'exploded', points: DDT_HIT_POINTS, hitDdt: true } // DD-212/213
   }
   return { kind: 'none' } // DD-207
