@@ -555,8 +555,10 @@ describe('dragonfly — mushroom trail decision', () => {
 
   it('the area boundary uses the POST-move v: landing exactly on 0x48 is above (DF-46)', async () => {
     const m = await loadDragonfly()
-    const r = m.moveDragonfly(fly({ v: 0x4a, dv: 2 }), env({ frame: 0x04, rnd1: 0x01 }))
-    expect(r, 'CMP I,48 / BCS at equal → mask 1, and 1&1 blocks').toMatchObject({ kind: 'moved', plantMushroom: false })
+    // rnd1 0x02 DISCRIMINATES the masks: 1&2=0 plants, 7&2 blocks — so a
+    // boundary drifted to v>0x48 flips this to false (review-round MB-3)
+    const r = m.moveDragonfly(fly({ v: 0x4a, dv: 2 }), env({ frame: 0x04, rnd1: 0x02 }))
+    expect(r, 'CMP I,48 / BCS at equal → mask 1, and 1&2 plants').toMatchObject({ kind: 'moved', plantMushroom: true })
   })
 
   it('only every fourth frame plants (DF-45)', async () => {
