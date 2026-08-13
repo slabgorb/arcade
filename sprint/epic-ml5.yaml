@@ -28,7 +28,8 @@ stories:
     title: 'High-score table + initials in core, reusing @shared/highscore + @shared/name-entry: qualifiesForHighScore/insertHighScore over ML GameState; stepNameEntry drives the initials buffer (GETINT MLSUB.MAC:547, UPDATE MLSUB.MAC:1817). Verify whether the ROM ships a default ladder before seeding one.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml5-4
