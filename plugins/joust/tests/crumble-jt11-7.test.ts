@@ -233,8 +233,7 @@ describe('AC-3 — the crumble is deterministic and pure', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-5 — crumble is a distinct module, not the ptero dissolve', () => {
   it('crumble exports its OWN constants — no DISSOLVE_* leak', async () => {
-    const c = (await loadCrumble()) as unknown as Record<string, unknown>
-    const leaked = Object.keys(c).filter((k) => /dissolve/i.test(k))
+    const leaked = Object.keys(await loadCrumble()).filter((k) => /dissolve/i.test(k))
     expect(leaked, 'crumble must not re-export the dissolve (a false-friend tell)').toEqual([])
   })
 

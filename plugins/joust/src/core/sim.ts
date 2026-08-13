@@ -315,8 +315,10 @@ export interface DrawOp {
   height?: number
   /**
    * jt11-7 — a `kind:'crumble'` overlay's destructible cliff (CLIF1L/CLIF1R/
-   * CLIF2/CLIF4) and its CLFDES phase. The shell reads `phase` + `frame` to pick
-   * the shake vs debris art; both undefined on every non-crumble op.
+   * CLIF2/CLIF4) and its CLFDES phase. The shell's `paintCrumble` reads `phase`
+   * (and the shared `frame` above) to pick the shake vs debris paint. `cliff` and
+   * `phase` are undefined on every non-crumble op; `frame` is SHARED with the
+   * dissolve op kind (see its note above), so it is not crumble-exclusive.
    */
   cliff?: string
   phase?: CrumblePhase
@@ -2865,16 +2867,21 @@ export function drawList(demo: SimState): DrawOp[] {
   // `phase`/`frame` to pick the shake vs debris art.
   for (const c of demo.crumbles ?? []) {
     const rec = BACKGROUND_RECORDS.find((r) => r.name === c.cliff)
-    const destY = rec ? rec.dest & 0xff : 0
+    // Every destructible cliff (CLIF1L/CLIF1R/CLIF2/CLIF4) has a primary record, so
+    // this is always found; skip rather than draw a phantom at (0,0) if a future
+    // rename ever breaks the match (fail quiet, not wrong-position).
+    if (!rec) continue
+    const destY = rec.dest & 0xff
     const op: DrawOp = {
       kind: 'crumble',
       name: c.cliff,
       cliff: c.cliff,
       phase: c.phase,
       frame: c.frame,
-      x: rec ? ((rec.dest >> 8) & 0xff) * 2 : 0,
+      x: ((rec.dest >> 8) & 0xff) * 2,
       y: destY,
-      height: rec ? rec.wh & 0xff : undefined,
+      width: ((rec.wh >> 8) & 0xff) * 2,
+      height: rec.wh & 0xff,
     }
     ;(isForegroundArena(destY) ? fore : back).push(op)
   }

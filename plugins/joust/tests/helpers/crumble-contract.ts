@@ -78,26 +78,17 @@ export interface CrumbleState {
   done: boolean
 }
 
-/**
- * The overlay op drawList emits WHILE a destroyed cliff is crumbling — a NEW
- * DrawOp kind, additive to the jt11-5 render. It does NOT re-add the cliff's
- * `kind:'arena'` records: WCLFEW clears those the instant the cliff is destroyed
- * (JOUSTRV4.SRC:2301-2325, jt11-5's `arena.destroyedCliffs` filter), and CLFDES
- * (:4562-4599) draws its shake/debris OVER that now-empty space. So jt11-5's
- * arena-op assertions are untouched — a `kind:'crumble'` op is invisible to a
- * `kind === 'arena'` filter — and the transition is what becomes visible.
- * The shell reads `phase`/`frame` to pick the visual (shake: the $2A-tinted
- * jittered silhouette; debris: the thrown frame).
- */
-export interface CrumbleDrawOp {
-  kind: 'crumble'
-  /** The destructible cliff this overlay animates (CLIF1L/CLIF1R/CLIF2/CLIF4). */
-  cliff: string
-  /** Which CLFDES half is showing — the shell selects shake vs debris art. */
-  phase: CrumblePhase
-  /** The frame index within the phase (0 .. COUNT-1). */
-  frame: number
-}
+// The overlay op `drawList` emits WHILE a destroyed cliff is crumbling is a NEW
+// `kind:'crumble'` DrawOp, additive to the jt11-5 render — the canonical shape is
+// `DrawOp` in src/core/sim.ts (which gained `kind:'crumble'` plus `cliff`/`phase`,
+// reusing the shared `frame`). It does NOT re-add the cliff's `kind:'arena'`
+// records: WCLFEW clears those the instant the cliff is destroyed
+// (JOUSTRV4.SRC:2301-2325, jt11-5's `arena.destroyedCliffs` filter), and CLFDES
+// (:4562-4599) draws its shake/debris OVER that now-empty space. So jt11-5's
+// arena-op assertions are untouched — a `kind:'crumble'` op is invisible to a
+// `kind === 'arena'` filter — and the transition is what becomes visible. The
+// shell's `paintCrumble` reads `phase`/`frame` to pick the visual (shake: the
+// $2A-tinted jittered footprint; debris: thinning falling slices).
 
 export interface CrumbleModule {
   /**

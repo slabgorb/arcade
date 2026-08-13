@@ -56,6 +56,12 @@ function operandNum(operand: string): number {
   const t = operand.replace(/^#/, '')
   return t.startsWith('$') ? parseInt(t.slice(1), 16) : parseInt(t, 10)
 }
+/** The numeric operand at a line — throws a readable error if the line does not parse. */
+function operandAt(lineNo: number): number {
+  const ins = instrAt(lineNo)
+  if (!ins) throw new Error(`no instruction parsed at ${FILE}:${lineNo}`)
+  return operandNum(ins.operand)
+}
 /** Every PCNAP nap value on lines [start, end], in order. */
 function pcnapsIn(start: number, end: number): number[] {
   const naps: number[] = []
@@ -101,7 +107,7 @@ describe.skipIf(!vendoredAvailable)('CLFDES is the routine at :4562-4599', () =>
   it('the erase between the phases is JSR LOCCLR / PCNAP 2 (:4575-4576)', () => {
     expect(sourceLines(FILE)[4575 - 1]).toContain('LOCCLR')
     expect(instrAt(4576)?.op).toBe('PCNAP')
-    expect(operandNum(instrAt(4576)!.operand), 'the 2-nap erase blip (folded into the transition)').toBe(2)
+    expect(operandAt(4576), 'the 2-nap erase blip (folded into the transition)').toBe(2)
   })
 })
 
@@ -111,7 +117,7 @@ describe.skipIf(!vendoredAvailable)('CLFDES is the routine at :4562-4599', () =>
 describe.skipIf(!vendoredAvailable)('the crumble module re-derives from CLFDES', () => {
   it('CRUMBLE_SHAKE_COUNT === the LDA #5 shake count (:4563)', async () => {
     const c = await loadCrumble()
-    expect(c.CRUMBLE_SHAKE_COUNT).toBe(operandNum(instrAt(4563)!.operand))
+    expect(c.CRUMBLE_SHAKE_COUNT).toBe(operandAt(4563))
   })
 
   it('CRUMBLE_SHAKE_NAPS === the two PCNAP 10 in the shake loop (:4565-4574)', () => {
@@ -127,7 +133,7 @@ describe.skipIf(!vendoredAvailable)('the crumble module re-derives from CLFDES',
 
   it('CRUMBLE_DEBRIS_FRAME_COUNT === the LDA #5 debris count (:4579)', async () => {
     const c = await loadCrumble()
-    expect(c.CRUMBLE_DEBRIS_FRAME_COUNT).toBe(operandNum(instrAt(4579)!.operand))
+    expect(c.CRUMBLE_DEBRIS_FRAME_COUNT).toBe(operandAt(4579))
   })
 
   it('CRUMBLE_DEBRIS_FRAME_NAPS === the one PCNAP 8 in the debris loop (:4581-4597)', () => {
@@ -138,7 +144,7 @@ describe.skipIf(!vendoredAvailable)('the crumble module re-derives from CLFDES',
 
   it('CRUMBLE_FLAVOR === the LDA #$2A shake tint (:4570)', async () => {
     const c = await loadCrumble()
-    expect(c.CRUMBLE_FLAVOR).toBe(operandNum(instrAt(4570)!.operand))
+    expect(c.CRUMBLE_FLAVOR).toBe(operandAt(4570))
   })
 })
 

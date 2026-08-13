@@ -45,18 +45,12 @@ async function demoAtWave(
   return d
 }
 
-// A crumble overlay op, widened past the jt11-5 DrawOp union so this file typechecks
-// before Dev adds the `kind:'crumble'` variant to sim.ts.
-interface MaybeCrumbleOp {
-  kind: string
-  cliff?: string
-  phase?: string
-  frame?: number
-}
-const crumbleOpsFor = (ops: DrawOp[], cliff: string): MaybeCrumbleOp[] =>
-  (ops as unknown as MaybeCrumbleOp[]).filter((o) => o.kind === 'crumble' && o.cliff === cliff)
-const anyCrumbleOps = (ops: DrawOp[]): MaybeCrumbleOp[] =>
-  (ops as unknown as MaybeCrumbleOp[]).filter((o) => o.kind === 'crumble')
+// The kind:'crumble' overlay ops. DrawOp now carries `cliff`/`phase`/`frame`
+// (sim.ts), so these filter the canonical type directly — no cast, no re-declared
+// shape (the F2/F4 cleanup from the Reviewer's REJECT).
+const crumbleOpsFor = (ops: DrawOp[], cliff: string): DrawOp[] =>
+  ops.filter((o) => o.kind === 'crumble' && o.cliff === cliff)
+const anyCrumbleOps = (ops: DrawOp[]): DrawOp[] => ops.filter((o) => o.kind === 'crumble')
 /** jt11-5's arena-op name projection — used to reassert the no-regression law. */
 const arenaNames = (ops: DrawOp[]): string[] =>
   ops.filter((op) => op.kind === 'arena').map((op) => op.name)

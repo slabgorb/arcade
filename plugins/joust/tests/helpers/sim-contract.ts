@@ -246,7 +246,7 @@ export interface DrawOp {
    * so no atlas block can carry them. The shell paints a `fill` op with
    * `fillRect`, not a blit.
    */
-  kind: 'arena' | 'entity' | 'fill'
+  kind: 'arena' | 'entity' | 'fill' | 'crumble'
   /** The atlas block (or a foreground tag) this op blits. */
   name: string
   x: number
@@ -257,6 +257,13 @@ export interface DrawOp {
   /** jt11-5 — a `fill` op's colour PROM nibble (LIB = $8; the byte is LIB*$11). */
   colour?: number
   /**
+   * jt11-7 — a `kind:'crumble'` overlay's destructible cliff and CLFDES phase; the
+   * shell's `paintCrumble` reads `phase` + the shared `frame` to pick shake vs
+   * debris. Undefined on non-crumble ops.
+   */
+  cliff?: string
+  phase?: 'shake' | 'debris'
+  /**
    * jt2-9 — the entity's `PFACE` on this op, so the shell can flip the
    * right-facing atlas frame horizontally for a left-facer. The render's
    * SELECTION (including which way the sprite faces) stays pure DATA the shell
@@ -264,6 +271,11 @@ export interface DrawOp {
    * is a data bug, catchable without a canvas. Absent/undefined on `arena` ops.
    */
   facing?: Facing
+  /**
+   * jt3-7 — the dissolve op's `DissolveState.frame`; jt11-7 — the crumble op's
+   * CLFDES frame index. Shared by both animated op kinds; undefined otherwise.
+   */
+  frame?: number
 }
 
 export interface SimModule {
