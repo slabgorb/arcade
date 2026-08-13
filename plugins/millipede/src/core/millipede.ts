@@ -55,6 +55,11 @@ export const RIGHT_EDGE = 0x10 // MT-22 (MILLI.MAC:1519 "CMP I,10")
 export const REVERSAL_PHASE = 0x04 // MT-25 (MILLI.MAC:1619 "CMP I,04")
 export const BODY_FOLLOW_GAP = 0x08 // MT-20 (MILLI.MAC:1504 "CMP I,08")
 
+// The last-head speed-up magnitude (MT-34, MILLI.MAC:1487 "LDA I,2" →
+// :1491/:1496 "STA MOBJDH/MOBJDV ;SPEED UP LAST HEAD"). Gated on the one-live
+// trigger MT-33 (:1486 "BNE 78$ ;IF MORE THAN 1 LIVE SEGMENT").
+const LAST_HEAD_SPEED = 0x02 // MT-34
+
 // wave cadence (MILLI.MAC:504-519)
 export const CENTIS_DEC_GATE = 0x03 // MT-14 (MILLI.MAC:506 "BCC 5$ ;IF CENTIS < 3")
 export const CENTIN_RELOAD = 0x0c // MT-15 (MILLI.MAC:511 "LDA I,0C")
@@ -73,14 +78,16 @@ export const NEWHD_SIDE_B_DH = -2 // MT-30 (MLSUB.MAC:819 "LDA I,-2")
 export const COUNT3_FLOOR = 0x60 // MT-32 (MLSUB.MAC:809 "CMP I,60")
 export const COUNT3_STEP = 0x08 // MT-31 (MLSUB.MAC:811 "SBC I,8")
 
-/** One millipede segment = one motion-object slot. */
+/** One millipede segment = one motion-object slot. Fields are `readonly` — the
+ *  reducers below never mutate in place (they rebuild via spread), and the
+ *  purity/determinism tests depend on that; `readonly` enforces it at compile time. */
 export interface Segment {
-  h: number // MOBJH pixel
-  v: number // MOBJV pixel (0xF8 top -> ~8 bottom; V DECREASES downward)
-  dh: number // MOBJDH signed horizontal step (H += dh each frame)
-  dv: number // MOBJDV signed vertical step (>0 DESCENDS, V -= dv on a drop)
-  pic: number // MOBJP leg-animation frame 0-7 (< 8 marks a segment)
-  color: number // MOBJC — the head/body/vacant discriminator (0 / 0x39 / 0x3D / 0x1B)
+  readonly h: number // MOBJH pixel
+  readonly v: number // MOBJV pixel (0xF8 top -> ~8 bottom; V DECREASES downward)
+  readonly dh: number // MOBJDH signed horizontal step (H += dh each frame)
+  readonly dv: number // MOBJDV signed vertical step (>0 DESCENDS, V -= dv on a drop)
+  readonly pic: number // MOBJP leg-animation frame 0-7 (< 8 marks a segment)
+  readonly color: number // MOBJC — the head/body/vacant discriminator (0 / 0x39 / 0x3D / 0x1B)
 }
 
 interface CreateOpts {
@@ -112,7 +119,12 @@ const wrapH = (h: number): number => h & 0xff
  */
 export function createMillipede(opts: CreateOpts = {}): Segment[] {
   const headingSign = opts.headingSign ?? 1
-  const centin = opts.centin ?? NCENT
+  // The ROM cadence keeps CENTIN in 1..NCENT (it decrements to 1 then reloads to
+  // 0x0C, MT-14/15). Clamp defensively so createMillipede's contract — always
+  // exactly NCENT slots — stays total for any caller: an out-of-range centin
+  // (0, negative, or > NCENT) would otherwise mis-count the connected/loose split.
+  // `??` alone cannot do this: it passes a non-nullish 0 straight through.
+  const centin = Math.min(NCENT, Math.max(1, opts.centin ?? NCENT))
   const centis = opts.centis ?? CENTIS_FAST
   const dv = centis // MT-23 STA MOBJDV — magnitude on the vertical axis
   const dh = headingSign * centis // MT-13 HDIR = CENTIS * (+1 or -1)
@@ -130,19 +142,23 @@ export function createMillipede(opts: CreateOpts = {}): Segment[] {
     bodyPic = bodyPic === 0 ? 0x07 : bodyPic - 1
   }
 
-  // The LOOSE-HEAD fill (:527-548 idiom): slots centin..NCENT-1. Skipped entirely
-  // when centin === NCENT (the boot train), so no entropy is drawn there.
+  // The LOOSE-HEAD fill (MILLI.MAC:609-635, loop 70$): slots centin..NCENT-1.
+  // Skipped entirely when centin === NCENT (the boot train), so no entropy is
+  // drawn there.
   if (centin < NCENT) {
     if (opts.rng === undefined) {
       throw new Error('createMillipede: a fragmented train (centin < NCENT) needs a seeded rng for the loose heads')
     }
     const rng = opts.rng
     for (let i = centin; i < NCENT; i++) {
-      // Read #1 — the entry direction (RND0 bit 1, the NEWHD side idiom MT-30):
-      // set ⇒ +2, clear ⇒ -2. The magnitude is the loose head's own, not CENTIS.
-      const looseDh = (nextInt(rng, 0x100) & 0x02) !== 0 ? NEWHD_SIDE_A_DH : NEWHD_SIDE_B_DH
-      // Read #2+ — the HPOS, column-aligned, rejected until it clears both screen
-      // edges (>= RIGHT_EDGE and < ENTER_V area) so a loose head enters on-field.
+      // Read #1 — the entry direction (:621-624 "BIT RND0 / BPL 82$ / JSR COMP"):
+      // RND0 bit 7 CLEAR keeps +2, SET COMP-negates to -2. Magnitude 2 is the
+      // loose head's own (:617-618 "LDA I,2 / ORA CKFE"), not CENTIS.
+      const looseDh = (nextInt(rng, 0x100) & 0x80) === 0 ? 2 : -2
+      // Read #2+ — the HPOS (:625-630 "LDA RND0 / AND I,0F8 / CMP I,0F8 / BEQ 83$
+      // / CMP I,10 / BCC 83$"): column-aligned, redrawn until it clears both edges
+      // (reject == 0xF8 too-far-left and < 0x10 too-far-right). The ROM's own
+      // rejection loop — draws one-or-more bytes, not a fixed count.
       let looseH = nextInt(rng, 0x100) & 0xf8
       while (looseH < RIGHT_EDGE || looseH >= ENTER_V) {
         looseH = nextInt(rng, 0x100) & 0xf8
@@ -217,10 +233,16 @@ function stepSegment(
   // speed up or re-check edges (MT-19, 71$: AND I,07 / BNE 15$).
   if ((s.v & 0x07) !== 0) return move(s, true)
 
-  // Last-head speed-up: when exactly one live segment remains, its step magnitude
-  // is forced to 2 on both axes, sign preserved (:1483-1495 "SPEED UP LAST HEAD").
+  // Last-head speed-up (MT-33/34): when exactly one segment is live (MILLI.MAC:1485-1486
+  // "CMP Y,DEAD / BNE 78$ ;IF MORE THAN 1 LIVE SEGMENT"), force the step magnitude to
+  // LAST_HEAD_SPEED on both axes, sign preserved (:1487-1496 "STA MOBJDH/MOBJDV ;SPEED
+  // UP LAST HEAD" — a BPL sign test picks +2 or -2).
   if (liveCount === 1) {
-    s = { ...s, dh: s.dh >= 0 ? 2 : -2, dv: s.dv >= 0 ? 2 : -2 }
+    s = {
+      ...s,
+      dh: s.dh >= 0 ? LAST_HEAD_SPEED : -LAST_HEAD_SPEED,
+      dv: s.dv >= 0 ? LAST_HEAD_SPEED : -LAST_HEAD_SPEED,
+    }
   }
 
   // Body (MT-20): follow the leader down once the vertical gap reaches a full
@@ -249,7 +271,7 @@ function stepSegment(
  * edges (MT-21/22) and descend + reverse at cell-phase 4 (MT-23/25); bodies follow
  * their leader down (MT-20). Reads no mushroom field yet — ml3-3 extends it.
  */
-export function stepMillipede(segs: Segment[], frame: number): Segment[] {
+export function stepMillipede(segs: readonly Segment[], frame: number): Segment[] {
   const liveCount = segs.reduce((n, s) => n + (s.color !== VACANT_COLOR ? 1 : 0), 0)
   return segs.map((seg, i) => stepSegment(seg, i > 0 ? segs[i - 1] : undefined, frame, liveCount))
 }

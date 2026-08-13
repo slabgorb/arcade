@@ -99,7 +99,8 @@ interface CreateOpts {
   centin?: number
   /** per-frame step magnitude CENTIS (default CENTIS_FAST). */
   centis?: number
-  /** required ONLY when centin < NCENT (the loose-head fill draws two RND0 bytes each). */
+  /** required ONLY when centin < NCENT (the loose-head fill draws seeded RND0 bytes — a
+   *  direction byte plus a rejection-sampled HPOS, so one-or-more bytes per loose head). */
   rng?: Rng
 }
 
@@ -174,7 +175,8 @@ async function loadMillipede(): Promise<MillipedeModule> {
       throw new Error('module is missing createMillipede / stepMillipede / newMillipedeHead / stepWaveCadence')
     }
     return mod as MillipedeModule
-  } catch (e) {
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? e.message : String(e)
     throw new Error(
       'millipede train core not built yet — GREEN (Julia) creates src/core/millipede.ts ' +
         'exporting the constants above + createMillipede (CENTPC init), stepWaveCadence ' +
@@ -182,7 +184,7 @@ async function loadMillipede(): Promise<MillipedeModule> {
         'newMillipedeHead (NEWHD). The head/body/vacant discriminator is the COLOUR byte ' +
         'MOBJC (0 / 0x39 / 0x3D), NOT a bit of MOBJP — MOBJP is the leg-animation frame 0-7. ' +
         'Every constant is cited in docs/rom-study/claims/09-millipede-train.json (MT-*). ' +
-        `(${(e as Error).message})`,
+        `(${detail})`,
     )
   }
 }
@@ -346,6 +348,17 @@ describe('ml3-1 CENTPC — the loose-head fill for a short train (MT-2, seeded)'
     const b = m.createMillipede({ headingSign: -1, centin: 8, rng: createRng(42) })
     expect(a).toEqual(b)
     expect(() => m.createMillipede({ headingSign: -1, centin: 8 }), 'a fragmented train needs a seeded rng').toThrow()
+  })
+
+  it('clamps an out-of-range centin so the train is ALWAYS exactly NCENT slots (ROM domain 1..NCENT)', async () => {
+    const m = await loadMillipede()
+    // The ROM's CENTIN only ever holds 1..NCENT (it decrements to 1 then reloads
+    // to 0x0C, MT-14/15). A degenerate centin (0, negative, or > NCENT) must not
+    // break the "always NCENT segments" contract every consumer relies on.
+    for (const centin of [-1, 0, 1, NCENT, NCENT + 3]) {
+      const segs = m.createMillipede({ headingSign: -1, centin, rng: createRng(3) })
+      expect(segs, `centin=${centin} still lays exactly NCENT slots`).toHaveLength(NCENT)
+    }
   })
 })
 

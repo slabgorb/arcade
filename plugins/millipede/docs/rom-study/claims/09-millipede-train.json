@@ -158,5 +158,15 @@
     "id": "MT-32",
     "claim": "NEWHD's COUNT3 floor is 0x60 (CMP I,60 ;1 1/2 SECONDS) — the smallest inter-spawn value the ramp allows.",
     "source": { "file": "MLSUB.MAC", "line": 809, "verbatim": "\tCMP I,60\t\t;1 1/2 SECONDS" }
+  },
+  {
+    "id": "MT-33",
+    "claim": "MOTION speeds up the last surviving head only when exactly one segment is live: CMP Y,DEAD / BNE 78$ ;IF MORE THAN 1 LIVE SEGMENT skips the speed-up unless the live-segment count (DEAD, held per player) equals 1.",
+    "source": { "file": "MILLI.MAC", "line": 1486, "verbatim": "\tBNE 78$\t\t\t;IF MORE THAN 1 LIVE SEGMENT" }
+  },
+  {
+    "id": "MT-34",
+    "claim": "The last-head speed-up forces the per-frame step magnitude to 2 on both axes: LDA I,2 (a BPL sign test then chooses +2 or -2) followed by STA MOBJDH / STA MOBJDV ;SPEED UP LAST HEAD.",
+    "source": { "file": "MILLI.MAC", "line": 1487, "verbatim": "\tLDA I,2" }
   }
 ]
