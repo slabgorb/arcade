@@ -198,3 +198,8 @@ completed_stories:
     title: "OBSTAC mover→playfield address derivation + wire into movers (ml3-3 follow-up): implement the full OBSTAC address math — V/8 with the half-way-to-next-row ADC-carry round (MLSUB.MAC:853-857), H'=H+8·dir (:834-871), the (0xF7-H')&0xF8 column fold + right-edge PLYFLD+3C0 wrap (:872-886) — reconciling the 0x400 (conway field base) vs 0x800 (MLSUB.MAC:886 exit comment) addressing, then wire obstac(field,{h,v,dh}) into stepMillipede MOTION/EXPLOD collision. Cited hand-derived fixtures (non-wrapping + left-margin + right-edge). obstacleAt probe already shipped in ml3-3."
     points: 3
     completed: '2026-08-13'
+  - id: ml7-1
+    epic: ml7
+    title: 'Pure attract/play/death/game-over phase machine (unwired) from MLATR MODE FE/FF (MLATR.MAC:126/313) + attract action (MLATR.MAC:21). Route a qualifying game-over to the ml5 name-entry phase. Phase transitions via a forcePhase helper (bare phase-literal assignment reds tsc TS2367).'
+    points: 5
+    completed: '2026-08-13'
