@@ -214,3 +214,8 @@ completed_stories:
     title: 'Extract the shared BEE-family helpers (BEEMV1 mushroomsNeeded, BEEMV2 spawnH, BEEOFF, COMP) into one millipede core helper module. The ml4-1 third-consumer trigger is met: dragonfly/mosquito/bee/earwig now hold byte-identical module-local copies (MILLI.MAC:166-171, :179-194, :228-234) and the four suites pin the behaviour, so extraction is a pure refactor under an existing net. Filed by the ml4-3 review (TEA Delivery Finding routed the decision).'
     points: 2
     completed: '2026-08-13'
+  - id: ml7-3
+    epic: ml7
+    title: 'HUD (score/lives/DDT-count + high-score display) with output COORDINATES pinned in a core unit test (routing != geometry); opt millipede into the lobby showcase carousel (attract self-play). Visual playtest.'
+    points: 5
+    completed: '2026-08-13'
