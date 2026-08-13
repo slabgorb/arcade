@@ -131,10 +131,10 @@ describe('ml5-3 — insertHighScore threads the depth-8 ladder', () => {
   })
 
   it('grows a partial board without truncating below 8', () => {
-    const partial = ROM_DEFAULT.slice(0, 3)
+    const partial = ROM_DEFAULT.slice(0, 3) // BBM 89175, FXL 88254, MEC 87830
     const next = HS.insertHighScore(partial, { name: 'MID', score: 88000 })
     expect(next).toHaveLength(4)
-    expect(next.map((r) => r.name)).toEqual(['BBM', 'MID', 'MEC']) // 89175 > 88000 > 87830
+    expect(next.map((r) => r.name)).toEqual(['BBM', 'FXL', 'MID', 'MEC']) // 89175 > 88254 > 88000 > 87830
   })
 
   it('does not mutate the input table', () => {

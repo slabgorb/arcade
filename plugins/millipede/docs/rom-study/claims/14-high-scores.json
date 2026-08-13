@@ -1,0 +1,191 @@
+[
+  {
+    "id": "HS-1",
+    "claim": "NSCORE = 8 is the number of high-score entries, so the ladder is eight rungs deep (not the shared ten). RADIX 16, so the bare 8 is hex eight (claim RX-1).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 189,
+      "verbatim": "NSCORE\t=8\t\t\t;NUMBER OF HIGH SCORE ENTRIES"
+    }
+  },
+  {
+    "id": "HS-2",
+    "claim": "HSCORE reserves 3*NSCORE bytes for the high-score table: three BCD score bytes per entry, stored LSB,MIDDLE,MSB (little-endian).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 275,
+      "verbatim": "HSCORE:\t.BLKB 3*NSCORE\t\t;HIGH SCORES (LSB,MIDDLE,MSB)"
+    }
+  },
+  {
+    "id": "HS-3",
+    "claim": "INITL reserves 3*NSCORE bytes: three initials per entry, paired positionally with HSCORE.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 276,
+      "verbatim": "INITL:\t.BLKB 3*NSCORE\t\t;HIGH SCORE INITIALS"
+    }
+  },
+  {
+    "id": "HS-4",
+    "claim": "GETINT is the routine that gets the player's initials for the high score \u2014 three initials, driving the initials buffer.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 547,
+      "verbatim": "\t.SBTTL\tGETINT-GET PLAYERS INITIALS FOR HIGH CORE"
+    }
+  },
+  {
+    "id": "HS-5",
+    "claim": "UPDATE is the routine that updates the high-score table (the ROM's search-then-insert).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1817,
+      "verbatim": "\t.SBTTL\tUPDATE-UPDATE HIGH SCORE TABLE"
+    }
+  },
+  {
+    "id": "HS-SCORE-1",
+    "claim": "Default high-score rung 1 (best-first): the little-endian BCD score triple [75,91,8] (LSB,MIDDLE,MSB) decodes to 89175, paired with initials 'BBM' (claim HS-INIT-1).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 97,
+      "verbatim": "99$:\t.BYTE 75,91,8\t\t;INITIAL SCORES"
+    }
+  },
+  {
+    "id": "HS-SCORE-2",
+    "claim": "Default high-score rung 2 (best-first): the little-endian BCD score triple [54,82,8] (LSB,MIDDLE,MSB) decodes to 88254, paired with initials 'FXL' (claim HS-INIT-2).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 98,
+      "verbatim": "\t.BYTE 54,82,8"
+    }
+  },
+  {
+    "id": "HS-SCORE-3",
+    "claim": "Default high-score rung 3 (best-first): the little-endian BCD score triple [30,78,8] (LSB,MIDDLE,MSB) decodes to 87830, paired with initials 'MEC' (claim HS-INIT-3).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 99,
+      "verbatim": "\t.BYTE 30,78,8"
+    }
+  },
+  {
+    "id": "HS-SCORE-4",
+    "claim": "Default high-score rung 4 (best-first): the little-endian BCD score triple [20,65,8] (LSB,MIDDLE,MSB) decodes to 86520, paired with initials 'ED' (claim HS-INIT-4).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 100,
+      "verbatim": "\t.BYTE 20,65,8"
+    }
+  },
+  {
+    "id": "HS-SCORE-5",
+    "claim": "Default high-score rung 5 (best-first): the little-endian BCD score triple [78,54,7] (LSB,MIDDLE,MSB) decodes to 75478, paired with initials 'DUG' (claim HS-INIT-5).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 101,
+      "verbatim": "\t.BYTE 78,54,7"
+    }
+  },
+  {
+    "id": "HS-SCORE-6",
+    "claim": "Default high-score rung 6 (best-first): the little-endian BCD score triple [84,30,6] (LSB,MIDDLE,MSB) decodes to 63084, paired with initials 'DCB' (claim HS-INIT-6).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 102,
+      "verbatim": "\t.BYTE 84,30,6"
+    }
+  },
+  {
+    "id": "HS-SCORE-7",
+    "claim": "Default high-score rung 7 (best-first): the little-endian BCD score triple [27,22,5] (LSB,MIDDLE,MSB) decodes to 52227, paired with initials 'DEW' (claim HS-INIT-7).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 103,
+      "verbatim": "\t.BYTE 27,22,5"
+    }
+  },
+  {
+    "id": "HS-SCORE-8",
+    "claim": "Default high-score rung 8 (best-first): the little-endian BCD score triple [16,19,4] (LSB,MIDDLE,MSB) decodes to 41916, paired with initials 'DFW' (claim HS-INIT-8).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 104,
+      "verbatim": "\t.BYTE 16,19,4"
+    }
+  },
+  {
+    "id": "HS-INIT-1",
+    "claim": "Default high-score initials 1 (best-first): the triple [2,2,0D] maps A=1..Z=26 (0=blank) to 'BBM', paired with score 89175 (claim HS-SCORE-1).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 105,
+      "verbatim": "\t.BYTE 2,2,0D\t\t;BBM - INITIAL SET OF INITIALS"
+    }
+  },
+  {
+    "id": "HS-INIT-2",
+    "claim": "Default high-score initials 2 (best-first): the triple [6,18,0C] maps A=1..Z=26 (0=blank) to 'FXL', paired with score 88254 (claim HS-SCORE-2).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 106,
+      "verbatim": "\t.BYTE 6,18,0C\t\t;FXL"
+    }
+  },
+  {
+    "id": "HS-INIT-3",
+    "claim": "Default high-score initials 3 (best-first): the triple [0D,5,3] maps A=1..Z=26 (0=blank) to 'MEC', paired with score 87830 (claim HS-SCORE-3).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 107,
+      "verbatim": "\t.BYTE 0D,5,3\t\t;MEC"
+    }
+  },
+  {
+    "id": "HS-INIT-4",
+    "claim": "Default high-score initials 4 (best-first): the triple [5,4,0] maps A=1..Z=26 (0=blank) to 'ED', paired with score 86520 (claim HS-SCORE-4).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 108,
+      "verbatim": "\t.BYTE 5,4,0\t\t;ED"
+    }
+  },
+  {
+    "id": "HS-INIT-5",
+    "claim": "Default high-score initials 5 (best-first): the triple [4,15,7] maps A=1..Z=26 (0=blank) to 'DUG', paired with score 75478 (claim HS-SCORE-5).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 109,
+      "verbatim": "\t.BYTE 4,15,7\t\t;DUG"
+    }
+  },
+  {
+    "id": "HS-INIT-6",
+    "claim": "Default high-score initials 6 (best-first): the triple [4,3,2] maps A=1..Z=26 (0=blank) to 'DCB', paired with score 63084 (claim HS-SCORE-6).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 110,
+      "verbatim": "\t.BYTE 4,3,2\t\t;DCB"
+    }
+  },
+  {
+    "id": "HS-INIT-7",
+    "claim": "Default high-score initials 7 (best-first): the triple [4,5,17] maps A=1..Z=26 (0=blank) to 'DEW', paired with score 52227 (claim HS-SCORE-7).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 111,
+      "verbatim": "\t.BYTE 4,5,17\t\t;DEW"
+    }
+  },
+  {
+    "id": "HS-INIT-8",
+    "claim": "Default high-score initials 8 (best-first): the triple [4,6,17] maps A=1..Z=26 (0=blank) to 'DFW', paired with score 41916 (claim HS-SCORE-8).",
+    "source": {
+      "file": "MLTST.MAC",
+      "line": 112,
+      "verbatim": "\t.BYTE 4,6,17\t\t;DFW"
+    }
+  }
+]
