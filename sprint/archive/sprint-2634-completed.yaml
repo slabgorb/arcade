@@ -152,3 +152,8 @@ completed_stories:
     title: 'High-score entry echo: paint the in-flight initials (and a cursor) on the entry screen'
     points: 2
     completed: '2026-08-13'
+  - id: ml3-5
+    epic: ml3
+    title: 'Scrolling playfield (novel vs centipede): SCROLL/SCROLD/SCROLU scroll mushrooms up/down (MLSUB.MAC:1105/1149/1309); make the core coordinate system scroll-aware from the start. Cited; pin output coordinates in a core unit test (routing != geometry).'
+    points: 3
+    completed: '2026-08-13'
