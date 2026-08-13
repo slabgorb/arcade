@@ -133,3 +133,82 @@ describe('jt4-5 shell — the dev-overlay invents no colours (denylist stays cle
     )
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// jt11-10 (b) — HARDEN THE FRAME-LOOP SOURCE PINS: bound at the closing brace,
+// not EOF. RED phase (Han Solo / TEA), routed from jt11-4.
+//
+// The per-frame-call pins above (`main.ts CALLS the overlay each frame …`) and the
+// sibling in hud-jt11-2.test.ts anchor on the `frame` fn declaration and then take
+// everything from that anchor to EOF (an UNBOUNDED slice from `loopStart`). That is
+// correct ONLY while `frame` stays the LAST top-level declaration in main.ts (it
+// currently is). The day a decl is added after it, the "loop body" silently swallows
+// everything after the loop too, and a `drawHud(...)` living OUTSIDE the frame fn
+// would satisfy the pin — the exact vacuity these tests exist to prevent, drifted in.
+//
+// The fix (mc10-6 ruling): bound the frame body with the TypeScript compiler API —
+// walk to the `frame` fn's matching closing brace via the AST, never by line/regex/EOF.
+// GREEN (Yoda) creates `tests/helpers/frame-loop.ts` exporting
+// `frameLoopBody(src: string): string` (the `helpers/purity-scanner.ts` pattern is
+// the precedent for using `typescript` in a joust test helper), then refactors BOTH
+// pins to call it in place of the unbounded frame-to-EOF slice.
+//
+// NOTE (self-match hazard): the second test below scans this very file, so its
+// matcher is BUILT (never written as a literal) and this prose never contains the
+// searched idiom — otherwise the test could never reach green after the real pins
+// are fixed. The matcher targets the `.slice`-from-`loopStart` call shape.
+//
+// The helper is loaded through a runtime-assembled specifier so a missing module
+// reddens only THESE tests with a self-describing message, not the whole file at
+// collection (the citations.test.ts `loadChecker` idiom).
+async function loadFrameLoopBody(): Promise<(src: string) => string> {
+  const specifier = ['.', 'helpers', 'frame-loop.js'].join('/')
+  try {
+    const mod = (await import(/* @vite-ignore */ specifier)) as { frameLoopBody?: (s: string) => string }
+    if (typeof mod.frameLoopBody !== 'function') throw new Error('module has no `frameLoopBody` export')
+    return mod.frameLoopBody
+  } catch (e) {
+    throw new Error(
+      'frame-loop bounding helper not built yet — GREEN creates tests/helpers/frame-loop.ts ' +
+        'exporting `frameLoopBody(src): string`, returning the `frame` fn body bounded at its ' +
+        'matching closing brace via the TypeScript AST (mc10-6), NOT an unbounded slice from ' +
+        `the frame anchor to EOF. (${(e as Error).message})`,
+    )
+  }
+}
+
+// The fragile idiom, assembled so it appears NOWHERE as a literal in this file.
+const UNBOUNDED_SLICE = new RegExp('\\.slice\\(\\s*loopStart\\s*\\)', 'g')
+
+describe('jt11-10 — the frame-loop source pins are AST-bounded, not sliced to EOF', () => {
+  it('bounds the frame fn at its closing brace — a decl appended AFTER frame is EXCLUDED', async () => {
+    const frameLoopBody = await loadFrameLoopBody()
+    // `frame` is the last top-level decl today, so a frame-to-EOF slice and a real
+    // bound are indistinguishable on the untouched file. Append a sentinel AFTER it
+    // to tell them apart: a correct bound stops at the frame fn's `}`, EOF does not.
+    const withTrailer = mainSource() + '\nconst JT11_10_AFTER_FRAME_SENTINEL = 1\n'
+    const body = frameLoopBody(withTrailer)
+    expect(
+      body,
+      'the bounded body must stop at the frame fn closing brace, not run to EOF ' +
+        '(a decl added after `frame` must NOT leak into the pinned loop body)',
+    ).not.toContain('JT11_10_AFTER_FRAME_SENTINEL')
+    // …and the bound must not be cut so early it loses the real per-frame paint call.
+    expect(
+      body,
+      'the bounded body still contains the per-frame HUD/overlay call',
+    ).toMatch(/(?:drawHud|drawOverlay|overlayReadout)\s*\(/)
+  })
+
+  it('neither pin still takes an unbounded frame-to-EOF slice — both call the AST helper', () => {
+    const testsDir = join(dirname(fileURLToPath(import.meta.url)))
+    for (const rel of ['render-jt4-5.test.ts', 'hud-jt11-2.test.ts']) {
+      const text = readFileSync(join(testsDir, rel), 'utf8')
+      expect(
+        text.match(UNBOUNDED_SLICE) ?? [],
+        `${rel} still slices from the frame anchor to EOF — replace that unbounded slice with ` +
+          `the AST-bounded frameLoopBody(...) helper so the pin cannot swallow code after the loop`,
+      ).toEqual([])
+    }
+  })
+})
