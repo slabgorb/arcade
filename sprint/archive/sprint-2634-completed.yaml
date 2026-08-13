@@ -10,6 +10,7 @@ completed_epics:
   - ml1
   - ml2
   - ml3
+  - ml4
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -207,4 +208,9 @@ completed_stories:
     epic: ml5
     title: 'Bonus life + lives + SELECT starting score (novel): BONUS life-every-XXXX selectable (MLSUB.MAC:8, DIP MLDEF.MAC:90), DLIVES lives (MLSUB.MAC:505), SELECT starting-score/difficulty (MLSUB.MAC:1404) with BONUSS max starting bonus (MLTST.MAC:8). Cited.'
     points: 5
+    completed: '2026-08-13'
+  - id: ml4-6
+    epic: ml4
+    title: 'Extract the shared BEE-family helpers (BEEMV1 mushroomsNeeded, BEEMV2 spawnH, BEEOFF, COMP) into one millipede core helper module. The ml4-1 third-consumer trigger is met: dragonfly/mosquito/bee/earwig now hold byte-identical module-local copies (MILLI.MAC:166-171, :179-194, :228-234) and the four suites pin the behaviour, so extraction is a pure refactor under an existing net. Filed by the ml4-3 review (TEA Delivery Finding routed the decision).'
+    points: 2
     completed: '2026-08-13'
