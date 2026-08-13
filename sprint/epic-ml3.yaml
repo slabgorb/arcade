@@ -64,8 +64,9 @@ stories:
     title: "Enroll citation claims for the ml3-3 mushroom reducers: add docs/rom-study/claims entries (byte-verified by the ml1-1 gate) for ROCK (MLDEF.MAC:204), FULL_MUSHROOM=7F (MLSUB.MAC:741), the MUSHER add/presence/row-band mechanics (:732-772), MUSHDC (:707-729), RESTOR (:919-949) and the OBSTAC probe (:887-889). These shipped cited in comments but have no claim, unlike conway's CW-* and the existing CW-61/62/63 MUSH seam — extend the 08/09 claim series so the gate byte-verifies them."
     points: 2
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
     type: chore
+    review_verdict: approved
