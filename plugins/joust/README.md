@@ -49,7 +49,7 @@ npx vitest run --project joust      # 183 files (derived + guarded); ~3500 tests
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
-node plugins/joust/tools/audit/check-citations.mjs   # → "checked 1083 claim(s)"
+node plugins/joust/tools/audit/check-citations.mjs   # → "checked 1093 claim(s)"
 ```
 
 > **Contributor note — the file count on the `--project joust` line is DERIVED
@@ -172,7 +172,7 @@ sibling.
   **That guard does not extend to a missing SOURCE TREE**, and the distinction
   is the whole of the path-depth warning above: with the tree absent the gate
   degrades *by design* to a schema-only check and still prints
-  `checked 1083 claim(s) / all claims verified`, exit 0 —
+  `checked 1093 claim(s) / all claims verified`, exit 0 —
   `JOUST_SOURCE_DIR=/nonexistent node plugins/joust/tools/audit/check-citations.mjs`
   demonstrates it in one command. Byte-for-byte re-opening is therefore a
   property of *having the tree wired up correctly*, not something the gate can
