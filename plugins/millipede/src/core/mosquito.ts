@@ -29,8 +29,8 @@
 // Every field is a byte 0..255; -1 is 0xFF. Slot records are mutated in place
 // (the conway.ts house style); functions are deterministic — randomness comes
 // in as the POKEY register bytes RND0/RND1 on the env. The BEEMV2 spawn bytes
-// are module-local copies (one standalone subsystem per file, the ml4-1
-// rule), and its reroll spin is the same deferred-spawn model as the
+// were EXTRACTED to ./bee-family (ml4-6); spawnH is re-exported here. Its
+// reroll spin is the same deferred-spawn model as the
 // dragonfly's (the logged ml4-2 Design Deviation).
 
 // The BEEMV2/BEEOFF/COMP ports now live once in ./bee-family (ml4-6). spawnH is

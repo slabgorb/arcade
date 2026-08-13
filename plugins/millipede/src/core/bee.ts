@@ -31,9 +31,9 @@
 // Every field is a byte 0..255; -1 is 0xFF. Slot records are mutated in place
 // (the conway.ts house style); functions are deterministic — randomness comes
 // in as the POKEY register bytes RND0/RND1 on the env. The BEEMV1/BEEMV2/
-// BEEOFF ports are module-local copies (one standalone subsystem per file,
-// the ml4-1 rule — this is the family's THIRD consumer; the extraction call
-// is routed as a Delivery Finding, not taken silently here). The BEEMV2
+// BEEOFF ports were EXTRACTED to ./bee-family (ml4-6 — this file was the
+// family's THIRD consumer, the ml4-1 extraction trigger); this file re-exports
+// them so callers and tests see an unchanged surface. The BEEMV2
 // reroll spin is the same deferred-spawn model as ml4-2's (the logged ml4-3
 // Design Deviation). The SECURA block in BEEMV3 (:204-217) is anti-piracy,
 // not modelled. CHAN7/AUDF1 sound — including the sweep's lowest-frequency

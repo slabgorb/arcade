@@ -30,8 +30,8 @@
 // FOUR times (:692/:702/:706/:719), so the env carries each read as its own
 // byte (rnd0/rndSpeed/rndDir/rndV): collapsing them onto one byte would
 // correlate the 1-in-4 gate with the slow roll (both AND 3) and force every
-// over-20k earwig slow. The BEEOFF port is a module-local copy (one
-// standalone subsystem per file, the ml4-1 rule). CHAN9 sound is an ml6 seam;
+// over-20k earwig slow. The BEEOFF port was EXTRACTED to ./bee-family (ml4-6);
+// earwigOff aliases the shared beeOff. CHAN9 sound is an ml6 seam;
 // the OBSTAC read and the DDTEX1 death sequence stay with their callers —
 // earwigStamp classifies the stamp the caller read.
 

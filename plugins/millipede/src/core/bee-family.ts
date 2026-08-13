@@ -40,7 +40,8 @@ export function mushroomsNeeded(score2: number): number {
 
 /**
  * BEEMV2's spawn column (MILLI.MAC:228-234, BE-39/40/41): RND0 AND F8, rejected
- * below 0x10 (null models the ROM's reroll spin as a deferred spawn), minus 4.
+ * below 0x10 (null models the ROM's reroll spin as a deferred spawn — the logged
+ * ml4-3 Design Deviation), minus 4.
  */
 export function spawnH(rnd0: number): number | null {
   const masked = rnd0 & 0xf8 // :229 (BE-39)
