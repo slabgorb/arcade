@@ -1,0 +1,43 @@
+id: df1
+type: epic
+title: 'Defender — ROM source study + scaffold + fidelity harness (phase 1): the ground-truth dossier every later df* story cites'
+description: "First Defender epic and phase 1 of the framebuffer-raster cabinet build (docs/playbooks/next-sprite-game.md, graphics phase in its Joust image-transcription form — no tile/sprite ROMs, no colour PROM, all graphics inline FCB tables). Produces plugins/defender/docs/rom-study/ — the single-sided ground-truth dossier (brief/glossary/subsystems/open-questions + claims/*.json) — plus the boot-stable four-file scaffold and the citation gate + src/core purity test, folded into one epic as pm1/ml1 did. Source ALREADY vendored: reference/original-source/defender/ @ historicalsource/defender 3fae9d3 (docs/reference-sources.md) — twelve Williams RASM .SRC files, Eugene Jarvis et al., INFO.SRC:11 DR J. 1/21/81. The 2026-08-13 preflight study established: the tree is the RED (cocktail) software = MAME parent set defender, identified three ways (unconditional runtime screen-flip PHR6.SRC:15 WDATA $38/$39 + DEFA7.SRC:1190-1193 COCKTAIL? + inverted IRQ DEFA7.SRC:2006-2008; CKBYT checksums present ruling out WHITE; CRC-for-CRC match of ~/roms/defender.zip against ROM_START(defender) williams.cpp:1985-2007 = Red label parent williams.cpp:3968). Banked ROM window at $C000 selected via MAPC EQU $D000 (PHR6.SRC:11): block 1 = AMODE1 attract/hall-of-fame/scanner, block 2 = MESS0 messages/charset, block 3 = ROMC0/ROMC8 diagnostics, block 7 = BLK71 terrain + wave table, resident $D000-$FFFF = DEFA7/DEFB6/ROMF8/SAMEXAP7. Timebase nominal 60 Hz (author 16 MSEC tick DEFA7.SRC:9, NAPP 60 = 1 second AMODE1.SRC:311) vs exact 60.09615 Hz (MAME set_raw williams.cpp:1556, 8e6/(512x260)) recorded as SEPARATE numbers; mainloop gated on EXEC0 LDA TIMER spin DEFA7.SRC:3048-3050, TIMER incremented once per frame by the sub-128 beam arm of the IRQ. Dialect Williams RASM: $ hex, bare decimal, no octal/binary/local labels, !> and !. expression operators, MACRO/ENDM with backslash params, no conditional assembly. Sound-board source ABSENT (separate M6808 running defend.snd — same gap as joust; ROMF8/ROMC0/ROMC8 are main-CPU control/diag ROMs, NOT sound); BRUTSUM2.SRC is a never-shipped dev checkbyte tool. Citation vocabulary fixed: defender/<FILE>.SRC:<line> into the vendored tree; nothing downstream introduces a src/core constant without a claim gated by citations.test.ts. MAME williams.cpp/williams_m.cpp wins ONLY on board facts the source never states — cited in prose, never copied (GPL); mwenge/defender annotated reconstruction is tertiary, never a citation. Design + full cabinet roadmap: docs/superpowers/specs/2026-08-13-defender-cabinet-roadmap-and-df1-design.md. Sibling assets: millipede docs/rom-study layout + hardened tools/audit/check-citations.mjs (ml1-1 review hardening), joust four-file scaffold. OUT OF SCOPE: framebuffer render + transcription (df2), ship/scheduler core (df3), menagerie (df4), game structure + scanner (df5), sound (df6), phase machine/attract/HUD (df7), hardening (df8+). ACCESSIBILITY STANDING RULE recorded for df4/df7: the original's smart-bomb/death full-screen flashes become freeze/fade — owner photosensitivity, the one exception to ROM-always-wins."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: df1-1
+    title: 'Citation gate + src/core purity test FIRST (TDD): port millipede tools/audit/check-citations.mjs (single-sided, WITH the ml1-1 review hardening: unconditional containment + isFile gate) to a defender checker + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: df1-2
+    title: 'brief.md — the five rom-source-study preflight answers, each cited to defender/<FILE>.SRC:<line> and re-opened under the df1-1 gate: (0) revision = RED/cocktail via the INFO.SRC:15-23 ledger + the three identification legs; (1) what shipped — the file-to-chip/block map incl. RASM chains INFO.SRC:3-9, the never-shipped BRUTSUM2, and the sound-source gap; (2) RASM dialect conventions with one cited example each; (3) timebase — nominal 60/16-msec vs exact 60.09615 Hz as separate numbers, TIMER/EXEC0 gating, overload path DEFA7.SRC:3056-3070; (4) INFO.SRC author documentation + credits ROMC8.SRC:783-797.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: df1-3
+    title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (PHRED/MAPC/MLJSR/NAPP/CKBYT, EUGENE + SAM vector blocks MESS0.SRC:165,175); subsystem -> owning file + routine + line (DEFA7 scheduler/IRQ/collision/sound-sequencer, DEFB6 enemy processes + vectors, AMODE1 attract/hall-of-fame/scanner, MESS0 text writers, BLK71 terrain/waves, SAMEXAP7 materialize/explode, ROMF8 reset/CMOS/pricing, ROMC0+ROMC8 diagnostics); OQ-1..OQ-5 from the design spec (CB1-vs-CB2, COUNT240 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: df1-4
+    title: 'Secondary source MAME williams.cpp/williams_m.cpp board facts as claims: 12 MHz master /3/4 = 1.0 MHz 6809E, exact refresh 60.09615 Hz derivation (set_raw williams.cpp:1556), visible area 292x240 (williams.cpp:1601), banked-ROM model (bank_select_w williams.cpp:505), VA11-to-CB1 + COUNT240-to-CA1 IRQ generation (williams_m.cpp:27-28,36-37 — resolve OQ-1/OQ-2), WDOG $C3FC decode (OQ-4), decoder-PROM 1-vs-2 cocktail variant note (williams.cpp:29-31). MAME cited in prose only, never copied (GPL).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: df1-5
+    title: 'Four-file scaffold + three registrations -> boots black canvas at /defender/: copy plugins/joust/ (index.html, plugin.ts, package.json, tsconfig.json extends ../../tsconfig.json); add defender to justfile games and vitest.config.ts GAMES; npm run gen:registry; update the tests/monorepo-topology.test.mjs game-count pin (ten -> eleven). Green npx vitest run --project defender + npm run lint + npm run test:orchestrator; visual boot check at http://127.0.0.1:5270/defender/ compared against a nonsense control path, not just a 200.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
