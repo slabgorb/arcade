@@ -1,0 +1,875 @@
+[
+ {
+  "id": "BT-1",
+  "claim": "BEETL is the move-and-start beetle routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 243,
+   "verbatim": "\t.SBTTL\tBEETL-MOVE AND START BEETLE"
+  }
+ },
+ {
+  "id": "BT-2",
+  "claim": "NCENT is 12 (decimal) — beetles borrow the centipede motion-object slots 0..11.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 188,
+   "verbatim": "NCENT\t=12.\t\t\t;NUMBER OF CENTIPEDES"
+  }
+ },
+ {
+  "id": "BT-3",
+  "claim": "Option switch bit D1 is the beetle difficulty DIP.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 88,
+   "verbatim": "\t\t\t\t;D1=BEETLE DIFFICULTY"
+  }
+ },
+ {
+  "id": "BT-4",
+  "claim": "BEETL reads the beetle difficulty as OPTNS1 AND 02 — D1 set means HARD.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 268,
+   "verbatim": "\tAND I,02"
+  }
+ },
+ {
+  "id": "BT-5",
+  "claim": "BEETL runs only while the player is alive (PLAYP/PEXPLD gate at entry).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 247,
+   "verbatim": "\tBEQ 5$\t\t\t;IF PLAYER IS NOT DEAD"
+  }
+ },
+ {
+  "id": "BT-6",
+  "claim": "No beetle starts when BEETLA (beetles allowed this wave) is zero.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 251,
+   "verbatim": "\tBEQ 50$\t\t\t;NO MORE BEETLES ALLOWED"
+  }
+ },
+ {
+  "id": "BT-7",
+  "claim": "The spawn-cadence mask switches when SCORE2 reaches BCD 60 — 600,000 points.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 254,
+   "verbatim": "\tCMP I,60"
+  }
+ },
+ {
+  "id": "BT-8",
+  "claim": "Below 600,000 the cadence mask is 7F — a beetle tick every 128 frames (~2s).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 255,
+   "verbatim": "\tLDA I,7F"
+  }
+ },
+ {
+  "id": "BT-9",
+  "claim": "At and above 600,000 the cadence mask is 3F — every 64 frames (~1s).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 257,
+   "verbatim": "\tLDA I,3F\t\t;EVERY SECOND THEREAFTER"
+  }
+ },
+ {
+  "id": "BT-10",
+  "claim": "The spawn tick fires when (FRAME AND mask) equals 37 (the EOR 37 test).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 259,
+   "verbatim": "\tEOR I,37"
+  }
+ },
+ {
+  "id": "BT-11",
+  "claim": "No beetle starts when the centipede is gone (DEAD is zero).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 263,
+   "verbatim": "\tBEQ 50$\t\t\t;IF CENTIPEDE IS GONE, DO NOT ADD MORE BEETLES"
+  }
+ },
+ {
+  "id": "BT-12",
+  "claim": "No beetle starts while the centipede is full — CENTIN at or above 12 (decimal).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 265,
+   "verbatim": "\tCMP I,12."
+  }
+ },
+ {
+  "id": "BT-13",
+  "claim": "On EASY (D1 clear), an active side-feed (NEWD non-zero) blocks beetle starts; HARD skips the check.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 271,
+   "verbatim": "\tBNE 50$\t\t\t;IF EASY AND SIDE-FEED IS ACTIVE THEN NO BEETLES"
+  }
+ },
+ {
+  "id": "BT-14",
+  "claim": "One beetle at a time up to 90,000 (SCORE2 below BCD 9).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 273,
+   "verbatim": "\tCMP I,9"
+  }
+ },
+ {
+  "id": "BT-15",
+  "claim": "Two beetles from 90,000 up to 250,000 (SCORE2 below BCD 25); three after.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 277,
+   "verbatim": "\tCMP I,25"
+  }
+ },
+ {
+  "id": "BT-16",
+  "claim": "The concurrency gate blocks a start only when BEETLS EQUALS the allowance (CPX/BEQ).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 280,
+   "verbatim": "8$:\tCPX BEETLS"
+  }
+ },
+ {
+  "id": "BT-17",
+  "claim": "The free-slot scan runs from slot NCENT-1 down to 0 and gives up when none is free.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 284,
+   "verbatim": "\tBMI 50$\t\t\t;NO ENTRY AVAILABLE"
+  }
+ },
+ {
+  "id": "BT-18",
+  "claim": "A started beetle turns on with colour byte B9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 289,
+   "verbatim": "\tLDA I,0B9"
+  }
+ },
+ {
+  "id": "BT-19",
+  "claim": "A started beetle is positioned at V=48 (\"row about new heads\"; EOR CKF8 is identity upright).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 291,
+   "verbatim": "\tLDA I,48\t\t;ROW ABOUT NEW HEADS"
+  }
+ },
+ {
+  "id": "BT-20",
+  "claim": "The start direction is random on RND1 bit 7: set keeps +1, clear takes -1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 298,
+   "verbatim": "\tBIT RND1"
+  }
+ },
+ {
+  "id": "BT-21",
+  "claim": "The beetle picture code is 34.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 302,
+   "verbatim": "\tLDA I,34"
+  }
+ },
+ {
+  "id": "BT-22",
+  "claim": "The direction-change delay timer starts at 0C.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 304,
+   "verbatim": "\tLDA I,0C"
+  }
+ },
+ {
+  "id": "BT-23",
+  "claim": "On EASY the fast-beetle threshold byte is 39 — fast beetles above 390,000 (\"wait til 400,000\").",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 310,
+   "verbatim": "\tLDA I,39"
+  }
+ },
+ {
+  "id": "BT-24",
+  "claim": "On HARD the fast-beetle threshold byte is 29 — fast beetles above 290,000 (\"at 300,000\").",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 312,
+   "verbatim": "\tLDA I,29\t\t;ELSE FAST BEETLES AT 300,000"
+  }
+ },
+ {
+  "id": "BT-25",
+  "claim": "A fast beetle doubles its horizontal direction byte (ASL MOBJDH).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 315,
+   "verbatim": "\tASL X,MOBJDH\t\t;FAST BEETLE"
+  }
+ },
+ {
+  "id": "BT-26",
+  "claim": "The movement sweep treats pictures below 34 as not-a-beetle.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 326,
+   "verbatim": "\tCMP I,34"
+  }
+ },
+ {
+  "id": "BT-27",
+  "claim": "The movement sweep treats pictures at or above 38 as not-a-beetle — the band is [34,38).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 328,
+   "verbatim": "\tCMP I,38"
+  }
+ },
+ {
+  "id": "BT-28",
+  "claim": "The animation step is next = ((pic + 1) AND 3) OR 34.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 332,
+   "verbatim": "\tORA I,34"
+  }
+ },
+ {
+  "id": "BT-29",
+  "claim": "The picture advances only every 4th frame (FRAME AND 3 zero).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 335,
+   "verbatim": "\tAND I,3"
+  }
+ },
+ {
+  "id": "BT-30",
+  "claim": "A horizontal step that lands on H=0 clears the beetle (off screen) and drops the count.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 349,
+   "verbatim": "\tBNE 80$\t\t\t;CLEAR BEETLE WHEN IT GOES OFF THE SCREEN"
+  }
+ },
+ {
+  "id": "BT-31",
+  "claim": "The beetle obstacle check treats codes from CLOUD up to DDT as a DDT explosion — death.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 360,
+   "verbatim": "\tCMP I,CLOUD"
+  }
+ },
+ {
+  "id": "BT-32",
+  "claim": "CLOUD is 2E — the first DDT explosion cloud stamp.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 202,
+   "verbatim": "CLOUD\t=2E\t\t\t;START OF DDT EXPLOSION CLOUDS"
+  }
+ },
+ {
+  "id": "BT-33",
+  "claim": "ROCK is 70 — the indestructible feature stamp.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 204,
+   "verbatim": "ROCK\t=70\t\t\t;INDESTRUCTIBLE FEATURE"
+  }
+ },
+ {
+  "id": "BT-34",
+  "claim": "Only obstacle codes at or above 75 convert — growing and poisoned mushrooms included.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 373,
+   "verbatim": "85$:\tCMP I,75\t\t;ALSO ALLOW GROWING AND POISONED MUSHROOMS"
+  }
+ },
+ {
+  "id": "BT-35",
+  "claim": "The beetle turns a mushroom into a ROCK, preserving the background bit (AND 80 / ORA ROCK).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 377,
+   "verbatim": "\tORA I,ROCK"
+  }
+ },
+ {
+  "id": "BT-36",
+  "claim": "A slow beetle (odd direction byte) decrements its turn timer once per frame; a fast one twice.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 395,
+   "verbatim": "\tBCS 5$\t\t\t;IF A SLOW BEETLE"
+  }
+ },
+ {
+  "id": "BT-37",
+  "claim": "The upright vertical unit is 1 (CKFF ORA 1; FF on cocktail).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 406,
+   "verbatim": "\tORA I,1\t\t\t;1 FOR UPRIGHT FF FOR COCKTAIL"
+  }
+ },
+ {
+  "id": "BT-38",
+  "claim": "A mid-screen horizontal beetle turns vertical COMPLEMENTED — it continues toward the bottom row.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 414,
+   "verbatim": "\tJSR COMP\t\t;COMPLEMENT DIRECTION"
+  }
+ },
+ {
+  "id": "BT-39",
+  "claim": "The mid-screen vertical turn resets the timer to 40.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 416,
+   "verbatim": "\tLDA I,40"
+  }
+ },
+ {
+  "id": "BT-40",
+  "claim": "On the top/bottom row the vertical turn timer is (RND0 AND 38) + 40.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 422,
+   "verbatim": "\tAND I,38"
+  }
+ },
+ {
+  "id": "BT-41",
+  "claim": "On the top/bottom row the horizontal leg timer is (RND0 AND 78) + 60 — at least half way across.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 439,
+   "verbatim": "\tAND I,78"
+  }
+ },
+ {
+  "id": "BT-42",
+  "claim": "A mid-screen vertical beetle goes horizontal with its timer decremented to FF — to get off the screen.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 435,
+   "verbatim": "\tDEC X,MOBJHL\t\t;SET TO FF TO GET OFF THE SCREEN"
+  }
+ },
+ {
+  "id": "BT-43",
+  "claim": "A killed beetle pays 300 points (score MSB Y=3, BCD hundreds).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2091,
+   "verbatim": "\tLDY I,3\t\t\t;300 POINTS FOR A BEETLE"
+  }
+ },
+ {
+  "id": "BT-44",
+  "claim": "A beetle killed by DDT pays 900 points (Y=9).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2096,
+   "verbatim": "\tLDY I,9"
+  }
+ },
+ {
+  "id": "BT-45",
+  "claim": "A beetle kill scrolls the playfield down (DEC SCROLC).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2090,
+   "verbatim": "\tDEC SCROLC\t\t;SCROLL PLAYFIELD DOWN"
+  }
+ },
+ {
+  "id": "BT-46",
+  "claim": "OBSTAC hands callers the stamp code AND 7F; obstacle reactions re-read the raw cell for bit 7.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 888,
+   "verbatim": "\tAND I,7F"
+  }
+ },
+ {
+  "id": "SD-1",
+  "claim": "SPDMV is the move-spider routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2295,
+   "verbatim": "\t.SBTTL\tSPDMV-MOVE SPIDER"
+  }
+ },
+ {
+  "id": "SD-2",
+  "claim": "Option switch bit D6 is the spider difficulty DIP.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 91,
+   "verbatim": "\t\t\t\t;D6=SPIDER DIFFICULTY"
+  }
+ },
+ {
+  "id": "SD-3",
+  "claim": "The direction-change probability reads the difficulty as OPTNS1 AND 40 (D6).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2424,
+   "verbatim": "\tAND I,40\t\t;GET DIFFICULTY SWITCH"
+  }
+ },
+ {
+  "id": "SD-4",
+  "claim": "COUNT2 is a 14-entry (decimal) per-slot countdown array for spiders.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 397,
+   "verbatim": "COUNT2:\t.BLKB 14.\t\t;COUNT DOWN TIMER FOR SPIDERS"
+  }
+ },
+ {
+  "id": "SD-5",
+  "claim": "PTS is a 16-entry (decimal) array holding the kill-score stamp per motion object.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 398,
+   "verbatim": "PTS:\t.BLKB 16.\t\t;NUMBER OF POINTS FOR KILLING THIS CRITTER"
+  }
+ },
+ {
+  "id": "SD-6",
+  "claim": "SPDMV does nothing while the player is dead.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2302,
+   "verbatim": "\tBNE 2$\t\t\t;DO NOT MOVE SPIDER IF PLAYER IS DEAD"
+  }
+ },
+ {
+  "id": "SD-7",
+  "claim": "The spider scan starts at slot 6.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2303,
+   "verbatim": "\tLDX I,6\t\t\t;ALLOW UP TO 8 SPIDERS"
+  }
+ },
+ {
+  "id": "SD-8",
+  "claim": "The spider scan ends before slot 14 (decimal) — slots 6..13.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2314,
+   "verbatim": "\tCPX I,14."
+  }
+ },
+ {
+  "id": "SD-9",
+  "claim": "Pictures below 14 are not a spider.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2307,
+   "verbatim": "\tCMP I,14"
+  }
+ },
+ {
+  "id": "SD-10",
+  "claim": "Pictures at or above 1C are not a spider — the band is [14,1C).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2309,
+   "verbatim": "\tCMP I,1C"
+  }
+ },
+ {
+  "id": "SD-11",
+  "claim": "An empty slot decrements its COUNT2 countdown each call and starts only at zero (a failed gate re-arms a 256-frame wait).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2346,
+   "verbatim": "100$:\tDEC X,COUNT2"
+  }
+ },
+ {
+  "id": "SD-12",
+  "claim": "Slot 13 (decimal) is reserved for spiders — it skips the score gates.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2350,
+   "verbatim": "\tCMP I,13."
+  }
+ },
+ {
+  "id": "SD-13",
+  "claim": "A non-reserved slot waits until the score is over 30,000 (SCORE2 BCD 3).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2353,
+   "verbatim": "\tCMP I,3"
+  }
+ },
+ {
+  "id": "SD-14",
+  "claim": "The two-spider allowance base is 11*16 = B0.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2355,
+   "verbatim": "\tLDA I,11.*16."
+  }
+ },
+ {
+  "id": "SD-15",
+  "claim": "A second spider is allowed when (B0 - SCORE2) >> 4 is below CENTIN.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2362,
+   "verbatim": "\tCMP X,CENTIN"
+  }
+ },
+ {
+  "id": "SD-16",
+  "claim": "The fast spider vertical speed is 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2367,
+   "verbatim": "9$:\tLDY I,2"
+  }
+ },
+ {
+  "id": "SD-17",
+  "claim": "On EASY (D6 clear, the BIT/BVC test) the spider stays slow until 10,000.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2372,
+   "verbatim": "\tBVC 13$\t\t\t;IF \"EASY\" THEN SPIDER IS SLOW TILL 10,000"
+  }
+ },
+ {
+  "id": "SD-18",
+  "claim": "On HARD the spider is fast once SCORE1 reaches BCD 50 — 5,000 points.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2373,
+   "verbatim": "\tCMP I,50"
+  }
+ },
+ {
+  "id": "SD-19",
+  "claim": "The slow spider vertical speed is 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2375,
+   "verbatim": "13$:\tLDY I,1"
+  }
+ },
+ {
+  "id": "SD-20",
+  "claim": "The entry side varies on RND0 bit 2 — dh is +dv or its complement.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2384,
+   "verbatim": "\tAND I,04"
+  }
+ },
+ {
+  "id": "SD-21",
+  "claim": "A started spider enters at V=60 (EOR CKF8 identity upright).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2390,
+   "verbatim": "\tLDA I,60"
+  }
+ },
+ {
+  "id": "SD-22",
+  "claim": "The spawn direction-change delay draws RND0 AND 2C…",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2394,
+   "verbatim": "\tAND I,2C"
+  }
+ },
+ {
+  "id": "SD-23",
+  "claim": "…ORed with 0C — COUNT2 = (RND0 AND 2C) OR 0C.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2395,
+   "verbatim": "\tORA I,0C"
+  }
+ },
+ {
+  "id": "SD-24",
+  "claim": "The spider picture code is 14.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2397,
+   "verbatim": "\tLDA I,14"
+  }
+ },
+ {
+  "id": "SD-25",
+  "claim": "A started spider turns on with colour byte B9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2399,
+   "verbatim": "\tLDA I,0B9"
+  }
+ },
+ {
+  "id": "SD-26",
+  "claim": "At the left edge (H at or above FB) the horizontal direction is not cleared.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2413,
+   "verbatim": "\tCPY I,0FB"
+  }
+ },
+ {
+  "id": "SD-27",
+  "claim": "At the right edge (H below 5) the horizontal direction is not cleared.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2415,
+   "verbatim": "\tCPY I,05"
+  }
+ },
+ {
+  "id": "SD-28",
+  "claim": "The vertical-reversal mask is 20 on EASY and 30 on HARD (the ORA 20 after the shifted D6).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2427,
+   "verbatim": "\tORA I,20\t\t;EITHER 1/4 OR 1/2 PROBABILITY"
+  }
+ },
+ {
+  "id": "SD-29",
+  "claim": "The COUNT2 reset is the mask EOR 10 — 30 on EASY, 20 on HARD.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2435,
+   "verbatim": "\tEOR I,10\t\t;20 FOR \"HARD\" AND 30 FOR \"EASY\""
+  }
+ },
+ {
+  "id": "SD-30",
+  "claim": "The spider SUBTRACTS its horizontal direction (SEC/SBC) — inverted vs the beetle’s ADC.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2439,
+   "verbatim": "\tSBC X,SPDDH"
+  }
+ },
+ {
+  "id": "SD-31",
+  "claim": "An H step landing on 0 removes the spider (SPDOFF).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2444,
+   "verbatim": "\tJSR SPDOFF\t\t;REMOVE SPIDER"
+  }
+ },
+ {
+  "id": "SD-32",
+  "claim": "SPDOFF re-arms the slot with a 60 spawn delay.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2530,
+   "verbatim": "\tLDA I,60\t\t;SET DELAY BEFORE ENTERING NEXT SPIDER"
+  }
+ },
+ {
+  "id": "SD-33",
+  "claim": "SPDOFF clears the slot’s PTS stamp so EXPLODE does not treat it as a spider.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2527,
+   "verbatim": "\tSTA X,PTS\t\t;CLEAR FLAG SO \"EXPLODE\""
+  }
+ },
+ {
+  "id": "SD-34",
+  "claim": "The spider does not eat stamps below CLOUD (messages).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2456,
+   "verbatim": "\tBCC 60$\t\t\t;DO NOT LET SPIDER EAT MESSAGES"
+  }
+ },
+ {
+  "id": "SD-35",
+  "claim": "A DDT explosion cloud kills the spider.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2459,
+   "verbatim": "\tJSR DDTEX1\t\t;PROCESS DEATH IF SPIDER"
+  }
+ },
+ {
+  "id": "SD-36",
+  "claim": "The spider does not eat the DDT bomb (codes below ROCK).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2463,
+   "verbatim": "\tBCC 60$\t\t\t;DO NOT LET SPIDER EAT DDT"
+  }
+ },
+ {
+  "id": "SD-37",
+  "claim": "Codes at or above ROCK are eaten down to their background bit (AND 80).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2466,
+   "verbatim": "\tSTA NY,OBST\t\t;REMOVE OBSTACLE"
+  }
+ },
+ {
+  "id": "SD-38",
+  "claim": "The spider bounces at the bottom — V below 9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2472,
+   "verbatim": "\tCMP I,9"
+  }
+ },
+ {
+  "id": "SD-39",
+  "claim": "The top-limit formula subtracts BCD 6 (60,000) from SCORE2 in decimal mode.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2485,
+   "verbatim": "\tSBC I,6"
+  }
+ },
+ {
+  "id": "SD-40",
+  "claim": "A halved result below 5 is used as-is (score under 160,000).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2490,
+   "verbatim": "\tCMP I,5"
+  }
+ },
+ {
+  "id": "SD-41",
+  "claim": "A halved result of 5..8 clamps to 5 (under 180,000).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2493,
+   "verbatim": "\tLDA I,5"
+  }
+ },
+ {
+  "id": "SD-42",
+  "claim": "From 180,000 the clamp is 6.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2495,
+   "verbatim": "\tLDA I,6\t\t\t;LIMIT AFTER 180K"
+  }
+ },
+ {
+  "id": "SD-43",
+  "claim": "The ceiling descends from V=60 by 8 per step (60 - 8*clamp).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2500,
+   "verbatim": "\tLDA I,60"
+  }
+ },
+ {
+  "id": "SD-44",
+  "claim": "A slow spider (odd |dv|) animates only every other frame.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2536,
+   "verbatim": "\tAND I,01\t\t;1 IF SLOW, 0 IF FAST"
+  }
+ },
+ {
+  "id": "SD-45",
+  "claim": "The animation stays in the up/down picture band — ((pic ± 1) AND 3) OR 14.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2547,
+   "verbatim": "\tORA I,14\t\t;USE UP/DOWN PICTURES"
+  }
+ },
+ {
+  "id": "SD-46",
+  "claim": "Distance at or above 38 pays the index-3 score — 300 points.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2187,
+   "verbatim": "\tCMP I,38"
+  }
+ },
+ {
+  "id": "SD-47",
+  "claim": "Distance at or above 16 pays 600 points.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2190,
+   "verbatim": "\tCMP I,16"
+  }
+ },
+ {
+  "id": "SD-48",
+  "claim": "Distance at or above 0B pays 900 points; closer pays 1200.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2193,
+   "verbatim": "\tCMP I,0B"
+  }
+ },
+ {
+  "id": "SD-49",
+  "claim": "A spider killed by DDT pays the index-4 score — 1800 points.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2202,
+   "verbatim": "\tLDY I,4\t\t\t;1800 POINTS"
+  }
+ },
+ {
+  "id": "SD-50",
+  "claim": "The kill-score stamp codes are 32,30,2D,2A,33.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2209,
+   "verbatim": "98$:\t.BYTE 32,30,2D,2A,33\t;PICTURE CODE FOR SCORE"
+  }
+ },
+ {
+  "id": "SD-51",
+  "claim": "The kill-score value table is BCD hundreds 12,9,6,3,18 — 1200/900/600/300/1800.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2210,
+   "verbatim": "99$:\t.BYTE 12,9,6,3,18\t;*100=SCORE"
+  }
+ }
+]
