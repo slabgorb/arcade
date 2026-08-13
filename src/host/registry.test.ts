@@ -169,7 +169,7 @@ describe('the generated registry', () => {
     expect(getGame('red-baron')?.listed).toBe(false)
   })
 
-  it('shows tempest, asteroids, battlezone, centipede, joust, missile-command and pac-man in the carousel', () => {
+  it('shows tempest, asteroids, battlezone, centipede, joust, missile-command, pac-man and millipede in the carousel', () => {
     // showcase is required and never defaulted precisely so this set cannot change by
     // omission. If a game joins or leaves the carousel, it is because someone said so.
     // battlezone said so in ad1-2: its attract mode has self-played since the bz1-10 era
@@ -186,6 +186,9 @@ describe('the generated registry', () => {
     // booted into 'select' until now — booting into attract (createCabinet) is what puts
     // its live demo on screen. The order follows the GAMES roster (asteroids sits between
     // star-wars and battlezone; joust before red-baron; missile-command before pac-man).
+    // millipede says so in ml7-3: it grew a seeded self-playing attract demo (a marching
+    // train over a live mushroom field, plugins/millipede/src/core/attract.ts,
+    // tests/attract-demo.test.ts) plus the ROM HUD, so its manifest flips showcase:true.
     expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual([
       'tempest',
       'asteroids',
@@ -194,6 +197,7 @@ describe('the generated registry', () => {
       'joust',
       'missile-command',
       'pac-man',
+      'millipede',
     ])
   })
 

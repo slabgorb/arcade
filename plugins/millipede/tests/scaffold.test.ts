@@ -62,16 +62,18 @@ describe('scaffold — package.json is a private millipede package', () => {
 })
 
 describe('scaffold — plugin.ts declares the meta the registry is generated from', () => {
-  it('pins id/title/year/order/listed and opts OUT of the showcase (no self-play yet)', () => {
+  it('pins id/title/year/order/listed and opts INTO the showcase (ml7-3 self-play)', () => {
     const src = read('plugin.ts')
     expect(src).toMatch(/id:\s*'millipede'/)
     expect(src).toMatch(/title:\s*'MILLIPEDE'/)
     expect(src).toMatch(/year:\s*1982/)
     expect(src).toMatch(/order:\s*10\b/)
     expect(src).toMatch(/listed:\s*true/)
-    // A black-canvas scaffold cannot boot into a live demo, so showcase must be
-    // false — tests/showcase-liveness.test.mjs would redden on a self-play claim.
-    expect(src).toMatch(/showcase:\s*false/)
+    // ml1-5 pinned showcase:false while the page was a black-canvas scaffold —
+    // only a live self-playing demo may opt in (tests/showcase-liveness.test.mjs).
+    // ml7-3 grows that demo (src/core/attract.ts, tests/attract-demo.test.ts),
+    // so the manifest flips true and this pin flips with it.
+    expect(src).toMatch(/showcase:\s*true/)
     expect(src).toMatch(/version,/)
   })
 })

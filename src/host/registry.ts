@@ -117,7 +117,7 @@ export const GAMES: readonly GameMeta[] = [
     controls: ['Mouse / Trackball'],
     order: 10,
     listed: true,
-    showcase: false,
+    showcase: true,
     version: '0.0.2',
   },
 ]
