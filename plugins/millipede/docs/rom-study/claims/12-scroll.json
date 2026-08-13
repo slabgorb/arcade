@@ -1,0 +1,452 @@
+[
+  {
+    "id": "SC-1",
+    "claim": "SCROLC is the signed pending-scroll count: positive = pending up-scrolls, negative = pending down-scrolls.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 372,
+      "verbatim": "SCROLC:\t.BLKB 1\t\t\t;SCROLL COUNT (1+=UP, -1=DOWN)"
+    }
+  },
+  {
+    "id": "SC-2",
+    "claim": "DEAD is the number of remaining millipede segments; zero means the train is gone.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 295,
+      "verbatim": "DEAD:\t.BLKB 2\t\t\t;NUMBER OF REMAINING SEGMENTS"
+    }
+  },
+  {
+    "id": "SC-3",
+    "claim": "CENTIN is the length of the centipede (train).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 299,
+      "verbatim": "CENTIN:\t.BLKB 2\t\t\t;LENGTH OF CENTIPEDE"
+    }
+  },
+  {
+    "id": "SC-4",
+    "claim": "SCROLL is the dispatcher that scrolls the playfield up or down.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1105,
+      "verbatim": "\t.SBTTL\tSCROLL-SCROLL PLAYFIELD UP OR DOWN"
+    }
+  },
+  {
+    "id": "SC-5",
+    "claim": "No scrolling in attract mode (MODE bit 7).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1114,
+      "verbatim": "\tBMI 90$\t\t\t;IF IN ATTRACT"
+    }
+  },
+  {
+    "id": "SC-6",
+    "claim": "No scrolling while the CONWAY metamorphosis is running (CDONE non-zero).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1116,
+      "verbatim": "\tBNE 90$\t\t\t;WAIT UNTIL METAMORPHISIS IS COMPLETE"
+    }
+  },
+  {
+    "id": "SC-7",
+    "claim": "No scrolling while a DDT bomb is exploding.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1123,
+      "verbatim": "\tBCS 90$\t\t\t;DDT IS EXPLODING"
+    }
+  },
+  {
+    "id": "SC-8",
+    "claim": "No scrolling while the player is dead/exploding.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1127,
+      "verbatim": "\tBNE 90$\t\t\t;PLAYER IS DEAD"
+    }
+  },
+  {
+    "id": "SC-9",
+    "claim": "A hit DDT skips the continuous-scroll arm (pending SCROLC still dispatches).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1130,
+      "verbatim": "\tBNE 10$\t\t\t;IF DDT HAS BEEN HIT"
+    }
+  },
+  {
+    "id": "SC-10",
+    "claim": "A dead train (DEAD==0) skips the continuous-scroll arm.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1132,
+      "verbatim": "\tBEQ 10$\t\t\t;IF CENTIPEDE IS DEAD"
+    }
+  },
+  {
+    "id": "SC-11",
+    "claim": "Continuous scroll only on the CENTIN==4 wave.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1134,
+      "verbatim": "\tCMP I,04"
+    }
+  },
+  {
+    "id": "SC-12",
+    "claim": "The continuous-scroll timer masks FRAME with $7F (128-frame period).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1137,
+      "verbatim": "\tAND I,7F"
+    }
+  },
+  {
+    "id": "SC-13",
+    "claim": "The continuous-scroll tick fires at frame phase $1E within the period.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1138,
+      "verbatim": "\tEOR I,1E"
+    }
+  },
+  {
+    "id": "SC-14",
+    "claim": "The continuous tick is DEC SCROLC \u2014 it queues a DOWN-scroll.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1140,
+      "verbatim": "\tDEC SCROLC"
+    }
+  },
+  {
+    "id": "SC-15",
+    "claim": "SCROLC zero means no scroll.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1142,
+      "verbatim": "\tBEQ 90$\t\t\t;NO SCROLL"
+    }
+  },
+  {
+    "id": "SC-16",
+    "claim": "Negative SCROLC dispatches to SCROLD (scroll down).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1143,
+      "verbatim": "\tBMI SCROLD\t\t;SCROLL DOWN"
+    }
+  },
+  {
+    "id": "SC-17",
+    "claim": "Positive SCROLC dispatches to SCROLU (scroll up).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1144,
+      "verbatim": "\tJMP SCROLU\t\t;SCROLL UP"
+    }
+  },
+  {
+    "id": "SC-18",
+    "claim": "SCROLD consumes one pending down-scroll (INC SCROLC).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1152,
+      "verbatim": "SCROLD:\tINC SCROLC"
+    }
+  },
+  {
+    "id": "SC-19",
+    "claim": "The column sweep starts at PLYFLD+$3A0 \u2014 column 29, right to left.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1153,
+      "verbatim": "\tLDA I,PLYFLD+3A0&0FF"
+    }
+  },
+  {
+    "id": "SC-20",
+    "claim": "Upright down-shift starts writing at top row $1E.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1157,
+      "verbatim": "\tLDY I,1E"
+    }
+  },
+  {
+    "id": "SC-21",
+    "claim": "Down-scroll bottom-region boundary row is $0B (MUSH count region).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1158,
+      "verbatim": "\tLDA I,0B"
+    }
+  },
+  {
+    "id": "SC-22",
+    "claim": "Down-scroll top-region boundary row is $13 (MUSH+2 count region).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1159,
+      "verbatim": "\tLDX I,13"
+    }
+  },
+  {
+    "id": "SC-23",
+    "claim": "A new top mushroom is added only when RND1 & $0F == 0 (1 in 16 per column).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1172,
+      "verbatim": "\tBNE 12$\t\t\t;AND IN ONLY A FEW MUSHROOMS AT THE TOP"
+    }
+  },
+  {
+    "id": "SC-24",
+    "claim": "Each random top mushroom increments MUSH+2 (top-region count).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1174,
+      "verbatim": "\tINC X,MUSH+2\t\t;INCREASE COUNT OF MUSHROOMS AT TOP"
+    }
+  },
+  {
+    "id": "SC-25",
+    "claim": "The added top mushroom is picture code $7F (fully-grown normal).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1175,
+      "verbatim": "\tLDX I,7F\t\t;ADD A MUSHROOM NOW"
+    }
+  },
+  {
+    "id": "SC-26",
+    "claim": "The upright down-shift moves each previous row down one row.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1192,
+      "verbatim": "\tSTA NY,OBST\t\t;MOVE PREVIOUS ROW DOWN"
+    }
+  },
+  {
+    "id": "SC-27",
+    "claim": "The down-shift loop stops after writing row 2 (rows 0-1 untouched).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1195,
+      "verbatim": "\tCPY I,1"
+    }
+  },
+  {
+    "id": "SC-28",
+    "claim": "After the shift, row 6 (player-area re-entry row) is rewritten.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1197,
+      "verbatim": "\tLDY I,06"
+    }
+  },
+  {
+    "id": "SC-29",
+    "claim": "The row-6 rewrite ORs in the $80 grey-background bit.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1199,
+      "verbatim": "\tORA I,80"
+    }
+  },
+  {
+    "id": "SC-30",
+    "claim": "A poison mushroom scrolled into the player area becomes a normal mushroom (ORA $04).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1204,
+      "verbatim": "\tORA I,04\t\t;NORMAL MUSHROOM NOW"
+    }
+  },
+  {
+    "id": "SC-31",
+    "claim": "The mushroom/rock threshold for count bookkeeping is picture code $70.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1209,
+      "verbatim": "\tCMP I,70"
+    }
+  },
+  {
+    "id": "SC-32",
+    "claim": "A mushroom pushed off the bottom row decrements MUSH.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1211,
+      "verbatim": "\tDEC X,MUSH\t\t;REDUCE COUNT OF MUSHROOMS"
+    }
+  },
+  {
+    "id": "SC-33",
+    "claim": "A mushroom crossing down into the bottom region (row $0B) increments MUSH.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1216,
+      "verbatim": "\tINC X,MUSH\t\t;ADD COUNT FOR NEW MUSHROOM"
+    }
+  },
+  {
+    "id": "SC-34",
+    "claim": "A mushroom crossing down out of the top region (row $13) decrements MUSH+2.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1221,
+      "verbatim": "\tDEC X,MUSH+2\t\t;WE LOST ONE FROM THE TOP"
+    }
+  },
+  {
+    "id": "SC-35",
+    "claim": "The sweep steps one column ($20) at a time toward column 0.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1224,
+      "verbatim": "\tSBC I,20"
+    }
+  },
+  {
+    "id": "SC-36",
+    "claim": "SCROLU consumes one pending up-scroll (DEC SCROLC).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1312,
+      "verbatim": "SCROLU:\tDEC SCROLC"
+    }
+  },
+  {
+    "id": "SC-37",
+    "claim": "Upright up-shift starts writing at bottom row 2.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1317,
+      "verbatim": "\tLDY I,02"
+    }
+  },
+  {
+    "id": "SC-38",
+    "claim": "Up-scroll bottom-region boundary row is $0C.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1318,
+      "verbatim": "\tLDA I,0C"
+    }
+  },
+  {
+    "id": "SC-39",
+    "claim": "Up-scroll top-region boundary row is $14.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1319,
+      "verbatim": "\tLDX I,14"
+    }
+  },
+  {
+    "id": "SC-40",
+    "claim": "The cell entering at the bottom on an up-scroll is $80 \u2014 a grey blank.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1329,
+      "verbatim": "\tLDX I,80"
+    }
+  },
+  {
+    "id": "SC-41",
+    "claim": "The upright up-shift moves each previous row up one row.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1345,
+      "verbatim": "\tSTA NY,OBST\t\t;MOVE PREVIOUS ROW UP"
+    }
+  },
+  {
+    "id": "SC-42",
+    "claim": "The up-shift loop stops after writing row $1E (row $1F untouched).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1348,
+      "verbatim": "\tCPY I,1F"
+    }
+  },
+  {
+    "id": "SC-43",
+    "claim": "After the shift, row 7 (player-area exit row) is rewritten.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1350,
+      "verbatim": "\tLDY I,07"
+    }
+  },
+  {
+    "id": "SC-44",
+    "claim": "The row-7 rewrite ANDs with $7F \u2014 the grey bit is stripped on exit.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1352,
+      "verbatim": "\tAND I,7F"
+    }
+  },
+  {
+    "id": "SC-45",
+    "claim": "A mushroom pushed off the top row decrements MUSH+2.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1359,
+      "verbatim": "\tDEC X,MUSH+2\t\t;REDUCE COUNT OF MUSHROOMS"
+    }
+  },
+  {
+    "id": "SC-46",
+    "claim": "A mushroom crossing up out of the bottom region (row $0B->$0C) decrements MUSH.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1364,
+      "verbatim": "\tDEC X,MUSH\t\t;CHANGE COUNT FOR LOSS OF MUSHROOM"
+    }
+  },
+  {
+    "id": "SC-47",
+    "claim": "A mushroom crossing up into the top region (row $14) increments MUSH+2.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1369,
+      "verbatim": "\tINC X,MUSH+2\t\t;WE ADDED ONE TO THE TOP"
+    }
+  },
+  {
+    "id": "SC-48",
+    "claim": "SCROLU tail-calls SCROL0, which removes an obstacle scrolled onto the player (needs OBSTAC \u2014 deferred to ml3-3).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1400,
+      "verbatim": "\tJMP SCROL0\t\t;REMOVE OBSTACLE ON TOP OF PLAYER."
+    }
+  },
+  {
+    "id": "SC-49",
+    "claim": "Down-scroll seeds at most one DDT bomb per scroll on the top row (DDTADD table \u2014 descoped from ml3-5).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1250,
+      "verbatim": "\tBNE 68$\t\t\t;ONLY 1 DDT BOMB PER LINE"
+    }
+  },
+  {
+    "id": "SC-50",
+    "claim": "Up-scroll clears DDT-bomb table entries that move off the top (descoped from ml3-5).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1395,
+      "verbatim": "\tSTA X,DDTADD\t\t;CLEAR ENTRY"
+    }
+  }
+]
