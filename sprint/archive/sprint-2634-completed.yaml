@@ -117,3 +117,8 @@ completed_stories:
     title: 'Beetle + spider reducers (cited): BEETL move/start beetle (MILLI.MAC:243), SPDMV move spider (MILLI.MAC:2295). Difficulty from DIP equates (MLDEF.MAC:88 D1=beetle, :91 D6=spider); PTS scoring (MLDEF.MAC:398).'
     points: 5
     completed: '2026-08-13'
+  - id: ml4-2
+    epic: ml4
+    title: 'Dragonfly + mosquito reducers (cited): FLYMV enter/move dragonfly (MILLI.MAC:1004), MOSQT enter/move mosquito (MILLI.MAC:1324). PTS scoring.'
+    points: 5
+    completed: '2026-08-13'
