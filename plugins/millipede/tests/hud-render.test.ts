@@ -163,6 +163,96 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
     drawGridStamps(ctx, [])
     expect(blits.length).toBe(0)
   })
+
+  it("stands the '1' upright — a HAND-TYPED bitmap pins the rotation DIRECTION (review round 1)", async () => {
+    // Review round 1 [TEST]: the pixel test above shares the tile/rotation
+    // formula with the implementation, so a wrong rotation DIRECTION would be
+    // invisible to it. This bitmap was rotated BY HAND on paper from the
+    // stored tile $61 (char '1', code 0x21 — a sideways horizontal stroke in
+    // ROM) and is typed as a literal: no index arithmetic from render.ts
+    // appears on the expected side. If the blit rotated CW instead of CCW,
+    // the base serif would sit at the TOP and this reddens.
+    const { drawGridStamps, PLAYFIELD_COLOUR_BYTES } = await loadRender()
+    const { ctx, blits } = fakeCtx()
+    drawGridStamps(ctx, [{ col: 3, row: 0x1f, stamp: 0x21 }])
+    expect(blits.length).toBe(1)
+    // Displayed pixel VALUES (0 = background, 2 = the glyph's plane): an
+    // upright '1' — flag at the left of the stroke, full serif at the BOTTOM.
+    const upright1 = [
+      [0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 2, 2, 0, 0, 0, 0],
+      [0, 2, 2, 2, 0, 0, 0, 0],
+      [0, 0, 2, 2, 0, 0, 0, 0],
+      [0, 0, 2, 2, 0, 0, 0, 0],
+      [0, 0, 2, 2, 0, 0, 0, 0],
+      [0, 0, 2, 2, 0, 0, 0, 0],
+      [2, 2, 2, 2, 2, 2, 0, 0],
+    ]
+    const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+    const expected = new Uint8ClampedArray(8 * 8 * 4)
+    for (let r = 0; r < 8; r++) {
+      for (let x = 0; x < 8; x++) {
+        const { r: red, g: green, b: blue } = palette[upright1[r][x]]
+        const off = (r * 8 + x) * 4
+        expected[off] = red
+        expected[off + 1] = green
+        expected[off + 2] = blue
+        expected[off + 3] = 255
+      }
+    }
+    expect(Array.from(blits[0].data)).toEqual(Array.from(expected))
+  })
+
+  it('renders the blank char (code 0) as an ALL-BLACK cell — the charTile mask floor (review round 1)', async () => {
+    // Boundary of the 0x40|(code&0x3F) map: code 0 is the ROM's blank and
+    // must paint pure background — every pixel the colour of palette[0].
+    const { drawGridStamps, PLAYFIELD_COLOUR_BYTES } = await loadRender()
+    const { ctx, blits } = fakeCtx()
+    drawGridStamps(ctx, [{ col: 0, row: 0x00, stamp: 0 }])
+    expect(blits.length).toBe(1)
+    const bg = decodeColourByte(PLAYFIELD_COLOUR_BYTES[0])
+    for (let px = 0; px < 64; px++) {
+      const off = px * 4
+      expect([blits[0].data[off], blits[0].data[off + 1], blits[0].data[off + 2]]).toEqual([bg.r, bg.g, bg.b])
+    }
+  })
+})
+
+describe('ml7-3 — drawStampAtPx: the motion-object path (review round 1)', () => {
+  interface RenderModuleWithSprite extends RenderModule {
+    drawStampAtPx: (ctx: CanvasRenderingContext2D, stamp: number, x: number, y: number) => void
+  }
+
+  async function loadSpritePath(): Promise<RenderModuleWithSprite> {
+    const mod = (await loadRender()) as Partial<RenderModuleWithSprite>
+    if (typeof mod.drawStampAtPx !== 'function') throw new Error('render.ts has no drawStampAtPx export')
+    return mod as RenderModuleWithSprite
+  }
+
+  it('blits one 8x8 tile at the RAW pixel position, no grid snap, no charTile remap', async () => {
+    const { drawStampAtPx, PLAYFIELD_COLOUR_BYTES } = await loadSpritePath()
+    const STAMPS = await loadStamps()
+    const { ctx, blits } = fakeCtx()
+    // Off-grid coordinates on purpose: the train marches at 2px steps.
+    drawStampAtPx(ctx, 0x61, 13, 77)
+    expect(blits.map((b) => [b.x, b.y, b.w, b.h])).toEqual([[13, 77, 8, 8]])
+    // RAW index: tile $61 as passed — NOT charTile(0x61)=$61's char remap of
+    // some other code. Prove it by pixel identity with the stored tile $61
+    // under the same CCW turn (sprite tiles rotate with the frame too).
+    const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+    const expected = new Uint8ClampedArray(8 * 8 * 4)
+    for (let r = 0; r < 8; r++) {
+      for (let x = 0; x < 8; x++) {
+        const { r: red, g: green, b: blue } = palette[STAMPS[0x61][x][7 - r]]
+        const off = (r * 8 + x) * 4
+        expected[off] = red
+        expected[off + 1] = green
+        expected[off + 2] = blue
+        expected[off + 3] = 255
+      }
+    }
+    expect(Array.from(blits[0].data)).toEqual(Array.from(expected))
+  })
 })
 
 describe('ml7-3 — main.ts wires the demo and the HUD (comment-stripped source)', () => {
@@ -175,5 +265,8 @@ describe('ml7-3 — main.ts wires the demo and the HUD (comment-stripped source)
     expect(src).toMatch(/hudPlacements\s*\(/)
     expect(src).toMatch(/ddtPlacements\s*\(/)
     expect(src).toMatch(/drawGridStamps\s*\(/)
+    // Review round 1: the train is the demo's most visible element — its draw
+    // call gets the same wiring floor as the four siblings above.
+    expect(src).toMatch(/drawStampAtPx\s*\(/)
   })
 })

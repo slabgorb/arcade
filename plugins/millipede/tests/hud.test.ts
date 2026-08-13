@@ -133,6 +133,17 @@ describe('ml7-3 — sixDigitStamps carries the DIGIT2 zero-suppression law', () 
     const { sixDigitStamps } = await loadHud()
     expect(sixDigitStamps(1_089_175)).toEqual(sixDigitStamps(89175))
   })
+
+  it('fails SAFE on a non-finite value — renders as zero, never NaN stamps (review round 1, rule #21)', async () => {
+    const { sixDigitStamps } = await loadHud()
+    // The ROM registers are three BCD bytes and cannot hold NaN; a broken
+    // future caller must produce the zero display ("    00"), not six NaN
+    // "stamps" that charTile would silently mask to blanks.
+    const zero = [0, 0, 0, 0, 0x20, 0x20]
+    expect(sixDigitStamps(Number.NaN)).toEqual(zero)
+    expect(sixDigitStamps(Number.POSITIVE_INFINITY)).toEqual(zero)
+    expect(sixDigitStamps(Number.NEGATIVE_INFINITY)).toEqual(zero)
+  })
 })
 
 describe('ml7-3 — hudPlacements: the full 18-cell top row, pinned as literals', () => {
@@ -214,5 +225,17 @@ describe('ml7-3 — ddtPlacements: two stamps per intact bomb (DDTS2)', () => {
     ])
     // Cross-check the offset arithmetic against the ddt.ts decoder itself.
     expect(ddtOffset(intact)).toBe(0x0cd)
+  })
+
+  it('never emits a column past the 30-col grid — a page-3 entry keeps only its base stamp (review round 1, rule #21)', async () => {
+    const { ddtCount, ddtPlacements } = await loadHud()
+    // The ROM's own seed path REJECTS column-page 3 ("right edge", DD-57), so
+    // DDTS2 never sees one — but this pure fn takes any table, and its
+    // neighbour-column stamp must not fall off the grid: offset $3AD -> col 29
+    // (the last column), so DDT+1's col 30 does not exist. The bomb still
+    // counts and its base stamp still draws.
+    const page3: DdtEntry = { lo: 0xad, hi: 0x13 } // offset $3AD: col 29, row $0D
+    expect(ddtCount([page3])).toBe(1)
+    expect(ddtPlacements([page3])).toEqual([{ col: 29, row: 0x0d, stamp: 0x6e }])
   })
 })
