@@ -13,6 +13,7 @@ import { PLYFLD_SIZE } from './conway'
 import { musher, type MushCounts } from './mushroom'
 import { createMillipede, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
+import { initRoster, type Roster } from './enemies/roster'
 import type { GamePhase } from './phase'
 import type { GameEvent } from './events'
 
@@ -34,6 +35,8 @@ export interface GameState {
   player: PlayerState
   shot: Shot
   segments: Segment[]
+  /** The enemy cast — spiders, bees, beetles, dragonflies, mosquitoes, earwigs, inchworms. */
+  roster: Roster
   score: number
   lives: number
   wave: number
@@ -72,6 +75,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     player: createPlayer(),
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
+    roster: initRoster(),
     score: 0,
     lives: opts?.lives ?? START_LIVES,
     wave: 0,

@@ -23,6 +23,9 @@ import {
 } from './millipede'
 import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent } from './events'
+import { score2Of } from './score'
+import { stepRoster, shootRoster } from './enemies/roster'
+import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
 export interface GameInput {
@@ -91,8 +94,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     events.push(event('shot-fired'))
   }
 
-  // 3. Collisions against the PRE-march segments — the shot hits at its CURRENT
-  //    position, THEN climbs, so a shot placed on a segment kills it this frame.
+  // 3. Shot hits at its CURRENT position (before climbing): first segments...
   let segments = state.segments
   let score = state.score
   if (shot.active) {
@@ -104,30 +106,57 @@ function stepPlay(state: GameState, input: GameInput): GameState {
       events.push(event('segment-killed'))
     }
   }
-  // Surviving shot climbs; expire past the top of the field.
+
+  // 4. Step the enemy roster (spawn/move/plant/player-contact), then resolve the
+  //    shot against it. The view shares state.field/state.rng so the pure
+  //    subsystems plant mushrooms and draw randomness deterministically.
+  const view: EnemyView = {
+    frame: state.frame,
+    score2: score2Of(state.score),
+    player: { h: player.h, v: player.v, alive: player.alive },
+    centin: state.segments.filter(isLive).length,
+    hard: false,
+    rng: state.rng,
+    field: state.field,
+  }
+  const stepped = stepRoster(state.roster, view)
+  let roster = stepped.roster
+  if (shot.active) {
+    const rs = shootRoster(roster, { h: shot.h, v: shot.v })
+    if (rs.killed) {
+      roster = rs.roster
+      score += rs.scoreDelta
+      shot = { active: false, h: 0, v: 0 }
+      events.push(event('enemy-killed'))
+    }
+  }
+
+  // 5. Surviving shot climbs; expire past the top of the field.
   if (shot.active) {
     const v = shot.v + SHOT_SPEED
     shot = v >= SHOT_MAX_V ? { active: false, h: 0, v: 0 } : { ...shot, v }
   }
 
+  // 6. Player death — a segment or any enemy touching the player this frame.
   let lives = state.lives
   let alive = player.alive
   let playerDied = false
-  if (alive && segments.some((s) => isLive(s) && checkPlayerCollision(s, player))) {
+  const touchedBySegment = segments.some((s) => isLive(s) && checkPlayerCollision(s, player))
+  if (alive && (touchedBySegment || stepped.playerHit)) {
     alive = false
     playerDied = true
     lives -= 1
     events.push(event('player-died'))
   }
 
-  // 4. March the survivors.
+  // 7. March the surviving segments.
   segments = stepMillipede(segments, state.frame, state.field)
 
-  // 5. Phase transition.
+  // 8. Phase transition.
   const signals: PhaseSignals = { playerDied, livesRemaining: lives }
   const phase = advancePhase('play', signals)
 
-  // 6. March loop edges — start/stop the feet voice on the audible transition.
+  // 9. March loop edges — start/stop the feet voice on the audible transition.
   const wasMarching = state.phase === 'play' && state.segments.some(isLive)
   const nowMarching = phase === 'play' && segments.some(isLive)
   if (nowMarching && !wasMarching) events.push(event('march-start'))
@@ -140,6 +169,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     player: { ...player, alive },
     shot,
     segments,
+    roster,
     score,
     lives,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,

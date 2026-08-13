@@ -65,6 +65,46 @@ describe('ml7-2 stepGame — play loop emits audio events', () => {
     expect(after.phase).toBe('death')
   })
 
+  const liveSpider = (h: number, v: number) => ({
+    color: 0xb9,
+    pic: 0x14,
+    v,
+    h,
+    dv: 0,
+    dh: 0,
+    oldDh: 0,
+    count2: 0,
+    pts: 0,
+  })
+
+  it('shooting an enemy emits enemy-killed and scores', () => {
+    const base = play()
+    const g: GameState = {
+      ...base,
+      segments: [],
+      roster: { ...base.roster, spiders: [liveSpider(0x80, 0x40)] },
+      shot: { active: true, h: 0x80, v: 0x40 },
+    }
+    const after = stepGame(g, idle)
+    expect(kinds(after)).toContain('enemy-killed')
+    expect(after.score).toBeGreaterThan(g.score)
+    expect(after.shot.active).toBe(false)
+  })
+
+  it('an enemy touching the player kills the player (phase → death)', () => {
+    const base = play()
+    const g: GameState = {
+      ...base,
+      segments: [],
+      roster: { ...base.roster, spiders: [liveSpider(0x80, 0x08)] },
+      player: { ...base.player, h: 0x80, v: 0x08 },
+    }
+    const after = stepGame(g, idle)
+    expect(kinds(after)).toContain('player-died')
+    expect(after.phase).toBe('death')
+    expect(after.lives).toBe(g.lives - 1)
+  })
+
   it('rebuilds the event stream every frame (no accumulation)', () => {
     const g = play({ shot: { active: false, h: 0, v: 0 } })
     const fired = stepGame(g, { ...idle, fire: true })
