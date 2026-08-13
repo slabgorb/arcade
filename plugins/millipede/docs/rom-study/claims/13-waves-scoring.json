@@ -1,0 +1,101 @@
+[
+  {
+    "id": "WV-1",
+    "claim": "BEETLA is the number of beetles allowed during the current wave — the per-wave quota (distinct from the concurrency cap).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 370,
+      "verbatim": "BEETLA:\t.BLKB 1\t\t\t;NUMBER OF BEETLES ALLOWED DURING THIS \"WAVE\""
+    }
+  },
+  {
+    "id": "WV-2",
+    "claim": "DELAY is non-zero to delay between waves — the inter-wave countdown.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 286,
+      "verbatim": "DELAY:\t.BLKB 1\t\t\t;NON ZERO TO DELY BETWEEN WAVES"
+    }
+  },
+  {
+    "id": "WV-3",
+    "claim": "The per-wave beetle quota ramp compares SCORE2 against 7 (70,000): below it, one beetle per wave.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 642,
+      "verbatim": "\tCMP I,7"
+    }
+  },
+  {
+    "id": "WV-4",
+    "claim": "The terminal quota band loads Y with 0FD, then two INY make it 0FF (255) — 255 beetles after 700,000.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 662,
+      "verbatim": "93$:\tLDY I,0FD"
+    }
+  },
+  {
+    "id": "WV-5",
+    "claim": "The computed quota is stored into BEETLA at wave start (STY BEETLA).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 665,
+      "verbatim": "95$:\tSTY BEETLA"
+    }
+  },
+  {
+    "id": "WV-6",
+    "claim": "DELAY is armed before the next wave (STA DELAY), the 0x40 value loaded just above.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1905,
+      "verbatim": "\tSTA DELAY\t\t;DELAY BEFORE NEXT WAVE"
+    }
+  },
+  {
+    "id": "WV-7",
+    "claim": "CHKEND decrements DELAY once per clear frame during the inter-wave pause (DEC DELAY).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 58,
+      "verbatim": "\tDEC DELAY"
+    }
+  },
+  {
+    "id": "SG-1",
+    "claim": "SCORNG awards score; it first reads MODE to test for attract.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1049,
+      "verbatim": "SCORNG:\tLDY MODE"
+    }
+  },
+  {
+    "id": "SG-2",
+    "claim": "SCORNG is a no-op in attract mode — a negative MODE branches to the early RTS (BMI 30$).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1050,
+      "verbatim": "\tBMI 30$\t\t\t;IF IN ATTRACT"
+    }
+  },
+  {
+    "id": "SG-3",
+    "claim": "SCORNG adds the awarded points into the first digit of the score (ADC X,SCORE0).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1055,
+      "verbatim": "\tADC X,SCORE0"
+    }
+  },
+  {
+    "id": "SG-4",
+    "claim": "PTS holds the number of points for killing a critter — the value SCORNG accumulates.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 398,
+      "verbatim": "PTS:\t.BLKB 16.\t\t;NUMBER OF POINTS FOR KILLING THIS CRITTER"
+    }
+  }
+]
