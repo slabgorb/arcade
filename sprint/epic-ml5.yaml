@@ -40,10 +40,11 @@ stories:
     title: "Persist high scores via one-origin localStorage under highScoreKey('millipede') (EAROM MLTST.MAC:36-150 maps to localStorage, not chip emulation): shell reads on boot, writes on commit; core stays pure. Reuse the asteroids/joust/mc7 consumer pattern."
     points: 3
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
     review_findings: 'APPROVED, single round, no rework. 4 enabled subagents (preflight/comment-analyzer/security/rule-checker) — all code behavior correct; Reviewer mutation-tested the suite 3 ways (all non-vacuous). 3 LOW/non-blocking findings only: unpaired not.toThrow test (test:245), EAROM 36-150 citation clarity (highscore.ts:8), missing readonly on a test param (pre-existing fleet pattern). Core/shell boundary + purity intact (35/35); rule #10 JSON.parse validation delegated to @shared/highscore; thin adapter matching mc7-3, not a fork. millipede 871 pass/0 fail; lint green.'
     review_verdict: approved
   - id: ml5-5
