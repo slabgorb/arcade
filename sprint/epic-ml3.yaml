@@ -28,7 +28,8 @@ stories:
     title: 'Mushroom field reducers: MUSHER/MUSHDC add/decrement count (MLSUB.MAC:732/707), RESTOR restore mushrooms (:919), OBSTAC obstacle (MILLI.MAC:824), poison mushrooms (MLDEF.MAC:143). Cited.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml3-4
