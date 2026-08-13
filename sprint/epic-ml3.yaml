@@ -44,6 +44,7 @@ stories:
     title: 'Scrolling playfield (novel vs centipede): SCROLL/SCROLD/SCROLU scroll mushrooms up/down (MLSUB.MAC:1105/1149/1309); make the core coordinate system scroll-aware from the start. Cited; pin output coordinates in a core unit test (routing != geometry).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
