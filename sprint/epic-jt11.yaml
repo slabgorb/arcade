@@ -100,7 +100,7 @@ stories:
     title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2, and a click/tap on the attract or select screen as a start gesture (routed Delivery Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a lobby-browser player may also reasonably click). Keep the rising-edge discipline (prevStartHeld) for all new sources.'
     points: 2
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
   - id: jt11-10
