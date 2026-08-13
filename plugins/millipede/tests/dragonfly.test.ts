@@ -242,6 +242,13 @@ describe('dragonfly — mushrooms-needed curve and spawn threshold', () => {
     // A port that always (or never) adds the carry fails one of these.
     expect(m.flySpawnThreshold(0x52), 'uncapped 0x2f, carry clear').toBe(0x5f)
     expect(m.flySpawnThreshold(0x99), 'capped 0x2f, carry SET — the ceiling 0x60 (DF-7)').toBe(0x60)
+    // The tightest flip: 0x53>>1+6 = 0x2f (uncapped, carry clear) but
+    // 0x54>>1+6 = 0x30 (capped, carry set) — adjacent inputs, both landing on
+    // need 0x2f, split only by the carry.
+    expect(m.mushroomsNeeded(0x53)).toBe(0x2f)
+    expect(m.mushroomsNeeded(0x54)).toBe(0x2f)
+    expect(m.flySpawnThreshold(0x53), 'one below the cap edge').toBe(0x5f)
+    expect(m.flySpawnThreshold(0x54), 'first capped input (DF-52)').toBe(0x60)
   })
 })
 
@@ -315,7 +322,8 @@ describe('dragonfly — spawn', () => {
 
   it('startDragonfly writes the FLYMV3/BEEMV2 slot bytes (DF-28/33/36/37/38)', async () => {
     const m = await loadDragonfly()
-    const slot = freeSlot()
+    // dh seeded non-zero so the DF-37 reset is a real write, not the fixture default
+    const slot = freeSlot({ dh: 0xaa })
     m.startDragonfly(slot, env({ rnd0: 0x47, score2: 0 }))
     expect(slot.pic, 'picture 0x1e (DF-28)').toBe(0x1e)
     expect(slot.v, 'top row (DF-33)').toBe(0xf8)
@@ -436,6 +444,31 @@ describe('dragonfly — horizontal weave (FLYMV1)', () => {
     m.moveDragonfly(slot, env({ frame: 0x08 }))
     expect(slot.dh, 'BPL 38$ — going to the left, no bounce').toBe(0)
     expect(slot.h).toBe(0x0e)
+  })
+
+  it('a rightward wave at the LEFT edge passes without bouncing (DF-21)', async () => {
+    const m = await loadDragonfly()
+    const slot = fly({ h: 0xf4 })
+    m.moveDragonfly(slot, env({ frame: 0x20 }))
+    expect(slot.dh, 'BMI 38$ — going to the right, no bounce').toBe(0)
+    expect(slot.h, '-8/256: integer 0xff, no fraction carry').toBe(0xf3)
+    expect(slot.hl).toBe(0xf8)
+  })
+
+  it('the triangle fold engages exactly at wave 0x40 and releases at 0xc0 (DF-18)', async () => {
+    const m = await loadDragonfly()
+    // frame 0x10 → wave 0x40 folds to 0x3f: audio 0x7e, step +1 (an unfolded
+    // 0x40 would read negative and walk h BACKWARDS)
+    const atFold = fly()
+    const r1 = m.moveDragonfly(atFold, env({ frame: 0x10 }))
+    expect(r1).toMatchObject({ kind: 'moved', audioOffset: 0x7e })
+    expect(atFold.h, 'CMP I,40 / BCC — 0x40 is inside the fold').toBe(0x41)
+    // frame 0x30 → wave 0xc0 does NOT fold: a negative step, h walks back 2
+    const pastFold = fly()
+    const r2 = m.moveDragonfly(pastFold, env({ frame: 0x30 }))
+    expect(r2).toMatchObject({ kind: 'moved', audioOffset: 0x80 })
+    expect(pastFold.h, 'CMP I,0C0 / BCS — 0xc0 is outside the fold').toBe(0x3e)
+    expect(pastFold.hl).toBe(0x00)
   })
 })
 
