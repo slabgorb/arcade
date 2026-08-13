@@ -157,3 +157,8 @@ completed_stories:
     title: 'Scrolling playfield (novel vs centipede): SCROLL/SCROLD/SCROLU scroll mushrooms up/down (MLSUB.MAC:1105/1149/1309); make the core coordinate system scroll-aware from the start. Cited; pin output coordinates in a core unit test (routing != geometry).'
     points: 3
     completed: '2026-08-13'
+  - id: ml3-3
+    epic: ml3
+    title: 'Mushroom field reducers: MUSHER/MUSHDC add/decrement count (MLSUB.MAC:732/707), RESTOR restore mushrooms (:919), OBSTAC obstacle (MILLI.MAC:824), poison mushrooms (MLDEF.MAC:143). Cited.'
+    points: 5
+    completed: '2026-08-13'
