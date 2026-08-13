@@ -112,3 +112,8 @@ completed_stories:
     title: 'CONWAY Life field (the schedule risk — no sibling, no prose): port Cerny MASTER control (CONWAY.MAC:24) grow/kill of mushrooms + DDT clouds by Game-of-Life rules; INICON init (MLDEF.MAC:73). Pure reducer + a SEEDED-FIELD golden test proving the growth generations match the ROM algorithm.'
     points: 8
     completed: '2026-08-12'
+  - id: ml4-1
+    epic: ml4
+    title: 'Beetle + spider reducers (cited): BEETL move/start beetle (MILLI.MAC:243), SPDMV move spider (MILLI.MAC:2295). Difficulty from DIP equates (MLDEF.MAC:88 D1=beetle, :91 D6=spider); PTS scoring (MLDEF.MAC:398).'
+    points: 5
+    completed: '2026-08-13'
