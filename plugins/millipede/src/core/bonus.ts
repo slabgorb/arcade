@@ -95,8 +95,12 @@ export function initialBonusTarget(optns1: number): { bonusL: number; bonusM: nu
   return { bonusL: inc.low, bonusM: inc.mid }
 }
 
-/** One BCD byte add with carry in/out (the SED ADC). */
-function bcdAdd(a: number, b: number, carry: number): { sum: number; carry: number } {
+/**
+ * One BCD byte add with carry in/out (the SED ADC). Exported for select.ts,
+ * whose SSCORE window steps run the same SED law (one implementation so the
+ * units-carry branch pinned here covers every consumer — review round 2).
+ */
+export function bcdAdd(a: number, b: number, carry: number): { sum: number; carry: number } {
   let lo = (a & 0x0f) + (b & 0x0f) + carry
   let hi = (a >> 4) + (b >> 4)
   if (lo > 9) {

@@ -23,7 +23,7 @@
 // select score (MLDEF.MAC:110) — the SAME bits in DIFFERENT banks. BONUSS
 // merges OPTNS1's D4-D5 with OPTNS2's D2-D3 (the EOR dance, MLTST.MAC:17-21).
 
-import { bonusIncrement } from './bonus'
+import { bcdAdd, bonusIncrement } from './bonus'
 
 /** OPTNS1 D7 — select-score mode disable (MLDEF.MAC:92; MLTST.MAC:16 BMI). */
 export const SELECT_DISABLE = 0x80
@@ -72,18 +72,6 @@ export function maxStartingScore(optns1: number, optns2: number): number {
 export function selectModeAtStart(optns1: number, optns2: number): 0 | 1 {
   if ((optns1 & SELECT_DISABLE) !== 0) return 0 // :386-387 — BIT/BMI
   return maxStartingScore(optns1, optns2) >> 8 !== 0 ? 1 : 0 // :388-390 — LDA LSCORE+1 / BEQ
-}
-
-/** One BCD byte add with carry in/out (the SED ADC). */
-function bcdAdd(a: number, b: number, carry: number): { sum: number; carry: number } {
-  let lo = (a & 0x0f) + (b & 0x0f) + carry
-  let hi = (a >> 4) + (b >> 4)
-  if (lo > 9) {
-    lo -= 10
-    hi += 1
-  }
-  if (hi > 9) return { sum: ((hi - 10) << 4) | lo, carry: 1 }
-  return { sum: (hi << 4) | lo, carry: 0 }
 }
 
 /** BCD word + the increment (the :1535-1543/:1559-1567 SED step, one rung). */
