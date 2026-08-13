@@ -140,12 +140,14 @@ stories:
     description: 'Found by Reviewer during jt11-6. The player types initials and NOTHING appears on screen: layoutHighscoreScreen is called with (colour, table, entryPrompt) and never receives entry.initials; entryPrompt is fixed once when the screen is entered (promptForRank), and the only other use of the buffer is the commit. So the entry screen shows the heading, the persisted rows and a static prompt, and gives zero feedback for a keystroke. Pre-existing since jt10-7, but jt11-6 added an on-screen ''TYPE A-Z   SPACE (FLAP) TO CONFIRM'' instruction line, which now actively invites a player to type and see nothing happen. The ROM echoes every character: ENTRET BSR OUTHSC ''WRITE THE CHARACTER'' (TB12REV1.SRC:1267) -> OUTHSC writes it at the cursor via OUTCHR (:1271-1276), with WRCUR/ERCUR drawing and erasing a cursor glyph (:1287-1295); the buffer is pre-filled with CSPC spaces (:1901-1905), so unentered slots show as blanks. FONT35 carries a cursor glyph already (''ARRW'', the SARRW cell, MESSAGE.SRC:343) plus the space glyph. Fix: thread the in-flight buffer into layoutHighscoreScreen as its own laid-out line (initials padded to MAX_INITIALS so the slots are visible) and paint it in renderHighscoreScreen; cite the ROM echo lines. Verify by looking at /joust/ - this one is only really done when a human sees a letter appear.'
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
     type: bug
     branch: feat/jt11-13-highscore-entry-echo
+    review_verdict: approved
   - id: jt11-14
     title: 'High-score entry timeout survives a hidden tab: commit on pagehide/visibilitychange'
     description: 'Found by Reviewer during jt11-6. jt11-6 gave the entry screen a 7680-tick budget (ROM: AMODE''s 256 x PCNAP 30, TB12REV1.SRC:77-78) that auto-commits the current initials when it runs out, so a walked-away qualifying score persists. But the budget is spent inside pumpFrames, driven by requestAnimationFrame, and MAX_CATCHUP_SECONDS = 0.25 discards elapsed wall time - so the countdown FREEZES while the tab is hidden and never advances if the tab is closed. The most literal reading of ''walked away'' (hide or close the tab) is therefore the one case the fix does not serve; it works for the visible-cabinet case, which is the arcade case and was the point. Fix: commit the in-flight entry on pagehide (and/or visibilitychange to hidden) while cabinet.mode === ''highscore'', through the SAME commitHighScore helper - main.ts asserts exactly one highScores.save( and one commitEntry( call site, and that invariant must survive. Note the listener is shell-only; core still counts ticks and must not learn about the document. Test the seam the way jt11-6 did: a source-scan on the pump/handler wiring plus a mutation to prove the guard bites.'
