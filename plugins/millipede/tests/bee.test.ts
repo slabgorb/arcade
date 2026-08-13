@@ -353,7 +353,7 @@ describe('bee — movement', () => {
     const m = await loadBee()
     const slot = bee({ v: 0x80, dv: 2, h: 0x40 })
     const r = m.moveBee(slot, env({ frame: 1 }))
-    expect(r.kind).toBe('moved')
+    expect(r).toEqual({ kind: 'moved', plantMushroom: false })
     expect(slot.v).toBe(0x7e)
     expect(slot.h, 'dh is 0 and nothing touches H').toBe(0x40)
   })
@@ -371,8 +371,19 @@ describe('bee — movement', () => {
   it('V exactly 4 is still on screen — CMP I,4 / BCC (BE-18)', async () => {
     const m = await loadBee()
     const slot = bee({ v: 6, dv: 2 })
-    expect(m.moveBee(slot, env({ frame: 1 })).kind).toBe('moved')
+    expect(m.moveBee(slot, env({ frame: 1 }))).toEqual({ kind: 'moved', plantMushroom: false })
     expect(slot.v).toBe(4)
+  })
+
+  it('a dive below dv wraps as SBC bytes — (2 - 3) & 0xff is 0xff, NOT offscreen (BE-17/18)', async () => {
+    // Unreachable via legal spawns (dv ∈ {2,3,4} and every live entry has V >= 4,
+    // so V - dv >= 0): this pins the ROM's SEC/SBC byte semantics against a
+    // clamping port (Math.max(0, v - dv) would land 0 → offscreen). The wrapped
+    // 0xff fails CMP I,4 / BCC, so the bee stays on screen.
+    const m = await loadBee()
+    const slot = bee({ v: 2, dv: 3 })
+    expect(m.moveBee(slot, env({ frame: 1 }))).toEqual({ kind: 'moved', plantMushroom: false })
+    expect(slot.v, "(2 - 3) & 0xff — two's-complement wrap, not a clamp to 0").toBe(0xff)
   })
 })
 
