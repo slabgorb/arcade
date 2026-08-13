@@ -136,7 +136,7 @@ async function loadBeetle(): Promise<BeetleModule> {
     throw new Error(
       'beetle reducer not built yet — GREEN (Dev) ships src/core/beetle.ts per the ' +
       'contract at the top of tests/beetle.test.ts (pure, cited, byte semantics). ' +
-      `(${(e as Error).message})`,
+      `(${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -302,19 +302,26 @@ describe('beetle — startBeetle gates', () => {
       'score below 90k allows 1 — a second is refused').toBe(-1)
     expect(m.startBeetle(freshSlots(), { beetles: 1, allowed: 5 }, openEnv({ score2: 0x09 })),
       'from 90k two run at once').toBe(11)
+    // The faithful ROM quirk: CPX/BEQ blocks ONLY on exact equality, so a
+    // count already OVER the allowance sails through (:280-281). This is what
+    // separates `===` from a well-meaning `>=`.
+    const counts = { beetles: 2, allowed: 5 }
+    expect(m.startBeetle(freshSlots(), counts, openEnv({ score2: 0 })),
+      'beetles=2 over the allowance of 1 still spawns — the BEQ quirk').toBe(11)
+    expect(counts.beetles).toBe(3)
   })
 
   it('a fast beetle doubles dh past the DIP threshold: easy above 39, hard above 29 BCD (BT-23/24/25)', async () => {
     const m = await loadBeetle()
-    const at = async (score2: number, hard: boolean) => {
+    const at = (score2: number, hard: boolean) => {
       const slots = freshSlots()
       m.startBeetle(slots, { beetles: 0, allowed: 1 }, openEnv({ score2, hard, rnd1: 0x80 }))
       return slots[11].dh
     }
-    expect(await at(0x39, false), 'easy at the threshold stays slow (BCS)').toBe(0x01)
-    expect(await at(0x40, false), 'easy above 390k is fast').toBe(0x02)
-    expect(await at(0x29, true), 'hard at the threshold stays slow').toBe(0x01)
-    expect(await at(0x30, true), 'hard above 290k is fast').toBe(0x02)
+    expect(at(0x39, false), 'easy at the threshold stays slow (BCS)').toBe(0x01)
+    expect(at(0x40, false), 'easy above 390k is fast').toBe(0x02)
+    expect(at(0x29, true), 'hard at the threshold stays slow').toBe(0x01)
+    expect(at(0x30, true), 'hard above 290k is fast').toBe(0x02)
     // the negative direction doubles as a byte: FF → FE
     const slots = freshSlots()
     m.startBeetle(slots, { beetles: 0, allowed: 1 }, openEnv({ score2: 0x40, rnd1: 0x00 }))
@@ -333,6 +340,14 @@ describe('beetle — moveBeetle', () => {
     expect(m.isBeetle(beetle({ pic: 0x38 }))).toBe(false)
     expect(m.isBeetle(beetle({ pic: 0x33 }))).toBe(false)
     expect(m.isBeetle(beetle({ color: 0 })), 'a cleared slot is dead whatever its picture').toBe(false)
+  })
+
+  it('does nothing while the player is dead — the BEETL entry gate covers the sweep (BT-5)', async () => {
+    const m = await loadBeetle()
+    const slot = beetle({ h: 0x40, dh: 1, timer: 0x50 })
+    const before = { ...slot }
+    expect(m.moveBeetle(slot, { beetles: 1, allowed: 0 }, openEnv({ playerAlive: false, frame: 0 }))).toBeNull()
+    expect(slot, 'the routine RTSes at entry — no animation, step, or timer').toEqual(before)
   })
 
   it('a non-beetle slot is left untouched (null)', async () => {
@@ -378,6 +393,7 @@ describe('beetle — moveBeetle', () => {
     expect(m.moveBeetle(slot, counts, openEnv({ frame: 1 }))).toBe('offscreen')
     expect(slot.color, 'MOBJC cleared (:350)').toBe(0)
     expect(counts.beetles, 'DEC BEETLS (:351)').toBe(1)
+    expect(slot.timer, 'JMP 95$ skips BEETL1 — the timer is NOT decremented on the cleared slot (:352)').toBe(0x50)
   })
 })
 
@@ -428,6 +444,21 @@ describe('beetle — BEETL1 turn timer', () => {
     m.moveBeetle(slot, { beetles: 1, allowed: 0 }, openEnv({ frame: 1, rnd0: 0xff }))
     expect(slot.dv, 'no COMP on the rows — the beetle climbs back').toBe(0x01)
     expect(slot.timer, 'FF AND 38 = 38, + 40 = 78').toBe(0x78)
+  })
+
+  it('on the cocktail top row (v ≥ F0) both turns take the ROW branch (BT-40/41)', async () => {
+    const m = await loadBeetle()
+    // horizontal → vertical at v=F0: no COMP — dv = +unit, timer (rnd AND 38)+40
+    const h2v = beetle({ v: 0xf0, h: 0x40, dh: 1, timer: 1 })
+    m.moveBeetle(h2v, { beetles: 1, allowed: 0 }, openEnv({ frame: 1, rnd0: 0xff }))
+    expect(h2v.dv, 'CPY I,0F0/BCS takes the row branch (:410-411)').toBe(0x01)
+    expect(h2v.timer).toBe(0x78)
+    // vertical → horizontal stepping ONTO the top row: timer (rnd AND 78)+60
+    const v2h = beetle({ v: 0xef, dv: 0x01, h: 0x40, dh: 1, timer: 1 })
+    m.moveBeetle(v2h, { beetles: 1, allowed: 0 }, openEnv({ frame: 1, rnd0: 0xff }))
+    expect(v2h.v, 'stepped onto the row').toBe(0xf0)
+    expect(v2h.dv).toBe(0)
+    expect(v2h.timer, 'FF AND 78 = 78, + 60 = D8 (:431-432, :438-442)').toBe(0xd8)
   })
 
   it('mid-screen vertical → horizontal: dv 0 and the timer wraps to FF to leave the screen (BT-42)', async () => {

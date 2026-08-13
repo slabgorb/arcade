@@ -5,7 +5,7 @@
 // borrows the centipede's motion-object slots (NCENT, MLDEF.MAC:188, BT-2),
 // enters on the "row about new heads", walks an L-shaped patrol timed by
 // BEETL1 (MILLI.MAC:392), and turns the mushrooms it crosses into
-// indestructible ROCKs (MILLI.MAC:373-377, BT-34/35). Every constant carries
+// indestructible ROCKs (MILLI.MAC:373-378, BT-34/35). Every constant carries
 // a BT-* claim in docs/rom-study/claims/09-beetle-spider.json, byte-verified
 // against reference/original-source/millipede/ by the ml1-1 citation gate.
 //

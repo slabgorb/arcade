@@ -154,7 +154,7 @@ async function loadSpider(): Promise<SpiderModule> {
     throw new Error(
       'spider reducer not built yet — GREEN (Dev) ships src/core/spider.ts per the ' +
       'contract at the top of tests/spider.test.ts (pure, cited, byte semantics). ' +
-      `(${(e as Error).message})`,
+      `(${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -270,6 +270,14 @@ describe('spider — start gates', () => {
     expect(slot.count2, 'COUNT2 sits at 0; the next DEC wraps').toBe(0)
     expect(m.trySpawnSpider(slot, 12, env({ score2: 0 }))).toBe(false)
     expect(slot.count2, 'DEC of 0 → FF').toBe(0xff)
+  })
+
+  it('an OCCUPIED slot is left alone — the scan moves it instead of respawning over it', async () => {
+    const m = await loadSpider()
+    const live = spider({ count2: 1 })
+    const before = { ...live }
+    expect(m.trySpawnSpider(live, 13, env())).toBe(false)
+    expect(live, 'no countdown decrement, no overwrite of a live spider').toEqual(before)
   })
 
   it('nothing spawns while the player is dead (SD-6)', async () => {
@@ -504,6 +512,7 @@ describe('spider — obstacle reaction', () => {
   it('the DDT bomb is NOT eaten; ROCK and everything above is (SD-36/37)', async () => {
     const m = await loadSpider()
     expect(m.spiderObstacle(0x6e), 'the bomb itself survives').toEqual({ kind: 'none' })
+    expect(m.spiderObstacle(0x6f), 'the bomb band runs to ROCK — 6F is spared too').toEqual({ kind: 'none' })
     expect(m.spiderObstacle(0x70), 'a rock is eaten — unlike the beetle seam').toEqual({ kind: 'eat', cell: 0 })
     expect(m.spiderObstacle(0x7f), 'a full mushroom is eaten').toEqual({ kind: 'eat', cell: 0 })
     expect(m.spiderObstacle(0xfc), 'the background bit survives the eat (AND 80)').toEqual({ kind: 'eat', cell: 0x80 })

@@ -235,7 +235,7 @@ export function moveSpider(slot: SpiderSlot, env: Readonly<SpiderEnv>): { offscr
     spiderOff(slot)
     return { offscreen: true }
   }
-  slot.v = (slot.v - slot.dv) & 0xff // :2447-2451
+  slot.v = (slot.v - slot.dv) & 0xff // :2448-2451
   // :2470-2519 — the bounce (OVRLAP seam skipped)
   if (slot.v < 0x09) {
     // :2470-2477 (SD-38) — at the bottom a downward dv (bit 7 clear) reverses
