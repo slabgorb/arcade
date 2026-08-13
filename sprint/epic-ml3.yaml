@@ -19,7 +19,7 @@ stories:
     title: 'Millipede split-on-mushroom + EXPLOD segment/player explosion (MILLI.MAC:763) + player death/collision (PLAY MILLI.MAC:1744). Death effects designed freeze-friendly (no strobe) ahead of ml7 accessibility gate.'
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
