@@ -19,9 +19,11 @@ stories:
     title: 'Dragonfly + mosquito reducers (cited): FLYMV enter/move dragonfly (MILLI.MAC:1004), MOSQT enter/move mosquito (MILLI.MAC:1324). PTS scoring.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
   - id: ml4-3
     title: 'Earwig + inchworm + bee reducers (cited): EARWIG move/start (MILLI.MAC:672), WRMMV enter/move inchworm (MILLI.MAC:2559), BEEMV move bee down screen (MILLI.MAC:56). PTS scoring.'
     points: 5
