@@ -32,11 +32,36 @@
 // FREE-SPACE motion only: the leg animation (MT-17/18), the last-head speed-up,
 // the coast-march (MT-24), the descent + reversal at cell-phase 4 (MT-23/25),
 // the body-follow (MT-20) and the screen-edge turn (MT-21/22). Poison-dive,
-// mushroom-turn, DDT, player collision and the split are deferred (ml3-2/3, ml4).
-// Cocktail is out of scope (CKF8/CKFE/CKFF = 0 upright), so the flips are dropped.
-// stepMillipede reads NO field yet; ml3-3 EXTENDS it with the OBSTAC probe.
+// DDT, player collision and the split are deferred (ml3-2, ml4). ml3-6 wired the
+// mushroom-turn: stepMillipede now takes an OPTIONAL `field` and turns a head on
+// the cell-ahead OBSTAC (MILLI.MAC:1527-1539). Cocktail is out of scope
+// (CKF8/CKFE/CKFF = 0 upright), so the flips are dropped.
 
 import { nextInt, type Rng } from '@shared/rng'
+import { obstac } from './mushroom'
+import { DDT, POISON, NORMAL } from './conway'
+
+// ─── the MOTION obstacle band table (MILLI.MAC:1528-1539, ml3-6) ─────────────
+// CLOUD is the start of the DDT explosion clouds (MLDEF.MAC:202); DDT/POISON/NORMAL
+// come from conway. A head's cell-ahead obstacle code classifies its reaction.
+const CLOUD = 0x2e // MLDEF.MAC:202 "CLOUD =2E ;START OF DDT EXPLOSION CLOUDS"
+
+type ObstacleReaction = 'none' | 'turn' | 'poison'
+
+/**
+ * The MOTION head-obstacle band table (MILLI.MAC:1528-1539). Given the cell-ahead
+ * OBSTAC code (already AND 7F), decide how the head reacts: `none` coasts (0, or a
+ * DDT explosion cloud passed through), `turn` drops a row (the 15$ seam an edge
+ * turn shares), `poison` turns AND poisons the head (MOBJC = POISON_COLOR).
+ */
+function obstacleReaction(code: number): ObstacleReaction {
+  if (code === 0) return 'none' // :1528 BEQ 13$ — no obstacle
+  if (code < CLOUD) return 'turn' // :1529-1530 CMP I,CLOUD / BCC 15$ (turn at letter)
+  if (code < DDT) return 'none' // :1531-1532 CMP I,DDT / BCC 13$ (go thru DDT clouds)
+  if (code < POISON) return 'turn' // :1533-1534 CMP I,78 / BCC 15$ (DDT bomb / dying-growing)
+  if (code < NORMAL) return 'poison' // :1535-1539 [78,7C) LDA I,1B / STA MOBJC / turn
+  return 'turn' // :1535-1536 CMP I,7C / BCS 15$ (full/normal mushroom)
+}
 
 // ─── the ROM constants this story transcribes (claims 09, MT-1..MT-32) ───────
 export const NCENT = 12 // MT-1 (MLDEF.MAC:188 "NCENT =12." decimal)
@@ -221,6 +246,7 @@ function stepSegment(
   leader: Segment | undefined,
   frame: number,
   liveCount: number,
+  field?: Uint8Array,
 ): Segment {
   if (seg.color === VACANT_COLOR) return seg // MT-2 — vacant slot untouched
   if (seg.pic >= SEGMENT_PIC_MAX) return seg // MT-3 — not a segment (defensive)
@@ -256,6 +282,21 @@ function stepSegment(
   // (ml3-3), so this is defensive in free space.
   if (s.color === POISON_COLOR) return move(s, true)
 
+  // Head obstacle turn (MOTION :1527-1539, ml3-6): consult the mushroom field in
+  // the cell the head is moving toward. A letter/mushroom/rock turns it (drop a
+  // row — the 15$ seam the edge turn shares); a poison mushroom [78,7C) also
+  // poisons the head (MOBJC = POISON_COLOR); DDT explosion clouds [CLOUD,DDT) and
+  // empty cells fall through here. NB the ROM's "no-turn" branch (13$, :1541) runs
+  // JSR OVRLAP first — the segment-OVERLAP turn (checkOverlap) — which is a distinct
+  // segment-vs-segment mechanic NOT wired by any story yet; only the OBSTAC
+  // (mushroom) turn is wired here, so a fall-through goes straight to the edge/
+  // free-space handling.
+  if (field) {
+    const reaction = obstacleReaction(obstac(field, s))
+    if (reaction === 'poison') return move({ ...s, color: POISON_COLOR }, true)
+    if (reaction === 'turn') return move(s, true)
+  }
+
   // Head screen-edge turn (MT-21/22), direction-aware: at the left edge marching
   // right, or the right edge marching left, drop a row and reverse; otherwise
   // march. A head already receding from an edge is not re-turned.
@@ -269,11 +310,18 @@ function stepSegment(
  * Vacant slots (MT-2) are skipped untouched; the leg picture animates every other
  * frame (MT-17/18); the last surviving head speeds up; heads turn at the screen
  * edges (MT-21/22) and descend + reverse at cell-phase 4 (MT-23/25); bodies follow
- * their leader down (MT-20). Reads no mushroom field yet — ml3-3 extends it.
+ * their leader down (MT-20). With an optional `field`, a head turns on a
+ * cell-ahead mushroom (ml3-6, MILLI.MAC:1527-1539); omit it for free-space MOTION.
  */
-export function stepMillipede(segs: readonly Segment[], frame: number): Segment[] {
+export function stepMillipede(
+  segs: readonly Segment[],
+  frame: number,
+  field?: Uint8Array,
+): Segment[] {
   const liveCount = segs.reduce((n, s) => n + (s.color !== VACANT_COLOR ? 1 : 0), 0)
-  return segs.map((seg, i) => stepSegment(seg, i > 0 ? segs[i - 1] : undefined, frame, liveCount))
+  return segs.map((seg, i) =>
+    stepSegment(seg, i > 0 ? segs[i - 1] : undefined, frame, liveCount, field),
+  )
 }
 
 /**
