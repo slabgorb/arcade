@@ -4270,3 +4270,18 @@ re-adds it." It doesn't NEED to: brief.md's numbers (`NDDT =4`, `.BLKB 16.`, EPR
 inside the cited line's `verbatim`, so a plain byte-verified claim pins them. Only a claim that
 tallies operands across `.BYTE` lines (the sound path) earns that machinery. Don't port removed code
 on the strength of a forward-looking comment — check whether THIS story's claims actually tally.
+
+---
+
+### A mask-gate's negative probes must cover every residue class — one odd frame "no-flap" probe let a 2x-cadence mutant ship green (ml4-3 rework, 2026-08-13)
+
+Writing a test for a `(frame & MASK) === 0` cadence: positive probes (multiples of
+the period) kill restrictive mutants, but a negative probe only kills the permissive
+mutants whose mask ALSO rejects that residue. My original earwig test probed no-flap
+at frame 5 only — residue 1 — so `& 0x03` → `& 0x01` (flap twice as fast) passed all
+506 tests and the Reviewer's battery caught it. The complete cheap set for `& 3`:
+no-flap probes at residues 1, 2, 3 with residue 2 (an EVEN frame) being the `& 1`
+discriminator. Rule of thumb: enumerate the next-coarser power-of-two mask and make
+sure at least one negative probe is a value it accepts. And do not let the assertion
+MESSAGE claim residues the body does not probe ("frames 1..3 mod 4 do not flap" over
+a single frame-5 probe) — the message oversold the probe and hid the gap.

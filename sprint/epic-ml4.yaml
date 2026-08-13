@@ -28,9 +28,13 @@ stories:
     title: 'Earwig + inchworm + bee reducers (cited): EARWIG move/start (MILLI.MAC:672), WRMMV enter/move inchworm (MILLI.MAC:2559), BEEMV move bee down screen (MILLI.MAC:56). PTS scoring.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
+    review_findings: 'APPROVED round 2 of 2. Round 1 rejected on one mutation-proven MEDIUM (earwig flap-cadence probe sampled only residue 1); rework 920d46a0 (test-only) closed it — probes now walk residues 1/2/3 plus frame 6, the surviving mutant reddens, and a round-2 three-mutant battery on the fixed surface (survivor, clamping port, plant-flag inversion) all red. Optional LOWs taken: full union pins, SBC wrap fixture. 130 claims byte-verified; 26-mutant round-1 battery 24 caught + 1 equivalent + 1 survivor (fixed); rule-checker 0 violations; deviation ACCEPTED. Follow-ups: ml4-6 extraction filed; ml7 spawn-tick fall-through wiring note; stranded star-wars v0.0.45 release handled by SM at finish.'
+    review_verdict: approved
   - id: ml4-4
     title: 'DDT bombs: DDTS add DDT bombs (MLSUB.MAC:420), BOMBS bomb player with bee/mosquito/dragonfly (MILLI.MAC:446), explosion clouds (CLOUD MLDEF.MAC:202, DDT stamps :203). NDDT=4 (MLDEF.MAC:191). Cited.'
     points: 3
@@ -45,3 +49,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: ml4-6
+    title: 'Extract the shared BEE-family helpers (BEEMV1 mushroomsNeeded, BEEMV2 spawnH, BEEOFF, COMP) into one millipede core helper module. The ml4-1 third-consumer trigger is met: dragonfly/mosquito/bee/earwig now hold byte-identical module-local copies (MILLI.MAC:166-171, :179-194, :228-234) and the four suites pin the behaviour, so extraction is a pure refactor under an existing net. Filed by the ml4-3 review (TEA Delivery Finding routed the decision).'
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor

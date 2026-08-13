@@ -2994,3 +2994,54 @@ clean; if a file you edited is missing from the pre-battery `git status`, the ba
    reddens?), add an uncovered citation (coverage reddens?), un-enrol the file (enrolment reddens?).
 4. **CI path** — run with the vendored dir pointed at nowhere; `.skipIf` must skip the byte blocks with
    NO `reference/` read (deploy-red trap) while the tree-free coverage gate still bites.
+
+---
+
+### A battery harness that pipes vitest into `tail` inherits TAIL'S exit status — 26/26 "SURVIVED" was the pipe, not the suite (ml4-3, 2026-08-13)
+
+**Situation:** ml4-3 review, 26-mutant battery via a Node script using
+`execSync('npx vitest run --project millipede 2>&1 | tail -4')`. First run printed
+every single mutant SURVIVED — including mutants that provably invert tested behaviour
+(one-hit bee kill, dropped DEAD gate).
+
+**Problem:** `execSync` runs `/bin/sh` without `pipefail`, so `cmd | tail` exits with
+tail's status (0) regardless of vitest reddening. Every run "succeeded"; the battery
+printed the most persuasive wrong answer available — a uniform result in the direction
+that flatters the suite. The tell was the uniformity itself: 26/26 in EITHER direction
+means test the harness, not the tests. Re-run without the pipe (capture full stdout,
+parse the `Tests N failed` summary, rely on the raw exit code): 24 caught, 1 equivalent,
+1 real survivor.
+
+**Prevention:** never put a pipe between the test runner and the exit code you are
+judging mutants by. Capture full output with `maxBuffer` and slice in-process. And
+before believing any uniform battery result, re-run ONE mutant you know must die and
+watch it die.
+
+**Bonus confirmations, same session:** (1) classify survivors by re-running the TRUE
+form — my I6 order-swap "survivor" was equivalent (both orders ran the pic cycle before
+the offscreen return); moving the cycle AFTER the return reddened the exit-tick test,
+proving the guard sound and the mutant vacuous. (2) The concurrent-battery-photobombs-
+a-specialist pattern fired again in reverse: rule-checker reported a 1-in-11 transient
+red on the bee attract test — that failure is exactly my B11 (drop-attract-bypass)
+mutant, which was applied in the shared tree while its run overlapped. Serial batteries
+protect MY runs; they do not protect a parallel specialist's. Attribute a specialist's
+"transient" red to the battery timeline before calling it flake.
+
+### A cadence guard's negative probe must sample EVERY residue class the mask kills — one odd frame cannot rule out a permissive mask (ml4-3, 2026-08-13)
+
+**Situation:** earwig flap cadence `frame & 0x03 === 0` guarded by probes at frames 4, 8
+(flap) and 5 (no flap). Mutant `& 0x03` → `& 0x01` (flap every 2nd frame — a visible 2×
+fidelity regression) survived all 506 tests: frame 5 is odd, so BOTH masks skip it.
+
+**Problem:** for a mask gate, a no-flap probe at residue r only kills mutants whose mask
+also ADMITS r. The discriminating probes are the residues the true mask rejects and the
+mutant mask accepts — here the EVEN non-multiple-of-4 frames (2, 6). The assertion
+message even said "frames 1..3 mod 4 do not flap" while the body probed only residue 1 —
+the message claimed the full complement, the probe sampled a third of it, and the gap is
+invisible until a mutant walks through it.
+
+**Prevention:** when reviewing a `(x & MASK) === 0` cadence/gate test, enumerate the
+residues: the negative probes must include at least one value accepted by every plausible
+wrong mask (the next-coarser power of two down). Cheapest complete probe set for `& 3`:
+one odd frame AND frame 2. Mutation direction matters too — probe against the PERMISSIVE
+mutant; the restrictive one (`& 7`) dies on the positive probes.

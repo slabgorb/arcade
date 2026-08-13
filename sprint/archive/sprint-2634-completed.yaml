@@ -132,3 +132,8 @@ completed_stories:
     title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
     points: 3
     completed: '2026-08-13'
+  - id: ml4-3
+    epic: ml4
+    title: 'Earwig + inchworm + bee reducers (cited): EARWIG move/start (MILLI.MAC:672), WRMMV enter/move inchworm (MILLI.MAC:2559), BEEMV move bee down screen (MILLI.MAC:56). PTS scoring.'
+    points: 5
+    completed: '2026-08-13'
