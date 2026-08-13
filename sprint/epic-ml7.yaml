@@ -10,7 +10,8 @@ stories:
     title: 'Pure attract/play/death/game-over phase machine (unwired) from MLATR MODE FE/FF (MLATR.MAC:126/313) + attract action (MLATR.MAC:21). Route a qualifying game-over to the ml5 name-entry phase. Phase transitions via a forcePhase helper (bare phase-literal assignment reds tsc TS2367).'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml7-2
