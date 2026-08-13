@@ -1515,3 +1515,29 @@ test('every plugin dev-tool HTML file is declared, and every declared one exists
     'the fleet ships four dev-tool pages; zero would mean the reader is reading nothing',
   );
 });
+
+// jt11-10 (R3-F7) — no tracked image sits loose at the repo root. Every tracked
+// PNG belongs to something: a game's docs/public, the lobby's public, or a sprint
+// demo. A screenshot dropped at the root (joust-after-start.png, added by 3c7c8196,
+// referenced by nothing) is orphaned build detritus with no owner and no consumer —
+// a durable invariant, not a one-off delete, so the next stray screenshot reddens
+// here instead of being committed. Asked of git, not of the working tree: an
+// untracked scratch PNG at the root is fine; a COMMITTED one is the regression.
+test('no tracked image sits loose at the repo root', () => {
+  const tracked = execFileSync('git', ['ls-files', '--', '*.png', '*.jpg', '*.jpeg', '*.gif', '*.webp'], {
+    cwd: repo,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(Boolean);
+  // Anti-vacuity: the fleet DOES track images (under plugins/*, lobby/, sprint/),
+  // so an empty list would mean the glob broke, not that the tree is clean.
+  assert.ok(tracked.length > 0, 'expected the repo to track images somewhere — the glob may be broken');
+  const atRoot = tracked.filter((p) => !p.includes('/'));
+  assert.deepEqual(
+    atRoot,
+    [],
+    `tracked image(s) sit loose at the repo root: [${atRoot.join(', ')}]. Every tracked image ` +
+      `must live under a game's docs/public, lobby/public, or sprint/demos — move or delete it.`,
+  );
+});

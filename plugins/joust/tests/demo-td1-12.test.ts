@@ -152,11 +152,11 @@ describe('AC-1 — the wave the advance block reads is the wave the cabinet is o
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-2 — the dev overlay shows the wave the cabinet is on. game.ts returns the
+// AC-2 — the HUD shows the wave the cabinet is on. game.ts returns the
 //        raw counter and main.ts prints `WAVE ${wave}`, so today the tenth wave
 //        reads "WAVE 16". Driven through stepGame, never a hand-set field.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('AC-2 — the dev-overlay wave readout', () => {
+describe('AC-2 — the HUD wave readout', () => {
   it('reads "WAVE 10" on the tenth wave, not "WAVE 16"', async () => {
     const game = await loadGameFull()
 
@@ -167,7 +167,7 @@ describe('AC-2 — the dev-overlay wave readout', () => {
     expect(readout.wave, 'the overlay projects the ordinal wave, not the packed counter').toBe(10)
     // main.ts renders `WAVE ${readout.wave}` verbatim — pin the string the player
     // would actually see, so "16" cannot slip through as a stringified number.
-    expect(`WAVE ${readout.wave}`, 'the rendered dev-bar line').toBe('WAVE 10')
+    expect(`WAVE ${readout.wave}`, 'the rendered HUD line').toBe('WAVE 10')
     expect(`WAVE ${readout.wave}`, 'and NOT the 0x10-read-as-16 misprint').not.toBe('WAVE 16')
   })
 })

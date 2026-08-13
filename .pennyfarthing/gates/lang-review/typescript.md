@@ -587,7 +587,7 @@ GATE_RESULT:
       detail: "No barrel file over-imports; async fs in handlers"
     - name: fix-regressions
       status: pass
-      detail: "Fix commits re-scanned against checks #1-#12, #14-#29"
+      detail: "Fix commits re-scanned against checks #1-#12, #14-#30"
 ```
 </pass>
 
@@ -652,7 +652,7 @@ GATE_RESULT:
     - "Add Zod/io-ts validation at API boundaries; validate JSON.parse results"
     - "Use catch(e: unknown) and narrow with instanceof/type guards"
     - "Import specific exports instead of barrel; use async fs in handlers"
-    - "Re-scan fix diffs against checks #1-#12, #14-#29 before handoff"
+    - "Re-scan fix diffs against checks #1-#12, #14-#30 before handoff"
 ```
 </fail>
 

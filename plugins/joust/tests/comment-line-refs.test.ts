@@ -134,3 +134,60 @@ describe('jt9-30 — ROM citations are preserved, not collateral damage', () => 
     ).toBeGreaterThan(300)
   })
 })
+
+// ─── jt11-10 (a): WIDEN THE GUARD FROM tests/ TO src/ ────────────────────────
+// The same `<our>.ts:<line>` rot the jt9-30 guard above pins out of TEST comments
+// lives in joust src/ COMMENTS too, and jt11-4's demo.ts→sim.ts rename made it
+// WORSE: it converted a DANGLING ref (`demo.ts:425`, a file that no longer existed
+// and so read as suspect) into a PLAUSIBLE wrong one (`sim.ts:425`, a live file
+// whose line 425 is the unrelated `serviceQueue` field declaration). A live
+// filename reads as authoritative where a dead one reads as suspect — this file's
+// own header calls that "the worse failure". jt11-10 (R3-F6) widens the exact same
+// guard to plugins/joust/src, catching all remaining src-comment line-refs so they
+// are converted to SYMBOL references (the jt9-30 rule) on principle, not one at a
+// time. Measured 5 offenders at RED (2026-08-13): enemy.ts (sim.ts:425), events.ts
+// (sim.ts:837), sim.ts (transporter.ts:226 ×2, frame.ts:322). The detached
+// historical-note form (`enemy.ts … (:654)`) stays legal — same OUR_TS_LINE_REF as
+// above, so ROM cites (*.SRC/*.MAC) and detached `:NNN` are excluded identically.
+
+const srcDir = join(testsDir, '..', 'src')
+
+/** Every `.ts` under plugins/joust/src RECURSIVELY, paths relative to src/. */
+function walkSrc(dir: string, acc: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === 'dist') continue
+    const p = join(dir, entry)
+    if (statSync(p).isDirectory()) walkSrc(p, acc)
+    else if (p.endsWith('.ts')) acc.push(relative(srcDir, p))
+  }
+  return acc
+}
+
+const srcFiles = (): string[] => walkSrc(srcDir).sort()
+
+describe('jt11-10 — no comment-body <our>.ts:<line> reference survives in joust src/ either', () => {
+  it('PREMISE: the src walker actually reaches joust source (a broken walk would pass vacuously)', () => {
+    const files = srcFiles()
+    expect(files.length, 'expected a substantial joust src/ .ts set').toBeGreaterThan(10)
+    expect(files.some((f) => f.endsWith('enemy.ts')), 'src/core/enemy.ts must be walked').toBe(true)
+  })
+
+  it('every stale line-number ref in src/ has been converted to a symbol reference', () => {
+    const offenders: string[] = []
+    for (const file of srcFiles()) {
+      const lines = readFileSync(join(srcDir, file), 'utf8').split('\n')
+      lines.forEach((line, i) => {
+        const hits = line.match(OUR_TS_LINE_REF)
+        if (hits) offenders.push(`src/${file}:${i + 1}  ${hits.join(', ')}  |  ${line.trim().slice(0, 100)}`)
+      })
+    }
+    expect(
+      offenders,
+      `${offenders.length} comment-body <our>.ts:<line> ref(s) remain in joust src/. Line ` +
+        `numbers are never stable anchors — name the SYMBOL instead, keeping any information-` +
+        `carrying number as a DETACHED historical note (\`file.ts … (:NNN)\`). Do NOT touch ROM ` +
+        `citations (*.SRC / *.MAC).\n` +
+        offenders.slice(0, 80).join('\n'),
+    ).toEqual([])
+  })
+})

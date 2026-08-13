@@ -207,7 +207,7 @@ export interface SimProcess {
    *
    * It marks ELIGIBILITY, not an amount. The draw itself is taken once, at the hop that
    * resolves this egg's wait, for the same reason jt9-9 seeds the wait there: the wait
-   * depends on the wave, and `stepSim`'s hatch block resolves it from `demo.wave` (the
+   * depends on the wave, and `stepSim`'s hatch block resolves it from `state.wave` (the
    * decimal wave ordinal — td1-12 / Option B) at the frame the egg matures, not at
    * placement. Absent on every kill-egg, so a DEATH3 egg is never pre-mature — in the
    * machine PWHCH is long spent by the time one exists.
@@ -621,8 +621,8 @@ function playerProcess(
  * jt2-6 window an entering enemy uses — collisions OFF while it lands so a swarm does not
  * re-kill the re-created knight the instant it materialises, then re-enabled when the window
  * ENDS. `advanceMaterialisation` counts the `mat` window down and TIMES IT OUT after
- * `MATERIALISE_WINDOW` naps, at which point PLYINT re-enables collisions (`stepMaterialise`,
- * transporter.ts:226-231, :230). So a re-entered knight becomes VULNERABLE again and CAN lose
+ * `MATERIALISE_WINDOW` naps, at which point PLYINT re-enables collisions (`stepMaterialise`).
+ * So a re-entered knight becomes VULNERABLE again and CAN lose
  * all its lives → the loop closes through play (Reviewer Ruling #1). The session layer
  * (game.ts stepGame) owns the lives ledger and the zero-lives gate; this only builds the
  * re-created process. Pure. `playerId` is 1 (P1) or 2 (P2).
@@ -731,7 +731,7 @@ interface PteroEntry {
 
 /** jt9-59 — a wave ptero the PTERWV schedule has not created YET: its resolved PTERST
  *  entry (side edge X, cliff-lane Y, FLYXP velocity rung, face) held with a `countdown`
- *  of frames until its `SECCR PTERST` (JOUSTRV4.SRC:2618). `stepSim` decrements the
+ *  of frames until its `SECCR PTERST` (JOUSTRV4.SRC:2621). `stepSim` decrements the
  *  countdown and, when it fires, builds the real `pteroProcess`. The entry data is the
  *  same `enterPteroSides`/lane data `spawnWavePteros` computed before — determinism is
  *  unchanged (positional `seed`, `sim.rng` untouched); only the MOMENT of creation moves. */
@@ -1194,7 +1194,7 @@ const vrandFrom = (value: number): number => Math.floor(value * 128)
  * until its EGGWT2 wait runs out and it hatches.
  *
  * The wait is NOT seeded here. It depends on the wave, so the seeding happens in
- * `stepSim`'s hatch block, which reads `demo.wave` (the decimal wave ordinal —
+ * `stepSim`'s hatch block, which reads `state.wave` (the decimal wave ordinal —
  * td1-12 / Option B) at the frame an egg actually matures rather than at placement.
  * An unseeded `waitFrames` means exactly that: not seeded yet.
  */
@@ -2176,8 +2176,8 @@ export function resolveContacts(a: JoustEntity, b: JoustEntity): ContactResult {
 /**
  * Advance one materialisation window a frame: a collision-safe enemy OR a re-materialising
  * PLAYER (jt4-5 respawn) rides the SAME bounded jt2-6 window — it counts its naps down under
- * neutral advance and TIMES OUT, PLYINT re-enabling collisions on exit (transporter.ts:226-231,
- * :230). So a re-entered knight becomes VULNERABLE again when the window ENDS and the loop can
+ * neutral advance and TIMES OUT, PLYINT re-enabling collisions on exit (`stepMaterialise`).
+ * So a re-entered knight becomes VULNERABLE again when the window ENDS and the loop can
  * close through play (Reviewer Ruling #1). A process without an active window passes through.
  */
 function advanceMaterialisation(p: SimProcess): SimProcess {
@@ -2213,8 +2213,8 @@ function countBaiterDeaths(before: readonly SimProcess[], after: readonly SimPro
  */
 function reconcileTargets(targets: TargetState, processes: readonly SimProcess[]): TargetState {
   // A live player is a `kind:'player'` process that still carries its flight entity —
-  // the SAME liveness predicate frame.ts uses to gather the selectable players
-  // (frame.ts:322), so reconcile and selection never disagree on who is on-screen.
+  // the SAME liveness predicate `stepFrame` uses to gather the selectable players
+  // (`p.kind === 'player' && p.entity`), so reconcile and selection never disagree on who is on-screen.
   const live = new Set<number>()
   for (const p of processes) if (p.kind === 'player' && p.entity) live.add(p.id)
   let t = targets
@@ -2238,17 +2238,17 @@ function reconcileTargets(targets: TargetState, processes: readonly SimProcess[]
  * never mutated. There is NO second stepping path: players ride the identical
  * `stepFrame` a solo scheduler run does.
  */
-export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): SimState {
+export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): SimState {
   // jt8-1: tick the grace timers FIRST (the ROM decrements them in PLYCOL, a
   // process that runs BEFORE the collisionable players / enemies), so an enemy's
   // SELPLY this frame reads the just-decremented timer.
-  const tickedTargets = tickTargetTimers(demo.sim.targets)
+  const tickedTargets = tickTargetTimers(state.sim.targets)
   // uf1-2 — the demo owns the wave, so it is the layer that feeds it to the
   // scheduler. Without this argument the whole DYTBL seam is inert: the engine
   // would resolve every dial at wave 1 forever, which is the exact defect uf1-2
   // was filed for.
   //
-  // `demo.wave` IS the 1-based DECIMAL wave ordinal — the ROM's PWAVE, the monotone
+  // `state.wave` IS the 1-based DECIMAL wave ordinal — the ROM's PWAVE, the monotone
   // pointer that walks the wave table (LDX PWAVE,U / … / LDX #WTBRST, JOUSTRV4.SRC:2011-2019),
   // never a BCD byte. td1-12 (Option B) settled this: WAVBCD has four references in
   // the whole 1982 source and indexes nothing (its sole read is the display routine,
@@ -2256,7 +2256,7 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   // is derived only where a display wants it. The difficulty engine and every
   // advance-block consumer take that decimal ordinal directly, so there is no unit to
   // change here any more — this is the identity that USED to be `decimalWaveFromBcd`.
-  const waveOrdinal = demo.wave
+  const waveOrdinal = state.wave
   // jt9-61 — the ROM order is BRAIN-then-MOVEMENT, same frame: the enemy brain
   // reads the FULL PBUMPX for facing in B2DIRA/SHDIRA (`JMP [DSMART,X]` :3964 →
   // B2DIRA :4148-4150 / SHDIRA :4379-4381) and only LATER, in the MOVEMENT phase,
@@ -2276,35 +2276,35 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   // uniformly whether or not it woke to fly (the jt9-17 invariant), only now the
   // drain sits in the movement phase where the ROM keeps it.
   const stepped = stepFrame(
-    { ...demo.sim, targets: tickedTargets, cues: [] },
+    { ...state.sim, targets: tickedTargets, cues: [] },
     inputs,
     // jt11-5 — the frame runs under the ENTRY arena: destruction applies at the
     // wave EVENT (below, on an advance), exactly as the ROM mutates the RAM
     // tables at wave init and lets the frames run against them.
-    { wave: waveOrdinal, arena: demo.arena },
+    { wave: waveOrdinal, arena: state.arena },
   )
 
   const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as SimProcess))
   const materialised = drainedProcesses.map((p) => advanceMaterialisation(p as SimProcess))
   const collided = collisionPass(materialised)
 
-  let wave = demo.wave
+  let wave = state.wave
   // jt9-59 — the PTERWV pending-arrivals schedule, carried across the frame and ticked
   // below (reset to the new wave's schedule on an advance). Default-empty for a demo
   // that predates the field or a non-ptero wave.
-  let pendingPteros: readonly PendingPtero[] = demo.pendingPteros ?? []
+  let pendingPteros: readonly PendingPtero[] = state.pendingPteros ?? []
   // jt11-4 — the transporter's waiting room and its counters, carried across the frame
   // and re-seeded on an advance. Default-empty/fresh for a demo that predates the fields.
-  let pendingEnemies: readonly PendingEnemy[] = demo.pendingEnemies ?? []
-  let serviceQueue: ServiceQueue = demo.serviceQueue ?? newServiceQueue()
+  let pendingEnemies: readonly PendingEnemy[] = state.pendingEnemies ?? []
+  let serviceQueue: ServiceQueue = state.serviceQueue ?? newServiceQueue()
   // jt11-4 — this wave's lava troll is owed but not yet risen. Armed on the advance,
   // spent on the first frame there is a bird to grab. A LATCH, not a live predicate:
   // once this wave's troll has risen the debt is paid, so a troll that dies or escapes
   // is not instantly replaced (`stepTrolls` removal + LAVNBR, jt3-7 N2).
-  let trollArmed: boolean = demo.trollArmed ?? false
+  let trollArmed: boolean = state.trollArmed ?? false
   // jt5-1 — the frame's cue stream starts from the collision pass's four moments
   // and gathers the rest below. A FRESH array every frame: nothing is carried in
-  // from `demo.cues`, which is the whole point of the channel.
+  // from `state.cues`, which is the whole point of the channel.
   // jt5-3 — `stepped.cues` (the wing edges frame.ts's stepFrame detected, one
   // per waking player/enemy) come FIRST: they belong to the flight-stepping
   // phase, which runs before collisionPass ever sees this frame's processes.
@@ -2418,15 +2418,15 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
     // wave with no egg in it out of the `waveRowAt` lookup entirely, so an out-of-range
     // wave never reaches the lookup unless an egg actually matures on it.
     //
-    // The `>= 1` half is belt-and-suspenders. In play `demo.wave` is monotone from 1
+    // The `>= 1` half is belt-and-suspenders. In play `state.wave` is monotone from 1
     // (td1-12 / Option B), so it is never < 1 and this branch never takes the `: 255`
     // arm — but `wenemyFor(waveRowAt(0))` would THROW ("no wave 0"), and the invariant
-    // that `demo.wave >= 1` is not local to this line, so the guard stays as a cheap
+    // that `state.wave >= 1` is not local to this line, so the guard stays as a cheap
     // defence against a 0/negative wave. Only a synthetic fixture can reach it:
     // `demo-jt9-38.test.ts` stages a maturing egg at wave 0 and pins that this line does
     // not take the cabinet down. 255 is WNRM's own normal-wave value and gates nothing,
     // so an unresolved wave behaves exactly like a wave with no quota.
-    quota ??= demo.wave >= 1 ? wenemyFor(waveRowAt(demo.wave)) : 255
+    quota ??= state.wave >= 1 ? wenemyFor(waveRowAt(state.wave)) : 255
     // `LDA NENEMY / CMPA WENEMY / BHS EGGLN2` (:3239-3241) — "ENOUGH ENEMIES IN THIS
     // WAVE?". At or above the quota the egg goes back round the wait loop, re-primed by
     // `INC PJOYT,U  SET = 1,` (:3238) to ONE nap — `PCNAP 12` (:3227) — so it re-asks in
@@ -2445,13 +2445,13 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   })
 
   let budget = stepped.budget
-  let arena = demo.arena
-  let baiterClock = demo.baiterClock ?? seedBaiterClock(demo.wave)
+  let arena = state.arena
+  let baiterClock = state.baiterClock ?? seedBaiterClock(state.wave)
   // jt11-7 — step each cliff's CLFDES crumble (JOUSTRV4.SRC:4562-4599) and retire
   // the finished ones. A crumble is SPAWNED on the wave advance below when a cliff
   // is newly destroyed; here every carried crumble takes one nap and a `done` one
   // drops out (its records were already gone — jt11-5's destroyedCliffs filter).
-  let crumbles: readonly CrumbleState[] = (demo.crumbles ?? [])
+  let crumbles: readonly CrumbleState[] = (state.crumbles ?? [])
     .map(stepCrumble)
     .filter((c) => !c.done)
 
@@ -2491,7 +2491,7 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
     // and the DYTBL difficulty runs off its own per-row countdown; the wave count
     // itself just climbs, so wave 100 is 100 and wave 101 is 101, with no once-per-
     // hundred reset and no `waveRowAt(0)` death at the old 0x99→0x00 rollover.
-    wave = demo.wave + 1
+    wave = state.wave + 1
     // WNRM — a wave start CLEARS both knights' egg-hit counters:
     //
     //     WNRM  CLR  EGGS1    RESET NUMBER OF EGGS KILLED BY PLAYER 1
@@ -2702,7 +2702,7 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   }
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
-  const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
+  const events = [...state.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
   return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue, trollArmed, crumbles }
 }
 
