@@ -509,16 +509,21 @@ describe('AC-1 — the wired dials reach production and escalate', () => {
     // brake and the wave-3 brake WHILE the brake is the branch that decides — a dumb
     // `linet` enemy ignores the brake entirely, a buzzard that never falls that fast
     // never consults it, and (since jt8-1) a buzzard whose quarry is ABOVE it flaps
-    // for the altitude whatever the wave says. Measured on this seed with the knights
-    // parked on the bottom island: enemy 256 promotes to `boundr` and sits in
-    // [$0100,$0120) with every live knight below it for 14 of the 240 frames — the
-    // first two of those with BOTH knights (one dies at frame 121, the other twelve
-    // have one). The first is frame 113, where it touches EXACTLY $0100 — the wave-1
-    // rung brakes it and the wave-3 rung does not. If a future change moves the spawn
-    // geometry or the aggro selection, THIS assertion fails and says so, instead of
-    // the divergence check silently becoming untestable.
+    // for the altitude whatever the wave says. On this seed, with the knights parked
+    // on the bottom island, enemy 256 promotes to `boundr` and falls through
+    // [$0100,$0120) with a live knight below it — where the wave-1 rung brakes it and
+    // the wave-3 rung does not. `discriminating` counts those brake-deciding frames
+    // and the assertion below FAILS if none occur, so if a future change moves the
+    // spawn geometry or the aggro selection this probe says so rather than silently
+    // becoming untestable.
+    //
+    // jt11-9 — a served enemy now STANDS on its transporter pad for `STAND_FRAMES`
+    // (30) before its brain flies it, so its fall (and the brake-deciding frames, and
+    // the divergence they cause) all land ~30 frames later than they did pre-stand.
+    // The window grew 240 -> 360 to keep the discriminating interaction inside it;
+    // the `discriminating > 0` self-guard is what proves the extension is enough.
     let discriminating = 0
-    for (let i = 0; i < 240; i++) {
+    for (let i = 0; i < 360; i++) {
       a = demo.stepSim(a)
       b = demo.stepSim(b)
       discriminating += brakeDecidingFrames(a)
