@@ -28,9 +28,12 @@ stories:
     title: 'Mushroom field reducers: MUSHER/MUSHDC add/decrement count (MLSUB.MAC:732/707), RESTOR restore mushrooms (:919), OBSTAC obstacle (MILLI.MAC:824), poison mushrooms (MLDEF.MAC:143). Cited.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    review_findings: MUSHER citation line-anchors wrong in both files (exclusions cite :748/:750/:761 vs actual :744-745/:746-747/:759-760; count bands cite MUSHDC's :722/:726 vs MUSHER's :761-766) — High, fidelity-integrity in a Cited. story, confirmed by rule-checker. Plus MUSHER row-0x1F exclusion untested (mutation-proven) — Medium. Reducer logic is ROM-faithful and must not change; rework is citations + one test + Readonly<RestorGate>.
+    review_verdict: approved
   - id: ml3-4
     title: 'CONWAY Life field (the schedule risk — no sibling, no prose): port Cerny MASTER control (CONWAY.MAC:24) grow/kill of mushrooms + DDT clouds by Game-of-Life rules; INICON init (MLDEF.MAC:73). Pure reducer + a SEEDED-FIELD golden test proving the growth generations match the ROM algorithm.'
     points: 8
