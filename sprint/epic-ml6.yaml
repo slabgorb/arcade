@@ -20,6 +20,7 @@ stories:
     title: 'Wire sfx to core events + gate audio on first user gesture (autoplay policy): map millipede/critter/DDT/bonus-life (CHAN11 bonus-life sound MLDEF.MAC:323) events to the driver; verify audio actually plays in a real browser (silent-feature trap), not just a green vitest.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
+    started: '2026-08-13'
