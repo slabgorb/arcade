@@ -48,9 +48,11 @@ stories:
     title: 'Spider first-wave extra-spider feature (descoped from ml4-1): slots 6..11 open above 100,000 on a full first wave (CENTIN=0C), allowance min((SCORE2-10)/2,5)+3, reserved-slot arithmetic vs the centipede train (MILLI.MAC:2318-2345). Cited; extends trySpawnSpider.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
   - id: ml4-6
     title: 'Extract the shared BEE-family helpers (BEEMV1 mushroomsNeeded, BEEMV2 spawnH, BEEOFF, COMP) into one millipede core helper module. The ml4-1 third-consumer trigger is met: dragonfly/mosquito/bee/earwig now hold byte-identical module-local copies (MILLI.MAC:166-171, :179-194, :228-234) and the four suites pin the behaviour, so extraction is a pure refactor under an existing net. Filed by the ml4-3 review (TEA Delivery Finding routed the decision).'
     points: 2
