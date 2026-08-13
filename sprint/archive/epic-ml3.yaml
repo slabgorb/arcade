@@ -3,7 +3,7 @@ type: epic
 title: 'Millipede — the train + the playfield (phase 4a): millipede motion/split/death, the mushroom field, the CONWAY Life growth, and the scrolling playfield'
 description: "Third Millipede epic and the novel-heavy one, phase 4a of the raster build. Pure src/core reducers, one subsystem per file, each cited to millipede/<FILE>.MAC:<line>, TDD red->green against ROM values. Mirrors centipede cp2 'the train' for the millipede itself, but carries two subsystems with NO centipede analog. (1) The CONWAY Life field: Mark Cerny's MASTER control (millipede/CONWAY.MAC:24) grows and kills mushrooms and DDT clouds by Conway's Game of Life over the playfield — no sibling code, no design-doc prose (MILLI.DOC absent, ml1 OQ-2), so it is ported purely from Cerny's 6502 and is the epic's schedule risk; give it its own stories plus a seeded-field golden test. (2) The scrolling playfield: SCROLL/SCROLD/SCROLU (millipede/MLSUB.MAC:1105/1149/1309) scroll mushrooms up/down, absent from centipede — the core coordinate system must scroll from day one, not be retrofitted. Millipede core: CENTPC head/body init (MILLI.MAC:498), NEWHD (MLSUB.MAC:775), MOTION (MILLI.MAC:1444), split-on-mushroom, EXPLOD (MILLI.MAC:763), player death. Mushroom field: MUSHER/MUSHDC (MLSUB.MAC:732/707), RESTOR (:919), poison mushrooms (MLDEF.MAC:143), OBSTAC (:824). Reuse @shared (loop/rng); no full-screen flash stays a phase-machine concern for ml7 but keep death effects freeze-friendly. Dependency: ml3 -> ml2 (needs stamps) -> ml1. Every constant carries a citations.test.ts-gated claim; purity stays green. Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml3). OUT OF SCOPE: the bestiary (ml4), waves/scoring/highscore (ml5), sound (ml6), attract/wiring/HUD (ml7)."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: ml3-1
@@ -57,9 +57,12 @@ stories:
     title: "OBSTAC mover→playfield address derivation + wire into movers (ml3-3 follow-up): implement the full OBSTAC address math — V/8 with the half-way-to-next-row ADC-carry round (MLSUB.MAC:853-857), H'=H+8·dir (:834-871), the (0xF7-H')&0xF8 column fold + right-edge PLYFLD+3C0 wrap (:872-886) — reconciling the 0x400 (conway field base) vs 0x800 (MLSUB.MAC:886 exit comment) addressing, then wire obstac(field,{h,v,dh}) into stepMillipede MOTION/EXPLOD collision. Cited hand-derived fixtures (non-wrapping + left-margin + right-edge). obstacleAt probe already shipped in ml3-3."
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
+    review_verdict: approved
   - id: ml3-7
     title: "Enroll citation claims for the ml3-3 mushroom reducers: add docs/rom-study/claims entries (byte-verified by the ml1-1 gate) for ROCK (MLDEF.MAC:204), FULL_MUSHROOM=7F (MLSUB.MAC:741), the MUSHER add/presence/row-band mechanics (:732-772), MUSHDC (:707-729), RESTOR (:919-949) and the OBSTAC probe (:887-889). These shipped cited in comments but have no claim, unlike conway's CW-* and the existing CW-61/62/63 MUSH seam — extend the 08/09 claim series so the gate byte-verifies them."
     points: 2
@@ -71,3 +74,4 @@ stories:
     completed: '2026-08-13'
     type: chore
     review_verdict: approved
+completed: '2026-08-13'
