@@ -136,6 +136,46 @@ export function obstacleAt(field: Uint8Array, addr: number): number {
   return field[addr] & 0x7f // :888 AND I,7F
 }
 
+/** The playfield base — PLYFLD (MLDEF.MAC:103 "PLYFLD =1000"), shared with conway.ts. */
+const PLYFLD_BASE = 0x1000
+
+/**
+ * OBSTAC — the full mover→playfield obstacle lookup (MLSUB.MAC OBSTA0 :834-840,
+ * OBSTAC :853-889), the ml3-6 follow-up to the ml3-3 `obstacleAt` probe. Derives
+ * the field cell a mover at (h,v) heading `dh` is moving TOWARD — one 8px cell
+ * ahead in its travel direction — and returns that cell's obstacle code through
+ * `obstacleAt` (low 7 bits; 0 == no obstacle, ROM Z=1).
+ *
+ * The base is PLYFLD = 0x1000 (MLDEF.MAC:103), the SAME base conway.ts commits to
+ * (conway.ts:36): the :858 `LDA I,PLYFLD/400` (=4) then the ×4 shift (:873-876)
+ * land the base at 0x1000 — the :886 "800+…" exit comment is a stale earlier build,
+ * and MLDEF's "(400-7BF)" is the screen mirror. Our field is zero-based
+ * (offset = col*0x20 + row), so we subtract the base before the probe.
+ *
+ * Derivation:
+ *   dir  = dh < 0 ? -1 : +1                 (:836-839 BMI → Y=-1 else Y=+1)
+ *   vpart= (v>>3) + ((v&4)?1:0)             V/8 with the half-row ADC-carry round (:853-856)
+ *   H'   = (h + 8*dir) & 0xFF               (:860-866 8*dir + MOBJH)
+ *   col8 = (0xF7-H') < 0 ? 0 : (0xF7-H')&0xF8   left-margin clamp on borrow (:870-872)
+ *   abs  = 0x1000 + col8*4 + vpart          (:858 base, :873-877 ×4 + V/8)
+ *   right-edge wrap (:879-884): abs >= PLYFLD+0x3C0 folds col 30 → col 29.
+ */
+export function obstac(field: Uint8Array, mover: { h: number; v: number; dh: number }): number {
+  const dir = mover.dh < 0 ? -1 : 1 // :836-839
+  const vpart = (mover.v >> 3) + (mover.v & 0x04 ? 1 : 0) // :853-856 LSR×3 / ADC I,0
+  const hPrime = (mover.h + 8 * dir) & 0xff // :860-866
+  const diff = 0xf7 - hPrime // :867-869 LDA I,0F7 / SEC / SBC TEMP1
+  const col8 = diff < 0 ? 0 : diff & 0xf8 // :870-872 borrow → "USE LEFT MARGIN"
+  let abs = PLYFLD_BASE + col8 * 4 + vpart // :858/:873-877
+  // Right-edge wrap (:879-884): off the field (>= PLYFLD+0x3C0 = 0x13C0, i.e. high
+  // byte 0x13 AND low >= 0xC0) folds the off-field column 30 onto column 29 by
+  // AND I,1F / ORA I,0A0 on the low byte, high byte unchanged.
+  if ((abs & 0xff00) === 0x1300 && (abs & 0xff) >= 0xc0) {
+    abs = 0x1300 | ((abs & 0x1f) | 0xa0)
+  }
+  return obstacleAt(field, abs - PLYFLD_BASE) // :887-888
+}
+
 /**
  * Whether a stamp is a poison mushroom — the [POISON, NORMAL) band, i.e.
  * $78..$7B (MLDEF.MAC:207, matching conway.ts:133/141). Poison is a value RANGE,
