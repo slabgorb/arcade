@@ -150,6 +150,24 @@ export function spawnProceeds(occ: AreaOccupancy, tier: Tier): boolean {
   return occ[tier] === 0
 }
 
+/**
+ * FREET's transporter selection (JOUSTRV4.SRC:5687-5710): keep the VRAND-drawn
+ * `preferred` pad when its TCURUSE flag is clear, otherwise fall through
+ * TR1..TR4 in id order (`GOTR1..GOTR4`) to the FIRST pad not in use. When every
+ * pad is busy return `null` — the customer is turned away and re-naps with its
+ * ticket intact (`BNE CRELP`, :5709). Pure: it holds no occupancy state of its
+ * own, the caller passes the pads currently in use (each `INC [TCURUSE,X]`,
+ * :5710). With nothing in use the fall-through is a no-op, so the preference is
+ * returned unchanged and a no-contention arrival lands exactly where the VRAND
+ * draw put it.
+ */
+export function freePad(preferred: PadId, occupied: readonly PadId[]): PadId | null {
+  const busy = new Set(occupied)
+  if (!busy.has(preferred)) return preferred
+  for (const pad of PADS) if (!busy.has(pad.id)) return pad.id
+  return null
+}
+
 // ─── The take-a-number ticket queue (JOUSTRV4.SRC:5615-5676) ─────────────────
 
 /** A fresh service state — all counters equal, so nobody is waiting or served. */

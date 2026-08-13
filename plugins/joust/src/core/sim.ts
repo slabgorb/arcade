@@ -106,6 +106,7 @@ import {
   enterPteroSides,
   beginMaterialise,
   stepMaterialise,
+  freePad,
   newServiceQueue,
   takeEnemyNumber,
   enemyTurn,
@@ -115,6 +116,7 @@ import {
   type Materialisation,
   type ServiceQueue,
   type TransporterPad,
+  type PadId,
 } from './transporter.js'
 import { COLLISION_TABLES, BACKGROUND_RECORDS, ENTITY_RECORDS } from './pictures.js'
 // jt8-1: the enemy AGGRO subsystem. The demo OWNS the target state's lifecycle —
@@ -475,6 +477,17 @@ export interface ContactResult {
  * LAW itself is jt2-6's `stepMaterialise`.
  */
 const MATERIALISE_WINDOW = 120
+
+/**
+ * `LDA #30 / STA PFRAME` (JOUSTRV4.SRC:5726-5727) — the arrival STANDS planted on
+ * its transporter pad for thirty frames before its brain is allowed to fly it
+ * (drawn lit on the pad, `TREFF`, :5734-5745; the render of that lit pad is a
+ * separate story). Distinct from `MATERIALISE_WINDOW`: this is how long the
+ * process is HELD STILL, that is how long collisions stay disabled. Conflating
+ * them either jams the pad for the full window or makes the arrival vulnerable
+ * the instant it lands.
+ */
+const STAND_FRAMES = 30
 
 /**
  * The console/overlay event log keeps only its most recent entries (jt2-9): the
@@ -1373,14 +1386,21 @@ function pendingWaveEnemies(
  *
  * ONE customer per frame. The ROM lets a later process in the same sweep see the
  * incremented LESERV, but it also holds the pad itself: `GOTTR INC [TCURUSE,X]` marks
- * the transporter in use (:5710) and the arrival stands on it for 30 frames
- * (`LDA #30 / STA PFRAME`, :5726-5727), with `BNE CRELP` (:5709) sending an enemy back
- * to nap when every pad is busy. This port models no pad-occupancy state, so the
- * one-service-per-frame rule stands in for it — see the Delivery Findings.
+ * the transporter in use (:5710) and the arrival STANDS on it for `STAND_FRAMES`
+ * (`LDA #30 / STA PFRAME`, :5726-5727) — served here with that stand as its `nap`,
+ * so its brain holds it planted on the pad before it flies. `FREET`/GOTR1..GOTR4
+ * (`freePad`, JOUSTRV4.SRC:5687-5709) keeps the VRAND-drawn preference when the pad
+ * is clear and falls through to the first free pad on contention; when every pad is
+ * busy `freePad` returns null and `BNE CRELP` (:5709) sends the enemy back to nap
+ * with its ticket intact and LESERV NOT advanced. `occupied` is the set of pads a
+ * process is currently standing on this frame (each an `INC [TCURUSE,X]`, :5710);
+ * with nothing standing the fall-through is a no-op and the arrival lands on its
+ * drawn pad, so a no-contention wave replays byte-for-byte.
  */
 function serveEnemies(
   pending: readonly PendingEnemy[],
   queue: ServiceQueue,
+  occupied: readonly PadId[],
 ): { served: SimProcess[]; pending: PendingEnemy[]; queue: ServiceQueue } {
   const served: SimProcess[] = []
   const stillPending: PendingEnemy[] = []
@@ -1390,8 +1410,18 @@ function serveEnemies(
       // Still napping — this frame is the yield, not an attempt.
       stillPending.push({ ...pe, nap: pe.nap - 1 })
     } else if (served.length === 0 && enemyTurn(q, pe.ticket)) {
-      served.push(pe.arrival)
-      q = serveEnemy(q)
+      // Its turn: pick a pad that is not in use, keeping the drawn preference.
+      const preferred = padIdOfArrival(pe.arrival)
+      const chosen = preferred === null ? null : freePad(preferred, occupied)
+      if (chosen === null) {
+        // Every pad busy (BNE CRELP, JOUSTRV4.SRC:5709): turned away, re-naps
+        // with its ticket intact and LESERV NOT advanced. Eligible again next
+        // frame — zero nap, exactly like a lost service attempt.
+        stillPending.push({ ...pe, nap: 0 })
+      } else {
+        served.push(standOnPad(pe.arrival, chosen))
+        q = serveEnemy(q)
+      }
     } else {
       // Attempted and failed (not its turn, or the operator is busy this frame):
       // back to CRELP, eligible again NEXT frame. Zero, not one, because the frame
@@ -1401,6 +1431,28 @@ function serveEnemies(
     }
   }
   return { served, pending: stillPending, queue: q }
+}
+
+/** The pad an arrival was drawn onto — mapped back from its entity X (the four
+ *  pad X's are distinct, JOUSTRV4.SRC:5587-5590), so the VRAND preference survives
+ *  as a `PadId` for `freePad` to honour or fall through. */
+function padIdOfArrival(arrival: SimProcess): PadId | null {
+  const x = arrival.enemy?.entity.posX
+  return PADS.find((p) => p.x === x)?.id ?? null
+}
+
+/** Serve an arrival onto `padId`: plant it there (unchanged when the pad is its
+ *  drawn preference) and set its `nap` to the `STAND_FRAMES` plant, so its brain
+ *  holds it still on the pad (`LDA #30 / STA PFRAME`, JOUSTRV4.SRC:5726-5727)
+ *  before it flies. */
+function standOnPad(arrival: SimProcess, padId: PadId): SimProcess {
+  const pad = PADS.find((p) => p.id === padId)
+  if (!arrival.enemy || !pad) return { ...arrival, nap: STAND_FRAMES }
+  return {
+    ...arrival,
+    nap: STAND_FRAMES,
+    enemy: { ...arrival.enemy, entity: { ...arrival.enemy.entity, posX: pad.x, posY: pad.y << 8 } },
+  }
 }
 
 /**
@@ -2554,7 +2606,21 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   // first. A served enemy is spliced in AFTER this frame's flight/collision, so it first
   // flies next frame, and its SNECRE materialise cue sounds on its own arrival frame.
   if (pendingEnemies.length > 0) {
-    const service = serveEnemies(pendingEnemies, serviceQueue)
+    // The pads a process is STANDING on this frame — its entity sits exactly on a
+    // pad (the frozen `STAND_FRAMES` plant), which is `INC [TCURUSE,X]` in use; a
+    // bird that has flown off has vacated it (`DEC [TCURUSE,X]`). Empty whenever no
+    // arrival is mid-stand — which, with a 30-frame plant under jt11-4's 61-frame
+    // stagger, is every enemy service (30 < 61), so the fall-through never bites in
+    // ordinary play and the wave replays unchanged (JOUSTRV4.SRC:5710,5898).
+    const occupied: PadId[] = PADS.filter((pad) => {
+      const px = pad.x
+      const py = pad.y << 8
+      return processes.some((p) => {
+        const e = p.kind === 'player' ? p.entity : p.enemy?.entity
+        return !!e && e.posX === px && e.posY === py
+      })
+    }).map((pad) => pad.id)
+    const service = serveEnemies(pendingEnemies, serviceQueue, occupied)
     pendingEnemies = service.pending
     serviceQueue = service.queue
     if (service.served.length > 0) {

@@ -4,6 +4,40 @@ Common pitfalls encountered during TEA (test-design / RED) work.
 
 ---
 
+### A joust story-context's test-file count anchor is STALE — re-measure, and it's the DERIVED number on the README `--project joust` line, not a bare "N files"
+
+**Situation:** jt11-9's context said "bump `plugins/joust/README.md` 173 → 174 when the file is
+added." The actual anchor read **184**, and I was adding three test files, not one.
+
+**Problem:** two independent traps. (1) The context figure was authored stories ago and the count
+climbs every time anyone adds a test file, so "173 → 174" was doubly wrong (wrong base, wrong
+delta). (2) The anchor is NOT a free-floating "N test files" sentence — `audio-seam-scope.test.ts`
+reads the integer off the `npx vitest run --project joust   # NNN files (derived + guarded)` command
+line specifically (regex `--project joust[^\n]*?(\d+)\s+files`), and compares it to
+`walk(root).filter(isTestFile).length`. A bare-number scan elsewhere in the README is a deliberate
+decoy the guard's own test documents. Bumping the wrong line, or by the wrong delta, reddens
+`audio-seam-scope.test.ts` in CI (it runs there — the vendored tree is present — even though it
+`skipIf`s locally without `JOUST_SOURCE_DIR`).
+
+**Prevention:** ignore the context's number; measure it yourself and bump by the count of files you
+actually add:
+```bash
+find plugins/joust -type f | grep -E '\.(test|spec)\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$' \
+  | grep -vE 'node_modules|/dist/' | wc -l     # == the number that must be on the command line
+```
+Then edit ONLY the `--project joust` command-line number, in the same commit as the new files.
+Related: the epic-wide "adding a game: count-anchors" lesson — count guards are everywhere in this
+cabinet and their prose figures rot.
+
+**Also, on this story:** the context's inline premise prose ("drifts on the very next frame, x 23 →
+25 → 34 → 63") was loose — a served bird actually HOLDS its pad x for ~8 frames while its
+walking-speed ladder spins up from zero, then drifts. The context's measurement TABLE (23 at birth,
+25 twenty frames later) was accurate; the sentence around it was not. Measure the seam yourself
+before choosing the RED threshold — 30 is a real RED because natural hold is ~8, but a threshold of
+5 would have passed vacuously.
+
+---
+
 ### After the second defeat, stop patching the scanner and parse — and GENERATE the mutants instead of listing them
 
 **Situation:** The end of the road the next three gotchas walk. cp5-1 spent **four** rounds proving
