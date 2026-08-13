@@ -205,5 +205,41 @@
       "line": 1802,
       "verbatim": "\tSTA PEXPLD\t\t;EXPLOSION SOUND FOR PLAYER"
     }
+  },
+  {
+    "id": "MS-25",
+    "claim": "A segment explosion picture counts down and is FINISHED at the 0xFA floor (CPY I,0FA): pictures above 0xFA are still exploding and DEC toward it. EXPLODE_DONE = 0xFA.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 769,
+      "verbatim": "\tCPY I,0FA"
+    }
+  },
+  {
+    "id": "MS-26",
+    "claim": "PLAY's SPIDER horizontal box is wider than a segment's: a spider collision is possible while the horizontal distance is below 10. (decimal) — CMP I,10. / BCC 15$. SPIDER_HIT_DH_MAX = 10.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1765,
+      "verbatim": "\tCMP I,10."
+    }
+  },
+  {
+    "id": "MS-27",
+    "claim": "PLAY's axis distance is a ONE'S-complement absolute value, not a true abs: after the byte subtract, a negative result is folded with a bare EOR I,0FF (no +1 — that would be the two's-complement COMP at MLIRQ.MAC:630, which PLAY does NOT call). The ROM comment says it: '-10 BECOMES +9'. So a negative delta reads one pixel short, making the hit box asymmetric by a pixel. CKFF (XORed first) is 0 upright, so this is not cocktail-only.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1762,
+      "verbatim": "\tEOR I,0FF\t\t;-10 BECOMES +9"
+    }
+  },
+  {
+    "id": "MS-28",
+    "claim": "On a player hit PLAY also sets DELAY to 0x10 (a delay before the next object setup). This is a game-loop timer, wired with scoring/setup (ml5); it is documented here but not consumed by the ml3-2 pure reducers.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1795,
+      "verbatim": "\tSTA DELAY\t\t;SET DELAY BEFORE NEXT SETUP"
+    }
   }
 ]

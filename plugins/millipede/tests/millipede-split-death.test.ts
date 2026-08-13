@@ -51,31 +51,34 @@ const HEAD_COLOR = 0x39 // MT-5 (MILLI.MAC:542) — a promoted tail turns this c
 const BODY_COLOR = 0x3d // MT-6 (MILLI.MAC:600)
 const VACANT_COLOR = 0x00 // MT-2 (MILLI.MAC:1455)
 
+// Only the constants the reducers CONSUME are mirrored (review round 1 dropped the
+// forward-only thresholds — the split bottom-trigger, the spider SPDP classifier,
+// the score-hold and PLAY's DELAY — to ml3-3/ml4/ml5; they stay in claims/11 as
+// documented ROM facts).
 // OVRLAP (MLSUB.MAC:896)
 const OVRLAP_DEAD_MIN = 0xc0 // MS-3 (MLSUB.MAC:903 "CMP I,0C0") — colour >= this ⇒ dead/score, skipped
 const OVRLAP_THRESHOLD = 0xf4 // MS-6 (MLSUB.MAC:911 "CMP I,0F4") — the in-front wrap window
 
-// The split (MILLI.MAC:1561-1592)
-const SPLIT_BOTTOM_V = 0x09 // MS-7 (MILLI.MAC:1561 "CMP I,9") — split fires at the bottom row (V < 9)
-
 // EXPLOD (MILLI.MAC:765)
-const EXPLODE_DONE = 0xfa // MS-15 area (MILLI.MAC:769 "CPY I,0FA") — explosion picture floor
-const SCORE_PIC_LO = 0x28 // MS-13 (MILLI.MAC:772 "CPY I,28")
-const SCORE_PIC_HI = 0x34 // MS-13 (MILLI.MAC:774 "CPY I,34")
+const EXPLODE_DONE = 0xfa // MS-25 (MILLI.MAC:769 "CPY I,0FA") — explosion picture floor
 const SCORE_COLOR = 0xff // MS-13 (MILLI.MAC:792 "LDA I,0FF") — parks a score so OVRLAP ignores it
-const SCORE_DELAY = 0xa0 // MS-14 (MILLI.MAC:794 "LDA I,0A0")
 const PEXPLD_FLASH_MIN = 0x50 // MS-16 (MILLI.MAC:809 "CPX I,60-10" ⇒ 0x60-0x10)
 const PEXPLD_SPARKLE_MIN = 0x20 // MS-17 (MILLI.MAC:819 "CPX I,60-40" ⇒ 0x60-0x40)
 
-// PLAY (MILLI.MAC:1750)
-const SPIDER_SPDP_LO = 0x14 // MS-20 (MILLI.MAC:1752 "CMP I,14")
-const SPIDER_SPDP_HI = 0x1c // MS-20 (MILLI.MAC:1754 "CMP I,1C")
-const SPIDER_HIT_DH_MAX = 10 // MS-20 (MILLI.MAC:1765 "CMP I,10." decimal) — spider H box
-const HIT_DH_MAX = 0x06 // MS-21 (MILLI.MAC:1769 "CMP I,06") — non-spider: |dH| >= 6 ⇒ miss
-const HIT_DV_MAX = 0x06 // MS-22 (MILLI.MAC:1778 "CMP I,6") — |dV| >= 6 ⇒ miss
+// PLAY (MILLI.MAC:1750) — the distance is a ONE'S-complement abs (MS-27), asymmetric by a pixel
+const SPIDER_HIT_DH_MAX = 10 // MS-26 (MILLI.MAC:1765 "CMP I,10." decimal) — the spider's wider H box
+const HIT_DH_MAX = 0x06 // MS-21 (MILLI.MAC:1769 "CMP I,06") — non-spider: H distance >= 6 ⇒ miss
+const HIT_DV_MAX = 0x06 // MS-22 (MILLI.MAC:1778 "CMP I,6") — V distance >= 6 ⇒ miss
 const HIT_SUM_MAX = 0x0a // MS-23 (MILLI.MAC:1785 "CMP I,0A") — H+V (or H+2V) >= 0x0A ⇒ miss
-const PLAY_DELAY = 0x10 // (MILLI.MAC:1795 "STA DELAY")
 const PLAYER_EXPLODE_TIMER = 0x60 // MS-24 (MILLI.MAC:1802 "STA PEXPLD") — the death countdown seed
+
+// The ROM's PLAY axis distance (MS-27): byte subtract, then a bare EOR 0xFF (one's
+// complement) on a negative — |d| for d>=0, |d|-1 for d<0. Mirrored here so the
+// asymmetry expectations below are self-derived, not read back from the module.
+const romDist = (minuend: number, subtrahend: number): number => {
+  const d = (minuend - subtrahend) & 0xff
+  return d < 0x80 ? d : d ^ 0xff
+}
 
 // ─── the contract GREEN (Julia) extends src/core/millipede.ts with ────────────────
 
@@ -92,24 +95,17 @@ interface Segment {
 type DeathPhase = 'idle' | 'flashing' | 'sparkle' | 'dying' | 'done'
 
 interface SplitDeathModule {
-  // constants (MS-*)
+  // constants (MS-*) — only those the reducers consume
   OVRLAP_DEAD_MIN: number
   OVRLAP_THRESHOLD: number
-  SPLIT_BOTTOM_V: number
   EXPLODE_DONE: number
-  SCORE_PIC_LO: number
-  SCORE_PIC_HI: number
   SCORE_COLOR: number
-  SCORE_DELAY: number
   PEXPLD_FLASH_MIN: number
   PEXPLD_SPARKLE_MIN: number
-  SPIDER_SPDP_LO: number
-  SPIDER_SPDP_HI: number
   SPIDER_HIT_DH_MAX: number
   HIT_DH_MAX: number
   HIT_DV_MAX: number
   HIT_SUM_MAX: number
-  PLAY_DELAY: number
   PLAYER_EXPLODE_TIMER: number
 
   /** OVRLAP (MLSUB.MAC:896): does the head at `headIndex` overlap another live
@@ -181,21 +177,14 @@ describe('ml3-2 constants — exported exactly as transcribed (MS-*)', () => {
     const m = await loadSplitDeath()
     expect(m.OVRLAP_DEAD_MIN).toBe(OVRLAP_DEAD_MIN)
     expect(m.OVRLAP_THRESHOLD).toBe(OVRLAP_THRESHOLD)
-    expect(m.SPLIT_BOTTOM_V).toBe(SPLIT_BOTTOM_V)
     expect(m.EXPLODE_DONE).toBe(EXPLODE_DONE)
-    expect(m.SCORE_PIC_LO).toBe(SCORE_PIC_LO)
-    expect(m.SCORE_PIC_HI).toBe(SCORE_PIC_HI)
     expect(m.SCORE_COLOR).toBe(SCORE_COLOR)
-    expect(m.SCORE_DELAY).toBe(SCORE_DELAY)
     expect(m.PEXPLD_FLASH_MIN).toBe(PEXPLD_FLASH_MIN)
     expect(m.PEXPLD_SPARKLE_MIN).toBe(PEXPLD_SPARKLE_MIN)
-    expect(m.SPIDER_SPDP_LO).toBe(SPIDER_SPDP_LO)
-    expect(m.SPIDER_SPDP_HI).toBe(SPIDER_SPDP_HI)
     expect(m.SPIDER_HIT_DH_MAX).toBe(SPIDER_HIT_DH_MAX)
     expect(m.HIT_DH_MAX).toBe(HIT_DH_MAX)
     expect(m.HIT_DV_MAX).toBe(HIT_DV_MAX)
     expect(m.HIT_SUM_MAX).toBe(HIT_SUM_MAX)
-    expect(m.PLAY_DELAY).toBe(PLAY_DELAY)
     expect(m.PLAYER_EXPLODE_TIMER).toBe(PLAYER_EXPLODE_TIMER)
   })
 
@@ -329,7 +318,7 @@ describe('ml3-2 the split — a body-run tail is promoted to a new head (MS-7..1
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('ml3-2 PLAY — player collision hit box (MS-20..24)', () => {
+describe('ml3-2 PLAY — player collision hit box (MS-21..27)', () => {
   const player = { h: 0x80, v: 0x40 }
 
   it('a segment exactly on the player is a hit (dH=0, dV=0 — degenerate but real, #21)', async () => {
@@ -337,32 +326,43 @@ describe('ml3-2 PLAY — player collision hit box (MS-20..24)', () => {
     expect(m.checkPlayerCollision({ h: 0x80, v: 0x40 }, player), 'zero distance is the clearest hit').toBe(true)
   })
 
-  it('non-spider: a hit needs |dH|<6 AND |dV|<6 AND sum<0x0A (MS-21/22/23)', async () => {
+  it('non-spider: a hit needs H<6 AND V<6 AND sum<0x0A, distances by the ROM romDist (MS-21/22/23/27)', async () => {
     const m = await loadSplitDeath()
-    // just inside: dH=3, dV=3 → sum 6 < 0x0A ⇒ hit
-    expect(m.checkPlayerCollision({ h: 0x83, v: 0x43 }, player)).toBe(true)
-    // dH at the exclusive edge (6) ⇒ miss (CMP I,06 / BCS)
-    expect(m.checkPlayerCollision({ h: 0x86, v: 0x40 }, player), '|dH|=6 is a miss').toBe(false)
-    // dV at the exclusive edge (6) ⇒ miss
-    expect(m.checkPlayerCollision({ h: 0x80, v: 0x46 }, player), '|dV|=6 is a miss').toBe(false)
-    // both under 6 but the SUM reaches 0x0A ⇒ miss (dH=5, dV=5 → 10)
-    expect(m.checkPlayerCollision({ h: 0x85, v: 0x45 }, player), 'sum=0x0A is a miss even with each axis < 6').toBe(false)
-    // sum 9 (dH=5, dV=4) ⇒ hit
-    expect(m.checkPlayerCollision({ h: 0x85, v: 0x44 }, player), 'sum=9 is a hit').toBe(true)
+    // just inside: H distance 2, V distance 2 → sum 4 < 0x0A ⇒ hit
+    expect(m.checkPlayerCollision({ h: 0x82, v: 0x42 }, player)).toBe(true)
+    // sum boundary: H 5 (obj.h 0x86) + V 5 (obj.v 0x45) = 0x0A ⇒ miss
+    expect(romDist(player.h, 0x86)).toBe(5) // self-check the mirror
+    expect(romDist(0x45, player.v)).toBe(5)
+    expect(m.checkPlayerCollision({ h: 0x86, v: 0x45 }, player), 'sum=0x0A misses even with each axis < 6').toBe(false)
+    // sum 9 (H 5, V 4) ⇒ hit
+    expect(m.checkPlayerCollision({ h: 0x86, v: 0x44 }, player), 'sum=9 is a hit').toBe(true)
   })
 
-  it('the abs is symmetric — a negative offset hits the same as a positive one', async () => {
+  it('the hit box is ASYMMETRIC by a pixel — the ROM one’s-complement abs, NOT a true abs (MS-27)', async () => {
     const m = await loadSplitDeath()
-    expect(m.checkPlayerCollision({ h: 0x7d, v: 0x3d }, player), '(-3,-3) hits like (+3,+3)').toBe(true)
+    // H axis (ROM subtract PLAYH-MOBJH): an object 6px HIGHER in H reads distance 5
+    // (one short) and HITS; 6px LOWER reads a true 6 and MISSES.
+    expect(romDist(player.h, 0x86)).toBe(5)
+    expect(romDist(player.h, 0x7a)).toBe(6)
+    expect(m.checkPlayerCollision({ h: 0x86, v: 0x40 }, player), 'H +6 reads 5 → HIT (the one-pixel slack)').toBe(true)
+    expect(m.checkPlayerCollision({ h: 0x7a, v: 0x40 }, player), 'H -6 reads a true 6 → MISS').toBe(false)
+    // V axis subtracts the OTHER way (MOBJV-PLAYV), so the slack lands on the
+    // opposite side: 6px BELOW hits, 6px ABOVE misses.
+    expect(romDist(0x3a, player.v)).toBe(5)
+    expect(romDist(0x46, player.v)).toBe(6)
+    expect(m.checkPlayerCollision({ h: 0x80, v: 0x3a }, player), 'V -6 reads 5 → HIT').toBe(true)
+    expect(m.checkPlayerCollision({ h: 0x80, v: 0x46 }, player), 'V +6 reads a true 6 → MISS').toBe(false)
   })
 
-  it('spider box is WIDER on H (|dH|<10) but V-weighted (dH + 2*dV < 0x0A)', async () => {
+  it('spider box is WIDER on H (distance<10) but V-weighted (H + 2*V < 0x0A)', async () => {
     const m = await loadSplitDeath()
-    // dH=8 is a MISS for a segment (>=6) but the spider H box reaches 10
-    expect(m.checkPlayerCollision({ h: 0x88, v: 0x40 }, player, false), 'segment: |dH|=8 misses').toBe(false)
-    expect(m.checkPlayerCollision({ h: 0x88, v: 0x40 }, player, true), 'spider: |dH|=8, 2*dV=0, sum 8 < 0x0A hits').toBe(true)
-    // vertical is doubled for a spider: dV=5 ⇒ 2*dV=10 ⇒ sum >= 0x0A ⇒ miss even at dH=0
-    expect(m.checkPlayerCollision({ h: 0x80, v: 0x45 }, player, true), 'spider: 2*dV=0x0A misses').toBe(false)
+    // obj.h 0x88 → H distance 7: a segment MISS (>=6), but inside the spider's 10 box
+    expect(romDist(player.h, 0x88)).toBe(7)
+    expect(m.checkPlayerCollision({ h: 0x88, v: 0x40 }, player, false), 'segment: H distance 7 misses').toBe(false)
+    expect(m.checkPlayerCollision({ h: 0x88, v: 0x40 }, player, true), 'spider: 7 + 2*0 = 7 < 0x0A hits').toBe(true)
+    // vertical is doubled for a spider: V distance 5 ⇒ 2*5 = 0x0A ⇒ miss even at H 0
+    expect(m.checkPlayerCollision({ h: 0x80, v: 0x45 }, player, true), 'spider: 2*V = 0x0A misses').toBe(false)
+    expect(m.checkPlayerCollision({ h: 0x80, v: 0x44 }, player, true), 'spider: 2*4 = 8 < 0x0A hits').toBe(true)
   })
 })
 
@@ -471,7 +471,7 @@ describe('ml3-2 EXPLOD — the death sequence is FREEZE-FRIENDLY, no strobe (AC-
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('ml3-2 EXPLOD — the segment explosion advance + score park (MS-13/14)', () => {
+describe('ml3-2 EXPLOD — the segment explosion advance + score park (MS-13/25)', () => {
   it('an explosion picture in (0xFA,0xFF] counts DOWN toward the 0xFA floor', async () => {
     const m = await loadSplitDeath()
     const out = m.stepSegmentExplosion(seg({ color: HEAD_COLOR, pic: 0xff }))
@@ -479,7 +479,7 @@ describe('ml3-2 EXPLOD — the segment explosion advance + score park (MS-13/14)
     expect(out.color, 'still exploding, still on screen').not.toBe(VACANT_COLOR)
   })
 
-  it('reaching the 0xFA floor with POINTS parks the slot as a floating score: colour 0xFF, held 0xA0', async () => {
+  it('reaching the 0xFA floor with POINTS parks the slot as a floating score: colour 0xFF (the hold/clear is ml5)', async () => {
     const m = await loadSplitDeath()
     const out = m.stepSegmentExplosion(seg({ color: HEAD_COLOR, pic: EXPLODE_DONE + 1 }), 0x30)
     // one step brings pic to 0xFA (the finished floor); the finish parks the score

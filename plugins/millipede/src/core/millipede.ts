@@ -311,27 +311,28 @@ export function newMillipedeHead(
 // AC-4 design.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Only the constants the ml3-2 reducers actually CONSUME live here. Three ROM
+// thresholds that belong to not-yet-wired mechanisms are NOT exported (they were
+// dead exports in review round 1): the split's bottom-row trigger V<9 (MS-7) is
+// wired by MOTION in ml3-3; the spider SPDP classifier 0x14..0x1C (MS-20) is the
+// bestiary's, ml4 (checkPlayerCollision takes `isSpider` as given); the score-hold
+// 0xA0 (MS-14) and PLAY's DELAY 0x10 (MS-28) are the score-display/game-loop
+// timers, ml5. All remain documented in docs/rom-study/claims/11-*.json as ROM
+// facts for the story that wires them.
+
 // OVRLAP (MLSUB.MAC:896)
 export const OVRLAP_DEAD_MIN = 0xc0 // MS-3 (MLSUB.MAC:903 "CMP I,0C0") — colour >= this ⇒ dead/score, skipped
 export const OVRLAP_THRESHOLD = 0xf4 // MS-6 (MLSUB.MAC:911 "CMP I,0F4") — the in-front wrap window
-// The split (MILLI.MAC:1561-1592)
-export const SPLIT_BOTTOM_V = 0x09 // MS-7 (MILLI.MAC:1561 "CMP I,9") — split fires at the bottom row (V < 9)
 // EXPLOD (MILLI.MAC:765)
-export const EXPLODE_DONE = 0xfa // MS-15 (MILLI.MAC:769 "CPY I,0FA") — the explosion picture floor
-export const SCORE_PIC_LO = 0x28 // MS-13 (MILLI.MAC:772 "CPY I,28")
-export const SCORE_PIC_HI = 0x34 // MS-13 (MILLI.MAC:774 "CPY I,34")
+export const EXPLODE_DONE = 0xfa // MS-25 (MILLI.MAC:769 "CPY I,0FA") — the explosion picture floor
 export const SCORE_COLOR = 0xff // MS-13 (MILLI.MAC:792 "LDA I,0FF") — parks a score so OVRLAP ignores it
-export const SCORE_DELAY = 0xa0 // MS-14 (MILLI.MAC:794 "LDA I,0A0")
 export const PEXPLD_FLASH_MIN = 0x50 // MS-16 (MILLI.MAC:809 "CPX I,60-10" ⇒ 0x60-0x10)
 export const PEXPLD_SPARKLE_MIN = 0x20 // MS-17 (MILLI.MAC:819 "CPX I,60-40" ⇒ 0x60-0x40)
 // PLAY (MILLI.MAC:1750)
-export const SPIDER_SPDP_LO = 0x14 // MS-20 (MILLI.MAC:1752 "CMP I,14")
-export const SPIDER_SPDP_HI = 0x1c // MS-20 (MILLI.MAC:1754 "CMP I,1C")
-export const SPIDER_HIT_DH_MAX = 10 // MS-20 (MILLI.MAC:1765 "CMP I,10." decimal) — the spider's wider H box
+export const SPIDER_HIT_DH_MAX = 10 // MS-26 (MILLI.MAC:1765 "CMP I,10." decimal) — the spider's wider H box
 export const HIT_DH_MAX = 0x06 // MS-21 (MILLI.MAC:1769 "CMP I,06") — non-spider: |dH| >= 6 ⇒ miss
 export const HIT_DV_MAX = 0x06 // MS-22 (MILLI.MAC:1778 "CMP I,6") — |dV| >= 6 ⇒ miss
 export const HIT_SUM_MAX = 0x0a // MS-23 (MILLI.MAC:1785 "CMP I,0A") — H+V (or H+2V) >= 0x0A ⇒ miss
-export const PLAY_DELAY = 0x10 // (MILLI.MAC:1795 "STA DELAY")
 export const PLAYER_EXPLODE_TIMER = 0x60 // MS-24 (MILLI.MAC:1802 "STA PEXPLD") — the death countdown seed
 
 /**
@@ -389,20 +390,36 @@ export function splitOnTurn(segs: readonly Segment[], headIndex: number): Segmen
 }
 
 /**
+ * PLAY's axis distance (MILLI.MAC:1757-1762 / 1772-1777): a byte subtract, then on
+ * a NEGATIVE result a bare `EOR I,0FF` — one's-complement, NOT the two's-complement
+ * `COMP` (MLIRQ.MAC:630). The ROM's own comments spell it out: "-10 BECOMES +9",
+ * "-6 NOW IS +5" (MS-27). So the distance is |d| for a non-negative byte difference
+ * and |d|-1 for a negative one — the hit box is asymmetric by one pixel, and the
+ * H and V axes subtract in OPPOSITE order (H = PLAYH-MOBJH, V = MOBJV-PLAYV), so the
+ * one-pixel slack lands on opposite sides. `CKFF` (XORed first) is 0 upright, so
+ * this fires on every upright check — it is not a cocktail-only quirk. A plain
+ * `Math.abs` was WRONG here (review round 1, finding 1).
+ */
+function romDist(minuend: number, subtrahend: number): number {
+  const d = (minuend - subtrahend) & 0xff // SEC / SBC — a wrap-aware byte difference
+  return d < 0x80 ? d : d ^ 0xff // BPL 8$ keeps it; else EOR I,0FF (one's complement)
+}
+
+/**
  * PLAY (MILLI.MAC:1750-1810): is `obj` overlapping the `player`? The non-spider box
- * requires |dH| < 6 (MS-21), |dV| < 6 (MS-22) and the axis sum |dH|+|dV| < 0x0A
- * (MS-23). A spider gets a wider horizontal reach (|dH| < 10, MS-20) and a
- * V-weighted sum |dH| + 2*|dV| < 0x0A. On a hit the ROM stores 0x60 into PEXPLD to
- * arm the player explosion (MS-24); the caller does that with PLAYER_EXPLODE_TIMER.
+ * requires the H distance < 6 (MS-21), the V distance < 6 (MS-22) and the axis sum
+ * < 0x0A (MS-23), all measured with the ROM's one-sided `romDist`. A spider gets a
+ * wider horizontal reach (< 10, MS-26) and a V-weighted sum H + 2*V < 0x0A. On a hit
+ * the ROM stores 0x60 into PEXPLD (MS-24); the caller arms it with PLAYER_EXPLODE_TIMER.
  */
 export function checkPlayerCollision(
   obj: { h: number; v: number },
   player: { h: number; v: number },
   isSpider = false,
 ): boolean {
-  const dh = Math.abs(obj.h - player.h)
-  const dv = Math.abs(obj.v - player.v)
-  const dhMax = isSpider ? SPIDER_HIT_DH_MAX : HIT_DH_MAX // MS-20/21
+  const dh = romDist(player.h, obj.h) // ROM H: PLAYH - MOBJH (MILLI.MAC:1757)
+  const dv = romDist(obj.v, player.v) // ROM V: MOBJV - PLAYV (MILLI.MAC:1772)
+  const dhMax = isSpider ? SPIDER_HIT_DH_MAX : HIT_DH_MAX // MS-26/21
   if (dh >= dhMax) return false
   if (dv >= HIT_DV_MAX) return false // MS-22
   const sum = dh + (isSpider ? 2 * dv : dv) // MS-23 — H+V, or H+2V for a spider
@@ -425,7 +442,9 @@ export type DeathPhase = 'idle' | 'flashing' | 'sparkle' | 'dying' | 'done'
  * project owner's photosensitive epilepsy, accessibility overrides ROM fidelity.
  */
 export function stepPlayerDeath(pexpld: number): { pexpld: number; phase: DeathPhase; flashing: boolean } {
-  if (pexpld <= 0) return { pexpld, phase: 'idle', flashing: false }
+  // `!(pexpld > 0)` (not `pexpld <= 0`) so a NaN countdown resolves to a terminal
+  // 'idle', never falling through the comparisons to a permanently-stuck 'dying'.
+  if (!(pexpld > 0)) return { pexpld, phase: 'idle', flashing: false }
   const next = pexpld - 1 // MS-15 — DEC PEXPLD
   if (next === 0) return { pexpld: next, phase: 'done', flashing: false } // 60$ END
   if (pexpld >= PEXPLD_FLASH_MIN) return { pexpld: next, phase: 'flashing', flashing: true } // MS-16
@@ -436,11 +455,15 @@ export function stepPlayerDeath(pexpld: number): { pexpld: number; phase: DeathP
 /**
  * EXPLOD segment branch (MILLI.MAC:765-799): advance one exploding segment. An
  * explosion picture in (0xFA, 0xFF] counts DOWN toward the 0xFA floor. On reaching
- * the floor the slot either parks as a floating score — colour 0xFF so OVRLAP
- * ignores it (MS-13), showing the point value, held for 0xA0 (MS-14) — when
- * `points` is given, or clears to a vacant slot (ROM: MOBJC=0, MOBJH=0). Returns a
- * NEW segment; the input is not mutated. (The shot that STARTS an explosion is
- * scoring — ml5 — and out of scope here.)
+ * the floor the slot either PARKS as a floating score — colour 0xFF so OVRLAP
+ * ignores it (MS-13), showing the point value in the picture — when `points` is
+ * given, or clears to a vacant slot (ROM: MOBJC=0, MOBJH=0). Returns a NEW segment;
+ * the input is not mutated.
+ *
+ * SCOPE: this models the explosion advance and the score PARK only. The ROM then
+ * holds the parked score for 0xA0 frames (MS-14) and clears it, and the shot that
+ * STARTS an explosion arms it — both are the score-display/scoring subsystem (ml5).
+ * This reducer does not decrement the hold or clear a parked score.
  */
 export function stepSegmentExplosion(seg: Segment, points?: number): Segment {
   if (seg.pic > EXPLODE_DONE) {
