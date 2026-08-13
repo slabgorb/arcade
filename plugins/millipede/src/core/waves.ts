@@ -5,7 +5,7 @@
 // MILLI.MAC:1904-1905). Pure, cited (WV-* in docs/rom-study/claims/13-waves-scoring.json).
 // Contract: tests/waves.test.ts.
 
-/** DELAY armed when a wave clears: LDA I,40 / STA DELAY (MILLI.MAC:1904-1905, WV-DELAY-ARM). */
+/** DELAY armed when a wave clears: LDA I,40 / STA DELAY (MILLI.MAC:1904-1905, claim WV-6). */
 export const WAVE_DELAY = 0x40
 
 /**
@@ -42,14 +42,15 @@ export interface WaveBlockers {
  * CHKEND — the inter-wave DELAY countdown (MLSUB.MAC:52-59). A zero DELAY is idle
  * (not counting). Otherwise the countdown HOLDS — no decrement — while any blocker
  * is set (mushrooms restoring, player exploding, or beetles present), and ticks down
- * by one on a clear frame. The `waveReady` edge is computed at the SINGLE return so
- * no caller path can miss the transition (lang-review ts #14): it fires only on the
- * frame DELAY reaches 0.
+ * by one on a clear frame. Every return sets `waveReady` explicitly — the two
+ * non-decrement paths hard-code `false` (no transition is reachable there), so no
+ * caller path can miss the edge (lang-review ts #14): it fires only on the frame
+ * DELAY reaches 0.
  */
 export function stepWaveDelay(
   delay: number,
   blockers: Readonly<WaveBlockers>,
-): { delay: number; waveReady: boolean } {
+): { readonly delay: number; readonly waveReady: boolean } {
   if (delay === 0) return { delay: 0, waveReady: false } // :52-53 BEQ — not counting
   if (blockers.mushroomsRestoring || blockers.playerExploding || blockers.beetlesPresent) {
     return { delay, waveReady: false } // :54-57 hold, no decrement

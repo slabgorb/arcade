@@ -24,7 +24,7 @@
 // must carry explicitly.
 //
 // ⚠ OUT OF SCOPE for ml5-1 (a LATER ml5 story): the bonus-life tail of SCORNG
-// (:1075-1120, BONUS1 / EXTRAL / INC LIVES) and the COUNT3 new-head speed ramp
+// (:1075-1103, ending at the 30$ RTS — BONUS1 / EXTRAL / INC LIVES) and the COUNT3 new-head speed ramp
 // (:1062-1069). Those are cited-forward, not implemented here — awardScore is the
 // pure point accumulator only, and the bonus reducer mirrors centipede/bonus.ts.
 //
@@ -88,7 +88,7 @@ async function loadScore(): Promise<ScoreModule> {
 }
 
 describe('scoring — cited constants / BCD helpers', () => {
-  it('bcdByte packs 0..99 into a BCD byte (SG-BCD)', async () => {
+  it('bcdByte packs 0..99 into a BCD byte (BCD encoding helper)', async () => {
     const m = await loadScore()
     expect(m.bcdByte(0), '0 -> 0x00').toBe(0x00)
     expect(m.bcdByte(7), '7 -> 0x07').toBe(0x07)
@@ -99,7 +99,7 @@ describe('scoring — cited constants / BCD helpers', () => {
 })
 
 describe('scoring — score2Of: the SCORE2 ten-thousands BCD dial (MLDEF.MAC SCORE2)', () => {
-  it('maps the ramp thresholds to the exact BCD bytes the wave ladders compare (SG-SCORE2)', async () => {
+  it('maps the ramp thresholds to the exact BCD bytes the wave ladders compare (SCORE2 dial)', async () => {
     const m = await loadScore()
     // These are the same operands beetlesPerWave (MILLI.MAC:642-655) and
     // stepWaveCadence read — score2Of is the bridge from a points score to them.
@@ -113,7 +113,7 @@ describe('scoring — score2Of: the SCORE2 ten-thousands BCD dial (MLDEF.MAC SCO
     expect(m.score2Of(999_999), '999,999 -> 0x99').toBe(0x99)
   })
 
-  it('wraps at the 3-byte BCD ceiling — 1,000,000 rolls SCORE2 back to 0x00 (SG-SCORE2-WRAP)', async () => {
+  it('wraps at the 3-byte BCD ceiling — 1,000,000 rolls SCORE2 back to 0x00 (SCORE0/1/2 width)', async () => {
     const m = await loadScore()
     // SCORE0/1/2 is 6 BCD digits; the dial is `floor(score/10000) % 100` in BCD.
     expect(m.score2Of(1_000_000), '1,000,000 -> 0x00').toBe(0x00)
@@ -122,13 +122,13 @@ describe('scoring — score2Of: the SCORE2 ten-thousands BCD dial (MLDEF.MAC SCO
 })
 
 describe('scoring — awardScore: the SCORNG accumulator (MLSUB.MAC:1049-1055)', () => {
-  it('adds the awarded points to the running score (SG-AWARD)', async () => {
+  it('adds the awarded points to the running score (MLSUB.MAC:1049-1055, claims SG-1/SG-3)', async () => {
     const m = await loadScore()
     expect(m.awardScore({ score: 0, points: 300, attract: false }), '0 + 300').toBe(300)
     expect(m.awardScore({ score: 1_250, points: 900, attract: false }), '1250 + 900').toBe(2_150)
   })
 
-  it('is a NO-OP in attract mode — MODE < 0 takes the early RTS (MLSUB.MAC:1050, SG-ATTRACT)', async () => {
+  it('is a NO-OP in attract mode — MODE < 0 takes the early RTS (MLSUB.MAC:1050, claim SG-2)', async () => {
     const m = await loadScore()
     expect(m.awardScore({ score: 5_000, points: 1_000, attract: true }), 'attract awards nothing').toBe(5_000)
     // ...and the SAME award DOES land when not in attract, proving the guard is the
@@ -136,13 +136,13 @@ describe('scoring — awardScore: the SCORNG accumulator (MLSUB.MAC:1049-1055)',
     expect(m.awardScore({ score: 5_000, points: 1_000, attract: false }), 'in play it lands').toBe(6_000)
   })
 
-  it('zero points is a clean no-op in play (not confused with the attract guard, SG-ZERO)', async () => {
+  it('zero points is a clean no-op in play (not confused with the attract guard; rule #4 guard)', async () => {
     const m = await loadScore()
     // Guards a `points || default` mishandling of a legitimate 0 (lang-review ts #4).
     expect(m.awardScore({ score: 4_242, points: 0, attract: false })).toBe(4_242)
   })
 
-  it('is monotonic across a sequence of awards — the score never decreases (SG-MONO)', async () => {
+  it('is monotonic across a sequence of awards — the score never decreases (monotonic)', async () => {
     const m = await loadScore()
     let score = 0
     for (const pts of [300, 300, 900, 1_000, 300]) {
@@ -155,7 +155,7 @@ describe('scoring — awardScore: the SCORNG accumulator (MLSUB.MAC:1049-1055)',
 })
 
 describe('scoring — pinned to PTS: awarded points come from the critter kill value (MLDEF.MAC:398)', () => {
-  it('a beetle kill (BEETLE_PTS = 300) flows through awardScore, not a magic literal (SG-PTS)', async () => {
+  it('a beetle kill (BEETLE_PTS = 300) flows through awardScore, not a magic literal (claim SG-4, MLDEF.MAC:398)', async () => {
     const m = await loadScore()
     // Real PTS value from the shipped beetle reducer — proves the pinning is live.
     expect(BEETLE_PTS, 'sanity: beetle PTS is 300 (MILLI.MAC:2091)').toBe(300)
@@ -164,7 +164,7 @@ describe('scoring — pinned to PTS: awarded points come from the critter kill v
     expect(m.awardScore({ score: 0, points: kill.points, attract: false }), 'the 300 lands in the score').toBe(300)
   })
 
-  it('crossing a 10K boundary via awarded PTS bumps the SCORE2 tier (MLSUB.MAC:1061-1074, SG-10K)', async () => {
+  it('crossing a 10K boundary via awarded PTS bumps the SCORE2 tier (MLSUB.MAC:1061-1074)', async () => {
     const m = await loadScore()
     // 69,700 + a 900-point DDT beetle kill (MILLI.MAC:2096) crosses 70,000, which is
     // exactly the boundary that arms band 2 of beetlesPerWave.

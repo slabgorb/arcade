@@ -49,7 +49,7 @@
 // (2) DELAY — the non-zero inter-wave pause. MLDEF.MAC:286 DELAY: .BLKB 1 ;NON ZERO
 //     TO DELY BETWEEN WAVES. Armed to 0x40 when a wave clears (MILLI.MAC:1904-1905
 //     LDA I,40 / STA DELAY ;DELAY BEFORE NEXT WAVE) and counted down by CHKEND,
-//     MLSUB.MAC:52-81:
+//     MLSUB.MAC:52-82:
 //
 //       52: CHKEND: LDA DELAY / BEQ 1$        ;IF NO DELAY  (delay 0 => not counting)
 //       54: LDA MEM+1                          ;WAIT UNTIL MUSHROOMS RESTORED
@@ -127,7 +127,7 @@ function clear(over: Partial<WaveBlockers> = {}): WaveBlockers {
 }
 
 describe('waves — cited constants', () => {
-  it('pins WAVE_DELAY to 0x40 (MILLI.MAC:1904-1905, WV-DELAY-ARM)', async () => {
+  it('pins WAVE_DELAY to 0x40 (MILLI.MAC:1904-1905, claim WV-6)', async () => {
     const m = await loadWaves()
     expect(m.WAVE_DELAY, 'LDA I,40 / STA DELAY ;DELAY BEFORE NEXT WAVE (MILLI.MAC:1904-1905)').toBe(0x40)
   })
@@ -153,14 +153,14 @@ describe('waves — beetlesPerWave: the BEETLA per-wave quota ramp (MILLI.MAC:63
     [0x99, 255, 255], // deep play stays at 255
   ]
 
-  it('EASY quota follows the score2 ladder 1→2→3→4→4→6→255 (WV-QUOTA-EASY)', async () => {
+  it('EASY quota follows the score2 ladder 1→2→3→4→4→6→255 (MILLI.MAC:637-665, claims WV-3/4/5)', async () => {
     const m = await loadWaves()
     for (const [score2, easy] of BANDS) {
       expect(m.beetlesPerWave(score2, /* hard */ false), `easy score2=0x${score2.toString(16)}`).toBe(easy)
     }
   })
 
-  it('HARD quota diverges only in the 0x40..0x49 band → 6 not 4 (MILLI.MAC:657-660, WV-QUOTA-HARD)', async () => {
+  it('HARD quota diverges only in the 0x40..0x49 band → 6 not 4 (MILLI.MAC:657-660)', async () => {
     const m = await loadWaves()
     for (const [score2, , hard] of BANDS) {
       expect(m.beetlesPerWave(score2, /* hard */ true), `hard score2=0x${score2.toString(16)}`).toBe(hard)
@@ -170,7 +170,7 @@ describe('waves — beetlesPerWave: the BEETLA per-wave quota ramp (MILLI.MAC:63
     expect(m.beetlesPerWave(0x45, false), 'easy 450k → 4').toBe(4)
   })
 
-  it('the terminal band is 255, not 253 — LDY 0FD then two INY (MILLI.MAC:662-664, WV-QUOTA-MAX)', async () => {
+  it('the terminal band is 255, not 253 — LDY 0FD then two INY (MILLI.MAC:662-664, claim WV-4)', async () => {
     const m = await loadWaves()
     // Guards the off-by-INY reading of 0FD: 0xFD + 1 + 1 == 0xFF == 255.
     expect(m.beetlesPerWave(0x70, false)).toBe(255)
@@ -186,34 +186,34 @@ describe('waves — beetlesPerWave: the BEETLA per-wave quota ramp (MILLI.MAC:63
   })
 })
 
-describe('waves — stepWaveDelay: the CHKEND inter-wave countdown (MLSUB.MAC:52-81)', () => {
-  it('a zero DELAY is not counting: stays 0, never signals ready (MLSUB.MAC:52-53, WV-DELAY-IDLE)', async () => {
+describe('waves — stepWaveDelay: the CHKEND inter-wave countdown (MLSUB.MAC:52-82)', () => {
+  it('a zero DELAY is not counting: stays 0, never signals ready (MLSUB.MAC:52-53)', async () => {
     const m = await loadWaves()
     expect(m.stepWaveDelay(0, clear())).toEqual({ delay: 0, waveReady: false })
   })
 
-  it('ticks down by one on a clear frame (MLSUB.MAC:58, WV-DELAY-TICK)', async () => {
+  it('ticks down by one on a clear frame (MLSUB.MAC:58, claim WV-7)', async () => {
     const m = await loadWaves()
     expect(m.stepWaveDelay(0x40, clear())).toEqual({ delay: 0x3f, waveReady: false })
     expect(m.stepWaveDelay(2, clear())).toEqual({ delay: 1, waveReady: false })
   })
 
-  it('HOLDS (no decrement) while mushrooms are restoring (MLSUB.MAC:54, WV-DELAY-HOLD-MEM)', async () => {
+  it('HOLDS (no decrement) while mushrooms are restoring (MLSUB.MAC:54)', async () => {
     const m = await loadWaves()
     expect(m.stepWaveDelay(0x40, clear({ mushroomsRestoring: true }))).toEqual({ delay: 0x40, waveReady: false })
   })
 
-  it('HOLDS while the player is exploding (MLSUB.MAC:55, WV-DELAY-HOLD-PEXPLD)', async () => {
+  it('HOLDS while the player is exploding (MLSUB.MAC:55)', async () => {
     const m = await loadWaves()
     expect(m.stepWaveDelay(0x10, clear({ playerExploding: true }))).toEqual({ delay: 0x10, waveReady: false })
   })
 
-  it('HOLDS while beetles are present (MLSUB.MAC:56-57, WV-DELAY-HOLD-BEETLS)', async () => {
+  it('HOLDS while beetles are present (MLSUB.MAC:56-57)', async () => {
     const m = await loadWaves()
     expect(m.stepWaveDelay(1, clear({ beetlesPresent: true }))).toEqual({ delay: 1, waveReady: false })
   })
 
-  it('the waveReady EDGE fires ONLY on the frame DELAY reaches 0 (MLSUB.MAC:58-59, WV-DELAY-READY)', async () => {
+  it('the waveReady EDGE fires ONLY on the frame DELAY reaches 0 (MLSUB.MAC:58-59, claim WV-7)', async () => {
     const m = await loadWaves()
     const step = m.stepWaveDelay(1, clear())
     expect(step, 'delay 1 → 0 with the ready edge set').toEqual({ delay: 0, waveReady: true })
