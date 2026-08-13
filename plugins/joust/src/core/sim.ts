@@ -316,9 +316,9 @@ export interface DrawOp {
   /**
    * jt11-7 — a `kind:'crumble'` overlay's destructible cliff (CLIF1L/CLIF1R/
    * CLIF2/CLIF4) and its CLFDES phase. The shell's `paintCrumble` reads `phase`
-   * (and the shared `frame` above) to pick the shake vs debris paint. `cliff` and
-   * `phase` are undefined on every non-crumble op; `frame` is SHARED with the
-   * dissolve op kind (see its note above), so it is not crumble-exclusive.
+   * (and the shared `frame` field below) to pick the shake vs debris paint.
+   * `cliff` and `phase` are undefined on every non-crumble op; `frame` is SHARED
+   * with the dissolve op kind (see its note below), so it is not crumble-exclusive.
    */
   cliff?: string
   phase?: CrumblePhase
@@ -333,9 +333,10 @@ export interface DrawOp {
    */
   facing?: Facing
   /**
-   * The ASH animation index for a DISSOLVE op (jt3-7 B1) — the shell's
-   * `paintDissolve` decodes `expandAshFrames` and paints THIS frame. Carries the
-   * body's `DissolveState.frame`; undefined on every non-dissolve op.
+   * The animation frame index for an ANIMATED op — SHARED by two op kinds: a
+   * DISSOLVE op's `DissolveState.frame` (jt3-7 B1, the shell's `paintDissolve`)
+   * and a CRUMBLE op's CLFDES frame (jt11-7, the shell's `paintCrumble`).
+   * Undefined on every non-animated op (arena/entity/fill).
    */
   frame?: number
 }

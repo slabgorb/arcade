@@ -109,15 +109,18 @@ describe('jt11-7 F1 — the crumble transition PAINTS in the shell (was invisibl
     expect(rec.fills.length, 'no width/height → no paint').toBe(0)
   })
 
-  it('main.ts WIRES the crumble paint seam (the shell actually calls it, no dark regress)', () => {
-    // A painting function nobody calls still ships an invisible feature. main.ts's
-    // paintSim must dispatch kind:'crumble' ops to paintCrumble.
-    const main = readFileSync(join(repoRoot, 'src', 'main.ts'), 'utf8')
+  it('main.ts WIRES the crumble paint seam as LIVE CODE (comment-immune, no dark regress)', () => {
+    // A painting function nobody calls still ships an invisible feature. Match the
+    // ACTUAL dispatch — `kind === 'crumble') paintCrumble(` — with comments stripped
+    // first, so a decoy comment carrying the substrings cannot satisfy the guard
+    // (the comment-stripping-guard trap: a whole-file /paintCrumble/ token scan
+    // passed on a commented-out stand-in with the real call deleted).
+    const raw = readFileSync(join(repoRoot, 'src', 'main.ts'), 'utf8')
+    const code = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
     expect(
-      main,
-      "main.ts must call paintCrumble on its draw path for kind:'crumble' ops — else the " +
-        'overlay hits blitOp and paints nothing (F1).',
-    ).toMatch(/paintCrumble/)
-    expect(main, "the dispatch keys off op.kind === 'crumble'").toMatch(/kind === 'crumble'/)
+      code,
+      "main.ts's paintSim must DISPATCH kind:'crumble' ops to a live paintCrumble() call — " +
+        'else the overlay hits blitOp and paints nothing (F1).',
+    ).toMatch(/kind === 'crumble'\)\s*paintCrumble\(/)
   })
 })

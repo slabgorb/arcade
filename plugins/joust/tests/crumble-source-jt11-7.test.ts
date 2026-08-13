@@ -85,7 +85,7 @@ describe.skipIf(!vendoredAvailable)('CLFDES is the routine at :4562-4599', () =>
   it('the shake setup is LDA #5 "number of shakes to do" (:4563)', () => {
     const ins = instrAt(4563)
     expect(ins?.op, 'LDA').toBe('LDA')
-    expect(operandNum(ins!.operand), 'five shakes').toBe(5)
+    expect(operandAt(4563), 'five shakes').toBe(5)
     expect(sourceLines(FILE)[4564 - 1], 'the shake counter is stored').toContain('STA')
     expect(sourceLines(FILE)[4564 - 1]).toContain('number of shakes to do')
   })
@@ -93,14 +93,14 @@ describe.skipIf(!vendoredAvailable)('CLFDES is the routine at :4562-4599', () =>
   it('the debris setup is LDA #5 "five images" (:4579)', () => {
     const ins = instrAt(4579)
     expect(ins?.op, 'LDA').toBe('LDA')
-    expect(operandNum(ins!.operand), 'five debris frames').toBe(5)
+    expect(operandAt(4579), 'five debris frames').toBe(5)
     expect(sourceLines(FILE)[4579 - 1], 'the five-image comment').toContain('five images')
   })
 
   it('the shake tint is LDA #$2A "by altering the cliffs flavor" (:4570)', () => {
     const ins = instrAt(4570)
     expect(ins?.op).toBe('LDA')
-    expect(operandNum(ins!.operand), 'the flavor byte $2A').toBe(0x2a)
+    expect(operandAt(4570), 'the flavor byte $2A').toBe(0x2a)
     expect(sourceLines(FILE)[4570 - 1]).toContain('flavor')
   })
 
