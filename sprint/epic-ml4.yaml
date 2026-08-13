@@ -57,7 +57,10 @@ stories:
     title: 'Extract the shared BEE-family helpers (BEEMV1 mushroomsNeeded, BEEMV2 spawnH, BEEOFF, COMP) into one millipede core helper module. The ml4-1 third-consumer trigger is met: dragonfly/mosquito/bee/earwig now hold byte-identical module-local copies (MILLI.MAC:166-171, :179-194, :228-234) and the four suites pin the behaviour, so extraction is a pure refactor under an existing net. Filed by the ml4-3 review (TEA Delivery Finding routed the decision).'
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
     type: refactor
+    review_findings: "APPROVED round 2. Round 1 REJECTED on 3 MEDIUM [DOC] stale headers (module-local copies claim, falsified by the ./bee-family import); Dev reworked all three headers + restored the spawnH docstring phrase, comment-only (zero executable change). Re-review: comment-analyzer CLEAN, preflight GREEN (826/0); security + rule-checker round-1 CLEAN stand (code byte-identical). Extraction is byte-identical, pure, guarded."
+    review_verdict: approved

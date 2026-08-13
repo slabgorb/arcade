@@ -31,6 +31,12 @@
 // spawnH returns null on the 16 invalid bytes (the logged ml4-2 Design
 // Deviation).
 
+// The BEEMV1/BEEMV2/BEEOFF/COMP ports now live once in ./bee-family (ml4-6).
+// mushroomsNeeded and spawnH are re-exported so this file's public surface is
+// unchanged; comp is internal; dragonflyOff aliases the shared beeOff.
+import { comp, mushroomsNeeded, spawnH, beeOff } from './bee-family'
+export { mushroomsNeeded, spawnH }
+
 // ─── spawn writes (DF-3/28/33/38) ───────────────────────────────────────────
 export const DRAGONFLY_SLOT = 12 // BEEC+12. (MILLI.MAC:1011/:1025, DF-3)
 export const DRAGONFLY_PIC = 0x1e // FLYMV3 picture (:1139, DF-28)
@@ -93,26 +99,9 @@ export type DragonflyMove =
   | { kind: 'offscreen' }
   | { kind: 'moved'; audioOffset: number; plantMushroom: boolean }
 
-/** Two's complement of a byte (the ROM's COMP). */
-function comp(b: number): number {
-  return (0x100 - b) & 0xff
-}
-
 /** The movement sweep's dragonfly test: a live slot in the band [1E,20) (MILLI.MAC:1030-1036, DF-11/12). */
 export function isDragonfly(slot: Readonly<DragonflySlot>): boolean {
   return slot.color !== 0 && slot.pic >= DRAGONFLY_PIC && slot.pic < 0x20
-}
-
-/**
- * BEEMV1 (MILLI.MAC:179-194) — the mushrooms-needed curve: 5 below 20,000
- * (DF-49), 9 to 120,000 (DF-50), the halved SCORE2 byte plus 6 beyond
- * (DF-51), capped at 0x2F (DF-52).
- */
-export function mushroomsNeeded(score2: number): number {
-  if (score2 < 0x02) return 0x05 // :180-182 (DF-49)
-  if (score2 < 0x12) return 0x09 // :183-185 (DF-50)
-  const a = (score2 >> 1) + 6 // :186-188 (DF-51)
-  return a < 0x30 ? a : 0x2f // :189-191 (DF-52)
 }
 
 /**
@@ -149,17 +138,6 @@ export function dragonflySpeed(env: Readonly<DragonflyEnv>): number {
   if (env.score2 >= 0x05) return 2 // :1148-1150 (DF-30)
   if (env.nocent !== 0) return 2 // :1151-1152 (DF-31)
   return 1 // :1153 (DF-32)
-}
-
-/**
- * BEEMV2's spawn column (MILLI.MAC:228-234): RND0 AND F8, rejected below
- * 0x10 (DF-34/35 — null models the ROM's reroll spin as a deferred spawn),
- * minus 4 (DF-36).
- */
-export function spawnH(rnd0: number): number | null {
-  const masked = rnd0 & 0xf8 // :229 (DF-34)
-  if (masked < 0x10) return null // :230-232 (DF-34/35) — BEQ and CMP I,10/BCC rerolls
-  return (masked - 4) & 0xff // :233-234 (DF-36)
 }
 
 /**
@@ -263,12 +241,8 @@ export function moveDragonfly(slot: DragonflySlot, env: Readonly<DragonflyEnv>):
   return { kind: 'moved', audioOffset, plantMushroom }
 }
 
-/** BEEOFF (MILLI.MAC:166-171, DF-41): clear PTS, colour and H — the slot is freed, V untouched. */
-export function dragonflyOff(slot: DragonflySlot): void {
-  slot.pts = 0 // :166-167 (DF-41/56)
-  slot.color = 0 // :168
-  slot.h = 0 // :169 — prevents blanking other motion objects
-}
+/** BEEOFF (MILLI.MAC:166-171, DF-41): clear PTS, colour and H — the slot is freed, V untouched. The shared ./bee-family beeOff, aliased to preserve the DragonflySlot signature. */
+export const dragonflyOff: (slot: DragonflySlot) => void = beeOff
 
 /** SHOOT2's dragonfly branch (MILLI.MAC:2121-2124): 500 points, 1500 by DDT (DF-53/54/55). */
 export function dragonflyKill(byDdt: boolean): { points: number } {
