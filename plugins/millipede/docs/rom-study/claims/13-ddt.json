@@ -1,0 +1,1964 @@
+[
+  {
+    "id": "DD-1",
+    "claim": "PLYFLD is $1000, 30 wide by 32 high; a DDTADD high byte therefore carries the $10 page plus the column-page in its low 2 bits (offset = ((hi&3)<<8)|lo, row = lo&$1F, col-page = lo>>5 within hi&3).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 103,
+      "verbatim": "PLYFLD\t=1000\t\t\t;30 WIDE BY 32 HIGH (400-7BF)"
+    }
+  },
+  {
+    "id": "DD-2",
+    "claim": "NDDT = 4: the DDTADD bank holds exactly four bomb entries per player.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 191,
+      "verbatim": "NDDT\t=4\t\t\t;NUMBER OF DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-3",
+    "claim": "CLOUD = $2E is the first DDT-explosion-cloud stamp; the cloud band is [$2E, $6E).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 202,
+      "verbatim": "CLOUD\t=2E\t\t\t;START OF DDT EXPLOSION CLOUDS"
+    }
+  },
+  {
+    "id": "DD-4",
+    "claim": "DDT = $6E is the first of the 2 stamps for a DDT bomb: DDT at the base cell, DDT+1 = $6F at base+$20 (next column, same row).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 203,
+      "verbatim": "DDT\t=6E\t\t\t;FIRST OF 2 STAMPS FOR DDT BOMB"
+    }
+  },
+  {
+    "id": "DD-5",
+    "claim": "ROCK = $70. In DDTS2 the masked stamp is compared against ROCK: cells holding $01..$6F block the restore write, cells >= $70 (rocks and all mushroom pictures) are overwritten.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 204,
+      "verbatim": "ROCK\t=70\t\t\t;INDESTRUCTIBLE FEATURE"
+    }
+  },
+  {
+    "id": "DD-6",
+    "claim": "DELAY is the between-waves delay byte; BOMBS sets it to $80 and bomb-mode arming sets it to $40.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 286,
+      "verbatim": "DELAY:\t.BLKB 1\t\t\t;NON ZERO TO DELY BETWEEN WAVES"
+    }
+  },
+  {
+    "id": "DD-7",
+    "claim": "HITDDT is non-zero once a DDT has been hit; shooting a bomb increments it.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 373,
+      "verbatim": "HITDDT:\t.BLKB 2\t\t\t;NON-ZERO IF DDT HAS BEEN HIT"
+    }
+  },
+  {
+    "id": "DD-8",
+    "claim": "NOCENT is the bomb-mode critter budget: non-zero means critters (not centipedes) are to be started.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 391,
+      "verbatim": "NOCENT:\t.BLKB 1\t\t\t;NON-ZERO IF NO CENTIPEDES ARE TO BE STARTED"
+    }
+  },
+  {
+    "id": "DD-9",
+    "claim": "DDTADD is the player-1 bank of NDDT*2 address bytes (lo at DDTADD-1+X, hi at DDTADD+X, X = 7,5,3,1); D5-D7 of the high byte carry the explosion sequence.",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 400,
+      "verbatim": "DDTADD:\t.BLKB NDDT*2\t\t;PLAYER 1 DDT BOMB ADDRESSES (D5-D7=EXPLOSION SEQUENCE)"
+    }
+  },
+  {
+    "id": "DD-10",
+    "claim": "The player-2 DDTADD bank follows player 1; DDTS1 selects it with PLAYR<<3 (caller/wiring concern - the core models one bank).",
+    "source": {
+      "file": "MLDEF.MAC",
+      "line": 401,
+      "verbatim": "\t.BLKB NDDT*2\t\t;PLAYER 2 DDT BOMB ADDRESSES"
+    }
+  },
+  {
+    "id": "DD-11",
+    "claim": "DDTS is the \"ADD DDT BOMBS\" routine: wave-start placement of the DDTADD bank followed by the DDTS2 stamp restore.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 420,
+      "verbatim": "\t.SBTTL\tDDTS - ADD DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-12",
+    "claim": "DDTS copies NDDT*2 = 8 address bytes (4 word entries) from DDTST into DDTADD, Y descending from NDDT*2-1.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 422,
+      "verbatim": "\tLDY I,NDDT*2-1"
+    }
+  },
+  {
+    "id": "DD-13",
+    "claim": "DDTS tests MODE EOR $FF: only MODE == $FF (special attract) switches to the special DDT placements.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 434,
+      "verbatim": "\tEOR I,0FF"
+    }
+  },
+  {
+    "id": "DD-14",
+    "claim": "Special attract mode uses DDTST bytes $17..$10, i.e. words 8..11 of DDTST ($10A3, $1084, $1086, 0).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 436,
+      "verbatim": "\tLDY I,17\t\t;USE SPECIAL DDT PLACEMENTS"
+    }
+  },
+  {
+    "id": "DD-15",
+    "claim": "Upright non-attract placement copies DDTST bytes $07..$00, i.e. words 0..3 ($10CD, $1119, $1233, $12F7).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 437,
+      "verbatim": "15$:\tLDA Y,DDTST"
+    }
+  },
+  {
+    "id": "DD-16",
+    "claim": "The DDTST bytes are stored into DDTADD with X descending in lockstep with Y: entry pair (X=7,6) receives word 3, (5,4) word 2, (3,2) word 1, (1,0) word 0.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 438,
+      "verbatim": "\tSTA X,DDTADD\t\t;SET DDT ADDRESSES"
+    }
+  },
+  {
+    "id": "DD-17",
+    "claim": "DDTS2 re-stamps every intact table entry onto the playfield; it is also called standalone to restore bombs blanked by messages.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 443,
+      "verbatim": "DDTS2:\tJSR DDTS1\t\t;SET UP PARAMETERS"
+    }
+  },
+  {
+    "id": "DD-18",
+    "claim": "A zero DDTADD high byte means a vacant entry: DDTS2 skips it.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 445,
+      "verbatim": "\tBEQ 20$\t\t\t;NO ENTRY"
+    }
+  },
+  {
+    "id": "DD-19",
+    "claim": "The exploding threshold is the high byte >= PLYFLD+400/100 = $14.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 446,
+      "verbatim": "\tCMP I,PLYFLD+400/100"
+    }
+  },
+  {
+    "id": "DD-20",
+    "claim": "DDTS2 does not re-stamp an exploding entry.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 447,
+      "verbatim": "\tBCS 20$\t\t\t;IF EXPLODING"
+    }
+  },
+  {
+    "id": "DD-21",
+    "claim": "DDTS2 writes the second stamp cell at entry address + $20 (upright picture order: DDT+1 first at +$20).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 451,
+      "verbatim": "\tLDY I,20"
+    }
+  },
+  {
+    "id": "DD-22",
+    "claim": "A cell whose masked stamp (AND $7F) is zero is writable.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 457,
+      "verbatim": "\tBEQ 16$\t\t\t;IF A BLANK"
+    }
+  },
+  {
+    "id": "DD-23",
+    "claim": "The occupancy test compares the masked stamp against ROCK ($70).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 458,
+      "verbatim": "\tCMP I,ROCK\t\t;WE CAN OVERWRITE A MUSHROOM IN ATTRACT"
+    }
+  },
+  {
+    "id": "DD-24",
+    "claim": "Masked stamps $01..$6F block the write (letters, clouds, other bombs); >= ROCK falls through and is overwritten (\"WE CAN OVERWRITE A MUSHROOM IN ATTRACT\").",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 459,
+      "verbatim": "\tBCC 18$\t\t\t;IF SOMETHING IS THERE"
+    }
+  },
+  {
+    "id": "DD-25",
+    "claim": "The +$20 cell receives stamp DDT+1 = $6F.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 460,
+      "verbatim": "16$:\tLDA I,DDT+1"
+    }
+  },
+  {
+    "id": "DD-26",
+    "claim": "The window flips back (Y EOR $20) to the base cell.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 463,
+      "verbatim": "\tEOR I,20"
+    }
+  },
+  {
+    "id": "DD-27",
+    "claim": "The base cell receives stamp DDT = $6E.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 470,
+      "verbatim": "19$:\tLDA I,DDT"
+    }
+  },
+  {
+    "id": "DD-28",
+    "claim": "DDTS1 computes the bank index X = (PLAYR<<3) | (NDDT*2-1): player 1 sweeps X = 7,5,3,1 - table entries are visited word-3-first (descending).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 485,
+      "verbatim": "\tORA I,NDDT*2-1"
+    }
+  },
+  {
+    "id": "DD-29",
+    "claim": "DDTS1 sets the sweep counter TEMP2 = NDDT-1 = 3: exactly four entries are visited.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 487,
+      "verbatim": "\tLDA I,NDDT-1"
+    }
+  },
+  {
+    "id": "DD-30",
+    "claim": "DDTST word 0 is $10CD (upright word 0); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 491,
+      "verbatim": "DDTST:\t.WORD 10CD\t\t;STARTING ADDRESSES OF DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-31",
+    "claim": "DDTST word 1 is $1119 (upright word 1); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 492,
+      "verbatim": "\t.WORD 1119"
+    }
+  },
+  {
+    "id": "DD-32",
+    "claim": "DDTST word 2 is $1233 (upright word 2); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 493,
+      "verbatim": "\t.WORD 1233"
+    }
+  },
+  {
+    "id": "DD-33",
+    "claim": "DDTST word 3 is $12F7 (upright word 3); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 494,
+      "verbatim": "\t.WORD 12F7"
+    }
+  },
+  {
+    "id": "DD-34",
+    "claim": "DDTST word 4 is $12F2 (cocktail player-2 word 4); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 495,
+      "verbatim": "\t.WORD 12F2\t\t;COCKTAIL PLAYER 2 POSITIONS"
+    }
+  },
+  {
+    "id": "DD-35",
+    "claim": "DDTST word 5 is $12A6 (cocktail word 5); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 496,
+      "verbatim": "\t.WORD 12A6"
+    }
+  },
+  {
+    "id": "DD-36",
+    "claim": "DDTST word 6 is $118C (cocktail word 6); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 497,
+      "verbatim": "\t.WORD 118C"
+    }
+  },
+  {
+    "id": "DD-37",
+    "claim": "DDTST word 7 is $10C8 (cocktail word 7); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 498,
+      "verbatim": "\t.WORD 10C8"
+    }
+  },
+  {
+    "id": "DD-38",
+    "claim": "DDTST word 8 is $10A3 (special-attract word 8); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 499,
+      "verbatim": "\t.WORD 10A3"
+    }
+  },
+  {
+    "id": "DD-39",
+    "claim": "DDTST word 9 is $1084 (special-attract word 9); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 500,
+      "verbatim": "\t.WORD 1084"
+    }
+  },
+  {
+    "id": "DD-40",
+    "claim": "DDTST word 10 is $1086 (special-attract word 10); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 501,
+      "verbatim": "\t.WORD 1086"
+    }
+  },
+  {
+    "id": "DD-41",
+    "claim": "DDTST word 11 is 0 (special-attract word 11 - a vacant fourth entry); the table is exactly 12 words - upright 0..3, cocktail 4..7, special attract 8..11.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 502,
+      "verbatim": "\t.WORD 0"
+    }
+  },
+  {
+    "id": "DD-42",
+    "claim": "Game start calls DDTS2 to reset the DDT bomb stamps (wiring seam for ml7).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 68,
+      "verbatim": "\tJSR DDTS2\t\t;RESET DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-43",
+    "claim": "After a message overlay the game jumps to DDTS2 to restore the bombs (wiring seam).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 673,
+      "verbatim": "\tJMP DDTS2\t\t;RESTORE DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-44",
+    "claim": "A second message path also restores blanked bombs via DDTS2 (wiring seam).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1038,
+      "verbatim": "\tJMP DDTS2\t\t;RESTORE ANY DDT BOMBS BLANKED OUT"
+    }
+  },
+  {
+    "id": "DD-45",
+    "claim": "The scroll gate ORs the four DDTADD high bytes and compares the OR against $14: sound only because intact pages are $10..$12 - the seed rejection of column-page 3 keeps the OR below the threshold.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1122,
+      "verbatim": "\tCMP I,PLYFLD+400/100"
+    }
+  },
+  {
+    "id": "DD-46",
+    "claim": "MUSHD1 derives the count region from the address low byte AND $1F (the row).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 712,
+      "verbatim": "MUSHD1:\tAND I,1F"
+    }
+  },
+  {
+    "id": "DD-47",
+    "claim": "Upright: rows < $0C decrement MUSH (the bottom-region count).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 723,
+      "verbatim": "\tBCC 7$\t\t\t;IF MUSHROOM IS ON LOWER HALF OF SCREEN"
+    }
+  },
+  {
+    "id": "DD-48",
+    "claim": "Upright: rows $0C..$13 decrement NOTHING - the middle band is uncounted.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 725,
+      "verbatim": "\tBCC 10$\t\t\t;IF IN THE MIDDLE"
+    }
+  },
+  {
+    "id": "DD-49",
+    "claim": "Rows >= $14 fall through INX INX and decrement MUSH+2 (the top-region count).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 728,
+      "verbatim": "7$:\tDEC X,MUSH  \t\t;CORRECT MUSHROOM COURT"
+    }
+  },
+  {
+    "id": "DD-50",
+    "claim": "Down-scroll clears the one-bomb-per-line flag first: at most ONE bomb is seeded per scroll.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1232,
+      "verbatim": "\tSTA TEMP2+1\t\t;ALLOW ONLY 1 DDT BOMB PER LINE"
+    }
+  },
+  {
+    "id": "DD-51",
+    "claim": "A vacant entry (hi = 0) goes to the seeding branch.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1235,
+      "verbatim": "\tBEQ 60$\t\t\t;IF VACANT ENTRY"
+    }
+  },
+  {
+    "id": "DD-52",
+    "claim": "An exploding entry (hi >= $14) is neither moved nor cleared by the scroll.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1237,
+      "verbatim": "\tBCS 68$\t\t\t;IF EXPLODING DO NOT SCROLL"
+    }
+  },
+  {
+    "id": "DD-53",
+    "claim": "Upright down-scroll moves the bomb pointer with DEC lo (one row down).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1243,
+      "verbatim": "54$:\tDEC X,DDTADD-1"
+    }
+  },
+  {
+    "id": "DD-54",
+    "claim": "The off-screen test masks the moved lo with $1E (row bits sans bit 0): rows 0 and 1 both read as off-screen.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1246,
+      "verbatim": "\tAND I,1E"
+    }
+  },
+  {
+    "id": "DD-55",
+    "claim": "lo AND $1E == 0 clears the entry (hi = 0); the stamps are NOT erased by this path - the field shift already moved them.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1248,
+      "verbatim": "\tSTA X,DDTADD\t\t;CLEAR DDT BOMB"
+    }
+  },
+  {
+    "id": "DD-56",
+    "claim": "A second vacant entry in the same scroll finds the flag set and does not seed.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1250,
+      "verbatim": "\tBNE 68$\t\t\t;ONLY 1 DDT BOMB PER LINE"
+    }
+  },
+  {
+    "id": "DD-57",
+    "claim": "Seed column page = RND1 AND 3; the value 3 is rejected (\"STAY AWAY FROM THE RIGHT EDGE\") - bombs never occupy column page 3.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1253,
+      "verbatim": "\tCMP I,03"
+    }
+  },
+  {
+    "id": "DD-58",
+    "claim": "The accepted page is ORed with PLYFLD/100 = $10 to form the entry high byte.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1255,
+      "verbatim": "\tORA I,PLYFLD/100"
+    }
+  },
+  {
+    "id": "DD-59",
+    "claim": "Seed lo takes its column-low bits from RND0 AND $E0.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1258,
+      "verbatim": "\tAND I,0E0"
+    }
+  },
+  {
+    "id": "DD-60",
+    "claim": "Seed lo ORs in $1E: new bombs enter on the top row.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1259,
+      "verbatim": "\tORA I,1E\t\t;ADD TO TOP ROW"
+    }
+  },
+  {
+    "id": "DD-61",
+    "claim": "Left-edge guard: lo >= $80 is always acceptable.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1263,
+      "verbatim": "62$:\tCMP I,PLYFLD+80&0FF"
+    }
+  },
+  {
+    "id": "DD-62",
+    "claim": "lo < $80 with page $10 (columns 0..3) rejects the seed; lo < $80 on pages $11/$12 is fine.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1266,
+      "verbatim": "\tBEQ 68$\t\t\t;NO DDT BOMBS (STAY AWAY FROM LEFT EDGE)"
+    }
+  },
+  {
+    "id": "DD-63",
+    "claim": "The one-per-scroll flag is set with the current table index X (7,5,3,1 - always non-zero).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1276,
+      "verbatim": "64$:\tSTX TEMP2+1\t\t;NON-ZERO=FLAG FOR NO MORE DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-64",
+    "claim": "A non-zero byte at seed+$20 decrements MUSH+2 before being overwritten (the seed row is in the top region).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1280,
+      "verbatim": "\tDEC X,MUSH+2\t\t;ONE LESS MUSHROOM"
+    }
+  },
+  {
+    "id": "DD-65",
+    "claim": "The seed writes DDT+1 at address+$20 ...",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1281,
+      "verbatim": "66$:\tLDA I,DDT+1"
+    }
+  },
+  {
+    "id": "DD-66",
+    "claim": "... decrements MUSH+2 again if the base cell is non-zero ...",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1288,
+      "verbatim": "\tDEC X,MUSH+2\t\t;ONE LESS MUSHROOM"
+    }
+  },
+  {
+    "id": "DD-67",
+    "claim": "... and writes DDT at the base address.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1289,
+      "verbatim": "67$:\tLDA I,DDT"
+    }
+  },
+  {
+    "id": "DD-68",
+    "claim": "Up-scroll skips vacant entries; there is NO seeding on up-scroll.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1381,
+      "verbatim": "\tBEQ 58$\t\t\t;IF EMPTY ENTRY"
+    }
+  },
+  {
+    "id": "DD-69",
+    "claim": "Up-scroll skips exploding entries.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1383,
+      "verbatim": "\tBCS 58$\t\t\t;IF EXPLODING"
+    }
+  },
+  {
+    "id": "DD-70",
+    "claim": "Upright up-scroll moves the bomb pointer with INC lo (one row up).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1389,
+      "verbatim": "54$:\tINC X,DDTADD-1\t\t;MOVE POINTER"
+    }
+  },
+  {
+    "id": "DD-71",
+    "claim": "The off-top test is (lo AND $1F) EOR $1F: only row $1F reads as off the top.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1393,
+      "verbatim": "\tEOR I,1F"
+    }
+  },
+  {
+    "id": "DD-72",
+    "claim": "A bomb reaching row $1F is cleared (hi = 0).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1395,
+      "verbatim": "\tSTA X,DDTADD\t\t;CLEAR ENTRY"
+    }
+  },
+  {
+    "id": "DD-73",
+    "claim": "The up-scroll DDT half tails into SCROL0 (obstacle-on-player unstick - ml3-3 seam).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1400,
+      "verbatim": "\tJMP SCROL0\t\t;REMOVE OBSTACLE ON TOP OF PLAYER."
+    }
+  },
+  {
+    "id": "DD-74",
+    "claim": "BOMBS is the bomb-mode critter-entry dispatcher: it bombs the player with bee, mosquito and dragonfly.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 446,
+      "verbatim": "\t.SBTTL\tBOMBS - BOMB PLAYER WITH BEE, MOSQUITO AND DRAGONFLY"
+    }
+  },
+  {
+    "id": "DD-75",
+    "claim": "NOCENT == 0 returns immediately (no delay set).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 450,
+      "verbatim": "\tBEQ 15$\t\t\t;NO CRITTERS TO ENTER"
+    }
+  },
+  {
+    "id": "DD-76",
+    "claim": "Special attract mode (MODE bit 7 set) never bombs (no delay set).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 452,
+      "verbatim": "\tBMI 15$\t\t\t;SPECIAL ATTRACT MODE NO BOMBING"
+    }
+  },
+  {
+    "id": "DD-77",
+    "claim": "The entry gate is RND0 AND 7 == 0 (a fresh RND0 read).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 454,
+      "verbatim": "\tAND I,7"
+    }
+  },
+  {
+    "id": "DD-78",
+    "claim": "Once the gates pass, DELAY = $80 is set BEFORE the slot scan - it is set even when no free slot is found.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 457,
+      "verbatim": "\tSTA DELAY\t\t;WAIT UNTIL THEY REACH THE BOTTOM"
+    }
+  },
+  {
+    "id": "DD-79",
+    "claim": "The slot scan starts at index 12 decimal (13 BEEC slots, 12..0).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 458,
+      "verbatim": "\tLDX I,12."
+    }
+  },
+  {
+    "id": "DD-80",
+    "claim": "A zero BEEC byte is a free slot; finding one proceeds to the creature dispatch.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 460,
+      "verbatim": "\tBEQ 20$\t\t\t;WE FOUND AN ENTRY"
+    }
+  },
+  {
+    "id": "DD-81",
+    "claim": "No free slot in 12..0 returns (with DELAY already set).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 462,
+      "verbatim": "\tBPL 10$\t\t\t;LOOK FOR AN ENTRY"
+    }
+  },
+  {
+    "id": "DD-82",
+    "claim": "The creature-table index is CENTIN >> 1 (0..5 for CENTIN 0..11).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 467,
+      "verbatim": "\tLSR"
+    }
+  },
+  {
+    "id": "DD-83",
+    "claim": "A creature code with D7 = 1 takes the dragonfly/mosquito path; D7 = 0 (codes $00) enters a bee directly.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 470,
+      "verbatim": "\tBMI 30$\t\t\t;THESE ARE TO BE DRAGONFLIES"
+    }
+  },
+  {
+    "id": "DD-84",
+    "claim": "The bee entry calls BEEMV3 (the ml4-3 bee spawn seam).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 471,
+      "verbatim": "25$:\tJSR BEEMV3\t\t;ENTER A BEE"
+    }
+  },
+  {
+    "id": "DD-85",
+    "claim": "Every successful entry decrements NOCENT by exactly one.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 472,
+      "verbatim": "\tDEC NOCENT\t\t;JUST SO SPEED IS AT LEAST 2"
+    }
+  },
+  {
+    "id": "DD-86",
+    "claim": "After ASL: negative (code $C0 -> $80) means mosquitoes only.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 476,
+      "verbatim": "\tBMI 40$\t\t\t;ADD MOSQUITOS ONLY"
+    }
+  },
+  {
+    "id": "DD-87",
+    "claim": "After ASL: zero (code $80 -> $00) means dragonflies only.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 477,
+      "verbatim": "\tBEQ 35$\t\t\t;DRAGONFLIES ONLY"
+    }
+  },
+  {
+    "id": "DD-88",
+    "claim": "The multi-critter mask ANDs a SECOND, separate RND0 read - the gate read (bits 0-2 clear) must not be reused or the dispatch degenerates to always-bee.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 478,
+      "verbatim": "\tAND RND0"
+    }
+  },
+  {
+    "id": "DD-89",
+    "claim": "Masked pick == 0 enters a bee.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 479,
+      "verbatim": "\tBEQ 25$\t\t\t;ADD A BEE"
+    }
+  },
+  {
+    "id": "DD-90",
+    "claim": "Masked pick == 6 enters a mosquito (only reachable for code $83, mask 6).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 481,
+      "verbatim": "\tBEQ 40$\t\t\t;ADD A MOSQUITO"
+    }
+  },
+  {
+    "id": "DD-91",
+    "claim": "Any other masked pick enters a dragonfly via FLYMV3 (the ml4-2 seam).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 482,
+      "verbatim": "35$:\tJSR FLYMV3\t\t;ENTER A DRAGONFLY"
+    }
+  },
+  {
+    "id": "DD-92",
+    "claim": "The mosquito entry calls MOSQT3 (the ml4-2 seam).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 486,
+      "verbatim": "40$:\tJSR MOSQT3\t\t;ENTER A MOSQUITO"
+    }
+  },
+  {
+    "id": "DD-93",
+    "claim": "The creature table is $83,$81,$C0,$80 for CENTIN pairs 0-1,2-3,4-5,6-7 ...",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 490,
+      "verbatim": "90$:\t.BYTE 83,81,0C0,80\t;WHAT CREATURE TO ENTER (D7=1=DRAGONFLIES) (D7=D6=1=MOSQUITOS"
+    }
+  },
+  {
+    "id": "DD-94",
+    "claim": "... and $80,$00 for pairs 8-9,10-11: late-wave pairs are dragonflies-only then bees-only.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 491,
+      "verbatim": "\t.BYTE 80,0\t\t;(D7=0=BEES ONLY) (D7=1,D6=0,D0-D1=MULTIPLE CRITTERS)"
+    }
+  },
+  {
+    "id": "DD-95",
+    "claim": "BOMBSL lists the CENTIN values that arm bomb mode: 1,3,5,7 ...",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 492,
+      "verbatim": "BOMBSL:\t.BYTE 1,3,5,7\t\t;AFTER WHAT \"CENTIN\" TO ENTER CRITTERS"
+    }
+  },
+  {
+    "id": "DD-96",
+    "claim": "... and $0B - five arming levels in all.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 493,
+      "verbatim": "\t.BYTE 0B"
+    }
+  },
+  {
+    "id": "DD-97",
+    "claim": "At wave end, CENTIN is matched against the five BOMBSL entries (Y = 4..0); a match arms bomb mode.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1917,
+      "verbatim": "55$:\tCMP Y,BOMBSL\t\t;IS THIS THE LEVEL TO BOMB THE PLAYER"
+    }
+  },
+  {
+    "id": "DD-98",
+    "claim": "NOCENT = (SCORE2 >> 1) + 20 decimal + the LSR carry: there is NO CLC, so an odd SCORE2 adds one extra critter (the BEEMV1-style carry trap).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1921,
+      "verbatim": "\tADC I,20.\t\t;MORE PER SCORE"
+    }
+  },
+  {
+    "id": "DD-99",
+    "claim": "The computed budget is stored in NOCENT.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1922,
+      "verbatim": "\tSTA NOCENT"
+    }
+  },
+  {
+    "id": "DD-100",
+    "claim": "Arming increments BOMBV (bomb-mode scoring flag - wiring seam).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1923,
+      "verbatim": "\tINC BOMBV\t\t;START GIVING SCORES FOR BOMB MODE"
+    }
+  },
+  {
+    "id": "DD-101",
+    "claim": "Arming sets DELAY = $40 so the centipede does not start during the bombing.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1925,
+      "verbatim": "\tSTA DELAY\t\t;DELAY ATTRACT MODE SO CENTIPEDE DOES NOT START."
+    }
+  },
+  {
+    "id": "DD-102",
+    "claim": "Explosions advance only on frames where FRAME AND 7 == 0 (every 8th frame).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 842,
+      "verbatim": "\tAND I,7"
+    }
+  },
+  {
+    "id": "DD-103",
+    "claim": "The cloud anchor low byte is the entry lo - it does not change during the explosion.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 846,
+      "verbatim": "\tSTA OBST"
+    }
+  },
+  {
+    "id": "DD-104",
+    "claim": "Only entries with high byte >= $14 are advanced.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 848,
+      "verbatim": "\tCMP I,PLYFLD+400/100"
+    }
+  },
+  {
+    "id": "DD-105",
+    "claim": "The next state is high byte - $10 (SBC with carry known set).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 851,
+      "verbatim": "\tSBC I,10\t\t;CARRY WAS SET"
+    }
+  },
+  {
+    "id": "DD-106",
+    "claim": "The anchor high byte is (new hi AND 3) OR $10 - the position survives in the low 2 bits.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 853,
+      "verbatim": "\tAND I,3FF/100"
+    }
+  },
+  {
+    "id": "DD-107",
+    "claim": "The frame index derives from the OLD high byte: AND $F0 then four LSRs.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 857,
+      "verbatim": "\tAND I,0F0\t\t;GET EXPLOSION INDEX"
+    }
+  },
+  {
+    "id": "DD-108",
+    "claim": "The four LSRs leave carry CLEAR, so SBC #1 subtracts 2: index = (old hi >> 4) - 2, giving 9..0 from start value $B4.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 862,
+      "verbatim": "\tSBC I,01"
+    }
+  },
+  {
+    "id": "DD-109",
+    "claim": "Index 0 clears the entry (hi = 0) and still runs list 0 - the final erase frame.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 864,
+      "verbatim": "\tSTA X,DDTADD\t\t;CLEAR DDT ENTRY IF DONE"
+    }
+  },
+  {
+    "id": "DD-110",
+    "claim": "The 98$ table maps index 0..9 to an offset-list start; offsets and stamps are PARALLEL tables read with the same cursor.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 867,
+      "verbatim": "\tLDA X,98$\t\t;GET INDEX INTO TABLES"
+    }
+  },
+  {
+    "id": "DD-111",
+    "claim": "Each offset list is terminated by $FF.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 870,
+      "verbatim": "\tCMP I,0FF"
+    }
+  },
+  {
+    "id": "DD-112",
+    "claim": "A blank cell (masked stamp 0) is overwritten.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 880,
+      "verbatim": "\tBEQ 82$\t\t\t;BLANKS ARE OK"
+    }
+  },
+  {
+    "id": "DD-113",
+    "claim": "Masked stamps < CLOUD (letters/digits) are PRESERVED.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 882,
+      "verbatim": "\tBCC 84$\t\t\t;IF A LETTER"
+    }
+  },
+  {
+    "id": "DD-114",
+    "claim": "Masked stamps in [CLOUD, DDT) - existing cloud pictures - are overwritten.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 884,
+      "verbatim": "\tBCC 82$\t\t\t;CLOUDS CAN BE ERASED"
+    }
+  },
+  {
+    "id": "DD-115",
+    "claim": "Masked stamps DDT and DDT+1 - other bombs - are PRESERVED.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 886,
+      "verbatim": "\tBCC 84$\t\t\t;DO NOT DESTROY LETTERS OR DDT BOMBS"
+    }
+  },
+  {
+    "id": "DD-116",
+    "claim": "Masked stamps >= DDT+2 = $70 (rocks included) are destroyed AND counted via MUSHD1 region rules.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 891,
+      "verbatim": "\tJSR MUSHD1\t\t;DECREMENT MUSHROOM COUNT"
+    }
+  },
+  {
+    "id": "DD-117",
+    "claim": "Every write preserves bit 7 (the grey player-area background) and ORs in the parallel 99$ stamp.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 894,
+      "verbatim": "\tAND I,80\t\t;SAVE GREY IN PLAYERS AREA"
+    }
+  },
+  {
+    "id": "DD-118",
+    "claim": "98$ row 0: frame index 0 uses offset list 90$ (index 0 - final erase).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 907,
+      "verbatim": "98$:\t.BYTE 90$-90$\t\t;INDEX INTO TABLES BELOW"
+    }
+  },
+  {
+    "id": "DD-119",
+    "claim": "98$ row 1: frame index 1 uses offset list 91$ (index 1 - erase ring + small cloud).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 908,
+      "verbatim": "\t.BYTE 91$-90$"
+    }
+  },
+  {
+    "id": "DD-120",
+    "claim": "98$ row 2: frame index 2 uses offset list 92$ (index 2 - erase ring + 96$ cloud).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 909,
+      "verbatim": "\t.BYTE 92$-90$"
+    }
+  },
+  {
+    "id": "DD-121",
+    "claim": "98$ row 3: frame index 3 uses offset list 93$ (index 3 - erase ring + 95$ cloud).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 910,
+      "verbatim": "\t.BYTE 93$-90$"
+    }
+  },
+  {
+    "id": "DD-122",
+    "claim": "98$ row 4: frame index 4 uses offset list 94$ (index 4 - full 8x3 cloud).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 911,
+      "verbatim": "\t.BYTE 94$-90$"
+    }
+  },
+  {
+    "id": "DD-123",
+    "claim": "98$ row 5: frame index 5 uses offset list 93$ again (index 5 - the pulse).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 912,
+      "verbatim": "\t.BYTE 93$-90$"
+    }
+  },
+  {
+    "id": "DD-124",
+    "claim": "98$ row 6: frame index 6 uses offset list 94$ again (index 6 - the pulse).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 913,
+      "verbatim": "\t.BYTE 94$-90$"
+    }
+  },
+  {
+    "id": "DD-125",
+    "claim": "98$ row 7: frame index 7 uses offset list 95$ (index 7).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 914,
+      "verbatim": "\t.BYTE 95$-90$"
+    }
+  },
+  {
+    "id": "DD-126",
+    "claim": "98$ row 8: frame index 8 uses offset list 96$ (index 8).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 915,
+      "verbatim": "\t.BYTE 96$-90$"
+    }
+  },
+  {
+    "id": "DD-127",
+    "claim": "98$ row 9: frame index 9 uses offset list 97$ (index 9 - first frame).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 916,
+      "verbatim": "\t.BYTE 97$-90$"
+    }
+  },
+  {
+    "id": "DD-128",
+    "claim": "Cloud offset table, 90$ row: offset $41. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 917,
+      "verbatim": "90$:\t.BYTE 41\t\t;OFFSETS FROM \"DDTADD\" TO CHANGE"
+    }
+  },
+  {
+    "id": "DD-129",
+    "claim": "Cloud offset table, 90$ row: offsets $60,$61,$62. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 918,
+      "verbatim": "\t.BYTE 60,61,62\t\t;THIS LIST CANNOT EXCEED 255 BYTES"
+    }
+  },
+  {
+    "id": "DD-130",
+    "claim": "Cloud offset table, 90$ row: offsets $80,$81,$82. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 919,
+      "verbatim": "\t.BYTE 80,81,82"
+    }
+  },
+  {
+    "id": "DD-131",
+    "claim": "Cloud offset table, 90$ row: offset $A1. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 920,
+      "verbatim": "\t.BYTE 0A1"
+    }
+  },
+  {
+    "id": "DD-132",
+    "claim": "Cloud offset table, 90$ terminator $FF. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 921,
+      "verbatim": "\t.BYTE -1\t\t;-1=END OF LIST"
+    }
+  },
+  {
+    "id": "DD-133",
+    "claim": "Cloud offset table, 91$ row: offsets $40,$42 (erase). Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 922,
+      "verbatim": "91$:\t.BYTE 40,42"
+    }
+  },
+  {
+    "id": "DD-134",
+    "claim": "Cloud offset table, 91$ row: offsets $A0,$A2,$C1 (erase); 91$ then falls through into 97$. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 923,
+      "verbatim": "\t.BYTE 0A0,0A2,0C1"
+    }
+  },
+  {
+    "id": "DD-135",
+    "claim": "Cloud offset table, 97$ row: offset $41. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 924,
+      "verbatim": "97$:\t.BYTE 41"
+    }
+  },
+  {
+    "id": "DD-136",
+    "claim": "Cloud offset table, 97$ row: offsets $60,$61,$62. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 925,
+      "verbatim": "\t.BYTE 60,61,62"
+    }
+  },
+  {
+    "id": "DD-137",
+    "claim": "Cloud offset table, 97$ row: offsets $80,$81,$82. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 926,
+      "verbatim": "\t.BYTE 80,81,82"
+    }
+  },
+  {
+    "id": "DD-138",
+    "claim": "Cloud offset table, 97$ row: offset $A1. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 927,
+      "verbatim": "\t.BYTE 0A1"
+    }
+  },
+  {
+    "id": "DD-139",
+    "claim": "Cloud offset table, 97$ terminator $FF. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 928,
+      "verbatim": "\t.BYTE -1"
+    }
+  },
+  {
+    "id": "DD-140",
+    "claim": "Cloud offset table, 92$ row: offsets $20,$21,$C2 (erase); 92$ then falls through into 96$. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 929,
+      "verbatim": "92$:\t.BYTE 20,21,0C2"
+    }
+  },
+  {
+    "id": "DD-141",
+    "claim": "Cloud offset table, 96$ row: offsets $40,$41,$42. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 930,
+      "verbatim": "96$:\t.BYTE 40,41,42"
+    }
+  },
+  {
+    "id": "DD-142",
+    "claim": "Cloud offset table, 96$ row: offsets $60,$61,$62. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 931,
+      "verbatim": "\t.BYTE 60,61,62"
+    }
+  },
+  {
+    "id": "DD-143",
+    "claim": "Cloud offset table, 96$ row: offsets $80,$81,$82. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 932,
+      "verbatim": "\t.BYTE 80,81,82"
+    }
+  },
+  {
+    "id": "DD-144",
+    "claim": "Cloud offset table, 96$ row: offsets $A0,$A1,$A2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 933,
+      "verbatim": "\t.BYTE 0A0,0A1,0A2"
+    }
+  },
+  {
+    "id": "DD-145",
+    "claim": "Cloud offset table, 96$ row: offset $C1. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 934,
+      "verbatim": "\t.BYTE 0C1"
+    }
+  },
+  {
+    "id": "DD-146",
+    "claim": "Cloud offset table, 96$ terminator $FF. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 935,
+      "verbatim": "\t.BYTE -1"
+    }
+  },
+  {
+    "id": "DD-147",
+    "claim": "Cloud offset table, 93$ row: offsets $00,$01,$02,$22 (erase). Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 936,
+      "verbatim": "93$:\t.BYTE 0,1,2,22"
+    }
+  },
+  {
+    "id": "DD-148",
+    "claim": "Cloud offset table, 93$ row: offsets $C0,$E0,$E1,$E2 (erase); 93$ then falls through into 95$. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 937,
+      "verbatim": "\t.BYTE 0C0,0E0,0E1,0E2"
+    }
+  },
+  {
+    "id": "DD-149",
+    "claim": "Cloud offset table, 95$ row: offsets $20,$21. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 938,
+      "verbatim": "95$:\t.BYTE 20,21"
+    }
+  },
+  {
+    "id": "DD-150",
+    "claim": "Cloud offset table, 95$ row: offsets $40,$41,$42. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 939,
+      "verbatim": "\t.BYTE 40,41,42"
+    }
+  },
+  {
+    "id": "DD-151",
+    "claim": "Cloud offset table, 95$ row: offsets $60,$61,$62. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 940,
+      "verbatim": "\t.BYTE 60,61,62"
+    }
+  },
+  {
+    "id": "DD-152",
+    "claim": "Cloud offset table, 95$ row: offsets $80,$81,$82. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 941,
+      "verbatim": "\t.BYTE 80,81,82"
+    }
+  },
+  {
+    "id": "DD-153",
+    "claim": "Cloud offset table, 95$ row: offsets $A0,$A1,$A2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 942,
+      "verbatim": "\t.BYTE 0A0,0A1,0A2"
+    }
+  },
+  {
+    "id": "DD-154",
+    "claim": "Cloud offset table, 95$ row: offsets $C1,$C2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 943,
+      "verbatim": "\t.BYTE 0C1,0C2"
+    }
+  },
+  {
+    "id": "DD-155",
+    "claim": "Cloud offset table, 95$ terminator $FF. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 944,
+      "verbatim": "\t.BYTE -1"
+    }
+  },
+  {
+    "id": "DD-156",
+    "claim": "Cloud offset table, 94$ row: offsets $00,$01,$02. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 945,
+      "verbatim": "94$:\t.BYTE 0,1,2"
+    }
+  },
+  {
+    "id": "DD-157",
+    "claim": "Cloud offset table, 94$ row: offsets $20,$21,$22. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 946,
+      "verbatim": "\t.BYTE 20,21,22"
+    }
+  },
+  {
+    "id": "DD-158",
+    "claim": "Cloud offset table, 94$ row: offsets $40,$41,$42. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 947,
+      "verbatim": "\t.BYTE 40,41,42"
+    }
+  },
+  {
+    "id": "DD-159",
+    "claim": "Cloud offset table, 94$ row: offsets $60,$61,$62. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 948,
+      "verbatim": "\t.BYTE 60,61,62"
+    }
+  },
+  {
+    "id": "DD-160",
+    "claim": "Cloud offset table, 94$ row: offsets $80,$81,$82. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 949,
+      "verbatim": "\t.BYTE 80,81,82"
+    }
+  },
+  {
+    "id": "DD-161",
+    "claim": "Cloud offset table, 94$ row: offsets $A0,$A1,$A2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 950,
+      "verbatim": "\t.BYTE 0A0,0A1,0A2"
+    }
+  },
+  {
+    "id": "DD-162",
+    "claim": "Cloud offset table, 94$ row: offsets $C0,$C1,$C2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 951,
+      "verbatim": "\t.BYTE 0C0,0C1,0C2"
+    }
+  },
+  {
+    "id": "DD-163",
+    "claim": "Cloud offset table, 94$ row: offsets $E0,$E1,$E2. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 952,
+      "verbatim": "\t.BYTE 0E0,0E1,0E2"
+    }
+  },
+  {
+    "id": "DD-164",
+    "claim": "Cloud offset table, 94$ terminator $FF. Offsets are byte-added to the cloud anchor (anchor = shot cell - $61: three columns left, one row up).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 953,
+      "verbatim": "\t.BYTE -1"
+    }
+  },
+  {
+    "id": "DD-165",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 90$ stamps: 0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 954,
+      "verbatim": "99$:\t.BYTE 0\t\t\t;90$"
+    }
+  },
+  {
+    "id": "DD-166",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 90$ stamps: 0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 955,
+      "verbatim": "\t.BYTE 0,0,0"
+    }
+  },
+  {
+    "id": "DD-167",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 90$ stamps: 0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 956,
+      "verbatim": "\t.BYTE 0,0,0"
+    }
+  },
+  {
+    "id": "DD-168",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 90$ stamps: 0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 957,
+      "verbatim": "\t.BYTE 0"
+    }
+  },
+  {
+    "id": "DD-169",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: pad byte for the 90$ terminator.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 958,
+      "verbatim": "\t.BYTE 0\t\t\t;NOT USED"
+    }
+  },
+  {
+    "id": "DD-170",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 91$ stamps: 0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 959,
+      "verbatim": "\t.BYTE 0,0\t\t;91$"
+    }
+  },
+  {
+    "id": "DD-171",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 91$ stamps: 0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 960,
+      "verbatim": "\t.BYTE 0,0,0"
+    }
+  },
+  {
+    "id": "DD-172",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 97$ stamps: $30.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 961,
+      "verbatim": "\t.BYTE 30\t\t;97$"
+    }
+  },
+  {
+    "id": "DD-173",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 97$ stamps: $34,$31,$2E.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 962,
+      "verbatim": "\t.BYTE 34,31,2E"
+    }
+  },
+  {
+    "id": "DD-174",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 97$ stamps: $35,$32,$2F.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 963,
+      "verbatim": "\t.BYTE 35,32,2F"
+    }
+  },
+  {
+    "id": "DD-175",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 97$ stamps: $33.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 964,
+      "verbatim": "\t.BYTE 33"
+    }
+  },
+  {
+    "id": "DD-176",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: pad byte for the 97$ terminator.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 965,
+      "verbatim": "\t.BYTE 0\t\t\t;NOT USED"
+    }
+  },
+  {
+    "id": "DD-177",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 92$ stamps: 0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 966,
+      "verbatim": "\t.BYTE 0,0,0\t\t;92$"
+    }
+  },
+  {
+    "id": "DD-178",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 96$ stamps: $3F,$3A,$36.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 967,
+      "verbatim": "\t.BYTE 3F,3A,36\t\t;96$"
+    }
+  },
+  {
+    "id": "DD-179",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 96$ stamps: $40,$3B,$37.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 968,
+      "verbatim": "\t.BYTE 40,3B,37"
+    }
+  },
+  {
+    "id": "DD-180",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 96$ stamps: $4A,$3C,$38.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 969,
+      "verbatim": "\t.BYTE 4A,3C,38"
+    }
+  },
+  {
+    "id": "DD-181",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 96$ stamps: $42,$3D,$39.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 970,
+      "verbatim": "\t.BYTE 42,3D,39"
+    }
+  },
+  {
+    "id": "DD-182",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 96$ stamps: $3E.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 971,
+      "verbatim": "\t.BYTE 3E"
+    }
+  },
+  {
+    "id": "DD-183",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: pad byte for the 96$ terminator.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 972,
+      "verbatim": "\t.BYTE 0\t\t\t;NOT USED"
+    }
+  },
+  {
+    "id": "DD-184",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 93$ stamps: 0,0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 973,
+      "verbatim": "\t.BYTE 0,0,0,0\t\t;93$"
+    }
+  },
+  {
+    "id": "DD-185",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 93$ stamps: 0,0,0,0.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 974,
+      "verbatim": "\t.BYTE 0,0,0,0"
+    }
+  },
+  {
+    "id": "DD-186",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $4E,$48.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 975,
+      "verbatim": "\t.BYTE 4E,48\t\t;95$"
+    }
+  },
+  {
+    "id": "DD-187",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $4F,$49,$43.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 976,
+      "verbatim": "\t.BYTE 4F,49,43"
+    }
+  },
+  {
+    "id": "DD-188",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $50,$4A,$44.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 977,
+      "verbatim": "\t.BYTE 50,4A,44"
+    }
+  },
+  {
+    "id": "DD-189",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $51,$4B,$45.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 978,
+      "verbatim": "\t.BYTE 51,4B,45"
+    }
+  },
+  {
+    "id": "DD-190",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $52,$4C,$46.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 979,
+      "verbatim": "\t.BYTE 52,4C,46"
+    }
+  },
+  {
+    "id": "DD-191",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 95$ stamps: $4D,$47.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 980,
+      "verbatim": "\t.BYTE 4D,47"
+    }
+  },
+  {
+    "id": "DD-192",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: pad byte for the 95$ terminator.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 981,
+      "verbatim": "\t.BYTE 0\t\t\t;NOT USED"
+    }
+  },
+  {
+    "id": "DD-193",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $63,$5B,$53.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 982,
+      "verbatim": "\t.BYTE 63,5B,53\t\t;94$"
+    }
+  },
+  {
+    "id": "DD-194",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $64,$5C,$54.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 983,
+      "verbatim": "\t.BYTE 64,5C,54"
+    }
+  },
+  {
+    "id": "DD-195",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $65,$5D,$55.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 984,
+      "verbatim": "\t.BYTE 65,5D,55"
+    }
+  },
+  {
+    "id": "DD-196",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $66,$5E,$56.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 985,
+      "verbatim": "\t.BYTE 66,5E,56"
+    }
+  },
+  {
+    "id": "DD-197",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $67,$5F,$57.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 986,
+      "verbatim": "\t.BYTE 67,5F,57"
+    }
+  },
+  {
+    "id": "DD-198",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $68,$60,$58.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 987,
+      "verbatim": "\t.BYTE 68,60,58"
+    }
+  },
+  {
+    "id": "DD-199",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $69,$61,$59.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 988,
+      "verbatim": "\t.BYTE 69,61,59"
+    }
+  },
+  {
+    "id": "DD-200",
+    "claim": "Cloud stamp table 99$, parallel to the offset lists by cursor: 94$ stamps: $42,$62,$5A.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 989,
+      "verbatim": "\t.BYTE 42,62,5A"
+    }
+  },
+  {
+    "id": "DD-201",
+    "claim": "SHOOT1: masked stamps < CLOUD are the letter path (not DDT).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1980,
+      "verbatim": "\tBCC 108$\t\t;IF A LETTER"
+    }
+  },
+  {
+    "id": "DD-202",
+    "claim": "SHOOT1: a stamp in the cloud band returns ZERO status - the shot flies straight through an explosion cloud.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1982,
+      "verbatim": "\tBCC 11$\t\t\t;IF DDT EXPLOSION"
+    }
+  },
+  {
+    "id": "DD-203",
+    "claim": "SHOOT1: stamp == DDT ($6E, the base cell) is a bomb hit.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1983,
+      "verbatim": "\tBEQ 16$\t\t\t;IF A DDT BOMB"
+    }
+  },
+  {
+    "id": "DD-204",
+    "claim": "SHOOT1: stamp == DDT+1 ($6F, the +$20 cell) is also a bomb hit.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1985,
+      "verbatim": "\tBCC 18$\t\t\t;WE HIT A DDT BOMB"
+    }
+  },
+  {
+    "id": "DD-205",
+    "claim": "Upright: a DDT+1 hit normalizes the address by -$20 to the entry base before the table match.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2022,
+      "verbatim": "\tSBC I,20\t\t;PUT PICTURE WINDOW IN CORRECT POSITION"
+    }
+  },
+  {
+    "id": "DD-206",
+    "claim": "The hit address is matched against the DDTADD bank byte-for-byte (hi then lo).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2032,
+      "verbatim": "\tBEQ 40$\t\t\t;WE FOUND THE ENTRY"
+    }
+  },
+  {
+    "id": "DD-207",
+    "claim": "No table match returns zero status (the bomb \"must be starting to explode\").",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2036,
+      "verbatim": "\tBPL 30$\t\t\t;DDT MUST BE STARTING TO EXPLODE"
+    }
+  },
+  {
+    "id": "DD-208",
+    "claim": "The hit clears the base stamp keeping only bit 7 (grey) ...",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2043,
+      "verbatim": "\tAND I,80\t\t;SAVE COLOR FOR PLAYERS AREA"
+    }
+  },
+  {
+    "id": "DD-209",
+    "claim": "... and stores the SAME byte at +$20 - the +$20 cell inherits the BASE cell's grey bit, not its own.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2046,
+      "verbatim": "\tSTA NY,OBST"
+    }
+  },
+  {
+    "id": "DD-210",
+    "claim": "The entry lo becomes base - $61: the cloud anchor is 3 columns left and 1 row up of the bomb.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2049,
+      "verbatim": "\tSBC I,61"
+    }
+  },
+  {
+    "id": "DD-211",
+    "claim": "The entry hi becomes (borrow-adjusted page) OR $B4: exploding, first frame index 9.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2053,
+      "verbatim": "\tORA I,PLYFLD+400/100+0A0"
+    }
+  },
+  {
+    "id": "DD-212",
+    "claim": "Hitting a DDT bomb scores 80 points.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2058,
+      "verbatim": "\tJSR SCORNG\t\t;80 POINTS FOR HITTING DDT"
+    }
+  },
+  {
+    "id": "DD-213",
+    "claim": "Hitting a DDT bomb increments HITDDT.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2060,
+      "verbatim": "\tINC X,HITDDT\t\t;WE HIT A DDT"
+    }
+  },
+  {
+    "id": "DD-214",
+    "claim": "The hit starts sound CHAN2 = $24 (wiring seam - core stays silent).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2062,
+      "verbatim": "\tSTA CHAN2\t\t;START SOUND"
+    }
+  },
+  {
+    "id": "DD-215",
+    "claim": "DDTEXP: a stamp >= CLOUD ...",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1942,
+      "verbatim": "DDTEXP:\tCMP I,CLOUD"
+    }
+  },
+  {
+    "id": "DD-216",
+    "claim": "... and < DDT is inside a cloud; anything else exits with carry clear (no kill).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1945,
+      "verbatim": "\tBCS 25$\t\t\t;NO DDT EXPLOSION"
+    }
+  },
+  {
+    "id": "DD-217",
+    "claim": "DDTEX1 passes A = $80 (negative = killed-by-DDT) into SHOOT2 - the flag that triples critter scores.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1947,
+      "verbatim": "\tLDA I,80"
+    }
+  },
+  {
+    "id": "DD-218",
+    "claim": "The kill itself is SHOOT2 dispatch (the per-critter reducers own their scores - ml4-1/2/3 seams).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1949,
+      "verbatim": "\tJSR SHOOT2\t\t;PROCESS COLLISION RESULTS"
+    }
+  }
+]
