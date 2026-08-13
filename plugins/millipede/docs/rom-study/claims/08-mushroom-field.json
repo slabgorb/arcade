@@ -1,0 +1,110 @@
+[
+ {
+  "id": "MUSH-1",
+  "claim": "FULL_MUSHROOM is picture code 7F — the whole-mushroom stamp MUSHER loads into Y before writing a cell.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 741,
+   "verbatim": "\tLDY I,7F\t\t;FULL MUSHROOM"
+  }
+ },
+ {
+  "id": "MUSH-2",
+  "claim": "MUSHER is a no-op when a mushroom is already present: it ANDs the cell with 7F and branches past the add if non-zero.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 740,
+   "verbatim": "\tBNE 20$\t\t\t;DON'T INCREMENT IF MUSHROOM ALREADY ON SCREEN"
+  }
+ },
+ {
+  "id": "MUSH-3",
+  "claim": "MUSHER refuses the top playfield row (row 1F) — a mushroom is never planted on the top row.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 747,
+   "verbatim": "\tBEQ 20$\t\t\t;DON'T PUT UP MUSHROOM IF ON TOP ROW"
+  }
+ },
+ {
+  "id": "MUSH-4",
+  "claim": "MUSHER refuses the player's own row (row 01, upright) — no mushroom is planted on the player row.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 760,
+   "verbatim": "\tBEQ 20$\t\t\t;NOT ON THE SAME ROW AS THE PLAYER"
+  }
+ },
+ {
+  "id": "MUSH-5",
+  "claim": "MUSHER increments the row-band mushroom count (INC X,MUSH) once the cell qualifies for the add.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 767,
+   "verbatim": "7$:\tINC X,MUSH  \t\t;ADD TO MUSHROOM COUNT"
+  }
+ },
+ {
+  "id": "MUSH-6",
+  "claim": "MUSHDC masks the playfield address down to its row (AND 1F) before choosing which count band to adjust.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 712,
+   "verbatim": "MUSHD1:\tAND I,1F"
+  }
+ },
+ {
+  "id": "MUSH-7",
+  "claim": "MUSHDC skips the decrement for the middle band [0C,14): it branches straight to the RTS with no DEC.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 725,
+   "verbatim": "\tBCC 10$\t\t\t;IF IN THE MIDDLE"
+  }
+ },
+ {
+  "id": "MUSH-8",
+  "claim": "MUSHDC decrements the row-band mushroom count (DEC X,MUSH) — the count correction GROWDIE invokes at total death.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 728,
+   "verbatim": "7$:\tDEC X,MUSH  \t\t;CORRECT MUSHROOM COURT"
+  }
+ },
+ {
+  "id": "MUSH-9",
+  "claim": "RESTOR is frame-gated: it runs only when FRAME AND 03 is zero — every 4th frame (the ';EVERY 16 FRAMES' comment is the ROM author's; the mask is 03).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 925,
+   "verbatim": "\tBNE 5$\t\t\t;EVERY 16 FRAMES"
+  }
+ },
+ {
+  "id": "MUSH-10",
+  "claim": "RESTOR waits for the player explosion to finish (PEXPLD non-zero aborts the pass).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 927,
+   "verbatim": "\tBNE 5$\t\t\t;WAIT FOR PLAYER EXPLOSION TO FINISH"
+  }
+ },
+ {
+  "id": "MUSH-11",
+  "claim": "RESTOR waits for mushroom growth/death to finish (CDONE non-zero aborts the pass).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 929,
+   "verbatim": "\tBNE 5$\t\t\t;WAIT FOR GROWTH/DEATH OF MUSHROOMS TO FINISH"
+  }
+ },
+ {
+  "id": "MUSH-12",
+  "claim": "RESTOR restores a damaged mushroom to FULL, preserving the grey-background bit (AND 80 / ORA 7F / STA).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 949,
+   "verbatim": "\tSTA NY,MEM\t\t;RESTORE TO FULL MUSHROOM"
+  }
+ }
+]
