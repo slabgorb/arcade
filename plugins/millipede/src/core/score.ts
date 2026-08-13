@@ -33,8 +33,9 @@ export interface ScoreInput {
  * SCORNG-AWARD SCORE (MLSUB.MAC:1049-1055, claims SG-1/SG-3). Adds `points` to the
  * running score, except in attract mode where MODE < 0 takes the early RTS
  * (:1050, claim SG-2) and nothing is awarded. The bonus-life tail (:1075-1103, ending
- * at the 30$ RTS) and the COUNT3 new-head speed ramp (:1062-1069) are deferred to a
- * later ml5 story — this is the pure accumulator.
+ * at the 30$ RTS) is now src/core/bonus.ts's awardBonus (ml5-2) — the caller runs it
+ * after every in-game award. The COUNT3 new-head speed ramp (:1062-1069) is still
+ * deferred — this is the pure accumulator.
  */
 export function awardScore({ score, points, attract }: Readonly<ScoreInput>): number {
   if (attract) return score // :1050 BMI 30$ — no score in attract
