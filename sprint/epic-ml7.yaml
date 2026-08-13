@@ -27,11 +27,13 @@ stories:
     title: 'HUD (score/lives/DDT-count + high-score display) with output COORDINATES pinned in a core unit test (routing != geometry); opt millipede into the lobby showcase carousel (attract self-play). Visual playtest.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
     review_findings: 'Round 1: 2x MEDIUM rule-21 guards (sixDigitStamps NaN, ddtPlacements col-30), 2x MEDIUM test gaps (formula-coupled pixel expectation, drawStampAtPx zero coverage), 3x LOW (boundary pixel check, ONE-blank overclaim x2 files, 80-bank speculation). All fixable on branch; routed red rework.'
-    review_verdict: rejected
+    review_verdict: approved
   - id: ml7-4
     title: 'Accessibility gate (standing exception to ROM-always-wins): NO full-screen strobe/flash on wave transition, death, DDT explosion, or attract — freeze or fade instead. Baked into the phase machine. Verify by visual playtest across every transition.'
     points: 3
