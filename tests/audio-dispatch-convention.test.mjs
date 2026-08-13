@@ -70,6 +70,7 @@ const EXPECTED_OWNERS = [
   'battlezone',
   'centipede',
   'joust',
+  'millipede',
   'missile-command',
   'red-baron',
   'tempest',
