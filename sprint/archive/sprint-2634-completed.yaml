@@ -219,3 +219,8 @@ completed_stories:
     title: 'HUD (score/lives/DDT-count + high-score display) with output COORDINATES pinned in a core unit test (routing != geometry); opt millipede into the lobby showcase carousel (attract self-play). Visual playtest.'
     points: 5
     completed: '2026-08-13'
+  - id: ml5-4
+    epic: ml5
+    title: "Persist high scores via one-origin localStorage under highScoreKey('millipede') (EAROM MLTST.MAC:36-150 maps to localStorage, not chip emulation): shell reads on boot, writes on commit; core stays pure. Reuse the asteroids/joust/mc7 consumer pattern."
+    points: 3
+    completed: '2026-08-13'
