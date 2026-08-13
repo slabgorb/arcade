@@ -55,8 +55,8 @@ const rowOf = (addr: number): number => addr & 0x1f
  * MUSHER — add a full mushroom to the field (MLSUB.MAC:732-772).
  *
  * Adds iff the cell is empty (low 7 bits 0, :739 "AND I,7F / BNE 20$") AND the
- * row is not excluded. Upright exclusions: row 0 (:748), row 0x1F (:750) and the
- * player row 1 (:761). On add it stamps FULL | (cell & background) (:770 "ORA
+ * row is not excluded. Upright exclusions: row 0 (:744-745), row 0x1F (:746-747)
+ * and the player row 1 (:759-760). On add it stamps FULL | (cell & background) (:770 "ORA
  * NY,OBST ;LEAVE GREY BACKGROUND IF ANY", CW-62) and increments the count
  * register for the row band (:767 "INC X,MUSH"). MUTATES `field` and `counts`.
  * Returns whether a mushroom was added.
@@ -66,14 +66,14 @@ export function musher(field: Uint8Array, addr: number, counts: MushCounts): boo
   if ((cell & 0x7f) !== 0) return false // :739 — already a mushroom here
 
   const row = rowOf(addr)
-  if (row === 0x00) return false // :748 "AND I,1F / BEQ 20$" — top row of cocktail
-  if (row === 0x1f) return false // :750 "CMP I,1F / BEQ 20$" — top row
-  if (row === 0x01) return false // :761 "CMP I,01 / BEQ 20$" — the player row (upright)
+  if (row === 0x00) return false // :744-745 "AND I,1F / BEQ 20$" — top row of cocktail
+  if (row === 0x1f) return false // :746-747 "CMP I,1F / BEQ 20$" — top row
+  if (row === 0x01) return false // :759-760 "CMP I,01 / BEQ 20$" — the player row (upright)
 
   field[addr] = FULL_MUSHROOM | (cell & BACKGROUND_BIT) // :770 stamp, keeping grey bg
-  if (row < LOWER_MAX) counts.lower += 1 // :722 BCC 7$ → :767 INC MUSH[0]
-  else if (row >= TOP_MIN) counts.top += 1 // :726 INX INX → :767 INC MUSH[2]
-  // middle band [LOWER_MAX, TOP_MIN): stamped above, but counted by neither (:724-725 BCC 10$)
+  if (row < LOWER_MAX) counts.lower += 1 // :761-762 "CMP I,0C / BCC 7$" → :767 INC MUSH[0]
+  else if (row >= TOP_MIN) counts.top += 1 // :765-766 "INX / INX" (6$) → :767 INC MUSH[2]
+  // middle band [LOWER_MAX, TOP_MIN): stamped above, but counted by neither (:763-764 "CMP I,14 / BCC 10$")
   return true
 }
 
@@ -111,7 +111,7 @@ export interface RestorGate {
  * MUTATES `field`. Returns whether it restored. (The MEM-pointer sweep, the 5-pt
  * award and the explosion trigger are shell / other-story surface.)
  */
-export function restor(field: Uint8Array, addr: number, gate: RestorGate): boolean {
+export function restor(field: Uint8Array, addr: number, gate: Readonly<RestorGate>): boolean {
   if ((gate.frame & 0x03) !== 0) return false // :924 AND I,03 / BNE
   if (gate.pexpld !== 0) return false // :926 LDA PEXPLD / BNE
   if (gate.cdone !== 0) return false // :928 LDA CDONE / BNE

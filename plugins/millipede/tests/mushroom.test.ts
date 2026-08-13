@@ -31,8 +31,8 @@
 //     musher(field, addr, counts): boolean
 //         MUSHER (MLSUB.MAC:732-772). Add a full mushroom at `addr` iff the cell
 //         is empty (low 7 bits == 0, :739 "AND I,7F / BNE 20$") AND the row is
-//         not excluded. Upright exclusions: row 0 (:748 "AND I,1F / BEQ 20$"),
-//         row 0x1F (:750 "CMP I,1F / BEQ 20$"), player row 1 (:761 "CMP I,01 /
+//         not excluded. Upright exclusions: row 0 (:744-745 "AND I,1F / BEQ 20$"),
+//         row 0x1F (:746-747 "CMP I,1F / BEQ 20$"), player row 1 (:759-760 "CMP I,01 /
 //         BEQ 20$"). On add: stamp cell = FULL | (cell & BACKGROUND_BIT) (:770
 //         "ORA NY,OBST ;LEAVE GREY BACKGROUND IF ANY", CW-62) and INC the count
 //         register for the row band (:767 "INC X,MUSH"): lower if row<LOWER_MAX,
@@ -167,12 +167,12 @@ describe('ml3-3 AC-1 — MUSHER adds to an empty cell (MLSUB.MAC:732-772)', () =
     const m = await loadMushroom()
     const counts = freshCounts()
     m.musher(emptyField(), idx(3, 0x14), counts) // row 0x14 = first top row
-    expect(counts.top).toBe(1) // :726-767 INX INX / INC X,MUSH → MUSH[2]
+    expect(counts.top).toBe(1) // :765-767 INX / INX (6$) / INC X,MUSH → MUSH[2]
     expect(counts.lower).toBe(0)
   })
 
   it('stamps but does NOT count a mushroom in the middle band [0x0C,0x14)', async () => {
-    // :722 BCC 7$ (row<0x0C) taken only below 0x0C; :724-725 CMP I,14 / BCC 10$
+    // :761-762 CMP I,0C / BCC 7$ (row<0x0C) taken only below 0x0C; :763-764 CMP I,14 / BCC 10$
     // routes 0x0C..0x13 to the store (10$) with the INC skipped.
     const m = await loadMushroom()
     const field = emptyField()
@@ -224,7 +224,7 @@ describe('ml3-3 AC-2 — MUSHER does not add over a mushroom or an excluded row'
     expect(field[addr]).toBe(0x73)
   })
 
-  it('refuses row 0 (:748 AND I,1F / BEQ 20$)', async () => {
+  it('refuses row 0 (:744-745 AND I,1F / BEQ 20$)', async () => {
     const m = await loadMushroom()
     const field = emptyField()
     const counts = freshCounts()
@@ -235,7 +235,7 @@ describe('ml3-3 AC-2 — MUSHER does not add over a mushroom or an excluded row'
     expect(counts.lower).toBe(0)
   })
 
-  it('refuses the player row 1 (:761 CMP I,01 / BEQ 20$)', async () => {
+  it('refuses the player row 1 (:759-760 CMP I,01 / BEQ 20$)', async () => {
     const m = await loadMushroom()
     const field = emptyField()
     const counts = freshCounts()
@@ -243,6 +243,21 @@ describe('ml3-3 AC-2 — MUSHER does not add over a mushroom or an excluded row'
     const added = m.musher(field, addr, counts)
     expect(added).toBe(false)
     expect(field[addr]).toBe(0x00)
+    expect(counts.lower).toBe(0)
+  })
+
+  it('refuses the top row 0x1F (:746-747 CMP I,1F / BEQ 20$)', async () => {
+    // Round-1 review gap (mutation-proven): deleting musher's row-0x1F exclusion
+    // left the whole suite green. Row 0x1F is >= TOP_MIN, so a missed exclusion
+    // would wrongly stamp + increment counts.top — this pins that it does not.
+    const m = await loadMushroom()
+    const field = emptyField()
+    const counts = freshCounts()
+    const addr = idx(9, 0x1f) // row 0x1F = the top row
+    const added = m.musher(field, addr, counts)
+    expect(added).toBe(false)
+    expect(field[addr]).toBe(0x00) // nothing stamped
+    expect(counts.top).toBe(0) // and no count on the top register
     expect(counts.lower).toBe(0)
   })
 })
