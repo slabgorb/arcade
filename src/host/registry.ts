@@ -52,7 +52,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 4,
     listed: true,
     showcase: true,
-    version: '1.0.12',
+    version: '1.0.13',
   },
   {
     id: 'centipede',
