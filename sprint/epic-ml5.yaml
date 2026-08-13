@@ -28,10 +28,11 @@ stories:
     title: 'High-score table + initials in core, reusing @shared/highscore + @shared/name-entry: qualifiesForHighScore/insertHighScore over ML GameState; stepNameEntry drives the initials buffer (GETINT MLSUB.MAC:547, UPDATE MLSUB.MAC:1817). Verify whether the ROM ships a default ladder before seeding one.'
     points: 5
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
     review_verdict: approved
   - id: ml5-4
     title: "Persist high scores via one-origin localStorage under highScoreKey('millipede') (EAROM MLTST.MAC:36-150 maps to localStorage, not chip emulation): shell reads on boot, writes on commit; core stays pure. Reuse the asteroids/joust/mc7 consumer pattern."
