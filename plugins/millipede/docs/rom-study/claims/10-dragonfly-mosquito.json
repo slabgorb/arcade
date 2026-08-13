@@ -1,0 +1,821 @@
+[
+ {
+  "id": "DF-1",
+  "claim": "FLYMV is the enter-and-move dragonfly routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1004,
+   "verbatim": "\t.SBTTL\tFLYMV - ENTER AND MOVE DRAGONFLY"
+  }
+ },
+ {
+  "id": "DF-2",
+  "claim": "FLYMV runs only while the player is alive — the PLAYP EOR 0A / PEXPLD gate at entry falls through only when both are clear.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1008,
+   "verbatim": "\tBEQ 5$\t\t\t;IF PLAYER IS ALIVE"
+  }
+ },
+ {
+  "id": "DF-3",
+  "claim": "The dragonfly spawn slot is motion object 12 (decimal) — BEEC+12 is probed for availability.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1011,
+   "verbatim": "5$:\tLDA BEEC+12."
+  }
+ },
+ {
+  "id": "DF-4",
+  "claim": "A non-zero BEEC+12 colour means the entry is taken and no dragonfly starts this tick.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1012,
+   "verbatim": "\tBNE 20$\t\t\t;THIS IS NOT AN AVAILABLE ENTRY"
+  }
+ },
+ {
+  "id": "DF-5",
+  "claim": "While the centipede is NOT dead (DEAD non-zero) the spawn goes through the mushroom-count check.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1015,
+   "verbatim": "\tBNE 12$\t\t\t;IF CENTIPEDE IS NOT DEAD"
+  }
+ },
+ {
+  "id": "DF-6",
+  "claim": "With the centipede dead, a beetle still on screen (BEETLS non-zero) skips the mushroom-count check entirely.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1017,
+   "verbatim": "\tBNE 18$\t\t\t;IF BEETLE IS STILL ON THE SCREEN"
+  }
+ },
+ {
+  "id": "DF-7",
+  "claim": "The mushroom threshold is BEEMV1 plus 30 hex, added with BEEMV1’s exit carry (set only on the 2F cap, making the ceiling 60 hex).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1019,
+   "verbatim": "\tADC I,30\t\t;CANNOT EXCEED 61"
+  }
+ },
+ {
+  "id": "DF-8",
+  "claim": "The threshold is compared against MUSH+2 — the near-the-top mushroom count; carry-clear (threshold below the count) blocks the spawn.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1021,
+   "verbatim": "\tBCC 20$\t\t\t;TOO MANY MUSHROOMS AT THE TOP"
+  }
+ },
+ {
+  "id": "DF-9",
+  "claim": "No dragonfly starts while CENTIN is 10 (decimal) or more — no flies if the centipede is nearly whole.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1023,
+   "verbatim": "\tCMP I,10."
+  }
+ },
+ {
+  "id": "DF-10",
+  "claim": "The movement scan runs slots 12 down to 0.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1027,
+   "verbatim": "20$:\tLDX I,12."
+  }
+ },
+ {
+  "id": "DF-11",
+  "claim": "A picture code at or above 20 hex is not a dragonfly.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1034,
+   "verbatim": "\tBCS 50$\t\t\t;NOT A DRAGONFLY"
+  }
+ },
+ {
+  "id": "DF-12",
+  "claim": "A picture code below 1E hex is not a dragonfly — the dragonfly band is exactly 1E..1F.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1036,
+   "verbatim": "\tBCC 50$\t\t\t;NOT A DRAGONFLY"
+  }
+ },
+ {
+  "id": "DF-13",
+  "claim": "The wing flap toggles the picture with EOR 01.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1037,
+   "verbatim": "\tEOR I,01"
+  }
+ },
+ {
+  "id": "DF-14",
+  "claim": "In slow-down mode (SLOW non-zero) the wings flap every tick.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1040,
+   "verbatim": "\tBNE 31$\t\t\t;IF IN SLOW DOWN MODE"
+  }
+ },
+ {
+  "id": "DF-15",
+  "claim": "Outside slow-down mode the wings flap only on odd frames (FRAME AND 01 non-zero).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1043,
+   "verbatim": "\tBEQ 32$\t\t\t;LESS FREQUENT UPDATES"
+  }
+ },
+ {
+  "id": "DF-16",
+  "claim": "FLYMV1 exits with TEMP2+1 as the horizontal audio offset, -80 to +7F.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1081,
+   "verbatim": ";\tEXIT (TEMP2+1)=HORIZONTAL OFFSET FOR AUDIO (-80 TO +7F)"
+  }
+ },
+ {
+  "id": "DF-17",
+  "claim": "The horizontal wave starts from (FRAME AND 3F) shifted left twice.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1083,
+   "verbatim": "FLYMV1:\tLDA I,3F"
+  }
+ },
+ {
+  "id": "DF-18",
+  "claim": "Wave values in 40..BF are folded with EOR 7F, making a triangle wave.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1091,
+   "verbatim": "\tEOR I,7F\t\t;CHANGE SIGN"
+  }
+ },
+ {
+  "id": "DF-19",
+  "claim": "BEEDH is an XOR mask applied to the wave — the wall-bounce direction state.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1092,
+   "verbatim": "35$:\tEOR X,BEEDH\t\t;BOUNCE OFF WALLS"
+  }
+ },
+ {
+  "id": "DF-20",
+  "claim": "BEEH below 0E is the right edge.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1094,
+   "verbatim": "\tCPY I,0E"
+  }
+ },
+ {
+  "id": "DF-21",
+  "claim": "BEEH at or above F4 is the left edge.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1100,
+   "verbatim": "36$:\tCPY I,0F4"
+  }
+ },
+ {
+  "id": "DF-22",
+  "claim": "An edge bounce flips BEEDH with EOR FF.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1105,
+   "verbatim": "\tEOR I,0FF"
+  }
+ },
+ {
+  "id": "DF-23",
+  "claim": "An edge bounce also negates the current step (COMP of the pre-edge value).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1108,
+   "verbatim": "\tJSR COMP\t\t;BOUNCE OFF THE EDGE"
+  }
+ },
+ {
+  "id": "DF-24",
+  "claim": "The step is sign-extended and shifted left three times into a 16-bit value — eight times the wave byte.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1115,
+   "verbatim": "\tASL"
+  }
+ },
+ {
+  "id": "DF-25",
+  "claim": "In attract mode the score is treated as zero for the motion calculation.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1124,
+   "verbatim": "\tLDY #00"
+  }
+ },
+ {
+  "id": "DF-26",
+  "claim": "From SCORE2 = 3 BCD (30,000) the step doubles again — sixteen times the wave byte.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1126,
+   "verbatim": "\tCPY I,3"
+  }
+ },
+ {
+  "id": "DF-27",
+  "claim": "The low byte accumulates into BEEHL and its carry rides into the BEEH add — fixed-point horizontal motion.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1131,
+   "verbatim": "\tADC X,BEEHL"
+  }
+ },
+ {
+  "id": "DF-28",
+  "claim": "The dragonfly spawns with picture code 1E.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1139,
+   "verbatim": "FLYMV3:\tLDA I,1E"
+  }
+ },
+ {
+  "id": "DF-29",
+  "claim": "At SCORE2 = 15 BCD (150,000) and above the dragonfly is very fast — vertical speed 3.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1146,
+   "verbatim": "\tCPY I,15"
+  }
+ },
+ {
+  "id": "DF-30",
+  "claim": "At SCORE2 = 5 BCD (50,000) and above the dragonfly goes fast — vertical speed 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1149,
+   "verbatim": "\tCPY I,5"
+  }
+ },
+ {
+  "id": "DF-31",
+  "claim": "In bombing mode (NOCENT non-zero) the dragonfly is at least speed 2 even below 50,000.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1152,
+   "verbatim": "\tBNE 18$\t\t\t;IN BOMBING MODE"
+  }
+ },
+ {
+  "id": "DF-32",
+  "claim": "Otherwise the dragonfly moves at vertical speed 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1153,
+   "verbatim": "\tLDA I,1"
+  }
+ },
+ {
+  "id": "DF-33",
+  "claim": "BEEMV2 sets the spawn V position to F8 (EOR CKF8 — identity upright).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 225,
+   "verbatim": "BEEMV2:\tLDA I,0F8"
+  }
+ },
+ {
+  "id": "DF-34",
+  "claim": "The spawn H comes from RND0 masked with F8; a zero result is rejected and rerolled.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 229,
+   "verbatim": "\tAND I,0F8"
+  }
+ },
+ {
+  "id": "DF-35",
+  "claim": "A masked value below 10 hex is off screen and rerolled too.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 231,
+   "verbatim": "\tCMP I,10"
+  }
+ },
+ {
+  "id": "DF-36",
+  "claim": "The accepted H is the masked value minus 4.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 234,
+   "verbatim": "\tSBC I,04\t\t;WE WANT"
+  }
+ },
+ {
+  "id": "DF-37",
+  "claim": "The spawn horizontal direction byte starts at zero.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 237,
+   "verbatim": "\tSTA X,BEEDH\t\t;HDIR"
+  }
+ },
+ {
+  "id": "DF-38",
+  "claim": "The spawn colour byte is 79 — turning the object on.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 238,
+   "verbatim": "\tLDA I,79"
+  }
+ },
+ {
+  "id": "DF-39",
+  "claim": "BEEMV0 moves vertically by SUBTRACTING BEEDV from BEEV.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 124,
+   "verbatim": "\tSBC X,BEEDV"
+  }
+ },
+ {
+  "id": "DF-40",
+  "claim": "A post-move V below 4 is the bottom of the screen — the object leaves via BEEOFF.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 128,
+   "verbatim": "\tBCC BEEOFF\t\t;IF BOTTOM OF SCREEN"
+  }
+ },
+ {
+  "id": "DF-41",
+  "claim": "BEEOFF zeroes PTS, then the colour and H bytes — the slot is freed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 167,
+   "verbatim": "\tSTA X,PTS"
+  }
+ },
+ {
+  "id": "DF-42",
+  "claim": "The mushroom cell is taken 4 above the object (V+4, CKFF identity upright) — the mushroom appears after the object passes.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 131,
+   "verbatim": "\tLDA I,4\t\t\t;MAKE MUSHROOM APPEAR AFTER BEE"
+  }
+ },
+ {
+  "id": "DF-43",
+  "claim": "Attract mode always proceeds to the mushroom-planting logic.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 140,
+   "verbatim": "\tBMI 10$\t\t\t;IF IN ATTRACT ADD MUSHROOMS"
+  }
+ },
+ {
+  "id": "DF-44",
+  "claim": "In normal play, bombing mode (NOCENT non-zero) plants no mushrooms.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 142,
+   "verbatim": "\tBNE 28$\t\t\t;NO MUSHROOMS IN \"BOMB\" MODE"
+  }
+ },
+ {
+  "id": "DF-45",
+  "claim": "Mushrooms are planted only every fourth frame (FRAME AND 03 zero).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 145,
+   "verbatim": "\tBNE 28$\t\t\t;PUT UP MUSHROOMS ONLY EVERY FOUR FRAMES"
+  }
+ },
+ {
+  "id": "DF-46",
+  "claim": "A dragonfly above the player area (V at or above 48 hex) uses probability mask 01 — plant on half the random bytes.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 151,
+   "verbatim": "\tCMP I,48"
+  }
+ },
+ {
+  "id": "DF-47",
+  "claim": "Inside the player area the mask is 07 — fewer mushrooms, one byte in eight.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 154,
+   "verbatim": "\tLDA I,07\t\t;LESS MUSHROOMS IN PLAYERS AREA"
+  }
+ },
+ {
+  "id": "DF-48",
+  "claim": "The plant happens only when (mask AND RND1) is zero.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 158,
+   "verbatim": "27$:\tAND RND1"
+  }
+ },
+ {
+  "id": "DF-49",
+  "claim": "Below SCORE2 = 2 BCD (20,000) five mushrooms are needed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 181,
+   "verbatim": "\tLDY I,05"
+  }
+ },
+ {
+  "id": "DF-50",
+  "claim": "From 20,000 up to 120,000 nine mushrooms are needed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 183,
+   "verbatim": "\tLDY I,09"
+  }
+ },
+ {
+  "id": "DF-51",
+  "claim": "From SCORE2 = 12 BCD (120,000) the need is the halved SCORE2 byte plus 6.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 186,
+   "verbatim": "\tLSR\t\t\t;EVERY 20K"
+  }
+ },
+ {
+  "id": "DF-52",
+  "claim": "The need caps at 2F — and the cap path exits with carry SET, which the FLYMV ADC folds in.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 191,
+   "verbatim": "\tLDA I,2F"
+  }
+ },
+ {
+  "id": "DF-53",
+  "claim": "SHOOT2 dispatches picture codes 1E..1F (below 20, at or above 1E) to the dragonfly branch.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2086,
+   "verbatim": "\tBCC 60$\t\t\t;IF A DRAGONFLY"
+  }
+ },
+ {
+  "id": "DF-54",
+  "claim": "A shot dragonfly scores 500 points (Y = 5, BCD hundreds).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2121,
+   "verbatim": "60$:\tLDY I,5\t\t\t;500 POINTS FOR DRAGONFLY"
+  }
+ },
+ {
+  "id": "DF-55",
+  "claim": "A dragonfly killed by DDT scores 1500 (Y = 15 BCD hundreds).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2124,
+   "verbatim": "\tLDY I,15"
+  }
+ },
+ {
+  "id": "DF-56",
+  "claim": "PTS is the 16-entry per-critter kill-points stamp array the title cites — BEEOFF clears this module’s entry.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 398,
+   "verbatim": "PTS:\t.BLKB 16.\t\t;NUMBER OF POINTS FOR KILLING THIS CRITTER"
+  }
+ },
+ {
+  "id": "DF-57",
+  "claim": "MUSH is two counters — the second pair (MUSH+2) counts the mushrooms near the top, the one FLYMV reads.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 343,
+   "verbatim": "\t.BLKB 2\t\t\t;NUMBER OF MUSHROOMS NEAR THE TOP"
+  }
+ },
+ {
+  "id": "DF-58",
+  "claim": "SLOW is the timer that slows down all critters — the flap-every-tick mode.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 392,
+   "verbatim": "SLOW:\t.BLKB 1\t\t\t;TIMER FOR SLOWING DOWN ALL CRITTERS"
+  }
+ },
+ {
+  "id": "DF-59",
+  "claim": "NOCENT non-zero is bombing mode — no centipedes are to be started.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 391,
+   "verbatim": "NOCENT:\t.BLKB 1\t\t\t;NON-ZERO IF NO CENTIPEDES ARE TO BE STARTED"
+  }
+ },
+ {
+  "id": "DF-60",
+  "claim": "BEEHL is the motion-object fractional H byte the fixed-point step accumulates into.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 379,
+   "verbatim": "BEEHL\t=MOBJHL"
+  }
+ },
+ {
+  "id": "MQ-1",
+  "claim": "MOSQT is the enter-and-move mosquito routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1324,
+   "verbatim": "\t.SBTTL\tMOSQT-ENTER AND MOVE THE MOSQUITO"
+  }
+ },
+ {
+  "id": "MQ-2",
+  "claim": "MOSQT runs only while the player is alive (the PLAYP/PEXPLD gate).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1328,
+   "verbatim": "\tBEQ 5$\t\t\t;PLAYER IS ALIVE"
+  }
+ },
+ {
+  "id": "MQ-3",
+  "claim": "The mosquito spawn slot is motion object 12 (decimal) — BEEC+12.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1331,
+   "verbatim": "5$:\tLDA BEEC+12."
+  }
+ },
+ {
+  "id": "MQ-4",
+  "claim": "Below SCORE2 = 7 BCD (70,000) the mosquito is less frequent — the full FRAME byte must match, one tick in 256.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1337,
+   "verbatim": "\tBCC 8$\t\t\t;IF LESS THAN 70,000 MAKE MOSQUITO LESS FREQUENT"
+  }
+ },
+ {
+  "id": "MQ-5",
+  "claim": "At 70,000 and above FRAME is masked with 7F — a spawn tick every 128 frames, about 2 seconds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1338,
+   "verbatim": "\tAND I,7F\t\t;EVERY 2 SECONDS"
+  }
+ },
+ {
+  "id": "MQ-6",
+  "claim": "The spawn tick fires when the (masked) frame equals 17 hex — the EOR 17 test, asynchronous with the rest of the program.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1339,
+   "verbatim": "8$:\tEOR I,17\t\t;ASYNRONOUS WITH REST OF PROGRAM"
+  }
+ },
+ {
+  "id": "MQ-7",
+  "claim": "No mosquito starts while CENTIN is 9 or more.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1343,
+   "verbatim": "\tCMP I,9"
+  }
+ },
+ {
+  "id": "MQ-8",
+  "claim": "A picture code at or above 10 hex is not a mosquito.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1352,
+   "verbatim": "\tBCS 50$\t\t\t;NOT A MOSQUITO"
+  }
+ },
+ {
+  "id": "MQ-9",
+  "claim": "A picture code below 0E is not a mosquito — the band is exactly 0E..0F.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1354,
+   "verbatim": "\tBCC 50$\t\t\t;NOT A MOSQUITO"
+  }
+ },
+ {
+  "id": "MQ-10",
+  "claim": "The wing flap toggles the picture with EOR 01.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1355,
+   "verbatim": "\tEOR I,01"
+  }
+ },
+ {
+  "id": "MQ-11",
+  "claim": "In slow-down mode the wings flap every tick.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1358,
+   "verbatim": "\tBNE 31$\t\t\t;IF IN SLOW DOWN MODE"
+  }
+ },
+ {
+  "id": "MQ-12",
+  "claim": "Otherwise the wings flap only on odd frames.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1361,
+   "verbatim": "\tBEQ 32$\t\t\t;NOT THIS FRAME"
+  }
+ },
+ {
+  "id": "MQ-13",
+  "claim": "The mosquito moves horizontally by ADDING BEEDH to BEEH.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1372,
+   "verbatim": "\tADC X,BEEH"
+  }
+ },
+ {
+  "id": "MQ-14",
+  "claim": "A post-move H below 0C is off the screen — bounce.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1374,
+   "verbatim": "\tCMP I,0C"
+  }
+ },
+ {
+  "id": "MQ-15",
+  "claim": "A post-move H below F5 is still on the screen; F5 and above bounces.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1376,
+   "verbatim": "\tCMP I,0F5"
+  }
+ },
+ {
+  "id": "MQ-16",
+  "claim": "The bounce negates BEEDH via COMP — the overshot position itself is kept.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1379,
+   "verbatim": "\tJSR COMP\t\t;CHANGE DIRECTION"
+  }
+ },
+ {
+  "id": "MQ-17",
+  "claim": "The mosquito moves vertically by SUBTRACTING BEEDV from BEEV.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1383,
+   "verbatim": "\tSBC X,BEEDV"
+  }
+ },
+ {
+  "id": "MQ-18",
+  "claim": "A post-move V below 4 (EOR CKFF — identity upright) clears the object via BEEOFF.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1388,
+   "verbatim": "\tJSR BEEOFF\t\t;CLEAR THIS OBJECT"
+  }
+ },
+ {
+  "id": "MQ-19",
+  "claim": "After moving, MOSQT only runs the OBSTAC / DDTEXP / PLAY seams — there is no MUSHER call; the mosquito plants nothing.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1395,
+   "verbatim": "\tJSR OBSTAC\t\t;GET PLAYFIELD ADDRESS"
+  }
+ },
+ {
+  "id": "MQ-20",
+  "claim": "The mosquito spawns with picture code 0E.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1405,
+   "verbatim": "MOSQT3:\tLDA I,0E"
+  }
+ },
+ {
+  "id": "MQ-21",
+  "claim": "MOSQT3 initialises position and colour through the shared BEEMV2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1407,
+   "verbatim": "\tJSR BEEMV2\t\t;INITIALIZE PARAMETERS"
+  }
+ },
+ {
+  "id": "MQ-22",
+  "claim": "The default mosquito speed is 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1410,
+   "verbatim": "\tLDA I,2"
+  }
+ },
+ {
+  "id": "MQ-23",
+  "claim": "At SCORE2 = 9 BCD (90,000) and above the mosquito is fast — speed 3.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1415,
+   "verbatim": "\tCPY I,9"
+  }
+ },
+ {
+  "id": "MQ-24",
+  "claim": "RND1 bit 7 picks the horizontal direction — BEEDH is the speed or its COMP negation.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1431,
+   "verbatim": "\tBIT RND1"
+  }
+ },
+ {
+  "id": "MQ-25",
+  "claim": "The negated direction is stored into BEEDH — the mosquito flies a random diagonal.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 1434,
+   "verbatim": "30$:\tSTA X,BEEDH"
+  }
+ },
+ {
+  "id": "MQ-26",
+  "claim": "SHOOT2 dispatches picture codes below 10 hex (after the millipede band below 08) to the mosquito branch.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2078,
+   "verbatim": "\tBCC 70$\t\t\t;IF A MOSQUITO"
+  }
+ },
+ {
+  "id": "MQ-27",
+  "claim": "Killing a mosquito INCREMENTS SCROLC — the playfield scrolls UP one row.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2127,
+   "verbatim": "70$:\tINC SCROLC\t\t;SCROLL PLAYFIELD UP"
+  }
+ },
+ {
+  "id": "MQ-28",
+  "claim": "A shot mosquito scores 400 points (Y = 4, BCD hundreds).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2128,
+   "verbatim": "\tLDY I,4\t\t\t;400 POINTS FOR MOSQUITO"
+  }
+ },
+ {
+  "id": "MQ-29",
+  "claim": "A mosquito killed by DDT scores 1200 (Y = 12 BCD hundreds).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2131,
+   "verbatim": "\tLDY I,12"
+  }
+ },
+ {
+  "id": "MQ-30",
+  "claim": "SCROLC counts scrolls with sign — positive is up, negative is down.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 372,
+   "verbatim": "SCROLC:\t.BLKB 1\t\t\t;SCROLL COUNT (1+=UP, -1=DOWN)"
+  }
+ },
+ {
+  "id": "MQ-31",
+  "claim": "BEEOFF zeroes PTS and frees the slot when the mosquito exits the bottom.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 166,
+   "verbatim": "BEEOFF:\tLDA I,0"
+  }
+ }
+]
