@@ -167,3 +167,8 @@ completed_stories:
     title: 'Mushroom field reducers: MUSHER/MUSHDC add/decrement count (MLSUB.MAC:732/707), RESTOR restore mushrooms (:919), OBSTAC obstacle (MILLI.MAC:824), poison mushrooms (MLDEF.MAC:143). Cited.'
     points: 5
     completed: '2026-08-13'
+  - id: ml5-1
+    epic: ml5
+    title: 'Waves + scoring core (cited): per-wave difficulty BEETLA beetles-allowed (MLDEF.MAC:370) + DELAY between waves (MLDEF.MAC:286); SCORNG scoring (MLSUB.MAC:1040) + UPSCRE update scores on screen (MLSUB.MAC:1912), scoring pinned to PTS (MLDEF.MAC:398).'
+    points: 5
+    completed: '2026-08-13'
