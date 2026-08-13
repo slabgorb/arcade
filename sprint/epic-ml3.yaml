@@ -53,3 +53,18 @@ stories:
     repos: arcade
     workflow: tdd
     completed: '2026-08-13'
+  - id: ml3-6
+    title: "OBSTAC mover→playfield address derivation + wire into movers (ml3-3 follow-up): implement the full OBSTAC address math — V/8 with the half-way-to-next-row ADC-carry round (MLSUB.MAC:853-857), H'=H+8·dir (:834-871), the (0xF7-H')&0xF8 column fold + right-edge PLYFLD+3C0 wrap (:872-886) — reconciling the 0x400 (conway field base) vs 0x800 (MLSUB.MAC:886 exit comment) addressing, then wire obstac(field,{h,v,dh}) into stepMillipede MOTION/EXPLOD collision. Cited hand-derived fixtures (non-wrapping + left-margin + right-edge). obstacleAt probe already shipped in ml3-3."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml3-7
+    title: "Enroll citation claims for the ml3-3 mushroom reducers: add docs/rom-study/claims entries (byte-verified by the ml1-1 gate) for ROCK (MLDEF.MAC:204), FULL_MUSHROOM=7F (MLSUB.MAC:741), the MUSHER add/presence/row-band mechanics (:732-772), MUSHDC (:707-729), RESTOR (:919-949) and the OBSTAC probe (:887-889). These shipped cited in comments but have no claim, unlike conway's CW-* and the existing CW-61/62/63 MUSH seam — extend the 08/09 claim series so the gate byte-verifies them."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
