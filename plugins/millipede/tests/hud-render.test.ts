@@ -126,17 +126,27 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
   })
 
   it('paints the stamp PIXELS through the ml2-4 colour seam, fully opaque', async () => {
+    // AMENDED at the ml7-3 visual playtest (the playbook §4 catch this story
+    // exists for): the RED draft assumed char code == census sheet index and
+    // upright storage — the live page proved both wrong. Measured: the
+    // hardware tile for a char code is 0x40 | (code & 0x3F) (sheet tile $40
+    // is the census's ONE blank, matching char 0 = blank; field codes $40-$7F
+    // map to themselves, which is why census mushrooms looked right), and
+    // every tile is stored ROTATED for the vertical monitor — the blit must
+    // turn it 90° CCW (tile $61 stores a sideways '1'; CCW stands it up).
     const { drawGridStamps, PLAYFIELD_COLOUR_BYTES } = await loadRender()
     const STAMPS = await loadStamps()
     const { ctx, blits } = fakeCtx()
-    const stamp = 0x20 // the '0' digit glyph
+    const stamp = 0x20 // the '0' digit CHAR CODE -> sheet tile 0x60
     drawGridStamps(ctx, [{ col: 1, row: 0x1f, stamp }])
     expect(blits.length).toBe(1)
     const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+    const tile = 0x40 | (stamp & 0x3f)
     const expected = new Uint8ClampedArray(8 * 8 * 4)
     for (let r = 0; r < 8; r++) {
       for (let x = 0; x < 8; x++) {
-        const { r: red, g: green, b: blue } = palette[STAMPS[stamp][r][x]]
+        // displayed(r, x) <- stored(x, 7-r): the 90° CCW turn.
+        const { r: red, g: green, b: blue } = palette[STAMPS[tile][x][7 - r]]
         const off = (r * 8 + x) * 4
         expected[off] = red
         expected[off + 1] = green

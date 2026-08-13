@@ -72,15 +72,16 @@ const frame = (): void => {
   // Motion objects draw at pixel precision, not grid cells. The screen map is
   // the family's (cp2-14): higher MOBJH is further LEFT (the OBSTAC 0xF7 fold,
   // mushroom.ts), higher MOBJV is further UP (ENTER_V 0xF8 = the top line).
-  // A sprite picture p is the 8x16 stamp pair in the sheet's motion-object
-  // half: 0x80+2p over 0x80+2p+1 (chars address only the low 128 stamps —
-  // BACKGROUND_BIT is a colour bit, so the census sheet's top half is sprite
-  // tiles). The visual playtest arbitrates this mapping.
+  // A sprite picture p is the 8x16 tile pair 2p / 2p+1 at the base of the
+  // sheet (hardware sprite n reads tiles 2n/2n+1; the $80+ half is the
+  // alternate playfield graphics bank); the whole-frame rotation turns the
+  // vertical pair into a horizontal one, stored-top tile on the LEFT (the
+  // CCW turn — see render.ts). The visual playtest arbitrates this mapping.
   for (const s of demo.segments) {
     const x = (0xf7 - s.h) & 0xff
     const y = (0xf8 - s.v) & 0xff
-    drawStampAtPx(lctx, 0x80 + 2 * s.pic, x, y)
-    drawStampAtPx(lctx, 0x80 + 2 * s.pic + 1, x, y + 8)
+    drawStampAtPx(lctx, 2 * s.pic, x, y)
+    drawStampAtPx(lctx, 2 * s.pic + 1, x + 8, y)
   }
 
   canvas.width = canvas.clientWidth
