@@ -199,21 +199,24 @@ describe('ml2-4 AC-4 — drawStampPlayfield renders the full stamp sheet', () =>
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-5 — /millipede/ actually shows the sheet: main.ts wires the render in.
-// Source-wiring pin (the tempest model), comment-stripped so prose can never
-// satisfy it.
+// AC-5 (as amended by ml7-3) — ml2-4 pinned main.ts to the stamp-CENSUS page
+// (import + call drawStampPlayfield); ml7-3 replaced that page with the attract
+// screen, whose wiring floor lives in tests/hud-render.test.ts. What survives
+// of AC-5 here: the census renderer itself must stay exported and pixel-correct
+// (the suites above), and main.ts must still route every pixel through the
+// shell grid blitter — comment-stripped, so prose can never satisfy it.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('ml2-4 AC-5 — src/main.ts draws the playfield', () => {
+describe('ml2-4 AC-5 / ml7-3 — src/main.ts draws through the shell blitter', () => {
   const main = () => stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
 
-  it('imports drawStampPlayfield from the shell render module', () => {
+  it('imports the grid blitter from the shell render module', () => {
     expect(
-      /import\s*\{[^}]*\bdrawStampPlayfield\b[^}]*\}\s*from\s*['"]\.\/shell\/render['"]/.test(main()),
-      "main.ts must import { drawStampPlayfield } from './shell/render'",
+      /import\s*\{[^}]*\bdrawGridStamps\b[^}]*\}\s*from\s*['"]\.\/shell\/render['"]/.test(main()),
+      "main.ts must import { drawGridStamps } from './shell/render'",
     ).toBe(true)
   })
 
-  it('calls drawStampPlayfield (code, not comment)', () => {
-    expect(/\bdrawStampPlayfield\s*\(/.test(main()), 'main.ts must call drawStampPlayfield(...)').toBe(true)
+  it('calls drawGridStamps (code, not comment)', () => {
+    expect(/\bdrawGridStamps\s*\(/.test(main()), 'main.ts must call drawGridStamps(...)').toBe(true)
   })
 })

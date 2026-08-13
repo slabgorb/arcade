@@ -120,15 +120,16 @@ test('millipede order 10 does not collide with an existing game', () => {
   assert.deepEqual(at10, ['millipede'], `order 10 must belong to millipede alone, got: ${at10.join(', ')}`);
 });
 
-test('the black-canvas scaffold is NOT a showcase game (showcase-liveness would redden)', () => {
-  // showcase:true asserts the game boots into a live self-playing demo
-  // (tests/showcase-liveness.test.mjs, derived from the manifests). A scaffold that
-  // only paints a black canvas cannot, so millipede must be showcase:false — the one
-  // meta value a blind copy of joust (showcase:true) would get wrong.
+test('millipede IS a showcase game now that it self-plays (ml7-3)', () => {
+  // ml1-5 pinned showcase:false here — a black-canvas scaffold may not claim a
+  // carousel slot "until it self-plays". ml7-3 met that condition: /millipede/
+  // boots into a live self-playing attract demo (plugins/millipede/src/core/
+  // attract.ts, pinned by plugins/millipede/tests/attract-demo.test.ts), so the
+  // manifest flipped and the regenerated registry must carry it.
   const reg = read('src/host/registry.ts');
   const entry = registryEntry(reg);
   assert.notEqual(entry, null, 'registry must hold a millipede entry');
-  assert.doesNotMatch(entry, /showcase:\s*true/, 'millipede must not be showcase:true until it self-plays');
+  assert.match(entry, /showcase:\s*true/, 'millipede is showcased as of ml7-3 (attract self-play)');
 });
 
 // ── The four-file plugin shape exists (AC-1) ─────────────────────────────────
@@ -160,7 +161,9 @@ test('plugins/millipede/plugin.ts declares the meta the registry is generated fr
   assert.match(src, /year:\s*1982/, 'plugin.ts meta.year must be 1982');
   assert.match(src, /order:\s*10\b/, 'plugin.ts meta.order must be 10 (pac-man is 9)');
   assert.match(src, /listed:\s*true/, 'plugin.ts meta.listed must be true (native-game scaffold convention)');
-  assert.doesNotMatch(src, /showcase:\s*true/, 'plugin.ts meta.showcase must not be true until it self-plays');
+  // ml1-5 forbade showcase:true here until the game self-plays; ml7-3 shipped the
+  // self-playing attract demo, so the manifest now opts in (see the test above).
+  assert.match(src, /showcase:\s*true/, 'plugin.ts meta.showcase is true as of ml7-3 (attract self-play)');
   // version comes from package.json, never hardcoded — the sibling games import it.
   assert.match(src, /version/, 'plugin.ts meta must carry a version (imported from package.json)');
 });

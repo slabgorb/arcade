@@ -1,0 +1,146 @@
+[
+  {
+    "id": "HD-1",
+    "claim": "UPSCRE displays player one’s score starting at PLYFLD+$1F — offset $01F decodes (offset = col*$20 + row, claim CW-11) to col 0, row $1F: the six score digits occupy columns 0-5 of the reserved top row.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1915,
+      "verbatim": "UPSCRE:\tLDA I,PLYFLD+1F&0FF"
+    }
+  },
+  {
+    "id": "HD-2",
+    "claim": "UPSCRE enters the score with the carry SET (“ZERO SUPPRESSION”) — leading zeros of the first two digit pairs render as blanks until the first significant digit.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1924,
+      "verbatim": "\tSEC\t\t\t;ZERO SUPPRESSION"
+    }
+  },
+  {
+    "id": "HD-3",
+    "claim": "The last score pair is sent through DIGIT2 with the carry CLEAR (“NO ZERO SUPPRESSION”) — the final two digits always render, so score 0 shows “00”, never a fully blank field.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1929,
+      "verbatim": "\tCLC\t\t\t;NO ZERO SUPPRESSION"
+    }
+  },
+  {
+    "id": "HD-4",
+    "claim": "The high score displays at PLYFLD+$19F — offset $19F decodes to col 12, row $1F: six digits at columns 12-17 of the top row, drawn with the same SEC-then-CLC suppression.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1950,
+      "verbatim": "10$:\tLDA I,PLYFLD+19F&0FF"
+    }
+  },
+  {
+    "id": "HD-5",
+    "claim": "DLIVES walks exactly six slots (“MAX NUMBER OF LIVES” = 6 into TEMP1) — a ship per remaining life, a blank per empty slot, six placements always.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 507,
+      "verbatim": "DLIVES:\tLDA I,6"
+    }
+  },
+  {
+    "id": "HD-6",
+    "claim": "Player one’s lives display at PLYFLD+$0DF — offset $0DF decodes to col 6, row $1F: the six life slots occupy columns 6-11, between the score and the high score.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 509,
+      "verbatim": "\tLDA I,PLYFLD+0DF/100"
+    }
+  },
+  {
+    "id": "HD-7",
+    "claim": "The life icon is stamp $1F (“PICTURE OF SHIP”); an exhausted slot writes stamp 0, the blank.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 518,
+      "verbatim": "10$:\tLDA I,1F\t\t;PICTURE OF SHIP"
+    }
+  },
+  {
+    "id": "HD-8",
+    "claim": "DDTS2 is the routine that draws the DDT bombs onto the playfield, walking the DDTADD table.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 443,
+      "verbatim": "DDTS2:\tJSR DDTS1\t\t;SET UP PARAMETERS"
+    }
+  },
+  {
+    "id": "HD-9",
+    "claim": "The first bomb stamp written is DDT+1, at the entry address offset by Y=$20 — one column over from the entry’s own cell (claim HD-15 pins the $20).",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 460,
+      "verbatim": "16$:\tLDA I,DDT+1"
+    }
+  },
+  {
+    "id": "HD-10",
+    "claim": "The second bomb stamp written is DDT itself, at the entry’s own offset (Y EOR $20 back to 0) — so an intact bomb is the two-stamp pair DDT,DDT+1 across two adjacent columns of one row.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 470,
+      "verbatim": "19$:\tLDA I,DDT"
+    }
+  },
+  {
+    "id": "HD-11",
+    "claim": "CHAR advances the screen address by ORA I,20 (with CKFF=0 upright) — +$20 per character, i.e. one COLUMN per character in the col*$20+row map: HUD text runs across columns of one row.",
+    "source": {
+      "file": "MLIRQ.MAC",
+      "line": 658,
+      "verbatim": "\tORA I,20"
+    }
+  },
+  {
+    "id": "HD-12",
+    "claim": "DIGITZ renders digit d as stamp $20+d (“DIGITS ARE 20-29”); the suppressed-zero path skips the ORA and writes A=0, the blank stamp.",
+    "source": {
+      "file": "MLIRQ.MAC",
+      "line": 691,
+      "verbatim": "\tORA I,20\t\t;DIGITS ARE 20-29"
+    }
+  },
+  {
+    "id": "HD-13",
+    "claim": "UPSCRE is the routine that updates the scores on screen — the HUD’s score/high-score writer.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 1912,
+      "verbatim": "\t.SBTTL\tUPSCRE-UPDATE SCORES ON SCREEN"
+    }
+  },
+  {
+    "id": "HD-14",
+    "claim": "DLIVES is the routine that displays the lives — the HUD’s life-icon writer.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 505,
+      "verbatim": "\t.SBTTL\tDLIVES-DISPLAY LIVES"
+    }
+  },
+  {
+    "id": "HD-15",
+    "claim": "DDTS2 seeds Y=$20 for the upright picture order (cocktail flips it to 0) — the DDT pair’s second cell is one column (+$20) from the entry offset.",
+    "source": {
+      "file": "MLSUB.MAC",
+      "line": 451,
+      "verbatim": "\tLDY I,20"
+    }
+  },
+  {
+    "id": "HD-16",
+    "claim": "CHAR masks the advance with AND I,0E0 — the per-character step is exactly the $20 column stride, nothing finer.",
+    "source": {
+      "file": "MLIRQ.MAC",
+      "line": 659,
+      "verbatim": "\tAND I,0E0"
+    }
+  }
+]
