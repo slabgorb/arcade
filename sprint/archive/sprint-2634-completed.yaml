@@ -187,3 +187,8 @@ completed_stories:
     title: 'Spider first-wave extra-spider feature (descoped from ml4-1): slots 6..11 open above 100,000 on a full first wave (CENTIN=0C), allowance min((SCORE2-10)/2,5)+3, reserved-slot arithmetic vs the centipede train (MILLI.MAC:2318-2345). Cited; extends trySpawnSpider.'
     points: 3
     completed: '2026-08-13'
+  - id: ml5-3
+    epic: ml5
+    title: 'High-score table + initials in core, reusing @shared/highscore + @shared/name-entry: qualifiesForHighScore/insertHighScore over ML GameState; stepNameEntry drives the initials buffer (GETINT MLSUB.MAC:547, UPDATE MLSUB.MAC:1817). Verify whether the ROM ships a default ladder before seeding one.'
+    points: 5
+    completed: '2026-08-13'
