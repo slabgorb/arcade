@@ -16,10 +16,11 @@
 // MUSH register pair is { lower: MUSH[0], top: MUSH[2] } (MLDEF.MAC:342-343).
 //
 // The full OBSTAC mover→address derivation (V/8 + half-row round; H' = H+8*dir;
-// the (0xF7-H')&0xF8 column fold; the right-edge wrap) is NOT modelled here — it
-// hangs on an unresolved 0x400/0x800 base reconciliation against conway's field
-// model (see .session/ml3-3-session.md, Delivery Findings). This module ships
-// the OBSTAC PROBE only; movers wire the full obstac in a follow-up.
+// the (0xF7-H')&0xF8 column fold; the right-edge wrap) ships here as `obstac`
+// (ml3-6). The 0x400/0x800 base question the ml3-3 finding raised resolved to
+// PLYFLD = 0x1000 (MLDEF.MAC:103, == conway.ts:36): the :886 "800+…" exit comment
+// is a stale earlier build and "(400-7BF)" is the screen mirror; conway and OBSTAC
+// share the 0x1000 base and the zero-based offset = col*0x20 + row.
 
 import { POISON, NORMAL } from './conway'
 
@@ -160,7 +161,7 @@ const PLYFLD_BASE = 0x1000
  *   abs  = 0x1000 + col8*4 + vpart          (:858 base, :873-877 ×4 + V/8)
  *   right-edge wrap (:879-884): abs >= PLYFLD+0x3C0 folds col 30 → col 29.
  */
-export function obstac(field: Uint8Array, mover: { h: number; v: number; dh: number }): number {
+export function obstac(field: Uint8Array, mover: Readonly<{ h: number; v: number; dh: number }>): number {
   const dir = mover.dh < 0 ? -1 : 1 // :836-839
   const vpart = (mover.v >> 3) + (mover.v & 0x04 ? 1 : 0) // :853-856 LSR×3 / ADC I,0
   const hPrime = (mover.h + 8 * dir) & 0xff // :860-866

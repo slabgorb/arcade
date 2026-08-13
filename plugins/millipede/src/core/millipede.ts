@@ -286,7 +286,11 @@ function stepSegment(
   // the cell the head is moving toward. A letter/mushroom/rock turns it (drop a
   // row — the 15$ seam the edge turn shares); a poison mushroom [78,7C) also
   // poisons the head (MOBJC = POISON_COLOR); DDT explosion clouds [CLOUD,DDT) and
-  // empty cells fall through to the ordinary edge/free-space handling.
+  // empty cells fall through here. NB the ROM's "no-turn" branch (13$, :1541) runs
+  // JSR OVRLAP first — the segment-OVERLAP turn (checkOverlap) — which is a distinct
+  // segment-vs-segment mechanic NOT wired by any story yet; only the OBSTAC
+  // (mushroom) turn is wired here, so a fall-through goes straight to the edge/
+  // free-space handling.
   if (field) {
     const reaction = obstacleReaction(obstac(field, s))
     if (reaction === 'poison') return move({ ...s, color: POISON_COLOR }, true)

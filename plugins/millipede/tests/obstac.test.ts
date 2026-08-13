@@ -327,7 +327,8 @@ describe('ml3-6 AC-7 — stepMillipede MOTION obstacle turn (MILLI.MAC:1527-1539
     const field = emptyField()
     field[AHEAD] = FULL_MUSHROOM
     const out = m.stepMillipede([head()], FRAME, field)
-    expect(out[0].v, 'obstacle ahead ⇒ drop a row (15$), not coast').toBeLessThan(0x50)
+    // dv sped up to 2 (sole live head), so a turn descends exactly one step: 0x50 - 2.
+    expect(out[0].v, 'obstacle ahead ⇒ drop a row (15$) to 0x4E, not coast at 0x50').toBe(0x4e)
   })
 
   it('the turn is CAUSED by the field: same head, same frame, differs from the control', async () => {
@@ -364,7 +365,7 @@ describe('ml3-6 AC-8 — stepMillipede obstacle band table (MILLI.MAC:1528-1539)
     field[AHEAD] = POISON // 0x78, in [0x78,0x7C) → :1537-1539 LDA I,1B / STA MOBJC / turn
     const out = m.stepMillipede([head()], FRAME, field)
     expect(out[0].color, 'poison mushroom poisons the head (MOBJC = 0x1B)').toBe(m.POISON_COLOR)
-    expect(out[0].v, 'a poison mushroom also turns the head').toBeLessThan(0x50)
+    expect(out[0].v, 'a poison mushroom also turns the head (descends to 0x4E)').toBe(0x4e)
   })
 
   it('a full mushroom (0x7F, >= 0x7C) turns the head WITHOUT poisoning it', async () => {
@@ -373,7 +374,7 @@ describe('ml3-6 AC-8 — stepMillipede obstacle band table (MILLI.MAC:1528-1539)
     field[AHEAD] = FULL_MUSHROOM
     const out = m.stepMillipede([head()], FRAME, field)
     expect(out[0].color, 'a plain mushroom does not poison').toBe(0x39) // HEAD_COLOR
-    expect(out[0].v).toBeLessThan(0x50)
+    expect(out[0].v, 'a plain mushroom turns the head (descends to 0x4E)').toBe(0x4e)
   })
 })
 
