@@ -74,12 +74,14 @@ stories:
     title: 'CLFDES cliff-crumble animation (deferred polish from jt11-5): the ROM crumble CLFDES (JOUSTRV4.SRC:4562-4599) is wholly absent - dissolve.ts is a false friend (it is the ptero/baiter death ASH animation, dissolve.ts:3-13; grep CLFDES hits only the arena-state.ts:62-63 comment ''both jt3-later''). After jt11-5 makes destroyed cliffs vanish from physics and render, this story adds the visible crumble transition between intact and gone. Requires jt11-5.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
     depends_on: jt11-5
-    review_findings: "Round 2 (feature works, cleanups only): R2 MEDIUM — the F1 wiring guard (render-crumble main.ts scan) is defeatable by a decoy comment (mutation-confirmed); anchor to the call. R1 LOW — F5 half-fixed, 3 ins! asserts remain in the STRUCTURE block. R3 LOW — 2 doc contradictions from the incomplete F3 fix (sim.ts frame? docstring + above/below). F2/F3/F4/F6 verified resolved."
-    review_verdict: rejected
+    completed: '2026-08-13'
+    review_findings: "APPROVED round 3. F1 (HIGH, round 1): crumble drawList ops had no shell consumer — fixed with render.ts paintCrumble + main.ts dispatch + a shell visibility test. F2-F6 (round 1) and R1-R3 (round 2, incl. a mutation-confirmed defeatable wiring guard) all resolved and independently re-verified. Accepted deferral: pixel-accurate FIRSTI debris (procedural render ships; follow-up filed)."
+    review_verdict: approved
   - id: jt11-9
     title: 'Transporter pad occupancy (routed Delivery Finding from jt11-4, with the prerequisite it uncovered): (A) an arrival must STAND on its pad for 30 frames (LDA #30 / STA PFRAME JOUSTRV4.SRC:5726-5727) before its brain moves it - measured today it drifts on the very next frame (seed 0x1234: id 256 born f62 at x=23 on TR3, x=25 by f82), and MATERIALISE_WINDOW=120 is the collision gate, NOT the standing period. (B) then TCURUSE: a pad is in use from GOTTR INC [TCURUSE,X] :5710 until DEC :5898, selection keeps enterViaPads draw as the VRAND preference and falls through GOTR1..GOTR4 to the first free pad :5687-5709, and BNE CRELP :5709 leaves a customer pending with its ticket intact when all four are busy. (A) is a hard prerequisite for (B): with a one-frame occupancy nothing can ever contend, so TCURUSE alone would be unobservable dead state - the exact condition this epic exists to remove. A 400-frame sweep on four seeds found zero same-pad collisions today. Full test design incl. the reachable fixture (player respawn during a wave walk-in, since 30 < 61 rules out enemy-to-enemy contention) in context-story-jt11-9.md. Sequence after jt11-4; shares sim.ts with jt11-5 - do not parallel.'
     points: 5
