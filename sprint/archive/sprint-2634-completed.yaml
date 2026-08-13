@@ -137,3 +137,8 @@ completed_stories:
     title: 'Earwig + inchworm + bee reducers (cited): EARWIG move/start (MILLI.MAC:672), WRMMV enter/move inchworm (MILLI.MAC:2559), BEEMV move bee down screen (MILLI.MAC:56). PTS scoring.'
     points: 5
     completed: '2026-08-13'
+  - id: ml3-2
+    epic: ml3
+    title: 'Millipede split-on-mushroom + EXPLOD segment/player explosion (MILLI.MAC:763) + player death/collision (PLAY MILLI.MAC:1744). Death effects designed freeze-friendly (no strobe) ahead of ml7 accessibility gate.'
+    points: 5
+    completed: '2026-08-13'
