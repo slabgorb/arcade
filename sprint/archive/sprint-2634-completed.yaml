@@ -157,6 +157,11 @@ completed_stories:
     title: 'Scrolling playfield (novel vs centipede): SCROLL/SCROLD/SCROLU scroll mushrooms up/down (MLSUB.MAC:1105/1149/1309); make the core coordinate system scroll-aware from the start. Cited; pin output coordinates in a core unit test (routing != geometry).'
     points: 3
     completed: '2026-08-13'
+  - id: jt11-10
+    epic: jt11
+    title: 'Chore: sweep the retired dev-bar naming and harden the frame-loop source pins. (a) render-jt4-5.test.ts / helpers/game-contract.ts / demo-td1-12.test.ts prose still calls overlayReadout''s consumer the dev-overlay/drawOverlay - retired by jt11-2 (drawHud); truth-fix the headers, keep the assertions. (b) The frame-loop wiring pins in render-jt4-5.test.ts and hud-jt11-2.test.ts slice from the frame declaration to EOF - correct only while frame stays the last top-level decl in main.ts; bound the slice to the matching closing brace (or the ts AST, per the mc10-6 ruling) in both files.'
+    points: 3
+    completed: '2026-08-13'
   - id: ml3-3
     epic: ml3
     title: 'Mushroom field reducers: MUSHER/MUSHDC add/decrement count (MLSUB.MAC:732/707), RESTOR restore mushrooms (:919), OBSTAC obstacle (MILLI.MAC:824), poison mushrooms (MLDEF.MAC:143). Cited.'

@@ -500,12 +500,12 @@ export async function loadGameLoop(): Promise<GameLoopModule> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Story jt4-5 — THE FULL LOOP: RESPAWN + THE DEV-OVERLAY READOUT (the epic closer)
+// Story jt4-5 — THE FULL LOOP: RESPAWN + THE HUD READOUT (the epic closer)
 // ═════════════════════════════════════════════════════════════════════════════
 //
 // jt4-1..jt4-4 built the session layer; jt4-5 is the DEMO BAR — two knights playing
 // a full loop (co-op spawn → waves → death → extra man → game-over) with a
-// dev-overlay score/lives/wave readout. The last two behaviour gaps close here:
+// HUD score/lives/wave readout. The last two behaviour gaps close here:
 //
 //   • RESPAWN — a mount death today is a SILENT process removal with NO re-entry
 //     (jt4-4 Delivery Finding): a dead player never comes back, so lives never
@@ -517,14 +517,14 @@ export async function loadGameLoop(): Promise<GameLoopModule> {
 //     re-enters; a player at ZERO lives stays out. This is a BEHAVIOUR change to
 //     `stepGame` (no new export) — pinned through stepGame's live process set.
 //
-//   • THE DEV-OVERLAY READOUT — `overlayReadout(game)` is the ONE new game.ts export:
+//   • THE HUD READOUT — `overlayReadout(game)` is the ONE new game.ts export:
 //     a PURE projection of the session registers (each player's score + lives, and
 //     the wave) straight off the GameState the shell steps. The shell draws its
 //     output; because it TAKES the GameState by value it cannot drift from a
 //     shell-side copy (routing≠geometry — the readout is pinned by OUTPUT, not by a
-//     text match). The authentic MESSAGE.SRC display is jt5 — this is the dev bar.
+//     text match). The authentic MESSAGE.SRC display is jt5 — this is the HUD.
 
-/** One player's dev-overlay readout line — its id (1-based), score and lives. */
+/** One player's HUD readout line — its id (1-based), score and lives. */
 export interface OverlayPlayerReadout {
   /** 1-based player id (1 → ledger 0, 2 → ledger 1) — the P1/P2 label. */
   player: number
@@ -534,7 +534,7 @@ export interface OverlayPlayerReadout {
   lives: number
 }
 
-/** The whole dev-overlay readout: the wave number + one line per player. */
+/** The whole HUD readout: the wave number + one line per player. */
 export interface OverlayReadout {
   /** The 1-based wave, read off the GameState (mirrored from the sim). */
   wave: number
@@ -543,13 +543,13 @@ export interface OverlayReadout {
 }
 
 /**
- * The jt4-5 surface — the jt4-4 module PLUS the dev-overlay readout. Respawn is a
+ * The jt4-5 surface — the jt4-4 module PLUS the HUD readout. Respawn is a
  * BEHAVIOUR change to `stepGame` (no new export), so it is pinned through stepGame,
  * not a new function; `overlayReadout` is the only new export.
  */
 export interface GameFullModule extends GameLoopModule {
   /**
-   * Project the dev-overlay readout from a GameState — a PURE selector reading each
+   * Project the HUD readout from a GameState — a PURE selector reading each
    * ledger's score + lives and the wave STRAIGHT off the state (no copy, no clock).
    * `players` is in P1, P2 order with 1-based ids. Pure — the argument is untouched.
    */
@@ -557,7 +557,7 @@ export interface GameFullModule extends GameLoopModule {
 }
 
 /**
- * jt4-5 loader — the dev-overlay readout extension. Same self-describing-failure seam
+ * jt4-5 loader — the HUD readout extension. Same self-describing-failure seam
  * as loadGameLoop: it requires the one new export (`overlayReadout`) so every jt4-5
  * overlay test reddens cleanly with one build instruction until Korben ships it. The
  * jt4-1..jt4-4 surface must already be present (loadGameLoop). Respawn tests use
@@ -569,7 +569,7 @@ export async function loadGameFull(): Promise<GameFullModule> {
   const base = (await loadGameLoop()) as Partial<GameFullModule>
   if (typeof base.overlayReadout !== 'function') {
     throw new Error(
-      'jt4-5 dev-overlay readout not built yet — GREEN (Korben) extends ' +
+      'jt4-5 HUD readout not built yet — GREEN (Korben) extends ' +
         'joust/src/core/game.ts: export a PURE `overlayReadout(game)` that projects each ' +
         'ledger`s { player, score, lives } (P1, P2 order, 1-based ids) plus `wave` STRAIGHT ' +
         'off the GameState (no shell-side copy). AND wire RESPAWN into stepGame: a player ' +
