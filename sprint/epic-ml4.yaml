@@ -39,7 +39,8 @@ stories:
     title: 'DDT bombs: DDTS add DDT bombs (MLSUB.MAC:420), BOMBS bomb player with bee/mosquito/dragonfly (MILLI.MAC:446), explosion clouds (CLOUD MLDEF.MAC:202, DDT stamps :203). NDDT=4 (MLDEF.MAC:191). Cited.'
     points: 3
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml4-5
