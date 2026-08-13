@@ -33,6 +33,12 @@
 // rule), and its reroll spin is the same deferred-spawn model as the
 // dragonfly's (the logged ml4-2 Design Deviation).
 
+// The BEEMV2/BEEOFF/COMP ports now live once in ./bee-family (ml4-6). spawnH is
+// re-exported so this file's public surface is unchanged; comp is internal;
+// mosquitoOff aliases the shared beeOff.
+import { comp, spawnH, beeOff } from './bee-family'
+export { spawnH }
+
 // ─── spawn writes (MQ-3/20/21) ──────────────────────────────────────────────
 export const MOSQUITO_SLOT = 12 // BEEC+12. (MILLI.MAC:1331/:1345, MQ-3)
 export const MOSQUITO_PIC = 0x0e // MOSQT3 picture (:1405, MQ-20)
@@ -79,11 +85,6 @@ export interface MosquitoEnv {
 
 export type MosquitoMove = { kind: 'idle' } | { kind: 'offscreen' } | { kind: 'moved' }
 
-/** Two's complement of a byte (the ROM's COMP). */
-function comp(b: number): number {
-  return (0x100 - b) & 0xff
-}
-
 /** The movement sweep's mosquito test: a live slot in the band [0E,10) (MILLI.MAC:1348-1354, MQ-8/9). */
 export function isMosquito(slot: Readonly<MosquitoSlot>): boolean {
   return slot.color !== 0 && slot.pic >= MOSQUITO_PIC && slot.pic < 0x10
@@ -108,16 +109,6 @@ export function mayStartMosquito(env: Readonly<MosquitoEnv>): boolean {
 /** MOSQT3's speed (MILLI.MAC:1410-1426): 2 below 90,000, 3 from 90,000 (MQ-22/23). */
 export function mosquitoSpeed(score2: number): number {
   return score2 >= 0x09 ? 3 : 2 // :1410/:1415-1416/:1426
-}
-
-/**
- * BEEMV2's spawn column (MILLI.MAC:228-234, MQ-21): RND0 AND F8, rejected
- * below 0x10 (null models the ROM's reroll spin as a deferred spawn), minus 4.
- */
-export function spawnH(rnd0: number): number | null {
-  const masked = rnd0 & 0xf8 // :229
-  if (masked < 0x10) return null // :230-232 — BEQ and CMP I,10/BCC rerolls
-  return (masked - 4) & 0xff // :233-234
 }
 
 /**
@@ -177,12 +168,8 @@ export function moveMosquito(slot: MosquitoSlot, env: Readonly<MosquitoEnv>): Mo
   return { kind: 'moved' }
 }
 
-/** BEEOFF (MILLI.MAC:166-171, MQ-31): clear PTS, colour and H — the slot is freed, V untouched. */
-export function mosquitoOff(slot: MosquitoSlot): void {
-  slot.pts = 0 // :166-167
-  slot.color = 0 // :168
-  slot.h = 0 // :169 — prevents blanking other motion objects
-}
+/** BEEOFF (MILLI.MAC:166-171, MQ-31): clear PTS, colour and H — the slot is freed, V untouched. The shared ./bee-family beeOff, aliased to preserve the MosquitoSlot signature. */
+export const mosquitoOff: (slot: MosquitoSlot) => void = beeOff
 
 /**
  * SHOOT2's mosquito branch (MILLI.MAC:2127-2131): INC SCROLC runs FIRST —

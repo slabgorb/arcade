@@ -35,6 +35,10 @@
 // the OBSTAC read and the DDTEX1 death sequence stay with their callers —
 // earwigStamp classifies the stamp the caller read.
 
+// The BEEOFF/COMP ports now live once in ./bee-family (ml4-6). comp is internal;
+// earwigOff aliases the shared beeOff.
+import { comp, beeOff } from './bee-family'
+
 // ─── spawn writes (EW-3/10/11) ──────────────────────────────────────────────
 export const EARWIG_SLOT = 12 // BEEC+12. (MILLI.MAC:677, EW-3)
 export const EARWIG_PIC = 0x1c // spawn picture (:695, EW-10)
@@ -88,11 +92,6 @@ export type EarwigStamp =
   | { kind: 'none' }
   | { kind: 'ddt-death' }
   | { kind: 'poison'; stamp: number }
-
-/** Two's complement of a byte (the ROM's COMP). */
-function comp(b: number): number {
-  return (0x100 - b) & 0xff
-}
 
 /** The occupancy test: a live slot in the band [1C,1E) (MILLI.MAC:679-683, EW-4/5). */
 export function isEarwig(slot: Readonly<EarwigSlot>): boolean {
@@ -179,12 +178,8 @@ export function earwigStamp(stamp: number): EarwigStamp {
   return { kind: 'none' }
 }
 
-/** BEEOFF (MILLI.MAC:166-171, EW-27): clear PTS, colour and H — the slot is freed, V untouched. */
-export function earwigOff(slot: EarwigSlot): void {
-  slot.pts = 0 // :166-167
-  slot.color = 0 // :168
-  slot.h = 0 // :169 — prevents blanking other motion objects
-}
+/** BEEOFF (MILLI.MAC:166-171, EW-27): clear PTS, colour and H — the slot is freed, V untouched. The shared ./bee-family beeOff, aliased to preserve the EarwigSlot signature. */
+export const earwigOff: (slot: EarwigSlot) => void = beeOff
 
 /** SHOOT2's earwig branch (MILLI.MAC:2134-2139): 1000 points, 3000 by DDT (EW-40/41). */
 export function earwigKill(byDdt: boolean): { points: number } {

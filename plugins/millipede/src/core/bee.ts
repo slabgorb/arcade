@@ -41,6 +41,11 @@
 // OBSTAC/DDTEXP/PLAY/MUSHER seams stay with their callers, which plant at
 // v + BEE_MUSH_V_OFFSET.
 
+// The BEEMV1/BEEMV2/BEEOFF ports now live once in ./bee-family (ml4-6) — this
+// file re-exports them so its public surface is unchanged for callers/tests.
+import { mushroomsNeeded, spawnH, beeOff } from './bee-family'
+export { mushroomsNeeded, spawnH, beeOff }
+
 // ─── spawn writes (BE-3/37/38/43) ───────────────────────────────────────────
 export const BEE_SLOT = 12 // BEEC+12. (MILLI.MAC:66/:80, BE-3/10)
 export const BEE_PIC = 0x38 // BEEMV3 picture (:223, BE-37)
@@ -107,18 +112,6 @@ export function isBee(slot: Readonly<BeeSlot>): boolean {
 }
 
 /**
- * BEEMV1 (MILLI.MAC:179-194) — the mushrooms-needed curve: 5 below 20,000
- * (BE-29), 9 to 120,000 (BE-30/31), the halved SCORE2 byte plus 6 beyond
- * (BE-32), capped at 0x2F (BE-33).
- */
-export function mushroomsNeeded(score2: number): number {
-  if (score2 < 0x02) return 0x05 // :180-182 (BE-29)
-  if (score2 < 0x12) return 0x09 // :183-185 (BE-30/31)
-  const a = (score2 >> 1) + 6 // :186-188 (BE-32)
-  return a < 0x30 ? a : 0x2f // :189-191 (BE-33)
-}
-
-/**
  * The BEEMV start gates (MILLI.MAC:68-78): with the centipede dead, a beetle
  * on screen and CENTIN >= decimal 10, the bee spawns DIRECTLY (BE-7); every
  * other path runs the mushroom check — BEEMV1's needed count must reach MUSH,
@@ -132,17 +125,6 @@ export function mayStartBee(env: Readonly<BeeEnv>): boolean {
 /** BEEMV3's dive speed (MILLI.MAC:199-218): 2 below 60,000, 3 from 60,000 (BE-34/35/36; SECURA skipped). */
 export function beeSpeed(score2: number): number {
   return score2 >= 0x06 ? 3 : 2
-}
-
-/**
- * BEEMV2's spawn column (MILLI.MAC:228-234, BE-39/40/41): RND0 AND F8,
- * rejected below 0x10 (null models the ROM's reroll spin as a deferred
- * spawn — the logged ml4-3 Design Deviation), minus 4.
- */
-export function spawnH(rnd0: number): number | null {
-  const masked = rnd0 & 0xf8 // :229 (BE-39)
-  if (masked < 0x10) return null // :230-232 (BE-40) — BEQ and CMP I,10/BCC rerolls
-  return (masked - 4) & 0xff // :233-234 (BE-41)
 }
 
 /**
@@ -205,13 +187,6 @@ export function moveBee(slot: BeeSlot, env: Readonly<BeeEnv>): BeeMove {
     }
   }
   return { kind: 'moved', plantMushroom }
-}
-
-/** BEEOFF (MILLI.MAC:166-171, BE-26/27/28): clear PTS, colour and H — the slot is freed, V untouched. */
-export function beeOff(slot: BeeSlot): void {
-  slot.pts = 0 // :166-167 (BE-26)
-  slot.color = 0 // :168 (BE-27)
-  slot.h = 0 // :169 (BE-28) — prevents blanking other motion objects
 }
 
 /**
