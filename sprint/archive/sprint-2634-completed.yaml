@@ -203,3 +203,8 @@ completed_stories:
     title: 'Pure attract/play/death/game-over phase machine (unwired) from MLATR MODE FE/FF (MLATR.MAC:126/313) + attract action (MLATR.MAC:21). Route a qualifying game-over to the ml5 name-entry phase. Phase transitions via a forcePhase helper (bare phase-literal assignment reds tsc TS2367).'
     points: 5
     completed: '2026-08-13'
+  - id: ml5-2
+    epic: ml5
+    title: 'Bonus life + lives + SELECT starting score (novel): BONUS life-every-XXXX selectable (MLSUB.MAC:8, DIP MLDEF.MAC:90), DLIVES lives (MLSUB.MAC:505), SELECT starting-score/difficulty (MLSUB.MAC:1404) with BONUSS max starting bonus (MLTST.MAC:8). Cited.'
+    points: 5
+    completed: '2026-08-13'
