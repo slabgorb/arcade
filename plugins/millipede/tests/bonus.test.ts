@@ -131,7 +131,10 @@ describe('bonus — DIP-selected constants', () => {
     expect(m.bonusIndex(0x10)).toBe(2)
     expect(m.bonusIndex(0x20)).toBe(4)
     expect(m.bonusIndex(0x30)).toBe(6)
-    expect(m.bonusIndex(0xcf), 'only D4-D5 participate').toBe(2)
+    // 0xDF = 1101_1111: D4 set, D5 clear, every other bit noise → (DF AND 30) >> 3 = 2.
+    // (GREEN fixed this fixture: RED shipped 0xCF, whose D4-D5 are both CLEAR — the
+    // derivation error is logged in the session's Design Deviations.)
+    expect(m.bonusIndex(0xdf), 'only D4-D5 participate').toBe(2)
   })
 
   it('bonusIncrement returns the word halves — low from BONUSV, mid from BONUSV+1', async () => {

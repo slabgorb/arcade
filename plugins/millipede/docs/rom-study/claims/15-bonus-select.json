@@ -1,0 +1,389 @@
+[
+ {
+  "id": "BL-1",
+  "claim": "BONUS is the \"BONUS LIFE EVERY XXXX\" display routine; its BONUS1 helper selects the increment.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 8,
+   "verbatim": "\t.SBTTL\tBONUS - DISPLAY \"BONUS LIFE EVERY XXXX\" MESSAGE"
+  }
+ },
+ {
+  "id": "BL-2",
+  "claim": "BONUS1 selects the bonus option from OPTNS1 D4-D5 (AND 30, then three LSRs to a table index 0/2/4/6).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 33,
+   "verbatim": "\tAND I,30\t\t;D4-D5=BONUS LEVEL OPTIONS"
+  }
+ },
+ {
+  "id": "BL-3",
+  "claim": "BONUSV opens with the four increment words 120,150,200,200 — BCD x100: 12,000 / 15,000 / 20,000 / the none option.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 28,
+   "verbatim": "BONUSV:\t.WORD 120,150,200,200\t;*100 FOR BONUS LEVEL"
+  }
+ },
+ {
+  "id": "BL-4",
+  "claim": "The fourth increment word \"is really 0\": at Y=6 the life and the display are suppressed — the threshold arithmetic still uses the word.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 29,
+   "verbatim": "\t\t\t\t;THE LAST ENTRY ABOVE IS REALLY 0"
+  }
+ },
+ {
+  "id": "BL-5",
+  "claim": "NLIVES = ((OPTNS1 AND 0C) >> 2) + 2 — \"2 TO 5 LIVES TO START WITH\".",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 279,
+   "verbatim": "\tSTA NLIVES\t\t;2 TO 5 LIVES TO START WITH"
+  }
+ },
+ {
+  "id": "BL-6",
+  "claim": "OPTSW0 D2-D3 select the number of lives to start.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 89,
+   "verbatim": "\t\t\t\t;D2-D3=NUMBER OF LIVES TO START"
+  }
+ },
+ {
+  "id": "BL-7",
+  "claim": "OPTSW0 D4-D5 select the bonus-life-every-XXXX option.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 90,
+   "verbatim": "\t\t\t\t;D4-D5=BONUS LIFE FOR XXXX"
+  }
+ },
+ {
+  "id": "BL-8",
+  "claim": "A two-player start stores NLIVES untouched into player 2's LIVES+1 slot.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 351,
+   "verbatim": "\tSTA LIVES+1"
+  }
+ },
+ {
+  "id": "BL-9",
+  "claim": "Game start stores NLIVES-1 into LIVES — \"WE ARE PLAYING WITH ONE\".",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 384,
+   "verbatim": "\tSTX LIVES\t\t;NUMBER OF LIVES-1 (WE ARE PLAYING WITH ONE)"
+  }
+ },
+ {
+  "id": "BL-10",
+  "claim": "Game start seeds both players' BONUSL/BONUSM with one BONUS1 increment.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 393,
+   "verbatim": "\tJSR BONUS1\t\t;GET BONUS LEVEL VALUES"
+  }
+ },
+ {
+  "id": "BL-11",
+  "claim": "The bonus comparator opens with CMP X,BONUSL — SCORE1 against the threshold low byte, setting the borrow.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1077,
+   "verbatim": "\tCMP X,BONUSL"
+  }
+ },
+ {
+  "id": "BL-12",
+  "claim": "The comparator is a BAND: SBC X,BONUSM must land on ZERO (BNE refuses), true across [T, T+9,999] including the borrow leg.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1080,
+   "verbatim": "\tBNE 25$\t\t\t;NOT AT BONUS LEVEL"
+  }
+ },
+ {
+  "id": "BL-13",
+  "claim": "EXTRAL is flagged on every threshold hit, before the none-option and cap checks.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1091,
+   "verbatim": "\tSTA X,EXTRAL\t\t;FLAG PLAYER ACHIEVEMENT"
+  }
+ },
+ {
+  "id": "BL-14",
+  "claim": "The none option (Y=6) branches past the life award — the threshold has already advanced.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1093,
+   "verbatim": "\tBEQ 25$\t\t\t;IF NO BONUS IS SELECTED"
+  }
+ },
+ {
+  "id": "BL-15",
+  "claim": "LIVES at 6 skips the award — \"NO MORE LIVES 6 IS MAX\".",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1096,
+   "verbatim": "\tBEQ 23$\t\t\t;NO MORE LIVES 6 IS MAX"
+  }
+ },
+ {
+  "id": "BL-16",
+  "claim": "LIVES above 6 hits \"BCS 20$ ;OOPS-RESET\" — a deliberate watchdog spin-trap; the reducer takes the cap path instead (cited deviation).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1097,
+   "verbatim": "20$:\tBCS 20$\t\t\t;OOPS-RESET"
+  }
+ },
+ {
+  "id": "BL-17",
+  "claim": "INC X,LIVES — one life per threshold hit; the tail falls through to RTS with no catch-up loop.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1098,
+   "verbatim": "\tINC X,LIVES  \t\t;ADD A LIFE AS A BONUS"
+  }
+ },
+ {
+  "id": "BL-18",
+  "claim": "DLIVES is the lives display routine — the render is shell; its cap is the core fact.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 505,
+   "verbatim": "\t.SBTTL\tDLIVES-DISPLAY LIVES"
+  }
+ },
+ {
+  "id": "BL-19",
+  "claim": "DLIVES displays at most 6 ships — the same cap the award enforces.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 508,
+   "verbatim": "\tSTA TEMP1\t\t;MAX NUMBER OF LIVES"
+  }
+ },
+ {
+  "id": "BL-20",
+  "claim": "EXTRAL is a per-player pair, non-zero once the player reached one bonus life.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 412,
+   "verbatim": "EXTRAL:\t.BLKB 2\t\t\t;NON-ZERO IF PLAYER REACHED ONE BONUS LIFE"
+  }
+ },
+ {
+  "id": "SL-1",
+  "claim": "BONUSS computes the max starting bonus scores for select mode.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 8,
+   "verbatim": "\t.SBTTL\tBONUSS-GET MAX STARTING BONUS SCORES FOR SELECT MODE"
+  }
+ },
+ {
+  "id": "SL-2",
+  "claim": "BONUSS preloads X=8 — the zero entry used when select mode is disabled.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 14,
+   "verbatim": "BONUSS:\tLDX I,8"
+  }
+ },
+ {
+  "id": "SL-3",
+  "claim": "OPTNS1 D7 set (BMI) exits BONUSS with the zero entry — select disabled.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 16,
+   "verbatim": "\tBMI 90$\t\t\t;IF NO SELECT MODE"
+  }
+ },
+ {
+  "id": "SL-4",
+  "claim": "The merged switch bits are masked to 3C: OPTNS1 D4-D5 over OPTNS2 D2-D3.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 21,
+   "verbatim": "\tAND I,3C"
+  }
+ },
+ {
+  "id": "SL-5",
+  "claim": "The halved merge is offset by 8 to skip the increment words: X = 8 + 8*bonusOpt + 2*startOpt.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 23,
+   "verbatim": "\tADC I,08\t\t;SKIP OVER OTHER ENTRIES"
+  }
+ },
+ {
+  "id": "SL-6",
+  "claim": "Max-start row for the 12,000 bonus: 0 / 120 / 240 / 360 (BCD x100).",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 30,
+   "verbatim": "\t.WORD 0,120,240,360\t;TABLE OF MAX STARTING VALUES FOR \"LSCORE\""
+  }
+ },
+ {
+  "id": "SL-7",
+  "claim": "Max-start row for the 15,000 bonus: 0 / 150 / 300 / 450.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 31,
+   "verbatim": "\t.WORD 0,150,300,450"
+  }
+ },
+ {
+  "id": "SL-8",
+  "claim": "Max-start row for the 20,000 bonus: 0 / 200 / 400 / 600.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 32,
+   "verbatim": "\t.WORD 0,200,400,600"
+  }
+ },
+ {
+  "id": "SL-9",
+  "claim": "The none-bonus row mirrors the 20,000 row: 0 / 200 / 400 / 600.",
+  "source": {
+   "file": "MLTST.MAC",
+   "line": 33,
+   "verbatim": "\t.WORD 0,200,400,600"
+  }
+ },
+ {
+  "id": "SL-10",
+  "claim": "OPTSW1 D2-D3 (SW3-SW4) select the starting max select-mode score.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 110,
+   "verbatim": "\t\t\t\t;D2-D3=SW3-SW4=STARTING MAX SELCT MODE SCORE"
+  }
+ },
+ {
+  "id": "SL-11",
+  "claim": "SELECT is the starting-score chooser; carry set on exit freezes the screen while selecting.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1404,
+   "verbatim": "\t.SBTTL\tSELECT - SELECT STARTING SCORE"
+  }
+ },
+ {
+  "id": "SL-12",
+  "claim": "SELEC4 stores the BONUSS maximum into LSCORE.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1742,
+   "verbatim": "\tSTA LSCORE"
+  }
+ },
+ {
+  "id": "SL-13",
+  "claim": "Game start enters select mode (MODE=1) only with D7 clear and a non-zero LSCORE mid byte.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 391,
+   "verbatim": "30$:\tSTA MODE\t\t;SELECT STARTING SCORE MODE"
+  }
+ },
+ {
+  "id": "SL-14",
+  "claim": "OPTSW0 D7 is the select-score-mode disable.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 92,
+   "verbatim": "\t\t\t\t;D7=SELECT SCORE MODE DISABLE"
+  }
+ },
+ {
+  "id": "SL-15",
+  "claim": "The window steps DOWN by one increment in SED arithmetic (SBC Y,BONUSV).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1538,
+   "verbatim": "\tSBC Y,BONUSV"
+  }
+ },
+ {
+  "id": "SL-16",
+  "claim": "The window steps UP by one increment in SED arithmetic (ADC Y,BONUSV).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1562,
+   "verbatim": "\tADC Y,BONUSV"
+  }
+ },
+ {
+  "id": "SL-17",
+  "claim": "The down-shift stops at the zero rung — \"WE ARE AT THE MIN NOW\".",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1528,
+   "verbatim": "\tBEQ 85$\t\t\t;WE ARE AT THE MIN NOW"
+  }
+ },
+ {
+  "id": "SL-18",
+  "claim": "The up-shift stops at LSCORE — \"WE ARE AT THE MAX\".",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1551,
+   "verbatim": "\tBEQ 90$\t\t\t;WE ARE AT THE MAX"
+  }
+ },
+ {
+  "id": "SL-19",
+  "claim": "Applying a selection writes the chosen word into SCORE1/SCORE2.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1593,
+   "verbatim": "\tSTA X,SCORE2"
+  }
+ },
+ {
+  "id": "SL-20",
+  "claim": "The new BONUSM is the selection plus one increment — the bonus target sits one increment above the start.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1603,
+   "verbatim": "\tSTA X,BONUSM\t\t;NEW BONUS LEVEL"
+  }
+ },
+ {
+  "id": "SL-21",
+  "claim": "A selected start seeds 5*SCORE2+1 extra mushrooms (ASL ASL, SEC, ADC SCORE2 into X).",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1488,
+   "verbatim": "\tTAX\t\t\t;NUMBER OF OTHER MUSHROOMS TO ADD"
+  }
+ },
+ {
+  "id": "SL-22",
+  "claim": "The extra mushrooms fill from row 8 at the bottom.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1489,
+   "verbatim": "\tLDY I,08\t\t;BOTTOM ROW FOR MUSHROOMS"
+  }
+ },
+ {
+  "id": "SL-23",
+  "claim": "The extra mushrooms fill to row 17 at the top.",
+  "source": {
+   "file": "MLSUB.MAC",
+   "line": 1490,
+   "verbatim": "\tLDA I,17\t\t;TOP ROW FOR MUSHROOMS"
+  }
+ }
+]
