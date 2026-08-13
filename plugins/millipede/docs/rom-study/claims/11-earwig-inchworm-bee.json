@@ -1,0 +1,1172 @@
+[
+ {
+  "id": "EW-1",
+  "claim": "EARWIG is the move-and-start earwig routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 672,
+   "verbatim": "\t.SBTTL\tEARWIG-MOVE AND START EARWIG"
+  }
+ },
+ {
+  "id": "EW-2",
+  "claim": "EARWIG runs only while the player is alive — the PLAYP EOR 0A / PEXPLD gate at entry returns when either is set.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 676,
+   "verbatim": "\tBNE 2$\t\t\t;IF PLAYER IS DEAD"
+  }
+ },
+ {
+  "id": "EW-3",
+  "claim": "The earwig lives in motion-object slot 12 (decimal) — BEEC+12 is probed for occupancy at entry.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 677,
+   "verbatim": "\tLDA BEEC+12."
+  }
+ },
+ {
+  "id": "EW-4",
+  "claim": "With slot 12 occupied, a picture at or above 0x1E is not an earwig and the routine returns.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 681,
+   "verbatim": "\tBCS 2$\t\t\t;NOT A EARWIG"
+  }
+ },
+ {
+  "id": "EW-5",
+  "claim": "A slot-12 picture at or above 0x1C (and below 0x1E) IS the earwig, and the routine jumps to its move path — the pics band is [1C,1E).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 683,
+   "verbatim": "\tBCS 50$\t\t\t;THIS IS A EARWIG MOVE HIM"
+  }
+ },
+ {
+  "id": "EW-6",
+  "claim": "The earwig may only start on the tick where the FULL frame byte is zero — once every 256 frames (\"EVERY 4 SECONDS\").",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 687,
+   "verbatim": "\tBNE 2$\t\t\t;EARWIG STARTS EVERY 4 SECONDS"
+  }
+ },
+ {
+  "id": "EW-7",
+  "claim": "CENTIN is compared against decimal 11 for the start gate.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 690,
+   "verbatim": "\tCMP I,11."
+  }
+ },
+ {
+  "id": "EW-8",
+  "claim": "CENTIN at or above 11 blocks the start — the earwig waits for waves where the centipede is small.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 691,
+   "verbatim": "\tBCS 2$\t\t\t;WAIT UNTIL WAVES WHERE THE CENTIPEDE IS SMALL"
+  }
+ },
+ {
+  "id": "EW-9",
+  "claim": "The start is further gated on RND0 AND 3 being zero — a 1-in-4 random entry.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 693,
+   "verbatim": "\tAND I,03"
+  }
+ },
+ {
+  "id": "EW-10",
+  "claim": "The earwig spawn picture is 0x1C.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 695,
+   "verbatim": "\tLDA I,1C"
+  }
+ },
+ {
+  "id": "EW-11",
+  "claim": "The earwig spawn colour is 0xB9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 697,
+   "verbatim": "\tLDA I,0B9"
+  }
+ },
+ {
+  "id": "EW-12",
+  "claim": "Below a SCORE2 of 2 (20,000) the earwig always uses the slow speed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 701,
+   "verbatim": "\tBCC 5$\t\t\t;IF SCORE <20K, USE SLOW SPEED"
+  }
+ },
+ {
+  "id": "EW-13",
+  "claim": "From 20,000 a fresh RND0 read AND 3 equal to zero still randomly picks the slow earwig.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 704,
+   "verbatim": "\tBEQ 5$\t\t\t;RANDOMLY USE SLOW EARWIG OVER 20K"
+  }
+ },
+ {
+  "id": "EW-14",
+  "claim": "The fast earwig speed is 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 705,
+   "verbatim": "\tLDA I,2"
+  }
+ },
+ {
+  "id": "EW-15",
+  "claim": "The horizontal direction is chosen by a fresh RND0 read — BIT RND0, bit 7 clear keeps the positive speed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 707,
+   "verbatim": "\tBPL 10$\t\t\t;CHOOSE RANDOM DIRECTION"
+  }
+ },
+ {
+  "id": "EW-16",
+  "claim": "Bit 7 set makes the fast speed negative — dh -2 (0xFE).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 708,
+   "verbatim": "\tLDA I,-2"
+  }
+ },
+ {
+  "id": "EW-17",
+  "claim": "The slow earwig speed is 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 711,
+   "verbatim": "5$:\tLDA I,1"
+  }
+ },
+ {
+  "id": "EW-18",
+  "claim": "Bit 7 set makes the slow speed negative — dh -1 (0xFF).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 714,
+   "verbatim": "\tLDA I,-1"
+  }
+ },
+ {
+  "id": "EW-19",
+  "claim": "The chosen signed speed is stored to BEEDH+12.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 715,
+   "verbatim": "10$:\tSTA BEEDH+12."
+  }
+ },
+ {
+  "id": "EW-20",
+  "claim": "The earwig starts at H = 0 — the screen edge.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 717,
+   "verbatim": "\tSTA BEEH+12.\t\t;START AT EDGE"
+  }
+ },
+ {
+  "id": "EW-21",
+  "claim": "The vertical direction BEEDV+12 is cleared to 0 — the earwig never dives.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 718,
+   "verbatim": "\tSTA BEEDV+12.\t\t;CLEAR VERTICAL DIRECTION"
+  }
+ },
+ {
+  "id": "EW-22",
+  "claim": "The spawn V is built from a fresh RND0 read masked with 0x78.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 720,
+   "verbatim": "\tAND I,78"
+  }
+ },
+ {
+  "id": "EW-23",
+  "claim": "The masked byte gets 0x70 added — the V range is 0x70..0xE8.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 722,
+   "verbatim": "\tADC I,70"
+  }
+ },
+ {
+  "id": "EW-24",
+  "claim": "The sum (EOR CKF8, identity upright) is stored as BEEV+12 — the upper half of the screen.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 724,
+   "verbatim": "\tSTA BEEV+12.\t\t;SET VERTICAL POSITION IN UPPER HALF OF SCREEN"
+  }
+ },
+ {
+  "id": "EW-25",
+  "claim": "Each move tick adds BEEDH+12 to BEEH+12 — pure horizontal motion.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 731,
+   "verbatim": "\tADC BEEDH+12."
+  }
+ },
+ {
+  "id": "EW-26",
+  "claim": "A new H of exactly zero means the earwig walked off screen.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 734,
+   "verbatim": "\tBNE 60$\t\t\t;IF NOT OFF SCREEN"
+  }
+ },
+ {
+  "id": "EW-27",
+  "claim": "The off-screen exit jumps to BEEOFF — the slot is reset to allow bees.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 738,
+   "verbatim": "\tJMP BEEOFF\t\t;RESET ENTRY TO ALLOW BEES"
+  }
+ },
+ {
+  "id": "EW-28",
+  "claim": "The picture flaps only on frames where FRAME AND 3 is zero — every fourth frame.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 741,
+   "verbatim": "\tAND I,03"
+  }
+ },
+ {
+  "id": "EW-29",
+  "claim": "The flap toggles the picture with EOR 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 744,
+   "verbatim": "\tEOR I,01\t\t;UPDATE PICTURE NUMBER"
+  }
+ },
+ {
+  "id": "EW-30",
+  "claim": "The playfield stamp under the earwig comes from OBSTAC at Y=0 with A=BEEV+12 — a caller-side seam.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 748,
+   "verbatim": "\tJSR OBSTAC\t\t;CHECK FOR OBSTACLE"
+  }
+ },
+ {
+  "id": "EW-31",
+  "claim": "A stamp below CLOUD is not a DDT explosion.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 749,
+   "verbatim": "\tCMP I,CLOUD"
+  }
+ },
+ {
+  "id": "EW-32",
+  "claim": "A stamp at or above DDT is not a DDT explosion — the death band is [CLOUD, DDT).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 751,
+   "verbatim": "\tCMP I,DDT"
+  }
+ },
+ {
+  "id": "EW-33",
+  "claim": "A stamp inside the DDT band kills the earwig via DDTEX1 — the death-sequence seam.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 754,
+   "verbatim": "\tJMP DDTEX1\t\t;PROCESS DEATH SEQUENCE"
+  }
+ },
+ {
+  "id": "EW-34",
+  "claim": "A stamp below 0x7C is not a mushroom and is left alone.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 756,
+   "verbatim": "80$:\tCMP I,7C"
+  }
+ },
+ {
+  "id": "EW-35",
+  "claim": "A mushroom stamp is poisoned by clearing bit 2 — AND 0xFB.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 758,
+   "verbatim": "\tAND I,0FB"
+  }
+ },
+ {
+  "id": "EW-36",
+  "claim": "The poisoned stamp is written back to the playfield.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 759,
+   "verbatim": "\tSTA NY,OBST\t\t;POISON THE MUSHROOM"
+  }
+ },
+ {
+  "id": "EW-37",
+  "claim": "CLOUD is 0x2E — the first DDT explosion-cloud stamp.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 202,
+   "verbatim": "CLOUD\t=2E\t\t\t;START OF DDT EXPLOSION CLOUDS"
+  }
+ },
+ {
+  "id": "EW-38",
+  "claim": "DDT is 0x6E — the first of the two DDT bomb stamps.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 203,
+   "verbatim": "DDT\t=6E\t\t\t;FIRST OF 2 STAMPS FOR DDT BOMB"
+  }
+ },
+ {
+  "id": "EW-39",
+  "claim": "SHOOT2 classifies a masked picture below 0x1E (and at or above 0x1C) as an earwig.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2084,
+   "verbatim": "\tBCC 131$\t\t;IF AN EARWIG"
+  }
+ },
+ {
+  "id": "EW-40",
+  "claim": "An earwig kill scores 1000 — LDY I,10 is the BCD hundreds byte.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2134,
+   "verbatim": "131$:\tLDY I,10\t\t;1000 FOR AN EARWIG"
+  }
+ },
+ {
+  "id": "EW-41",
+  "claim": "An earwig killed by DDT scores 3000 — BCD 30 hundreds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2139,
+   "verbatim": "\tLDY I,30"
+  }
+ },
+ {
+  "id": "EW-42",
+  "claim": "The band below 0x1C belongs to the spider — the earwig lower bound.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2082,
+   "verbatim": "\tBCC 13$\t\t\t;IF SPIDER"
+  }
+ },
+ {
+  "id": "IW-1",
+  "claim": "WRMMV is the enter-and-move inchworm routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2559,
+   "verbatim": "\t.SBTTL\tWRMMV-ENTER AND MOVE INCH WORM"
+  }
+ },
+ {
+  "id": "IW-2",
+  "claim": "WRMMV runs only while the player is alive — the PLAYP EOR 0A / PEXPLD gate at entry.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2563,
+   "verbatim": "\tBEQ 5$\t\t\t;IF PLAYER IS ALIVE"
+  }
+ },
+ {
+  "id": "IW-3",
+  "claim": "The inchworm uses motion-object slot 0 — bare MOBJC, no index.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2566,
+   "verbatim": "5$:\tLDA MOBJC"
+  }
+ },
+ {
+  "id": "IW-4",
+  "claim": "A non-zero MOBJC means the entry is in use and the routine goes to the move path.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2567,
+   "verbatim": "\tBNE 20$\t\t\t;IF ENTRY IS BEING USED"
+  }
+ },
+ {
+  "id": "IW-5",
+  "claim": "The inchworm may only enter on the tick where the frame low byte equals 0x13.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2569,
+   "verbatim": "\tCMP I,13"
+  }
+ },
+ {
+  "id": "IW-6",
+  "claim": "The frame HIGH byte AND 3 must also be zero — one spawn window every 4 wraps (\"EVERY 16 RECORDS\").",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2572,
+   "verbatim": "\tAND I,3"
+  }
+ },
+ {
+  "id": "IW-7",
+  "claim": "CENTIN is compared against decimal 11 — at or above blocks the entry as too soon.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2576,
+   "verbatim": "\tCMP I,11."
+  }
+ },
+ {
+  "id": "IW-8",
+  "claim": "DEAD equal to zero blocks the entry — the inchworm does NOT enter while the centipede is dead.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2579,
+   "verbatim": "\tBEQ 1$\t\t\t;DO NOT ENTER IF CENTIPEDE IS DEAD"
+  }
+ },
+ {
+  "id": "IW-9",
+  "claim": "A picture at or above 0x14 is not an inchworm.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2582,
+   "verbatim": "\tCMP I,14"
+  }
+ },
+ {
+  "id": "IW-10",
+  "claim": "A picture below 0x10 is not an inchworm — the pics band is [10,14).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2584,
+   "verbatim": "\tCMP I,10"
+  }
+ },
+ {
+  "id": "IW-11",
+  "claim": "The next picture is pic + 1 — the ADC I,0 rides the carry the band check left SET.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2586,
+   "verbatim": "\tADC I,0\t\t\t;CARRY WAS SET = ADD 1"
+  }
+ },
+ {
+  "id": "IW-12",
+  "claim": "The incremented picture is masked with 0x13, wrapping the cycle 10→11→12→13→10.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2587,
+   "verbatim": "\tAND I,13"
+  }
+ },
+ {
+  "id": "IW-13",
+  "claim": "MOBJDH is one of -2, -1, 1 or 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2589,
+   "verbatim": "\tLDA MOBJDH\t\t;-2, -1, 1 OR 2"
+  }
+ },
+ {
+  "id": "IW-14",
+  "claim": "The flap mask starts from |MOBJDH| ORA 1 — 1 if slow, 3 if fast.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2591,
+   "verbatim": "\tORA I,01\t\t;1 IF SLOW, 3 IF FAST"
+  }
+ },
+ {
+  "id": "IW-15",
+  "claim": "EOR 2 inverts it — mask 3 if slow, 1 if fast: the slow worm animates every 4 frames, the fast one every 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2592,
+   "verbatim": "\tEOR I,02\t\t;3 IF SLOW, 1 IF FAST"
+  }
+ },
+ {
+  "id": "IW-16",
+  "claim": "The mask is ANDed with FRAME — the picture only updates when the result is zero.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2593,
+   "verbatim": "\tAND FRAME"
+  }
+ },
+ {
+  "id": "IW-17",
+  "claim": "On an update tick the cycled picture is stored back to MOBJP.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2595,
+   "verbatim": "\tSTY MOBJP\t\t;UPDATE PICTURE"
+  }
+ },
+ {
+  "id": "IW-18",
+  "claim": "Each move tick adds MOBJDH to MOBJH — pure horizontal motion.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2602,
+   "verbatim": "\tADC MOBJDH"
+  }
+ },
+ {
+  "id": "IW-19",
+  "claim": "A new H of exactly zero means the inchworm walked off screen.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2604,
+   "verbatim": "\tBNE 30$\t\t\t;IF NOT OFF THE SCREEN"
+  }
+ },
+ {
+  "id": "IW-20",
+  "claim": "Off screen, only MOBJC is cleared — removed from the active list (no BEEOFF: PTS is left alone).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2605,
+   "verbatim": "\tSTA MOBJC\t\t;REMOVE FROM THE ACTIVE LIST"
+  }
+ },
+ {
+  "id": "IW-21",
+  "claim": "The move tail runs OBSTAC then jumps to DDTEXP — caller-side explosion seams.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2611,
+   "verbatim": "\tJMP DDTEXP\t\t;PROCESS EXPLOSIONS IF ANY"
+  }
+ },
+ {
+  "id": "IW-22",
+  "claim": "The inchworm spawn picture is 0x10.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2614,
+   "verbatim": "WRMMV3:\tLDA I,10"
+  }
+ },
+ {
+  "id": "IW-23",
+  "claim": "The inchworm spawn colour is 0xB9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2616,
+   "verbatim": "\tLDA I,0B9"
+  }
+ },
+ {
+  "id": "IW-24",
+  "claim": "The inchworm starts at H = 0.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2619,
+   "verbatim": "\tSTA MOBJH\t\t;SET HORIZONTAL"
+  }
+ },
+ {
+  "id": "IW-25",
+  "claim": "The spawn V is built from RND1 masked with 0x38.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2621,
+   "verbatim": "\tAND I,38"
+  }
+ },
+ {
+  "id": "IW-26",
+  "claim": "The masked byte gets 0x40 added — the V range is 0x40..0x78.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2623,
+   "verbatim": "\tADC I,40"
+  }
+ },
+ {
+  "id": "IW-27",
+  "claim": "The sum is stored as MOBJV.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2624,
+   "verbatim": "\tSTA MOBJV\t\t;SET VERTICAL"
+  }
+ },
+ {
+  "id": "IW-28",
+  "claim": "The base speed byte is 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2626,
+   "verbatim": "\tLDA I,2"
+  }
+ },
+ {
+  "id": "IW-29",
+  "claim": "SCORE2 at or above 8 (80,000) keeps the fast speed 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2629,
+   "verbatim": "\tBCS 10$\t\t\t;IF MORE THAN 80000"
+  }
+ },
+ {
+  "id": "IW-30",
+  "claim": "Below 80,000 the speed is 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2630,
+   "verbatim": "\tLDA I,1"
+  }
+ },
+ {
+  "id": "IW-31",
+  "claim": "The direction is chosen by RND0 bit 7 — set runs COMP and goes the opposite way.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2631,
+   "verbatim": "10$:\tBIT RND0"
+  }
+ },
+ {
+  "id": "IW-32",
+  "claim": "The signed speed is stored to MOBJDH.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2634,
+   "verbatim": "20$:\tSTA MOBJDH"
+  }
+ },
+ {
+  "id": "IW-33",
+  "claim": "SHOOT2 classifies a masked picture below 0x14 (and at or above 0x10) as an inchworm.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2080,
+   "verbatim": "\tBCC 50$\t\t\t;IF AN INCHWORM"
+  }
+ },
+ {
+  "id": "IW-34",
+  "claim": "An inchworm kill FIRST sets SLOW to 0xE0 — slowing down all critters — before any scoring.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2112,
+   "verbatim": "\tSTA SLOW\t\t;SLOW DOWN ALL CRITTERS"
+  }
+ },
+ {
+  "id": "IW-35",
+  "claim": "An inchworm kill scores 100 — BCD 1 hundreds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2113,
+   "verbatim": "\tLDY I,1\t\t\t;100 POINTS FOR AN INCHWORM"
+  }
+ },
+ {
+  "id": "IW-36",
+  "claim": "An inchworm killed by DDT scores 300 — BCD 3 hundreds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2118,
+   "verbatim": "\tLDY I,3"
+  }
+ },
+ {
+  "id": "IW-37",
+  "claim": "The SLOW byte loaded for the inchworm kill is 0xE0.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2111,
+   "verbatim": "50$:\tLDA I,0E0"
+  }
+ },
+ {
+  "id": "BE-1",
+  "claim": "BEEMV is the move-bee-down-screen routine this module ports.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 56,
+   "verbatim": "\t.SBTTL\tBEEMV-MOVE BEE DOWN SCREEN"
+  }
+ },
+ {
+  "id": "BE-2",
+  "claim": "BEEMV runs only while the player is alive — the PLAYP EOR 0A / PEXPLD gate at entry.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 63,
+   "verbatim": "\tBEQ 2$\t\t\t;IF PLAYER IS ALIVE"
+  }
+ },
+ {
+  "id": "BE-3",
+  "claim": "The bee spawn slot is motion object 12 (decimal) — BEEC+12 is probed for availability.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 66,
+   "verbatim": "2$:\tLDA BEEC+12."
+  }
+ },
+ {
+  "id": "BE-4",
+  "claim": "A non-zero BEEC+12 means the entry is taken and no bee starts this tick.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 67,
+   "verbatim": "\tBNE 5$\t\t\t;IF ENTRY IS ALREADY TAKEN"
+  }
+ },
+ {
+  "id": "BE-5",
+  "claim": "While the centipede is NOT dead (DEAD non-zero) the spawn goes through the mushroom-count check.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 71,
+   "verbatim": "\tBNE 3$\t\t\t;IF CENTIPEDE IS NOT DEAD"
+  }
+ },
+ {
+  "id": "BE-6",
+  "claim": "With the centipede dead and NO beetles on screen, the spawn also goes through the mushroom-count check.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 73,
+   "verbatim": "\tBEQ 3$\t\t\t;IF NO BEETLES"
+  }
+ },
+ {
+  "id": "BE-7",
+  "claim": "With the centipede dead and a beetle on screen, CENTIN at or above decimal 10 spawns the bee DIRECTLY, skipping the mushroom check.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 75,
+   "verbatim": "\tBCS 4$\t\t\t;IF TOO EARLY FOR BEES"
+  }
+ },
+ {
+  "id": "BE-8",
+  "claim": "BEEMV1 supplies the count of mushrooms needed for the spawn decision.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 76,
+   "verbatim": "3$:\tJSR BEEMV1\t\t;GET COUNT OF MUSHROOMS NEEDED"
+  }
+ },
+ {
+  "id": "BE-9",
+  "claim": "A needed-count below MUSH (mushrooms near the bottom) blocks the spawn — the bee enters only when few mushrooms remain.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 78,
+   "verbatim": "\tBCC 5$\t\t\t;IF THERE ARE MANY MUSHROOMS NEAR BOTTOM"
+  }
+ },
+ {
+  "id": "BE-10",
+  "claim": "The spawn path loads X with 12 and calls BEEMV3.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 80,
+   "verbatim": "\tJSR BEEMV3"
+  }
+ },
+ {
+  "id": "BE-11",
+  "claim": "The movement sweep scans motion slots from 12 DOWN to 0 — any slot can carry a bee picture.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 81,
+   "verbatim": "5$:\tLDX I,12."
+  }
+ },
+ {
+  "id": "BE-12",
+  "claim": "A picture at or above 0x3A is not a bee.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 87,
+   "verbatim": "\tCMP I,3A"
+  }
+ },
+ {
+  "id": "BE-13",
+  "claim": "A picture below 0x38 is not a bee — the pics band is [38,3A).",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 89,
+   "verbatim": "\tCMP I,38"
+  }
+ },
+ {
+  "id": "BE-14",
+  "claim": "The wings flap only on EVEN frames — FRAME AND 1 non-zero skips the picture change.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 93,
+   "verbatim": "\tBNE 20$\t\t\t;SLOW DOWN PICTURE CHANGES"
+  }
+ },
+ {
+  "id": "BE-15",
+  "claim": "The flap toggles the picture with EOR 1.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 95,
+   "verbatim": "\tEOR I,01\t\t;FLAP THE WINGS"
+  }
+ },
+ {
+  "id": "BE-16",
+  "claim": "Each live bee moves through the shared BEEMV0 helper.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 107,
+   "verbatim": "\tJSR BEEMV0\t\t;MOVE BEE AND CHECK COLLISIONS"
+  }
+ },
+ {
+  "id": "BE-17",
+  "claim": "BEEMV0 SUBTRACTS BEEDV from BEEV — the dive.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 124,
+   "verbatim": "\tSBC X,BEEDV"
+  }
+ },
+ {
+  "id": "BE-18",
+  "claim": "A post-move V below 4 is the bottom of the screen and the slot goes to BEEOFF.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 127,
+   "verbatim": "\tCMP I,4"
+  }
+ },
+ {
+  "id": "BE-19",
+  "claim": "The mushroom cell is 4 above the slot V — \"MAKE MUSHROOM APPEAR AFTER BEE\".",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 131,
+   "verbatim": "\tLDA I,4\t\t\t;MAKE MUSHROOM APPEAR AFTER BEE"
+  }
+ },
+ {
+  "id": "BE-20",
+  "claim": "Attract mode SKIPS the bombing-mode veto and always reaches the plant roll.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 140,
+   "verbatim": "\tBMI 10$\t\t\t;IF IN ATTRACT ADD MUSHROOMS"
+  }
+ },
+ {
+  "id": "BE-21",
+  "claim": "A non-zero NOCENT (\"bomb\" mode) vetoes mushroom planting outside attract.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 142,
+   "verbatim": "\tBNE 28$\t\t\t;NO MUSHROOMS IN \"BOMB\" MODE"
+  }
+ },
+ {
+  "id": "BE-22",
+  "claim": "Mushrooms are only planted on frames where FRAME AND 3 is zero — every fourth frame.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 145,
+   "verbatim": "\tBNE 28$\t\t\t;PUT UP MUSHROOMS ONLY EVERY FOUR FRAMES"
+  }
+ },
+ {
+  "id": "BE-23",
+  "claim": "A slot picture at or above 0x20 takes the BEE plant mask.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 148,
+   "verbatim": "\tBCS 26$\t\t\t;IF A BEE"
+  }
+ },
+ {
+  "id": "BE-24",
+  "claim": "The bee plant mask is 3 — a 1-in-4 roll, everywhere on screen.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 157,
+   "verbatim": "26$:\tLDA I,3"
+  }
+ },
+ {
+  "id": "BE-25",
+  "claim": "The mask is ANDed with RND1 — non-zero means no mushroom.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 158,
+   "verbatim": "27$:\tAND RND1"
+  }
+ },
+ {
+  "id": "BE-26",
+  "claim": "BEEOFF clears the slot PTS byte.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 167,
+   "verbatim": "\tSTA X,PTS"
+  }
+ },
+ {
+  "id": "BE-27",
+  "claim": "BEEOFF clears the colour — the slot is freed.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 168,
+   "verbatim": "10$:\tSTA X,BEEC\t\t;NO COLORS"
+  }
+ },
+ {
+  "id": "BE-28",
+  "claim": "BEEOFF clears H too, preventing blanking other motion objects.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 169,
+   "verbatim": "\tSTA X,BEEH\t\t;PREVENTS BLANKING OTHER MOTION OBJECTS"
+  }
+ },
+ {
+  "id": "BE-29",
+  "claim": "BEEMV1: below a SCORE2 of 2 (20,000) the needed count is 5.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 181,
+   "verbatim": "\tLDY I,05"
+  }
+ },
+ {
+  "id": "BE-30",
+  "claim": "BEEMV1: from 20,000 the needed count is 9.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 183,
+   "verbatim": "\tLDY I,09"
+  }
+ },
+ {
+  "id": "BE-31",
+  "claim": "BEEMV1: below 120,000 (SCORE2 0x12) the 5/9 value stands.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 185,
+   "verbatim": "\tBCC 8$\t\t\t;NOT OVER 120K IN SCORE"
+  }
+ },
+ {
+  "id": "BE-32",
+  "claim": "BEEMV1: from 120,000 the needed count is the halved SCORE2 byte plus 6.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 188,
+   "verbatim": "\tADC I,6\t\t\t;INCREASE MINIMUM NUMBER OF MUSHROOMS"
+  }
+ },
+ {
+  "id": "BE-33",
+  "claim": "BEEMV1: the needed count is capped at 0x2F.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 191,
+   "verbatim": "\tLDA I,2F"
+  }
+ },
+ {
+  "id": "BE-34",
+  "claim": "BEEMV3: SCORE2 at or above 6 (60,000) makes the bee faster.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 203,
+   "verbatim": "\tBCS 12$\t\t\t;BEE GOES FASTER AT 60K"
+  }
+ },
+ {
+  "id": "BE-35",
+  "claim": "BEEMV3: the fast bee dive speed is 3.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 199,
+   "verbatim": "\tLDA I,3"
+  }
+ },
+ {
+  "id": "BE-36",
+  "claim": "BEEMV3: the normal bee dive speed is 2.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 218,
+   "verbatim": "70$:\tLDA I,2"
+  }
+ },
+ {
+  "id": "BE-37",
+  "claim": "The bee spawn picture is 0x38.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 223,
+   "verbatim": "\tLDA I,38"
+  }
+ },
+ {
+  "id": "BE-38",
+  "claim": "BEEMV2: the spawn V byte is 0xF8 (EOR CKF8, identity upright) — the top row.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 225,
+   "verbatim": "BEEMV2:\tLDA I,0F8"
+  }
+ },
+ {
+  "id": "BE-39",
+  "claim": "BEEMV2: the spawn column masks RND0 with 0xF8.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 229,
+   "verbatim": "\tAND I,0F8"
+  }
+ },
+ {
+  "id": "BE-40",
+  "claim": "BEEMV2: a masked byte below 0x10 is off screen and rerolls.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 232,
+   "verbatim": "\tBCC 10$\t\t\t;OFF SCREEN"
+  }
+ },
+ {
+  "id": "BE-41",
+  "claim": "BEEMV2: the accepted byte has 4 subtracted for the H position.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 234,
+   "verbatim": "\tSBC I,04\t\t;WE WANT"
+  }
+ },
+ {
+  "id": "BE-42",
+  "claim": "BEEMV2: BEEDH is cleared to 0 — the bee flies straight down.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 237,
+   "verbatim": "\tSTA X,BEEDH\t\t;HDIR"
+  }
+ },
+ {
+  "id": "BE-43",
+  "claim": "BEEMV2: the on-colour is 0x79.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 238,
+   "verbatim": "\tLDA I,79"
+  }
+ },
+ {
+  "id": "BE-44",
+  "claim": "SHOOT2 classifies a masked picture at or above 0x38 as a bee.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2088,
+   "verbatim": "\tBCS 127$\t\t;IF AN BEE"
+  }
+ },
+ {
+  "id": "BE-45",
+  "claim": "A bee kill scores 200 — BCD 2 hundreds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2099,
+   "verbatim": "127$:\tLDY I,2\t\t\t;200 POINTS FOR AN BEE"
+  }
+ },
+ {
+  "id": "BE-46",
+  "claim": "A bee killed by DDT scores 600 — BCD 6 hundreds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2102,
+   "verbatim": "\tLDY I,6"
+  }
+ },
+ {
+  "id": "BE-47",
+  "claim": "The hit byte is 4 (EOR CKF8, identity upright) — compared against the slot BEEDV.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2103,
+   "verbatim": "128$:\tLDA I,4"
+  }
+ },
+ {
+  "id": "BE-48",
+  "claim": "A BEEDV already equal to 4 means the SECOND hit — time to explode the bee, and scoring proceeds.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2106,
+   "verbatim": "\tBEQ 65$\t\t\t;TIME TO EXPLODE BEE (2ND HIT)"
+  }
+ },
+ {
+  "id": "BE-49",
+  "claim": "On the FIRST hit the 4 is STORED to BEEDV — the bee speeds up instead of dying.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2107,
+   "verbatim": "\tSTA X,BEEDV\t\t;SPEED UP ON FIRST HIT"
+  }
+ },
+ {
+  "id": "BE-50",
+  "claim": "The first hit exits with carry clear — NO scoring yet.",
+  "source": {
+   "file": "MILLI.MAC",
+   "line": 2108,
+   "verbatim": "10$:\tCLC\t\t\t;NO SCORING YET"
+  }
+ },
+ {
+  "id": "BE-51",
+  "claim": "PTS is the 16-entry kill-points stamp array BEEOFF clears into.",
+  "source": {
+   "file": "MLDEF.MAC",
+   "line": 398,
+   "verbatim": "PTS:\t.BLKB 16.\t\t;NUMBER OF POINTS FOR KILLING THIS CRITTER"
+  }
+ }
+]
