@@ -40,7 +40,8 @@ stories:
     title: "Persist high scores via one-origin localStorage under highScoreKey('millipede') (EAROM MLTST.MAC:36-150 maps to localStorage, not chip emulation): shell reads on boot, writes on commit; core stays pure. Reuse the asteroids/joust/mc7 consumer pattern."
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml5-5
