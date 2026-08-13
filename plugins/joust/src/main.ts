@@ -59,6 +59,7 @@ import {
   buildGameAtlas,
   configureContext,
   paintDissolve,
+  paintCrumble,
   reshapeRagged,
   rgbaPalette,
   viewport,
@@ -319,7 +320,8 @@ function paintSim(game: GameState): void {
     // The dissolve's ASH1R is a runlength stream — not in the atlas, so blitOp would
     // silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames here, the ASH
     // twin of the COMCL5 island path, indexed by op.frame.
-    if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
+    if (op.kind === 'crumble') paintCrumble(logicalContext, op, colours)
+    else if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
     else blitOp(op)
   }
   // The bottom island is the front-most layer, occluding entities behind its front edge.

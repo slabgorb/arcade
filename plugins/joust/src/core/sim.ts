@@ -79,6 +79,7 @@ import {
   type PteroEntity,
 } from './ptero.js'
 import { startDissolve, type DissolveState } from './dissolve.js'
+import { startCrumble, stepCrumble, type CrumbleState, type CrumblePhase } from './crumble.js'
 import {
   trollSpawnable,
   beginGrip,
@@ -306,12 +307,21 @@ export interface DrawOp {
    * is 0 (JOUSTRV4.SRC:1126-1127), so no atlas block can carry them. The shell
    * paints a fill op with `fillRect`, not a blit.
    */
-  kind: 'arena' | 'entity' | 'fill'
+  kind: 'arena' | 'entity' | 'fill' | 'crumble'
   /** The atlas block (or ENTITY_RECORDS frame name) this op blits. */
   name: string
   x: number
   y: number
   height?: number
+  /**
+   * jt11-7 — a `kind:'crumble'` overlay's destructible cliff (CLIF1L/CLIF1R/
+   * CLIF2/CLIF4) and its CLFDES phase. The shell's `paintCrumble` reads `phase`
+   * (and the shared `frame` field below) to pick the shake vs debris paint.
+   * `cliff` and `phase` are undefined on every non-crumble op; `frame` is SHARED
+   * with the dissolve op kind (see its note below), so it is not crumble-exclusive.
+   */
+  cliff?: string
+  phase?: CrumblePhase
   /** jt11-5 — a `fill` op's width in CRT pixels (the DMA length high byte × 2). */
   width?: number
   /** jt11-5 — a `fill` op's colour PROM nibble (`LIB EQU $8`, :60; the DMA
@@ -323,9 +333,10 @@ export interface DrawOp {
    */
   facing?: Facing
   /**
-   * The ASH animation index for a DISSOLVE op (jt3-7 B1) — the shell's
-   * `paintDissolve` decodes `expandAshFrames` and paints THIS frame. Carries the
-   * body's `DissolveState.frame`; undefined on every non-dissolve op.
+   * The animation frame index for an ANIMATED op — SHARED by two op kinds: a
+   * DISSOLVE op's `DissolveState.frame` (jt3-7 B1, the shell's `paintDissolve`)
+   * and a CRUMBLE op's CLFDES frame (jt11-7, the shell's `paintCrumble`).
+   * Undefined on every non-animated op (arena/entity/fill).
    */
   frame?: number
 }
@@ -425,6 +436,16 @@ export interface SimState {
    * every counter equal, so nobody is waiting and nobody is served.
    */
   serviceQueue?: ServiceQueue
+  /**
+   * jt11-7 — the destructible cliffs currently playing their CLFDES crumble
+   * (JOUSTRV4.SRC:4562-4599). A cliff enters here the frame it is NEWLY destroyed
+   * — alongside `arena.destroyedCliffs`, which drops its records at once (WCLFEW,
+   * :2301-2325) — and leaves when its crumble reaches `done`. Carried so
+   * `drawList` can animate the shake→debris transition OVER the vacated space,
+   * never re-adding the cliff's arena records. Optional / default-empty, on the
+   * `pendingPteros` precedent, so hand-built `SimState` literals still type-check.
+   */
+  crumbles?: readonly CrumbleState[]
 }
 
 /** The result of resolving ONE overlapping pair — the wiring over resolveJoust. */
@@ -2374,6 +2395,13 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   let budget = stepped.budget
   let arena = demo.arena
   let baiterClock = demo.baiterClock ?? seedBaiterClock(demo.wave)
+  // jt11-7 — step each cliff's CLFDES crumble (JOUSTRV4.SRC:4562-4599) and retire
+  // the finished ones. A crumble is SPAWNED on the wave advance below when a cliff
+  // is newly destroyed; here every carried crumble takes one nap and a `done` one
+  // drops out (its records were already gone — jt11-5's destroyedCliffs filter).
+  let crumbles: readonly CrumbleState[] = (demo.crumbles ?? [])
+    .map(stepCrumble)
+    .filter((c) => !c.done)
 
   // DBAIT — the NBAIT settle-on-death (PTEKLL `LDA PCHASE,U` "KILLED A BAITER?" / BEQ /
   // `DEC NBAIT`, JOUSTRV4.SRC:1370-1372): a baiter that dissolved this frame (a live baiter in
@@ -2446,8 +2474,15 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
     // reflects the current wave rather than accumulating (the WCLFEW create path
     // rebuilds one whose bit is now clear), so a wave that rebuilds CLIF1L while
     // destroying CLIF2 leaves the count unmoved and must still sound.
+    // jt11-7 — a NEWLY-destroyed cliff also begins its CLFDES crumble (:4562-4599):
+    // the records vanish now (WCLFEW), the shake→debris overlay animates over the
+    // gap. Same NAME comparison as the cue — reflecting, not accumulating — so a
+    // cliff rebuilt then re-destroyed crumbles again.
     for (const cliff of arena.destroyedCliffs) {
-      if (!standing.has(cliff)) cues.push({ type: 'cliff-destroyed' })
+      if (!standing.has(cliff)) {
+        cues.push({ type: 'cliff-destroyed' })
+        crumbles = [...crumbles, startCrumble(cliff)]
+      }
     }
     // `rng`, not `stepped.rng`: the hatch pass above may have spent a draw on a pre-mature
     // egg this frame, and the next thing to read the stream must see it moved. The two
@@ -2602,7 +2637,7 @@ export function stepSim(demo: SimState, inputs?: Record<number, PlayerInput>): S
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
   const events = [...demo.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
-  return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue, trollArmed }
+  return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue, trollArmed, crumbles }
 }
 
 // ─── Round 2: pure render-SELECTION seams (routing≠geometry) ──────────────────
@@ -2820,6 +2855,33 @@ export function drawList(demo: SimState): DrawOp[] {
       name: rec.source,
       x: ((rec.dest >> 8) & 0xff) * 2,
       y: destY,
+      height: rec.wh & 0xff,
+    }
+    ;(isForegroundArena(destY) ? fore : back).push(op)
+  }
+
+  // jt11-7 — the CLFDES crumble overlay (JOUSTRV4.SRC:4562-4599). A destroyed
+  // cliff SHAKES then throws DEBRIS in the gap between intact and gone. Additive
+  // to the arena ops above: the cliff's own records are already gone (the
+  // `destroyed` filter), so this draws OVER the vacated space at the cliff's own
+  // screen position, in the SAME z-layer its records occupied. The shell reads
+  // `phase`/`frame` to pick the shake vs debris art.
+  for (const c of demo.crumbles ?? []) {
+    const rec = BACKGROUND_RECORDS.find((r) => r.name === c.cliff)
+    // Every destructible cliff (CLIF1L/CLIF1R/CLIF2/CLIF4) has a primary record, so
+    // this is always found; skip rather than draw a phantom at (0,0) if a future
+    // rename ever breaks the match (fail quiet, not wrong-position).
+    if (!rec) continue
+    const destY = rec.dest & 0xff
+    const op: DrawOp = {
+      kind: 'crumble',
+      name: c.cliff,
+      cliff: c.cliff,
+      phase: c.phase,
+      frame: c.frame,
+      x: ((rec.dest >> 8) & 0xff) * 2,
+      y: destY,
+      width: ((rec.wh >> 8) & 0xff) * 2,
       height: rec.wh & 0xff,
     }
     ;(isForegroundArena(destY) ? fore : back).push(op)

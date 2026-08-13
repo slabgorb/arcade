@@ -1,0 +1,92 @@
+[
+  {
+    "id": "JT117-01",
+    "claim": "CLFDES sets FIVE shakes: LDA #5 / STA PFRAME,U \"number of shakes to do\" (JOUSTRV4.SRC:4563).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4563,
+      "verbatim": "\tLDA\t#5\t"
+    }
+  },
+  {
+    "id": "JT117-02",
+    "claim": "The shake counter is PFRAME,U, decremented per shake (JOUSTRV4.SRC:4564).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4564,
+      "verbatim": "\tSTA\tPFRAME,U\tnumber of shakes to do"
+    }
+  },
+  {
+    "id": "JT117-03",
+    "claim": "Each shake holds PCNAP 10 after the first BCKYUP jerk (JOUSTRV4.SRC:4567).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4567,
+      "verbatim": "\tPCNAP\t10\t\t!"
+    }
+  },
+  {
+    "id": "JT117-04",
+    "claim": "A shaking cliff is tinted by altering its DMA flavor to $2A: LDA #$2A (JOUSTRV4.SRC:4570).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4570,
+      "verbatim": "\tLDA\t#$2A\t\tby altering the cliffs flavor"
+    }
+  },
+  {
+    "id": "JT117-05",
+    "claim": "Each shake holds a SECOND PCNAP 10 after the flavor write — 20 naps per shake (JOUSTRV4.SRC:4572).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4572,
+      "verbatim": "\tPCNAP\t10"
+    }
+  },
+  {
+    "id": "JT117-06",
+    "claim": "After the shakes, JSR LOCCLR erases the cliff image to replace it with debris (JOUSTRV4.SRC:4575).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4575,
+      "verbatim": "\tJSR\tLOCCLR\t\tgo erase the image as we will replace with "
+    }
+  },
+  {
+    "id": "JT117-07",
+    "claim": "A PCNAP 2 erase blip separates the shake and debris phases (JOUSTRV4.SRC:4576).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4576,
+      "verbatim": "\tPCNAP\t2\t\tdebris"
+    }
+  },
+  {
+    "id": "JT117-08",
+    "claim": "The debris phase draws FIVE images: LDA #5 \"where there are five images\" (JOUSTRV4.SRC:4579).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4579,
+      "verbatim": "\tLDA\t#5\t\twhere there are five images"
+    }
+  },
+  {
+    "id": "JT117-09",
+    "claim": "Each debris frame is held PCNAP 8 \"while we sleep a little\" (JOUSTRV4.SRC:4594).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4594,
+      "verbatim": "\tPCNAP\t8\t\twhile we sleep a little"
+    }
+  },
+  {
+    "id": "JT117-10",
+    "claim": "CLFDES ends by suiciding the process: JMP VSUCIDE — the cliff is now gone (JOUSTRV4.SRC:4599).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 4599,
+      "verbatim": "\tJMP\tVSUCIDE\t\tend the process"
+    }
+  }
+]
