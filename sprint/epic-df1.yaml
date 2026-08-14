@@ -22,7 +22,7 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
-    review_findings: 'Round 1: 3 TEST findings (per-answer prose checks are document-global, mutation-proven; citation range width unbounded, mutation-proven; AC-4 skipIf dormancy trap with stale absent-on-CI comments) + 4 DOC findings (stale WHY-EMPTY header in dossier-sweep.ts; BRUTSUM2 ORG 8000 claim uncited; sound-gap paragraph unattributed; PHR6 every-chain overclaim). Content itself verified accurate: 32/32 claims byte-exact, 11 mutations killed across three independent batteries.'
+    review_findings: 'Round 2: round-1 fixes all verified closed by independent re-mutation. ONE new blocking finding: the sound-gap attribution added in green rework is factually wrong (claims ROM_START lists defend.snd; current MAME names it video_sound_rom_1.ic12 and the M6808 comes from the machine config). One-sentence doc fix. Routed non-blocking: citations.test.ts stale skipped-on-CI comments + presence guard (df1-3), AC-4 floor comment drift (df1-3), loadClaims validation (df1-3/hardening), MAME SHA pin (df1-4).'
     review_verdict: rejected
   - id: df1-3
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (PHRED/MAPC/MLJSR/NAPP/CKBYT, EUGENE + SAM vector blocks MESS0.SRC:165,175); subsystem -> owning file + routine + line (DEFA7 scheduler/IRQ/collision/sound-sequencer, DEFB6 enemy processes + vectors, AMODE1 attract/hall-of-fame/scanner, MESS0 text writers, BLK71 terrain/waves, SAMEXAP7 materialize/explode, ROMF8 reset/CMOS/pricing, ROMC0+ROMC8 diagnostics); OQ-1..OQ-5 from the design spec (CB1-vs-CB2, COUNT240 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording).'

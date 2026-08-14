@@ -78,10 +78,13 @@ banked blocks swap through the `$C000` window under `MAPC EQU $D000 MAP CONTROL`
 | 3 | ROMC0/ROMC8 — diagnostics | `DIABLK EQU 3 DIAGNOSTIC BLOCK` (`defender/ROMF8.SRC:7`) |
 | 7 | BLK71 — terrain + wave data | `LDA #7` → `STA MAPC` before BGOUT (`defender/DEFA7.SRC:2024-2025`) |
 
-**The sound-source gap.** The sound board is a **separate M6808 CPU running
-`defend.snd`** (per the MAME driver — williams.cpp's defender sound-board machine
-and ROM_START list the M6808 and defend.snd; the vendored tree never names
-either), and its source is **not in this tree** — the same gap as joust.
+**The sound-source gap.** The sound board is a **separate M6808 CPU** with its
+own sound program — historically distributed as **`defend.snd`**, carried in
+current MAME sets under a different ROM name — and its source is **not in this
+tree** — the same gap as joust. These are MAME-driver facts (williams.cpp; the
+vendored tree names neither the M6808 nor any sound file), stated here without a
+structure-level citation because this repo pins no MAME revision yet — `df1-4`
+pins one before board facts are recorded as claims.
 ROMF8/ROMC0/ROMC8 are main-CPU control and diagnostic ROMs, *not* sound; nothing
 here assembles the sound program. Sound ground truth will need the MAME set
 (`df1-6`'s problem, recorded as a gap here).
