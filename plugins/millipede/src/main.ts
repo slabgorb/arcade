@@ -65,7 +65,11 @@ canvas.addEventListener('pointerdown', () => {
   firePending = true
 })
 canvas.addEventListener('pointermove', (e: PointerEvent) => {
-  accDh += e.movementX
+  // Horizontal is NEGATED: input.ts models the ROM trackball where a higher H is
+  // further LEFT (positive dh ⇒ gun left), so mouse-right (+movementX) must map
+  // to a NEGATIVE dh for the gun to track the mouse. Vertical needs no negate —
+  // input.ts already COMP-reverses dv (mouse-down ⇒ gun-down).
+  accDh -= e.movementX
   accDv += e.movementY
 })
 
