@@ -16,25 +16,46 @@
 //   export function indexToRgba(index: number): Rgba   // TEMPORARY placeholder (df2-2)
 //   export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer): void
 //
-// TWO fidelity/robustness seams this suite pins:
+// TWO fidelity/robustness seams this suite pins (hardened at df2-1 review rework,
+// round-trip 1 — see .session/df2-1-session.md Reviewer Assessment F-A/F-C/F-D):
 //   • COLOURS ARE NEVER INVENTED — every colour is reached BY INDEX through
-//     indexToRgba, not a scattered hex literal. df2-2 swaps in the transcribed
-//     palette by replacing this ONE function, so we pin its SHAPE (total over 0..15,
-//     opaque, varies by index) without pinning the placeholder values it will lose.
-//   • A DEGENERATE CANVAS MUST NOT PRODUCE NaN (lang-review #21, origin sw8-27): a
-//     zero-width/height canvas is PRESENT and unusable — `?? default` never fires on
-//     0. render() must delegate its geometry to fitIntegerScale (whose scale is
-//     clamped `Math.max(1, ...)`, so it is always finite) and never divide by a
-//     canvas dimension itself. We drive render() with a recording mock context on a
-//     0x0 canvas and require: no throw, and no NaN reaches any ctx call.
+//     indexToRgba, not a scattered hex literal, INCLUDING the letterbox/ground fill
+//     (joust settled this: plugins/joust/src/main.ts:614 fills via colours[0], not a
+//     literal). A comment-stripped source scan of render.ts asserts NO hex-colour
+//     literal survives on the render path — it reddens on a `#000000` ground fill and
+//     greens only when the ground is resolved through the palette. (F-A: the first
+//     cut shipped `ctx.fillStyle = '#000000'` under a comment claiming the opposite.)
+//   • A DEGENERATE CANVAS MUST STAY SCALE-1 (lang-review #21, origin sw8-27). A 0x0
+//     canvas is PRESENT and unusable; `?? default` never fires on 0. render() must
+//     delegate geometry to fitIntegerScale, whose scale is clamped `Math.max(1, ...)`.
+//     The EARLIER guard (no-NaN only) was mutation-proven toothless: `0/292` is a
+//     finite 0, not NaN, so dropping the clamp left it green (F-C). This guard now
+//     asserts the CONTRACT — the ImageData render creates on a 0x0 canvas is still at
+//     least LOGICAL_WIDTH x LOGICAL_HEIGHT (scale >= 1) — and the mock's
+//     createImageData throws on a 0 dimension like the real API, so a clamp-removed
+//     `scale=0` reimplementation reddens both ways.
 //
-// TESTABILITY CONTRACT (a mild, deliberate RED requirement): render() operates on
-// the PROVIDED 2D context — it does not construct its own OffscreenCanvas — so the
-// seam is unit-testable in vitest's `node` env with a duck-typed mock. The full
-// pixel result is proven by the df2-6 VISUAL check + tests/canonical-serve.test.mjs;
-// this suite proves the seam's contract and its degenerate-input safety.
+// TESTABILITY CONTRACT (a mild, deliberate requirement): render() operates on the
+// PROVIDED 2D context — it does not construct its own OffscreenCanvas — so the seam is
+// unit-testable in vitest's `node` env with a duck-typed mock. The full pixel result
+// is proven by the df2-6 VISUAL check + tests/canonical-serve.test.mjs; this suite
+// proves the seam's contract and its degenerate-input safety.
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+
+// tests/render.test.ts -> the plugin root is one level up.
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const renderSourcePath = join(root, 'src', 'shell', 'render.ts')
+
+/** Strip `//` line comments and block comments so a source-text guard scans CODE,
+ *  not prose. A hex literal that only appears in a comment (e.g. the rule explaining
+ *  itself) must not red the denylist scan, and a real one must not hide in a comment. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+}
 
 interface Rgba {
   r: number
@@ -106,12 +127,24 @@ function makeCtx(cw: number, ch: number) {
     restore: rec('restore'),
     createImageData: (w: number, h: number) => {
       calls.push({ method: 'createImageData', args: [w, h] })
-      const len = Math.max(0, (w | 0) * (h | 0) * 4)
+      // The real CanvasRenderingContext2D.createImageData throws IndexSizeError on a
+      // zero (or non-finite) dimension. Mirroring that is what gives the 0x0 test its
+      // teeth: a clamp-removed render() computes scale=0 -> createImageData(0, 0), and
+      // a permissive mock would have swallowed it (the F-C toothlessness).
+      if (!(w > 0) || !(h > 0)) {
+        throw new RangeError(`createImageData: dimensions must be > 0, got ${w}x${h}`)
+      }
+      const len = (w | 0) * (h | 0) * 4
       return { data: new Uint8ClampedArray(len), width: w, height: h }
     },
     _calls: calls,
     numericArgs(): number[] {
       return calls.flatMap((c) => c.args.filter((a): a is number => typeof a === 'number'))
+    },
+    /** The [width, height] of the ImageData render() created, or null if it made none. */
+    imageDims(): [number, number] | null {
+      const c = calls.find((k) => k.method === 'createImageData')
+      return c ? [c.args[0] as number, c.args[1] as number] : null
     },
   }
 }
@@ -160,13 +193,43 @@ describe('render — blits through integer scaling and survives a degenerate can
     expect(ctx.numericArgs().every((n) => Number.isFinite(n)), 'a NaN reached the context').toBe(true)
   })
 
-  it('a 0x0 canvas produces no throw and no NaN — geometry is delegated to the clamped fitIntegerScale (lang-review #21)', async () => {
-    const { render } = await loadRender()
+  it('a 0x0 canvas still renders at scale 1 — the clamp contract, not just finiteness (lang-review #21)', async () => {
+    const { render, LOGICAL_WIDTH, LOGICAL_HEIGHT } = await loadRender()
     const ctx = makeCtx(0, 0)
+
+    // No throw: a clamp-removed render() computes scale=0 -> createImageData(0, 0),
+    // which the mock rejects exactly like the real API. Correct (delegating) code
+    // never asks for a 0-sized image, so this passes only for the clamped path.
     expect(() => render(ctx, fb(292, 240))).not.toThrow()
-    // The point of the guard: a render that computed containerW/0 or scaled by
-    // container/logical without fitIntegerScale's Math.max(1, ...) clamp would push
-    // a NaN or Infinity into a draw call. Delegating keeps every argument finite.
+
+    // The CONTRACT the earlier no-NaN check could not see: on a 0x0 canvas the raster
+    // is still drawn at scale >= 1, so the ImageData is at least one logical frame.
+    // A scale=0 reimplementation would have made a 0-sized (or no) image and reddens.
+    const dims = ctx.imageDims()
+    expect(dims, 'render must create an ImageData even on a 0x0 canvas').not.toBeNull()
+    const [w, h] = dims as [number, number]
+    expect(w, 'width must be at least one logical frame (scale >= 1)').toBeGreaterThanOrEqual(LOGICAL_WIDTH)
+    expect(h, 'height must be at least one logical frame (scale >= 1)').toBeGreaterThanOrEqual(LOGICAL_HEIGHT)
+
+    // …and still no NaN/Infinity reached any ctx call.
     expect(ctx.numericArgs().every((n) => Number.isFinite(n)), 'a NaN/Infinity reached the ctx on a 0x0 canvas').toBe(true)
+  })
+})
+
+describe('render.ts — colours are never invented (the denylist scan)', () => {
+  it('has NO hex-colour literal on the render path — the ground fill resolves through the palette', () => {
+    // F-A: the letterbox/ground fill must be reached BY INDEX (indexToRgba/a background
+    // index), never a `#000000` literal — joust fills it via colours[0] for exactly this
+    // reason (plugins/joust/src/main.ts:614,647). Comment-stripped so the rule's own
+    // prose ("never a scattered hex literal") cannot red or hide a real one. This reds
+    // on the first cut's `ctx.fillStyle = '#000000'` and greens when the ground is
+    // resolved through the palette.
+    const code = stripComments(readFileSync(renderSourcePath, 'utf8'))
+    const hex = code.match(/#[0-9a-fA-F]{3,8}\b/g)
+    expect(
+      hex,
+      `render.ts carries hex colour literal(s) on the render path: ${hex?.join(', ') ?? ''} — ` +
+        'resolve every colour through indexToRgba/a background index (joust colours[0] precedent)',
+    ).toBeNull()
   })
 })
