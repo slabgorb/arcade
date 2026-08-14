@@ -23,9 +23,11 @@ in-house words. This table translates each to plain English. Line numbers are
 
 ## The per-author message-vector blocks
 
+| Author block | Plain English | Where |
+|---|---|---|
+| `* EUGENE'S VECTORS` | a message-vector table grouped by author — the play-side vectors (PLYR1/PLYR2, BONUS X, ATTACK WAVE, COMPLETED) | `defender/MESS0.SRC:165` |
+| `* SAM'S VECTORS` | a message-vector table grouped by author — the hall-of-fame entry vectors (HOF, INIT$, HALLD, HALEN) | `defender/MESS0.SRC:175` |
+
 The message module groups its vector tables by the programmer whose code consumes
-them: an `* EUGENE'S VECTORS` block (`defender/MESS0.SRC:165`) holds the
-play-side message vectors (PLYR1/PLYR2, BONUS X, ATTACK WAVE, COMPLETED), and an
-`* SAM'S VECTORS` block (`defender/MESS0.SRC:175`) holds the hall-of-fame entry
-vectors (HOF, INIT$, HALLD, HALEN). The names are the authors' own — the vector
-tables are organized by who wrote the consuming code, not by function.
+them. The names are the authors' own — the vector tables are organized by who
+wrote the consuming code, not by function.
