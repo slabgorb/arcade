@@ -24,6 +24,15 @@ import { MASK, freqSweep, contSweep, NCHAN } from './sound-rom'
 /** The POKEY audio clock we divide (the "64 kHz" clock, ROM default). */
 export const POKEY_CLOCK_HZ = 63920
 
+/** Octaves-worth of divide to transpose the whole schedule DOWN for Web Audio.
+ *  On the raw clock `audfToHz(0)` is 31960 Hz — above a 48 kHz context's 24 kHz
+ *  Nyquist, so the browser clamps it to Nyquist and warns each step (ml6-2 AC3
+ *  playtest). One octave down (÷2) pulls the top step to 15980 Hz, inside the
+ *  audible range. A single UNIFORM factor preserves every inter-step ratio — the
+ *  faithful part of the sweep — and absolute pitch was already an approximation
+ *  (see the header). (ml7-7) */
+const WEB_AUDIO_TRANSPOSE = 2
+
 /** One step of a voice's sweep. */
 export interface VoiceStep {
   readonly freq: number
@@ -38,9 +47,10 @@ export interface VoiceSchedule {
   readonly framesPerStep: number
 }
 
-/** AUDF divisor → Hz. Bigger AUDF ⇒ bigger divisor ⇒ lower pitch. */
+/** AUDF divisor → Hz, transposed into the Web-Audio audible range (see
+ *  WEB_AUDIO_TRANSPOSE). Bigger AUDF ⇒ bigger divisor ⇒ lower pitch. */
 export function audfToHz(audf: number): number {
-  return POKEY_CLOCK_HZ / (2 * (audf + 1))
+  return POKEY_CLOCK_HZ / (WEB_AUDIO_TRANSPOSE * 2 * (audf + 1))
 }
 
 /** AUDC → linear gain 0..1 from the low-nibble volume (0-15). 0 is a rest. */
