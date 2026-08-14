@@ -83,28 +83,28 @@ function docCitations(name: string): ProseCitation[] {
   return extractProseCitations(doc(name), name)
 }
 /**
- * ROW SCOPING (review round 1, [HIGH]). The round-1 suite matched a term's
- * symbol, its plain-English phrase and its citation each against the WHOLE doc,
- * so swapping two rows' citations — both still present, both still byte-valid —
- * shipped green (mutation-proven three ways, including a full-suite 118/118 run
- * with PHRED's and CKBYT's citations swapped). This is the same document-global
- * bypass the OQ sections already close with oqSection(); tables close it at the
- * ROW: an entry's citation (and its plain-English signature) must sit in a
- * two-line window opening at a line that matches the entry's own symbol. Two
- * lines, not one, because the vector-block entries live in wrapped PROSE rather
- * than a table row, and markdown wrapping may carry the citation onto the next
- * line (the cp5-1 line-wrap lesson) — while staying far too narrow to reach any
- * sibling row.
+ * ROW SCOPING (review rounds 1-2, [HIGH] twice). Round 1's suite matched a
+ * term's symbol, plain-English phrase and citation each against the WHOLE doc,
+ * so swapping two rows' citations shipped green. Round 1's fix used a two-line
+ * window for prose-wrap slack — and round 2 proved BY MUTATION that the second
+ * line of the window IS the next sibling row, because every markdown table row
+ * is one physical line: an adjacent-row swap passed for the upper row, and a
+ * five-row cyclic shift passed four of five wrong entries.
+ *
+ * The boundary that holds, and the contract it imposes: every cited entry
+ * lives on a MARKDOWN TABLE ROW (a single physical line starting with `|`),
+ * and its window is exactly that line — symbol, plain-English signature and
+ * covering citation all on the entry's own row, nowhere else. There is no
+ * prose window at all; prose may explain, but it may not carry an entry's
+ * citation (glossary.md's vector-block section is a table for this reason).
+ * Pinned by the round-2 acceptance mutants: the adjacent swap reds BOTH sides,
+ * the one-row-down displacement reds, and the five-row cyclic shift reds all
+ * five.
  */
 function rowWindows(md: string, symbol: RegExp): string[] {
-  const lines = md.split('\n')
-  const windows: string[] = []
-  for (let i = 0; i < lines.length; i++) {
-    if (symbol.test(lines[i])) windows.push(lines.slice(i, i + 2).join('\n'))
-  }
-  return windows
+  return md.split('\n').filter((l) => l.startsWith('|') && symbol.test(l))
 }
-/** Is there a symbol-anchored window carrying a citation that covers ANY of `lines`? */
+/** Is there a symbol-anchored table row carrying a citation that covers ANY of `lines`? */
 function rowCites(md: string, symbol: RegExp, from: string, file: string, lines: readonly number[]): boolean {
   return rowWindows(md, symbol).some((w) =>
     lines.some((l) => extractProseCitations(w, from).some((c) => c.file === file && c.start <= l && l <= c.end)),
@@ -401,12 +401,13 @@ describe('df1-3 AC-1 — glossary.md maps author vocabulary to plain English', (
       const md = doc(GLOSSARY)
       expect(md, `glossary.md must exist before "${t.authorNeeds}" can be checked`).not.toBe('')
       expect(t.author.test(md), `glossary.md must state ${t.authorNeeds} (a glossary translates FROM the author's jargon)`).toBe(true)
-      // ROW-SCOPED (review round 1): the plain-English signature and the covering
-      // citation must sit in the term's own row window (the line matching the
-      // author symbol, plus one line of wrap slack) — a signature or citation
-      // parked in a SIBLING row no longer satisfies this term.
+      // ROW-SCOPED (review rounds 1-2): the plain-English signature and the
+      // covering citation must sit on the term's OWN table row — one physical
+      // line, no wrap slack, no prose path. A signature or citation parked in
+      // a sibling row (even the row directly below) no longer satisfies this
+      // term; the round-2 displacement and cyclic-shift mutants pin that.
       const windows = rowWindows(md, t.author)
-      expectPopulated(windows.length, 1, `${t.authorNeeds} row windows`)
+      expectPopulated(windows.length, 1, `${t.authorNeeds} table rows`)
       expect(
         windows.some((w) => t.plain.test(w)),
         `${t.authorNeeds}'s own row must state ${t.plainNeeds} — a phrase elsewhere in the doc does not translate THIS term`,

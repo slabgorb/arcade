@@ -6,6 +6,9 @@
 // the review's diff of the two copies showed 0 differing lines). Extracted here
 // at the second consumer, exactly where the rule says to extract. dossier-sweep.ts
 // stays the citation-sweep module; this file holds the vitest-facing apparatus.
+// citations.test.ts keeps its OWN loadChecker on purpose — that one is a distinct
+// concept (a RED-phase wrapper turning a missing module into a self-describing
+// "not built yet" failure), deliberately not unified with this plain loader.
 
 import { expect } from 'vitest'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
