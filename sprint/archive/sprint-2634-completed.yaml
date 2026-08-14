@@ -280,3 +280,8 @@ completed_stories:
     title: "Reconcile CLAUDE.md games roster: add millipede and fix vector/raster/total counts (eleven clones — five vector, six raster). Introduced-visible by df1-5 adding defender under a stale 'four raster'/'nine' count; millipede was never in the roster prose either. See df1-5 review [DOC] finding + Delivery Finding."
     points: 1
     completed: '2026-08-14'
+  - id: ml7-7
+    epic: ml7
+    title: 'Scale the pokey-voice sweep frequencies into the Web Audio nominal range — ml6-2 AC3 playtest shows sweep steps hitting ~32kHz that Web Audio CLAMPS to 24kHz (shell/audio.ts:54 warning x60/session). Audible steps still play, but the high-end mapping (pokey-voice.ts / audio.ts FRAME_SEC tunables) wants a proper POKEY→Hz scale. Playtest the result.'
+    points: 3
+    completed: '2026-08-14'
