@@ -85,9 +85,7 @@ import {
   uncoveredCitations,
   type ProseCitation,
 } from './dossier-sweep'
-import type { Claim } from '../../tools/audit/check-citations.mjs'
-
-type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: string | null }) => string[]
+import { expectPopulated, loadChecker } from '../helpers/dossier-audit'
 
 const BRIEF = 'brief.md'
 
@@ -99,11 +97,6 @@ const BRIEF = 'brief.md'
 const vendoredRoot =
   process.env.DEFENDER_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'original-source', 'defender')
 const vendoredAvailable = existsSync(vendoredRoot)
-
-async function loadChecker(): Promise<CheckClaims> {
-  const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
-  return mod.checkClaims
-}
 
 function brief(): string {
   return readDossier(BRIEF)
@@ -132,18 +125,8 @@ function citesIn(text: string, file: string, line: number): boolean {
   return extractProseCitations(text, BRIEF).some((c) => c.file === file && c.start <= line && line <= c.end)
 }
 
-/**
- * lang-review #15: a universally-quantified sweep whose every iteration can
- * `continue` (or that runs over an empty list) asserts nothing and passes by
- * default. Every loop below first states the population it must have visited.
- */
-function expectPopulated(n: number, floor: number, what: string): void {
-  expect(
-    n,
-    `${what}: swept ${n} (floor ${floor}) — below that this passes without checking anything, ` +
-      'the shape of a green gate that measures itself',
-  ).toBeGreaterThanOrEqual(floor)
-}
+// (expectPopulated and loadChecker moved to tests/helpers/dossier-audit.ts at the
+// second consumer — df1-3 review round 1, lang-review #18.)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The five preflight answers, as data. Each pins the SPECIFIC line citations the

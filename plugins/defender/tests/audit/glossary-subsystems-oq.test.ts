@@ -60,9 +60,7 @@ import {
   uncoveredCitations,
   type ProseCitation,
 } from './dossier-sweep'
-import type { Claim } from '../../tools/audit/check-citations.mjs'
-
-type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: string | null }) => string[]
+import { expectPopulated, loadChecker } from '../helpers/dossier-audit'
 
 const GLOSSARY = 'glossary.md'
 const SUBSYSTEMS = 'subsystems.md'
@@ -78,24 +76,39 @@ const vendoredRoot =
   process.env.DEFENDER_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'original-source', 'defender')
 const vendoredAvailable = existsSync(vendoredRoot)
 
-async function loadChecker(): Promise<CheckClaims> {
-  const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
-  return mod.checkClaims
-}
-
 function doc(name: string): string {
   return readDossier(name)
 }
 function docCitations(name: string): ProseCitation[] {
   return extractProseCitations(doc(name), name)
 }
-/** Does dossier file `name` carry a backticked citation covering FILE:LINE? */
-function cites(name: string, file: string, line: number): boolean {
-  return docCitations(name).some((c) => c.file === file && c.start <= line && line <= c.end)
+/**
+ * ROW SCOPING (review round 1, [HIGH]). The round-1 suite matched a term's
+ * symbol, its plain-English phrase and its citation each against the WHOLE doc,
+ * so swapping two rows' citations — both still present, both still byte-valid —
+ * shipped green (mutation-proven three ways, including a full-suite 118/118 run
+ * with PHRED's and CKBYT's citations swapped). This is the same document-global
+ * bypass the OQ sections already close with oqSection(); tables close it at the
+ * ROW: an entry's citation (and its plain-English signature) must sit in a
+ * two-line window opening at a line that matches the entry's own symbol. Two
+ * lines, not one, because the vector-block entries live in wrapped PROSE rather
+ * than a table row, and markdown wrapping may carry the citation onto the next
+ * line (the cp5-1 line-wrap lesson) — while staying far too narrow to reach any
+ * sibling row.
+ */
+function rowWindows(md: string, symbol: RegExp): string[] {
+  const lines = md.split('\n')
+  const windows: string[] = []
+  for (let i = 0; i < lines.length; i++) {
+    if (symbol.test(lines[i])) windows.push(lines.slice(i, i + 2).join('\n'))
+  }
+  return windows
 }
-/** Does `name` carry a backticked citation covering ANY of `lines` in `file`? */
-function citesAny(name: string, file: string, lines: readonly number[]): boolean {
-  return lines.some((l) => cites(name, file, l))
+/** Is there a symbol-anchored window carrying a citation that covers ANY of `lines`? */
+function rowCites(md: string, symbol: RegExp, from: string, file: string, lines: readonly number[]): boolean {
+  return rowWindows(md, symbol).some((w) =>
+    lines.some((l) => extractProseCitations(w, from).some((c) => c.file === file && c.start <= l && l <= c.end)),
+  )
 }
 
 /**
@@ -119,20 +132,6 @@ function oqCites(md: string, n: number, file: string, lines: readonly number[]):
   return lines.some((l) =>
     extractProseCitations(section, OPEN_QUESTIONS).some((c) => c.file === file && c.start <= l && l <= c.end),
   )
-}
-
-/**
- * lang-review #15: a universally-quantified sweep whose every iteration can
- * `continue` (or that runs over an empty list) asserts nothing and passes by
- * default. Every data-driven loop below first states the population it must have
- * visited.
- */
-function expectPopulated(n: number, floor: number, what: string): void {
-  expect(
-    n,
-    `${what}: swept ${n} (floor ${floor}) — below that this passes without checking anything, ` +
-      'the shape of a green gate that measures itself',
-  ).toBeGreaterThanOrEqual(floor)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -398,15 +397,24 @@ describe('df1-3 AC-1 — glossary.md maps author vocabulary to plain English', (
   })
 
   for (const t of GLOSSARY_TERMS) {
-    it(`${t.authorNeeds} is translated (${t.plainNeeds}) and cited to \`${t.file}:${t.lines[0]}\``, () => {
+    it(`${t.authorNeeds} is translated (${t.plainNeeds}) and cited to \`${t.file}:${t.lines[0]}\` IN ITS OWN ROW`, () => {
       const md = doc(GLOSSARY)
       expect(md, `glossary.md must exist before "${t.authorNeeds}" can be checked`).not.toBe('')
       expect(t.author.test(md), `glossary.md must state ${t.authorNeeds} (a glossary translates FROM the author's jargon)`).toBe(true)
-      expect(t.plain.test(md), `glossary.md must state ${t.plainNeeds}`).toBe(true)
+      // ROW-SCOPED (review round 1): the plain-English signature and the covering
+      // citation must sit in the term's own row window (the line matching the
+      // author symbol, plus one line of wrap slack) — a signature or citation
+      // parked in a SIBLING row no longer satisfies this term.
+      const windows = rowWindows(md, t.author)
+      expectPopulated(windows.length, 1, `${t.authorNeeds} row windows`)
       expect(
-        citesAny(GLOSSARY, t.file, t.lines),
-        `glossary.md must carry a backticked citation to \`${t.file}\` covering the defining line ` +
-          `for ${t.authorNeeds} (one of ${t.lines.join(', ')}) — verified this session by numbered tool output`,
+        windows.some((w) => t.plain.test(w)),
+        `${t.authorNeeds}'s own row must state ${t.plainNeeds} — a phrase elsewhere in the doc does not translate THIS term`,
+      ).toBe(true)
+      expect(
+        rowCites(md, t.author, GLOSSARY, t.file, t.lines),
+        `${t.authorNeeds}'s own row must carry a backticked citation to \`${t.file}\` covering its defining ` +
+          `line (one of ${t.lines.join(', ')}) — a citation in a sibling row is the swap defect the round-1 review proved`,
       ).toBe(true)
     })
   }
@@ -423,15 +431,18 @@ describe('df1-3 AC-2 — subsystems.md indexes every subsystem to owning file + 
   })
 
   for (const s of SUBSYSTEMS_MAP) {
-    it(`${s.name} → ${s.file} is named in prose and cited to its verified line`, () => {
+    it(`${s.name} → ${s.file} is named in prose and cited to its verified line IN ITS OWN ROW`, () => {
       const md = doc(SUBSYSTEMS)
       expect(md, `subsystems.md must exist before ${s.name} can be checked`).not.toBe('')
       expectPopulated(s.lines.length, 1, `${s.name} candidate lines`)
       expect(s.symbol.test(md), `subsystems.md must name ${s.name} in prose`).toBe(true)
+      // ROW-SCOPED (review round 1): the covering citation must sit in the
+      // entry's own row window — swapping two rows' citations (both present,
+      // both byte-valid) shipped green under the doc-global round-1 check.
       expect(
-        citesAny(SUBSYSTEMS, s.file, s.lines),
-        `subsystems.md must carry a backticked citation to \`${s.file}\` covering the routine/header ` +
-          `line for ${s.name} (one of ${s.lines.join(', ')}) — the "owning file + routine + line" AC2 demands`,
+        rowCites(md, s.symbol, SUBSYSTEMS, s.file, s.lines),
+        `${s.name}'s own row must carry a backticked citation to \`${s.file}\` covering its routine/header ` +
+          `line (one of ${s.lines.join(', ')}) — the "owning file + routine + line" AC2 demands, bound to the row`,
       ).toBe(true)
     })
   }
