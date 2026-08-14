@@ -303,3 +303,8 @@ completed_stories:
     title: 'Mutation battery over the scroll geometry (ml3-5) + the two-POKEY sound driver (ml6-1): pin output coordinates and channel writes against surviving mutants; group any survivors by file surface, not by subsystem.'
     points: 5
     completed: '2026-08-14'
+  - id: jt11-16
+    epic: jt11
+    title: 'Boot drops into the attract self-play demo and never shows the MARQUE/logo title screen -- wire the present-but-unreachable title cabinet mode'
+    points: 3
+    completed: '2026-08-14'
