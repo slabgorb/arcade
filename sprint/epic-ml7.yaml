@@ -82,9 +82,11 @@ stories:
     title: 'Enemy PRESENCE voices + secondary ROM-input threading — ml6-2 emits only kill/explosion (CHAN2) and march (CHAN1); the per-creature CHAN0/3/4/5/7/8/9 voices are not started, and the secondary EnemyView inputs (score1/dead/slow/mushTop/beetles…) are defaulted to 0. Grep TODO(ml7-2 fidelity) in core/enemies/. Reconcile the fliers sharing MOBJ slot 12 (documented deviation). Thread the BEETLA per-wave quota into beetle spawning.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
+    review_verdict: approved
   - id: ml7-9
     title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
     points: 5
