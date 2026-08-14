@@ -1,0 +1,119 @@
+[
+  {
+    "id": "SH-1",
+    "claim": "The first RASM assembly chain: RASM PHR2,DEFA2,DEFB2,AMODE0;-X, the -X needed or CREF symbol overflow.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 3,
+      "verbatim": "RASM PHR2,DEFA2,DEFB2,AMODE0;-X (ELSE CREF SYMBOL OVERFLOW)"
+    }
+  },
+  {
+    "id": "SH-2",
+    "claim": "The second chain: RASM PHR2,SAMEXPA7 — the notes' own spelling; the shipped file is SAMEXAP7.SRC.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 4,
+      "verbatim": "RASM PHR2,SAMEXPA7"
+    }
+  },
+  {
+    "id": "SH-3",
+    "claim": "The third chain: RASM PHR2,DEFA2,DEFB2.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 5,
+      "verbatim": "RASM PHR2,DEFA2,DEFB2"
+    }
+  },
+  {
+    "id": "SH-4",
+    "claim": "The shipped file ledger opens with PHR6.SRC at 636 lines.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 30,
+      "verbatim": "PHR6.SRC\t  636 LINES"
+    }
+  },
+  {
+    "id": "SH-5",
+    "claim": "The ledger lists DEFA7.SRC at 3,375 lines — the largest module, the resident executive.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 31,
+      "verbatim": "DEFA7.SRC\t3,375 LINES"
+    }
+  },
+  {
+    "id": "SH-6",
+    "claim": "The banked-ROM window is selected through MAPC EQU $D000 MAP CONTROL.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 11,
+      "verbatim": "MAPC\tEQU\t$D000\tMAP CONTROL"
+    }
+  },
+  {
+    "id": "SH-7",
+    "claim": "The diagnostics live in block 3: DIABLK EQU 3 DIAGNOSTIC BLOCK.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 7,
+      "verbatim": "DIABLK\tEQU\t3\tDIAGNOSTIC BLOCK"
+    }
+  },
+  {
+    "id": "SH-8",
+    "claim": "Attract mode selects block 1 then jumps to the attract vector (ATTR JSR MAPCH1) — block 1 is AMODE1.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1085,
+      "verbatim": "ATTR\tJSR\tMAPCH1"
+    }
+  },
+  {
+    "id": "SH-9",
+    "claim": "The IRQ selects block 2 to draw characters (LDA #2, SELECT CHARS) — block 2 is MESS0, the message/charset block.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2030,
+      "verbatim": "IRQB2\tLDA\t#2\tSELECT CHARS"
+    }
+  },
+  {
+    "id": "SH-10",
+    "claim": "The IRQ selects block 7 before drawing the background — block 7 is BLK71, the terrain data.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2024,
+      "verbatim": "\tLDA\t#7"
+    }
+  },
+  {
+    "id": "SH-11",
+    "claim": "The resident block assembles at ORG $D000 (DEFA7 + DEFB6 + ROMF8 + SAMEXAP7 occupy $D000-$FFFF).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 4,
+      "verbatim": "\tORG\t$D000"
+    }
+  },
+  {
+    "id": "SH-12",
+    "claim": "SAMEXAP7.SRC opens by INCLUDEing PHR6.SRC — every chain shares the PHR6 equate/macro header.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 2,
+      "verbatim": "\tINCLUDE\tPHR6.SRC"
+    }
+  },
+  {
+    "id": "SH-13",
+    "claim": "BRUTSUM2, the never-shipped development checkbyte tool, assembles stand-alone at ORG $8000 — outside every chain.",
+    "source": {
+      "file": "BRUTSUM2.SRC",
+      "line": 1,
+      "verbatim": "\tORG\t$8000"
+    }
+  }
+]
