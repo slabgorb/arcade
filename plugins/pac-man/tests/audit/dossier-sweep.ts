@@ -79,10 +79,12 @@ export function loadClaims(dir: string = claimsDir): Claim[] {
   if (!existsSync(dir)) return []
   // df1-6: harden the load path. A bare JSON.parse threw a raw SyntaxError naming
   // no file, and the `as Claim | Claim[]` cast let a well-formed-JSON-wrong-shape
-  // file through unchecked. Wrap the parse per-file and assert each entry's source
-  // is one the checker accepts (isValidClaimSource — the SAME predicate checkClaims
-  // uses, so the load gate and the schema gate cannot drift), so both failures
-  // surface as a controlled error that names the offending file.
+  // file through unchecked. Wrap the parse per-file and validate each entry's source
+  // with isValidClaimSource — which is composed from the SAME guard functions
+  // (isCitation/isByteCitation/…) that checkClaims dispatches on, so the two stay
+  // aligned as long as those guards remain the single definition (isValidClaimSource
+  // does not re-implement them). Both failures now surface as a controlled error
+  // that names the offending file.
   return readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
     .flatMap((f) => {
@@ -90,9 +92,9 @@ export function loadClaims(dir: string = claimsDir): Claim[] {
       try {
         parsed = JSON.parse(readFileSync(join(dir, f), 'utf8'))
       } catch (e) {
-        throw new Error(`claims file ${f} is not valid JSON: ${(e as Error).message}`)
+        throw new Error(`claims file ${f} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
       }
-      const entries = Array.isArray(parsed) ? parsed : [parsed]
+      const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
       for (const entry of entries) {
         const source = entry == null ? undefined : (entry as { source?: unknown }).source
         if (!isValidClaimSource(source)) {
@@ -101,7 +103,6 @@ export function loadClaims(dir: string = claimsDir): Claim[] {
       }
       return entries as Claim[]
     })
-    .flat()
 }
 
 /** Does this claim pin the cited ROM address? */
