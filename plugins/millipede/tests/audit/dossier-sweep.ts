@@ -188,7 +188,11 @@ export type TextClaim = Claim & { source: Extract<Claim['source'], { verbatim: s
  *  only, so they read `.line`/`.verbatim` off the real union through this guard
  *  instead of re-declaring a local text-only `Claim` interface (ml5-6). */
 export function isTextClaim(c: Claim): c is TextClaim {
-  return 'verbatim' in c.source
+  // Guard `c.source` first — matches the sibling defensive convention in claimCovers
+  // (`if (!src || !('line' in src))`), so a null source smuggled past validation
+  // returns a controlled `false` rather than throwing on the `in` operator (ml5-6
+  // review, lang-review #1).
+  return c.source != null && 'verbatim' in c.source
 }
 
 /** Does this claim pin a line inside the cited range? A BYTE citation (ml2-1, the

@@ -47,8 +47,9 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-// The shared single-file parse helper this story must ADD to dossier-sweep.ts.
-// Undefined until GREEN — the behaviour block below throws (RED) until it exists.
+// The shared single-file parse helper this story ADDS to dossier-sweep.ts; the
+// behaviour block below exercises it directly. (Authored in RED before the helper
+// existed — the behaviour block threw until GREEN added it.)
 import { loadClaimsFile } from './dossier-sweep'
 
 const auditDir = join(fileURLToPath(new URL('.', import.meta.url)))
@@ -78,10 +79,16 @@ describe('ml5-6 — the four claims-arm tests use the real Claim + one shared pa
         expect(srcOf(name)).not.toMatch(/\bas\s+Claim\[\]/)
       })
 
-      it('does NOT hand-roll `JSON.parse(readFileSync(NEW_CLAIMS…))` (uses loadClaimsFile)', () => {
+      it('performs NO hand-rolled `JSON.parse` at all (every read routes through loadClaimsFile)', () => {
         // AC: the raw single-file parse is replaced by the shared runtime-checked
-        // helper. The `[^)]` window keeps this to a genuine parse-of-NEW_CLAIMS.
-        expect(srcOf(name)).not.toMatch(/JSON\.parse\s*\(\s*readFileSync\s*\([^)]*NEW_CLAIMS/)
+        // helper. Forbid JSON.parse OUTRIGHT rather than anchoring to the literal
+        // `NEW_CLAIMS` token — a call site rerouted through an intermediate variable
+        // (`const p = NEW_CLAIMS; const own = JSON.parse(readFileSync(p, 'utf8'))`)
+        // dodges a token-anchored guard and re-ships the exact df1-6 debt green
+        // (ml5-6 review finding, lang-review #15/#25). These four files parse no JSON
+        // directly anymore — the only readFileSync calls left read vendored .MAC text
+        // line-by-line — so a bare `JSON.parse` here is always the reintroduced defect.
+        expect(srcOf(name)).not.toMatch(/\bJSON\.parse\b/)
       })
 
       it('imports `loadClaimsFile` from the shared dossier-sweep module', () => {
