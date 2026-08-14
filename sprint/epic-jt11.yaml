@@ -186,3 +186,13 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt11-18
+    title: 'Burned-away bridge floor: landing on it drops the player off-screen instead of into the lava-troll grab, and the lava itself is not drawn (two coupled defects, follow-on from jt11-5)'
+    description: 'Player-reported from playtesting: (A) after the lava burns away a wooden bridge column (jt11-5 burn-off), landing or walking onto that gap drops the player straight down off the bottom of the screen instead of being grabbed by the lava monster (troll). (B) The lava itself is not visible -- the burned-away region renders black rather than molten lava. Directly anticipated by jt11-12 item (2): "a stander on the burned plank now walks off into LNDB7 lava-troll space - verify the grip system grab-zone reads (jt3-3/jt9) cover an entity dropped at shore X columns, pin or fix." Defect A: the lava-troll grab is likely UNWIRED on the burned-shore path (LNDB7 LAVA TROLLS mask returns NE / do-not-land, JOUSTRV4.SRC:6764,6792); frame.ts routes a non-platform ground outcome to walkOff -> stepFlight, so a player over lava falls rather than being handed to troll.ts grab machinery. Defect B: the LAVA background fill (the molten pool the bridges sit over) is not drawn -- jt11-5(A) transcribed the BRIDGE/BRIDG2 wooden planks but the lava underneath / the burned region (drawList BACKGROUND_RECORDS filtered by destroyedCliffs sim.ts:2534-2549) shows black. Full root cause, ROM citations and test design in sprint/context/context-story-jt11-18.md. depends_on jt11-5 (needs the burn-off destruction state, done). Likely shares sim.ts / arena-state with jt11-5/jt11-12 -- sequence, do not parallel those.'
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    depends_on: jt11-5
