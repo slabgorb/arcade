@@ -9,12 +9,15 @@
 //     (GPL). The core takes these as arguments; the numbers themselves are the
 //     shell's, so they sit here once.
 //   • The index->RGBA decode. Every colour drawn is reached BY INDEX through
-//     indexToRgba — never a scattered hex literal (colours are never invented). The
-//     palette is a TEMPORARY placeholder until df2-2 transcribes the real 16-entry
-//     CRAM/PCRAM palette (defender/PHR6.SRC:13,219); df2-2 replaces THIS ONE
-//     function and nothing else on the blit path.
+//     indexToRgba — never a scattered hex literal (colours are never invented). df2-2
+//     transcribed the real 16-entry CRAM/PCRAM palette (defender/PHR6.SRC:13,219): the
+//     default PCRAM bytes and the per-frame PCRAM->CRAM copy live in core/palette.ts,
+//     and each resolved byte decodes through the shared Williams BBGGGRRR decoder
+//     (@shared/palette-decoder). indexToRgba is the one blit-path point that reads it.
 
 import { fitIntegerScale } from '@shared/view'
+import { paletteToRgba, type Rgba } from '@shared/palette-decoder'
+import { DEFAULT_PCRAM, resolveCram } from '../core/palette.js'
 import type { Framebuffer } from '../core/framebuffer.js'
 
 /** Visible raster width — MAME set_visarea, williams.cpp:1601 (board fact, prose). */
@@ -28,22 +31,24 @@ export const LOGICAL_HEIGHT = 240
  *  with colours[0] — keeps "colours are never invented" true for every pixel drawn. */
 export const BACKGROUND_INDEX = 0
 
-/** A decoded colour: 8-bit channels, opaque unless a later palette says otherwise. */
-export interface Rgba {
-  r: number
-  g: number
-  b: number
-  a: number
-}
+/** A decoded colour: 8-bit channels, opaque unless a later palette says otherwise.
+ *  Re-exported from @shared/palette-decoder (df2-2) so the whole blit path speaks one
+ *  Rgba shape and callers of this module keep importing it from here. */
+export type { Rgba }
+
+/** The live 16-entry colour RAM: the default PCRAM shadow resolved to CRAM
+ *  (core/palette.ts). df2 renders a static frame, so it is resolved once here. */
+const CRAM = resolveCram(DEFAULT_PCRAM)
 
 /**
- * TEMPORARY placeholder palette (df2-1): a 16-step grey ramp, so each of the 16
- * indices decodes to a DISTINCT opaque colour and the seam is visibly resolving by
- * index. df2-2 swaps in the transcribed CRAM palette by replacing this function.
+ * Decode a framebuffer palette index to RGBA. df2-1 shipped a temporary grey ramp
+ * here; df2-2 swaps in the transcribed CRAM palette (defender/DEFB6.SRC:1876) decoded
+ * through the shared Williams BBGGGRRR decoder — the one point df2-2 replaces, and
+ * nothing else on the blit path. Colours are reached BY INDEX through the transcribed
+ * palette, never an invented literal.
  */
 export function indexToRgba(index: number): Rgba {
-  const level = Math.round((index & 0x0f) * (255 / 15))
-  return { r: level, g: level, b: level, a: 255 }
+  return paletteToRgba(CRAM[index & 0x0f])
 }
 
 /**

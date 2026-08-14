@@ -30,6 +30,24 @@ against whatever HEAD a clone happens to be parked on.
 | WDOG decode (OQ-4) | MAME folds $C3FC through the $C010 register's $03E0 mirror into the video-control write (williams.cpp:500) and places the watchdog reset at $C3FF only (williams.cpp:499) — so the WDOG stroke the source aims at $C3FC with the $38/$39 flip pair (`defender/PHR6.SRC:14`) is the screen-flip write. | `defender/PHR6.SRC:14` |
 | Decoder PROMs | Original Defender PCBs carried a single video-decoder PROM; cocktail-capable boards carried two (decoder2/decoder3, the note at williams.cpp:29-31) to allow the screen inversion the RED software drives via WDATA $38/$39 (`defender/PHR6.SRC:15`). | `defender/PHR6.SRC:15` |
 
+## Palette format — the colour registers are BBGGGRRR (df2-2)
+
+The 1981 source writes colour-RAM bytes and names them by hue (the `CRTAB` default
+table at `defender/DEFB6.SRC:1876`), but it never states how a byte becomes a displayed
+colour — that is a board fact. MAME's williams driver documents it: the sixteen colour
+registers at $C000-$C00F each hold one byte in **BBGGGRRR** format — two bits of blue,
+three of green, three of red — the comment at williams.cpp:66, fed through the 256-entry
+palette the driver builds at williams.cpp:1559 (palette_init). The cross-check that the
+format is read right: decoding CRTAB's own bytes through BBGGGRRR reproduces the ROM's
+per-entry labels exactly — $07→RED, $28→GREEN, $2F→YELLOW, $81→BLUE, $C7→PURPLE,
+$FF→WHITE.
+
+This is the SAME format Joust decodes — both are Williams 6809 framebuffer boards — so
+df2-2 meets CLAUDE.md's "extract on the second game" bar: the BBGGGRRR decode moved to
+`@shared/palette-decoder` and both games now share it. The palette ENTRIES stay
+per-game, transcribed from each game's own vendored source (here `CRTAB`); MAME settles
+only the byte format, never the colours.
+
 ## What these facts settle
 
 The three open questions the dossier routed here are settled in
