@@ -58,9 +58,11 @@ stories:
     title: 'VISUAL boot check for the defender scaffold (the four files, registrations, topology pin and citation gate all landed with df1-1 by owner decision — see sprint/archive/df1-1-session.md): screenshot http://127.0.0.1:5270/defender/ and confirm the black canvas renders, compared against a nonsense control path, not just a 200 (the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs); while there, correct CLAUDE.md''s game roster line — add defender (Williams, 1980) and fix the ''first Williams title joust'' phrase (df1-1 review Gap finding).'
     points: 1
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
   - id: df1-6
     title: "Harden the claims-JSON load path in the fleet's citation checkers: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede; wrap the parse in a controlled per-file error naming the file. Filed from df1-1 review (rule-checker R3, inherited from millipede)."
     description: 'Two halves, one function, three games. (1) As titled: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede — wrap the parse in a controlled per-file error naming the file. (2) EXTENSION routed from df1-2 review (round-1 [TYPE] finding, routing discharged at df1-3 setup 2026-08-14): loadClaims() casts JSON.parse output without runtime shape validation, so a well-formed-JSON-wrong-shape claims file (e.g. an object instead of an array, or entries missing source.file/line/verbatim) flows into the sweep unchecked — add a shape assertion in loadClaims or an unconditional schema test (df1-2 archive names plugins/defender/tests/audit/dossier-sweep.ts loadClaims as the defender site). One edit per game closes both halves; both are on the same load path. WHY THIS IS NOT df1-3: df1-3 is the dossier-authoring story and its suite scope is enrollment + the skipped-on-CI prose model + floor derivation; the load-path hardening is fleet-wide (three games) and belongs with the fleet-wide story.'
@@ -69,4 +71,12 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+    type: chore
+  - id: df1-7
+    title: "Reconcile CLAUDE.md games roster: add millipede and fix vector/raster/total counts (eleven clones — five vector, six raster). Introduced-visible by df1-5 adding defender under a stale 'four raster'/'nine' count; millipede was never in the roster prose either. See df1-5 review [DOC] finding + Delivery Finding."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: trivial
     type: chore
