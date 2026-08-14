@@ -275,11 +275,14 @@ function stepPlayerEntity(
     const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
     else if (isLavaDeath(s.posY)) {
-      // jt11-18 — ADGFLR (FLOOR+7, JOUSTRV4.SRC:6508-6509): a faller that reaches
-      // lava depth is stopped at the floor, not integrated off the bottom of the
+      // jt11-18 — ADGCEI's FLOOR+7 test (JOUSTRV4.SRC:6508-6509, `CMPA #FLOOR+7 /
+      // BHS ADGFLR` → the lava death): a faller that reaches lava depth is stopped
+      // at the floor, not integrated off the bottom of the
       // screen. Over a burned column with no platform to land on, this is the
-      // backstop that keeps a non-gripped bird on-screen (the felt bug).
-      s = { ...s, posY: DEATH_Y << 8 }
+      // backstop that keeps a non-gripped bird on-screen (the felt bug). velY is
+      // zeroed so a bird held at the floor is not still accelerating — otherwise
+      // the pinned-posY/growing-velY pair eventually int16-wraps in flap/stepFlight.
+      s = { ...s, posY: DEATH_Y << 8, velY: 0 }
     }
   } else {
     // Facing threaded through (jt2-9): a reversal (dir against facing) reaches the

@@ -1545,10 +1545,10 @@ export function stepEgg(egg: EggState, arena: ArenaState = PRISTINE_ARENA): EggS
   // Open-air fall: reuse the flight core's GRAV (no cited egg-gravity constant).
   const velY = egg.velY + GRAV
   const nextPosY = egg.posY + velY
-  // jt11-18 — the FLOOR+7 lava floor (ADGFLR, JOUSTRV4.SRC:6508-6509) bounds the
-  // egg's fall too: an egg over a burned column stops at the lava rather than
-  // integrating off the bottom of the screen.
-  if (isLavaDeath(nextPosY)) return { ...egg, velY, posY: DEATH_Y << 8, settled: false }
+  // jt11-18 — ADGCEI's FLOOR+7 test (JOUSTRV4.SRC:6508-6509, `CMPA #FLOOR+7 / BHS
+  // ADGFLR`) bounds the egg's fall too: an egg over a burned column stops at the lava rather than
+  // integrating off the bottom of the screen. velY zeroed so it rests, not drifts.
+  if (isLavaDeath(nextPosY)) return { ...egg, velY: 0, posY: DEATH_Y << 8, settled: false }
   return { ...egg, velY, posY: nextPosY, settled: false }
 }
 
@@ -2667,31 +2667,31 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
     }
   }
 
-  // jt11-18 — the PER-CONTACT lava-troll grab. LNDB7 ("GRIP THE PLAYER OR ENEMY",
-  // JOUSTRV4.SRC:6764) spawns a LAVAT1 from the ground-check itself the instant a
-  // bird's feet touch a lava-troll cell (VCUPROC LAVAT1, :6776-6790). That outcome
-  // is `{ kind:'troll' }` — produced only at the burned shore band — so a bird
-  // standing/walking there gets its OWN troll bound to it, instead of dropping
-  // through walkOff into the off-screen fall. This is separate from the
-  // once-per-wave CLIF5 pick above (which only ever grabs the single nearest bird),
-  // and runs after it so that pick still fires. Gated on trollSpawnable and skipping
-  // any bird already a troll's victim (one troll per bird — the natural LAVNBR cap).
-  if (trollSpawnable(arena, waveOrdinal)) {
-    const boundVictims = new Set<number>()
-    for (const p of processes) {
-      if (p.kind === 'troll' && p.victimId !== undefined) boundVictims.add(p.victimId)
-    }
-    for (const p of processes) {
-      if (p.kind !== 'player' && p.kind !== 'enemy') continue
-      if (boundVictims.has(p.id)) continue
+  // jt11-18 — the PER-CONTACT lava-troll grab. LNDB7 spawns a LAVAT1 from the
+  // ground-check itself the instant a bird's feet touch a lava-troll cell, binding
+  // it to THAT entity (PEXEC → PJOY, JOUSTRV4.SRC:6764-6790). The `{ kind:'troll' }`
+  // ground outcome is produced only at the burned shore band, so a bird standing/
+  // walking there is seized instead of dropping through walkOff into the off-screen
+  // fall. Faithful to LNDB7's own gate: `LDA LAVNBR / BNE LNDB7C` (:6767-6768) —
+  // "DO NOT START ANOTHER" while a lava troll is already alive, `INC LAVNBR` on
+  // spawn (:6773). So it is gated on there being NO live troll (the ONE-troll-at-a-
+  // time cap the once-per-wave CLIF5 pick above already honours). When a troll IS
+  // active the bird is not re-grabbed — it falls to the FLOOR+7 lava death instead
+  // (LNDB7C returns "do not land"). Only the FIRST unbound bird this frame is taken.
+  // `wave` (post-advance), matching the once-per-wave gate above — not the
+  // pre-advance `waveOrdinal`, so a bird already on the lava when wave 4 begins is
+  // grabbed on that frame rather than one frame late.
+  if (trollSpawnable(arena, wave) && !processes.some((p) => p.kind === 'troll')) {
+    const victim = processes.find((p) => {
+      if (p.kind !== 'player' && p.kind !== 'enemy') return false
       const e = p.kind === 'player' ? p.entity : p.enemy?.entity
-      if (!e) continue
-      const outcome = groundOutcomeInState(arena, groundMaskAt(e.posX, (e.posY >> 8) + 1, arena))
-      if (outcome.kind !== 'troll') continue
+      if (!e) return false
+      return groundOutcomeInState(arena, groundMaskAt(e.posX, (e.posY >> 8) + 1, arena)).kind === 'troll'
+    })
+    if (victim) {
       // A distinct LAVID-flavoured id (clear of the once-per-wave troll's
-      // 0x100*wave+0xc0 and every enemy/ptero namespace) so both can coexist.
-      processes = insertTroll(processes, { ...trollProcess(waveOrdinal, p), id: 0x15_0000 + p.id })
-      boundVictims.add(p.id)
+      // 0x100*wave+0xc0 and every enemy/ptero namespace).
+      processes = insertTroll(processes, { ...trollProcess(wave, victim), id: 0x15_0000 + victim.id })
     }
   }
 

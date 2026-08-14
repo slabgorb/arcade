@@ -1321,10 +1321,12 @@ function stepEntity(
     const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
     else if (isLavaDeath(s.posY)) {
-      // jt11-18 — ADGFLR (FLOOR+7, JOUSTRV4.SRC:6508-6509): a buzzard that reaches
-      // lava depth is stopped at the floor, not integrated off-screen, exactly as
+      // jt11-18 — ADGCEI's FLOOR+7 test (JOUSTRV4.SRC:6508-6509, `CMPA #FLOOR+7 /
+      // BHS ADGFLR`): a buzzard that reaches lava depth is stopped at the floor,
+      // not integrated off-screen, exactly as
       // frame.ts's player is (the enemy airborne path had the same missing clamp).
-      s = { ...s, posY: DEATH_Y << 8 }
+      // velY zeroed for the same reason: no accelerating-while-pinned drift.
+      s = { ...s, posY: DEATH_Y << 8, velY: 0 }
     }
   } else {
     // jt11-11 — the enemy's own PFACE signs the maintained PVELX. There is no

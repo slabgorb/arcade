@@ -58,11 +58,8 @@ const ISLAND = 100
 // plane (:6620, DEATH_Y in arena.ts); the CLIF5 grab point is X=148 (TROLL_CLIF5_X
 // in sim.ts).
 const FLOOR = 0xdf
-const DEATH_Y = FLOOR + 7 // 230
+const DEATH_Y = FLOOR + 7 // 230 — the FLOOR+7 lava floor the clamp pins to
 const CLIF5_X = 148
-// The logical framebuffer is 292×240 (LOGICAL_WIDTH/HEIGHT in render.ts). "Off the
-// bottom of the screen" is posY>>8 running past LOGICAL_HEIGHT — the exact felt bug.
-const LOGICAL_HEIGHT = 240
 
 // ─── Fixtures (jt11-5 / jt9-11 shapes, verbatim) ─────────────────────────────
 
@@ -131,8 +128,10 @@ function eggOf(over: Partial<EggState>): EggState {
 
 const trollsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
 
-/** A wave-4, bridge-burned demo carrying exactly the given cast (jt9-11 idiom). */
-async function stagedBurnedDemo(processes: SimProcess[]): Promise<SimState> {
+/** A wave-4, bridge-burned demo carrying exactly the given cast (jt9-11 idiom).
+ *  `over` sets extra SimState fields — e.g. `trollArmed: false` to spend the
+ *  once-per-wave CLIF5 pick so only the per-contact LNDB7 grab can bind. */
+async function stagedBurnedDemo(processes: SimProcess[], over: Partial<SimState> = {}): Promise<SimState> {
   const dmod = await loadSim()
   const base = dmod.createWaveSim(SEED)
   return withNoPendingEnemies({
@@ -140,6 +139,7 @@ async function stagedBurnedDemo(processes: SimProcess[]): Promise<SimState> {
     wave: 4, // TROLL_WAVE — the troll is active once the bridge has burned
     sim: { ...base.sim, processes },
     arena: { ...base.arena, bridgeBurned: true },
+    ...over,
   })
 }
 
@@ -155,46 +155,61 @@ describe('jt11-18 premise — the burned shore already resolves to { kind:troll 
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC-A1 — a player standing on a burned column is GRABBED, bound to THAT entity,
-//         not dropped. (RED: today it walks off and no troll binds to it.)
+// AC-A1 — a bird on the burned shore is SEIZED by a lava troll bound to THAT
+//         entity when one can rise (LNDB7 VCUPROC LAVAT1, :6776-6790), and — per
+//         the ROM's LAVNBR gate (`LDA LAVNBR / BNE LNDB7C`, :6767-6768: only ONE
+//         lava troll in the whole game at a time) — falls to the lava death, NOT
+//         off-screen, when a troll is already active. Both branches replace the
+//         old off-screen drop. (RED on develop: the stander walks off and falls.)
 // ═════════════════════════════════════════════════════════════════════════════
-//
-// Isolation: a DECOY bird sits on CLIF5 (X=148) so the once-per-wave
-// pickTrollVictim binds IT (dist 0), never our shore stander (dist 128). The
-// per-entity LNDB7 grab is the only thing that can bind the stander — and it is
-// exactly what is unwired.
-describe('jt11-18 AC-A1 — the burned-shore stander is seized by a lava troll bound to it', () => {
+describe('jt11-18 AC-A1 — the burned-shore bird is seized, or dies in lava — never dropped off-screen', () => {
   const DECOY_ID = 1
   const SHORE_ID = 2
 
-  async function run(): Promise<SimState> {
+  it('with no active troll, the shore stander is seized by a lava troll bound to it', async () => {
+    // trollArmed:false spends the once-per-wave CLIF5 pick, so LNDB7-on-contact is
+    // the ONLY path that can bind the shore stander — isolating the per-contact grab.
+    // A KEEP-ALIVE buzzard parked on the CLIF5 island (a real platform, not a lava
+    // cell) holds the wave open so it never advances and re-arms the once-per-wave
+    // pick behind our backs — WITHOUT this, a player-only wave clears, advances, and
+    // the once-per-wave grab binds the lone stander even on develop (a vacuous green).
     const dmod = await loadSim()
-    let d = await stagedBurnedDemo([
-      playerAt(DECOY_ID, CLIF5_X, 120), // the once-per-wave CLIF5 victim
-      { ...playerAt(SHORE_ID, PLANK_L, 210), entity: stander(PLANK_L) }, // on the burned plank
-    ])
-    // Give the grab a few frames to bind (the hand rises before it commits).
+    let d = await stagedBurnedDemo(
+      [
+        enemyAt(0x201, ISLAND, stander(ISLAND)), // keep-alive; on a platform, never a troll contact
+        { ...playerAt(SHORE_ID, PLANK_L, 210), entity: stander(PLANK_L) },
+      ],
+      { trollArmed: false },
+    )
     for (let i = 0; i < 8; i++) d = dmod.stepSim(d)
-    return d
-  }
-
-  it('sanity: the once-per-wave troll still binds the CLIF5 decoy (fixture reaches the troll system)', async () => {
-    const d = await run()
-    expect(
-      trollsIn(d).some((t) => t.victimId === DECOY_ID),
-      'the CLIF5-nearest bird is the pickTrollVictim target — this proves the wave/arm gate fired',
-    ).toBe(true)
-  })
-
-  it('a troll is bound to the SHORE stander (LNDB7 VCUPROC LAVAT1, :6776-6790)', async () => {
-    const d = await run()
-    // RED today: the stander at X=20 is far from CLIF5, so the once-per-wave path
-    // never picks it; the per-entity grab that the ROM spawns on contact is
-    // unwired, so it just walks off and free-falls. GREEN once the { kind:'troll' }
-    // ground outcome binds a lava troll to the touching entity.
+    // RED on develop: no per-contact grab, so the stander walks off and free-falls;
+    // no troll binds to it. GREEN once the { kind:'troll' } outcome spawns a LAVAT1
+    // bound to the contacting entity.
     const shore = d.sim.processes.find((p) => p.id === SHORE_ID) as { grippedBy?: number } | undefined
     const grabbed = trollsIn(d).some((t) => t.victimId === SHORE_ID) || shore?.grippedBy !== undefined
-    expect(grabbed, 'the burned-plank stander must be grabbed by a lava troll, not dropped').toBe(true)
+    expect(grabbed, 'the burned-plank stander must be seized by a lava troll bound to it').toBe(true)
+  })
+
+  it('LAVNBR — with the CLIF5 victim already grabbed, a second shore bird is NOT re-grabbed but dies in lava', async () => {
+    const dmod = await loadSim()
+    let d = await stagedBurnedDemo([
+      playerAt(DECOY_ID, CLIF5_X, 120), // the once-per-wave CLIF5 victim (LAVNBR := 1)
+      { ...playerAt(SHORE_ID, PLANK_L, 210), entity: stander(PLANK_L) }, // on the burned plank
+    ])
+    let maxY = 210
+    for (let i = 0; i < 60; i++) {
+      d = dmod.stepSim(d)
+      const s = d.sim.processes.find((p) => p.id === SHORE_ID)
+      if (s?.entity) maxY = Math.max(maxY, s.entity.posY >> 8)
+    }
+    // ROM LAVNBR: only ONE lava troll at a time — the shore bird gets no second troll.
+    expect(trollsIn(d).length, 'exactly one lava troll (LAVNBR), bound to the CLIF5 victim').toBe(1)
+    expect(trollsIn(d)[0]?.victimId, 'and it is the CLIF5-nearest bird, not the shore stander').toBe(DECOY_ID)
+    // RED on develop: the un-grabbed shore bird walks off and runs off the bottom of
+    // the screen. GREEN: it is bounded by the FLOOR+7 lava death instead.
+    expect(maxY, 'the un-grabbed shore bird dies in the lava, it is not dropped off-screen').toBeLessThanOrEqual(
+      DEATH_Y,
+    )
   })
 })
 
@@ -246,9 +261,11 @@ describe('jt11-18 AC-A2 — the airborne free-fall over lava is bounded by the F
       FLOOR,
     )
     // RED today: with no FLOOR+7 kill plane on the airborne path, posY integrates
-    // unbounded and runs off the bottom (maxY ≫ 240).
-    expect(maxY, 'a lava death must stop the fall before it leaves the 240px screen').toBeLessThanOrEqual(
-      LOGICAL_HEIGHT,
+    // unbounded and runs off the bottom (maxY ≫ 240). The clamp pins it at exactly
+    // DEATH_Y (FLOOR+7), so pin THAT — a mutant clamping a few px lower survives a
+    // loose `<= LOGICAL_HEIGHT` (240) bound.
+    expect(maxY, 'a lava death stops the fall at the FLOOR+7 lava floor, not off-screen').toBeLessThanOrEqual(
+      DEATH_Y,
     )
   })
 })
@@ -263,16 +280,13 @@ describe('jt11-18 AC-A3 — enemies and eggs over the burned shore are bounded t
     // The ROM grips "THE PLAYER OR ENEMY" on LNDB7 contact (JOUSTRV4.SRC:6764). A
     // free-fall probe is confounded by the buzzard's own flap AI (it fights to stay
     // aloft — which is WHY the ROM grabs it); the faithful assertion is the grab.
+    // trollArmed:false spends the once-per-wave pick so LNDB7-on-contact is the only
+    // binder (and LAVNBR permits it: no other troll is alive).
     const dmod = await loadSim()
-    const DECOY_ID = 1
     const ENEMY_ID = 0x200
-    let d = await stagedBurnedDemo([
-      playerAt(DECOY_ID, CLIF5_X, 120), // the once-per-wave CLIF5 victim
-      enemyAt(ENEMY_ID, PLANK_L, stander(PLANK_L)), // on the burned plank
-    ])
+    let d = await stagedBurnedDemo([enemyAt(ENEMY_ID, PLANK_L, stander(PLANK_L))], { trollArmed: false })
     for (let i = 0; i < 8; i++) d = dmod.stepSim(d)
-    // RED today: the enemy at X=20 is far from CLIF5, so pickTrollVictim never
-    // targets it, and its per-entity LNDB7 grab is unwired — it walks off.
+    // RED on develop: the enemy's per-contact LNDB7 grab is unwired — it walks off.
     const enemyGrabbed =
       trollsIn(d).some((t) => t.victimId === ENEMY_ID) ||
       (d.sim.processes.find((p) => p.id === ENEMY_ID) as { grippedBy?: number } | undefined)?.grippedBy !==
@@ -305,7 +319,8 @@ describe('jt11-18 AC-A3 — enemies and eggs over the burned shore are bounded t
     }
     expect(maxY, 'the egg descended into lava depth').toBeGreaterThanOrEqual(FLOOR)
     // RED today: egg fall uses the same platform-only check (stepEgg in sim.ts).
-    expect(maxY, 'the egg must be consumed by lava, not fall off-screen').toBeLessThanOrEqual(LOGICAL_HEIGHT)
+    // Pin the exact FLOOR+7 floor, not the looser 240px screen edge.
+    expect(maxY, 'the egg is stopped at the FLOOR+7 lava floor, not off-screen').toBeLessThanOrEqual(DEATH_Y)
   })
 })
 
