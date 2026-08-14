@@ -18,9 +18,9 @@ deleted** — remain the only place pre-migration per-file blame survives.
 
 **Type:** monorepo — application code (`plugins/`, `lobby/`, `src/`) and its tooling
 (`scripts/`, `tests/`) live together.
-**Games:** nine faithful clones — five vector: `tempest` (1981), `star-wars` (1983),
-`asteroids` (1979), `battlezone` (1980), `red-baron` (1980) — and four raster:
-`centipede` (1981), the first Williams title `defender` (1980), `joust` (1982),
+**Games:** eleven faithful clones — five vector: `tempest` (1981), `star-wars` (1983),
+`asteroids` (1979), `battlezone` (1980), `red-baron` (1980) — and six raster:
+`centipede` (1981), `millipede` (1982), the first Williams title `defender` (1980), `joust` (1982),
 `missile-command` (1980) and `pac-man` (1980). (The last two were built as native plugins *after* the
 2026-07-30 collapse, so — unlike the original seven — they were never independent repos
 and have no `arcade-<game>` legacy bucket; each deploys straight to its `<id>/` key
