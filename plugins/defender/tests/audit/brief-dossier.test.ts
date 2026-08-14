@@ -56,6 +56,21 @@
 // Every fixture line below was re-opened by hand against
 // reference/original-source/defender/ this session — never trusted from the story
 // title alone (the labels-are-guesses rule).
+//
+// ─── REWORK ROUND 1 (review findings, all mutation-proven by the Reviewer) ──────
+//   [HIGH]   prose/contains checks were document-global: a fact deleted from its
+//            answer's section passed if the keyword survived anywhere. Fixed:
+//            every answer now checks ITS OWN `## n.` section (answerSection()).
+//   [MEDIUM] citation range width was unbounded: one `DEFA7.SRC:5-3070` satisfied
+//            every DEFA7 pin and the coverage sweep. Fixed: width-cap test below.
+//   [MEDIUM] AC-4 stood on skipIf with comments claiming the tree is "absent on
+//            CI" — false: reference/original-source/defender/ is TRACKED in-repo,
+//            so the byte teeth run everywhere. If the tree ever vanishes (the
+//            tempest .gitignore accident), skipIf would go silently dormant.
+//            Fixed: an UNSKIPPED presence guard fails loud; comments corrected.
+//   Plus two new pins forcing GREEN's doc fixes: BRUTSUM2.SRC:1 (the ORG $8000
+//   claim was uncited prose) and a williams.cpp attribution in the sound-gap
+//   paragraph (M6808/defend.snd are MAME-derived facts, previously unattributed).
 
 import { describe, it, expect } from 'vitest'
 import { existsSync } from 'node:fs'
@@ -77,8 +92,10 @@ type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: string | nul
 const BRIEF = 'brief.md'
 
 // The vendored 1981 source lives at the MONOREPO root, two levels above this
-// plugin. Absent on CI, so every block that re-opens a byte is skipped there — the
-// same graceful degradation citations.test.ts uses.
+// plugin, and — unlike millipede's licence-walled ROM images — the defender .SRC
+// tree is TRACKED in git, so the byte teeth run on CI too. The skipIf on AC-4 is
+// kept only as graceful degradation for an env that points DEFENDER_SOURCE_DIR
+// somewhere stale; the unskipped presence guard below makes any tree loss LOUD.
 const vendoredRoot =
   process.env.DEFENDER_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'original-source', 'defender')
 const vendoredAvailable = existsSync(vendoredRoot)
@@ -94,9 +111,25 @@ function brief(): string {
 function briefCitations(): ProseCitation[] {
   return extractProseCitations(brief(), BRIEF)
 }
-/** Does brief.md carry a backticked citation covering FILE:LINE? */
-function cites(file: string, line: number): boolean {
-  return briefCitations().some((c) => c.file === file && c.start <= line && line <= c.end)
+
+/**
+ * The text of ONE answer's `## n.` section (heading line through the line before
+ * the next `## `). Review rework: prose/contains/cites checks run against the
+ * answer's OWN section, so a fact that migrates to the wrong section — or a
+ * keyword planted anywhere else in the document — no longer satisfies the answer
+ * that must state it (the document-global bypass the Reviewer proved by mutation).
+ */
+function answerSection(md: string, n: number): string {
+  const head = new RegExp(`^## ${n}\\..*\\n`, 'm').exec(md)
+  if (!head) return ''
+  const body = md.slice(head.index + head[0].length)
+  const next = body.search(/^## /m)
+  return head[0] + (next === -1 ? body : body.slice(0, next))
+}
+
+/** Does `text` carry a backticked citation covering FILE:LINE? */
+function citesIn(text: string, file: string, line: number): boolean {
+  return extractProseCitations(text, BRIEF).some((c) => c.file === file && c.start <= line && line <= c.end)
 }
 
 /**
@@ -120,17 +153,20 @@ function expectPopulated(n: number, floor: number, what: string): void {
 // ─────────────────────────────────────────────────────────────────────────────
 interface Answer {
   key: string
+  /** The `## n.` section of brief.md this answer must live in (rework: per-section checks). */
+  n: number
   /** [file, line] the story names explicitly; a range citation covering `line` counts. */
   cites: readonly (readonly [string, number])[]
-  /** Prose the answer must contain to be more than a citation drop. */
+  /** Prose the answer's OWN section must contain to be more than a citation drop. */
   prose: readonly { re: RegExp; needs: string }[]
-  /** Literal substrings the prose must carry (for regex-hostile spellings). */
+  /** Literal substrings the section must carry (for regex-hostile spellings). */
   contains?: readonly { s: string; needs: string }[]
 }
 
 const ANSWERS: readonly Answer[] = [
   {
     key: '(0) revision — RED/cocktail via the INFO.SRC ledger + three legs',
+    n: 0,
     cites: [
       ['INFO.SRC', 15], // WHITE = 1st release WITHOUT checksums (the leg CKBYT rules out)
       ['INFO.SRC', 19], // ROM1C… = the RED software (COCKTAIL SOFTWARE)
@@ -150,11 +186,13 @@ const ANSWERS: readonly Answer[] = [
   },
   {
     key: '(1) what shipped — RASM chains, block map, BRUTSUM2, sound gap',
+    n: 1,
     cites: [
       ['INFO.SRC', 3], // RASM PHR2,DEFA2,DEFB2,AMODE0;-X (the assembly chains, 3-9)
       ['INFO.SRC', 30], // the file ledger (30-39) — ten shipped .SRC files, no BRUTSUM2
       ['PHR6.SRC', 11], // MAPC EQU $D000 MAP CONTROL — selects the $C000 banked window
       ['ROMF8.SRC', 7], // DIABLK EQU 3 DIAGNOSTIC BLOCK
+      ['BRUTSUM2.SRC', 1], // ORG $8000 — the checkbyte tool's own bytes (rework: was uncited prose)
     ],
     prose: [
       { re: /RASM/, needs: 'the RASM assembly chains' },
@@ -163,6 +201,10 @@ const ANSWERS: readonly Answer[] = [
       { re: /never[- ]shipped|not shipped|absent from the ledger/i, needs: 'that BRUTSUM2 never shipped' },
       { re: /M6808/i, needs: 'the separate M6808 sound CPU' },
       { re: /defend\.snd/i, needs: 'the defend.snd sound program the missing source built' },
+      {
+        re: /williams(_m)?\.cpp/,
+        needs: 'a source attribution for the sound-board facts — M6808/defend.snd are MAME-derived, and every other MAME fact in this brief names its source in prose (rework finding)',
+      },
       { re: /SAMEXAP7/, needs: 'the resident SAMEXAP7.SRC named' },
       { re: /DEFB6/, needs: 'the resident DEFB6.SRC named' },
       { re: /ROMF8/, needs: 'the resident ROMF8.SRC named' },
@@ -170,6 +212,7 @@ const ANSWERS: readonly Answer[] = [
   },
   {
     key: '(2) RASM dialect — one cited example per convention',
+    n: 2,
     cites: [
       ['PHR6.SRC', 11], // $ hex: MAPC EQU $D000
       ['PHR6.SRC', 20], // bare decimal: YMAX EQU 240
@@ -191,6 +234,7 @@ const ANSWERS: readonly Answer[] = [
   },
   {
     key: '(3) timebase — nominal vs exact as separate numbers, TIMER/EXEC0, overload',
+    n: 3,
     cites: [
       ['DEFA7.SRC', 9], // *A=SLEEP TIME X 16MSEC — the nominal tick
       ['AMODE1.SRC', 311], // NAPP 60,HOFST SLEEP 1 SECOND — 60 ticks = 1 second
@@ -213,6 +257,7 @@ const ANSWERS: readonly Answer[] = [
   },
   {
     key: '(4) authorship — INFO.SRC sign-off + the ROMC8 high-score credits',
+    n: 4,
     cites: [
       ['INFO.SRC', 11], // DR J. 1/21/81
       ['ROMC8.SRC', 783], // FCC 'DRJ' — the credits table start …
@@ -260,25 +305,35 @@ describe('df1-2 AC-2 — brief.md answers all five preflight questions, each cit
   })
 
   for (const answer of ANSWERS) {
-    it(`${answer.key}: cites the primary source the story names and states the fact`, () => {
+    it(`${answer.key}: its own section cites the named sources and states the facts`, () => {
       const md = brief()
       expect(md, `brief.md must exist before ${answer.key} can be checked`).not.toBe('')
+      // REWORK: all checks run against the answer's OWN `## n.` section — a fact
+      // stated only in some other section (or a keyword planted elsewhere) is a
+      // miss. This is the resolution the Reviewer's scramble mutation demanded.
+      const section = answerSection(md, answer.n)
+      expect(
+        section,
+        `brief.md must carry a \`## ${answer.n}.\` section for ${answer.key} — ` +
+          'the five answers are numbered sections, and the checks are section-scoped',
+      ).not.toBe('')
       // Guard both inner sweeps (lang-review #15): an ANSWERS entry with an empty
       // `cites` or `prose` array would iterate zero times and assert nothing.
       expectPopulated(answer.cites.length, 1, `${answer.key} required citations`)
       expectPopulated(answer.prose.length, 1, `${answer.key} prose signatures`)
       for (const [file, line] of answer.cites) {
         expect(
-          cites(file, line),
-          `answer ${answer.key} must carry a backticked citation covering \`${file}:${line}\` ` +
-            '(the story title / epic context names this exact source — re-opened by hand this session)',
+          citesIn(section, file, line),
+          `answer ${answer.key}'s OWN section must carry a backticked citation covering ` +
+            `\`${file}:${line}\` (the story title / epic context / review findings name this ` +
+            'exact source — re-opened by hand against the vendored tree)',
         ).toBe(true)
       }
       for (const { re, needs } of answer.prose) {
-        expect(re.test(md), `answer ${answer.key} must state in prose: ${needs}`).toBe(true)
+        expect(re.test(section), `answer ${answer.key}'s own section must state in prose: ${needs}`).toBe(true)
       }
       for (const { s, needs } of answer.contains ?? []) {
-        expect(md.includes(s), `answer ${answer.key} must spell literally: ${needs}`).toBe(true)
+        expect(section.includes(s), `answer ${answer.key}'s own section must spell literally: ${needs}`).toBe(true)
       }
     })
   }
@@ -293,10 +348,29 @@ describe('df1-2 AC-2 — brief.md answers all five preflight questions, each cit
 // ─────────────────────────────────────────────────────────────────────────────
 describe('df1-2 AC-3 — every prose citation in brief.md is covered by a claim', () => {
   it('brief.md carries a substantial body of citations (not a stub)', () => {
-    // The five answers pin 21 [file,line] targets above, which collapse to at
-    // least ~15 distinct raw citations once ranges are used; a brief with fewer
-    // has dropped an answer or cited nothing.
-    expectPopulated(briefCitations().length, 15, 'brief.md prose citations')
+    // REWORK: floor derived from the ANSWERS table instead of a hand-picked 15.
+    // The table pins `distinct` [file,line] targets; ranges can collapse pins in
+    // the same file (INFO 15+19, DEFA7 3056+3070, ROMC8 783+797, ...), so allow
+    // a collapse budget of 6 — a brief below the floor has dropped an answer's
+    // evidence, not merely merged adjacent pins.
+    const distinct = new Set(ANSWERS.flatMap((a) => a.cites.map(([f, l]) => `${f}:${l}`))).size
+    expectPopulated(briefCitations().length, distinct - 6, 'brief.md prose citations')
+  })
+
+  it('no citation range is over-wide (the range-width bypass the review proved)', () => {
+    // REWORK: the Reviewer widened one citation to `DEFA7.SRC:5-3070` and every
+    // per-line pin plus the coverage sweep stayed green — range containment
+    // accepts ANY width. The widest legitimate range in this brief spans 15
+    // lines (ROMC8 credits 783-797, the overload path 3056-3070); cap at 20 so
+    // a lazy catch-all range is a failure, not a loophole.
+    const wide = briefCitations()
+      .filter((c) => c.end - c.start > 19)
+      .map((c) => `${c.raw} (${c.end - c.start + 1} lines)`)
+    expect(
+      wide,
+      'these citation ranges are wider than any legitimate quote span in this dossier — ' +
+        'an over-wide range satisfies every pin into its file at once, defeating the gate',
+    ).toEqual([])
   })
 
   it('no backticked citation in brief.md is malformed (a mistyped range is invisible to coverage)', () => {
@@ -334,9 +408,28 @@ describe('df1-2 AC-3 — every prose citation in brief.md is covered by a claim'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-4 — the claims are BYTE-VERIFIED against the vendored 1981 source, not merely
-// well-shaped. Skipped on CI (no reference/ tree), where AC-3's coverage still bites.
-// This is what stops a plausible-but-invented verbatim from shipping as ground truth.
+// well-shaped. The defender tree is TRACKED in git, so these teeth run on CI too
+// (rework: the earlier "skipped on CI" comment was millipede boilerplate — false
+// here, in the dangerous direction). The skipIf survives only as graceful
+// degradation for a mispointed DEFENDER_SOURCE_DIR; the guard below keeps any
+// real tree loss from turning these teeth into a silent "1 skipped".
 // ─────────────────────────────────────────────────────────────────────────────
+describe('df1-2 AC-4 guard — the byte teeth cannot go silently dormant', () => {
+  it('the vendored defender tree is PRESENT (fail loud, never skip silent)', () => {
+    // The ROM-less-tooth trap: reference/original-source/tempest/ once vanished
+    // via an unanchored .gitignore rule, and a skipIf-gated suite would have
+    // reported "1 skipped" forever. This test is deliberately OUTSIDE the skipIf:
+    // if the defender tree ever leaves the checkout, the gate fails loudly here.
+    expect(
+      vendoredAvailable,
+      `no vendored tree at ${vendoredRoot} — reference/original-source/defender/ is tracked ` +
+        'in git and must be present (or DEFENDER_SOURCE_DIR must point at a real checkout); ' +
+        'without it every byte-verification tooth in this gate is dormant',
+    ).toBe(true)
+  })
+})
+
+
 describe.skipIf(!vendoredAvailable)('df1-2 AC-4 — brief.md claims re-open byte-for-byte against the vendored tree', () => {
   it('every claim behind brief.md verifies against reference/original-source/defender/', async () => {
     const checkClaims = await loadChecker()
