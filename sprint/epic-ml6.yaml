@@ -20,7 +20,10 @@ stories:
     title: 'Wire sfx to core events + gate audio on first user gesture (autoplay policy): map millipede/critter/DDT/bonus-life (CHAN11 bonus-life sound MLDEF.MAC:323) events to the driver; verify audio actually plays in a real browser (silent-feature trap), not just a green vitest.'
     points: 5
     priority: p3
-    status: in_progress
+    status: done
     repos: arcade
     workflow: tdd
     started: '2026-08-13'
+    completed: '2026-08-13'
+    review_verdict: approved
+    review_findings: 'Grown by owner ruling into the COMPLETE playable millipede runtime (absorbed ml7-1/ml7-2, reached ml7-3/ml7-4). Merged via PR #355 (owner-authorized). AC1 (per-family core events) + AC3 (real-browser Playwright playtest: gesture gate 0→1 running, non-silent oscillators, no full-screen strobe) verified; 1027 millipede + 481 orchestrator green. Follow-ups filed ml7-5..ml7-9 (fixed-timestep cadence, sprite decode, audio freq clamp, enemy presence voices, field scroll).'
