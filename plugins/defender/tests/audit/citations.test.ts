@@ -29,12 +29,14 @@
 // ─── WHY THIS IS RED, AND WHY THE COVERAGE SWEEP STILL HAS TEETH WITH NO DOSSIER ──
 // RED today: neither module exists → loadChecker()/loadSweep() throw a
 // self-describing "not built yet" per test. After GREEN: the schema teeth run
-// everywhere (the CI schema-only path), the byte teeth run only with the vendored
-// tree (skipped on CI), and the COVERAGE sweep is proven non-vacuous by INLINE
-// fixtures — it detects an uncovered citation regardless of whether any real
-// dossier file exists yet (lang-review #18). The real-dossier gate
-// `uncoveredCitations(loadClaims())` is green-on-empty now and gains teeth the
-// moment df1-2 enrolls brief.md and its claims.
+// everywhere, the byte teeth run wherever the vendored tree is present — which is
+// EVERYWHERE including CI, because reference/original-source/defender/ is tracked
+// in git (df1-3 corrected this file's earlier "skipped on CI" model, millipede
+// boilerplate that was false here; the presence guard below keeps any real tree
+// loss loud). The COVERAGE sweep is proven non-vacuous by INLINE fixtures — it
+// detects an uncovered citation regardless of whether any real dossier file
+// exists yet (lang-review #18). The real-dossier gate
+// `uncoveredCitations(loadClaims())` went live when df1-2 enrolled brief.md.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
@@ -81,9 +83,11 @@ interface Sweep {
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
 // The vendored 1981 source lives at the MONOREPO root — two levels above this
-// plugin (plugins/defender/../..). A stale `..` does not fail loudly, it makes
-// `vendoredAvailable` false and SKIPS every byte block below, so the whole gate
-// passes over nothing — which is exactly the CI path (graceful degradation).
+// plugin (plugins/defender/../..) — and it is TRACKED in git, so the byte blocks
+// below run on CI too. A stale `..` would not fail loudly: it would make
+// `vendoredAvailable` false and silently SKIP every byte block below. That is
+// exactly why the presence guard further down is UNSKIPPED — this file's own
+// path computation is what it defends (df1-3, routed from the df1-2 review).
 const vendoredRoot =
   process.env.DEFENDER_SOURCE_DIR ??
   join(repoRoot, '..', '..', 'reference', 'original-source', 'defender')
@@ -244,9 +248,11 @@ describe('citation checker — schema validation (runs schema-only, no tree)', (
 })
 
 // ───────────────────────────────────────────────────────────────────────────────
-// GRACEFUL DEGRADATION — without the tree: schema checks bite, byte checks are
-// skipped, so CI is green on well-formed claims even with an impossible verbatim.
-// This is the property that keeps the deploy/CI path (no reference/) green.
+// GRACEFUL DEGRADATION — the checker's contract when handed vendoredRoot: null:
+// schema checks bite, byte checks do not. On THIS repo that path is exercised only
+// by these fixtures and by an env whose DEFENDER_SOURCE_DIR points nowhere — the
+// tree itself is tracked in-repo, so the real CI run byte-checks too (df1-3
+// corrected the earlier comment claiming CI lacks the tree).
 // ───────────────────────────────────────────────────────────────────────────────
 describe('citation checker — graceful degradation without the vendored tree', () => {
   it('does NOT re-open verbatim when vendoredRoot is null (a wrong quote passes schema-only)', async () => {
@@ -255,7 +261,7 @@ describe('citation checker — graceful degradation without the vendored tree', 
       [{ id: 'DG-1', claim: 'c', source: { file: 'PHR6.SRC', line: 11, verbatim: 'THIS IS NOT WHAT LINE 11 SAYS' } }],
       { vendoredRoot: null },
     )
-    expect(errors, 'schema-only must not byte-check — CI lacks the tree').toEqual([])
+    expect(errors, 'schema-only must not byte-check when handed a null tree').toEqual([])
   })
 
   it('still rejects a schema error even with the tree absent', async () => {
@@ -269,10 +275,28 @@ describe('citation checker — graceful degradation without the vendored tree', 
 })
 
 // ───────────────────────────────────────────────────────────────────────────────
-// BYTE TEETH + DRIFT DETECTION — needs the vendored tree, so skipped on CI.
-// Every fixture line was verified by hand this session against
+// BYTE TEETH + DRIFT DETECTION — needs the vendored tree, which is tracked
+// in-repo, so these run everywhere including CI. The skipIf survives only as
+// graceful degradation for a mispointed DEFENDER_SOURCE_DIR; the UNSKIPPED
+// presence guard below keeps any real tree loss from turning these teeth into a
+// silent "skipped". Every fixture line was verified by hand against
 // reference/original-source/defender/.
 // ───────────────────────────────────────────────────────────────────────────────
+describe('citation gate guard — the byte teeth cannot go silently dormant (df1-3)', () => {
+  it('the vendored defender tree is PRESENT at THIS file\'s own path computation (fail loud, never skip silent)', () => {
+    // brief-dossier.test.ts carries the same guard for its own vendoredRoot; this
+    // one defends the path computed ABOVE, which every skipIf in this file reads.
+    // If the two computations ever diverge (a stale `..`), the diverged one skips
+    // its teeth silently — unless its own guard fails loud here.
+    expect(
+      vendoredAvailable,
+      `no vendored tree at ${vendoredRoot} — reference/original-source/defender/ is tracked ` +
+        'in git and must be present (or DEFENDER_SOURCE_DIR must point at a real checkout); ' +
+        'without it every byte block in this suite is dormant',
+    ).toBe(true)
+  })
+})
+
 describe.skipIf(!vendoredAvailable)('citation checker — byte-for-byte re-open + drift', () => {
   it('accepts a claim whose verbatim matches the real vendored line (PHR6.SRC:11 is MAPC EQU $D000)', async () => {
     const checkClaims = await loadChecker()
