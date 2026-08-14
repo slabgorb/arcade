@@ -102,7 +102,8 @@ stories:
     title: Verify + correct the DDT-bomb and POISON-mushroom sprite tiles — ml7-6 fixed the playfield char->tile BIT-6 bank select (mushrooms now decode at $3C-$3F) but the DDT stamps ($6E/$6F -> tiles $2E/$2F, ddt.ts:38) and POISON mushrooms ($78-$7B -> $38-$3B, conway.ts:48) were only mapped mechanically, never eyeballed (no rocks/poison/live-DDT in the attract field). Stage a wave with rocks + poison mushrooms + a live DDT bomb and visually confirm each tile; correct any mismatch. Visual playtest.
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
   - id: ml7-11
