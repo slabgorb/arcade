@@ -333,3 +333,8 @@ completed_stories:
     title: Verify + correct the DDT-bomb and POISON-mushroom sprite tiles — ml7-6 fixed the playfield char->tile BIT-6 bank select (mushrooms now decode at $3C-$3F) but the DDT stamps ($6E/$6F -> tiles $2E/$2F, ddt.ts:38) and POISON mushrooms ($78-$7B -> $38-$3B, conway.ts:48) were only mapped mechanically, never eyeballed (no rocks/poison/live-DDT in the attract field). Stage a wave with rocks + poison mushrooms + a live DDT bomb and visually confirm each tile; correct any mismatch. Visual playtest.
     points: 3
     completed: '2026-08-14'
+  - id: df2-2
+    epic: df2
+    title: 'Palette: the 16-entry CRAM/PCRAM model + the 3-3-2 decode decision. Transcribe Defender default palette bytes into a gated table; model the PCRAM (defender/PHR6.SRC:219) -> CRAM (defender/PHR6.SRC:13) per-frame copy as a pure "resolve 16 indices" step. Read the byte FORMAT from MAME in prose (williams.cpp palette init, pinned df1-4 object); if it is the 3-3-2 BBGGGRRR joust decodes, extract paletteToRgba to @shared/ and re-point BOTH joust and defender; else keep local. Palette ENTRIES are transcribed from the vendored source (source wins on software facts; MAME only on the byte format).'
+    points: 3
+    completed: '2026-08-14'
