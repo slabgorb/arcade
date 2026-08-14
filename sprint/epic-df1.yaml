@@ -78,7 +78,8 @@ stories:
     title: "Reconcile CLAUDE.md games roster: add millipede and fix vector/raster/total counts (eleven clones — five vector, six raster). Introduced-visible by df1-5 adding defender under a stale 'four raster'/'nine' count; millipede was never in the roster prose either. See df1-5 review [DOC] finding + Delivery Finding."
     points: 1
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: trivial
     type: chore
