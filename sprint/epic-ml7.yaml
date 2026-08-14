@@ -63,9 +63,11 @@ stories:
     title: 'Decode the real ship + enemy/mushroom sprites — ml6-2 renders mushrooms/enemies as red-triangle pic guesses and the player as a blue square; the spider death shows the parked score in lieu of its sprite because sprites are undecoded. Decode from the gfx ROM (gfx-rom.ts), mind the ROT90 tile/sprite asymmetry (pac-man precedent). Visual playtest.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    branch: feat/ml7-6-decode-ship-enemy-mushroom-sprites
   - id: ml7-7
     title: 'Scale the pokey-voice sweep frequencies into the Web Audio nominal range — ml6-2 AC3 playtest shows sweep steps hitting ~32kHz that Web Audio CLAMPS to 24kHz (shell/audio.ts:54 warning x60/session). Audible steps still play, but the high-end mapping (pokey-voice.ts / audio.ts FRAME_SEC tunables) wants a proper POKEY→Hz scale. Playtest the result.'
     points: 3
