@@ -41,10 +41,48 @@ export interface ScoreInput {
  * running score, except in attract mode where MODE < 0 takes the early RTS
  * (:1050, claim SG-2) and nothing is awarded. The bonus-life tail (:1075-1103, ending
  * at the 30$ RTS) is now src/core/bonus.ts's awardBonus (ml5-2) — the caller runs it
- * after every in-game award. The COUNT3 new-head speed ramp (:1062-1069) is still
- * deferred — this is the pure accumulator.
+ * after every in-game award. The COUNT3 new-head speed ramp (:1061-1069) is now
+ * rampCount3 below (ml5-5); this is the pure accumulator.
  */
 export function awardScore({ score, points, attract }: Readonly<ScoreInput>): number {
   if (attract) return score // :1050 BMI 30$ — no score in attract
   return score + points // :1055 ADC X,SCORE0
+}
+
+export interface Count3RampInput {
+  /** COUNT3 — the new-head spawn timer (MLDEF.MAC:33), a binary byte 0..255. */
+  readonly count3: number
+  /** Running score BEFORE this award, in points (the SCORE0/1/2 accumulator). */
+  readonly score: number
+  /** PTS to award — a critter's kill value (MLDEF.MAC:398). */
+  readonly points: number
+  /** MODE < 0 — in attract, SCORNG early-outs before this block (MLSUB.MAC:1050). */
+  readonly attract: boolean
+  /** OPTNS1 option shadow (OPTSW0, MLDEF.MAC:86-92); LSR bit0 -> HARD (:1062-1063). */
+  readonly optns1: number
+}
+
+/**
+ * SCORNG's 10,000-point tail — the COUNT3 new-head speed ramp (MLSUB.MAC:1061-1069)
+ * that ml5-1/ml5-2 deferred. On a 10K boundary crossing (the carry out of SCORE1,
+ * :1061 BCC 15$) the new-head spawn timer speeds up: LSR of OPTNS1 (:1062-1063)
+ * selects the side, then SBC I,2 (:1068) drops COUNT3 by 2 — HARD unconditionally
+ * (:1065 BCS 10$, no floor), EASY only while COUNT3 >= 0x31 (:1066-1067 CMP I,31 /
+ * BCC 12$; .RADIX 16 so `31` is 0x31 = 49 decimal — the "3/8 seconds" minimum).
+ * Attract short-circuits the whole routine (:1050).
+ *
+ * SCORE2's own +1 (:1070-1074) is automatic here: the running score is a plain
+ * integer and SCORE2 is DERIVED (score2Of), so a crossing bumps it by construction.
+ *
+ * NOTE: distinct from the per-spawn COUNT3 ramp in millipede.ts (COUNT3_FLOOR=0x60 /
+ * COUNT3_STEP=0x08, MLSUB.MAC:809/811) — same register, different mechanism.
+ */
+export function rampCount3({ count3, score, points, attract, optns1 }: Readonly<Count3RampInput>): number {
+  if (attract) return count3 // :1050 BMI 30$ — SCORNG never reaches the COUNT3 block
+  // :1061 BCC 15$ — the block runs only when the award carries out of SCORE1 (crosses 10K).
+  if (Math.floor((score + points) / 10_000) === Math.floor(score / 10_000)) return count3
+  const hard = (optns1 & 0x01) !== 0 // :1062-1063 LDA OPTNS1 / LSR -> carry (bit0)
+  // :1066-1067 CMP I,31 / BCC 12$ — EASY holds below 0x31; HARD (:1065 BCS 10$) skips the floor.
+  if (!hard && count3 < 0x31) return count3
+  return (count3 - 0x02) & 0xff // :1068 SBC I,2 — an 8-bit decrement (wraps, no clamp)
 }

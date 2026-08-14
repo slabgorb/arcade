@@ -51,7 +51,8 @@ stories:
     title: 'COUNT3 new-head speed ramp + the 10k-boundary SCORE2 carry (SCORNG MLSUB.MAC:1061-1075): HARD decrements COUNT3 by 2 every 10,000, EASY floors at 31 (3/8s); deferred by ml5-1 and again by ml5-2 (routed findings both). Cited; extends score.ts beside awardBonus.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
   - id: ml5-6
