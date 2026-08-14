@@ -135,35 +135,64 @@ export function allMalformedCitations(files: readonly string[] = DOSSIER_FILES):
   return files.flatMap((f) => scanProseCitations(readDossier(f), f).malformed.map((raw) => `${raw} (in ${f})`))
 }
 
-/** Every claim in docs/rom-study/claims/*.json, flattened across files. */
+/**
+ * Read ONE claims JSON file, parse it, and runtime-validate every entry's source
+ * before returning the real `Claim[]`. This is the single-file entry point the
+ * claims-arm suites (ml5-6) load their own topic file through, so none of them
+ * re-rolls `JSON.parse(readFileSync(…)) as Claim[]`; {@link loadClaims} maps its
+ * whole directory through it, so the df1-6 hardening lives here ONCE.
+ *
+ * df1-6: a bare JSON.parse threw a raw SyntaxError naming no file, and the
+ * `as Claim | Claim[]` cast let a well-formed-JSON-wrong-shape file through
+ * unchecked. Wrap the parse and validate each entry's source with
+ * isValidClaimSource — composed from the SAME guard functions
+ * (isCitation/isByteCitation/…) that checkClaims dispatches on, so the two stay
+ * aligned as long as those guards remain the single definition (isValidClaimSource
+ * does not re-implement them). Both failures surface as a controlled error that
+ * names the offending file. A single Claim OBJECT is normalised to a one-element
+ * list, exactly as loadClaims did inline.
+ */
+export function loadClaimsFile(filePath: string): Claim[] {
+  const label = basename(filePath)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(filePath, 'utf8'))
+  } catch (e) {
+    throw new Error(`claims file ${label} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+  }
+  const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+  for (const entry of entries) {
+    const source = entry == null ? undefined : (entry as { source?: unknown }).source
+    if (!isValidClaimSource(source)) {
+      throw new Error(`claims file ${label} has a malformed claim (each entry needs a source citation the checker accepts)`)
+    }
+  }
+  return entries as Claim[]
+}
+
+/** Every claim in docs/rom-study/claims/*.json, flattened across files. Each file
+ *  is parsed and shape-checked by {@link loadClaimsFile} (df1-6). */
 export function loadClaims(dir: string = claimsDir): Claim[] {
   if (!existsSync(dir)) return []
-  // df1-6: harden the load path. A bare JSON.parse threw a raw SyntaxError naming
-  // no file, and the `as Claim | Claim[]` cast let a well-formed-JSON-wrong-shape
-  // file through unchecked. Wrap the parse per-file and validate each entry's source
-  // with isValidClaimSource — which is composed from the SAME guard functions
-  // (isCitation/isByteCitation/…) that checkClaims dispatches on, so the two stay
-  // aligned as long as those guards remain the single definition (isValidClaimSource
-  // does not re-implement them). Both failures now surface as a controlled error
-  // that names the offending file.
   return readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => {
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(readFileSync(join(dir, f), 'utf8'))
-      } catch (e) {
-        throw new Error(`claims file ${f} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
-      }
-      const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
-      for (const entry of entries) {
-        const source = entry == null ? undefined : (entry as { source?: unknown }).source
-        if (!isValidClaimSource(source)) {
-          throw new Error(`claims file ${f} has a malformed claim (each entry needs a source citation the checker accepts)`)
-        }
-      }
-      return entries as Claim[]
-    })
+    .flatMap((f) => loadClaimsFile(join(dir, f)))
+}
+
+/** The TEXT-citation shape of a Claim's `source` (an assembler line, re-opened
+ *  byte-for-byte), narrowed out of the {text | byte} union `Claim['source']`. */
+export type TextClaim = Claim & { source: Extract<Claim['source'], { verbatim: string }> }
+
+/** Narrow a Claim to its TEXT-citation shape (`{ file, line, verbatim }`); false for
+ *  a BYTE citation (`{ file, offset, bytes }`). The claims-arm suites cite .MAC lines
+ *  only, so they read `.line`/`.verbatim` off the real union through this guard
+ *  instead of re-declaring a local text-only `Claim` interface (ml5-6). */
+export function isTextClaim(c: Claim): c is TextClaim {
+  // Guard `c.source` first — matches the sibling defensive convention in claimCovers
+  // (`if (!src || !('line' in src))`), so a null source smuggled past validation
+  // returns a controlled `false` rather than throwing on the `in` operator (ml5-6
+  // review, lang-review #1).
+  return c.source != null && 'verbatim' in c.source
 }
 
 /** Does this claim pin a line inside the cited range? A BYTE citation (ml2-1, the

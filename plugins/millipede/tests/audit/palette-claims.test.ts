@@ -22,7 +22,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { claimsDir, loadClaims } from './dossier-sweep'
+import { claimsDir, loadClaims, loadClaimsFile, isTextClaim } from './dossier-sweep'
 
 /** The CLRCH block in the vendored MLIRQ.MAC: the .SBTTL header (:242)
  *  through the OPENING of the `99$` per-level colour table. Review round 2
@@ -37,16 +37,13 @@ const CLRCH_LAST = 315
 
 const NEW_CLAIMS = join(claimsDir, '06-colour-ram-palette.json')
 
-interface Claim {
-  id: string
-  claim: string
-  source: { file: string; line: number; verbatim: string }
-}
-
-const paletteClaims = (): Claim[] =>
-  (loadClaims() as Claim[]).filter(
-    (c) => c.source.file === 'MLIRQ.MAC' && c.source.line >= CLRCH_FIRST && c.source.line <= CLRCH_LAST,
-  )
+/** The palette claims in the CLRCH block. Narrowed with isTextClaim so the
+ *  `.source.line` window predicate reads off the real union without a local `Claim`
+ *  re-declaration (ml5-6). */
+const paletteClaims = () =>
+  loadClaims()
+    .filter(isTextClaim)
+    .filter((c) => c.source.file === 'MLIRQ.MAC' && c.source.line >= CLRCH_FIRST && c.source.line <= CLRCH_LAST)
 
 describe('ml2-3 — the palette source is pinned as byte-verifiable claims', () => {
   it('GREEN ships docs/rom-study/claims/06-colour-ram-palette.json', () => {
@@ -77,10 +74,11 @@ describe('ml2-3 — the palette source is pinned as byte-verifiable claims', () 
 
   it('every claim in the new file is vendored-source only — no .cpp, no MAME', () => {
     if (!existsSync(NEW_CLAIMS)) return expect.unreachable('claims file missing (see first test)')
-    const own = JSON.parse(readFileSync(NEW_CLAIMS, 'utf8')) as Claim[]
+    const own = loadClaimsFile(NEW_CLAIMS)
     expect(own.length, 'the file is a non-empty claim list').toBeGreaterThan(0)
     for (const c of own) {
       expect(c.source.file, `${c.id}: claims quote VENDORED files only (GPL)`).toMatch(/\.MAC$/)
+      if (!isTextClaim(c)) expect.unreachable(`${c.id}: a byte citation in a text-only claims file`)
       expect(c.source.verbatim.length, `${c.id}: verbatim is present`).toBeGreaterThan(0)
     }
   })
@@ -90,13 +88,14 @@ describe('ml2-3 — the palette source is pinned as byte-verifiable claims', () 
     // run points at THIS story's file instead of the whole-gate sweep. trimEnd
     // both sides (the checker's own comparison).
     if (!existsSync(NEW_CLAIMS)) return expect.unreachable('claims file missing (see first test)')
-    const own = JSON.parse(readFileSync(NEW_CLAIMS, 'utf8')) as Claim[]
+    const own = loadClaimsFile(NEW_CLAIMS)
     const quarry = readFileSync(
       join(claimsDir, '..', '..', '..', '..', '..', 'reference', 'original-source', 'millipede', 'MLIRQ.MAC'),
       'utf8',
     ).split('\n')
     for (const c of own) {
       if (c.source.file !== 'MLIRQ.MAC') continue
+      if (!isTextClaim(c)) expect.unreachable(`${c.id}: a byte citation in a text-only claims file`)
       expect(
         (quarry[c.source.line - 1] ?? '').trimEnd(),
         `${c.id}: MLIRQ.MAC:${c.source.line} must byte-match the claim's verbatim`,

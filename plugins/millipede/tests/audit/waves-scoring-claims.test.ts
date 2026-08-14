@@ -22,21 +22,16 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { claimsDir, loadClaims } from './dossier-sweep'
+import { claimsDir, loadClaims, loadClaimsFile, isTextClaim } from './dossier-sweep'
 
 const NEW_CLAIMS = join(claimsDir, '13-waves-scoring.json')
 
-interface Claim {
-  id: string
-  claim: string
-  source: { file: string; line: number; verbatim: string }
-}
-
-/** All claims carrying this story's prefixes, wherever loadClaims globs them from. */
-const storyClaims = (): Claim[] =>
-  (loadClaims() as Claim[]).filter((c) => c.id.startsWith('WV-') || c.id.startsWith('SG-'))
-const waveClaims = (): Claim[] => storyClaims().filter((c) => c.id.startsWith('WV-'))
-const scoreClaims = (): Claim[] => storyClaims().filter((c) => c.id.startsWith('SG-'))
+/** All TEXT claims carrying this story's prefixes, wherever loadClaims globs them
+ *  from. Narrowed with isTextClaim so `.line`/`.verbatim` read off the real union
+ *  without a local `Claim` re-declaration (ml5-6). */
+const storyClaims = () => loadClaims().filter(isTextClaim).filter((c) => c.id.startsWith('WV-') || c.id.startsWith('SG-'))
+const waveClaims = () => storyClaims().filter((c) => c.id.startsWith('WV-'))
+const scoreClaims = () => storyClaims().filter((c) => c.id.startsWith('SG-'))
 
 /** The anchor lines this story MUST pin — the fields and branch points the
  *  behaviour suites depend on. (file, line) each measured against the vendored
@@ -78,10 +73,11 @@ describe('ml5-1 — waves + scoring constants are pinned as byte-verifiable clai
 
   it('every claim in the new file is vendored-source only — no .cpp, no MAME', () => {
     if (!existsSync(NEW_CLAIMS)) return expect.unreachable('claims file missing (see first test)')
-    const own = JSON.parse(readFileSync(NEW_CLAIMS, 'utf8')) as Claim[]
+    const own = loadClaimsFile(NEW_CLAIMS)
     expect(own.length, 'the file is a non-empty claim list').toBeGreaterThan(0)
     for (const c of own) {
       expect(c.source.file, `${c.id}: claims quote VENDORED files only (GPL)`).toMatch(/\.MAC$/)
+      if (!isTextClaim(c)) expect.unreachable(`${c.id}: a byte citation in a text-only claims file`)
       expect(c.source.verbatim.length, `${c.id}: verbatim is present`).toBeGreaterThan(0)
       expect(c.id, `${c.id}: uses a WV-/SG- prefix`).toMatch(/^(WV|SG)-/)
     }
@@ -91,7 +87,7 @@ describe('ml5-1 — waves + scoring constants are pinned as byte-verifiable clai
     // The same law the citations gate enforces, asserted here narrowly so a RED run
     // points at THIS story's file. trimEnd both sides (the checker's own compare).
     if (!existsSync(NEW_CLAIMS)) return expect.unreachable('claims file missing (see first test)')
-    const own = JSON.parse(readFileSync(NEW_CLAIMS, 'utf8')) as Claim[]
+    const own = loadClaimsFile(NEW_CLAIMS)
     const vendoredRoot = join(claimsDir, '..', '..', '..', '..', '..', 'reference', 'original-source', 'millipede')
     const cache = new Map<string, string[]>()
     const linesOf = (file: string): string[] => {
@@ -103,6 +99,7 @@ describe('ml5-1 — waves + scoring constants are pinned as byte-verifiable clai
       return ls
     }
     for (const c of own) {
+      if (!isTextClaim(c)) expect.unreachable(`${c.id}: a byte citation in a text-only claims file`)
       expect(
         (linesOf(c.source.file)[c.source.line - 1] ?? '').trimEnd(),
         `${c.id}: ${c.source.file}:${c.source.line} must byte-match the claim's verbatim`,
