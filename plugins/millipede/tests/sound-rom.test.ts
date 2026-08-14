@@ -424,13 +424,16 @@ describe('ml6-1 AC-7 — the driver plays a moving sweep, purely', () => {
 // byte-correct and UNCHANGED. A 23-mutant battery over sound-rom.ts (harness in
 // the ml8-2 session scratchpad, each mutant a single-byte WRONG value, confirmed
 // against every sound-rom importer: sound-rom / pokey-voice / pokey-voice-range /
-// audio / events) found 17 survivors that reddened nothing:
+// audio / events) found 17 byte/direction survivors that reddened nothing, and a
+// review differential battery surfaced one more (the dragonfly null-CONT branch,
+// guarded in its own block below) — 18 in all:
 //   • FREQ byte-values unpinned: slots 0, 1, 3, 5, 8, 9, 11
 //   • CONT byte-values unpinned: slots 0, 3, 5, 10
 //   • constant-volume values unpinned: bee(7), inchworm(8), earwig(9), bonus(11)
 //   • PLAY ORDER unpinned: removing `.reverse()` from freqSweep AND contSweep
 //     survived the whole suite (the open NY-macro direction question, ml6-1 Dev
 //     Design Deviation — resolved to STORED-REVERSED, pinned here as ml8 hardening).
+//   • CONT null-pointer branch: contSweep(4) (dragonfly) — see its own block below.
 // The controls (FREQ2/6/10, CONT1/2, shot 0x68 — already pinned) all reddened.
 //
 // The guards below transcribe every stored table INDEPENDENTLY from MLIRQ.MAC
@@ -523,19 +526,35 @@ describe('ml8-2 — mutation-battery guards: CONT sweeps pin exact play sequence
 describe('ml8-2 — mutation-battery guards: constant-volume slots pin their byte', () => {
   // CONT pointer is a bare .WORD (MLIRQ.MAC:142-147): a CONSTANT volume repeated
   // once per frequency step. Value was unpinned for bee/inchworm/earwig/bonus.
-  const cases: Array<[number, number]> = [
-    [6, 0x68], // shot     :142  (already pinned — regression anchor)
-    [7, 0xa8], // bee      :143
-    [8, 0xa9], // inchworm :144
-    [9, 0xa8], // earwig   :145
-    [11, 0xa8], // bonus   :147
+  // slot → [constant volume, expected step count]. The step count is an
+  // INDEPENDENT literal (= the slot's FREQ table length; bee's FREQ pointer is 0
+  // so its volume repeats once), NOT read back from `freqSweep` — the module
+  // under test — so a mutant that shortens a FREQ table is caught here on its own,
+  // and the assertion has no term local to production.
+  const cases: Array<[number, number, number]> = [
+    [6, 0x68, 11], // shot     :142 (already pinned — regression anchor); FREQ6 len 11
+    [7, 0xa8, 1], //  bee      :143; FREQ pointer 0 → the volume writes once
+    [8, 0xa9, 17], // inchworm :144; FREQ8 len 17
+    [9, 0xa8, 20], // earwig   :145; FREQ9 len 20
+    [11, 0xa8, 17], // bonus   :147; FREQ11 len 17
   ]
-  it.each(cases)('contSweep(%i) holds exactly the constant volume 0x%s', async (slot) => {
-    const { contSweep, freqSweep } = await loadSoundRom()
-    const expected = cases.find(([s]) => s === slot)![1]
+  it.each(cases)('contSweep(%i) holds exactly the constant volume, one write per step', async (slot, volume, steps) => {
+    const { contSweep } = await loadSoundRom()
     const cont = contSweep(slot)
-    expect(cont.length, 'one volume write per frequency step').toBe(freqSweep(slot).length || 1)
-    expect(new Set(cont), 'a single constant volume, byte-exact').toEqual(new Set([expected]))
+    expect(cont.length, 'one volume write per frequency step').toBe(steps)
+    expect(new Set(cont), 'a single constant volume, byte-exact').toEqual(new Set([volume]))
+  })
+})
+
+describe('ml8-2 — mutation-battery guard: dragonfly’s null CONT pointer emits nothing', () => {
+  // CONT_SOURCES[4] is 0 (MLIRQ.MAC:140) — dragonfly's volume is program-stuffed,
+  // so contSweep(4) is empty, the CONT twin of the freqSweep(4)/(7) null guards
+  // (AC-6). Slot 4 falls in neither ml8-2 CONT table above, and mutating the
+  // `source == null` branch to any non-null value survived the whole suite — so
+  // this guard (added during review) closes that last sound-driver survivor.
+  it('contSweep(4) is empty — the null CONT pointer synthesizes no volume writes', async () => {
+    const { contSweep } = await loadSoundRom()
+    expect(contSweep(4), 'dragonfly volume is program-stuffed, not swept').toHaveLength(0)
   })
 })
 
