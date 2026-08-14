@@ -22,6 +22,12 @@ export const LOGICAL_WIDTH = 292
 /** Visible raster height — same source. */
 export const LOGICAL_HEIGHT = 240
 
+/** The letterbox/ground colour, as a palette INDEX (not a literal). Index 0 is the
+ *  background; df2-2's transcribed CRAM palette gives it the authentic colour without
+ *  touching the fill site. Reaching the ground through the palette — as joust does
+ *  with colours[0] — keeps "colours are never invented" true for every pixel drawn. */
+export const BACKGROUND_INDEX = 0
+
 /** A decoded colour: 8-bit channels, opaque unless a later palette says otherwise. */
 export interface Rgba {
   r: number
@@ -57,8 +63,10 @@ export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer): void {
     LOGICAL_HEIGHT,
   )
 
-  // Black ground (the letterbox bars and anything the raster does not cover).
-  ctx.fillStyle = '#000000'
+  // Ground (letterbox bars + anything the raster does not cover): the background
+  // palette index resolved through indexToRgba, never an invented literal.
+  const bg = indexToRgba(BACKGROUND_INDEX)
+  ctx.fillStyle = `rgb(${bg.r} ${bg.g} ${bg.b})`
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   const img = ctx.createImageData(width, height)
