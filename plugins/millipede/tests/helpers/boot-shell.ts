@@ -28,6 +28,33 @@ type Listener = (e: unknown) => void
 /** The DOM objects the shell registers listeners on. */
 export type ShellTarget = 'window' | 'document' | 'canvas'
 
+/** A solid-colour rectangle the shell painted (the placeholder-marker path). */
+export interface DrawFill {
+  kind: 'fillRect'
+  x: number
+  y: number
+  w: number
+  h: number
+  /** ctx.fillStyle at the moment of the call. */
+  style: string
+}
+/** An 8x8 (or any) tile the shell blitted through putImageData — a REAL sprite,
+ *  carrying its painted pixels so a colour/shape assertion reads what landed. */
+export interface DrawBlit {
+  kind: 'blit'
+  x: number
+  y: number
+  w: number
+  h: number
+  data: Uint8ClampedArray
+}
+export type DrawRecord = DrawFill | DrawBlit
+
+/** Which canvas' draws to read: the on-screen `#game` canvas, or the LOGICAL
+ *  backbuffer (document.createElement) that render() actually paints the frame
+ *  onto before the display canvas blits it up. Sprite/marker work is LOGICAL. */
+export type DrawSurface = 'display' | 'logical'
+
 export interface ShellHarness {
   /**
    * Dispatch a DOM event to the listeners the shell registered for
@@ -42,6 +69,12 @@ export interface ShellHarness {
   sim(): GameState
   /** How many AudioContexts have been constructed since boot (the gesture gate). */
   audioContexts(): number
+  /**
+   * Every draw call recorded on `surface` since boot, in order — fillRects (with
+   * their fillStyle) and putImageData blits (with their pixels). Accumulates
+   * across frame()s; slice by length around a single frame() to isolate it.
+   */
+  draws(surface: DrawSurface): readonly DrawRecord[]
 }
 
 /** Plausible on-screen size so main.ts's blit maths produce sane numbers. */
@@ -79,49 +112,71 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
   // which render.ts's stamp path reads and writes a real pixel buffer through.
   // Anything else the renderer reaches for should throw loudly rather than be
   // absorbed — a stub that answers every question cannot report a drift.
-  const makeCtx = (): Record<string, unknown> => ({
-    fillStyle: '',
-    imageSmoothingEnabled: false,
-    fillRect: () => {},
-    clearRect: () => {},
-    drawImage: () => {},
-    putImageData: () => {},
-    createImageData: (w: number, h: number) => ({
-      data: new Uint8ClampedArray(w * h * 4),
-      width: w,
-      height: h,
-    }),
-    getImageData: (_x: number, _y: number, w: number, h: number) => ({
-      data: new Uint8ClampedArray(w * h * 4),
-      width: w,
-      height: h,
-    }),
-    save: () => {},
-    restore: () => {},
-    scale: () => {},
-    translate: () => {},
-  })
+  const makeCtx = (draws: DrawRecord[]): Record<string, unknown> => {
+    const ctx: Record<string, unknown> = {
+      fillStyle: '',
+      imageSmoothingEnabled: false,
+      fillRect: (x: number, y: number, w: number, h: number): void => {
+        draws.push({ kind: 'fillRect', x, y, w, h, style: String(ctx.fillStyle) })
+      },
+      clearRect: () => {},
+      drawImage: () => {},
+      putImageData: (
+        img: { width: number; height: number; data: Uint8ClampedArray },
+        dx: number,
+        dy: number,
+      ): void => {
+        draws.push({ kind: 'blit', x: dx, y: dy, w: img.width, h: img.height, data: img.data })
+      },
+      createImageData: (w: number, h: number) => ({
+        data: new Uint8ClampedArray(w * h * 4),
+        width: w,
+        height: h,
+      }),
+      getImageData: (_x: number, _y: number, w: number, h: number) => ({
+        data: new Uint8ClampedArray(w * h * 4),
+        width: w,
+        height: h,
+      }),
+      save: () => {},
+      restore: () => {},
+      scale: () => {},
+      translate: () => {},
+    }
+    return ctx
+  }
 
-  const makeCanvas = (): Record<string, unknown> => {
+  const makeCanvas = (): { el: Record<string, unknown>; draws: DrawRecord[] } => {
+    const draws: DrawRecord[] = []
+    let ctx: unknown = null
     const el: Record<string, unknown> = {
       width: 0,
       height: 0,
       clientWidth: CLIENT_W,
       clientHeight: CLIENT_H,
-      getContext: (): unknown => makeCtx(),
+      // Memoised: main.ts reads getContext once per canvas, but the recorder must
+      // be the SAME object across any reads so every draw lands in one `draws`.
+      getContext: (): unknown => (ctx ??= makeCtx(draws)),
     }
     Object.assign(el, listen(el))
-    return el
+    return { el, draws }
   }
 
-  const canvas = makeCanvas()
+  const display = makeCanvas()
+  const canvas = display.el
+  // The logical backbuffer main.ts creates via document.createElement — captured
+  // so its recorded draws (the whole rendered frame) are readable by tests.
+  let logical: { el: Record<string, unknown>; draws: DrawRecord[] } | null = null
   const g = globalThis as unknown as Record<string, unknown>
 
   const documentStub: Record<string, unknown> = {
     // mountCanvas(document) → querySelector('#game'); createElement makes the
     // logical backbuffer canvas main.ts blits from.
     querySelector: (): unknown => canvas,
-    createElement: (): unknown => makeCanvas(),
+    createElement: (): unknown => {
+      logical = makeCanvas()
+      return logical.el
+    },
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub
@@ -217,6 +272,9 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
     },
     audioContexts(): number {
       return contexts
+    },
+    draws(surface: DrawSurface): readonly DrawRecord[] {
+      return surface === 'display' ? display.draws : (logical?.draws ?? [])
     },
   }
 }
