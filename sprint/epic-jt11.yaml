@@ -130,10 +130,11 @@ stories:
     workflow: tdd
     completed: '2026-08-12'
   - id: jt11-12
-    title: 'Post-jt11-5 destruction-consumption leftovers (routed review findings): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake''s look-ahead, so a destroyed cliff stops blocking climb decisions. (2) TEA''s troll-grip Question: a stander on the burned plank now walks off into LNDB7 lava-troll space - verify the grip system''s grab-zone reads (jt3-3/jt9) cover an entity dropped at shore X columns, pin or fix. (3) LOW refactor (review F6): groundMaskAt''s burned branch re-derives landMaskAtX''s indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages.'
+    title: 'Post-jt11-5 destruction-consumption leftovers (items 1 & 3; item 2 grip-grab-zone SUPERSEDED by jt11-18, done 2026-08-14): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake''s look-ahead, so a destroyed cliff stops blocking climb decisions. (3) LOW refactor (review F6): groundMaskAt''s burned branch re-derives landMaskAtX''s indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
     type: chore
