@@ -73,7 +73,7 @@ stories:
     title: 'Scale the pokey-voice sweep frequencies into the Web Audio nominal range — ml6-2 AC3 playtest shows sweep steps hitting ~32kHz that Web Audio CLAMPS to 24kHz (shell/audio.ts:54 warning x60/session). Audible steps still play, but the high-end mapping (pokey-voice.ts / audio.ts FRAME_SEC tunables) wants a proper POKEY→Hz scale. Playtest the result.'
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-14'
     repos: arcade
     workflow: tdd
