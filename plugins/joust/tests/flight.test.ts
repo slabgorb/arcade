@@ -494,3 +494,85 @@ describe('PTIMUP on ground transitions (review reversal — JT5-045/046)', () =>
     expect(flapped.velY - off.velY, 'first flap after walk-off delivers −96').toBe(-96)
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story jt11-12 item (3) — the ground-mask TWINS must not be able to desync.
+// RED phase (Han Solo / TEA).
+//
+// `landMaskAtX` and `groundMaskAt`'s burned branch each independently compute the
+// raw column index `x + X_TABLE_ORIGIN` and each bounds-check it against
+// `LND_X_TABLE.length` — the burned branch is `landMaskAtX`'s indexing minus the
+// `| 0x20` (review F6). Two copies of one
+// address calculation is a latent desync: a future origin or bounds change to one
+// twin and not the other silently splits the landing map from the collision map.
+// Each also throws its OWN whole-pixel TypeError, differing only by the hard-coded
+// function-name prefix.
+//
+// This block pins the OBSERVABLE contract the refactor must preserve/deliver:
+//   • the two twins are byte-consistent with ONE raw-column source across the full
+//     x range, including both bounds — a green GUARD that reddens the instant a
+//     future edit desyncs one twin's index/bounds (RED evidence: mutate the burned
+//     branch to `x + X_TABLE_ORIGIN + 1` and the guard fails);
+//   • the two whole-pixel TypeErrors are UNIFIED into one message — RED today, the
+//     two messages differ by their function-name prefix.
+// The extracted shared helper is Dev's to shape; these tests name no helper, so
+// the representation stays Dev's design.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('jt11-12(3) — groundMaskAt / landMaskAtX are one raw-column twin', () => {
+  it('GUARD (green; RED on a future desync) — both index the SAME raw column across the full x range', async () => {
+    const f = await loadFlight()
+    const a = await loadArena()
+    // The single raw-column source of truth, derived once from the ROM table.
+    const rawCol = (x: number): number => {
+      const i = x + f.X_TABLE_ORIGIN
+      return i >= 0 && i < f.LND_X_TABLE.length ? f.LND_X_TABLE[i] : 0
+    }
+    // A spread of valid y indices (whole scanlines) spanning the Y table.
+    const last = a.LND_Y_TABLE.length - 1
+    const ys = [...new Set([0, 1, last >> 1, last - 1, last].filter((y) => y >= 0 && y <= last))]
+    let sawInRange = false
+    let sawOutOfRange = false
+    // −40..330 spans below the −32 origin and past the 320-wide screen, so BOTH
+    // the in-range and the out-of-range bounds branches are exercised (asserted).
+    for (let x = -40; x <= 330; x++) {
+      const i = x + f.X_TABLE_ORIGIN
+      const inRange = i >= 0 && i < f.LND_X_TABLE.length
+      inRange ? (sawInRange = true) : (sawOutOfRange = true)
+      // landMaskAtX: in range → the raw column with the CLIF5 `| 0x20`; out → 0.
+      expect(f.landMaskAtX(x), `landMaskAtX(${x})`).toBe(inRange ? rawCol(x) | 0x20 : 0)
+      // groundMaskAt's BURNED branch: the SAME raw column (no OR), ANDed with the row.
+      for (const y of ys) {
+        expect(
+          f.groundMaskAt(x, y, { bridgeBurned: true }),
+          `groundMaskAt(${x}, ${y}, burned) must share landMaskAtX's raw column`,
+        ).toBe(rawCol(x) & a.LND_Y_TABLE[y])
+      }
+    }
+    expect(sawInRange && sawOutOfRange, 'the sweep must cross the table bounds both ways').toBe(true)
+  })
+
+  it('RED — the two whole-pixel TypeErrors are UNIFIED into one message', async () => {
+    const f = await loadFlight()
+    const msgOf = (fn: () => unknown): string => {
+      try {
+        fn()
+        return ''
+      } catch (e) {
+        return (e as Error).message
+      }
+    }
+    // Both reject a fractional pixel (groundMaskAt reaches its own x-guard only on
+    // the burned branch — the pristine branch delegates to landMaskAtX).
+    const land = msgOf(() => f.landMaskAtX(0.5))
+    const ground = msgOf(() => f.groundMaskAt(0.5, 0, { bridgeBurned: true }))
+    expect(land, 'landMaskAtX must reject a fractional pixel').not.toBe('')
+    expect(ground, 'groundMaskAt (burned) must reject a fractional pixel').not.toBe('')
+    // The message must still name the offending value (a bare "unified" string that
+    // dropped the value would be worse than two specific ones).
+    expect(land, 'the message keeps the bad value').toContain('0.5')
+    expect(ground, 'the message keeps the bad value').toContain('0.5')
+    // …and the two must be the SAME message — today they differ by their
+    // function-name prefix ("landMaskAtX …" vs "groundMaskAt …"), so this is RED.
+    expect(ground, 'the two whole-pixel TypeErrors must be unified into one message').toBe(land)
+  })
+})

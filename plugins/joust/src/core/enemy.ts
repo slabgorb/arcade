@@ -781,7 +781,12 @@ function currentRoute(
   return rangeRoute(player == null ? null : player.pixelY - (enemy.entity.posY >> 8), rows)
 }
 
-function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: SeekRows): Decision {
+function pursue(
+  enemy: EnemyState,
+  player: PlayerView | null | undefined,
+  rows: SeekRows,
+  arena: ArenaState = PRISTINE_ARENA,
+): Decision {
   const velY = enemy.entity.velY
   const dir = enemy.facing
   const route: SeekRoute = currentRoute(enemy, player, rows)
@@ -798,7 +803,7 @@ function pursue(enemy: EnemyState, player: PlayerView | null | undefined, rows: 
   // line only once the fall reaches #-$0040, else wings up. Re-derived per wake, so
   // a cleared cliff falls straight back to the climb; the port's per-wake line ≡
   // live line collapses the ROM's `PDIST+1 CMPB PPOSY+1` gate (as SHLEP does, :4279).
-  if (enemy.brain === 'b2undr' && route === 'up' && cliffBlocksClimb(enemy)) {
+  if (enemy.brain === 'b2undr' && route === 'up' && cliffBlocksClimb(enemy, arena)) {
     return { dir, flap: velY >= CLIMB_PREP_FALL_FAST }
   }
   if (route !== 'level' && enemy.pjoy?.kind === 'wing') {
@@ -887,8 +892,13 @@ function wingWake(
  * (JOUSTRV4.SRC:3819; $0100 on waves 1-2, walking to $0300). Moves in facing
  * direction. Pure.
  */
-export function boundr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
-  return pursue(enemy, player, boundrRows(wave))
+export function boundr(
+  enemy: EnemyState,
+  player: PlayerView | null,
+  wave = 1,
+  arena: ArenaState = PRISTINE_ARENA,
+): Decision {
+  return pursue(enemy, player, boundrRows(wave), arena)
 }
 
 /**
@@ -897,8 +907,13 @@ export function boundr(enemy: EnemyState, player: PlayerView | null, wave = 1): 
  * faster HUDNVY brake (JOUSTRV4.SRC:4004; $0200 on waves 1-2 climbing to
  * $0380, above the bounder's at every wave). Pure.
  */
-export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): Decision {
-  return pursue(enemy, player, b2undrRows(wave))
+export function b2undr(
+  enemy: EnemyState,
+  player: PlayerView | null,
+  wave = 1,
+  arena: ArenaState = PRISTINE_ARENA,
+): Decision {
+  return pursue(enemy, player, b2undrRows(wave), arena)
 }
 
 /**
@@ -923,7 +938,13 @@ export function b2undr(enemy: EnemyState, player: PlayerView | null, wave = 1): 
  * SHUPTM decision timer (:4283-4284, uf1-9's family); re-deciding every wake
  * makes stored ≡ live, so the collapse tracks the live line. Pure.
  */
-export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1, bumpX = 0): Decision {
+export function shadow(
+  enemy: EnemyState,
+  player: PlayerView | null,
+  wave = 1,
+  bumpX = 0,
+  arena: ArenaState = PRISTINE_ARENA,
+): Decision {
   const enemyY = enemy.entity.posY >> 8
   const velY = enemy.entity.velY
   const dir = enemy.facing
@@ -1006,7 +1027,7 @@ export function shadow(enemy: EnemyState, player: PlayerView | null, wave = 1, b
     // (:4434/:4441) — the AIMING routine (`SHFDIR` :4382, dir = facing, no PVELX
     // check) — NOT `SHDIRB`'s coast. So this AIMS at `dir`, unlike SHUP1 above which
     // coasts (`SHUP1`→`SHDIRB`, jt9-20). Reviewer R1 F1: was `coastDir`, corrected.
-    if (cliffBlocksClimb(enemy)) return { dir: shdira(dir), flap: velY >= CLIMB_PREP_FALL_FAST }
+    if (cliffBlocksClimb(enemy, arena)) return { dir: shdira(dir), flap: velY >= CLIMB_PREP_FALL_FAST }
     return { dir: shdira(coastDir), flap: velY >= waveValue('SHUPVY', wave) }
   }
   // SHLEP — track the line; the lava term is falling-gated (velY, not velX).
@@ -1186,8 +1207,13 @@ function bckMaskAt(x: number, y: number): number {
  * :4261-4262). A non-zero sample is the ROM's `LBNE B2UP3`/`LBNE SHUP3` — enter
  * "LEVEL FLIGHT, READY TO GO UP" instead of committing to the climb. Pure.
  */
-function cliffBlocksClimb(enemy: EnemyState): boolean {
-  return bckMaskAt(enemy.entity.posX, (enemy.entity.posY >> 8) - CLIMB_PREP_YLEN) !== 0
+function cliffBlocksClimb(enemy: EnemyState, arena: ArenaState = PRISTINE_ARENA): boolean {
+  // jt11-12 — the VERTICAL climb sample honours destruction the way `steerWake`'s
+  // horizontal look-ahead does (jt11-5): a sample whose bits belong to a destroyed
+  // cliff reads as open air (`backgroundActive`, WCLFEW clears BCKXD1 —
+  // JOUSTRV4.SRC:2301-2325), so a burned-away cliff no longer holds the climb.
+  const sample = bckMaskAt(enemy.entity.posX, (enemy.entity.posY >> 8) - CLIMB_PREP_YLEN)
+  return sample !== 0 && backgroundActive(arena, sample)
 }
 
 /**
@@ -1273,17 +1299,24 @@ export function steerWake(
  * Dispatch by `enemy.brain`: `linet` runs the dumb lane-track (player ignored);
  * a smart brain runs its pursuit against `player`. Pure.
  */
-export function runBrain(enemy: EnemyState, player?: PlayerView | null, wave = 1, bumpX = 0): Decision {
+export function runBrain(
+  enemy: EnemyState,
+  player?: PlayerView | null,
+  wave = 1,
+  bumpX = 0,
+  arena: ArenaState = PRISTINE_ARENA,
+): Decision {
   switch (enemy.brain) {
     case 'boundr':
-      return boundr(enemy, player ?? null, wave)
+      return boundr(enemy, player ?? null, wave, arena)
     case 'b2undr':
-      return b2undr(enemy, player ?? null, wave)
+      return b2undr(enemy, player ?? null, wave, arena)
     case 'shadow':
       // uf1-8 — the shadow's SHDNRG/SHUPRG range gates are wave-scaled too;
       // SHUPVY, its UP-flight VY gate, still waits on uf1-9. jt9-60 — `bumpX`
       // (PBUMPX) so the HUNTING shadow's AIM wakes spend the shove at SHDIRA.
-      return shadow(enemy, player ?? null, wave, bumpX)
+      // jt11-12 — `arena` so the shadow's SHUP3 climb-prep hold honours destruction.
+      return shadow(enemy, player ?? null, wave, bumpX, arena)
     default:
       return linet(enemy)
   }
@@ -1394,7 +1427,12 @@ export function stepEnemy(
  *   • short-range, null-target, shadow and linet wakes carry NO workspace.
  * Pure — the argument is never mutated.
  */
-function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number): EnemyState {
+function seekWake(
+  enemyIn: EnemyState,
+  target: PlayerView | null,
+  wave: number,
+  arena: ArenaState = PRISTINE_ARENA,
+): EnemyState {
   let enemy = enemyIn
   // R1-2 — THE CLIFF DWELL PRE-EMPTS THE DECIDE, and it is ticked HERE (before
   // any routing) because `B2AV`/`SHAV` are states the brain sits IN: while the
@@ -1472,7 +1510,7 @@ function seekWake(enemyIn: EnemyState, target: PlayerView | null, wave: number):
     // label — so the decide falls straight through to the BOLEV interval arm below.
     // Bounder only. `cliffBlocksClimb` reads `BCKYTB-CLIMB_PREP_YLEN` ($14-6), and
     // the ROM's DYLEN = B2YLEN = SHYLEN = $14-6, so one sample serves all three.
-    const cliffAbove = enemy.brain === 'boundr' && cliffBlocksClimb(enemy)
+    const cliffAbove = enemy.brain === 'boundr' && cliffBlocksClimb(enemy, arena)
     if (!cliffAbove) return { ...enemy, seek: { mode: 'up', pdist: rows.upDi }, pjoy: undefined }
   }
   // A level decide arms its interval AND snapshots the target's velocity index
@@ -1599,7 +1637,7 @@ export function stepEnemyDetailed(
     // re-decide/arm), so the brain reads the episode this wake is ACTUALLY in —
     // the arm wake already runs its episode's law, exactly as the ROM's decide
     // falls through into BODN1/BOUP1.
-    const sought = seekWake(base, target, wave)
+    const sought = seekWake(base, target, wave, arena)
     // uf1-9: then the WING cadence advances, on the route the seek workspace just
     // settled — the ROM's `DEC PJOYT,U` sits inside the episode state and falls
     // into that state's own flap logic on the same wake. A level route leaves the
@@ -1610,7 +1648,7 @@ export function stepEnemyDetailed(
     // uf1-2: the brain reads its per-wave difficulty row from `wave`. It runs on
     // the ALREADY-HOMED enemy, so the wave-scaled seek and the flipped facing are
     // the same wake's decision, not two.
-    const decided = runBrain(cadenced, target, wave, bumpX)
+    const decided = runBrain(cadenced, target, wave, bumpX, arena)
     // jt5-8: LINET's two-state wingbeat sits AROUND the lane decision, not inside
     // it — `linet()` stays the pure decision the ROM reaches at :3733, and this is
     // the `PJOY,U` dispatch that decides whether the wake entered there at all.
