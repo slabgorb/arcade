@@ -7,7 +7,7 @@
 // header note that "df2-2 replaces THIS ONE function and nothing else on the blit
 // path". df2-2 does exactly that: it transcribes the real 16-byte
 // default palette, models the per-frame PCRAM -> CRAM copy (PHR6.SRC:219 -> :13,
-// DEFA7.SRC:1968-1994) as a pure "resolve 16 indices" step, and decodes each
+// DEFA7.SRC:1968-1980) as a pure "resolve 16 indices" step, and decodes each
 // resolved byte through the EXTRACTED @shared Williams decoder.
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────────
@@ -67,7 +67,7 @@ async function loadPalette(): Promise<PaletteModule> {
       'src/core/palette.ts not built yet — GREEN (Dev) transcribes the 16-byte ' +
         '`DEFAULT_PCRAM` from the vendored source under the citation gate and adds a pure ' +
         '`resolveCram(pcram)` modelling the per-frame PCRAM -> CRAM copy ' +
-        `(defender/PHR6.SRC:219 -> :13, DEFA7.SRC:1968-1994). (${(e as Error).message})`,
+        `(defender/PHR6.SRC:219 -> :13, DEFA7.SRC:1968-1980). (${(e as Error).message})`,
     )
   }
 }
@@ -165,34 +165,37 @@ describe('the extraction decision — joust and defender share ONE Williams deco
     // Same reference: the extraction moved the function to @shared and joust re-exports
     // it. A leftover local copy in joust would be a DIFFERENT reference and reds here.
     expect(joustDecode).toBe(sharedDecode)
-  })
-
-  it('joust\'s decode output is byte-for-byte the @shared output across all 256 bytes (no regression)', async () => {
-    const joustDecode = await loadJoustDecode()
-    const sharedDecode = await loadShared()
-    for (let b = 0; b < 256; b++) {
-      expect(joustDecode(b), `byte 0x${b.toString(16)}`).toEqual(sharedDecode(b))
-    }
+    // No separate 256-byte output-equality loop: once the reference identity above
+    // holds, `joustDecode` and `sharedDecode` are the SAME function object, so a
+    // per-byte compare is a function comparing to itself and cannot fail (lang-review
+    // #26). The decode's actual byte behaviour is pinned independently by the
+    // hand-computed KNOWN table in the @shared decoder suite.
   })
 })
 
 describe('the byte format is documented — read from MAME, decided in prose (AC4)', () => {
-  it('board-facts.md records the palette byte format as BBGGGRRR with a williams.cpp palette-init pointer', () => {
+  it('the `## Palette format` section documents BBGGGRRR AND cites williams.cpp within it', () => {
     const md = readFileSync(join(root, 'docs', 'rom-study', 'board-facts.md'), 'utf8')
     const lower = md.toLowerCase()
-    // The format token must appear...
-    const at = lower.indexOf('bbgggrrr')
+    // Bound the scan to the palette-format SECTION, not the whole file. Slice from the
+    // `## Palette format` heading to the next `## ` heading and require BOTH the
+    // BBGGGRRR format token and a williams.cpp palette-init pointer to live INSIDE that
+    // slice. A whole-file scan (or a ±char window around the token) leaks into the facts
+    // table above, whose incidental williams.cpp rows would satisfy the citation check
+    // even if the palette section cited nothing — the guard must anchor to the CLAIM,
+    // not to a token that happens to sit near dense prose (lang-review #25/#15).
+    const headingAt = lower.indexOf('## palette format')
+    expect(headingAt, 'board-facts.md must have a `## Palette format` section (AC4)').toBeGreaterThanOrEqual(0)
+    const nextHeadingAt = md.indexOf('\n## ', headingAt + 1)
+    const section = md.slice(headingAt, nextHeadingAt === -1 ? undefined : nextHeadingAt)
     expect(
-      at,
-      'board-facts.md must document the CRAM byte format as BBGGGRRR (the 3-3-2 Williams ' +
-        'colour decode), read from MAME williams.cpp palette init at the df1-4 pin',
-    ).toBeGreaterThanOrEqual(0)
-    // ...and a williams.cpp MAME prose pointer must sit WITHIN a bounded window of it,
-    // so the token is part of a real, cited palette-format statement rather than an
-    // incidental mention elsewhere in the file (lang-review #25 — bound the scope).
-    const window = lower.slice(Math.max(0, at - 600), at + 600)
-    expect(window, 'the BBGGGRRR format decision must cite MAME williams.cpp (palette init) in prose').toContain(
-      'williams.cpp',
-    )
+      section,
+      'the palette-format section must document the CRAM byte format as BBGGGRRR (the 3-3-2 ' +
+        'Williams colour decode)',
+    ).toMatch(/BBGGGRRR/)
+    expect(
+      section,
+      'the palette-format section must cite MAME williams.cpp (palette init, :66 / :1559) in prose',
+    ).toMatch(/williams\.cpp/)
   })
 })

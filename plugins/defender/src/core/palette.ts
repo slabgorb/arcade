@@ -3,7 +3,7 @@
 // Defender's live hardware palette is 16 colour registers (CRAM, defender/PHR6.SRC:13,
 // CRAM EQU $C000). The game never writes CRAM directly: it mutates a 16-byte RAM
 // shadow (PCRAM, defender/PHR6.SRC:219, PCRAM RMB 16) and the frame IRQ copies the
-// shadow into CRAM each frame (defender/DEFA7.SRC:1968-1994). At boot the shadow is
+// shadow into CRAM each frame (defender/DEFA7.SRC:1968-1980). At boot the shadow is
 // seeded from the CRTAB default table by CRINIT (defender/DEFA7.SRC:1057, LDX #CRTAB /
 // LDU #PCRAM / LDB #16). This module holds those default bytes and models the copy.
 //
@@ -29,7 +29,7 @@ export const DEFAULT_PCRAM: readonly number[] = [
 
 /**
  * Model the per-frame PCRAM -> CRAM copy the IRQ performs
- * (defender/DEFA7.SRC:1968-1994) as a pure "resolve 16 indices" step: the live
+ * (defender/DEFA7.SRC:1968-1980) as a pure "resolve 16 indices" step: the live
  * hardware palette is the 16-byte shadow copied straight across. df2 renders a static
  * frame and nothing mutates the shadow, so this is a faithful straight copy; df3/df4's
  * blink and colour-cycle effects will drive it. Pure: returns a fresh array and never

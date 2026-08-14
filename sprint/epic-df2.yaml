@@ -20,7 +20,7 @@ stories:
     title: 'Palette: the 16-entry CRAM/PCRAM model + the 3-3-2 decode decision. Transcribe Defender default palette bytes into a gated table; model the PCRAM (defender/PHR6.SRC:219) -> CRAM (defender/PHR6.SRC:13) per-frame copy as a pure "resolve 16 indices" step. Read the byte FORMAT from MAME in prose (williams.cpp palette init, pinned df1-4 object); if it is the 3-3-2 BBGGGRRR joust decodes, extract paletteToRgba to @shared/ and re-point BOTH joust and defender; else keep local. Palette ENTRIES are transcribed from the vendored source (source wins on software facts; MAME only on the byte format).'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-14'
     repos: arcade
     workflow: tdd

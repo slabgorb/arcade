@@ -9,10 +9,11 @@
 //     (GPL). The core takes these as arguments; the numbers themselves are the
 //     shell's, so they sit here once.
 //   • The index->RGBA decode. Every colour drawn is reached BY INDEX through
-//     indexToRgba — never a scattered hex literal (colours are never invented). The
-//     palette is a TEMPORARY placeholder until df2-2 transcribes the real 16-entry
-//     CRAM/PCRAM palette (defender/PHR6.SRC:13,219); df2-2 replaces THIS ONE
-//     function and nothing else on the blit path.
+//     indexToRgba — never a scattered hex literal (colours are never invented). df2-2
+//     transcribed the real 16-entry CRAM/PCRAM palette (defender/PHR6.SRC:13,219): the
+//     default PCRAM bytes and the per-frame PCRAM->CRAM copy live in core/palette.ts,
+//     and each resolved byte decodes through the shared Williams BBGGGRRR decoder
+//     (@shared/palette-decoder). indexToRgba is the one blit-path point that reads it.
 
 import { fitIntegerScale } from '@shared/view'
 import { paletteToRgba, type Rgba } from '@shared/palette-decoder'

@@ -10,7 +10,7 @@ Model the Defender palette hardware (16-entry CRAM) and the PCRAM pseudo-palette
 
 ### The Model
 
-Defender's video subsystem uses a **16-entry colour RAM (CRAM)** at address `$C000` (from `PHR6.SRC:13`). The CPU mutates a shadow copy, the **pseudo-colour RAM (PCRAM)** at `PHR6.SRC:219`, which the video IRQ copies to CRAM each frame (`DEFA7.SRC:1968-1994`). Pixels are 4-bit **indices** into this palette (0–15), two per byte.
+Defender's video subsystem uses a **16-entry colour RAM (CRAM)** at address `$C000` (from `PHR6.SRC:13`). The CPU mutates a shadow copy, the **pseudo-colour RAM (PCRAM)** at `PHR6.SRC:219`, which the video IRQ copies to CRAM each frame (`DEFA7.SRC:1968-1980`). Pixels are 4-bit **indices** into this palette (0–15), two per byte.
 
 This story delivers:
 1. **Palette table:** Transcribe the 16 default palette bytes from the vendored source into a gated, immutable data structure.
@@ -19,7 +19,7 @@ This story delivers:
 
 ### The Extract Decision
 
-Joust's `paletteToRgba` (in `plugins/joust/src/shell/render.ts:50`) is currently a shell function that decodes a single byte from 3-3-2 BBGGGRRR format into an RGBA colour. Defender needs the same decode **if and only if** its byte format is identical.
+Joust's `paletteToRgba` (a shell function that decodes a single byte from 3-3-2 BBGGGRRR format into an RGBA colour) is the decode Defender needs **if and only if** its byte format is identical. (After this story `paletteToRgba` lives in `@shared/palette-decoder`, re-exported by joust's `render.ts` — see below.)
 
 - **If Defender's byte format is 3-3-2 BBGGGRRR** (expected, same Williams video chip): Extract `paletteToRgba` to `@shared/` as a Williams-specific palette decoder and update both joust and defender to import it.
 - **If Defender's byte format differs:** Defend keeps its own decoder; do not force-share divergent hardware.
@@ -46,9 +46,9 @@ The 16 palette bytes themselves are **transcribed from the vendored source**, no
 
 - **Epic:** `sprint/context/context-epic-df2.md` — the df2-2 architectural decision section
 - **Palette location:** `reference/original-source/defender/PHR6.SRC:13` (CRAM), `:219` (PCRAM)
-- **IRQ copy:** `reference/original-source/defender/DEFA7.SRC:1968-1994`
+- **IRQ copy:** `reference/original-source/defender/DEFA7.SRC:1968-1980`
 - **MAME byte format:** `williams.cpp` palette init (pinned to df1-4, `sprint/context/context-epic-df1.md`)
-- **Joust reference:** `plugins/joust/src/shell/render.ts:50` (`paletteToRgba`), `plugins/joust/src/core/pictures.ts:89` (palette encoding doc)
+- **Joust reference:** `paletteToRgba` (originally in joust's `src/shell/render.ts`; this story extracts it to `@shared/palette-decoder`, which joust re-exports), and `plugins/joust/src/core/pictures.ts` (palette encoding doc)
 - **Transcription pattern:** `scripts/transcribe-pictures.mjs` + `plugins/joust/tests/pictures-gate.test.ts`
 - **Citation gate:** `plugins/defender/tests/audit/citations.test.ts` (df1-1)
 - **Purity gate:** `plugins/defender/tests/purity.test.ts` (df1-1)
