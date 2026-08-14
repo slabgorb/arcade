@@ -82,15 +82,13 @@ function spiderObstacleAddr(slot: Readonly<SpiderSlot>): number {
 export function stepSpiders(slots: SpiderSlot[], view: EnemyView): EnemyStepResult<SpiderSlot[]> {
   const env: SpiderEnv = {
     frame: view.frame,
-    // TODO(ml7-2 fidelity): EnemyView carries no SCORE1 byte — the HARD 5,000
-    // early-fast gate (SD-18) degrades to the SCORE2 gate only until wired.
-    score1: 0,
+    // ml7-8: SCORE1 threaded — the HARD 5,000 early-fast gate (SD-18) is exact.
+    score1: view.score1,
     score2: view.score2,
     centin: view.centin,
-    // TODO(ml7-2 fidelity): EnemyView carries no DEAD segment count — the
-    // first-wave extra spiders (centipede-entry slots 6..11, SD-52..61) stay
-    // closed until wired; the reserved slot 13 and score-gated slot 12 spawn.
-    dead: 0,
+    // ml7-8: DEAD (remaining segments) threaded — the first-wave extra spiders
+    // (centipede-entry slots 6..11, SD-52..61) open on a live centipede.
+    dead: view.dead,
     playerAlive: view.player.alive,
     hard: view.hard,
     rnd0: nextInt(view.rng, 256), // the POKEY RND0 byte for this frame

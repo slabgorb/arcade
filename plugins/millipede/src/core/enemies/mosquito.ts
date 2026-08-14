@@ -45,15 +45,14 @@ export function initMosquitoes(): MosquitoSlot[] {
  * frame's two POKEY random bytes off view.rng (RND0 = the spawn column, RND1 =
  * the ±speed diagonal roll — the same order the ROM reads them).
  *
- * TODO(ml7-2 fidelity): SLOW is not yet threaded through EnemyView, so it
- * defaults to 0 this pass. Its only effect — the every-tick wing flap while the
- * critter-freeze timer runs (MQ-11) — is deferred until the view carries it.
+ * SLOW (ml7-8) is threaded from EnemyView: non-zero forces the every-tick wing
+ * flap while the critter-freeze timer runs (MQ-11).
  */
 function toEnv(view: EnemyView, rnd0: number, rnd1: number): MosquitoEnv {
   return {
     frame: view.frame,
     score2: view.score2,
-    slow: 0, // TODO(ml7-2 fidelity): thread SLOW through EnemyView
+    slow: view.slow, // ml7-8: SLOW critter-freeze timer (MQ-11)
     playerAlive: view.player.alive,
     rnd0,
     rnd1,

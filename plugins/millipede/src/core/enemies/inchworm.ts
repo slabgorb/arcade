@@ -49,13 +49,10 @@ export function initInchworms(): InchwormSlot[] {
  * Two POKEY register bytes per frame come off the shared rng — RND0 the spawn
  * direction bit (IW-31), RND1 the spawn row (IW-25).
  *
- * DEAD (the centipede-ALIVE gate, IW-8: it must be NON-ZERO to enter) is not yet a
- * first-class field on EnemyView, so we proxy it off CENTIN — a live centipede
- * (centin !== 0) means the DEAD flag is non-zero. Together with the IW-7 CENTIN < 11
- * gate this opens the spawn window to a small live centipede, which is when the ROM
- * lets the inchworm in.
- * TODO(ml7-2 fidelity): thread the real DEAD byte through EnemyView so the IW-8 gate
- * is exact rather than the CENTIN proxy used here.
+ * DEAD (the centipede-ALIVE gate, IW-8: it must be NON-ZERO to enter) is threaded
+ * from EnemyView (ml7-8): the real DEAD byte, no longer the CENTIN proxy. Together
+ * with the IW-7 CENTIN < 11 gate this opens the spawn window to a small live
+ * centipede, which is when the ROM lets the inchworm in.
  */
 function inchwormEnv(view: EnemyView, rnd0: number, rnd1: number): InchwormEnv {
   return {
@@ -64,7 +61,7 @@ function inchwormEnv(view: EnemyView, rnd0: number, rnd1: number): InchwormEnv {
     score2: view.score2,
     playerAlive: view.player.alive,
     centin: view.centin,
-    dead: view.centin !== 0 ? 1 : 0, // TODO(ml7-2 fidelity): real DEAD byte (IW-8)
+    dead: view.dead, // ml7-8: the real DEAD byte (IW-8)
     rnd0,
     rnd1,
   }
