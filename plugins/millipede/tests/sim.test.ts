@@ -231,3 +231,28 @@ describe('ml6-2 stepGame — bonus life at score thresholds (SCORNG tail)', () =
     expect(kinds(after)).not.toContain('bonus-life')
   })
 })
+
+describe('ml6-2 stepGame — the player cannot walk through mushrooms (MOVE OBSTAC)', () => {
+  const play = (over?: Partial<GameState>): GameState => ({
+    ...createGame(0x1982, { phase: 'play' }),
+    ...over,
+  })
+  // Player at H=0x87 stepping +4 (dh=8 → tblmt +4) reaches H=0x8B, which crosses
+  // into a new 8px column: obstacOffset(0x8B, 0x28, 0) = 0x1A5. The starting cell
+  // (0x87,0x28) = 0x1C5 is a different column, so only the target is planted.
+  const START = { h: 0x87, v: 0x28, hl: 0, vl: 0, alive: true }
+
+  it('a mushroom in the target cell blocks the move (MILLI.MAC:1662-1668)', () => {
+    const field = new Uint8Array(0x3c0)
+    field[0x1a5] = 0x7f // FULL_MUSHROOM in the cell the player would step into
+    const g = play({ field, player: { ...START } })
+    const after = stepGame(g, { ...idle, dh: 8 })
+    expect(after.player.h).toBe(0x87) // blocked — did not advance to 0x8B
+  })
+
+  it('control: with a clear field the same input advances the player to 0x8B', () => {
+    const g = play({ field: new Uint8Array(0x3c0), player: { ...START } })
+    const after = stepGame(g, { ...idle, dh: 8 })
+    expect(after.player.h).toBe(0x8b) // moved +4
+  })
+})

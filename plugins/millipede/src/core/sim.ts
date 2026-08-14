@@ -30,6 +30,7 @@ import { awardBonus } from './bonus'
 import { stepRoster, shootRoster } from './enemies/roster'
 import { resolveShot } from './shot'
 import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
+import { obstacOffset, obstacleAt } from './mushroom'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -84,8 +85,12 @@ function stepAttract(state: GameState, input: GameInput): GameState {
 function stepPlay(state: GameState, input: GameInput): GameState {
   const events: GameEvent[] = []
 
-  // 1. Player move (obstruction wiring lands with the mushroom-collision pass).
-  const player = stepPlayer(state.player, { dh: input.dh, dv: input.dv, fire: input.fire })
+  // 1. Player move. MOVE consults OBSTAC with LDY I,0 at each candidate cell
+  //    (MILLI.MAC:1662-1668 horizontal, :1694-1700 vertical): any nonzero stamp
+  //    there blocks the step, so the ship cannot walk through a mushroom/rock.
+  const blocked = (h: number, v: number): boolean =>
+    obstacleAt(state.field, obstacOffset(h, v, 0)) !== 0
+  const player = stepPlayer(state.player, { dh: input.dh, dv: input.dv, fire: input.fire }, blocked)
 
   // 2. Shot: spawn on fire (single shot at a time).
   let shot: Shot = state.shot
