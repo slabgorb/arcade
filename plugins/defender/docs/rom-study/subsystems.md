@@ -66,7 +66,7 @@ runtime select sites.
 |---|---|---|
 | `RESET` | `defender/ROMF8.SRC:63-64` | reset processing — PIA setup (and the `ORG $FB00 TEMPORARY!!!!!!` co-load origin) |
 | CMOS allocation | `defender/ROMF8.SRC:16-20` | the CMOS RAM ledger — coin slot totals and bookkeeping |
-| pricing equates | `defender/ROMF8.SRC:12-14` | CREDIT / coin-unit / bonus-unit equates — the coin/pricing state the CMOS ledger persists |
+| pricing equates | `defender/ROMF8.SRC:12-14` | CREDIT / coin-unit / bonus-unit equates — the coin/pricing state the ledger above persists |
 
 ## Block 3 — `ROMC0` + `ROMC8` (diagnostics)
 
