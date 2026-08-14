@@ -260,3 +260,8 @@ completed_stories:
     title: 'VISUAL boot check for the defender scaffold (the four files, registrations, topology pin and citation gate all landed with df1-1 by owner decision — see sprint/archive/df1-1-session.md): screenshot http://127.0.0.1:5270/defender/ and confirm the black canvas renders, compared against a nonsense control path, not just a 200 (the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs); while there, correct CLAUDE.md''s game roster line — add defender (Williams, 1980) and fix the ''first Williams title joust'' phrase (df1-1 review Gap finding).'
     points: 1
     completed: '2026-08-14'
+  - id: df1-6
+    epic: df1
+    title: "Harden the claims-JSON load path in the fleet's citation checkers: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede; wrap the parse in a controlled per-file error naming the file. Filed from df1-1 review (rule-checker R3, inherited from millipede)."
+    points: 2
+    completed: '2026-08-14'
