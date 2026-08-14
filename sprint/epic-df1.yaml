@@ -78,10 +78,11 @@ stories:
     title: "Reconcile CLAUDE.md games roster: add millipede and fix vector/raster/total counts (eleven clones — five vector, six raster). Introduced-visible by df1-5 adding defender under a stale 'four raster'/'nine' count; millipede was never in the roster prose either. See df1-5 review [DOC] finding + Delivery Finding."
     points: 1
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-14'
     repos: arcade
     workflow: trivial
+    completed: '2026-08-14'
     type: chore
   - id: df1-8
     title: "Harden joust inline loadClaims (citations.test.ts:641): the same unhardened JSON.parse(readFileSync(...)) as Claim | Claim[] pattern df1-6 hardened in the four dossier-sweep loaders survives in joust's INLINE loadClaims at plugins/joust/tests/audit/citations.test.ts:641 (a separate copy from joust/tests/helpers/claims.ts, which is already hardened via asClaim). Wrap the parse per-file in a controlled error naming the file + shape-assert each entry's source, mirroring df1-6. Routed from df1-6 review (reviewer round 1). joust and missile-command helpers/claims.ts are already hardened; this is the last fleet residue."
