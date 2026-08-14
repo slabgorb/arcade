@@ -290,9 +290,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
 /**
  * True when `source` is the citation shape this checker accepts (text only —
- * centipede carries no byte claims). Exported so loadClaims can gate its load
- * boundary with the SAME predicate checkClaims uses, keeping the two from drifting
- * (df1-6).
+ * centipede carries no byte claims). Used by loadClaims to gate its load boundary; it is composed from the same
+ * source-shape guards checkClaims dispatches on — it is NOT called by
+ * checkClaims — so the two stay aligned as long as those guards remain the
+ * single definition (df1-6).
  */
 export function isValidClaimSource(source) {
   return isCitation(source)

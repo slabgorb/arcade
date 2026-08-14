@@ -81,7 +81,8 @@ export function loadClaims(dir: string = claimsDir): Claim[] {
   // no file, and the `as Claim | Claim[]` cast let a well-formed-JSON-wrong-shape
   // file through unchecked. Wrap the parse per-file and validate each entry's source
   // with isValidClaimSource — which is composed from the SAME guard functions
-  // (isCitation/isByteCitation/…) that checkClaims dispatches on, so the two stay
+  // (isCitation/isBinaryCitation/isByteCitation — pac-man has all three) that
+  // checkClaims dispatches on, so the two stay
   // aligned as long as those guards remain the single definition (isValidClaimSource
   // does not re-implement them). Both failures now surface as a controlled error
   // that names the offending file.

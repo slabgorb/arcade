@@ -320,9 +320,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
 /**
  * True when `source` is one of the citation shapes this checker accepts (text,
- * binary/nibbles for the WSG PROM, or byte for the gfx ROMs). Exported so
- * loadClaims can gate its load boundary with the SAME predicate checkClaims uses,
- * keeping the two from drifting (df1-6).
+ * binary/nibbles for the WSG PROM, or byte for the gfx ROMs). Used by loadClaims to gate its load boundary; it is composed from the same
+ * source-shape guards checkClaims dispatches on — it is NOT called by
+ * checkClaims — so the two stay aligned as long as those guards remain the
+ * single definition (df1-6).
  */
 export function isValidClaimSource(source) {
   return isCitation(source) || isBinaryCitation(source) || isByteCitation(source)
