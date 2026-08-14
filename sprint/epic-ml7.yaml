@@ -41,3 +41,38 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: ml7-5
+    title: 'Fixed-timestep at the millipede LOGIC frame rate — the ml6-2 frame loop steps stepGame every requestAnimationFrame (~60Hz), so the whole game (march, fliers, explosions) animates far too fast (AC3 playtest finding). Accumulate real time and step at the ROM logic rate; see the millipede cadence memory (calc-frame ~10.4Hz, NOT 62.5Hz). Playtest to confirm the feel.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-6
+    title: 'Decode the real ship + enemy/mushroom sprites — ml6-2 renders mushrooms/enemies as red-triangle pic guesses and the player as a blue square; the spider death shows the parked score in lieu of its sprite because sprites are undecoded. Decode from the gfx ROM (gfx-rom.ts), mind the ROT90 tile/sprite asymmetry (pac-man precedent). Visual playtest.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-7
+    title: 'Scale the pokey-voice sweep frequencies into the Web Audio nominal range — ml6-2 AC3 playtest shows sweep steps hitting ~32kHz that Web Audio CLAMPS to 24kHz (shell/audio.ts:54 warning x60/session). Audible steps still play, but the high-end mapping (pokey-voice.ts / audio.ts FRAME_SEC tunables) wants a proper POKEY→Hz scale. Playtest the result.'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-8
+    title: 'Enemy PRESENCE voices + secondary ROM-input threading — ml6-2 emits only kill/explosion (CHAN2) and march (CHAN1); the per-creature CHAN0/3/4/5/7/8/9 voices are not started, and the secondary EnemyView inputs (score1/dead/slow/mushTop/beetles…) are defaulted to 0. Grep TODO(ml7-2 fidelity) in core/enemies/. Reconcile the fliers sharing MOBJ slot 12 (documented deviation). Thread the BEETLA per-wave quota into beetle spawning.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-9
+    title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
