@@ -13,7 +13,7 @@
 // roster, DDT, mushroom regen and waves are layered on in follow-up increments,
 // each adding its own event emission at the sites marked below.
 
-import type { GameState, Shot } from './game-state'
+import { createGame, type GameState, type Shot } from './game-state'
 import { stepPlayer } from './input'
 import {
   stepMillipede,
@@ -68,15 +68,10 @@ function stepAttract(state: GameState, input: GameInput): GameState {
     segments = state.segments // (respawn handled by createMillipede in a later pass)
   }
   if (phase === 'play') {
-    // Begin a fresh life: the player takes control, the demo train stays.
-    return {
-      ...state,
-      phase,
-      frame: state.frame + 1,
-      player: { ...state.player, alive: true },
-      shot: { active: false, h: 0, v: 0 },
-      events: [], // the transition frame itself is silent; play sounds start next frame
-    }
+    // Begin a NEW game: rebuild a clean starting world from the seed — the
+    // millipede enters from the top, the player spawns at the bottom, a fresh
+    // field. (Keeping the sunk attract train would kill the player instantly.)
+    return { ...createGame(state.seed, { phase: 'play' }), events: [] }
   }
   return { ...state, phase, frame: state.frame + 1, segments, events: [] }
 }

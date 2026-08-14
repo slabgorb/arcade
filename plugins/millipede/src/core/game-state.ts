@@ -27,6 +27,8 @@ export interface Shot {
 /** Everything the simulation owns for one game. */
 export interface GameState {
   phase: GamePhase
+  /** The seed the world was built from — a fresh game re-derives from it. */
+  seed: number
   /** The interrupt/frame counter — drives subsystem cadences and audio masks. */
   frame: number
   rng: Rng
@@ -69,6 +71,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
   }
   return {
     phase: opts?.phase ?? 'attract',
+    seed,
     frame: 0,
     rng,
     field,

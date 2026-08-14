@@ -52,8 +52,13 @@ beforeAll(async () => {
   // silent by design (core/sim.ts:63-81 — stepAttract clears the event stream),
   // so this is the real pre-gesture state of the cabinet: stepping, rendering,
   // emitting nothing, and — the point of this file — opening no context.
-  for (let i = 0; i < 60; i++) shell.frame(i)
+  // Sample the frame counter twice DURING attract (both pre-gesture): starting
+  // play rebuilds a fresh world at frame 0 (core/sim.ts), so liveness must be
+  // measured while the phase is stable, not across the start reset.
+  for (let i = 0; i < 30; i++) shell.frame(i)
   frames.early = shell.sim().frame
+  for (let i = 30; i < 60; i++) shell.frame(i)
+  frames.later = shell.sim().frame
   seen.afterSilentFrames = shell.audioContexts()
   phase.beforeGesture = shell.sim().phase
 
@@ -64,7 +69,6 @@ beforeAll(async () => {
   for (let i = 0; i < 5; i++) shell.frame(100 + i)
   seen.afterGesture = shell.audioContexts()
   phase.afterGesture = shell.sim().phase
-  frames.later = shell.sim().frame
 
   // Many more gestures of both kinds — resume() is documented idempotent, so the
   // count must not climb.
