@@ -93,13 +93,19 @@ function docCitations(name: string): ProseCitation[] {
  *
  * The boundary that holds, and the contract it imposes: every cited entry
  * lives on a MARKDOWN TABLE ROW (a single physical line starting with `|`),
- * and its window is exactly that line — symbol, plain-English signature and
- * covering citation all on the entry's own row, nowhere else. There is no
- * prose window at all; prose may explain, but it may not carry an entry's
- * citation (glossary.md's vector-block section is a table for this reason).
- * Pinned by the round-2 acceptance mutants: the adjacent swap reds BOTH sides,
- * the one-row-down displacement reds, and the five-row cyclic shift reds all
- * five.
+ * and its window is exactly that line. There is no prose window at all; prose
+ * may explain, but it may not carry an entry's citation (glossary.md's
+ * vector-block section is a table for this reason). The own-row property
+ * holds ONLY for a symbol unique to its row — round 3 proved a same-file
+ * sibling row whose prose echoed an entry's symbol could satisfy that entry —
+ * so each entry also declares how many rows its symbol matches (`rows`,
+ * default 1; HALLOF legitimately spans its vector row and its routine row)
+ * and the loops assert the census EXACTLY, turning any future wording drift
+ * that widens a symbol's scope into a loud red instead of a silent evasion.
+ * Pinned by the rounds-2/3 acceptance mutants: adjacent swap reds BOTH sides,
+ * one-row-down displacement reds, five-row cyclic shift reds all five,
+ * CMOS↔pricing swap reds, ROMC0↔ROMC8 swap reds ROMC0's own test, and a
+ * planted census-widening drift reds the count assertion.
  */
 function rowWindows(md: string, symbol: RegExp): string[] {
   return md.split('\n').filter((l) => l.startsWith('|') && symbol.test(l))
@@ -148,6 +154,8 @@ interface Term {
   plainNeeds: string
   file: string
   lines: readonly number[]
+  /** How many table rows the author regex matches — the uniqueness census (default 1). */
+  rows?: number
 }
 const GLOSSARY_TERMS: readonly Term[] = [
   {
@@ -222,6 +230,8 @@ interface Subsystem {
   file: string
   /** Verified line(s); a citation covering ANY one counts. */
   lines: readonly number[]
+  /** How many table rows the symbol regex matches — the uniqueness census (default 1). */
+  rows?: number
 }
 const SUBSYSTEMS_MAP: readonly Subsystem[] = [
   // DEFA7 — resident control: scheduler, IRQ, collision, sound sequencer
@@ -234,7 +244,7 @@ const SUBSYSTEMS_MAP: readonly Subsystem[] = [
   { symbol: /\bUFOST\b|UFO PROCESS/, name: 'UFOST (enemy process exemplar)', file: 'DEFB6.SRC', lines: [2, 5] },
   { symbol: /MAPCH/, name: 'MAPCH1/2/3/7 (bank-select helpers)', file: 'DEFB6.SRC', lines: [1292] },
   // AMODE1 — block 1: attract, hall of fame, scanner
-  { symbol: /\bHALLOF\b/, name: 'HALLOF (hall-of-fame / attract entry)', file: 'AMODE1.SRC', lines: [114, 119] },
+  { symbol: /\bHALLOF\b/, name: 'HALLOF (hall-of-fame / attract entry)', file: 'AMODE1.SRC', lines: [114, 119], rows: 2 },
   { symbol: /\bSCNR\b/, name: 'SCNR (the scanner vector)', file: 'AMODE1.SRC', lines: [115] },
   // MESS0 — block 2: the text writers + the module's own identity line
   { symbol: /\bWTEXTB\b/, name: 'WTEXTB (write text block)', file: 'MESS0.SRC', lines: [721, 722] },
@@ -248,9 +258,14 @@ const SUBSYSTEMS_MAP: readonly Subsystem[] = [
   { symbol: /EXPLOSIONS AND APPEARANCES/i, name: "SAMEXAP7's header (materialize/explode)", file: 'SAMEXAP7.SRC', lines: [7] },
   // ROMF8 — resident $F800 control: reset, CMOS, pricing
   { symbol: /\bRESET\b/, name: 'RESET (PIA setup)', file: 'ROMF8.SRC', lines: [63, 64] },
-  { symbol: /\bCMOS\b/, name: 'the CMOS RAM allocation (coin/pricing ledger)', file: 'ROMF8.SRC', lines: [16, 18] },
-  // ROMC0/ROMC8 — block 3: diagnostics (module identities)
-  { symbol: /DIAG ROM/i, name: "ROMC0's own TTL (diagnostics identity)", file: 'ROMC0.SRC', lines: [1] },
+  // Round 3: symbol anchored to the row's OWN cell text — a bare /\bCMOS\b/ also
+  // matched the pricing row's prose and let a same-file citation swap ship green.
+  { symbol: /CMOS allocation/i, name: 'the CMOS RAM allocation (coin/pricing ledger)', file: 'ROMF8.SRC', lines: [16, 18] },
+  { symbol: /pricing equates/i, name: 'the pricing equates (CREDIT / coin-unit / bonus-unit)', file: 'ROMF8.SRC', lines: [12] },
+  // ROMC0/ROMC8 — block 3: diagnostics (module identities). Round 3: ROMC0's
+  // symbol anchored to its full TTL phrase — a bare /DIAG ROM/i also matched
+  // ROMC8's row, so a swapped citation satisfied ROMC0's own-row assertion.
+  { symbol: /DIAG ROM AT C000/i, name: "ROMC0's own TTL (diagnostics identity)", file: 'ROMC0.SRC', lines: [1] },
   { symbol: /UPPER HALF/i, name: "ROMC8's own TTL (diagnostics upper half)", file: 'ROMC8.SRC', lines: [1] },
 ]
 
@@ -401,13 +416,18 @@ describe('df1-3 AC-1 — glossary.md maps author vocabulary to plain English', (
       const md = doc(GLOSSARY)
       expect(md, `glossary.md must exist before "${t.authorNeeds}" can be checked`).not.toBe('')
       expect(t.author.test(md), `glossary.md must state ${t.authorNeeds} (a glossary translates FROM the author's jargon)`).toBe(true)
-      // ROW-SCOPED (review rounds 1-2): the plain-English signature and the
+      // ROW-SCOPED (review rounds 1-3): the plain-English signature and the
       // covering citation must sit on the term's OWN table row — one physical
-      // line, no wrap slack, no prose path. A signature or citation parked in
-      // a sibling row (even the row directly below) no longer satisfies this
-      // term; the round-2 displacement and cyclic-shift mutants pin that.
+      // line, no wrap slack, no prose path — and the symbol must match EXACTLY
+      // the declared number of rows (the round-3 uniqueness census: a symbol
+      // that quietly starts matching a second row is the precondition for the
+      // same-file sibling-row evasion, so scope-widening is a loud red here).
       const windows = rowWindows(md, t.author)
-      expectPopulated(windows.length, 1, `${t.authorNeeds} table rows`)
+      expect(
+        windows.length,
+        `${t.authorNeeds} must match exactly ${t.rows ?? 1} table row(s) — a different count means the ` +
+          'symbol\'s scope drifted (round-3 census; widening is the evasion\'s precondition)',
+      ).toBe(t.rows ?? 1)
       expect(
         windows.some((w) => t.plain.test(w)),
         `${t.authorNeeds}'s own row must state ${t.plainNeeds} — a phrase elsewhere in the doc does not translate THIS term`,
@@ -427,8 +447,9 @@ describe('df1-3 AC-1 — glossary.md maps author vocabulary to plain English', (
 // ═════════════════════════════════════════════════════════════════════════════
 describe('df1-3 AC-2 — subsystems.md indexes every subsystem to owning file + routine + line', () => {
   it('carries the full subsystem set — none dropped', () => {
-    // 5 DEFA7 + 2 DEFB6 + 2 AMODE1 + 3 MESS0 + 3 BLK71 + 1 SAMEXAP7 + 2 ROMF8 + 2 ROMC = 20.
-    expectPopulated(SUBSYSTEMS_MAP.length, 20, 'subsystem map')
+    // 5 DEFA7 + 2 DEFB6 + 2 AMODE1 + 3 MESS0 + 3 BLK71 + 1 SAMEXAP7 + 3 ROMF8 + 2 ROMC = 21
+    // (round 3 added the pricing-equates entry — an unguarded cited row is a rescue row).
+    expectPopulated(SUBSYSTEMS_MAP.length, 21, 'subsystem map')
   })
 
   for (const s of SUBSYSTEMS_MAP) {
@@ -437,9 +458,17 @@ describe('df1-3 AC-2 — subsystems.md indexes every subsystem to owning file + 
       expect(md, `subsystems.md must exist before ${s.name} can be checked`).not.toBe('')
       expectPopulated(s.lines.length, 1, `${s.name} candidate lines`)
       expect(s.symbol.test(md), `subsystems.md must name ${s.name} in prose`).toBe(true)
-      // ROW-SCOPED (review round 1): the covering citation must sit in the
-      // entry's own row window — swapping two rows' citations (both present,
-      // both byte-valid) shipped green under the doc-global round-1 check.
+      // ROW-SCOPED (review rounds 1-3): the covering citation must sit on the
+      // entry's OWN table row — one physical line, no wrap slack (round 2
+      // deleted the two-line window that read the next sibling row) — and the
+      // symbol must match EXACTLY the declared number of rows (the round-3
+      // uniqueness census; a symbol quietly matching a second same-file row is
+      // how the CMOS/pricing citation swap shipped green).
+      expect(
+        rowWindows(md, s.symbol).length,
+        `${s.name}'s symbol must match exactly ${s.rows ?? 1} table row(s) — a different count means its ` +
+          'scope drifted (round-3 census; widening is the evasion\'s precondition)',
+      ).toBe(s.rows ?? 1)
       expect(
         rowCites(md, s.symbol, SUBSYSTEMS, s.file, s.lines),
         `${s.name}'s own row must carry a backticked citation to \`${s.file}\` covering its routine/header ` +
