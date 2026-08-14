@@ -10,7 +10,8 @@ stories:
     title: 'Citation gate + src/core purity test FIRST (TDD): port millipede tools/audit/check-citations.mjs (single-sided, WITH the ml1-1 review hardening: unconditional containment + isFile gate) to a defender checker + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: df1-2
