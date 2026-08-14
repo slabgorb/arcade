@@ -122,3 +122,11 @@ export interface CheckOpts {
  * cited line re-opens byte-for-byte.
  */
 export function checkClaims(claims: Claim[], opts: CheckOpts): string[]
+
+/**
+ * True when `source` is one of the citation shapes this checker accepts. Reused by loadClaims to gate the claims-JSON load boundary; it is composed
+ * from the same source-shape guards checkClaims dispatches on — not called by
+ * checkClaims — so the two stay aligned while those guards remain the single
+ * definition (df1-6).
+ */
+export function isValidClaimSource(source: unknown): boolean

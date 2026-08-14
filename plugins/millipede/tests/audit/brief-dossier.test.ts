@@ -76,7 +76,7 @@ const vendoredRoot =
 const vendoredAvailable = existsSync(vendoredRoot)
 
 async function loadChecker(): Promise<CheckClaims> {
-  const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
+  const mod = (await import('../../tools/audit/check-citations.mjs')) as unknown as { checkClaims: CheckClaims }
   return mod.checkClaims
 }
 

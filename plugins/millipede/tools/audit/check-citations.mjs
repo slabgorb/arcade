@@ -283,3 +283,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   console.log('all claims verified')
 }
+
+/**
+ * True when `source` is one of the citation shapes this checker accepts (text or
+ * byte). Used by loadClaims to gate its load boundary; it is composed from the same
+ * source-shape guards checkClaims dispatches on — it is NOT called by
+ * checkClaims — so the two stay aligned as long as those guards remain the
+ * single definition (df1-6).
+ */
+export function isValidClaimSource(source) {
+  return isCitation(source) || isByteCitation(source)
+}

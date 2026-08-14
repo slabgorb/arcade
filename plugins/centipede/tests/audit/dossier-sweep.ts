@@ -31,6 +31,7 @@
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isValidClaimSource } from '../../tools/audit/check-citations.mjs'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
 
 // tests/audit/dossier-sweep.ts → the plugin root is two levels up.
@@ -149,12 +150,34 @@ export function allMalformedCitations(files: readonly string[] = DOSSIER_FILES):
 }
 
 /** Every claim in docs/rom-study/claims/*.json, flattened across files. */
-export function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
+export function loadClaims(dir: string = claimsDir): Claim[] {
+  if (!existsSync(dir)) return []
+  // df1-6: harden the load path. A bare JSON.parse threw a raw SyntaxError naming
+  // no file, and the `as Claim | Claim[]` cast let a well-formed-JSON-wrong-shape
+  // file through unchecked. Wrap the parse per-file and validate each entry's source
+  // with isValidClaimSource — which is composed from the SAME guard functions
+  // (isCitation/isByteCitation/…) that checkClaims dispatches on, so the two stay
+  // aligned as long as those guards remain the single definition (isValidClaimSource
+  // does not re-implement them). Both failures now surface as a controlled error
+  // that names the offending file.
+  return readdirSync(dir)
     .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
+    .flatMap((f) => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(readFileSync(join(dir, f), 'utf8'))
+      } catch (e) {
+        throw new Error(`claims file ${f} is not valid JSON: ${e instanceof Error ? e.message : String(e)}`)
+      }
+      const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed]
+      for (const entry of entries) {
+        const source = entry == null ? undefined : (entry as { source?: unknown }).source
+        if (!isValidClaimSource(source)) {
+          throw new Error(`claims file ${f} has a malformed claim (each entry needs a source citation the checker accepts)`)
+        }
+      }
+      return entries as Claim[]
+    })
 }
 
 /** Does this claim pin a line inside the cited range? */
