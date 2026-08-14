@@ -1,36 +1,30 @@
 // src/main.ts
 //
-// Story ml7-3 — the page becomes the cabinet's ATTRACT SCREEN: the core demo
-// (src/core/attract.ts) self-plays a marching train over a seeded mushroom
-// field with the ROM's attract DDT bombs, and the ROM HUD (src/core/hud.ts)
-// sits on the reserved top row — score, lives, high score. Core computes every
-// placement; this file only steps the demo and routes placements through the
-// shell blitter (routing != geometry — tests/hud-render.test.ts pins the
-// wiring floor on comment-stripped source). The ml2-4 stamp-census page this
-// replaces lives on in tests/playfield.test.ts's drawStampPlayfield.
+// Story ml6-2/ml7-2 — the millipede CABINET: the page now runs the real game.
+// createGame boots into the silent attract demo; the first gesture unlocks audio
+// (browser autoplay policy) and a click drops into play. Each frame the shell
+// reads the mouse as the trackball, steps the pure simulation (core/sim.ts
+// stepGame), renders every entity from the returned GameState, and dispatches the
+// frame's core events to the ml6-1 sound driver through @shared/synth. THE SWEEP
+// IS THE SOUND — a green vitest is not acceptance; this page is the AC3 playtest.
 //
-// This page IS the visual playtest surface (playbook §4): a human looks at
-// /millipede/ and confirms the HUD reads left-to-right score/lives/high-score
-// on the TOP line, digits upright, mushrooms mushroom-shaped, DDTs on the
-// field, and the train marching. SHELL only beyond the demo step: the one
-// clock is requestAnimationFrame.
+// SHELL only beyond stepGame: the one clock is requestAnimationFrame; the mouse,
+// the AudioContext and the canvas are the only browser surfaces touched.
 
 import { mountCanvas } from '@shared/host-helpers'
 import { PLYFLD_STRIDE } from './core/conway'
-import { createAttractDemo, stepAttractDemo } from './core/attract'
-import { hudPlacements, ddtPlacements, type HudPlacement } from './core/hud'
-import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { BACKGROUND_BIT } from './core/mushroom'
+import { VACANT_COLOR } from './core/millipede'
+import { createGame, type GameState } from './core/game-state'
+import { stepGame, type GameInput } from './core/sim'
+import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
+import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { drawGridStamps, drawStampAtPx } from './shell/render'
+import { createAudio } from './shell/audio'
+import { playEventSounds } from './shell/audio-dispatch'
 
-/** 30 cols x 32 rows of 8x8 stamps — the portrait logical resolution. */
 const LOGICAL_W = 240
 const LOGICAL_H = 256
-
-/** Demo dressing: the ROM's attract cabinet holds LIVES=0 (six blanks), but a
- *  playtest that cannot SEE the ship icon cannot judge it — three ships shown
- *  deliberately (TEA flagged the choice; logged as a Dev deviation). */
-const DEMO_LIVES = 3
 
 const { canvas, ctx } = mountCanvas(document)
 
@@ -40,51 +34,111 @@ logical.height = LOGICAL_H
 const lctx = logical.getContext('2d')
 if (!lctx) throw new Error('millipede: 2d context unavailable for the logical screen')
 
-const demo = createAttractDemo(0x1982)
+// ── Audio: built inert at module scope (no WebAudio touched until resume()). ──
+const audio = createAudio()
 
-/** Every occupied field cell as a grid placement — the char stamp is the low
- *  7 bits; bit 7 is the grey-background colour bit, not a stamp index. */
+// ── The game, booting into the silent attract demo. ──
+let game: GameState = createGame(0x1982)
+
+// ── Input accumulators drained once per stepped frame. ──
+let accDh = 0
+let accDv = 0
+let firePending = false
+let startPending = false
+
+/** Clamp accumulated mouse travel to a signed trackball byte (TBLMT re-clamps). */
+const toByte = (n: number): number => {
+  const c = Math.max(-128, Math.min(127, Math.trunc(n)))
+  return c & 0xff
+}
+
+// ── Gesture gate (browser autoplay): the FIRST gesture unlocks audio; a click or
+//    key also drops attract into play. resume() is idempotent; listeners stay. ──
+const unlock = (): void => audio.resume()
+const startPlay = (): void => {
+  unlock()
+  startPending = true
+}
+window.addEventListener('keydown', startPlay)
+canvas.addEventListener('pointerdown', () => {
+  startPlay()
+  firePending = true
+})
+canvas.addEventListener('pointermove', (e: PointerEvent) => {
+  // Horizontal is NEGATED: input.ts models the ROM trackball where a higher H is
+  // further LEFT (positive dh ⇒ gun left), so mouse-right (+movementX) must map
+  // to a NEGATIVE dh for the gun to track the mouse. Vertical needs no negate —
+  // input.ts already COMP-reverses dv (mouse-down ⇒ gun-down).
+  accDh -= e.movementX
+  accDv += e.movementY
+})
+
+/** Every occupied field cell as a grid placement (low 7 bits = stamp). */
 function fieldPlacements(field: Uint8Array): HudPlacement[] {
   const placements: HudPlacement[] = []
   for (let off = 0; off < field.length; off++) {
     const byte = field[off]
     if (byte === 0) continue
-    placements.push({
-      col: Math.floor(off / PLYFLD_STRIDE),
-      row: off % PLYFLD_STRIDE,
-      stamp: byte & ~BACKGROUND_BIT,
-    })
+    placements.push({ col: Math.floor(off / PLYFLD_STRIDE), row: off % PLYFLD_STRIDE, stamp: byte & ~BACKGROUND_BIT })
   }
   return placements
 }
 
-const frame = (): void => {
-  stepAttractDemo(demo)
+/** MOBJ pixel → screen pixel (higher H = left, higher V = up; ml7-3 mapping). */
+const px = (h: number, v: number): [number, number] => [(0xf7 - h) & 0xff, (0xf8 - v) & 0xff]
 
-  lctx.fillStyle = '#000'
-  lctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
-  drawGridStamps(lctx, fieldPlacements(demo.field))
-  drawGridStamps(lctx, ddtPlacements(demo.ddt))
-  drawGridStamps(
-    lctx,
-    hudPlacements({ score: 0, lives: DEMO_LIVES, highScore: DEFAULT_HIGH_SCORES[0].score }),
-  )
-  // Motion objects draw at pixel precision, not grid cells. The screen map is
-  // the family's (cp2-14): higher MOBJH is further LEFT (the OBSTAC 0xF7 fold,
-  // mushroom.ts), higher MOBJV is further UP (ENTER_V 0xF8 = the top line).
-  // A sprite picture p is the 8x16 tile pair 2p / 2p+1 at the base of the
-  // sheet — chosen by eye at the playtest (renders as the legged train), NOT
-  // cited to the ROM; what the $80+ half of the sheet holds is likewise
-  // UNMEASURED (plausibly an alternate graphics bank — an inference, nothing
-  // more; see the Reviewer's sprite-decode Delivery Finding). The whole-frame
-  // rotation turns the vertical pair into a horizontal one, stored-top tile
-  // on the LEFT (the CCW turn — see render.ts).
-  for (const s of demo.segments) {
-    const x = (0xf7 - s.h) & 0xff
-    const y = (0xf8 - s.v) & 0xff
-    drawStampAtPx(lctx, 2 * s.pic, x, y)
-    drawStampAtPx(lctx, 2 * s.pic + 1, x + 8, y)
+/** Draw a sprite pair (pic → tiles 2p / 2p+1) at a MOBJ position. */
+function drawSprite(h: number, v: number, pic: number): void {
+  const [x, y] = px(h, v)
+  drawStampAtPx(lctx as CanvasRenderingContext2D, 2 * pic, x, y)
+  drawStampAtPx(lctx as CanvasRenderingContext2D, 2 * pic + 1, x + 8, y)
+}
+
+function render(state: GameState): void {
+  const c = lctx as CanvasRenderingContext2D
+  c.fillStyle = '#000'
+  c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+
+  drawGridStamps(c, fieldPlacements(state.field))
+  for (const s of state.segments) if (s.color !== VACANT_COLOR) drawSprite(s.h, s.v, s.pic)
+
+  const r = state.roster
+  for (const grp of [r.spiders, r.bees, r.beetles, r.dragonflies, r.mosquitoes, r.earwigs, r.inchworms]) {
+    for (const e of grp) if ((e as { color: number }).color !== 0) drawSprite(e.h, e.v, (e as { pic: number }).pic)
   }
+
+  // Player ship (a visible marker at the gun; exact sprite decode is a follow-up).
+  if (state.player.alive) {
+    const [pxx, pyy] = px(state.player.h, state.player.v)
+    c.fillStyle = '#4cf'
+    c.fillRect(pxx + 2, pyy + 2, 4, 4)
+  }
+  // Shot.
+  if (state.shot.active) {
+    const [sx, sy] = px(state.shot.h, state.shot.v)
+    c.fillStyle = '#fff'
+    c.fillRect(sx + 3, sy, 2, 6)
+  }
+
+  drawGridStamps(
+    c,
+    hudPlacements({ score: state.score, lives: state.lives, highScore: DEFAULT_HIGH_SCORES[0].score }),
+  )
+  void SHIP_STAMP
+}
+
+const frame = (): void => {
+  const input: GameInput = { dh: toByte(accDh), dv: toByte(accDv), fire: firePending, start: startPending }
+  accDh = 0
+  accDv = 0
+  firePending = false
+  startPending = false
+
+  game = stepGame(game, input)
+  playEventSounds(audio, game.events)
+  ;(window as unknown as { __sim?: GameState }).__sim = game
+
+  render(game)
 
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight

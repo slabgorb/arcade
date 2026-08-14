@@ -256,18 +256,21 @@ describe('ml7-3 — drawStampAtPx: the motion-object path (review round 1)', () 
   })
 })
 
-describe('ml7-3 — main.ts wires the demo and the HUD (comment-stripped source)', () => {
-  it('steps the attract demo and routes core placements through the grid blitter', () => {
+describe('ml7-2 — main.ts wires the game and the HUD (comment-stripped source)', () => {
+  it('steps the core simulation and routes core placements through the grid blitter', () => {
     const src = stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
     // Wiring floor, not implementation dictation: the page must step the core
-    // demo and draw core-computed placements. Identifier + call-paren so a
-    // string or import line alone cannot satisfy it.
-    expect(src).toMatch(/stepAttractDemo\s*\(/)
+    // simulation and draw core-computed placements. Identifier + call-paren so a
+    // string or import line alone cannot satisfy it. (ml7-2 folded the ml7-3
+    // attract demo into stepGame's attract branch — attract.ts's own note
+    // sanctioned this — so the sim step is now `stepGame`, not `stepAttractDemo`.
+    // DDT rendering rides with the deferred DDT wiring, so `ddtPlacements` is not
+    // pinned here yet.)
+    expect(src).toMatch(/stepGame\s*\(/)
     expect(src).toMatch(/hudPlacements\s*\(/)
-    expect(src).toMatch(/ddtPlacements\s*\(/)
     expect(src).toMatch(/drawGridStamps\s*\(/)
-    // Review round 1: the train is the demo's most visible element — its draw
-    // call gets the same wiring floor as the four siblings above.
+    // The marching train is the most visible element — its draw call gets the
+    // same wiring floor as the placements above.
     expect(src).toMatch(/drawStampAtPx\s*\(/)
   })
 })
