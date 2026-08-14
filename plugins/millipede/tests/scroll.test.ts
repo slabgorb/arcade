@@ -474,4 +474,28 @@ describe('scrollUp — SCROLU (MLSUB.MAC:1312-1378), upright', () => {
     expect(out.mush).toBe(-1)
     expect(out.mushTop).toBe(1)
   })
+
+  // ── ml8-2 mutation-battery guard (file surface 2/2: scroll.ts) ──────────────
+  // A fresh 23-mutant battery over scroll.ts (harness in the ml8-2 session
+  // scratchpad, confirmed against scroll.test.ts — scroll.ts has no runtime
+  // importer) reddened everything ml3-5 already covered EXCEPT one real gap: the
+  // push-off-the-TOP count masks the grey background bit with `& 0x7f` before the
+  // rock threshold (SC-45), but every scrollUp count test used bit-7-clear values
+  // — so dropping the mask (`& 0xff`) survived. scrollDown's twin IS guarded (a
+  // grey $80|$6E DDT stamp, "a mushroom pushed off the bottom row decrements
+  // MUSH"). This mirrors that test for the scrollUp side. (Two further survivors
+  // were EQUIVALENT: `GREY_POISON_MAX` 0xFC->0xFD and the band's upper `<`->`<=`
+  // both include $FC, whose poison->normal conversion `$FC | $04` is a no-op
+  // since bit 2 is already set — the class ml3-5's review ruled equivalent.)
+  it('a GREY sub-threshold value pushed off the top is NOT counted — the grey bit is masked (SC-45)', async () => {
+    const mod = await loadScroll()
+    const field = emptyField()
+    field[idx(14, 0x1e)] = 0x80 | 0x6e // grey DDT stamp: ($EE & $7F) === $6E < $70 — NOT a mushroom
+    field[idx(15, 0x1e)] = 0x80 | 0x70 // grey ROCK: ($F0 & $7F) === $70 — counted (MLDEF.MAC:204)
+    const out = mod.scrollUp(field, 1)
+    // Only the grey ROCK counts. A driver that compared the raw byte (grey bit
+    // set) would miscount the $EE DDT stamp as a mushroom too → mushTop -2.
+    expect(out.mushTop).toBe(-1)
+    expect(out.mush).toBe(0)
+  })
 })
