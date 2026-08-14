@@ -30,7 +30,7 @@ stories:
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (PHRED/MAPC/MLJSR/NAPP/CKBYT, EUGENE + SAM vector blocks MESS0.SRC:165,175); subsystem -> owning file + routine + line (DEFA7 scheduler/IRQ/collision/sound-sequencer, DEFB6 enemy processes + vectors, AMODE1 attract/hall-of-fame/scanner, MESS0 text writers, BLK71 terrain/waves, SAMEXAP7 materialize/explode, ROMF8 reset/CMOS/pricing, ROMC0+ROMC8 diagnostics); OQ-1..OQ-5 from the design spec (CB1-vs-CB2, COUNT240 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording).'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-14'
     repos: arcade
     workflow: tdd
@@ -41,6 +41,7 @@ stories:
       - 'AC4: all three new files are ENROLLED in DOSSIER_FILES (plugins/defender/tests/audit/dossier-sweep.ts) so the coverage sweep and byte re-open run over them; every prose citation in the three files is covered by a claims JSON entry that verifies byte-for-byte against reference/original-source/defender/.'
       - 'AC5 (routed from df1-2): citations.test.ts retired skipped-on-CI comment model (currently lines 33/248/272) is corrected to the shipped always-on model, and an unskipped presence guard asserts the vendored tree exists so the byte teeth can never silently skip.'
       - 'AC6 (routed from df1-2): brief-dossier.test.ts hand-picked claims floor of 15 (inert — actual claims census is 33) is derived from the same single source as the already-derived answers floor, so the two floors cannot drift apart; the derived floor is mutation-proven (dropping a claims file reddens it).'
+    completed: '2026-08-14'
     review_findings: 'Round 4 APPROVED after three narrowing rejections (document-global scoping -> two-line window bleed -> symbol ambiguity -> existential quantifier). All prior findings verified shipped: row-exact windows with a per-entry uniqueness census, anchored CMOS/ROMC0 regexes, pricing entry, helper extraction, comment truthfulness - every closure independently mutation-re-run by Reviewer and rule-checker (19 named killed mutants across rounds). ONE mandatory pre-finish chore, fix verified by Reviewer: rowCites outer quantifier .some -> .every so HALLOF (the only rows:2 entry) cannot have a wrong-but-claim-backed citation masked on its second row; green 119/119 as-is, reds HALLOF under the AMODE1:311 mutant. Two LOW prose nits recorded no-action. Dossier content itself never rejected: 71/71 claims byte-verified from round 1.'
     review_verdict: approved
   - id: df1-4
