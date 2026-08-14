@@ -10,9 +10,12 @@ stories:
     title: 'Render seam skeleton (RED first): plugins/defender/src/core/framebuffer.ts pure 292x240 index surface (Uint8Array of 4-bit palette indices) + clear(index); plugins/defender/src/shell/render.ts index->RGBA (temporary identity palette until df2-2) + @shared/view fitIntegerScale blit; main.ts paints a cleared framebuffer (steps no clock). Establishes the core/shell boundary and keeps purity.test.ts green. Visible 292x240 pinned to williams.cpp:1601 (schema-only, prose).'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
+    review_verdict: approved
   - id: df2-2
     title: 'Palette: the 16-entry CRAM/PCRAM model + the 3-3-2 decode decision. Transcribe Defender default palette bytes into a gated table; model the PCRAM (defender/PHR6.SRC:219) -> CRAM (defender/PHR6.SRC:13) per-frame copy as a pure "resolve 16 indices" step. Read the byte FORMAT from MAME in prose (williams.cpp palette init, pinned df1-4 object); if it is the 3-3-2 BBGGGRRR joust decodes, extract paletteToRgba to @shared/ and re-point BOTH joust and defender; else keep local. Palette ENTRIES are transcribed from the vendored source (source wins on software facts; MAME only on the byte format).'
     points: 3
