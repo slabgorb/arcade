@@ -49,9 +49,11 @@ stories:
     description: 'The TITLE is the spec (as with df1-3). ADDITIONALLY, one routed finding from the df1-3 review (round 3, LOW-latent, filed at df1-3 finish 2026-08-14): rowWindows() in plugins/defender/tests/audit/glossary-subsystems-oq.test.ts treats any line starting with a pipe as a markdown table row, with no fenced-code-block awareness. Neither current dossier doc contains a code fence, so this is latent - but board-facts.md (this story, enrolling into the same DOSSIER_FILES gate) or any later dossier doc that adds a fenced code sample containing pipe-prefixed lines could smuggle a fake row past the row-scoped association checks. If this story (or any doc it touches) introduces code fences, extend rowWindows to strip fenced blocks first and mutation-prove it (a citation planted on a pipe line inside a fence must NOT satisfy any entry); if no fences are added, carry this note forward. Context: df1-3 archived session, Reviewer round-3 assessment, LOW-latent row.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
   - id: df1-5
     title: 'VISUAL boot check for the defender scaffold (the four files, registrations, topology pin and citation gate all landed with df1-1 by owner decision — see sprint/archive/df1-1-session.md): screenshot http://127.0.0.1:5270/defender/ and confirm the black canvas renders, compared against a nonsense control path, not just a 200 (the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs); while there, correct CLAUDE.md''s game roster line — add defender (Williams, 1980) and fix the ''first Williams title joust'' phrase (df1-1 review Gap finding).'
     points: 1
