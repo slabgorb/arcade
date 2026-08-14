@@ -41,18 +41,7 @@ import { decodeStamp } from '../src/shell/gfx-rom'
 import { DDT_STAMP, CLOUD_STAMP, ROCK_STAMP } from '../src/core/ddt'
 import { DDT as DDT_PICTURE, POISON, NORMAL } from '../src/core/conway'
 import { ROCK, FULL_MUSHROOM } from '../src/core/mushroom'
-
-/** Non-background (value != 0) pixel count of a decoded 8x8 tile. */
-function ink(tile: number): number {
-  return STAMPS[tile].flat().filter((v) => v !== 0).length
-}
-
-/** Deep pixel equality of two decoded tiles (readonly-safe). */
-function tilesEqual(a: number, b: number): boolean {
-  const A = STAMPS[a]
-  const B = STAMPS[b]
-  return A.length === B.length && A.every((row, r) => row.length === B[r].length && row.every((v, x) => v === B[r][x]))
-}
+import { ink, tilesEqual } from './helpers/tile-pixels'
 
 // The stamps this story verifies, paired with the graphics-bank tile the bank
 // flip routes them to. Kept as (name, char code, expected tile) so a drift in
@@ -90,20 +79,23 @@ describe('ml7-10 — source char codes match the ROM ground truth (MLDEF.MAC:202
   })
 
   it('the DDT bomb is 2 stamps and POISON is a 4-picture band (MLDEF spans)', () => {
-    // DDT=$6E is "first of 2"; POISON=$78 runs to NORMAL=$7C exclusive = $78-$7B.
-    expect(VERIFIED.filter((v) => v.name.startsWith('DDT'))).toHaveLength(2)
-    expect(NORMAL - POISON).toBe(4) // $7C - $78 → four poison stages $78-$7B
+    // Both facts pinned against PRODUCTION constants, not the test fixture.
+    // DDT=$6E is "first of 2" and ROCK=$70 follows, so the bomb occupies $6E,$6F.
+    expect(ROCK_STAMP - DDT_STAMP).toBe(2)
+    // POISON=$78 runs to NORMAL=$7C exclusive → four stages $78-$7B.
+    expect(NORMAL - POISON).toBe(4)
   })
 })
 
 describe('ml7-10 — charTile routes each field stamp into the exact graphics-bank tile', () => {
   it.each(VERIFIED)('$name: charTile($codeHex) → tile $tileHex', ({ code, tile }) => {
     // The whole point of ml7-6's bit-6 fix: a bit-6-SET field stamp lands BELOW
-    // $40 (the graphics bank), not at its own value (the char bank).
+    // $40 (the graphics bank), not at its own value (the char bank). Both
+    // assertions call the real charTile — proven able to redden by mutation
+    // (reverting charTile to the ml7-3 identity turns this describe block red).
     expect(code & 0x40, `0x${code.toString(16)} must be bit-6 set`).toBe(0x40)
     expect(charTile(code)).toBe(tile)
-    expect(tile).toBe(code ^ 0x40) // the bank-flip law, restated as an independent check
-    expect(tile).toBeLessThan(0x40) // graphics bank
+    expect(charTile(code), `0x${code.toString(16)} must map into the graphics bank`).toBeLessThan(0x40)
   })
 })
 
@@ -114,11 +106,13 @@ describe('ml7-10 — each mapped tile is a real non-blank graphic (the ml7-6 con
     expect(ink(tile), `tile 0x${tile.toString(16)} is blank — the graphic did not decode here`).toBeGreaterThan(0)
   })
 
-  it.each(VERIFIED)('$name: the bank flip is MATERIAL — dest pixels differ from the char-bank tile', ({ code, tile }) => {
-    // If charTile silently regressed to the ml7-3 identity, dest === source and
-    // this fails. A pure mutation guard: it can only pass when the flip changes
-    // the pixels the game draws.
-    expect(tilesEqual(tile, code), `tile 0x${tile.toString(16)} equals char-bank tile 0x${code.toString(16)} — bank flip is a no-op`).toBe(false)
+  it.each(VERIFIED)('$name: the bank flip is MATERIAL — charTile lands on different pixels than the char-bank tile', ({ code }) => {
+    // Route through the REAL charTile so this guards its behaviour, not a static
+    // fact about two fixed tiles. If charTile regressed to the ml7-3 identity,
+    // charTile(code) === code, dest === source, and this reddens (mutation-
+    // verified: the identity mutant turns this test red).
+    const dest = charTile(code)
+    expect(tilesEqual(dest, code), `charTile(0x${code.toString(16)})=0x${dest.toString(16)} draws the same pixels as char-bank tile 0x${code.toString(16)} — bank flip is a no-op`).toBe(false)
   })
 })
 
@@ -167,6 +161,11 @@ const HIGH_ROM = join(vendoredRoot, '136013-106.p5') // gfx1 @0x0800 → high pl
 const romsPresent = existsSync(LOW_ROM) && existsSync(HIGH_ROM)
 
 describe('ml7-10 AC4 — the mapped tiles byte-match a fresh decode of the picture EPROMs', () => {
+  // NOTE: byte-level enforcement here is LOCAL-to-a-vendored-checkout only. The
+  // EPROMs are gitignored, so on a fresh CI clone this test SKIPS (never reds) —
+  // do not read a green CI run as proof these tiles are ROM-faithful. The
+  // CI-live teeth are the committed-STAMPS assertions above (routing, non-blank,
+  // materiality, distinctness).
   it.skipIf(!romsPresent)('DDT/rock/poison tiles equal decodeStamp over concat(107.r5, 106.p5)', () => {
     const low = new Uint8Array(readFileSync(LOW_ROM))
     const high = new Uint8Array(readFileSync(HIGH_ROM))

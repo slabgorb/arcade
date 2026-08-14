@@ -22,11 +22,7 @@ import { STAMPS } from '../src/shell/stamp-data'
 import { FULL_MUSHROOM, ROCK } from '../src/core/mushroom'
 import { POISON, NORMAL } from '../src/core/conway'
 import { DDT_STAMP } from '../src/core/ddt'
-
-/** Non-background (value != 0) pixel count of a decoded 8x8 tile. */
-function ink(tile: number): number {
-  return STAMPS[tile].flat().filter((v) => v !== 0).length
-}
+import { ink } from './helpers/tile-pixels'
 
 describe('ml7-6 — charTile bit-6 bank select (the mushroom decode fix)', () => {
   it('the ALPHANUMERICS half (bit 6 clear) is unchanged from ml7-3', () => {
