@@ -41,7 +41,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 3,
     listed: true,
     showcase: true,
-    version: '1.0.24',
+    version: '1.0.25',
   },
   {
     id: 'battlezone',
