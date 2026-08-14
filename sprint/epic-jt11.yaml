@@ -159,3 +159,30 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt11-15
+    title: 'Standing still after a fast landing still launches with walking airspeed (pure core, flight.ts): land->stand->takeoff yanks the mount sideways'
+    description: 'Player-reported: hover, land, stand still, then flap to take off, and a large horizontal delta-v takes effect immediately and pulls the mount to the side. Root cause: since jt11-3/jt11-11 velXIndex IS the launch airspeed a takeoff inherits (takeOff flight.ts:410 deliberately never writes it; the UPDNO2 write in stepGround flight.ts:392 maintains it as signed next.flyVel each grounded frame, and frame.ts:280 steps every grounded frame with the current input). On neutral input (dir===0) stepGround follows current.onZero -- but the four RUN rows PLYCR/PLYDR/PLYER/PLYFR (flight.ts:121-124) have onZero pointing to THEMSELVES with flyVel 2/4/6/8, so landing at speed (land() seeds velXIndex from the FRCONV landed rung, flight.ts:449-467, nonzero for a fast touchdown) and then releasing the stick never decays to PLYBR (flyVel 0). takeOff() then relaunches with the retained walking airspeed. RESEARCH FIRST, then fix per the citation: read the ROM PLYRLP centered-stick path (JOUSTRV4.SRC:5948-6024) and the FLYVEL table (7163-7175) -- does a centered stick on a run state decay toward PLANT/PLYBR, or is FLYVEL only the fictitious velX for bumping (the UPDNO2 comment flight.ts:385-391) that a takeoff should NOT inherit as real airspeed? The fix is one of: (a) the onZero rows for the run states decay toward standing, or (b) takeOff derives launch velX from actual ground motion rather than the bump value. Watch the seeded-replay fixtures -- this changes player launch trajectories, the same warning jt11-3 carried. flight.ts only; disjoint from the main.ts start-flow pair jt11-16/jt11-17.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt11-16
+    title: 'Boot drops into the attract self-play demo and never shows the MARQUE/logo title screen -- wire the present-but-unreachable title cabinet mode'
+    description: 'Player-reported: the cabinet launches into attract (demo self-play) instead of showing the Joust logo/title first. Classic jt11 present-but-unwired shape -- the title machinery is complete across all three tiers and reachable only from tests. Core data src/core/title.ts (JOUST_LOGO wordmark :60-141, TITLE_COPYRIGHT/TITLE_EXTRA_MOUNT/TITLE_POINTS_SUFFIX :24-28, TITLE_PALETTE + titleColorRow colour cycle :150-174); shell layout layoutTitleScreen (titleScreen.ts:39-46); render renderTitleScreen + strokeLogo (main.ts:287-303,311-318), already dispatched by the render switch (main.ts:609-612); and title is already in the CabinetMode union (cabinet.ts:48). The only missing link is a transition that sets mode===title: boot hardwires mode:attract (main.ts:382), whose PAGE_ORDER is [demo, pteroBanner, lavaBanner] (attract-scheduler.ts:77) with boot page = demo (attract-scheduler.ts:98-100), and the attract loop pumps self-play on the demo page (main.ts:546-562). toTitle (cabinet.ts:84-86) has zero production callers, self-admitted at main.ts:277-280. Verify the ROM attract sequence (AMODE / MARQUE ordering) first, then fix by either: (1) booting into title with a dwell handoff to attract and a start-press door to select (main.ts:382 plus a title branch near main.ts:564-575), or (2) adding title as an attract PAGE_ORDER page (attract-scheduler.ts:29,77,93-95 plus a renderTitleScreen call in renderAttract main.ts:349-360). No new render code -- transition/scheduler wiring only; retire the deferral comment at main.ts:277-280. SEQUENCING: edits the main.ts start-input door shared with jt11-17 -- sequence, do not run in parallel checkouts.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt11-17
+    title: 'Attract CTA PRESS 1 OR 2 TO START routes to a select screen that re-asks the player count -- carry the pressed count straight into startPlaying'
+    description: 'Player-reported: the attract invites 1 for one player but pressing 1 leads to ANOTHER screen to choose the number of players again. The attract CTA reads PRESS 1 OR 2 TO START (attractScreen.ts:44, painted main.ts:358-359), but the attract start branch (main.ts:554-556) computes want=readSelectInput(held) and then uses ONLY its non-null-ness (startHeld), calling toSelect(cabinet) (cabinet.ts:90-92) and discarding the 1-vs-2 choice. So the select screen re-asks with SEL_ONE_PLAYER / SEL_TWO_PLAYER (select.ts:36,39; laid out selectScreen.ts:35-36; painted main.ts:225-226) and a game only starts on a SECOND digit press (main.ts:564-574 -> selectPlayerCount -> enterPlaying). Nothing is missing: selectPlayerCount (select.ts:51-55) already maps one-player/two-player to 1/2, and enterPlaying / startPlaying(count) (main.ts:432-438, cabinet.ts:99-101) already start a specific count. Fix: in the attract branch (main.ts:554-556) thread the pressed count -- const count = selectPlayerCount(want); if (count !== null) enterPlaying(count) -- starting directly and skipping the re-ask; both symbols are already imported. Keep the rising-edge discipline (prevStartHeld main.ts:419-422). NOTE: jt11-1 cited start-input at main.ts:422-426,500-503; those lines have drifted -- live logic is readSelectInput main.ts:465-470, attract press main.ts:552-556, select door main.ts:564-574. If a coin-up select step is still wanted that is a separate design decision, but the advertised CTA is a direct start. SEQUENCING: edits the main.ts start-input door shared with jt11-16 -- sequence, do not run in parallel checkouts.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
