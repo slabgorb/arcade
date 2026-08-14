@@ -19,7 +19,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 1,
     listed: true,
     showcase: true,
-    version: '1.1.6',
+    version: '1.1.7',
   },
   {
     id: 'star-wars',
@@ -30,7 +30,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 2,
     listed: true,
     showcase: false,
-    version: '0.0.45',
+    version: '1.0.0',
   },
   {
     id: 'asteroids',
@@ -41,7 +41,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 3,
     listed: true,
     showcase: true,
-    version: '1.0.23',
+    version: '1.0.24',
   },
   {
     id: 'battlezone',
@@ -52,7 +52,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 4,
     listed: true,
     showcase: true,
-    version: '1.0.12',
+    version: '1.0.13',
   },
   {
     id: 'centipede',
@@ -63,7 +63,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 5,
     listed: true,
     showcase: true,
-    version: '1.0.5',
+    version: '1.0.6',
   },
   {
     id: 'joust',
@@ -74,7 +74,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 6,
     listed: true,
     showcase: true,
-    version: '0.0.18',
+    version: '1.0.0',
   },
   {
     id: 'red-baron',
@@ -85,7 +85,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 7,
     listed: false,
     showcase: false,
-    version: '0.0.32',
+    version: '0.0.33',
   },
   {
     id: 'missile-command',
@@ -96,7 +96,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 8,
     listed: true,
     showcase: true,
-    version: '1.0.2',
+    version: '1.0.3',
   },
   {
     id: 'pac-man',
@@ -107,7 +107,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 9,
     listed: true,
     showcase: true,
-    version: '1.0.2',
+    version: '1.0.3',
   },
   {
     id: 'millipede',
@@ -118,7 +118,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 10,
     listed: true,
     showcase: true,
-    version: '0.0.2',
+    version: '0.0.3',
   },
   {
     id: 'defender',
