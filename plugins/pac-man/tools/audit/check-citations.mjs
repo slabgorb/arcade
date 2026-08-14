@@ -317,3 +317,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   console.log('all claims verified')
 }
+
+/**
+ * True when `source` is one of the citation shapes this checker accepts (text,
+ * binary/nibbles for the WSG PROM, or byte for the gfx ROMs). Exported so
+ * loadClaims can gate its load boundary with the SAME predicate checkClaims uses,
+ * keeping the two from drifting (df1-6).
+ */
+export function isValidClaimSource(source) {
+  return isCitation(source) || isBinaryCitation(source) || isByteCitation(source)
+}

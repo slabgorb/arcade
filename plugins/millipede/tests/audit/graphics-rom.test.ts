@@ -91,7 +91,7 @@ const allRomsPresent = EPROMS.every(romPresent)
 // trap: a RED must prove the FEATURE is absent, not that the test is broken).
 async function loadChecker(): Promise<CheckClaims> {
   try {
-    const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims?: CheckClaims }
+    const mod = (await import('../../tools/audit/check-citations.mjs')) as unknown as { checkClaims?: CheckClaims }
     if (typeof mod.checkClaims !== 'function') throw new Error('module has no `checkClaims` export')
     return mod.checkClaims
   } catch (e) {

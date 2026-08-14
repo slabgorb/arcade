@@ -18,7 +18,7 @@ export type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: strin
 
 /** Load the citation checker, typed. Both dossier suites byte-verify through this. */
 export async function loadChecker(): Promise<CheckClaims> {
-  const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
+  const mod = (await import('../../tools/audit/check-citations.mjs')) as unknown as { checkClaims: CheckClaims }
   return mod.checkClaims
 }
 
