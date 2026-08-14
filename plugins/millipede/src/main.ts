@@ -113,9 +113,9 @@ function render(state: GameState): void {
 
   // Player ship: the ROM's ship picture is $1F (MLSUB.MAC:518 "PICTURE OF SHIP",
   // the same picture DLIVES draws for the lives icon — core/hud.ts SHIP_STAMP).
-  // In the sheet that ship char maps to tile charTile($1F)=$5F, the archer
-  // (render.ts:71,81); drawStampAtPx stands it upright with the shared CCW turn,
-  // so the gun renders as its real decoded sprite instead of a placeholder fill.
+  // render.ts `charTile` maps that ship char to sheet tile $5F (the archer), and
+  // `rotatedStampImage` stands it upright with the shared 90° CCW turn, so the
+  // gun renders as its real decoded sprite instead of a placeholder fill.
   if (state.player.alive) {
     const [pxx, pyy] = px(state.player.h, state.player.v)
     drawStampAtPx(c, charTile(SHIP_STAMP), pxx, pyy)

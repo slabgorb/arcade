@@ -1,13 +1,13 @@
 // tests/player-sprite.test.ts
 //
-// Story ml7-6 — RED phase (Leeloo / TEA). THE PLAYER SHIP is this story's core
-// deliverable. main.ts:114-118 still paints the gun as a placeholder blue 4x4
-// fillRect ("exact sprite decode is a follow-up"), while every other MOBJ — the
-// millipede segments and the whole enemy cast — already routes through the
-// decoded-sprite path (drawSprite -> drawStampAtPx, main.ts:94-111). GREEN
-// replaces the placeholder with the real ship sprite decoded from the gfx ROM
+// Story ml7-6. THE PLAYER SHIP is this story's core deliverable. At the RED
+// baseline this suite was written against, main.ts painted the gun as a
+// placeholder blue 4x4 fillRect ("exact sprite decode is a follow-up"), while
+// every other MOBJ — the millipede segments and the whole enemy cast — already
+// routed through the decoded-sprite path (drawSprite -> drawStampAtPx). GREEN
+// replaced the placeholder with the real ship sprite decoded from the gfx ROM
 // (shell/gfx-rom.ts -> shell/stamp-data.ts STAMPS), blitted through the SAME
-// ml7-3 CCW-rotated sprite path.
+// ml7-3 CCW-rotated sprite path — which is what these tests now assert holds.
 //
 // WHY BEHAVIOURAL, NOT A SOURCE GREP (lang-review #15/#25): a grep for
 // "drawSprite" over main.ts passes on a comment and cannot tell a real blit from
@@ -24,8 +24,8 @@
 //   src/main.ts — the player branch draws the gun as a decoded STAMPS sprite
 //     (via drawSprite/drawStampAtPx) at its screen cell, NOT a solid fill. The
 //     exact ship pic is Dev's ROM derivation, CONFIRMED at the playtest: the HUD
-//     lives-ship is char $1F -> sheet tile $5F (core/hud.ts SHIP_STAMP;
-//     render.ts:71), a real 31-pixel ship already in STAMPS — a documented
+//     lives-ship is char $1F -> sheet tile $5F (core/hud.ts SHIP_STAMP; the
+//     render.ts `charTile` map), a real 31-pixel ship already in STAMPS — a documented
 //     starting point, not a mandate. The on-field gun is a MOBJ picture
 //     (MLxxx.MAC MOBJ tables + the picture ROM 136013-106/107); derive it and
 //     look at /millipede/.
