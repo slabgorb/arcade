@@ -682,3 +682,127 @@ describe('ml3-4 AC-5 — the seeded-field golden generation', () => {
     expect(nonZero).toBe(21)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ml8-1 — MUTATION-BATTERY GUARDS. A 44-mutant battery over conway.ts (the
+// growth/death generation logic) plus a golden/fixture battery found nine
+// surviving mutants the ml3-4 suite could not kill. Eight were real coverage
+// gaps; each test below reddens under exactly the mutation named and passes on
+// faithful code. (The ninth, dropping startgr's own `row >= PLYFLD_STRIDE - 2`
+// gate, is an EQUIVALENT mutant — MASTER only ever calls startgr for rows 1..$1D,
+// so that disjunct is unreachable; it is a faithful port of MUSHE1's own gate,
+// CW-26/27, kept for fidelity and left unguarded because no input can reach it.)
+// See .session/ml8-1-session.md for the full battery and dispositions.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('ml8-1 — mutation-battery guards for ml3-4 conway.ts', () => {
+  it('masterStep on an IDLE state returns a fresh object, never the input (M01 — pure-reducer discipline on the idle path)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // The ACTIVE path is proven pure by AC-2; the idle short-circuit was not.
+    // Returning the caller's own object lets `next.phase = X` corrupt the input.
+    const idle: ConwayState = { phase: 9, active: false, addr: 5, ngrown: 2 }
+    const out = m.masterStep(f, idle)
+    expect(out).toEqual(idle) // same values...
+    expect(out).not.toBe(idle) // ...but a distinct object
+  })
+
+  it('rows 0, 0x1E and 0x1F freeze even GROWTH/DEATH stages — the MASTER gate blocks growdie/cleanup, not just startgr (M02/M03)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // AC-2's row-gate test seeds NORMALs and score digits at these rows — values
+    // growdie/cleanup skip regardless — so it cannot see MASTER's `row >= 1` /
+    // `row < 0x1E` bounds loosen by one. Stage values (which growdie/cleanup DO
+    // act on) are the only witnesses: they must stay frozen, never advance.
+    f[idx(9, 0)] = 0x76 // growth stage on row 0
+    f[idx(10, 0)] = 0x73 // death stage on row 0
+    f[idx(9, 0x1e)] = 0x76 // growth stage on row 0x1E
+    f[idx(11, 0x1e)] = 0x72 // death stage on row 0x1E
+    f[idx(10, 0x1f)] = 0x72 // death stage on row 0x1F
+    const { state } = runToIdle(m, f, m.initConway())
+    expect(state.active).toBe(false)
+    expect(f[idx(9, 0)]).toBe(0x76)
+    expect(f[idx(10, 0)]).toBe(0x73)
+    expect(f[idx(9, 0x1e)]).toBe(0x76)
+    expect(f[idx(11, 0x1e)]).toBe(0x72)
+    expect(f[idx(10, 0x1f)]).toBe(0x72)
+  })
+
+  it('a normal touching ONLY DDT stamp-2 (0x6F) is still poisoned to POISON+3 (M09 — stamp-1 out of its inner ring)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // Every AC-3 DDT case sits the victim beside BOTH stamps, so detecting only
+    // stamp-1 (0x6E) suffices. Here the victim is past stamp-2: its 3x3 inner
+    // ring holds 0x6F alone (0x6E is two columns away — the fairy ring, which
+    // ignores DDT). Faithful code detects `v === DDT + 1` and poisons it.
+    f[idx(3, 14)] = 0x6e // stamp 1
+    f[idx(4, 14)] = 0x6f // stamp 2
+    f[idx(5, 14)] = 0x7f // victim — inner ring cols 4..6 sees 0x6F only
+    runPhase0(m, f)
+    expect(f[idx(5, 14)]).toBe(0x7b) // POISON+3
+  })
+
+  it('a fully-dying mushroom (0x71 = DEATHS) still counts as a neighbour and completes a 3-count birth (M14)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // CW-38 counts existing mushrooms in every stage — death stages 0x71..0x74
+    // included. No AC-3 fixture puts a 0x71 (the last death stage) in a counted
+    // ring, so the lower bound `v >= DEATHS` was never pinned at DEATHS itself.
+    f[idx(10, 10)] = 0x71 // death stage as a neighbour
+    f[idx(10, 11)] = 0x7f
+    f[idx(11, 10)] = 0x7f
+    runPhase0(m, f)
+    expect(f[idx(11, 11)]).toBe(0x75) // 0x71 + 0x7F + 0x7F = 3 -> birth
+  })
+
+  it('blanks births on EXACTLY 3 — four and eight neighbours are overcrowded and stay blank (M18/M19)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // AC-3's plus-cross has the centre OCCUPIED (a mushroom dying on 4); it never
+    // sees a BLANK overcrowded. `t === 3` is the whole birth rule below the fairy
+    // force (0x10). A four-neighbour blank kills `t === 3 -> t >= 3` (M18); an
+    // eight-neighbour blank additionally kills the force threshold `>= 0x10 ->
+    // >= 0x08` (M19), since a raw count of 8 lands in [0x08,0x0F).
+    // Hollow plus — centre (10,10) sees four orthogonal mushrooms:
+    f[idx(9, 10)] = 0x7f
+    f[idx(11, 10)] = 0x7f
+    f[idx(10, 9)] = 0x7f
+    f[idx(10, 11)] = 0x7f
+    // Hollow 3x3 — centre (15,15) sees all eight Moore neighbours:
+    for (const [c, r] of [
+      [14, 14], [14, 15], [14, 16], [15, 14], [15, 16], [16, 14], [16, 15], [16, 16],
+    ] as const) {
+      f[idx(c, r)] = 0x7f
+    }
+    runPhase0(m, f)
+    expect(f[idx(10, 10)]).toBe(0) // 4 neighbours -> no birth
+    expect(f[idx(15, 15)]).toBe(0) // 8 neighbours -> no birth
+  })
+
+  it('CLEANUP freezes poison at the band BOUNDARY 0x78, not only mid-band 0x79 (M40)', async () => {
+    const m = await loadConway()
+    const f = emptyField()
+    // Reach phase MAXPH the ROM way — the player prolongs the process by
+    // re-damaging the field each sweep (mirrors the AC-4 CLEANUP test).
+    f[idx(10, 10)] = 0x7f
+    f[idx(10, 11)] = 0x7f
+    f[idx(11, 10)] = 0x7f
+    let st = runPhase0(m, f)
+    let guard = 0
+    while (st.active && st.phase < m.MAXPH) {
+      st = runSweep(m, f, st)
+      if (st.active && st.phase >= 1 && st.phase < m.MAXPH) f[idx(20, 20)] = 0x74
+      if (++guard > 20) throw new Error('never reached CLEANUP')
+    }
+    expect(st.phase).toBe(m.MAXPH)
+    // The AC-4 test freezes 0x79 (mid-band); the gate's lower bound is `>= POISON`
+    // == 0x78, so only a 0x78 witnesses `>= POISON -> > POISON`.
+    f[idx(21, 20)] = 0x78 // poison band lower boundary
+    f[idx(22, 20)] = 0x79 // mid-band control (already covered by AC-4)
+    f[idx(23, 20)] = 0x76 // a growth stage CLEANUP MUST convert (proves it ran)
+    const { state } = runToIdle(m, f, st)
+    expect(f[idx(21, 20)]).toBe(0x78) // frozen — mutant converts 0x78 -> 0x7F
+    expect(f[idx(22, 20)]).toBe(0x79) // frozen
+    expect(f[idx(23, 20)]).toBe(0x7d) // 0x76 + (NORMAL-GROWTH) -> converted
+    expect(state.active).toBe(false)
+  })
+})
