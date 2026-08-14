@@ -250,3 +250,8 @@ completed_stories:
     title: 'Secondary source MAME williams.cpp/williams_m.cpp board facts as claims: 12 MHz master /3/4 = 1.0 MHz 6809E, exact refresh 60.09615 Hz derivation (set_raw williams.cpp:1556), visible area 292x240 (williams.cpp:1601), banked-ROM model (bank_select_w williams.cpp:505), VA11-to-CB1 + COUNT240-to-CA1 IRQ generation (williams_m.cpp:27-28,36-37 — resolve OQ-1/OQ-2), WDOG $C3FC decode (OQ-4), decoder-PROM 1-vs-2 cocktail variant note (williams.cpp:29-31). MAME cited in prose only, never copied (GPL).'
     points: 3
     completed: '2026-08-14'
+  - id: ml7-5
+    epic: ml7
+    title: 'Fixed-timestep at the millipede LOGIC frame rate — the ml6-2 frame loop steps stepGame every requestAnimationFrame (~60Hz), so the whole game (march, fliers, explosions) animates far too fast (AC3 playtest finding). Accumulate real time and step at the ROM logic rate; see the millipede cadence memory (calc-frame ~10.4Hz, NOT 62.5Hz). Playtest to confirm the feel.'
+    points: 3
+    completed: '2026-08-14'
