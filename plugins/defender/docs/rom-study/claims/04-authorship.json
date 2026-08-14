@@ -1,0 +1,29 @@
+[
+  {
+    "id": "AU-1",
+    "claim": "The build notes are signed DR J. 1/21/81 — Eugene Jarvis, dating the assembly notes.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 11,
+      "verbatim": "DR J. 1/21/81"
+    }
+  },
+  {
+    "id": "AU-2",
+    "claim": "The default high-score table opens with the initials FCC 'DRJ' — Jarvis, first credit, top score.",
+    "source": {
+      "file": "ROMC8.SRC",
+      "line": 783,
+      "verbatim": "\tFCC\t'DRJ'"
+    }
+  },
+  {
+    "id": "AU-3",
+    "claim": "The table closes with FCC 'TMH' — the credits run DRJ through TMH in score order.",
+    "source": {
+      "file": "ROMC8.SRC",
+      "line": 797,
+      "verbatim": "\tFCC\t'TMH'"
+    }
+  }
+]

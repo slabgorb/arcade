@@ -1,0 +1,61 @@
+[
+  {
+    "id": "TB-1",
+    "claim": "The scheduler's sleep unit is 16 msec: *A=SLEEP TIME X 16MSEC — the author's nominal 60 Hz tick.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 9,
+      "verbatim": "*A=SLEEP TIME X 16MSEC"
+    }
+  },
+  {
+    "id": "TB-2",
+    "claim": "NAPP 60 is commented SLEEP 1 SECOND — sixty 16-msec ticks to the author's second, the nominal-60 model in the author's own words.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 311,
+      "verbatim": "\tNAPP\t60,HOFST SLEEP 1 SECOND"
+    }
+  },
+  {
+    "id": "TB-3",
+    "claim": "The IRQ dispatches on the beam position: LDA VERTCT, commented PAST 128, compared with 128 — the sub-128 arm is the once-per-frame arm.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1937,
+      "verbatim": "\tLDA\tVERTCT\tPAST 128"
+    },
+    "corroboration": {
+      "file": "src/mame/midway/williams.cpp",
+      "line": 1556,
+      "note": "set_raw: exact refresh 8 MHz / (512 x 260) = 60.09615 Hz — the exact number, recorded separately from the nominal 60"
+    }
+  },
+  {
+    "id": "TB-4",
+    "claim": "The sub-128 IRQ arm increments the frame counter: INC TIMER — once per frame.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1963,
+      "verbatim": "\tINC\tTIMER"
+    }
+  },
+  {
+    "id": "TB-5",
+    "claim": "The executive spins on the frame counter: EXEC0 LDA TIMER (then BEQ EXEC0 / CLR TIMER) — the mainloop gate.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3048,
+      "verbatim": "EXEC0\tLDA\tTIMER"
+    }
+  },
+  {
+    "id": "TB-6",
+    "claim": "When the executive falls behind it degrades rather than slows: *OVERLOAD WIPE OUT A GUY — the overload path culls objects.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3070,
+      "verbatim": "*OVERLOAD WIPE OUT A GUY"
+    }
+  }
+]

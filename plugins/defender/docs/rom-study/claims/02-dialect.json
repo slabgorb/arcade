@@ -1,0 +1,38 @@
+[
+  {
+    "id": "DL-1",
+    "claim": "A bare literal is decimal: YMAX EQU 240 — no trailing-period radix convention in RASM.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 20,
+      "verbatim": "YMAX\tEQU\t240"
+    }
+  },
+  {
+    "id": "DL-2",
+    "claim": "The !> operator takes the high byte / shifts: SETDP RAM!>8 sets the direct page from the RAM base.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 6,
+      "verbatim": "\tSETDP\tRAM!>8"
+    }
+  },
+  {
+    "id": "DL-3",
+    "claim": "The !. operator masks bits: LDB #LCOINV!.$FF masks the equate to a byte.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 629,
+      "verbatim": "\tLDB\t#LCOINV!.$FF"
+    }
+  },
+  {
+    "id": "DL-4",
+    "claim": "Macros take backslash-numbered params: NAPP MACRO \\0,\\1.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 33,
+      "verbatim": "NAPP\tMACRO\t\\0,\\1"
+    }
+  }
+]

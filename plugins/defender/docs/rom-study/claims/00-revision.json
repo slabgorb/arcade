@@ -1,0 +1,70 @@
+[
+  {
+    "id": "RV-1",
+    "claim": "The INFO.SRC release ledger defines WHITE as the first release WITHOUT checksums.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 15,
+      "verbatim": "ROM1 THRU ROM12 ARE THE WHITE SOFTWARE (1ST RELEASE WITHOUT CHECKSUMS)"
+    }
+  },
+  {
+    "id": "RV-2",
+    "claim": "The ledger defines the RED software as the cocktail release (ROM1C, ROM4E, and all other ROMXC), also released for upright ROM.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 19,
+      "verbatim": "ROM1C, ROM4E, AND ALL OTHER ROMXC ARE THE RED SOFTWARE (COCKTAIL SOFTWARE-"
+    }
+  },
+  {
+    "id": "RV-3",
+    "claim": "The screen-flip data pair: WDATA $38 is the normal screen and $39 the flipped screen.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 15,
+      "verbatim": "WDATA\tEQU\t$38\tNORMAL SCREEN;($39=FLIPPED)"
+    }
+  },
+  {
+    "id": "RV-4",
+    "claim": "The player-2 switch tests the cocktail PIA bit (LDA PIA3, comment COCKTAIL?).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1190,
+      "verbatim": "\tLDA\tPIA3\tCOCKTAIL?"
+    }
+  },
+  {
+    "id": "RV-5",
+    "claim": "On cocktail, the code swaps in the upside-down IRQ handler (LDX #IRQB, SWITCH UPSIDE DOWN GUYS).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1192,
+      "verbatim": "\tLDX\t#IRQB\tSWITCH UPSIDE DOWN GUYS"
+    }
+  },
+  {
+    "id": "RV-6",
+    "claim": "The flipped handler is headed INVERTED IRQ FOR SCREEN FLIP.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2006,
+      "verbatim": "*INVERTED IRQ FOR SCREEN FLIP"
+    }
+  },
+  {
+    "id": "RV-7",
+    "claim": "The resident block bakes in a checkbyte: FCB $4A, commented CKBYT CHECKSUM(ACTUAL) — checksums present, ruling out WHITE.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 5,
+      "verbatim": "\tFCB\t$4A\tCKBYT CHECKSUM(ACTUAL)"
+    },
+    "corroboration": {
+      "file": "src/mame/midway/williams.cpp",
+      "line": 1985,
+      "note": "ROM_START(defender) — CRC-for-CRC match of the owner ROM zip against the parent set; \"Red label\" per williams.cpp:3968"
+    }
+  }
+]

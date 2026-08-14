@@ -37,12 +37,12 @@ export const romStudyDir = join(pluginRoot, 'docs', 'rom-study')
 export const claimsDir = join(romStudyDir, 'claims')
 
 /**
- * Every dossier file the coverage sweep scans. df1-2 enrols brief.md (the first
+ * Every dossier file the coverage sweep scans. df1-2 enrolled brief.md (the first
  * dossier file); df1-3 adds glossary.md/subsystems.md/open-questions.md, df1-4
  * board-facts.md. Each enrolled file's every backticked prose citation must be
  * pinned by a claim in claims/, or the real-dossier gate reddens.
  */
-export const DOSSIER_FILES: readonly string[] = []
+export const DOSSIER_FILES: readonly string[] = ['brief.md']
 
 /** A primary-source line citation extracted from the dossier prose. */
 export interface ProseCitation {
