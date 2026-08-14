@@ -9,7 +9,7 @@
 // this file automatically.
 
 import { createRng, nextInt, type Rng } from '@shared/rng'
-import { PLYFLD_SIZE } from './conway'
+import { PLYFLD_SIZE, type ConwayState } from './conway'
 import { musher, type MushCounts } from './mushroom'
 import { createMillipede, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
@@ -36,6 +36,8 @@ export interface GameState {
   rng: Rng
   /** The PLYFLD mushroom field (stamp bytes; bit 7 is the grey-background bit). */
   field: Uint8Array
+  /** CONWAY growth/death process state — armed between waves, idle otherwise. */
+  conway: ConwayState
   player: PlayerState
   shot: Shot
   segments: Segment[]
@@ -98,6 +100,8 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     frame: 0,
     rng,
     field,
+    // CONWAY idle at boot (CDONE clear); armed by stepGame at each wave clear.
+    conway: { phase: 0, active: false, addr: 0, ngrown: 0 },
     player: createPlayer(),
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),

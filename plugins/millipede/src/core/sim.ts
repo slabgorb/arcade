@@ -31,6 +31,7 @@ import { stepRoster, shootRoster } from './enemies/roster'
 import { resolveShot } from './shot'
 import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
 import { obstacOffset, obstacleAt } from './mushroom'
+import { initConway, masterStep } from './conway'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -189,8 +190,17 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //    false here. When DELAY reaches 0 a fresh train marches in.
   let wave = state.wave
   let delay = state.delay
+  let conway = state.conway
   const millipedeCleared = !segments.some(isLive)
-  if (millipedeCleared && delay === 0) delay = WAVE_DELAY // arm (edge: DELAY was idle)
+  if (millipedeCleared && delay === 0) {
+    delay = WAVE_DELAY // arm the inter-wave pause (edge: DELAY was idle)
+    conway = initConway() // start between-wave mushroom growth/death (INICON)
+  }
+  // MASTER runs every frame while CONWAY is active (MILLI.MAC:47-49), a
+  // background process that grows/kills mushrooms in place; a no-op while idle.
+  // (The ROM's CENTIN==9 gating of *which* wave-clears start it is a documented
+  // deviation — here every clear seeds it; harmless as a background process.)
+  conway = masterStep(state.field, conway)
   const beetlesPresent = roster.beetles.some((b) => b.color !== 0)
   const chkend = stepWaveDelay(delay, {
     mushroomsRestoring: false, // TODO(item 4): conway growth still running
@@ -255,6 +265,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     lives,
     wave,
     delay,
+    conway,
     bonusL,
     bonusM,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,

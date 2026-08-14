@@ -287,3 +287,29 @@ describe('ml6-2 stepGame — game-over holds then times out to attract', () => {
     expect(after.lives).toBe(3)
   })
 })
+
+describe('ml6-2 stepGame — between-wave CONWAY mushroom growth', () => {
+  const play = (over?: Partial<GameState>): GameState => ({
+    ...createGame(0x1982, { phase: 'play' }),
+    ...over,
+  })
+
+  it('CONWAY is idle during boot/normal play', () => {
+    expect(createGame(0x1982).conway.active).toBe(false)
+  })
+
+  it('clearing the millipede starts CONWAY (INICON, MILLI.MAC:1913-1914)', () => {
+    const g = play({ segments: [], delay: 0 })
+    const after = stepGame(g, idle)
+    expect(after.conway.active).toBe(true)
+  })
+
+  it('CONWAY is driven each frame (MASTER, MILLI.MAC:47-49) and terminates on its own', () => {
+    // An empty field has nothing to grow, so the process ends quickly (CW-24/25).
+    let g = play({ segments: [], delay: 0, field: new Uint8Array(0x3c0) })
+    g = stepGame(g, idle)
+    expect(g.conway.active).toBe(true)
+    for (let i = 0; i < 200 && g.phase === 'play' && g.conway.active; i++) g = stepGame(g, idle)
+    expect(g.conway.active).toBe(false) // TIMER RAN OUT, END CONWAY (CW-25)
+  })
+})
