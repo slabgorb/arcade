@@ -240,3 +240,8 @@ completed_stories:
     title: 'Wire sfx to core events + gate audio on first user gesture (autoplay policy): map millipede/critter/DDT/bonus-life (CHAN11 bonus-life sound MLDEF.MAC:323) events to the driver; verify audio actually plays in a real browser (silent-feature trap), not just a green vitest.'
     points: 5
     completed: '2026-08-13'
+  - id: df1-3
+    epic: df1
+    title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (PHRED/MAPC/MLJSR/NAPP/CKBYT, EUGENE + SAM vector blocks MESS0.SRC:165,175); subsystem -> owning file + routine + line (DEFA7 scheduler/IRQ/collision/sound-sequencer, DEFB6 enemy processes + vectors, AMODE1 attract/hall-of-fame/scanner, MESS0 text writers, BLK71 terrain/waves, SAMEXAP7 materialize/explode, ROMF8 reset/CMOS/pricing, ROMC0+ROMC8 diagnostics); OQ-1..OQ-5 from the design spec (CB1-vs-CB2, COUNT240 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording).'
+    points: 3
+    completed: '2026-08-14'
