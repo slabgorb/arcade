@@ -5,6 +5,16 @@
 // a single shot-resolve, instead of open-coding seven call sites. Pure; the
 // per-creature modules do the work, this just threads them in a fixed order (so
 // the shared view.rng stays deterministic).
+//
+// DOCUMENTED DEVIATION — the shared MOBJ slot 12 (ml7-8). In the ROM the four
+// fliers — bee, dragonfly, mosquito and earwig — are ONE motion object at BEEC+12
+// (BEE_SLOT / DRAGONFLY_SLOT / MOSQUITO_SLOT / EARWIG_SLOT are all 12), so at most
+// ONE flier is alive at any instant. This port gives each its own one-element
+// slot array below, so up to four could co-exist — the accepted deviation. It is
+// harmless: each flier's spawn is separately gated (frame cadence, score, screen
+// state) and they rarely overlap; nothing reads "slot 12" as a shared resource.
+// Pinned by tests/flier-slot-sharing.test.ts (all four name slot 12; each is one
+// MOBJ), which reddens if a flier is ever renumbered off 12.
 
 import type { EnemyView } from './contract'
 import { initSpiders, stepSpiders, shootSpiders } from './spider'

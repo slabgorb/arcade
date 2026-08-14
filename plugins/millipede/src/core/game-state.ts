@@ -58,6 +58,10 @@ export interface GameState {
   delay: number
   /** Frames remaining in the death-animation hold (0 outside it). */
   deathTimer: number
+  /** SLOW (MLDEF.MAC) — the critter-freeze countdown set to 0xE0 on an inchworm
+   *  kill (IW-34/37), decremented each frame; non-zero freezes critter animation
+   *  (mosquito/dragonfly flap every tick). 0 = not slowed. */
+  slow: number
   /** Rebuilt every frame, never appended across frames; attract clears it. */
   events: readonly GameEvent[]
 }
@@ -115,6 +119,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     bonusM: bonus.bonusM,
     delay: 0,
     deathTimer: 0,
+    slow: 0,
     events: [],
   }
 }

@@ -28,6 +28,11 @@ function view(over: Partial<EnemyView> = {}): EnemyView {
     player: { h: 0x40, v: 0x40, alive: true },
     centin: 0,
     hard: false,
+    score1: 0,
+    dead: 0,
+    slow: 0,
+    mushTop: 0,
+    beetles: 0,
     rng: createRng(1),
     field: new Uint8Array(PLYFLD_SIZE),
     ...over,
@@ -51,9 +56,9 @@ describe('inchworm (enemy seam) — stepInchworms spawn', () => {
   it('spawns into the vacant slot on the WRMMV tick (frame 0x13, small live centipede)', () => {
     const slots = initInchworms()
     // view.frame 0x13 → low 0x13, high 0 (tick fires, IW-5/6); centin 1 is < 11
-    // (IW-7) and non-zero so the DEAD-alive proxy passes (IW-8); playerAlive lets
-    // the WRMMV player gate through.
-    const r = stepInchworms(slots, view({ frame: 0x13, centin: 1 }))
+    // (IW-7) and the real DEAD byte is non-zero so the IW-8 gate passes (ml7-8);
+    // playerAlive lets the WRMMV player gate through.
+    const r = stepInchworms(slots, view({ frame: 0x13, centin: 1, dead: 1 }))
     expect(r.slots[0].color, 'the slot was turned on (INCHWORM_COLOR 0xb9, IW-23)').toBe(0xb9)
     expect(r.slots[0].pic, 'spawn picture 0x10 (IW-22)').toBe(0x10)
     expect(r.slots[0].h, 'starts at the edge H=0 (IW-24)').toBe(0)
@@ -62,7 +67,7 @@ describe('inchworm (enemy seam) — stepInchworms spawn', () => {
 
   it('does not spawn when the tick misses (frame not 0x13)', () => {
     const slots = initInchworms()
-    const r = stepInchworms(slots, view({ frame: 0x12, centin: 1 }))
+    const r = stepInchworms(slots, view({ frame: 0x12, centin: 1, dead: 1 }))
     expect(r.slots[0].color, 'off-tick: the slot stays vacant (IW-5)').toBe(0)
   })
 
@@ -70,7 +75,7 @@ describe('inchworm (enemy seam) — stepInchworms spawn', () => {
     const slots = initInchworms()
     const r = stepInchworms(
       slots,
-      view({ frame: 0x13, centin: 1, player: { h: 0x40, v: 0x40, alive: false } }),
+      view({ frame: 0x13, centin: 1, dead: 1, player: { h: 0x40, v: 0x40, alive: false } }),
     )
     expect(r.slots[0].color, 'the WRMMV player gate blocked the spawn').toBe(0)
   })

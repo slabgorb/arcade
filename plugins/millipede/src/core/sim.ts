@@ -24,14 +24,15 @@ import {
 } from './millipede'
 import { WAVE_DELAY, stepWaveDelay } from './waves'
 import { advancePhase, type PhaseSignals } from './phase'
-import { event, type GameEvent } from './events'
+import { event, type GameEvent, type GameEventKind } from './events'
 import { score1Of, score2Of } from './score'
 import { awardBonus } from './bonus'
-import { stepRoster, shootRoster } from './enemies/roster'
+import { stepRoster, shootRoster, type Roster } from './enemies/roster'
 import { resolveShot } from './shot'
 import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
-import { obstacOffset, obstacleAt } from './mushroom'
+import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
 import { initConway, masterStep } from './conway'
+import { INCHWORM_SLOW } from './inchworm'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -55,6 +56,34 @@ const GAME_OVER_DELAY = 0x80
 const SEGMENT_PTS = 10
 
 const isLive = (s: Segment): boolean => s.color !== VACANT_COLOR
+
+/** Live slots (colour ≠ 0) in a creature's slot band. */
+const liveSlots = (slots: ReadonlyArray<{ color: number }>): number =>
+  slots.reduce((n, s) => (s.color !== 0 ? n + 1 : n), 0)
+
+/** MUSH+2 — the count of full mushrooms near the TOP of the field (rows ≥
+ *  TOP_MIN). The ROM keeps a running MUSH register (musher INC / mushdc DEC);
+ *  this port recomputes the same quantity from the field each frame (ml7-8). */
+function countTopMushrooms(field: Uint8Array): number {
+  let n = 0
+  for (let addr = 0; addr < field.length; addr++) {
+    if ((field[addr] & 0x7f) === FULL_MUSHROOM && (addr & 0x1f) >= TOP_MIN) n++
+  }
+  return n
+}
+
+/** Each creature's roster band and its PRESENCE-voice root (ml7-8): the sim
+ *  edge-signals `${root}-start` on the vacant→live edge and `${root}-stop` on
+ *  the live→vacant edge, one sustained voice per creature on its own CHAN slot. */
+const PRESENCE_VOICES: ReadonlyArray<readonly [keyof Roster, string]> = [
+  ['spiders', 'spider'],
+  ['bees', 'bee'],
+  ['beetles', 'beetle'],
+  ['dragonflies', 'dragonfly'],
+  ['mosquitoes', 'mosquito'],
+  ['earwigs', 'earwig'],
+  ['inchworms', 'inchworm'],
+]
 
 export function stepGame(state: GameState, input: GameInput): GameState {
   switch (state.phase) {
@@ -136,17 +165,34 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // 4. Step the enemy roster (spawn/move/plant/player-contact), then resolve the
   //    shot against it. The view shares state.field/state.rng so the pure
   //    subsystems plant mushrooms and draw randomness deterministically.
+  //    The secondary ROM inputs (ml7-8) ride on the view: SCORE1, DEAD (=
+  //    remaining segments), the SLOW critter-freeze timer, the MUSH+2 top tally
+  //    and the active-beetle count, all from real state instead of ml7-2 zeros.
+  const liveSegments = state.segments.filter(isLive).length
   const view: EnemyView = {
     frame: state.frame,
     score2: score2Of(state.score),
     player: { h: player.h, v: player.v, alive: player.alive },
-    centin: state.segments.filter(isLive).length,
+    centin: liveSegments,
     hard: false,
+    score1: score1Of(state.score),
+    dead: liveSegments, // DEAD = remaining live centipede segments (MLDEF.MAC:295)
+    slow: state.slow,
+    mushTop: countTopMushrooms(state.field),
+    beetles: liveSlots(state.roster.beetles),
     rng: state.rng,
     field: state.field,
   }
+  // Snapshot each creature's live-state BEFORE stepRoster — the reducers mutate
+  // the slot arrays IN PLACE and return the same references, so state.roster and
+  // the stepped roster alias; the presence edges must compare against this.
+  const presenceBefore = PRESENCE_VOICES.map(([key]) => liveSlots(state.roster[key]) > 0)
   const stepped = stepRoster(state.roster, view)
   let roster = stepped.roster
+  // A live inchworm count BEFORE the shot resolves — a drop across shootRoster
+  // is a SHOT kill (an offscreen exit already happened in stepRoster), which is
+  // what arms SLOW (IW-34/37); an exit does not.
+  const inchwormsAfterStep = liveSlots(roster.inchworms)
   if (shot.active) {
     const rs = shootRoster(roster, { h: shot.h, v: shot.v })
     if (rs.killed) {
@@ -156,6 +202,20 @@ function stepPlay(state: GameState, input: GameInput): GameState {
       events.push(event('enemy-killed'))
     }
   }
+  const inchwormShotKilled = liveSlots(roster.inchworms) < inchwormsAfterStep
+
+  // Presence voices (ml7-8): edge-signal every creature that appeared or left
+  // the field this frame — comparing the pre-step snapshot to the final roster
+  // (post-step, post-shot).
+  PRESENCE_VOICES.forEach(([key, root], i) => {
+    const now = liveSlots(roster[key]) > 0
+    if (!presenceBefore[i] && now) events.push(event(`${root}-start` as GameEventKind))
+    if (presenceBefore[i] && !now) events.push(event(`${root}-stop` as GameEventKind))
+  })
+
+  // SLOW: an inchworm kill sets the critter-freeze timer to 0xE0; otherwise it
+  // counts down one per frame (0 = not slowed).
+  const slow = inchwormShotKilled ? INCHWORM_SLOW : Math.max(0, state.slow - 1)
 
   // 5. Surviving shot climbs; expire past the top of the field.
   if (shot.active) {
@@ -268,6 +328,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     conway,
     bonusL,
     bonusM,
+    slow,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }

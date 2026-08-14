@@ -44,12 +44,12 @@ export function initBees(): BeeSlot[] {
 /**
  * Build the reducer's BeeEnv from the read-only world view, drawing this frame's
  * two POKEY register bytes off the shared rng (RND0 the spawn column, RND1 the
- * plant roll). Fields the roster view does not yet carry — DEAD, BEETLS and the
- * near-bottom MUSH tally the direct-spawn / mushroom-need gates read — default to
- * 0 for this first-pass wiring.
- * TODO(ml7-2 fidelity): thread real DEAD / BEETLS / MUSH (and the MUSH count the
- * wake-plant increments) through EnemyView so mayStartBee's BE-5..9 gates and the
- * mushroom tally are exact, not first-pass zeros.
+ * plant roll). DEAD and BEETLS are threaded from EnemyView (ml7-8) so the
+ * mayStartBee BE-5..7 direct-spawn gate is exact. The near-bottom MUSH tally
+ * (BE-8/9) is the LOWER band MUSH[0] — a DIFFERENT quantity from ml7-8's mushTop
+ * (MUSH+2, top band); EnemyView carries no lower-band count yet, so it stays 0.
+ * TODO(ml7-8 fidelity): thread MUSH[0] (the lower-band mushroom count) through
+ * EnemyView so mayStartBee's mushroom-need gate (BE-8/9) is exact.
  */
 function beeEnv(view: EnemyView, rnd0: number, rnd1: number): BeeEnv {
   return {
@@ -62,9 +62,9 @@ function beeEnv(view: EnemyView, rnd0: number, rnd1: number): BeeEnv {
     rnd0,
     rnd1,
     centin: view.centin,
-    dead: 0, // TODO(ml7-2 fidelity)
-    beetles: 0, // TODO(ml7-2 fidelity)
-    mush: 0, // TODO(ml7-2 fidelity)
+    dead: view.dead, // ml7-8: remaining centipede segments (BE-5)
+    beetles: view.beetles, // ml7-8: active beetles (BE-6)
+    mush: 0, // TODO(ml7-8 fidelity): lower-band MUSH[0], not the top-band mushTop
   }
 }
 

@@ -29,6 +29,24 @@ export interface EnemyView {
   readonly centin: number
   /** OPTNS hard-difficulty flag. */
   readonly hard: boolean
+  // ── ml7-8 secondary ROM inputs (were hardcoded 0 in the ml7-2 adapters) ──
+  /** SCORE1 — the BCD hundreds/thousands byte the spider HARD 5,000 gate reads
+   *  (SD-18). */
+  readonly score1: number
+  /** DEAD — remaining live centipede segments (MLDEF.MAC:295); 0 = all dead.
+   *  Distinct field from `centin` on the contract, though this port derives both
+   *  from the same live-segment count. Gates the inchworm entry (IW-8), the bee
+   *  direct-spawn (BE-5) and the dragonfly mushroom check (DF-5). */
+  readonly dead: number
+  /** SLOW — the critter-freeze timer set on an inchworm kill (0xE0, IW-34/37);
+   *  non-zero forces the every-tick wing flap (MQ-11, DF-13/14/15). */
+  readonly slow: number
+  /** MUSH+2 — the count of mushrooms near the TOP of the field (rows ≥ TOP_MIN);
+   *  the dragonfly's mushroom-glut spawn veto reads it (DF-7/8). */
+  readonly mushTop: number
+  /** BEETLS — active beetles on screen; the bee/dragonfly spawn gates read it
+   *  (BE-6, DF-6). */
+  readonly beetles: number
   /** Seeded RNG — advance with nextInt for this frame's random bytes. */
   readonly rng: Rng
   /** The PLYFLD mushroom field — enemies plant/eat mushrooms in place. */
