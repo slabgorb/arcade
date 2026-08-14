@@ -313,3 +313,8 @@ completed_stories:
     title: 'Boot drops into the attract self-play demo and never shows the MARQUE/logo title screen -- wire the present-but-unreachable title cabinet mode'
     points: 3
     completed: '2026-08-14'
+  - id: df2-1
+    epic: df2
+    title: 'Render seam skeleton (RED first): plugins/defender/src/core/framebuffer.ts pure 292x240 index surface (Uint8Array of 4-bit palette indices) + clear(index); plugins/defender/src/shell/render.ts index->RGBA (temporary identity palette until df2-2) + @shared/view fitIntegerScale blit; main.ts paints a cleared framebuffer (steps no clock). Establishes the core/shell boundary and keeps purity.test.ts green. Visible 292x240 pinned to williams.cpp:1601 (schema-only, prose).'
+    points: 3
+    completed: '2026-08-14'
