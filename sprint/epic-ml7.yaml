@@ -20,9 +20,13 @@ stories:
     title: 'Wire runtime core->shell: frame loop drives stepGame; core events (render/audio/score) reach the shell render + the ml6 sound driver; input (trackball TBLMT MLSUB.MAC:1797; resolve trackball-vs-joystick ml1 OQ-4) feeds core. Small diffs, incremental.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    started: '2026-08-13'
+    completed: '2026-08-13'
+    review_verdict: approved
+    review_findings: 'ABSORBED into ml6-2 by owner ruling and delivered there (frame loop, GameState + stepGame orchestrator, enemy roster, mouse trackball, gesture-gated audio, render, core->shell event dispatch). Merged via PR #355. Remaining fidelity carved out as ml7-5 (cadence), ml7-8 (enemy presence voices + secondary inputs), ml7-9 (scroll).'
   - id: ml7-3
     title: 'HUD (score/lives/DDT-count + high-score display) with output COORDINATES pinned in a core unit test (routing != geometry); opt millipede into the lobby showcase carousel (attract self-play). Visual playtest.'
     points: 5
@@ -38,9 +42,13 @@ stories:
     title: 'Accessibility gate (standing exception to ROM-always-wins): NO full-screen strobe/flash on wave transition, death, DDT explosion, or attract — freeze or fade instead. Baked into the phase machine. Verify by visual playtest across every transition.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    started: '2026-08-13'
+    completed: '2026-08-13'
+    review_verdict: approved
+    review_findings: 'Delivered under ml6-2 (merged PR #355). Baked freeze-not-strobe: stepPlayerDeath flashing is a STEADY block; death/game-over holds are silent. Pinned by tests/accessibility.test.ts (flashing never on/off/on; every advancePhase transition lands on a steady phase; no flash/strobe cue in the vocabulary). AC3 browser playtest measured corner luminance 0 across 40 frames, and main.ts render always repaints a black background (no code path full-screen-flashes).'
   - id: ml7-5
     title: 'Fixed-timestep at the millipede LOGIC frame rate — the ml6-2 frame loop steps stepGame every requestAnimationFrame (~60Hz), so the whole game (march, fliers, explosions) animates far too fast (AC3 playtest finding). Accumulate real time and step at the ROM logic rate; see the millipede cadence memory (calc-frame ~10.4Hz, NOT 62.5Hz). Playtest to confirm the feel.'
     points: 3
