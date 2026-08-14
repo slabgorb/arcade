@@ -42,6 +42,7 @@ const GAMES = [
   'missile-command',
   'pac-man',
   'millipede',
+  'defender',
 ] as const
 
 export default defineConfig({

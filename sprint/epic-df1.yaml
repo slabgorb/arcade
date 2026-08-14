@@ -10,7 +10,8 @@ stories:
     title: 'Citation gate + src/core purity test FIRST (TDD): port millipede tools/audit/check-citations.mjs (single-sided, WITH the ml1-1 review hardening: unconditional containment + isFile gate) to a defender checker + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: df1-2
@@ -41,3 +42,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: df1-6
+    title: "Harden the claims-JSON load path in the fleet's citation checkers: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede; wrap the parse in a controlled per-file error naming the file. Filed from df1-1 review (rule-checker R3, inherited from millipede)."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
