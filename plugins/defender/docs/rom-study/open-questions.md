@@ -19,7 +19,7 @@ comment as a likely author slip; the port implements whichever model df1-4 pins.
 
 COUNT240 is MAME's name for the 240th-scanline interrupt — the word appears
 nowhere in the vendored source (measured; the in-tree trace is the `*CA1 IRQ`
-pin comment at `defender/PHR6.SRC:130-131`). Open: is the CA1 interrupt enabled
+pin comment at `defender/PHR6.SRC:131`). Open: is the CA1 interrupt enabled
 during play, or does the handler distinguish phases purely by polling the
 `VERTCT` beam counter? The answer is decoded from the RESET PIA setup at
 `defender/ROMF8.SRC:64`. **Disposition:** df1-4 resolves it by decoding that
