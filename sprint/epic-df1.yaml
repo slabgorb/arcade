@@ -30,9 +30,17 @@ stories:
     title: 'glossary.md + subsystems.md + open-questions.md: author names -> plain English (PHRED/MAPC/MLJSR/NAPP/CKBYT, EUGENE + SAM vector blocks MESS0.SRC:165,175); subsystem -> owning file + routine + line (DEFA7 scheduler/IRQ/collision/sound-sequencer, DEFB6 enemy processes + vectors, AMODE1 attract/hall-of-fame/scanner, MESS0 text writers, BLK71 terrain/waves, SAMEXAP7 materialize/explode, ROMF8 reset/CMOS/pricing, ROMC0+ROMC8 diagnostics); OQ-1..OQ-5 from the design spec (CB1-vs-CB2, COUNT240 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/docs/rom-study/glossary.md exists and translates the author vocabulary to plain English — at minimum PHRED (SAMEXAP7.SRC:9 ASSEMBLE WITH PHRED), MAPC (PHR6.SRC:11), MLJSR (AMODE1.SRC:39), NAPP (AMODE1.SRC:33), CKBYT (DEFA7.SRC:5) — and documents the per-author message-vector blocks (EUGENE and SAM vector blocks, MESS0.SRC:165 and MESS0.SRC:175). Every ROM assertion is a citation covered by a claims/*.json entry under the df1-1 gate.'
+      - 'AC2: plugins/defender/docs/rom-study/subsystems.md exists mapping each subsystem to owning file + routine + line — DEFA7 (scheduler/IRQ/collision/sound-sequencer), DEFB6 (enemy processes + vectors), AMODE1 (attract/hall-of-fame/scanner), MESS0 (text writers), BLK71 (terrain/waves), SAMEXAP7 (materialize/explode), ROMF8 (reset/CMOS/pricing), ROMC0+ROMC8 (diagnostics) — deepening the design spec section-1 skeleton, and pinning the MODULE-SIDE block-identity evidence (MESS0 own TTL header line, BLK71 terrain header, AMODE1 attract/hall-of-fame content) per the df1-2 review improvement.'
+      - 'AC3: plugins/defender/docs/rom-study/open-questions.md exists carrying OQ-1..OQ-5 from the design spec (CB1-vs-CB2 IRQ wiring, COUNT240/CA1 enablement, defend.3 upper-half packing, WDOG decode model, the $D000 2716-split ledger wording), each with its evidence cited and a disposition stating which later epic or story resolves it.'
+      - 'AC4: all three new files are ENROLLED in DOSSIER_FILES (plugins/defender/tests/audit/dossier-sweep.ts) so the coverage sweep and byte re-open run over them; every prose citation in the three files is covered by a claims JSON entry that verifies byte-for-byte against reference/original-source/defender/.'
+      - 'AC5 (routed from df1-2): citations.test.ts retired skipped-on-CI comment model (currently lines 33/248/272) is corrected to the shipped always-on model, and an unskipped presence guard asserts the vendored tree exists so the byte teeth can never silently skip.'
+      - 'AC6 (routed from df1-2): brief-dossier.test.ts hand-picked claims floor of 15 (inert — actual claims census is 33) is derived from the same single source as the already-derived answers floor, so the two floors cannot drift apart; the derived floor is mutation-proven (dropping a claims file reddens it).'
   - id: df1-4
     title: 'Secondary source MAME williams.cpp/williams_m.cpp board facts as claims: 12 MHz master /3/4 = 1.0 MHz 6809E, exact refresh 60.09615 Hz derivation (set_raw williams.cpp:1556), visible area 292x240 (williams.cpp:1601), banked-ROM model (bank_select_w williams.cpp:505), VA11-to-CB1 + COUNT240-to-CA1 IRQ generation (williams_m.cpp:27-28,36-37 — resolve OQ-1/OQ-2), WDOG $C3FC decode (OQ-4), decoder-PROM 1-vs-2 cocktail variant note (williams.cpp:29-31). MAME cited in prose only, never copied (GPL).'
     points: 3
@@ -49,7 +57,8 @@ stories:
     workflow: tdd
   - id: df1-6
     title: "Harden the claims-JSON load path in the fleet's citation checkers: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede; wrap the parse in a controlled per-file error naming the file. Filed from df1-1 review (rule-checker R3, inherited from millipede)."
-    points: 1
+    description: 'Two halves, one function, three games. (1) As titled: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede — wrap the parse in a controlled per-file error naming the file. (2) EXTENSION routed from df1-2 review (round-1 [TYPE] finding, routing discharged at df1-3 setup 2026-08-14): loadClaims() casts JSON.parse output without runtime shape validation, so a well-formed-JSON-wrong-shape claims file (e.g. an object instead of an array, or entries missing source.file/line/verbatim) flows into the sweep unchecked — add a shape assertion in loadClaims or an unconditional schema test (df1-2 archive names plugins/defender/tests/audit/dossier-sweep.ts loadClaims as the defender site). One edit per game closes both halves; both are on the same load path. WHY THIS IS NOT df1-3: df1-3 is the dossier-authoring story and its suite scope is enrollment + the skipped-on-CI prose model + floor derivation; the load-path hardening is fleet-wide (three games) and belongs with the fleet-wide story.'
+    points: 2
     priority: p3
     status: backlog
     repos: arcade
