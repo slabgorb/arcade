@@ -224,3 +224,8 @@ completed_stories:
     title: "Persist high scores via one-origin localStorage under highScoreKey('millipede') (EAROM MLTST.MAC:36-150 maps to localStorage, not chip emulation): shell reads on boot, writes on commit; core stays pure. Reuse the asteroids/joust/mc7 consumer pattern."
     points: 3
     completed: '2026-08-13'
+  - id: df1-1
+    epic: df1
+    title: 'Citation gate + src/core purity test FIRST (TDD): port millipede tools/audit/check-citations.mjs (single-sided, WITH the ml1-1 review hardening: unconditional containment + isFile gate) to a defender checker + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
+    points: 5
+    completed: '2026-08-13'

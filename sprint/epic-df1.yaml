@@ -10,10 +10,11 @@ stories:
     title: 'Citation gate + src/core purity test FIRST (TDD): port millipede tools/audit/check-citations.mjs (single-sided, WITH the ml1-1 review hardening: unconditional containment + isFile gate) to a defender checker + citations.test.ts that fails on any uncovered prose citation + the src/core purity scan (fetch/canvas/Date/Math.random). Committed before the first game constant.'
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
   - id: df1-2
     title: 'brief.md — the five rom-source-study preflight answers, each cited to defender/<FILE>.SRC:<line> and re-opened under the df1-1 gate: (0) revision = RED/cocktail via the INFO.SRC:15-23 ledger + the three identification legs; (1) what shipped — the file-to-chip/block map incl. RASM chains INFO.SRC:3-9, the never-shipped BRUTSUM2, and the sound-source gap; (2) RASM dialect conventions with one cited example each; (3) timebase — nominal 60/16-msec vs exact 60.09615 Hz as separate numbers, TIMER/EXEC0 gating, overload path DEFA7.SRC:3056-3070; (4) INFO.SRC author documentation + credits ROMC8.SRC:783-797.'
     points: 5
