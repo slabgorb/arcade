@@ -10,7 +10,8 @@ stories:
     title: 'Mutation battery over the CONWAY Life field (ml3-4): the highest-novelty, no-sibling reducer. Mutate the growth/death generation logic and the seeded-field golden; every mutant that reddens nothing is a finding. File survivors as file-surface-grouped stories.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
   - id: ml8-2
