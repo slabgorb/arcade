@@ -38,6 +38,13 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { loadEnemy, type EnemyModule, type EnemyState, type PlayerView } from './helpers/enemy-contract.js'
 import { BCK_X_TABLE, X_TABLE_ORIGIN } from '../src/core/flight.js'
 import { BCK_Y_TABLE } from '../src/core/arena.js'
+import {
+  CLIFF_DESTRUCTION,
+  initialArenaState,
+  applyWaveDestruction,
+  type ArenaState,
+  type CliffDestruction,
+} from '../src/core/arena-state.js'
 
 // ─── The test's own background oracle (same indexing as bckMaskAt; out of range ⇒ 0) ───
 const bckX = (x: number): number => {
@@ -387,5 +394,202 @@ describe('jt9-51 — climb-prep is PER-WAKE, not a 21-wake latch (B2UP3 / SHUP3)
       expect(f.slice(4, 12).some((x) => x), `${brain}: the clear window climbs (at least one flap)`).toBe(true)
       expect(f.slice(12).some((x) => x), `${brain}: the re-appeared cliff holds level again`).toBe(false)
     }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Story jt11-12 item (1) — the VERTICAL climb sample must honour DESTRUCTION.
+// RED phase (Han Solo / TEA).
+//
+// jt9-23 / jt9-50 / jt9-51 (the blocks above) wired the climb-prep hold and the
+// bounder's BOUP divert off `cliffBlocksClimb`, which reads the PRISTINE
+// background one YLEN above the bird. jt11-5 then gave the HORIZONTAL look-ahead
+// (`steerWake`) the live arena, so a DESTROYED cliff's background bits read as
+// open air — `backgroundActive` returns false once WCLFEW has cleared that
+// cliff's BCKXD1 bits (JOUSTRV4.SRC:2301-2325), the seam applied inside `steerWake`.
+//
+// The VERTICAL climb sample never got that seam. `cliffBlocksClimb` and its
+// helper `bckMaskAt` take no arena, so all THREE consumers still see a
+// burned-away cliff as solid and refuse to climb through thin air: the hunter
+// `b2undr` B2UP3 branch, the shadow SHUP3 branch, and the bounder BOUP divert.
+//
+// These stage a cliff whose BACKGROUND bits belong to a DESTRUCTIBLE cliff, then
+// destroy exactly that cliff through the real `applyWaveDestruction` path and
+// thread the resulting arena through `stepEnemyDetailed`'s ctx (already carried
+// there for `steerWake` since jt11-5). The climb must resume. Attribution is
+// A/B: the SAME site with the PRISTINE arena still holds (the cliff is really
+// there), and a NON-destructible control cliff still holds even with EVERY cliff
+// destroyed (the awareness is bit-accurate, not a blanket "destruction opens all
+// climbs"). Same staged-not-played discipline as jt9-23 (uf1-9: the up-seek is
+// entered on zero frames of natural play; the cliff-above fork is deeper still).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The OR of every destructible cliff's background-collision bits (0x47). */
+const DESTRUCTIBLE_BCK = CLIFF_DESTRUCTION.reduce((m, c) => m | c.backgroundBits, 0)
+
+/** Destroy exactly one cliff via the production wave path; bridge intact (wave 1). */
+const destroyOnly = (c: CliffDestruction): ArenaState =>
+  applyWaveDestruction(initialArenaState(), 1, c.statusBit)
+
+/** Destroy EVERY destructible cliff (status high nibble all set); bridge intact. */
+const destroyAll = (): ArenaState => applyWaveDestruction(initialArenaState(), 1, 0xf0)
+
+/**
+ * Scan for three staged sites (bird in open air throughout, mid-air band):
+ *   • `destr`  — a solid box one YLEN above whose bits belong to ONE destructible
+ *     cliff (recorded), so destroying that cliff opens the sample.
+ *   • `nondestr` — a solid box above whose bits are DISJOINT from every
+ *     destructible cliff, so no destruction can open it (the bit-accuracy control).
+ *   • `clear`  — open air above too (the "climb really can flap here" control).
+ */
+function findDestructionSites(): {
+  destr: { x: number; y: number; cliff: CliffDestruction }
+  nondestr: { x: number; y: number }
+  clear: { x: number; y: number }
+} {
+  let destr: { x: number; y: number; cliff: CliffDestruction } | null = null
+  let nondestr: { x: number; y: number } | null = null
+  let clear: { x: number; y: number } | null = null
+  for (let y = 0x30; y <= 0xc0; y++) {
+    for (let x = 0; x <= 255; x++) {
+      if (bck(x, y) !== 0) continue // bird must be in open air
+      const above = bck(x, y - YLEN)
+      if (above === 0) {
+        if (clear === null) clear = { x, y }
+        continue
+      }
+      if (destr === null) {
+        const owner = CLIFF_DESTRUCTION.find((c) => (above & c.backgroundBits) !== 0)
+        if (owner) destr = { x, y, cliff: owner }
+      }
+      if (nondestr === null && (above & DESTRUCTIBLE_BCK) === 0) nondestr = { x, y }
+    }
+    if (destr && nondestr && clear) break
+  }
+  if (!destr) throw new Error('no destructible-cliff-above geometry found in the tables')
+  if (!nondestr) throw new Error('no non-destructible-cliff-above control found')
+  if (!clear) throw new Error('no open-air control geometry found')
+  return { destr, nondestr, clear }
+}
+
+/** An airborne enemy at (x, y) with an explicit velY, still, no seek — at the up-seek decide. */
+const fixtureAt = (brain: 'boundr' | 'b2undr' | 'shadow', x: number, y: number, velY: number): EnemyState => ({
+  entity: { posX: x, posY: y << 8, velXIndex: 0, velXFrac: 0, velY, timeUp: 0, groundState: null, plantZ: 0, airborne: true },
+  brain,
+  decision: brain,
+  pchase: 1,
+  facing: 1,
+})
+
+/**
+ * `flapCount` (above) plus a threaded arena and an explicit velY. Position /
+ * horizontal state / velY are re-frozen every wake; the brain's own state rides
+ * forward. Returns how many wakes the wings were DOWN (a climb flap).
+ */
+function flapCountArena(
+  e: EnemyModule,
+  brain: 'boundr' | 'b2undr' | 'shadow',
+  x: number,
+  y: number,
+  velY: number,
+  wave: number,
+  wakes: number,
+  arena: ArenaState,
+): number {
+  let enemy = fixtureAt(brain, x, y, velY)
+  let flaps = 0
+  for (let i = 0; i < wakes; i++) {
+    const stepped = e.stepEnemyDetailed(enemy, { player: FAR_ABOVE, wave, arena }).enemy
+    if (stepped.prevFlapHeld === true) flaps += 1
+    enemy = { ...stepped, entity: { ...stepped.entity, posX: x, posY: y << 8, velY, velXIndex: 0, velXFrac: 0 } }
+  }
+  return flaps
+}
+
+// The hunter and shadow hold LEVEL over a cliff at velY=0 (flap only past the
+// -$0040 fall gate); a rising bounder GLIDES over a cliff (BOLEV) but flaps a
+// clear climb — so RISING is the sign that separates the bounder's divert.
+const LEVEL = 0
+const RISING = -0x40
+
+describe('jt11-12(1) — the vertical climb sample honours cliff destruction', () => {
+  let e: EnemyModule
+  let sites: ReturnType<typeof findDestructionSites>
+
+  beforeAll(async () => {
+    e = await loadEnemy()
+    sites = findDestructionSites()
+  })
+
+  it('FIXTURE PREMISE — staged geometry is a real cliff whose bits are (non-)destructible as claimed', () => {
+    const { destr, nondestr, clear } = sites
+    // The destructible site: open air, a solid box one YLEN above, and those bits
+    // belong to the recorded destructible cliff.
+    expect(bck(destr.x, destr.y), 'destructible site: bird in open air').toBe(0)
+    expect(bck(destr.x, destr.y - YLEN), 'destructible site: solid box above').not.toBe(0)
+    expect(
+      bck(destr.x, destr.y - YLEN) & destr.cliff.backgroundBits,
+      `the box above belongs to ${destr.cliff.cliff}`,
+    ).not.toBe(0)
+    // The control cliff: solid above, but NO destructible bit — no arena can open it.
+    expect(bck(nondestr.x, nondestr.y), 'control site: bird in open air').toBe(0)
+    expect(bck(nondestr.x, nondestr.y - YLEN), 'control site: solid box above').not.toBe(0)
+    expect(
+      bck(nondestr.x, nondestr.y - YLEN) & DESTRUCTIBLE_BCK,
+      'the control box shares no bit with any destructible cliff',
+    ).toBe(0)
+    // The clear site: open air above, so a climb genuinely flaps there.
+    expect(bck(clear.x, clear.y - YLEN), 'clear site: open air above').toBe(0)
+    // And the destroyed arena really drops the target cliff's background bits.
+    expect(destroyOnly(destr.cliff).destroyedBackgroundBits & destr.cliff.backgroundBits).toBe(
+      destr.cliff.backgroundBits,
+    )
+  })
+
+  for (const brain of ['b2undr', 'shadow'] as const) {
+    it(`CONTROL (green now and after) — ${brain}: with the PRISTINE arena the cliff still holds the climb`, () => {
+      // The cliff is really there: with nothing destroyed the hold stands (0 flaps).
+      // This anchors the RED below to the DESTRUCTION, not to a dead fixture.
+      const flaps = flapCountArena(e, brain, sites.destr.x, sites.destr.y, LEVEL, WAVE, WAKES, initialArenaState())
+      expect(flaps, `${brain} over an intact cliff holds level`).toBe(0)
+    })
+
+    it(`RED — ${brain}: destroying that cliff frees the climb — the hold releases and it flaps`, () => {
+      // After the fix, `cliffBlocksClimb` reads the arena the way `steerWake` does:
+      // a sample whose bits belong to a destroyed cliff is open air, so the B2UP3 /
+      // SHUP3 hold lifts. Today the arena is ignored → still 0 flaps → RED.
+      const arena = destroyOnly(sites.destr.cliff)
+      const flaps = flapCountArena(e, brain, sites.destr.x, sites.destr.y, LEVEL, WAVE, WAKES, arena)
+      expect(flaps, `${brain} over a DESTROYED cliff must climb (flap) — the cliff is gone`).toBeGreaterThan(0)
+    })
+
+    it(`CONTROL (green now and after) — ${brain}: a NON-destructible cliff still holds even with every cliff destroyed`, () => {
+      // Bit-accuracy: the awareness keys on the destroyed cliff's OWN bits, not a
+      // blanket "any destruction opens every climb". This box shares no bit with a
+      // destructible cliff, so destroy-all leaves it solid and the hold stands.
+      const flaps = flapCountArena(e, brain, sites.nondestr.x, sites.nondestr.y, LEVEL, WAVE, WAKES, destroyAll())
+      expect(flaps, `${brain} over an indestructible cliff holds even with all cliffs destroyed`).toBe(0)
+    })
+  }
+
+  // The bounder has no hold (no BOUP3): it diverts a blocked climb to BOLEV level
+  // flight, which GLIDES while rising. So the bounder's divert is read RISING.
+  it('CONTROL (green now and after) — bounder: a rising bounder over the intact cliff flies BOLEV level (glides)', () => {
+    const flaps = flapCountArena(e, 'boundr', sites.destr.x, sites.destr.y, RISING, WAVE, WAKES, initialArenaState())
+    expect(flaps, 'a rising bounder over an intact cliff diverts to BOLEV and glides').toBe(0)
+  })
+
+  it('RED — bounder: destroying that cliff restores the up-seek — a rising bounder climbs (flaps)', () => {
+    // With the cliff gone the bounder BOUP divert no longer fires, so the
+    // bounder arms the up-seek and its climb flaps even while rising (not velY-gated).
+    // Today the arena is ignored → still diverts → 0 flaps → RED.
+    const arena = destroyOnly(sites.destr.cliff)
+    const flaps = flapCountArena(e, 'boundr', sites.destr.x, sites.destr.y, RISING, WAVE, WAKES, arena)
+    expect(flaps, 'a rising bounder over a DESTROYED cliff climbs (the BOUP divert no longer fires)').toBeGreaterThan(0)
+  })
+
+  it('ATTRIBUTION (green now and after) — a rising bounder with a CLEAR climb flaps (fixture is not dead)', () => {
+    const flaps = flapCountArena(e, 'boundr', sites.clear.x, sites.clear.y, RISING, WAVE, WAKES, initialArenaState())
+    expect(flaps, 'a rising bounder with nothing above climbs (flaps) — proving the RED is the cliff, not the sign').toBeGreaterThan(0)
   })
 })
