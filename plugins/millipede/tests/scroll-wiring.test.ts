@@ -51,7 +51,7 @@ import { describe, it, expect } from 'vitest'
 import { stepGame, type GameInput } from '../src/core/sim'
 import { createGame, type GameState } from '../src/core/game-state'
 import { LOWER_MAX, TOP_MIN } from '../src/core/mushroom'
-import { PLYFLD_SIZE, PLYFLD_STRIDE, PLYFLD_WIDTH } from '../src/core/conway'
+import { PLYFLD_SIZE, PLYFLD_STRIDE, PLYFLD_WIDTH, MAXPH } from '../src/core/conway'
 import { EVENT_KINDS } from '../src/core/events'
 import { createPlayer } from '../src/core/input'
 import { initRoster } from '../src/core/enemies/roster'
@@ -256,6 +256,22 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
       true,
     )
     expect(opened.scrolc, 'and was then consumed (SC-18)').toBe(0)
+  })
+
+  it('CONWAY completing THIS frame still defers the scroll — CDONE is read pre-MASTER (SC-6)', () => {
+    // masterStep flips active true→false when it finishes the screen (phase reaches
+    // MAXPH+1). The ROM's SCROLL (:46) reads CDONE BEFORE MASTER (:49), so on the
+    // completion frame the scroll must STILL be gated and fire only next frame.
+    // Regression guard for reading conway.active PRE- vs POST-masterStep: a
+    // completing state is CLEANUP (phase MAXPH) on its last 32-cell chunk.
+    const completing = playState({
+      scrolc: -1,
+      conway: { phase: MAXPH, addr: PLYFLD_SIZE - STRIDE, ngrown: 1, active: true },
+    })
+    const out = stepGame(completing, idle)
+    expect(out.conway.active, 'masterStep completed the metamorphosis this frame').toBe(false)
+    expect(out.scrolc, 'but SCROLL saw CDONE pre-MASTER and DEFERRED the scroll (SC-6)').toBe(-1)
+    expect(downScrollFingerprint(out.field), 'no scroll fired on the completion frame').toBe(false)
   })
 })
 
