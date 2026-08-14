@@ -374,8 +374,9 @@ function renderAttract(): void {
 // overridden to 'title' at boot — spelled inline to keep the jt4-5 session seam
 // visible: main.ts constructs the game with the literal `createGame(` and steps it
 // with `stepGame(` (pinned by demo-source.test.ts / gameover-wiring.test.ts), rather
-// than through a wrapper. A start press in title (or attract) routes on to the
-// 'select' coin-up (toSelect), and select → startPlaying begins a real game, as before.
+// than through a wrapper. A start press in TITLE routes on to the 'select' coin-up
+// (toSelect), and select → startPlaying begins a real game; a start press in ATTRACT
+// now direct-starts with the pressed count (jt11-17), bypassing select.
 // A fixed shell-owned seed replays the same run each load; core mints no entropy,
 // so the seed crosses the boundary from here.
 const SEED = 0x1a2b_3c4d
