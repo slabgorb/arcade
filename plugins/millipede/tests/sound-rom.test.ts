@@ -415,3 +415,145 @@ describe('ml6-1 AC-7 — the driver plays a moving sweep, purely', () => {
     expect(src, 'no .cpp (MAME) citation belongs in the sound driver').not.toMatch(/\.cpp\b/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ml8-2 — MUTATION-BATTERY GUARDS for the ml6-1 two-POKEY sound driver.
+//
+// FILE SURFACE: plugins/millipede/src/shell/sound-rom.ts (the FREQ/CONT tables +
+// the play-order reverse). This is a TEST-ONLY hardening pass — production is
+// byte-correct and UNCHANGED. A 23-mutant battery over sound-rom.ts (harness in
+// the ml8-2 session scratchpad, each mutant a single-byte WRONG value, confirmed
+// against every sound-rom importer: sound-rom / pokey-voice / pokey-voice-range /
+// audio / events) found 17 survivors that reddened nothing:
+//   • FREQ byte-values unpinned: slots 0, 1, 3, 5, 8, 9, 11
+//   • CONT byte-values unpinned: slots 0, 3, 5, 10
+//   • constant-volume values unpinned: bee(7), inchworm(8), earwig(9), bonus(11)
+//   • PLAY ORDER unpinned: removing `.reverse()` from freqSweep AND contSweep
+//     survived the whole suite (the open NY-macro direction question, ml6-1 Dev
+//     Design Deviation — resolved to STORED-REVERSED, pinned here as ml8 hardening).
+// The controls (FREQ2/6/10, CONT1/2, shot 0x68 — already pinned) all reddened.
+//
+// The guards below transcribe every stored table INDEPENDENTLY from MLIRQ.MAC
+// (not copied from the module under test) and pin the EXACT ORDERED play sequence
+// = the stored table REVERSED. One `.toEqual` per slot kills the value gap AND
+// the direction gap at once.
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Stored FREQ tables, transcribed from reference/original-source/millipede/MLIRQ.MAC
+// (`.RADIX 16`). Slots 2, 6, 10 already have FREQ2/FREQ6/FREQ10 literals above.
+const FREQ0_S = [0x00, 0x80] // :148
+const FREQ1_S = [
+  0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, // :150-151
+  0xf8, 0xf8, 0xf8, 0xf8, 0xf8, 0xf8, 0xf8, 0xf8, // :152-153
+  0xf4, 0xf4, 0xf4, 0xf4, 0xf4, 0xf4, 0xf4, 0xf4, // :154-155
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // :156-157
+]
+const FREQ3_S = [
+  0x05, 0x05, 0x20, 0x20, 0x30, 0x30, 0x35, 0x35, // :184-185
+  0x30, 0x30, 0x20, 0x20, 0x05, 0x05, 0x20, 0x20, // :186-187
+  0x30, 0x30, 0x35, 0x35, // :188
+]
+const FREQ5_S = [
+  0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, // :194-195
+  0x40, 0x48, 0x40, 0x48, 0x50, 0x58, 0x50, 0x58, // :196-197
+  0x60, 0x68, 0x60, 0x68, 0x70, 0x78, 0x70, 0x78, // :198-199
+  0x80, 0x88, 0x80, 0x88, 0x90, 0x98, 0x90, 0x98, // :200-201
+  0xa0, 0xa8, 0xa0, 0xa8, // :202
+]
+const FREQ8_S = [
+  0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x00, 0x00, // :215-216
+  0x70, 0x60, 0x50, 0x40, 0x30, 0x20, 0x00, 0x00, // :217-218
+  0x01, // :219
+]
+const FREQ9_S = [
+  0x60, 0x60, 0x70, 0x70, 0x60, 0x60, 0x60, 0x70, // :220-221
+  0x70, 0x70, 0x50, 0x50, 0x80, 0x80, 0x50, 0x50, // :222-223
+  0x50, 0x80, 0x80, 0x80, // :224
+]
+const FREQ11_S = [
+  0x28, 0x28, 0x30, 0x28, 0x28, 0x30, 0x3c, 0x51, // :235-236
+  0x50, 0x50, 0x60, 0x50, 0x50, 0x60, 0x74, 0xa2, // :237-238
+  0x00, // :239
+]
+// Stored CONT tables. Slots 1, 2 already have CONT1/CONT2 literals above.
+const CONT0_S = [0x00, 0xa8] // :149
+const CONT3_S = [
+  0xa2, 0x00, 0xa4, 0x00, 0xa6, 0x00, 0xa8, 0x00, // :189-190
+  0xa6, 0x00, 0xa4, 0x00, 0xa2, 0x00, 0xa4, 0x00, // :191-192
+  0xa6, 0x00, 0xa4, 0x00, // :193
+]
+const CONT5_S = [
+  0x17, 0xa8, 0xa8, 0xa8, 0x17, 0xa8, 0xa8, 0xa8, // :203-204
+  0xa9, 0xa9, 0xa9, 0xa9, 0xaa, 0xaa, 0xaa, 0xaa, // :205-206
+  0xab, 0xab, 0xab, 0xab, 0xac, 0xac, 0xac, 0xac, // :207-208
+  0xad, 0xad, 0xad, 0xad, 0xae, 0xae, 0xae, 0xae, // :209-210
+  0xaf, 0xaf, 0xaf, 0xaf, // :211
+]
+const CONT10_S = [
+  0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, // :230-231
+  0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf, // :232-233
+  0xaf, 0xaf, 0xaf, 0xaf, // :234
+]
+const rev = (xs: readonly number[]): number[] => [...xs].reverse()
+
+describe('ml8-2 — mutation-battery guards: FREQ sweeps pin exact play sequence', () => {
+  // slot → stored table (play order is stored REVERSED — the driver law).
+  const cases: Array<[number, readonly number[]]> = [
+    [0, FREQ0_S], [1, FREQ1_S], [2, FREQ2], [3, FREQ3_S], [5, FREQ5_S],
+    [6, FREQ6], [8, FREQ8_S], [9, FREQ9_S], [10, FREQ10], [11, FREQ11_S],
+  ]
+  it.each(cases)('freqSweep(%i) is the ROM table, byte-exact and in reversed play order', async (slot, stored) => {
+    const { freqSweep } = await loadSoundRom()
+    // Ordered equality kills BOTH a single-byte value change (survivors s0,1,3,5,8,9,11)
+    // and a dropped `.reverse()` (the play-direction survivor).
+    expect([...freqSweep(slot)]).toEqual(rev(stored))
+  })
+})
+
+describe('ml8-2 — mutation-battery guards: CONT sweeps pin exact play sequence', () => {
+  const cases: Array<[number, readonly number[]]> = [
+    [0, CONT0_S], [1, CONT1], [2, CONT2], [3, CONT3_S], [5, CONT5_S], [10, CONT10_S],
+  ]
+  it.each(cases)('contSweep(%i) is the ROM table, byte-exact and in reversed play order', async (slot, stored) => {
+    const { contSweep } = await loadSoundRom()
+    expect([...contSweep(slot)]).toEqual(rev(stored))
+  })
+})
+
+describe('ml8-2 — mutation-battery guards: constant-volume slots pin their byte', () => {
+  // CONT pointer is a bare .WORD (MLIRQ.MAC:142-147): a CONSTANT volume repeated
+  // once per frequency step. Value was unpinned for bee/inchworm/earwig/bonus.
+  const cases: Array<[number, number]> = [
+    [6, 0x68], // shot     :142  (already pinned — regression anchor)
+    [7, 0xa8], // bee      :143
+    [8, 0xa9], // inchworm :144
+    [9, 0xa8], // earwig   :145
+    [11, 0xa8], // bonus   :147
+  ]
+  it.each(cases)('contSweep(%i) holds exactly the constant volume 0x%s', async (slot) => {
+    const { contSweep, freqSweep } = await loadSoundRom()
+    const expected = cases.find(([s]) => s === slot)![1]
+    const cont = contSweep(slot)
+    expect(cont.length, 'one volume write per frequency step').toBe(freqSweep(slot).length || 1)
+    expect(new Set(cont), 'a single constant volume, byte-exact').toEqual(new Set([expected]))
+  })
+})
+
+describe('ml8-2 — mutation-battery guards: play order is STORED-REVERSED (the NY read)', () => {
+  // ml6-1 left direction unasserted (the NY macro is absent from the vendored
+  // tree); Dev resolved it to STORED-REVERSED in GREEN and flagged a directional
+  // pin for ml8 hardening. This locks that shipped decision: emission is the
+  // table back-to-front, NOT the forward stored order.
+  it('freqSweep(2) plays FREQ2 reversed — first emitted byte is the LAST stored byte', async () => {
+    const { freqSweep } = await loadSoundRom()
+    const sweep = freqSweep(2)
+    expect(sweep[0], 'CONT2/FREQ2 emit back-to-front — the explosion decays, not fades in').toBe(FREQ2[FREQ2.length - 1])
+    expect([...sweep], 'and is NOT the forward stored order').not.toEqual([...FREQ2])
+  })
+  it('contSweep(2) plays CONT2 reversed — the rising-stored envelope emits loud→soft', async () => {
+    const { contSweep } = await loadSoundRom()
+    const cont = contSweep(2)
+    expect(cont[0]).toBe(CONT2[CONT2.length - 1])
+    expect([...cont]).not.toEqual([...CONT2])
+  })
+})
