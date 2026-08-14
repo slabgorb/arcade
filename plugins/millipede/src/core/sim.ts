@@ -47,6 +47,9 @@ const SHOT_SPEED = 8
 const SHOT_MAX_V = 0xf8
 /** Player-death animation hold (PLAYER_EXPLODE_TIMER, millipede.ts). */
 const DEATH_HOLD = 0x60
+/** The "GAME OVER" message hold before attract returns (MLSUB.MAC:161-162
+ *  "LDA I,80 / STA DELAY" — the ROM reuses DELAY for the end-of-game pause). */
+const GAME_OVER_DELAY = 0x80
 /** Provisional segment score — refined when full scoring lands. */
 const SEGMENT_PTS = 10
 
@@ -61,6 +64,7 @@ export function stepGame(state: GameState, input: GameInput): GameState {
     case 'death':
       return stepDeath(state)
     case 'game-over':
+      return stepGameOver(state)
     case 'entry':
       return { ...state, frame: state.frame + 1, events: [] }
   }
@@ -225,9 +229,11 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     }
   }
 
-  // 11. Phase transition.
+  // 11. Phase transition. Losing the last life goes straight to game-over; arm
+  //     the "GAME OVER" hold (MLSUB.MAC:161-162) so it times out to attract.
   const signals: PhaseSignals = { playerDied, livesRemaining: lives }
   const phase = advancePhase('play', signals)
+  if (phase === 'game-over') delay = GAME_OVER_DELAY
 
   // 12. March loop edges — start/stop the feet voice on the audible transition.
   //     A fresh wave's train marching in is a start edge, so this also voices
@@ -254,6 +260,22 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }
+}
+
+/**
+ * Game-over: hold the "GAME OVER" message (the ROM's DELAY countdown), then
+ * return to a fresh attract world. Silent hold. The qualifying-score route to
+ * name entry (scoreQualifies → 'entry', ml5 highscore) is deferred; for now the
+ * attract-return timeout is the only exit, matching the display timeout.
+ */
+function stepGameOver(state: GameState): GameState {
+  const delay = Math.max(0, state.delay - 1)
+  const phase = advancePhase('game-over', { overExpired: delay === 0 })
+  if (phase === 'attract') {
+    // Rebuild a clean attract world from the seed (fresh score/lives/field).
+    return { ...createGame(state.seed), events: [] }
+  }
+  return { ...state, phase, frame: state.frame + 1, delay, events: [] }
 }
 
 /** Death: hold the explosion animation, then respawn to play. Silent hold. */

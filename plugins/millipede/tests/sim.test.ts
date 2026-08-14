@@ -256,3 +256,34 @@ describe('ml6-2 stepGame — the player cannot walk through mushrooms (MOVE OBST
     expect(after.player.h).toBe(0x8b) // moved +4
   })
 })
+
+describe('ml6-2 stepGame — game-over holds then times out to attract', () => {
+  const play = (over?: Partial<GameState>): GameState => ({
+    ...createGame(0x1982, { phase: 'play' }),
+    ...over,
+  })
+
+  it("losing the last life enters game-over and arms the 0x80 GAME OVER hold", () => {
+    const onPlayer = { h: 0x80, v: 0x08, dh: 0, dv: 0, pic: 0, color: HEAD_COLOR }
+    const g = play({ segments: [onPlayer], lives: 1, player: { ...createGame(0).player, h: 0x80, v: 0x08 } })
+    const after = stepGame(g, idle)
+    expect(after.phase).toBe('game-over') // no lives left → straight to game-over
+    expect(after.lives).toBe(0)
+    expect(after.delay).toBe(0x80) // MLSUB.MAC:162 LDA I,80 / STA DELAY
+  })
+
+  it('game-over does not advance while the hold counts down', () => {
+    const g = createGame(0x1982, { phase: 'game-over' })
+    const after = stepGame({ ...g, delay: 0x40 }, idle)
+    expect(after.phase).toBe('game-over')
+    expect(after.delay).toBe(0x3f) // ticking down, still held
+  })
+
+  it('when the hold reaches 0 it returns to a FRESH attract world (score reset)', () => {
+    const g = createGame(0x1982, { phase: 'game-over' })
+    const after = stepGame({ ...g, delay: 1, score: 99999, lives: 0 }, idle)
+    expect(after.phase).toBe('attract')
+    expect(after.score).toBe(0) // a brand-new game
+    expect(after.lives).toBe(3)
+  })
+})
