@@ -2,7 +2,8 @@
 
 The five gaps the `rom-source-study` preflight (`brief.md`) left OPEN, carried
 here from the design spec. Each states its evidence, cited into the vendored
-tree, and its disposition — who resolves it, or why it stays a note. Nothing
+tree, and its disposition — a Resolved record (OQ-1/2/4, settled by df1-4's
+board-facts.md), or why it stays a note. Nothing
 here is settled on faith; MAME-side facts are named in prose and never
 backtick-cited (secondary source, GPL — cited, never copied).
 
@@ -14,10 +15,10 @@ CB1 (williams_m.cpp:27-28 at the pinned SHA), and the handler's
 control-register values fit the CB1 model. One of the two namings is a slip,
 most likely the source comment's.
 **Resolved (df1-4):** CB1. The handler's own interrupt-control writes are to
-CRB — $04 on entry, then the $05 re-arm on exit (`defender/DEFA7.SRC:1997-1998`)
-— so the video interrupt is a B-side line, exactly as MAME wires VA11 to CB1;
-the CB2 comment is recorded in board-facts.md as an author slip. The port
-implements the CB1 model.
+CRB — the $04 mask on entry (`defender/DEFA7.SRC:1934-1935`), then the $05
+re-arm on exit (`defender/DEFA7.SRC:1997-1998`) — so the video interrupt is a
+B-side line, exactly as MAME wires VA11 to CB1; the CB2 comment is recorded in
+board-facts.md as an author slip. The port implements the CB1 model.
 
 ## OQ-2 — COUNT240/CA1 enablement in game mode
 

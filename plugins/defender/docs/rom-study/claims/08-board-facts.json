@@ -24,7 +24,7 @@
     "corroboration": {
       "file": "src/mame/williams/williams_m.cpp",
       "line": 27,
-      "note": "at mamedev/mame aaac1f637a8: the IRQ signal comes into CB1, set to VA11 (comment; the cb1_w call is the next line)"
+      "note": "at mamedev/mame aaac1f637a8: CB1 is the PIA input the driver wires the video-count line VA11 to (comment above the cb1_w call)"
     }
   },
   {
@@ -38,7 +38,7 @@
     "corroboration": {
       "file": "src/mame/williams/williams_m.cpp",
       "line": 36,
-      "note": "at mamedev/mame aaac1f637a8: the COUNT240 signal comes into CA1, the logical AND of the upper video-count bits (comment; the ca1_w call is the next line)"
+      "note": "at mamedev/mame aaac1f637a8: CA1 is the PIA input the driver drives high from scanline 240 (comment above the ca1_w call)"
     }
   },
   {
@@ -95,6 +95,15 @@
       "file": "src/mame/williams/williams_m.cpp",
       "line": 37,
       "note": "at mamedev/mame aaac1f637a8: the ca1_w call — the CA1 line that RESET leaves interrupt-disabled"
+    }
+  },
+  {
+    "id": "BF-8",
+    "claim": "The IRQ handler masks the video interrupt on entry: STA PIA1+1 stores the $04 loaded the line above into CRB — the entry half of the $04/$05 pair whose exit half is BF-6.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1935,
+      "verbatim": "\tSTA\tPIA1+1"
     }
   }
 ]
