@@ -205,6 +205,14 @@ export interface SimState {
    * Optional, so a hand-built contract state need not carry one.
    */
   pendingEnemies?: readonly { arrival: unknown }[]
+  /**
+   * jt3-3/jt11-18: this wave's lava troll is owed but not yet risen — armed on the
+   * wave advance (`trollSpawnable`) and spent on the first frame there is a bird to
+   * grab. A LATCH, not a live predicate. Optional, so a hand-built contract state
+   * need not carry one (defaults false); a test sets it to isolate the per-contact
+   * LNDB7 grab from the once-per-wave CLIF5 pick.
+   */
+  trollArmed?: boolean
 }
 
 /**
