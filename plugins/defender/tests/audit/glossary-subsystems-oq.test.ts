@@ -60,7 +60,7 @@ import {
   uncoveredCitations,
   type ProseCitation,
 } from './dossier-sweep'
-import { expectPopulated, loadChecker } from '../helpers/dossier-audit'
+import { expectPopulated, loadChecker, oqCites, oqSection, rowCites, rowWindows } from '../helpers/dossier-audit'
 
 const GLOSSARY = 'glossary.md'
 const SUBSYSTEMS = 'subsystems.md'
@@ -82,65 +82,12 @@ function doc(name: string): string {
 function docCitations(name: string): ProseCitation[] {
   return extractProseCitations(doc(name), name)
 }
-/**
- * ROW SCOPING (review rounds 1-2, [HIGH] twice). Round 1's suite matched a
- * term's symbol, plain-English phrase and citation each against the WHOLE doc,
- * so swapping two rows' citations shipped green. Round 1's fix used a two-line
- * window for prose-wrap slack — and round 2 proved BY MUTATION that the second
- * line of the window IS the next sibling row, because every markdown table row
- * is one physical line: an adjacent-row swap passed for the upper row, and a
- * five-row cyclic shift passed four of five wrong entries.
- *
- * The boundary that holds, and the contract it imposes: every cited entry
- * lives on a MARKDOWN TABLE ROW (a single physical line starting with `|`),
- * and its window is exactly that line. There is no prose window at all; prose
- * may explain, but it may not carry an entry's citation (glossary.md's
- * vector-block section is a table for this reason). The own-row property
- * holds ONLY for a symbol unique to its row — round 3 proved a same-file
- * sibling row whose prose echoed an entry's symbol could satisfy that entry —
- * so each entry also declares how many rows its symbol matches (`rows`,
- * default 1; HALLOF legitimately spans its vector row and its routine row)
- * and the loops assert the census EXACTLY, turning any future wording drift
- * that widens a symbol's scope into a loud red instead of a silent evasion.
- * Pinned by the rounds-2/3 acceptance mutants: adjacent swap reds BOTH sides,
- * one-row-down displacement reds, five-row cyclic shift reds all five,
- * CMOS↔pricing swap reds, ROMC0↔ROMC8 swap reds ROMC0's own test, and a
- * planted census-widening drift reds the count assertion.
- */
-function rowWindows(md: string, symbol: RegExp): string[] {
-  return md.split('\n').filter((l) => l.startsWith('|') && symbol.test(l))
-}
-/** Does EVERY symbol-anchored table row carry a citation covering one of `lines`?
- * (.every, not .some — Reviewer round-4 chore: with rows > 1, one correct row must
- * not mask a wrong-but-claim-backed citation on the other.) */
-function rowCites(md: string, symbol: RegExp, from: string, file: string, lines: readonly number[]): boolean {
-  return rowWindows(md, symbol).every((w) =>
-    lines.some((l) => extractProseCitations(w, from).some((c) => c.file === file && c.start <= l && l <= c.end)),
-  )
-}
-
-/**
- * The text of ONE open question's `## OQ-n` (or `### OQ-n`) section — heading line
- * through the line before the next OQ heading. Section-scoped for the same reason
- * brief-dossier.test.ts's answers are (df1-2 review, document-global bypass): a
- * fact that migrates to the wrong question, or a keyword planted elsewhere, must
- * not satisfy the question that has to state it. This pins the heading format:
- * open-questions.md is a numbered `## OQ-n` (or `### OQ-n`) sequence.
- */
-function oqSection(md: string, n: number): string {
-  const head = new RegExp(`^#{2,3} OQ-${n}\\b.*\\n`, 'm').exec(md)
-  if (!head) return ''
-  const body = md.slice(head.index + head[0].length)
-  const next = body.search(/^#{2,3} OQ-\d/m)
-  return head[0] + (next === -1 ? body : body.slice(0, next))
-}
-/** Citations inside one OQ section only. */
-function oqCites(md: string, n: number, file: string, lines: readonly number[]): boolean {
-  const section = oqSection(md, n)
-  return lines.some((l) =>
-    extractProseCitations(section, OPEN_QUESTIONS).some((c) => c.file === file && c.start <= l && l <= c.end),
-  )
-}
+// ROW SCOPING (review rounds 1-3) and OQ SECTION SCOPING now live in
+// tests/helpers/dossier-audit.ts — extracted at the second consumer (df1-4's
+// board-facts.test.ts), where their full history comments moved with them.
+// df1-4 also made rowWindows/oqSection fence-aware: a pipe-prefixed line inside
+// a fenced code block is not a table row (the df1-3 round-3 LOW-latent finding,
+// mutation-proven by the fixture tests in board-facts.test.ts).
 
 // ─────────────────────────────────────────────────────────────────────────────
 // glossary.md — author vocabulary → plain English. Each term requires BOTH the

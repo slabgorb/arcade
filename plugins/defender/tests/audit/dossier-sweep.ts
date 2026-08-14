@@ -42,7 +42,13 @@ export const claimsDir = join(romStudyDir, 'claims')
  * df1-4 adds board-facts.md. Each enrolled file's every backticked prose citation
  * must be pinned by a claim in claims/, or the real-dossier gate reddens.
  */
-export const DOSSIER_FILES: readonly string[] = ['brief.md', 'glossary.md', 'subsystems.md', 'open-questions.md']
+export const DOSSIER_FILES: readonly string[] = [
+  'brief.md',
+  'glossary.md',
+  'subsystems.md',
+  'open-questions.md',
+  'board-facts.md',
+]
 
 /** A primary-source line citation extracted from the dossier prose. */
 export interface ProseCitation {

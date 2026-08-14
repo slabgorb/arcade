@@ -1,0 +1,109 @@
+[
+  {
+    "id": "BF-1",
+    "claim": "The $D000 map-control register: MAPC EQU $D000 — the write that selects the $C000 banked window.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 11,
+      "verbatim": "MAPC\tEQU\t$D000\tMAP CONTROL"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams.cpp",
+      "line": 505,
+      "note": "at mamedev/mame aaac1f637a8: bank_select_w mapped at $D000-$DFFF — the same write range, the banked-ROM model"
+    }
+  },
+  {
+    "id": "BF-2",
+    "claim": "The *CB2 IRQ pin comment — the author naming under question in OQ-1; MAME wires the video count line VA11 to CB1, and the handler writes CRB, so the comment is the slip.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 135,
+      "verbatim": "*CB2 IRQ"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams_m.cpp",
+      "line": 27,
+      "note": "at mamedev/mame aaac1f637a8: CB1 is the PIA input the driver wires the video-count line VA11 to (comment above the cb1_w call)"
+    }
+  },
+  {
+    "id": "BF-3",
+    "claim": "RESET CLR MAPC SETUP PIAS — the PIA setup whose decode settles OQ-2: CRA ends at $14, CA1/COUNT240 interrupt disabled.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 64,
+      "verbatim": "RESET\tCLR\tMAPC\tSETUP PIAS"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams_m.cpp",
+      "line": 36,
+      "note": "at mamedev/mame aaac1f637a8: CA1 is the PIA input the driver drives high from scanline 240 (comment above the ca1_w call)"
+    }
+  },
+  {
+    "id": "BF-4",
+    "claim": "WDOG EQU $C3FC — the address the source strokes; MAME decodes it as the mirrored video-control write, with the watchdog reset at $C3FF only.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 14,
+      "verbatim": "WDOG\tEQU\t$C3FC"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams.cpp",
+      "line": 500,
+      "note": "at mamedev/mame aaac1f637a8: video_control_w at $C010 with mirror $03E0 — folds $C3FC onto the register; watchdog_reset_w sits at $C3FF only (previous line, 499)"
+    }
+  },
+  {
+    "id": "BF-5",
+    "claim": "WDATA EQU $38 with the ($39=FLIPPED) alternative — the screen-flip data pair the cocktail decoder-PROM variant exists to display.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 15,
+      "verbatim": "WDATA\tEQU\t$38\tNORMAL SCREEN;($39=FLIPPED)"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams.cpp",
+      "line": 30,
+      "note": "at mamedev/mame aaac1f637a8: original PCBs used one video-decoder PROM, cocktail-capable boards two (decoder2/decoder3) for the inversion (driver header note, 29-31)"
+    }
+  },
+  {
+    "id": "BF-6",
+    "claim": "The IRQ handler re-arms the video interrupt on exit: STA PIA1+1 writes the $05 loaded the line above into the B-side control register — CRB, the OQ-1 register-level evidence.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1998,
+      "verbatim": "\tSTA\tPIA1+1"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams_m.cpp",
+      "line": 28,
+      "note": "at mamedev/mame aaac1f637a8: the cb1_w call — the B-side line the CRB $04/$05 writes control"
+    }
+  },
+  {
+    "id": "BF-7",
+    "claim": "The RESET setup programs CRA last: STA 1,X stores $14 (the $04 base ORed with $10) — CA1 interrupt disabled, CA2 armed for the SLAM switch; the OQ-2 decode.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 81,
+      "verbatim": "\tSTA\t1,X\tAND PROGRAM"
+    },
+    "corroboration": {
+      "file": "src/mame/williams/williams_m.cpp",
+      "line": 37,
+      "note": "at mamedev/mame aaac1f637a8: the ca1_w call — the CA1 line that RESET leaves interrupt-disabled"
+    }
+  },
+  {
+    "id": "BF-8",
+    "claim": "The IRQ handler masks the video interrupt on entry: STA PIA1+1 stores the $04 loaded the line above into CRB — the entry half of the $04/$05 pair whose exit half is BF-6.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1935,
+      "verbatim": "\tSTA\tPIA1+1"
+    }
+  }
+]
