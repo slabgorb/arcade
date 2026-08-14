@@ -55,9 +55,9 @@ stories:
     priority: p2
     status: done
     started: '2026-08-13'
-    completed: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
     review_verdict: approved
   - id: ml7-6
     title: 'Decode the real ship + enemy/mushroom sprites — ml6-2 renders mushrooms/enemies as red-triangle pic guesses and the player as a blue square; the spider death shows the parked score in lieu of its sprite because sprites are undecoded. Decode from the gfx ROM (gfx-rom.ts), mind the ROT90 tile/sprite asymmetry (pac-man precedent). Visual playtest.'
@@ -84,6 +84,20 @@ stories:
     workflow: tdd
   - id: ml7-9
     title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-10
+    title: Verify + correct the DDT-bomb and POISON-mushroom sprite tiles — ml7-6 fixed the playfield char->tile BIT-6 bank select (mushrooms now decode at $3C-$3F) but the DDT stamps ($6E/$6F -> tiles $2E/$2F, ddt.ts:38) and POISON mushrooms ($78-$7B -> $38-$3B, conway.ts:48) were only mapped mechanically, never eyeballed (no rocks/poison/live-DDT in the attract field). Stage a wave with rocks + poison mushrooms + a live DDT bomb and visually confirm each tile; correct any mismatch. Visual playtest.
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: ml7-11
+    title: Per-region playfield palette from the 99$ colour table — the millipede field currently renders through a FLAT 4-colour palette PLAYFIELD_COLOUR_BYTES=[black,red,green,white] (render.ts), so mushrooms/rocks/gun all share one colour ramp. Real Millipede colours each playfield region separately from the CLRCH init + the per-wave 99$ colour table (MLIRQ.MAC:242,304-351). Wire per-region colour (inside/outside mushroom, poison, gun/lives) so the field matches the ROM. Visual playtest; keep the accessibility no-strobe rule.
     points: 5
     priority: p3
     status: backlog
