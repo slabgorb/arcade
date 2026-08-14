@@ -209,10 +209,25 @@ export const BCK_X_TABLE: readonly number[] = Object.freeze([
  * not extend there, and an entity that far off-screen has already wrapped.
  */
 export function landMaskAtX(x: number): number {
-  if (!Number.isInteger(x)) throw new TypeError(`landMaskAtX expects a whole pixel, got ${x}`)
+  const i = rawColumnIndex(x)
+  return i === null ? 0 : LND_X_TABLE[i] | 0x20
+}
+
+/**
+ * jt11-12 (review F6) — the ONE raw landing/collision column INDEX for a whole
+ * pixel X: `x + X_TABLE_ORIGIN`, or `null` when it falls outside the ROM table
+ * (an entity that far off-screen has already wrapped, so there is no ground or
+ * background there). `landMaskAtX` and `groundMaskAt`'s burned branch both read
+ * their column through THIS single index+bounds computation, so a future origin
+ * or bounds change cannot desync the landing map from the collision map — and
+ * they throw ONE shared whole-pixel TypeError, not two that drift apart. Rejects
+ * a fractional pixel: the sub-pixel accumulator lives in the velocity, not the
+ * position, so a fractional X is a caller bug, not a value to round.
+ */
+function rawColumnIndex(x: number): number | null {
+  if (!Number.isInteger(x)) throw new TypeError(`expected a whole pixel, got ${x}`)
   const i = x + X_TABLE_ORIGIN
-  if (i < 0 || i >= LND_X_TABLE.length) return 0
-  return LND_X_TABLE[i] | 0x20
+  return i < 0 || i >= LND_X_TABLE.length ? null : i
 }
 
 /**
@@ -234,10 +249,8 @@ export function groundMaskAt(
   if (!Number.isInteger(y)) throw new TypeError(`groundMaskAt expects a whole scanline, got ${y}`)
   if (y < 0 || y >= LND_Y_TABLE.length) return 0
   if (arena?.bridgeBurned) {
-    if (!Number.isInteger(x)) throw new TypeError(`groundMaskAt expects a whole pixel, got ${x}`)
-    const i = x + X_TABLE_ORIGIN
-    const col = i < 0 || i >= LND_X_TABLE.length ? 0 : LND_X_TABLE[i]
-    return col & LND_Y_TABLE[y]
+    const i = rawColumnIndex(x)
+    return (i === null ? 0 : LND_X_TABLE[i]) & LND_Y_TABLE[y]
   }
   return landMaskAtX(x) & LND_Y_TABLE[y]
 }
