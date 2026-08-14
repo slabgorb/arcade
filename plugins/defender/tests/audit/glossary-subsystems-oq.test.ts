@@ -110,9 +110,11 @@ function docCitations(name: string): ProseCitation[] {
 function rowWindows(md: string, symbol: RegExp): string[] {
   return md.split('\n').filter((l) => l.startsWith('|') && symbol.test(l))
 }
-/** Is there a symbol-anchored table row carrying a citation that covers ANY of `lines`? */
+/** Does EVERY symbol-anchored table row carry a citation covering one of `lines`?
+ * (.every, not .some — Reviewer round-4 chore: with rows > 1, one correct row must
+ * not mask a wrong-but-claim-backed citation on the other.) */
 function rowCites(md: string, symbol: RegExp, from: string, file: string, lines: readonly number[]): boolean {
-  return rowWindows(md, symbol).some((w) =>
+  return rowWindows(md, symbol).every((w) =>
     lines.some((l) => extractProseCitations(w, from).some((c) => c.file === file && c.start <= l && l <= c.end)),
   )
 }
