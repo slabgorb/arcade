@@ -553,13 +553,19 @@ const frame = (now: number): void => {
         // jt10-4 — the attract SUB-CYCLE. Step the pure scheduler one video frame; on
         // the demo page PUMP the self-play SESSION (empty inputs — active player AI is
         // the deferred G-block follow-up), restarting a fresh demo when it settles to
-        // game-over so the loop never ends. A start press leaves attract for the coin-up
-        // 'select' screen (AC-6); the shared prevStartHeld gives that press edge
-        // discipline across the transition, so a held key cannot then start a game.
+        // game-over so the loop never ends. A start press starts a game DIRECTLY with the
+        // pressed count (jt11-17): the CTA promises "PRESS 1 OR 2 TO START", so thread the
+        // 1-vs-2 choice through selectPlayerCount into enterPlaying rather than re-asking on
+        // a 'select' screen. The shared prevStartHeld gives that press its rising-edge
+        // discipline, so a held key cannot re-seed the game every frame. (The 'select'
+        // coin-up survives for the title start-press — jt11-16 — and is untouched here.)
         attract = stepAttract(attract)
         const want = readSelectInput(held)
         const startHeld = want !== null
-        if (startHeld && !prevStartHeld) cabinet = toSelect(cabinet)
+        if (startHeld && !prevStartHeld) {
+          const count = selectPlayerCount(want)
+          if (count !== null) enterPlaying(count)
+        }
         prevStartHeld = startHeld
         if (cabinet.mode === 'attract' && attract.page === 'demo') {
           const game = stepGame(cabinet.game, {})
