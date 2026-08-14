@@ -1,0 +1,74 @@
+[
+  {
+    "id": "GL-1",
+    "claim": "SAMEXAP7's header instructs ASSEMBLE WITH PHRED \u2014 PHRED names an assembler.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 9,
+      "verbatim": "* ASSEMBLE WITH PHRED"
+    }
+  },
+  {
+    "id": "GL-2",
+    "claim": "MAPC EQU $D000 is the map-control register that selects the banked $C000 window.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 11,
+      "verbatim": "MAPC\tEQU\t$D000\tMAP CONTROL"
+    }
+  },
+  {
+    "id": "GL-3",
+    "claim": "The comment above MLJSR explains the rename: the assembler would not allow both a macro and a symbol named LJSR.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 38,
+      "verbatim": "* BSO BONER DOES NOT ALLOW MACRO AND SYMBOL FOR LJSR SO CHANGED TO MLJSR"
+    }
+  },
+  {
+    "id": "GL-4",
+    "claim": "MLJSR is the cross-bank long-JSR macro, taking a block number and a target address.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 39,
+      "verbatim": "MLJSR\tMACRO\t\\0,\\1"
+    }
+  },
+  {
+    "id": "GL-5",
+    "claim": "NAPP is the nap macro \u2014 sleep for N ticks, then wake at the named address.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 33,
+      "verbatim": "NAPP\tMACRO\t\\0,\\1"
+    }
+  },
+  {
+    "id": "GL-6",
+    "claim": "CKBYT is the per-chip checksum byte, stored as the FCB $4A CHECKSUM(ACTUAL) at the top of the resident module.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 5,
+      "verbatim": "\tFCB\t$4A\tCKBYT CHECKSUM(ACTUAL)"
+    }
+  },
+  {
+    "id": "GL-7",
+    "claim": "The message module carries a vector block labelled * EUGENE'S VECTORS.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 165,
+      "verbatim": "* EUGENE'S VECTORS"
+    }
+  },
+  {
+    "id": "GL-8",
+    "claim": "The message module carries a vector block labelled * SAM'S VECTORS.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 175,
+      "verbatim": "* SAM'S VECTORS"
+    }
+  }
+]

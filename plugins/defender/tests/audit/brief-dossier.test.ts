@@ -85,9 +85,7 @@ import {
   uncoveredCitations,
   type ProseCitation,
 } from './dossier-sweep'
-import type { Claim } from '../../tools/audit/check-citations.mjs'
-
-type CheckClaims = (claims: readonly Claim[], opts: { vendoredRoot: string | null }) => string[]
+import { expectPopulated, loadChecker } from '../helpers/dossier-audit'
 
 const BRIEF = 'brief.md'
 
@@ -99,11 +97,6 @@ const BRIEF = 'brief.md'
 const vendoredRoot =
   process.env.DEFENDER_SOURCE_DIR ?? join(pluginRoot, '..', '..', 'reference', 'original-source', 'defender')
 const vendoredAvailable = existsSync(vendoredRoot)
-
-async function loadChecker(): Promise<CheckClaims> {
-  const mod = (await import('../../tools/audit/check-citations.mjs')) as { checkClaims: CheckClaims }
-  return mod.checkClaims
-}
 
 function brief(): string {
   return readDossier(BRIEF)
@@ -132,18 +125,8 @@ function citesIn(text: string, file: string, line: number): boolean {
   return extractProseCitations(text, BRIEF).some((c) => c.file === file && c.start <= line && line <= c.end)
 }
 
-/**
- * lang-review #15: a universally-quantified sweep whose every iteration can
- * `continue` (or that runs over an empty list) asserts nothing and passes by
- * default. Every loop below first states the population it must have visited.
- */
-function expectPopulated(n: number, floor: number, what: string): void {
-  expect(
-    n,
-    `${what}: swept ${n} (floor ${floor}) — below that this passes without checking anything, ` +
-      'the shape of a green gate that measures itself',
-  ).toBeGreaterThanOrEqual(floor)
-}
+// (expectPopulated and loadChecker moved to tests/helpers/dossier-audit.ts at the
+// second consumer — df1-3 review round 1, lang-review #18.)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The five preflight answers, as data. Each pins the SPECIFIC line citations the
@@ -274,6 +257,19 @@ const ANSWERS: readonly Answer[] = [
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
+// THE ONE floor source (df1-3 AC6). Both the AC-3 citation floor and the AC-4
+// claims floor derive from the ANSWERS table above — the single source — so the
+// two cannot drift apart. (The claims floor was a hand-picked 15 with a comment
+// claiming parity with the derived 17; inert against the real census, which was
+// 33 already at df1-3's setup. A derived floor moves when the table moves.)
+// The collapse budget of 6 allows range citations to merge adjacent pins in the
+// same file (INFO 15+19, DEFA7 3056+3070, ROMC8 783+797, ...) — a brief below
+// the floor has dropped an answer's evidence, not merely merged neighbours.
+// ─────────────────────────────────────────────────────────────────────────────
+const DISTINCT_PINS = new Set(ANSWERS.flatMap((a) => a.cites.map(([f, l]) => `${f}:${l}`))).size
+const BRIEF_FLOOR = DISTINCT_PINS - 6
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC-1 — brief.md exists AND is enrolled in the coverage sweep.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('df1-2 AC-1 — brief.md exists and is enrolled in the citation gate', () => {
@@ -348,13 +344,10 @@ describe('df1-2 AC-2 — brief.md answers all five preflight questions, each cit
 // ─────────────────────────────────────────────────────────────────────────────
 describe('df1-2 AC-3 — every prose citation in brief.md is covered by a claim', () => {
   it('brief.md carries a substantial body of citations (not a stub)', () => {
-    // REWORK: floor derived from the ANSWERS table instead of a hand-picked 15.
-    // The table pins `distinct` [file,line] targets; ranges can collapse pins in
-    // the same file (INFO 15+19, DEFA7 3056+3070, ROMC8 783+797, ...), so allow
-    // a collapse budget of 6 — a brief below the floor has dropped an answer's
-    // evidence, not merely merged adjacent pins.
-    const distinct = new Set(ANSWERS.flatMap((a) => a.cites.map(([f, l]) => `${f}:${l}`))).size
-    expectPopulated(briefCitations().length, distinct - 6, 'brief.md prose citations')
+    // REWORK: floor derived from the ANSWERS table instead of a hand-picked 15 —
+    // hoisted to BRIEF_FLOOR (df1-3 AC6) so AC-4's claims floor derives from the
+    // same source and the two cannot drift apart.
+    expectPopulated(briefCitations().length, BRIEF_FLOOR, 'brief.md prose citations')
   })
 
   it('no citation range is over-wide (the range-width bypass the review proved)', () => {
@@ -434,11 +427,13 @@ describe.skipIf(!vendoredAvailable)('df1-2 AC-4 — brief.md claims re-open byte
   it('every claim behind brief.md verifies against reference/original-source/defender/', async () => {
     const checkClaims = await loadChecker()
     const claims = loadClaims()
-    // df1-2 is the first story to add claims; loadClaims() is therefore brief.md's
-    // claims. A stub with no claims must fail here, not pass by having nothing to
-    // check. Floor 15 = the distinct raw citations AC-3 requires at minimum, each
-    // needing at least one covering claim.
-    expectPopulated(claims.length, 15, 'brief.md claims')
+    // loadClaims() globs the WHOLE claims/ dir — brief.md's claims plus every
+    // later story's (df1-3 onward), so this population only grows. The floor is
+    // brief.md's own minimum, BRIEF_FLOOR, derived from the ANSWERS table — the
+    // same single source as AC-3's citation floor, so the two cannot drift apart
+    // (df1-3 AC6; previously a hand-picked 15 whose parity comment was false).
+    // A stub with no claims must fail here, not pass by having nothing to check.
+    expectPopulated(claims.length, BRIEF_FLOOR, 'dossier claims (brief.md minimum)')
     expect(
       checkClaims(claims, { vendoredRoot }),
       'a brief.md claim quotes a line that does not re-open byte-for-byte in the vendored source ' +
