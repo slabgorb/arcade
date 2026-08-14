@@ -19,9 +19,11 @@ stories:
     title: 'brief.md — the five rom-source-study preflight answers, each cited to defender/<FILE>.SRC:<line> and re-opened under the df1-1 gate: (0) revision = RED/cocktail via the INFO.SRC:15-23 ledger + the three identification legs; (1) what shipped — the file-to-chip/block map incl. RASM chains INFO.SRC:3-9, the never-shipped BRUTSUM2, and the sound-source gap; (2) RASM dialect conventions with one cited example each; (3) timebase — nominal 60/16-msec vs exact 60.09615 Hz as separate numbers, TIMER/EXEC0 gating, overload path DEFA7.SRC:3056-3070; (4) INFO.SRC author documentation + credits ROMC8.SRC:783-797.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-13'
     review_findings: 'Round 2: round-1 fixes all verified closed by independent re-mutation. ONE new blocking finding: the sound-gap attribution added in green rework is factually wrong (claims ROM_START lists defend.snd; current MAME names it video_sound_rom_1.ic12 and the M6808 comes from the machine config). One-sentence doc fix. Routed non-blocking: citations.test.ts stale skipped-on-CI comments + presence guard (df1-3), AC-4 floor comment drift (df1-3), loadClaims validation (df1-3/hardening), MAME SHA pin (df1-4).'
     review_verdict: approved
   - id: df1-3

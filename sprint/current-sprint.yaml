@@ -9,7 +9,6 @@ sprint:
   number: 2634
 epics:
   - ml5
-  - ml6
   - ml7
   - ml8
   - jt11
