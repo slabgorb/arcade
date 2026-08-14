@@ -16,8 +16,9 @@
 //
 // ─── SCOPE (see .session/ml3-5-session.md, Delivery Findings) ───────────────
 // Upright cabinet only (CKIND clear; cocktail is ml8-3). The DDT-bomb table
-// halves of SCROLD/SCROLU (:1231-1295 / :1379-1399, SC-49/50) are ml4-4's —
-// the DDTADD table has no core owner yet. SCROL0 (:1296-1307, SC-48), the
+// halves of SCROLD/SCROLU (:1231-1295 / :1379-1399, SC-49/50) shipped in ml4-4 as
+// `ddtScrollDown`/`ddtScrollUp` (ddt.ts) and are threaded alongside these
+// reducers by ml7-9 (sim.ts stepGame). SCROL0 (:1296-1307, SC-48), the
 // obstacle-on-player unstick, needs ml3-3's OBSTAC and lands there.
 
 import { nextInt, type Rng } from '@shared/rng'
