@@ -328,3 +328,8 @@ completed_stories:
     title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
     points: 5
     completed: '2026-08-14'
+  - id: ml7-10
+    epic: ml7
+    title: Verify + correct the DDT-bomb and POISON-mushroom sprite tiles — ml7-6 fixed the playfield char->tile BIT-6 bank select (mushrooms now decode at $3C-$3F) but the DDT stamps ($6E/$6F -> tiles $2E/$2F, ddt.ts:38) and POISON mushrooms ($78-$7B -> $38-$3B, conway.ts:48) were only mapped mechanically, never eyeballed (no rocks/poison/live-DDT in the attract field). Stage a wave with rocks + poison mushrooms + a live DDT bomb and visually confirm each tile; correct any mismatch. Visual playtest.
+    points: 3
+    completed: '2026-08-14'
