@@ -28,6 +28,11 @@ function view(over: Partial<EnemyView> = {}): EnemyView {
     player: { h: 0x40, v: 0x30, alive: true },
     centin: 4, // 0 < centin < 12 → BT-11/12 open
     hard: false,
+    score1: 0,
+    dead: 0,
+    slow: 0,
+    mushTop: 0,
+    beetles: 0,
     rng: createRng(7),
     field: new Uint8Array(0x3c0),
     ...over,

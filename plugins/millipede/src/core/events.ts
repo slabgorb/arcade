@@ -29,6 +29,23 @@ export const EVENT_KINDS = [
   // ── sustained voices: start/stop pairs, both edges drive the same cue ────
   'march-start', //    the train begins marching    → CHAN1 centipede feet
   'march-stop',
+  // ── per-creature PRESENCE voices (ml7-8): each creature's own CHAN slot
+  //    holds a sustained cue while it is on screen; the sim edge-signals the
+  //    vacant→live spawn as `-start` and the live→vacant death/exit as `-stop`.
+  'spider-start', //     CHAN3
+  'spider-stop',
+  'bee-start', //        CHAN7
+  'bee-stop',
+  'beetle-start', //     CHAN0
+  'beetle-stop',
+  'dragonfly-start', //  CHAN4
+  'dragonfly-stop',
+  'mosquito-start', //   CHAN5
+  'mosquito-stop',
+  'earwig-start', //     CHAN9
+  'earwig-stop',
+  'inchworm-start', //   CHAN8
+  'inchworm-stop',
 ] as const
 
 export type GameEventKind = (typeof EVENT_KINDS)[number]
@@ -41,8 +58,17 @@ export interface GameEvent {
 
 export const event = (type: GameEventKind): GameEvent => ({ type })
 
-/** The loop voices — the roots of the `-start`/`-stop` pairs. */
-export type LoopVoice = 'march'
+/** The loop voices — the roots of the `-start`/`-stop` pairs: the marching
+ *  train plus each creature's PRESENCE voice (ml7-8). */
+export type LoopVoice =
+  | 'march'
+  | 'spider'
+  | 'bee'
+  | 'beetle'
+  | 'dragonfly'
+  | 'mosquito'
+  | 'earwig'
+  | 'inchworm'
 
 export function isLoopStart(kind: GameEventKind): boolean {
   return kind.endsWith('-start')

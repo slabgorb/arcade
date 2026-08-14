@@ -26,6 +26,11 @@ function view(over: Partial<EnemyView> = {}): EnemyView {
     player: { h: 0x00, v: 0x00, alive: true },
     centin: 1, // a live centipede — the spawn gate requires one
     hard: false,
+    score1: 0,
+    dead: 0,
+    slow: 0,
+    mushTop: 0,
+    beetles: 0,
     rng: createRng(1) as Rng,
     field: new Uint8Array(0),
     ...over,

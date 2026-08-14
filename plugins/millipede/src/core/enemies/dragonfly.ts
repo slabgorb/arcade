@@ -43,26 +43,25 @@ export function initDragonflies(): DragonflySlot[] {
  * frame's two POKEY random bytes off view.rng (RND0 = the spawn column, RND1 =
  * the mushroom-plant roll — the same order the ROM reads them).
  *
- * TODO(ml7-2 fidelity): slow / dead / beetles / mushTop are not yet threaded
- * through EnemyView, so they default to 0 this pass. Their effects — the SLOW
- * critter-freeze flap (DF-14/58), and the DEAD/BEETLS/MUSH+2 mushroom-glut
- * spawn veto (DF-5/6/8) — are deferred until the view carries them. attract is
- * held false (attract sequencing is the ml7 shell's job); nocent is derived
- * from an empty screen (bombing mode == no centipede left).
+ * slow / dead / beetles / mushTop are threaded from EnemyView (ml7-8): the SLOW
+ * critter-freeze flap (DF-13/14/15) and the DEAD/BEETLS/MUSH+2 mushroom-glut
+ * spawn veto (DF-5/6/8). attract is held false (attract sequencing is the ml7
+ * shell's job); nocent is derived from an empty screen (bombing mode == no
+ * centipede left).
  */
 function toEnv(view: EnemyView, rnd0: number, rnd1: number): DragonflyEnv {
   return {
     frame: view.frame,
     score2: view.score2,
     attract: false,
-    slow: 0, // TODO(ml7-2 fidelity): thread SLOW through EnemyView
+    slow: view.slow, // ml7-8: SLOW critter-freeze timer (DF-13/14/15)
     nocent: view.centin === 0 ? 1 : 0, // bombing mode == no centipede on screen
     playerAlive: view.player.alive,
     rnd0,
     rnd1,
-    dead: 0, // TODO(ml7-2 fidelity): thread DEAD through EnemyView
-    beetles: 0, // TODO(ml7-2 fidelity): thread BEETLS through EnemyView
-    mushTop: 0, // TODO(ml7-2 fidelity): thread MUSH+2 through EnemyView
+    dead: view.dead, // ml7-8: remaining centipede segments (DF-5)
+    beetles: view.beetles, // ml7-8: active beetles (DF-6)
+    mushTop: view.mushTop, // ml7-8: MUSH+2 top-band mushroom count (DF-7/8)
     centin: view.centin,
   }
 }

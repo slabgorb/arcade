@@ -48,6 +48,22 @@ export const EVENT_SOUND: Record<GameEventKind, EffectName> = {
   'bonus-life': 'bonus-life', // CHAN11
   'march-start': 'centipede', // CHAN1 feet
   'march-stop': 'centipede',
+  // ── per-creature PRESENCE voices (ml7-8): both edges drive the creature's
+  //    own CHAN slot — the shell turns the loop on at -start, off at -stop. ──
+  'spider-start': 'spider', // CHAN3
+  'spider-stop': 'spider',
+  'bee-start': 'bee', // CHAN7
+  'bee-stop': 'bee',
+  'beetle-start': 'beetle', // CHAN0
+  'beetle-stop': 'beetle',
+  'dragonfly-start': 'dragonfly', // CHAN4
+  'dragonfly-stop': 'dragonfly',
+  'mosquito-start': 'mosquito', // CHAN5
+  'mosquito-stop': 'mosquito',
+  'earwig-start': 'earwig', // CHAN9
+  'earwig-stop': 'earwig',
+  'inchworm-start': 'inchworm', // CHAN8
+  'inchworm-stop': 'inchworm',
 }
 
 /** The playback surface the dispatcher uses — the frame-path methods only. */
