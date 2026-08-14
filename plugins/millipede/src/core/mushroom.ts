@@ -161,10 +161,16 @@ const PLYFLD_BASE = 0x1000
  *   abs  = 0x1000 + col8*4 + vpart          (:858 base, :873-877 ×4 + V/8)
  *   right-edge wrap (:879-884): abs >= PLYFLD+0x3C0 folds col 30 → col 29.
  */
-export function obstac(field: Uint8Array, mover: Readonly<{ h: number; v: number; dh: number }>): number {
-  const dir = mover.dh < 0 ? -1 : 1 // :836-839
-  const vpart = (mover.v >> 3) + (mover.v & 0x04 ? 1 : 0) // :853-856 LSR×3 / ADC I,0
-  const hPrime = (mover.h + 8 * dir) & 0xff // :860-866
+/**
+ * The OBSTAC address math alone (MLSUB.MAC OBSTAC :853-884), returning the
+ * zero-based field OFFSET (col*0x20 + row) a mover at (`h`, `v`) heading `dir`
+ * looks toward. `dir` is the ±1 MOBJDH sign for a mover; SHOOT1 passes `dir = 0`
+ * ("GIVE NO DIRECTION", MILLI.MAC:1996) so the 8*D term vanishes and H' = H.
+ * Exported so core/shot.ts reuses the SAME derivation ml3-6 pinned.
+ */
+export function obstacOffset(h: number, v: number, dir: number): number {
+  const vpart = (v >> 3) + (v & 0x04 ? 1 : 0) // :853-856 LSR×3 / ADC I,0
+  const hPrime = (h + 8 * dir) & 0xff // :860-866
   const diff = 0xf7 - hPrime // :867-869 LDA I,0F7 / SEC / SBC TEMP1
   const col8 = diff < 0 ? 0 : diff & 0xf8 // :870-872 borrow → "USE LEFT MARGIN"
   let abs = PLYFLD_BASE + col8 * 4 + vpart // :858/:873-877
@@ -174,7 +180,12 @@ export function obstac(field: Uint8Array, mover: Readonly<{ h: number; v: number
   if ((abs & 0xff00) === 0x1300 && (abs & 0xff) >= 0xc0) {
     abs = 0x1300 | ((abs & 0x1f) | 0xa0)
   }
-  return obstacleAt(field, abs - PLYFLD_BASE) // :887-888
+  return abs - PLYFLD_BASE
+}
+
+export function obstac(field: Uint8Array, mover: Readonly<{ h: number; v: number; dh: number }>): number {
+  const dir = mover.dh < 0 ? -1 : 1 // :836-839
+  return obstacleAt(field, obstacOffset(mover.h, mover.v, dir)) // :887-888
 }
 
 /**

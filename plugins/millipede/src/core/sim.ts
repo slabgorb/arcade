@@ -25,6 +25,8 @@ import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent } from './events'
 import { score2Of } from './score'
 import { stepRoster, shootRoster } from './enemies/roster'
+import { resolveShot } from './shot'
+import { ddtExplosionStep } from './ddt'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -89,9 +91,25 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     events.push(event('shot-fired'))
   }
 
-  // 3. Shot hits at its CURRENT position (before climbing): first segments...
+  // 3. Shot hits at its CURRENT position (before climbing). SHOOT1 resolves the
+  //    PLAYFIELD first — a DDT bomb or a mushroom in the shot's cell (shot.ts) —
+  //    then, if the shot passed through, the millipede segments.
   let segments = state.segments
   let score = state.score
+  if (shot.active) {
+    const field = resolveShot(state.ddt, state.field, shot.h, shot.v)
+    if (field.kind === 'ddt') {
+      score += field.points // +80 (DDT_HIT_POINTS)
+      shot = { active: false, h: 0, v: 0 }
+      events.push(event('ddt-exploded'))
+    } else if (field.kind === 'mushroom') {
+      score += field.points // +1 only on a destroying chip
+      shot = { active: false, h: 0, v: 0 }
+      events.push(event('mushroom-hit'))
+    } else if (field.kind === 'stop') {
+      shot = { active: false, h: 0, v: 0 } // a letter/ROCK stops the shot, no score
+    }
+  }
   if (shot.active) {
     const hit = segments.findIndex((s) => isLive(s) && checkPlayerCollision(s, { h: shot.h, v: shot.v }))
     if (hit >= 0) {
@@ -131,6 +149,11 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     const v = shot.v + SHOT_SPEED
     shot = v >= SHOT_MAX_V ? { active: false, h: 0, v: 0 } : { ...shot, v }
   }
+
+  // 6. DDT — animate any exploding bombs' clouds (FRAME & 7 gated inside).
+  //    Mutates state.field in place, as the ROM draws into playfield RAM. The
+  //    returned mush deltas feed the MushCounts threading (TODO(ml7-2 fidelity)).
+  ddtExplosionStep(state.ddt, state.field, state.frame)
 
   // 6. Player death — a segment or any enemy touching the player this frame.
   let lives = state.lives

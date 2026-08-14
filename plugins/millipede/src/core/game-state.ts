@@ -14,6 +14,7 @@ import { musher, type MushCounts } from './mushroom'
 import { createMillipede, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
 import { initRoster, type Roster } from './enemies/roster'
+import { newDdtTable, ddtPlace, ddtRestore, type DdtTable } from './ddt'
 import type { GamePhase } from './phase'
 import type { GameEvent } from './events'
 
@@ -39,6 +40,8 @@ export interface GameState {
   segments: Segment[]
   /** The enemy cast — spiders, bees, beetles, dragonflies, mosquitoes, earwigs, inchworms. */
   roster: Roster
+  /** The four-entry DDTADD bomb bank (DDTS/DDTS2, ddt.ts). Stamped into `field`. */
+  ddt: DdtTable
   score: number
   lives: number
   wave: number
@@ -69,6 +72,12 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
   for (let i = 0; i < START_MUSHROOM_TRIES; i++) {
     musher(field, nextInt(rng, PLYFLD_SIZE), counts)
   }
+  // DDTS then DDTS2 (ddt.ts): place the four bombs and stamp them into the
+  // field. Runs AFTER the mushroom scatter so the bombs win their cells
+  // (ddtRestore overwrites a mushroom, as the ROM does — DD-24).
+  const ddt = newDdtTable()
+  ddtPlace(ddt, false)
+  ddtRestore(ddt, field)
   return {
     phase: opts?.phase ?? 'attract',
     seed,
@@ -79,6 +88,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
     roster: initRoster(),
+    ddt,
     score: 0,
     lives: opts?.lives ?? START_LIVES,
     wave: 0,
