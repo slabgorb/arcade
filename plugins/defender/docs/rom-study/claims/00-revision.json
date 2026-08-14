@@ -62,7 +62,7 @@
       "verbatim": "\tFCB\t$4A\tCKBYT CHECKSUM(ACTUAL)"
     },
     "corroboration": {
-      "file": "src/mame/midway/williams.cpp",
+      "file": "src/mame/williams/williams.cpp",
       "line": 1985,
       "note": "ROM_START(defender) — CRC-for-CRC match of the owner ROM zip against the parent set; \"Red label\" per williams.cpp:3968"
     }

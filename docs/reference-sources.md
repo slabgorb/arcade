@@ -33,3 +33,16 @@ can change the audited bytes underneath the fidelity oracles.
 | millipede | historicalsource/millipede | 29f3e05 | ~/Projects/millipede-source | ~/Projects/a-2/reference/original-source/millipede | 2026-08-11 |
 | frenzy | historicalsource/frenzy | df69ecd | ~/Projects/frenzy-source | ~/Projects/a-2/reference/original-source/frenzy | 2026-08-11 |
 | lunar-lander | historicalsource/lunar-lander | e7e1d99 | ~/Projects/lunar-lander-source | ~/Projects/a-2/reference/original-source/lunar-lander | 2026-08-11 |
+
+## Secondary sources — pinned, never vendored
+
+MAME is GPL: its driver facts are **cited in prose, never copied and never
+vendored** into this repo. The pin below is what makes a `williams.cpp:1556`-style
+prose pointer a checkable statement instead of a guess with a date problem
+(the df1-2 lesson: an unpinned MAME attribution was checkable-and-wrong). Verify
+a pointer with `git -C ~/Projects/mame show <sha>:src/mame/williams/<file>` —
+the object read needs no checkout.
+
+| Name | Repo | Pinned SHA | Clone cache | Vendored |
+|------|------|------------|-------------|----------|
+| mame (williams drivers) | mamedev/mame | aaac1f637a8cbf23724b61ea578d70a32f2cf4fe | ~/Projects/mame | never — GPL, cited in prose only |

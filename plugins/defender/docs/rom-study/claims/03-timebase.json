@@ -26,7 +26,7 @@
       "verbatim": "\tLDA\tVERTCT\tPAST 128"
     },
     "corroboration": {
-      "file": "src/mame/midway/williams.cpp",
+      "file": "src/mame/williams/williams.cpp",
       "line": 1556,
       "note": "set_raw: exact refresh 8 MHz / (512 x 260) = 60.09615 Hz — the exact number, recorded separately from the nominal 60"
     }
