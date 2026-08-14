@@ -1,0 +1,31 @@
+# Glossary — Defender author vocabulary → plain English
+
+Eugene Jarvis's 1981 source names its tools, macros and machinery with terse
+in-house words. This table translates each to plain English. Line numbers are
+`grep -n`/`awk` tool output over the vendored tree, never transcription; read
+`brief.md` first for the shipped set, dialect and timebase ground truth, and
+`subsystems.md` for where each subsystem lives.
+
+## Tools and machinery
+
+| Author word | Plain English | Where |
+|---|---|---|
+| `PHRED` | an assembler — `SAMEXAP7.SRC`'s header says "ASSEMBLE WITH PHRED", naming the tool that builds that module (the build notes name RASM for the main chains; whether PHRED is a distinct assembler or an in-house name for the same one is not stated in the tree) | `defender/SAMEXAP7.SRC:9` |
+| `MAPC` | the map-control register at $D000 — writing a block number here selects which banked ROM block appears in the $C000 window | `defender/PHR6.SRC:11` |
+| `CKBYT` | the per-chip checksum byte ("CHECKSUM(ACTUAL)") each ROM carries as its first byte — the mechanism whose presence rules the WHITE release out of this tree | `defender/DEFA7.SRC:5` |
+
+## Macros
+
+| Author word | Plain English | Where |
+|---|---|---|
+| `MLJSR` | the cross-bank long-JSR macro — a JSR through the `LJSRV` vector with the target address and block number inlined, so code in one banked block can call into another. The comment above it explains the name: the assembler ("BSO BONER") would not allow both a macro and a symbol named LJSR, so it became MLJSR | `defender/AMODE1.SRC:38-43` |
+| `NAPP` | the nap-and-jump macro — puts the current process to sleep for N 16-msec ticks and names the address it wakes at (a sleep of 60 is one second) | `defender/AMODE1.SRC:33-37` |
+
+## The per-author message-vector blocks
+
+The message module groups its vector tables by the programmer whose code consumes
+them: an `* EUGENE'S VECTORS` block (`defender/MESS0.SRC:165`) holds the
+play-side message vectors (PLYR1/PLYR2, BONUS X, ATTACK WAVE, COMPLETED), and an
+`* SAM'S VECTORS` block (`defender/MESS0.SRC:175`) holds the hall-of-fame entry
+vectors (HOF, INIT$, HALLD, HALEN). The names are the authors' own — the vector
+tables are organized by who wrote the consuming code, not by function.

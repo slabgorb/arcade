@@ -1,0 +1,200 @@
+[
+  {
+    "id": "SB-1",
+    "claim": "SLEEP is the scheduler sleep entry \u2014 it stores the tick count into the current process record.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 12,
+      "verbatim": "SLEEP\tLDU\tCRPROC"
+    }
+  },
+  {
+    "id": "SB-2",
+    "claim": "MKPROC creates a process record.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 72,
+      "verbatim": "MKPROC\tPSHS\tA,Y,U"
+    }
+  },
+  {
+    "id": "SB-3",
+    "claim": "IRQ is the interrupt handler entry; its first act clears the map control.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1931,
+      "verbatim": "IRQ\tCLR\tMAPC"
+    }
+  },
+  {
+    "id": "SB-4",
+    "claim": "COLIDE walks the object list for collision detection.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2907,
+      "verbatim": "COLIDE\tLDX\t#OPTR"
+    }
+  },
+  {
+    "id": "SB-5",
+    "claim": "SNDOUT is the sound-command output entry of the sound sequencer.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 696,
+      "verbatim": "SNDOUT\tPSHS\tA,B,CC"
+    }
+  },
+  {
+    "id": "SB-6",
+    "claim": "DEFB6 opens with the UFO PROCESS START \u2014 enemies are scheduler processes in this module.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 2,
+      "verbatim": "*UFO PROCESS START"
+    }
+  },
+  {
+    "id": "SB-7",
+    "claim": "MAPCH7 is a bank-select helper loading block number 7.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1292,
+      "verbatim": "MAPCH7\tLDA\t#7"
+    }
+  },
+  {
+    "id": "SB-8",
+    "claim": "Block 1's $C000 vector table starts with JMP HALLOF (hall-of-fame entry).",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 114,
+      "verbatim": "\tJMP\tHALLOF\tVECTORS"
+    }
+  },
+  {
+    "id": "SB-9",
+    "claim": "Block 1's second entry vector is JMP SCNR \u2014 the scanner.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 115,
+      "verbatim": "\tJMP\tSCNR"
+    }
+  },
+  {
+    "id": "SB-10",
+    "claim": "HALLOF begins by killing all processes \u2014 the hall-of-fame / attract entry routine.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 119,
+      "verbatim": "HALLOF\tJSR\tGNCIDE\tKILL ALL PROCESSES"
+    }
+  },
+  {
+    "id": "SB-11",
+    "claim": "MESS0's own TTL line names it the MESSAGE BLOCK \u2014 the module-side identity for banked block 2.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 1,
+      "verbatim": "\tTTL\tMESS0 - MESSAGE BLOCK REV 0 - 12/22/80"
+    }
+  },
+  {
+    "id": "SB-12",
+    "claim": "WTEXTB is the write-text-block entry.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 722,
+      "verbatim": "WTEXTB\tPSHS\tU,Y,X,D,CC <=START HERE TO WRITE TEXT BLOCK"
+    }
+  },
+  {
+    "id": "SB-13",
+    "claim": "WTEXTC is the write-text-character entry.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 732,
+      "verbatim": "WTEXTC\tPSHS\tU,Y,X,D,CC <=START HERE TO WRITE TEXT CHARACTER"
+    }
+  },
+  {
+    "id": "SB-14",
+    "claim": "BLK71's own header names TERRAIN , MINI-TERRAIN DATA \u2014 the module-side identity for banked block 7.",
+    "source": {
+      "file": "BLK71.SRC",
+      "line": 6,
+      "verbatim": "*\t\tTERRAIN , MINI-TERRAIN DATA"
+    }
+  },
+  {
+    "id": "SB-15",
+    "claim": "Block 7's vector table opens with JMP BGINIT \u2014 terrain generation.",
+    "source": {
+      "file": "BLK71.SRC",
+      "line": 83,
+      "verbatim": "\tJMP\tBGINIT\tTERRAIN GENERATION"
+    }
+  },
+  {
+    "id": "SB-16",
+    "claim": "The wave data table WVTAB is published as an FDB in the block-7 vector table.",
+    "source": {
+      "file": "BLK71.SRC",
+      "line": 89,
+      "verbatim": "\tFDB\tWVTAB\tWAVE DATA TABLE"
+    }
+  },
+  {
+    "id": "SB-17",
+    "claim": "SAMEXAP7's header names SAM EXPLOSIONS AND APPEARANCES \u2014 the materialize/explode effects module.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 7,
+      "verbatim": "*\t\tSAM EXPLOSIONS AND APPEARANCES"
+    }
+  },
+  {
+    "id": "SB-18",
+    "claim": "RESET begins PIA setup by clearing the map control.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 64,
+      "verbatim": "RESET\tCLR\tMAPC\tSETUP PIAS"
+    }
+  },
+  {
+    "id": "SB-19",
+    "claim": "The CMOS ledger allocates SLOT1 \u2014 the left coin total \u2014 among the coin/pricing bookkeeping.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 20,
+      "verbatim": "SLOT1\tRMB\t4\tLEFT COIN TOTAL"
+    }
+  },
+  {
+    "id": "SB-20",
+    "claim": "CREDIT is a pricing equate at $A037.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 12,
+      "verbatim": "CREDIT\tEQU\t$A037"
+    }
+  },
+  {
+    "id": "SB-21",
+    "claim": "ROMC0's own TTL names it the DIAG ROM AT C000 \u2014 the module-side identity for the diagnostics block.",
+    "source": {
+      "file": "ROMC0.SRC",
+      "line": 1,
+      "verbatim": "\tTTL\tROMC0 - DIAG ROM AT C000 - 12/22/80"
+    }
+  },
+  {
+    "id": "SB-22",
+    "claim": "ROMC8's own TTL names it the DIAG ROM UPPER HALF.",
+    "source": {
+      "file": "ROMC8.SRC",
+      "line": 1,
+      "verbatim": "\tTTL\tROMC8 - DIAG ROM UPPER HALF - 12/22/80"
+    }
+  }
+]

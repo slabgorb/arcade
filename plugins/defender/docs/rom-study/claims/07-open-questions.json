@@ -1,0 +1,74 @@
+[
+  {
+    "id": "OQ-1",
+    "claim": "The source comments the video interrupt pin as CB2, above the PIA2 equate.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 135,
+      "verbatim": "*CB2 IRQ"
+    }
+  },
+  {
+    "id": "OQ-2",
+    "claim": "The PIA1 comment block pins CA1 as an IRQ line.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 131,
+      "verbatim": "*CA1 IRQ"
+    }
+  },
+  {
+    "id": "OQ-3",
+    "claim": "ROMF8 co-loads at ORG $FB00, marked TEMPORARY by the author.",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 63,
+      "verbatim": "\tORG\t$FB00\tTEMPORARY!!!!!!"
+    }
+  },
+  {
+    "id": "OQ-4",
+    "claim": "The build notes warn BEWARE OF ORDER OF LOADING for the co-loaded upper half.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 8,
+      "verbatim": "(NOTE: BEWARE OF ORDER OF LOADING"
+    }
+  },
+  {
+    "id": "OQ-5",
+    "claim": "APVCT EQU $FC60 is the appearance-vector origin SAMEXAP7 assembles at.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 100,
+      "verbatim": "APVCT\tEQU\t$FC60\tAPPEAR"
+    }
+  },
+  {
+    "id": "OQ-6",
+    "claim": "WDOG EQU $C3FC is the watchdog address the source strokes.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 14,
+      "verbatim": "WDOG\tEQU\t$C3FC"
+    }
+  },
+  {
+    "id": "OQ-7",
+    "claim": "The ledger names the GREEN software release.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 17,
+      "verbatim": "ROM1B, ROM2A, ROM3B, ROM4B, AND ROM6A THRU ROM12A ARE THE GREEN SOFTWARE"
+    }
+  },
+  {
+    "id": "OQ-8",
+    "claim": "GREEN is the re-cut for two 2716 EPROMs instead of one 2532 at $D000.",
+    "source": {
+      "file": "INFO.SRC",
+      "line": 18,
+      "verbatim": " (2ND RELEASE FOR 2 2716'S INSTEAD OF 1 2532 AT D000)"
+    }
+  }
+]
