@@ -2,14 +2,17 @@
 //
 // Story ml6-2/ml7-2 — the millipede CABINET: the page now runs the real game.
 // createGame boots into the silent attract demo; the first gesture unlocks audio
-// (browser autoplay policy) and a click drops into play. Each frame the shell
-// reads the mouse as the trackball, steps the pure simulation (core/sim.ts
-// stepGame), renders every entity from the returned GameState, and dispatches the
-// frame's core events to the ml6-1 sound driver through @shared/synth. THE SWEEP
-// IS THE SOUND — a green vitest is not acceptance; this page is the AC3 playtest.
+// (browser autoplay policy) and a click drops into play. The shell reads the mouse
+// as the trackball and steps the pure simulation (core/sim.ts stepGame) at a FIXED
+// 60 Hz — the ROM's logic rate — via a real-time accumulator (shell/frame-clock.ts,
+// ml7-5), so the sim speed is decoupled from the display refresh; it renders every
+// rAF from the latest GameState and dispatches each step's core events to the ml6-1
+// sound driver through @shared/synth. THE SWEEP IS THE SOUND — a green vitest is not
+// acceptance; this page is the AC3 playtest.
 //
-// SHELL only beyond stepGame: the one clock is requestAnimationFrame; the mouse,
-// the AudioContext and the canvas are the only browser surfaces touched.
+// SHELL only beyond stepGame: the clock is requestAnimationFrame, folded to fixed
+// 60 Hz steps; the mouse, the AudioContext and the canvas are the only browser
+// surfaces touched.
 
 import { mountCanvas } from '@shared/host-helpers'
 import { PLYFLD_STRIDE } from './core/conway'
@@ -22,6 +25,7 @@ import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { drawGridStamps, drawStampAtPx } from './shell/render'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
+import { runFixedSteps } from './shell/frame-clock'
 
 const LOGICAL_W = 240
 const LOGICAL_H = 256
@@ -127,16 +131,35 @@ function render(state: GameState): void {
   void SHIP_STAMP
 }
 
-const frame = (): void => {
-  const input: GameInput = { dh: toByte(accDh), dv: toByte(accDv), fire: firePending, start: startPending }
-  accDh = 0
-  accDv = 0
-  firePending = false
-  startPending = false
+// ── Fixed-timestep accumulator (ml7-5). stepGame is one ROM 60 Hz frame, so we
+//    drive it off REAL elapsed time, not the raw rAF cadence: a >60 Hz display
+//    (or uncapped rAF) no longer runs the sim faster than the arcade, and a
+//    backgrounded tab that hands back a huge delta is clamped (frame-clock.ts). ──
+let accMs = 0
+let lastTs: number | null = null
 
-  game = stepGame(game, input)
-  playEventSounds(audio, game.events)
-  ;(window as unknown as { __sim?: GameState }).__sim = game
+const frame = (ts: number): void => {
+  const elapsed = lastTs === null ? 0 : ts - lastTs
+  lastTs = ts
+
+  // Step the sim a whole number of fixed 60 Hz frames for the real time elapsed
+  // (runFixedSteps folds the delta + carries the remainder). Input is drained once,
+  // into the first sub-step, so a catch-up burst can't replay the same fire/start
+  // and the mouse travel accumulated across skipped rAFs is consumed whole.
+  accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
+    const input: GameInput = isFirst
+      ? { dh: toByte(accDh), dv: toByte(accDv), fire: firePending, start: startPending }
+      : { dh: 0, dv: 0, fire: false, start: false }
+    if (isFirst) {
+      accDh = 0
+      accDv = 0
+      firePending = false
+      startPending = false
+    }
+    game = stepGame(game, input)
+    playEventSounds(audio, game.events)
+    ;(window as unknown as { __sim?: GameState }).__sim = game
+  })
 
   render(game)
 

@@ -53,7 +53,8 @@ stories:
     title: 'Fixed-timestep at the millipede LOGIC frame rate — the ml6-2 frame loop steps stepGame every requestAnimationFrame (~60Hz), so the whole game (march, fliers, explosions) animates far too fast (AC3 playtest finding). Accumulate real time and step at the ROM logic rate; see the millipede cadence memory (calc-frame ~10.4Hz, NOT 62.5Hz). Playtest to confirm the feel.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
   - id: ml7-6
