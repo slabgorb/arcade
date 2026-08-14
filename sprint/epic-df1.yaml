@@ -68,7 +68,8 @@ stories:
     description: 'Two halves, one function, three games. (1) As titled: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede — wrap the parse in a controlled per-file error naming the file. (2) EXTENSION routed from df1-2 review (round-1 [TYPE] finding, routing discharged at df1-3 setup 2026-08-14): loadClaims() casts JSON.parse output without runtime shape validation, so a well-formed-JSON-wrong-shape claims file (e.g. an object instead of an array, or entries missing source.file/line/verbatim) flows into the sweep unchecked — add a shape assertion in loadClaims or an unconditional schema test (df1-2 archive names plugins/defender/tests/audit/dossier-sweep.ts loadClaims as the defender site). One edit per game closes both halves; both are on the same load path. WHY THIS IS NOT df1-3: df1-3 is the dossier-authoring story and its suite scope is enrollment + the skipped-on-CI prose model + floor derivation; the load-path hardening is fleet-wide (three games) and belongs with the fleet-wide story.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
     type: chore
