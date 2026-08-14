@@ -17,16 +17,18 @@ import { createGame, type GameState, type Shot } from './game-state'
 import { stepPlayer } from './input'
 import {
   stepMillipede,
+  createMillipede,
   checkPlayerCollision,
   VACANT_COLOR,
   type Segment,
 } from './millipede'
+import { WAVE_DELAY, stepWaveDelay } from './waves'
 import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent } from './events'
 import { score2Of } from './score'
 import { stepRoster, shootRoster } from './enemies/roster'
 import { resolveShot } from './shot'
-import { ddtExplosionStep } from './ddt'
+import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -155,7 +157,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //    returned mush deltas feed the MushCounts threading (TODO(ml7-2 fidelity)).
   ddtExplosionStep(state.ddt, state.field, state.frame)
 
-  // 6. Player death — a segment or any enemy touching the player this frame.
+  // 7. Player death — a segment or any enemy touching the player this frame.
   let lives = state.lives
   let alive = player.alive
   let playerDied = false
@@ -167,14 +169,41 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     events.push(event('player-died'))
   }
 
-  // 7. March the surviving segments.
+  // 8. March the surviving segments.
   segments = stepMillipede(segments, state.frame, state.field)
 
-  // 8. Phase transition.
+  // 9. Wave loop (MILLI.MAC:1912-1915 clear→arm, CHKEND countdown, next wave).
+  //    A cleared millipede with no DELAY pending WINS the wave: arm WAVE_DELAY.
+  //    CHKEND then counts it down, holding while beetles are still present
+  //    (MLSUB.MAC:56); mushroom-restoring (conway) is item 4's blocker, still
+  //    false here. When DELAY reaches 0 a fresh train marches in.
+  let wave = state.wave
+  let delay = state.delay
+  const millipedeCleared = !segments.some(isLive)
+  if (millipedeCleared && delay === 0) delay = WAVE_DELAY // arm (edge: DELAY was idle)
+  const beetlesPresent = roster.beetles.some((b) => b.color !== 0)
+  const chkend = stepWaveDelay(delay, {
+    mushroomsRestoring: false, // TODO(item 4): conway growth still running
+    playerExploding: playerDied || state.deathTimer > 0,
+    beetlesPresent,
+  })
+  delay = chkend.delay
+  if (chkend.waveReady) {
+    // The inter-wave pause elapsed: start the next wave (new train + fresh
+    // bombs re-stamped, DDTS/DDTS2). Difficulty ramps via the wave counter.
+    segments = createMillipede({ headingSign: 1 })
+    ddtPlace(state.ddt, false)
+    ddtRestore(state.ddt, state.field)
+    wave += 1
+  }
+
+  // 10. Phase transition.
   const signals: PhaseSignals = { playerDied, livesRemaining: lives }
   const phase = advancePhase('play', signals)
 
-  // 9. March loop edges — start/stop the feet voice on the audible transition.
+  // 11. March loop edges — start/stop the feet voice on the audible transition.
+  //     A fresh wave's train marching in is a start edge, so this also voices
+  //     the wave transition (no separate wave-clear cue in the ROM's CHAN set).
   const wasMarching = state.phase === 'play' && state.segments.some(isLive)
   const nowMarching = phase === 'play' && segments.some(isLive)
   if (nowMarching && !wasMarching) events.push(event('march-start'))
@@ -190,6 +219,8 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     roster,
     score,
     lives,
+    wave,
+    delay,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }

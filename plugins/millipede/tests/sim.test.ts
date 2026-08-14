@@ -160,3 +160,41 @@ function field7(field: Uint8Array, e: { lo: number; hi: number }): number {
   const offset = ((e.hi & 3) << 8) | e.lo
   return field[offset] & 0x7f
 }
+
+describe('ml6-2 stepGame — the wave loop (clear → DELAY → next wave)', () => {
+  const play = (over?: Partial<GameState>): GameState => ({
+    ...createGame(0x1982, { phase: 'play' }),
+    ...over,
+  })
+  const liveBeetle = { color: 0xb9, pic: 0x34, v: 0x40, h: 0x80, dv: 0, dh: 0, timer: 0 }
+
+  it('clearing the millipede arms the inter-wave DELAY (MILLI.MAC:1912-1915)', () => {
+    // No live segments and DELAY idle → the wave is won: arm 0x40, minus this
+    // frame's own tick (CHKEND runs the same frame) → 0x3F.
+    const g = play({ segments: [], delay: 0 })
+    const after = stepGame(g, idle)
+    expect(after.delay).toBe(0x3f)
+  })
+
+  it('does NOT re-arm while a DELAY is already counting (edge-only)', () => {
+    const g = play({ segments: [], delay: 0x20 })
+    const after = stepGame(g, idle)
+    expect(after.delay).toBe(0x1f) // just ticked down, not re-armed to 0x40
+  })
+
+  it('when DELAY reaches 0 a fresh millipede marches in and the wave advances', () => {
+    const g = play({ segments: [], delay: 1, wave: 0 })
+    const after = stepGame(g, idle)
+    expect(after.delay).toBe(0)
+    expect(after.segments.some((s) => s.color !== 0)).toBe(true) // a new train
+    expect(after.wave).toBe(1)
+    expect(kinds(after)).toContain('march-start') // the audible wave transition
+  })
+
+  it('holds the countdown while beetles are still present (MLSUB.MAC:56)', () => {
+    const base = play({ segments: [], delay: 5 })
+    const g: GameState = { ...base, roster: { ...base.roster, beetles: [liveBeetle] } }
+    const after = stepGame(g, idle)
+    expect(after.delay).toBe(5) // held, no decrement
+  })
+})

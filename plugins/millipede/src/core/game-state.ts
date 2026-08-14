@@ -45,6 +45,9 @@ export interface GameState {
   score: number
   lives: number
   wave: number
+  /** DELAY (MLDEF.MAC:286) — the inter-wave pause; 0 is idle, armed to WAVE_DELAY
+   *  when the millipede is cleared and counted down by CHKEND (waves.ts). */
+  delay: number
   /** Frames remaining in the death-animation hold (0 outside it). */
   deathTimer: number
   /** Rebuilt every frame, never appended across frames; attract clears it. */
@@ -92,6 +95,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     score: 0,
     lives: opts?.lives ?? START_LIVES,
     wave: 0,
+    delay: 0,
     deathTimer: 0,
     events: [],
   }
