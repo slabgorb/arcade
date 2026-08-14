@@ -298,3 +298,8 @@ completed_stories:
     title: 'Post-jt11-5 destruction-consumption leftovers (items 1 & 3; item 2 grip-grab-zone SUPERSEDED by jt11-18, done 2026-08-14): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake''s look-ahead, so a destroyed cliff stops blocking climb decisions. (3) LOW refactor (review F6): groundMaskAt''s burned branch re-derives landMaskAtX''s indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages.'
     points: 2
     completed: '2026-08-14'
+  - id: ml8-2
+    epic: ml8
+    title: 'Mutation battery over the scroll geometry (ml3-5) + the two-POKEY sound driver (ml6-1): pin output coordinates and channel writes against surviving mutants; group any survivors by file surface, not by subsystem.'
+    points: 5
+    completed: '2026-08-14'

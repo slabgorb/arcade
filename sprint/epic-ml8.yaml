@@ -20,9 +20,13 @@ stories:
     title: 'Mutation battery over the scroll geometry (ml3-5) + the two-POKEY sound driver (ml6-1): pin output coordinates and channel writes against surviving mutants; group any survivors by file surface, not by subsystem.'
     points: 5
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
+    branch: feat/ml8-2-mutation-battery-scroll-sound
+    review_verdict: approved
   - id: ml8-3
     title: "Cocktail cabinet (CKIND bit 7, player 2 up) is unmodelled fleet-wide in the millipede port: ml3-4's CONWAY reducer is upright-only (player area rows < 7; cocktail flips MSKORA to rows >= 0x19, CONWAY.MAC:40-44, and changes the MUSHE1/MUSHDC row bands, MLSUB.MAC:713-727/748-767). Decide: model cocktail across the core reducers, or record an explicit fleet-wide wontfix matching the centipede precedent. Filed from ml3-4's review round (Delivery Finding, TEA)."
     points: 2
