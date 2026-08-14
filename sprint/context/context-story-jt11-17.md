@@ -72,13 +72,20 @@ This pattern is already proven at `main.ts:587-593` (the select door that direct
 select screen choice). The `'select'` screen becomes reachable only if a **distinct** coin-up gesture is kept (see Open
 question). This is the reuse-first fix — no new functions, both symbols already imported.
 
-### Open question for the groomer / owner — ⚠ RULED (a), 2026-08-14
+### Open question for the groomer / owner — ⚠ RULED, then CORRECTED 2026-08-14 (attract-only)
 
-> **⚠ OWNER RULING (2026-08-14, via SM):** Option **(a)** — **retire the re-prompt.** Attract 1/2 is
-> the **sole** start path; remove the now-redundant `'select'` 1P/2P re-prompt (or retire the whole
-> `'select'` mode). No coin-up gesture is added. TEA writes RED to pin attract-1/2 as the only start
-> path; the `'select'` re-prompt must be gone (or unreachable and removed), not merely bypassed.
-> Option (b) is **rejected**. This resolves AC-5 below to its "removed" branch only.
+> **⚠ OWNER RULING v2 (2026-08-14, via TEA) — SUPERSEDES v1:** **Attract only; keep the title
+> coin-up.** Change ONLY the `attract` pump branch to direct-start; leave jt11-16's `title`→`select`
+> coin-up UNTOUCHED and keep the `select` mode. TEA falsified the v1 premise: jt11-16 (merged after
+> this story was filed) wired the `title` start-press to `toSelect`, so `toSelect` still has a caller
+> after the attract fix — the select mode is NOT orphaned, and retiring it would break jt11-16's
+> merged title coin-up and its passing tests (`title-boot-jt11-16-wiring.test.ts` AC-C). Accepted
+> asymmetry: after this fix, an attract start-press direct-starts while a title start-press still
+> opens the two-press select coin-up; unifying them is a separate follow-up.
+>
+> **⚠ OWNER RULING v1 (2026-08-14, via SM) — SUPERSEDED, kept for provenance:** Option (a) "retire
+> the re-prompt / whole select mode; attract 1/2 the sole start path." Made on the premise that
+> `toSelect` would lose its only caller — which jt11-16 falsified. Do not act on v1.
 
 Original framing (kept for provenance): does the cabinet still want a separate coin-up **select**
 screen at all? Two coherent end-states were —
@@ -113,11 +120,11 @@ gates it. Reuse jt11-1/jt11-8's edge pattern.
 to that count (ties to jt11-1's `createGame(playerCount)` path). A pure-unit check plus one
 integration assertion that a 1P start spawns one knight.
 
-### AC-5 — the redundant select re-prompt is removed (owner ruled (a) — 2026-08-14)
-Branch (a) is CHOSEN. The redundant `'select'` 1P/2P re-prompt is removed (or the whole `'select'`
-mode retired) and a test pins that **attract 1/2 is the sole start path** — `toSelect` has no
-production caller after this fix. Do not add a coin-up gesture (branch (b) rejected). Do not leave
-two mutually-contradicting start paths, and do not leave the re-prompt reachable.
+### AC-5 — jt11-16's title coin-up and the select mode are PRESERVED (owner ruling v2 — attract-only)
+CORRECTED: the fix touches ONLY the `attract` pump branch. A regression fence pins that the `title`
+branch still routes its start-press to `toSelect` (jt11-16, unchanged) and that the `select` mode is
+not removed. Do NOT retire the select mode or edit `title-boot-jt11-16-wiring.test.ts`. (v1's "remove
+the re-prompt / sole start path" is superseded — see the CORRECTED ruling banner above.)
 
 ### Rule coverage
 | Rule | Test |
@@ -132,9 +139,10 @@ two mutually-contradicting start paths, and do not leave the re-prompt reachable
 2. The `'select'` re-prompt is not interposed on the attract start press (attract → playing).
 3. The rising-edge discipline holds — one press starts exactly one game.
 4. The started game's player count matches the pressed digit end to end (one knight for 1P).
-5. The redundant `'select'` 1P/2P re-prompt is **removed** (owner ruled (a), 2026-08-14) — attract
-   1/2 is the sole start path; `toSelect` has no production caller and no contradictory dual path
-   remains. (No coin-up gesture is added.)
+5. jt11-16's `title`→`select` coin-up and the `select` mode are **preserved** (owner ruling v2,
+   2026-08-14) — only the `attract` branch changes; the `title` branch still routes to `toSelect`,
+   and the select mode is not removed. (The attract-direct vs title-coin-up asymmetry is accepted;
+   unifying them is a separate follow-up.)
 
 ## Out of scope
 - Numpad/click start sources (jt11-8, canceled) — do not revive here unless the owner asks.
