@@ -110,9 +110,10 @@ export function shootMosquitoes(
 ): EnemyShootResult<MosquitoSlot[]> {
   const slot = slots[0]
   if (slot.color !== 0 && checkPlayerCollision(slot, { h: shot.h, v: shot.v })) {
-    const { points } = mosquitoKill(false)
+    const { points, scrollUp } = mosquitoKill(false)
     mosquitoOff(slot)
-    return { slots, scoreDelta: points, killed: true }
+    // INC SCROLC — a mosquito kill scrolls the playfield UP (MILLI.MAC:2127).
+    return { slots, scoreDelta: points, killed: true, scroll: scrollUp ? 1 : 0 }
   }
   return { slots, scoreDelta: 0, killed: false }
 }
