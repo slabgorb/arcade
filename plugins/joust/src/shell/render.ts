@@ -22,41 +22,24 @@
 import { PALETTES, PIXEL_BLOCKS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
 import { CRUMBLE_FLAVOR, CRUMBLE_DEBRIS_FRAME_COUNT } from '../core/crumble.js'
 import { fitIntegerScale } from '@shared/view'
+import { paletteToRgba, type Rgba } from '@shared/palette-decoder'
 
 /** The visible raster: 292x240 (MAME williams driver, schema-only claim). */
 export const LOGICAL_WIDTH = 292
 export const LOGICAL_HEIGHT = 240
 
-export interface Rgba {
-  r: number
-  g: number
-  b: number
-  a: number
-}
+// The Rgba type and the BBGGGRRR palette decode moved to @shared/palette-decoder
+// (df2-2, the "extract on the second game" bar — defender is the second Williams
+// framebuffer game). Re-exported here so joust's shell modules and tests keep
+// importing `Rgba` / `paletteToRgba` from render.js unchanged.
+export { paletteToRgba }
+export type { Rgba }
 
 export interface Atlas {
   width: number
   height: number
   blocks: Record<string, { x: number; y: number; width: number; height: number }>
   data: Uint8ClampedArray
-}
-
-/**
- * Decode one 1982 palette byte. The hardware packs BBGGGRRR — two bits of blue,
- * three of green, three of red — into one byte, and each field is scaled up to
- * eight bits for display. The STORED byte is never altered; this is a
- * presentation transform only.
- */
-export function paletteToRgba(paletteByte: number): Rgba {
-  if (!Number.isInteger(paletteByte) || paletteByte < 0 || paletteByte > 255) {
-    throw new RangeError(`paletteToRgba expects a byte 0..255, got ${paletteByte}`)
-  }
-  const red = paletteByte & 0x07
-  const green = (paletteByte >> 3) & 0x07
-  const blue = (paletteByte >> 6) & 0x03
-  const widen = (value: number, bits: number): number =>
-    Math.round((value / ((1 << bits) - 1)) * 255)
-  return { r: widen(red, 3), g: widen(green, 3), b: widen(blue, 2), a: 255 }
 }
 
 /** A whole 16-entry palette decoded in index order. */

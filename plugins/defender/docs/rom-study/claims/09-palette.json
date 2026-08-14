@@ -1,0 +1,155 @@
+[
+  {
+    "id": "PAL-0",
+    "claim": "CRTAB is the 16-byte default colour table; entry 0 (SPACE, the background) is $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1876,
+      "verbatim": "CRTAB\tFCB\t0\t0 SPACE"
+    }
+  },
+  {
+    "id": "PAL-1",
+    "claim": "CRTAB entry 1 (LASER, special) is $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1877,
+      "verbatim": "\tFCB\t$00\t1 LASER (SPECIAL)"
+    }
+  },
+  {
+    "id": "PAL-2",
+    "claim": "CRTAB entry 2 (RED) is $07.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1878,
+      "verbatim": "\tFCB\t$07\t2 RED"
+    }
+  },
+  {
+    "id": "PAL-3",
+    "claim": "CRTAB entry 3 (GREEN) is $28.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1879,
+      "verbatim": "\tFCB\t$28\t3 GREEN"
+    }
+  },
+  {
+    "id": "PAL-4",
+    "claim": "CRTAB entry 4 (YELLOW) is $2F.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1880,
+      "verbatim": "\tFCB\t$2F\t4 YELLOW"
+    }
+  },
+  {
+    "id": "PAL-5",
+    "claim": "CRTAB entry 5 (BLUE) is $81.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1881,
+      "verbatim": "\tFCB\t$81\t5 BLUE"
+    }
+  },
+  {
+    "id": "PAL-6",
+    "claim": "CRTAB entry 6 (GRAY) is $A4.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1882,
+      "verbatim": "\tFCB\t$A4\t6 GRAY"
+    }
+  },
+  {
+    "id": "PAL-7",
+    "claim": "CRTAB entry 7 (BROWN) is $15.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1883,
+      "verbatim": "\tFCB\t$15\t7 BROWN"
+    }
+  },
+  {
+    "id": "PAL-8",
+    "claim": "CRTAB entry 8 (PURPLE) is $C7.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1884,
+      "verbatim": "\tFCB\t$C7\t8 PURPLE"
+    }
+  },
+  {
+    "id": "PAL-9",
+    "claim": "CRTAB entry 9 (WHITE) is $FF.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1885,
+      "verbatim": "\tFCB\t$FF\t9 WHITE"
+    }
+  },
+  {
+    "id": "PAL-10",
+    "claim": "CRTAB entry A (BOMB CYCLER) boots at $00; recoloured at runtime by the bomb cycler.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1886,
+      "verbatim": "\tFCB\t$00\tA BOMB CYCLER"
+    }
+  },
+  {
+    "id": "PAL-11",
+    "claim": "CRTAB entry B (MONOCHROME) boots at $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1887,
+      "verbatim": "\tFCB\t$00\tB MONOCHROME"
+    }
+  },
+  {
+    "id": "PAL-12",
+    "claim": "CRTAB entry C (CYCLER) boots at $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1888,
+      "verbatim": "\tFCB\t$00\tC CYCLER"
+    }
+  },
+  {
+    "id": "PAL-13",
+    "claim": "CRTAB entry D (TIE1) boots at $00; recoloured at runtime by the TIE appearances.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1889,
+      "verbatim": "\tFCB\t$00\tD TIE1"
+    }
+  },
+  {
+    "id": "PAL-14",
+    "claim": "CRTAB entry E (TIE2) boots at $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1890,
+      "verbatim": "\tFCB\t$00\tE TIE2"
+    }
+  },
+  {
+    "id": "PAL-15",
+    "claim": "CRTAB entry F (TIE3) boots at $00.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1891,
+      "verbatim": "\tFCB\t$00\tF TIE3"
+    }
+  },
+  {
+    "id": "PAL-INIT",
+    "claim": "CRINIT seeds the 16-byte PCRAM shadow from CRTAB at boot (LDX #CRTAB / LDU #PCRAM / LDB #16), so CRTAB is the default PCRAM the frame IRQ copies into CRAM.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1057,
+      "verbatim": "CRINIT\tLDX\t#CRTAB"
+    }
+  }
+]

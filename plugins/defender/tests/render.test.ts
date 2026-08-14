@@ -176,11 +176,15 @@ describe('indexToRgba — the placeholder palette decode (colours reached BY IND
     expect(indexToRgba(9)).toEqual(indexToRgba(9))
   })
 
-  it('varies by index — index 0 and index 15 are not the same colour (not a constant fill)', async () => {
+  it('varies by index — index 2 and index 3 are not the same colour (not a constant fill)', async () => {
     const { indexToRgba } = await loadRender()
-    // Proves the seam decodes BY INDEX rather than returning one hard-coded colour;
-    // pins that the palette varies without pinning the temporary values df2-2 drops.
-    expect(indexToRgba(0)).not.toEqual(indexToRgba(15))
+    // Proves the seam decodes BY INDEX rather than returning one hard-coded colour.
+    // df2-2 transcribed the real CRAM palette (defender/DEFB6.SRC:1876), where indices
+    // 2 (RED $07) and 3 (GREEN $28) carry distinct colours. NB: the placeholder-era
+    // pair (0,15) no longer witnesses this — the real palette has SPACE (0) and TIE3
+    // (15) both $00 (black), so a "varies" witness must use two entries the source
+    // actually gives different bytes. Still pins variation without pinning exact RGBA.
+    expect(indexToRgba(2)).not.toEqual(indexToRgba(3))
   })
 })
 
