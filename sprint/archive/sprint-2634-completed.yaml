@@ -308,4 +308,8 @@ completed_stories:
     epic: ml5
     title: 'Claims-test convention debt (ml5-2 Reviewer finding, rule #10/#18): every millipede claims-arm test re-declares a narrower local Claim interface and casts JSON.parse with no runtime check — import the real Claim from tools/audit/check-citations.d.mts and add one shared parse helper in tests/audit/dossier-sweep.ts; sweep high-scores/palette/waves-scoring/bonus-select claims tests onto it.'
     points: 2
+  - id: jt11-16
+    epic: jt11
+    title: 'Boot drops into the attract self-play demo and never shows the MARQUE/logo title screen -- wire the present-but-unreachable title cabinet mode'
+    points: 3
     completed: '2026-08-14'
