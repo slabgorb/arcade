@@ -33,8 +33,11 @@
 // by running both runners against this exact commit:
 //   • tests/monorepo-topology.test.mjs — the exact-set test (1 test)
 //   • tests/registry.test.mjs — plugin.ts presence, fresh-generation match, the
-//     --check CLI, per-entry version, packagePathFor/appDirFor, and the
-//     every-app-id-names-a-real-vitest-project gate (6 tests)
+//     --check CLI, per-entry version (4 tests; its curated-order and no-launch-URL
+//     tests read the still-unchanged registry and stayed green)
+//   • tests/release.test.mjs — packagePathFor/appDirFor existence and the
+//     every-app-id-names-a-real-vitest-project gate, both derived from the
+//     plugins/ dir (2 tests)
 //   • tests/canonical-serve.test.mjs — whole-cabinet + two AC1 probes: /defender/
 //     serves the SPA fallback until the scaffold lands (3 tests)
 //   • tests/shared-tests-typechecked.test.mjs — the tsc gate carries the three
@@ -42,7 +45,7 @@
 //   • src/host/registry.test.ts (vitest |host|) — MANIFESTS covers plugins/ dirs +
 //     build-spec coverage (2 tests)
 // Total: 12 RED drivers here + 1 anti-regression guard passing, 13 collateral across
-// five roster-derived suites, and NOTHING unrelated red (vitest fleet: 15775 passing).
+// six roster-derived suites, and NOTHING unrelated red (vitest fleet: 15775 passing).
 // The defender vitest suites themselves are invisible to vitest until GREEN adds the
 // project — their absence-of-modules is driven RED from HERE (the gate blocks below).
 //

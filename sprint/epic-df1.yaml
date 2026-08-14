@@ -42,3 +42,11 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: df1-6
+    title: "Harden the claims-JSON load path in the fleet's citation checkers: a malformed docs/rom-study/claims/*.json currently throws an uncaught SyntaxError (raw stack) from loadClaims/the checker CLI in defender, millipede and centipede; wrap the parse in a controlled per-file error naming the file. Filed from df1-1 review (rule-checker R3, inherited from millipede)."
+    points: 1
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
