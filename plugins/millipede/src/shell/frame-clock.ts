@@ -50,3 +50,24 @@ export function advanceFixedSteps(accumulatorMs: number, elapsedMs: number): Fix
 
   return { steps: due, remainderMs: total - due * STEP_MS }
 }
+
+/**
+ * Drive the fixed-timestep loop for one render frame: fold `elapsedMs` into whole
+ * 60 Hz steps (via `advanceFixedSteps`) and invoke `step(isFirst)` exactly that many
+ * times, returning the accumulator remainder to carry into the next call. `isFirst`
+ * is true only on the first sub-step so the caller can drain one-shot input (fire,
+ * start, accumulated mouse travel) into it and NOT replay it across a catch-up burst.
+ *
+ * This is the seam that makes the "sim steps track real time, not the render rate"
+ * behaviour unit-testable end-to-end (frame-clock.test.ts) — `main.ts` is then only
+ * the thin browser wiring that hands it the rAF delta and the stepGame callback.
+ */
+export function runFixedSteps(
+  accumulatorMs: number,
+  elapsedMs: number,
+  step: (isFirst: boolean) => void,
+): number {
+  const { steps, remainderMs } = advanceFixedSteps(accumulatorMs, elapsedMs)
+  for (let i = 0; i < steps; i++) step(i === 0)
+  return remainderMs
+}

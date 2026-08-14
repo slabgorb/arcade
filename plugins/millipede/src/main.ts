@@ -25,7 +25,7 @@ import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { drawGridStamps, drawStampAtPx } from './shell/render'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
-import { advanceFixedSteps } from './shell/frame-clock'
+import { runFixedSteps } from './shell/frame-clock'
 
 const LOGICAL_W = 240
 const LOGICAL_H = 256
@@ -142,26 +142,24 @@ const frame = (ts: number): void => {
   const elapsed = lastTs === null ? 0 : ts - lastTs
   lastTs = ts
 
-  const { steps, remainderMs } = advanceFixedSteps(accMs, elapsed)
-  accMs = remainderMs
-
-  if (steps > 0) {
-    // Drain the input accumulators once, into the first sub-step; a catch-up
-    // burst must not replay the same fire/start (and mouse travel accumulated
-    // across skipped rAFs is consumed whole here).
-    const first: GameInput = { dh: toByte(accDh), dv: toByte(accDv), fire: firePending, start: startPending }
-    accDh = 0
-    accDv = 0
-    firePending = false
-    startPending = false
-    const empty: GameInput = { dh: 0, dv: 0, fire: false, start: false }
-
-    for (let i = 0; i < steps; i++) {
-      game = stepGame(game, i === 0 ? first : empty)
-      playEventSounds(audio, game.events)
+  // Step the sim a whole number of fixed 60 Hz frames for the real time elapsed
+  // (runFixedSteps folds the delta + carries the remainder). Input is drained once,
+  // into the first sub-step, so a catch-up burst can't replay the same fire/start
+  // and the mouse travel accumulated across skipped rAFs is consumed whole.
+  accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
+    const input: GameInput = isFirst
+      ? { dh: toByte(accDh), dv: toByte(accDv), fire: firePending, start: startPending }
+      : { dh: 0, dv: 0, fire: false, start: false }
+    if (isFirst) {
+      accDh = 0
+      accDv = 0
+      firePending = false
+      startPending = false
     }
+    game = stepGame(game, input)
+    playEventSounds(audio, game.events)
     ;(window as unknown as { __sim?: GameState }).__sim = game
-  }
+  })
 
   render(game)
 

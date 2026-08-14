@@ -22,6 +22,7 @@ import {
   STEP_MS,
   MAX_CATCHUP_STEPS,
   advanceFixedSteps,
+  runFixedSteps,
 } from '../src/shell/frame-clock'
 
 describe('ml7-5 frame-clock — the ROM 60 Hz logic rate', () => {
@@ -130,6 +131,55 @@ describe('ml7-5 frame-clock — spiral-of-death guard', () => {
   })
 })
 
+describe('ml7-5 frame-clock — runFixedSteps drives the loop (behavioral wiring)', () => {
+  // This is the seam main.ts delegates to, so testing it here pins the actual
+  // step-driving behaviour (count + first-only input) that the source-text guard
+  // below cannot see. A regression that ignored `steps` and ran one step per rAF
+  // — the exact bug this story fixes — reddens these, not just the import check.
+  const runN = (elapsedMs: number, acc = 0): { calls: boolean[]; remainder: number } => {
+    const calls: boolean[] = []
+    const remainder = runFixedSteps(acc, elapsedMs, (isFirst) => calls.push(isFirst))
+    return { calls, remainder }
+  }
+
+  it('invokes the step callback exactly once per due fixed step', () => {
+    expect(runN(0).calls).toHaveLength(0) // no time → no steps
+    expect(runN(8).calls).toHaveLength(0) // < one step
+    expect(runN(STEP_MS).calls).toHaveLength(1) // exactly one
+    expect(runN(2 * STEP_MS + 5).calls).toHaveLength(2) // two + leftover
+  })
+
+  it('flags isFirst true only on the first sub-step (so one-shot input is drained once)', () => {
+    const { calls } = runN(3 * STEP_MS + 1)
+    expect(calls).toEqual([true, false, false])
+  })
+
+  it('returns the same remainder advanceFixedSteps would carry, for the next call', () => {
+    const acc = 4
+    expect(runN(10, acc).remainder).toBeCloseTo(advanceFixedSteps(acc, 10).remainderMs, 9)
+    const long = runN(2 * STEP_MS + 5, acc)
+    expect(long.remainder).toBeCloseTo(advanceFixedSteps(acc, 2 * STEP_MS + 5).remainderMs, 9)
+  })
+
+  it('over one second of 144 Hz rAF ticks, calls the step ~60 times — NOT 144', () => {
+    const perFrameMs = 1000 / 144
+    let acc = 0
+    let total = 0
+    for (let i = 0; i < 144; i++) {
+      const { calls, remainder } = runN(perFrameMs, acc)
+      total += calls.length
+      acc = remainder
+    }
+    expect(total).toBeGreaterThanOrEqual(59)
+    expect(total).toBeLessThanOrEqual(60)
+    expect(total).toBeLessThan(144)
+  })
+
+  it('clamps a long stall to MAX_CATCHUP_STEPS callback invocations, not hundreds', () => {
+    expect(runN(100 * STEP_MS).calls).toHaveLength(MAX_CATCHUP_STEPS)
+  })
+})
+
 describe('ml7-5 frame-clock — wired into the frame loop (built-but-not-wired guard)', () => {
   // The pure module is worthless if main.ts still calls stepGame once per rAF.
   // AC3's real-browser playtest is the true liveness proof; this is the cheap
@@ -139,8 +189,12 @@ describe('ml7-5 frame-clock — wired into the frame loop (built-but-not-wired g
     'utf8',
   )
 
-  it('main.ts imports the fixed-timestep accumulator from shell/frame-clock', () => {
+  it('main.ts delegates its frame loop to runFixedSteps (a call, not just an import)', () => {
     expect(mainSrc).toMatch(/from\s+['"]\.\/shell\/frame-clock['"]/)
-    expect(mainSrc).toMatch(/advanceFixedSteps/)
+    // Anchor on the CALL site, not the imported symbol: a mutant that keeps the
+    // import but hand-rolls a single stepGame per rAF (reverting the fix) drops
+    // this call and reddens. The step-count behaviour itself is pinned by the
+    // runFixedSteps behavioral suite above.
+    expect(mainSrc).toMatch(/\brunFixedSteps\s*\(/)
   })
 })
