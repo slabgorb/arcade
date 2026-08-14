@@ -50,14 +50,14 @@
 import { describe, it, expect } from 'vitest'
 import { stepGame, type GameInput } from '../src/core/sim'
 import { createGame, type GameState } from '../src/core/game-state'
-import { LOWER_MAX, TOP_MIN, type MushCounts } from '../src/core/mushroom'
+import { LOWER_MAX, TOP_MIN } from '../src/core/mushroom'
 import { PLYFLD_SIZE, PLYFLD_STRIDE, PLYFLD_WIDTH } from '../src/core/conway'
 import { EVENT_KINDS } from '../src/core/events'
 import { createPlayer } from '../src/core/input'
 import { initRoster } from '../src/core/enemies/roster'
 import { initBeetles } from '../src/core/enemies/beetle'
 import { initMosquitoes } from '../src/core/enemies/mosquito'
-import { newDdtTable, ddtPlace } from '../src/core/ddt'
+import { newDdtTable, ddtPlace, DDT_EXPLODING_MIN } from '../src/core/ddt'
 
 const idle: GameInput = { dh: 0, dv: 0, fire: false, start: false }
 const SEED = 0x1982
@@ -71,27 +71,17 @@ const GREY_BIT = 0x80
 /** A fresh empty playfield the size stepGame expects. */
 const emptyField = () => new Uint8Array(PLYFLD_SIZE)
 
-// ─── lint-clean readers for the fields ml7-9 ADDS to GameState ────────────────
-// Every GameState structurally satisfies a type whose new field is OPTIONAL, so
-// this cast typechecks with the field absent (RED: reads `undefined`) and returns
-// the real value once Dev adds it. No `as unknown as` needed.
-const scrolcOf = (g: GameState): number | undefined => (g as { scrolc?: number }).scrolc
-const mushCountsOf = (g: GameState): MushCounts | undefined =>
-  (g as { mushCounts?: MushCounts }).mushCounts
-
 /** A play state with a fully controlled field/roster (the arm DISARMED unless a
- *  test overrides segments/frame). Extra scrolc/mushCounts ride along for tests
- *  that pre-seed a pending scroll; stepGame ignores them until wired (RED). */
-function playState(
-  over: Partial<GameState> & { scrolc?: number; mushCounts?: MushCounts } = {},
-): GameState {
+ *  test overrides segments/frame). `scrolc`/`mushCounts` are real GameState fields
+ *  now, so tests set and read them directly. */
+function playState(over: Partial<GameState> = {}): GameState {
   const base = createGame(SEED, { phase: 'play' })
   return {
     ...base,
     field: emptyField(),
     roster: initRoster(),
     ...over,
-  } as GameState
+  }
 }
 
 /** True iff EVERY column carries the grey bit on the re-entry row (row 6): the
@@ -114,7 +104,7 @@ const downScrollFingerprint = (field: Uint8Array): boolean => {
 describe('ml7-9 AC1 — GameState carries the scroll counter and the MUSH pair', () => {
   it('a fresh game starts with SCROLC == 0 (MLDEF.MAC:372, nothing pending)', () => {
     const g = createGame(SEED, { phase: 'play' })
-    expect(scrolcOf(g)).toBe(0)
+    expect(g.scrolc).toBe(0)
   })
 
   it('createGame SEEDS mushCounts from the boot scatter it currently discards', () => {
@@ -124,8 +114,7 @@ describe('ml7-9 AC1 — GameState carries the scroll counter and the MUSH pair',
     // band: lower row<0x0C, top row>=0x14; the middle band is uncounted) — this
     // is independent of the scatter RNG, so it is not a reimplementation.
     const g = createGame(SEED)
-    const mc = mushCountsOf(g)
-    expect(mc, 'GameState must expose mushCounts').toBeDefined()
+    const mc = g.mushCounts
     let lower = 0
     let top = 0
     for (let c = 0; c < COLS; c++) {
@@ -156,7 +145,7 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
     expect(out.field[idx(10, 0x0f)], 'marker descended one row (SC-26)').toBe(0x22)
     expect(out.field[idx(10, 0x10)], 'source cell vacated').toBe(0)
     expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)
-    expect(scrolcOf(out), 'SCROLD consumed one down (INC toward 0, SC-18)').toBe(0)
+    expect(out.scrolc, 'SCROLD consumed one down (INC toward 0, SC-18)').toBe(0)
   })
 
   it('a pending UP (SCROLC > 0) shifts the field up and DECs toward 0 (SC-17/36)', () => {
@@ -167,7 +156,7 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
     const out = stepGame(g, idle)
     expect(out.field[idx(10, 0x11)], 'marker climbed one row (SC-41)').toBe(0x22)
     expect(out.field[idx(10, 0x10)], 'source cell vacated').toBe(0)
-    expect(scrolcOf(out), 'SCROLU consumed one up (DEC toward 0, SC-36)').toBe(0)
+    expect(out.scrolc, 'SCROLU consumed one up (DEC toward 0, SC-36)').toBe(0)
   })
 
   it('SCROLC == 0 scrolls NOTHING — the field is untouched (SC-15)', () => {
@@ -177,7 +166,7 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
     const out = stepGame(g, idle)
     expect(out.field[idx(10, 0x10)], 'marker did not move').toBe(0x22)
     expect(downScrollFingerprint(out.field), 'no grey re-entry with nothing pending').toBe(false)
-    expect(scrolcOf(out)).toBe(0)
+    expect(out.scrolc).toBe(0)
   })
 })
 
@@ -227,8 +216,9 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
   // apply is the RED signal (a "no scroll" frame is indistinguishable from an
   // unwired one, so a single gated frame cannot drive the implementation).
   //
-  // NOTE the player-death gate is the OPPOSITE of this (it CANCELS — AC6, :1812),
-  // so the only stepPlay-reachable PRESERVING gate is conway-active (CDONE, SC-6).
+  // NOTE the player-death gate is the OPPOSITE of this (it CANCELS — AC6, :1812).
+  // Two hard gates PRESERVE: conway-active (CDONE, SC-6) and ddtExploding (SC-7);
+  // both are tested below. (attract/MODE is unreachable in the play phase.)
   it('CONWAY-active pauses the pending down; when CDONE clears it scrolls (SC-6)', () => {
     const gated = playState({
       scrolc: -1,
@@ -237,7 +227,7 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
     // Frame 1 — gated: the counter is preserved (scalar, immune to the masterStep
     // Conway growth that CONWAY-active also runs; we do not assert the field here).
     const held = stepGame(gated, idle)
-    expect(scrolcOf(held), 'CONWAY-active preserves the pending down (SC-6)').toBe(-1)
+    expect(held.scrolc, 'CONWAY-active preserves the pending down (SC-6)').toBe(-1)
     // Frame 2 — the gate opens (CDONE clear): NOW the held scroll is applied. The
     // grey re-entry fingerprint is the evidence (scrollDown ORs $80 into row 6 of
     // every column unconditionally), so it survives whatever Conway did in frame 1.
@@ -248,7 +238,24 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
     expect(downScrollFingerprint(opened.field), 'the held scroll applied once the gate opened').toBe(
       true,
     )
-    expect(scrolcOf(opened), 'and was then consumed (SC-18)').toBe(0)
+    expect(opened.scrolc, 'and was then consumed (SC-18)').toBe(0)
+  })
+
+  it('an EXPLODING DDT pauses the pending down; when it clears the scroll applies (SC-7)', () => {
+    // frame:1 makes ddtExplosionStep a no-op (FRAME & 7 != 0, DD-102), so the
+    // exploding entry survives untouched for the gate to read.
+    const exploding = newDdtTable()
+    exploding[0].hi = DDT_EXPLODING_MIN // >= threshold ⇒ anyDdtExploding true (SC-7)
+    exploding[0].lo = 0xcd
+    const gated = playState({ scrolc: -1, frame: 1, ddt: exploding })
+    const held = stepGame(gated, idle)
+    expect(held.scrolc, 'an exploding DDT preserves the pending down (SC-7)').toBe(-1)
+    // Clear the explosion (a vacant bank): the gate opens and the held scroll fires.
+    const opened = stepGame({ ...held, ddt: newDdtTable() }, idle)
+    expect(downScrollFingerprint(opened.field), 'the held scroll applied once the bank cleared').toBe(
+      true,
+    )
+    expect(opened.scrolc, 'and was then consumed (SC-18)').toBe(0)
   })
 })
 
@@ -333,7 +340,7 @@ describe('ml7-9 AC6 — player death CANCELS any pending scroll (MILLI.MAC:1812)
     const g = playState({ scrolc: -1, segments: [seg], lives: 3 })
     const out = stepGame(g, idle)
     expect(out.player.alive, 'the player died on the segment').toBe(false)
-    expect(scrolcOf(out), 'the pending scroll was cancelled on death').toBe(0)
+    expect(out.scrolc, 'the pending scroll was cancelled on death').toBe(0)
   })
 })
 
@@ -348,10 +355,11 @@ describe('ml7-9 AC7 — the MUSH count sink is threaded (scroll + ddt deltas)', 
     field[idx(2, 2)] = 0xfc // grey normal mushroom ($7C | grey), (& 0x7f) >= 0x70
     const g = playState({ field, scrolc: -1, mushCounts: { lower: 5, top: 3 } })
     const out = stepGame(g, idle)
-    const mc = mushCountsOf(out)
-    expect(mc, 'mushCounts present').toBeDefined()
-    expect(mc!.lower, 'one mushroom left the bottom region (SC-31)').toBe(4)
-    expect(mc!.top, 'top region unchanged').toBe(3)
+    // Assert the LOWER-region push-off (the SC-31 mechanism under test) — it is
+    // deterministic. We do NOT assert `top` here: a down-scroll also plants top
+    // mushrooms on a 1-in-16 RNG draw per column (SC-24), so `top` legitimately
+    // varies with state.rng's position; that plant path is pinned in scroll.test.ts.
+    expect(out.mushCounts.lower, 'one mushroom left the bottom region (SC-31)').toBe(4)
   })
 
   it('a mushroom crossing INTO the bottom region INCs mushCounts.lower (SC-21/33)', () => {
@@ -359,8 +367,7 @@ describe('ml7-9 AC7 — the MUSH count sink is threaded (scroll + ddt deltas)', 
     field[idx(7, 0x0c)] = 0x7c // → row $0B under a down-scroll: enters the bottom region
     const g = playState({ field, scrolc: -1, mushCounts: { lower: 0, top: 0 } })
     const out = stepGame(g, idle)
-    const mc = mushCountsOf(out)
-    expect(mc!.lower, 'one mushroom entered the bottom region (SC-33)').toBe(1)
+    expect(out.mushCounts.lower, 'one mushroom entered the bottom region (SC-33)').toBe(1)
   })
 })
 
@@ -373,24 +380,22 @@ describe('ml7-9 AC8 — the DDT-bomb halves scroll with the field (ml4-4 ddtScro
   const occupiedDdt = () => {
     const table = newDdtTable()
     ddtPlace(table, false) // stamps the four bombs at their DDTADD rows
-    const i = table.findIndex((e) => (e as { hi: number }).hi !== 0)
+    const i = table.findIndex((e) => e.hi !== 0)
     return { table, i }
   }
 
   it('a DOWN-scroll steps an occupied DDT bank entry one row down (MLSUB.MAC:1231-1295, DD-53)', () => {
     const { table, i } = occupiedDdt()
     expect(i, 'a bomb bank entry is occupied to move').toBeGreaterThanOrEqual(0)
-    const loBefore = (table[i] as { lo: number }).lo
+    const loBefore = table[i].lo // DDTST[0] = 0x10CD ⇒ row $0D, well clear of rows 0/1
     const g = playState({ ddt: table, scrolc: -1 })
     const out = stepGame(g, idle)
-    const loAfter = (out.ddt[i] as { lo: number }).lo
-    // DD-53: DEC the entry's row byte. (Entries that scroll off clear to hi==0;
-    // an on-screen bomb simply steps.) Either way the bank is NOT left stale at
-    // its pre-scroll row.
-    const stillOn = (out.ddt[i] as { hi: number }).hi !== 0
-    expect(stillOn ? loAfter : loBefore - 1, 'bank row tracked the down-scroll (DD-53)').toBe(
-      loBefore - 1,
-    )
+    // This entry sits far from rows 0/1, so DD-53 STEPS it (DEC lo) rather than
+    // clearing it off-screen. Pin BOTH facts — no ternary, no vacuous branch: the
+    // on-screen assumption (hi != 0) is asserted, so a future fixture that scrolled
+    // this entry off would fail here loudly instead of silently going tautological.
+    expect(out.ddt[i].hi, 'the bomb stayed on-screen (did not scroll off)').not.toBe(0)
+    expect(out.ddt[i].lo, 'on-screen bomb stepped down one row (DD-53)').toBe(loBefore - 1)
   })
 })
 
