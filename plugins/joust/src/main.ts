@@ -25,7 +25,7 @@ import {
   toAttract,
   type CabinetState,
 } from './core/cabinet.js'
-import { createAttract, stepAttract, type AttractState } from './core/attract-scheduler.js'
+import { createAttract, stepAttract, MARQUE_DWELL_FRAMES, type AttractState } from './core/attract-scheduler.js'
 import { selectPlayerCount, type SelectInput } from './core/select.js'
 import {
   beginEntry,
@@ -274,10 +274,10 @@ function renderGameOverScreen(): void {
 // capture (a human smoke test tunes them), so — as with the select/game-over
 // placeholders — the cycling row indexes the existing palette for a legible,
 // visibly-cycling title, and the wordmark is drawn from its own y coordinates.
-// The render hook is in place, but this mode is not yet reached: `toTitle` has no caller,
-// and jt10-4's attract PAGE_ORDER (demo + the two banners) carries no title page — wiring
-// title into the attract cycle is deferred with the remaining ATMST lessions (see the
-// session Delivery Findings).
+// jt11-16 — this mode is now the BOOT mode: the cabinet opens on MARQUE (below), dwells
+// MARQUE_DWELL_FRAMES of pumped frames, then hands off to the attract self-play cycle —
+// the ROM's marque→VSIM rhythm. Making MARQUE RECUR inside the attract loop (a title page
+// in PAGE_ORDER) is a deferred follow-up with the remaining ATMST lessions.
 let titleFrame = 0
 const TITLE_LOGO_Y = 40
 const TITLE_COPYRIGHT_Y = 190
@@ -359,27 +359,27 @@ function renderAttract(): void {
   paintText(prompt, Math.round((LOGICAL_WIDTH - prompt.width) / 2), ATTRACT_PROMPT_Y)
 }
 
-// ─── The cabinet: booted to 'attract', stepping the SESSION layer once playing ──
+// ─── The cabinet: booted to 'title' (MARQUE), stepping the SESSION layer once playing ──
 //
 // jt4-5 MIGRATION (Dev/Korben): the shell drives the SESSION layer — `createGame` +
 // `stepGame` from core/game — NOT the raw sim. The jt2-1 one-sim seam still holds:
 // `stepGame` internally WRAPS the sim's `stepSim` over a `createWaveSim`-built
 // sim, so there is no divergent second stepping path, and the HUD reads the
 // per-player registers straight off the GameState it steps. jt10-5 wrapped that game
-// in the cabinet tier, and TEMPORARILY booted into 'select' (the coin-up screen)
-// because jt10-4's attract renderer did not yet exist — booting into attract would
-// have rendered nothing. jt10-4 has since landed `renderAttract` (the self-play cycle
-// below), so we now boot the cabinet's authentic mode — the 'attract' cycle — which is
-// what puts joust's live demo in the lobby showcase carousel (showcase:true). This is
-// exactly `createCabinet(SEED)`, spelled inline to keep the jt4-5 session seam visible:
-// main.ts constructs the game with the literal `createGame(` and steps it with
-// `stepGame(` (pinned by demo-source.test.ts / gameover-wiring.test.ts), rather than
-// through a wrapper. A start press in attract routes on to the 'select' coin-up
-// (toSelect), and select → startPlaying begins a real game, exactly as before.
+// in the cabinet tier; jt10-4 landed `renderAttract` (the self-play cycle below).
+// jt11-16 — the cabinet now boots into 'title' (the MARQUE logo screen), the ROM's
+// authentic attract opening: the title pump branch dwells MARQUE_DWELL_FRAMES then
+// hands to the 'attract' self-play cycle (what puts joust's live demo in the lobby
+// showcase carousel, showcase:true). This is `createCabinet(SEED)` with the mode
+// overridden to 'title' at boot — spelled inline to keep the jt4-5 session seam
+// visible: main.ts constructs the game with the literal `createGame(` and steps it
+// with `stepGame(` (pinned by demo-source.test.ts / gameover-wiring.test.ts), rather
+// than through a wrapper. A start press in title (or attract) routes on to the
+// 'select' coin-up (toSelect), and select → startPlaying begins a real game, as before.
 // A fixed shell-owned seed replays the same run each load; core mints no entropy,
 // so the seed crosses the boundary from here.
 const SEED = 0x1a2b_3c4d
-let cabinet: CabinetState = { mode: 'attract', game: createGame(SEED) }
+let cabinet: CabinetState = { mode: 'title', game: createGame(SEED) }
 
 // jt10-4 — the attract SUB-CYCLE scheduler (pure core). Stepped once per video frame
 // while the cabinet sits in 'attract'; it cycles the self-play demo and the two
@@ -427,6 +427,12 @@ let prevStartHeld = false
 // would flash for a single frame. Reset when a fresh game begins.
 const GAMEOVER_HOLD_FRAMES = 88
 let gameoverHoldFrames = 0
+
+// jt11-16 — the MARQUE (title) dwell budget, spent in the frame pump (the shell owns
+// the clock). Counts up to MARQUE_DWELL_FRAMES, then the title hands off to attract —
+// the ROM's marque→VSIM rhythm (ATT.SRC:121). Boot-only in this story; the title is
+// entered once, at boot, and does not recur.
+let titleDwellFrames = 0
 
 /** Begin a real game for `count` players, seeded from SEED, and cache its player ids. */
 function enterPlaying(count: 1 | 2): void {
@@ -561,9 +567,23 @@ const frame = (now: number): void => {
         }
         return
       }
+      if (cabinet.mode === 'title') {
+        // jt11-16 — the MARQUE title, the cabinet's boot screen. Spend the dwell budget
+        // one pumped frame at a time; when it reaches MARQUE_DWELL_FRAMES hand off to the
+        // attract self-play cycle (the ROM's marque→VSIM). A start press leaves early for
+        // the 'select' coin-up, on the RISING edge only (the shared prevStartHeld gives
+        // that press edge discipline across the transition, as the attract branch does).
+        titleDwellFrames += 1
+        const want = readSelectInput(held)
+        const startHeld = want !== null
+        if (startHeld && !prevStartHeld) cabinet = toSelect(cabinet)
+        else if (titleDwellFrames >= MARQUE_DWELL_FRAMES) cabinet = toAttract(cabinet, SEED)
+        prevStartHeld = startHeld
+        return
+      }
       if (cabinet.mode !== 'playing') {
-        // The coin-up door: 'select' (and 'title'). Begin a game on the RISING edge of
-        // a start press only, so a held start button cannot re-seed the game each frame.
+        // The coin-up door: 'select'. Begin a game on the RISING edge of a start press
+        // only, so a held start button cannot re-seed the game each frame.
         const want = readSelectInput(held)
         const startHeld = want !== null
         if (startHeld && !prevStartHeld) {
