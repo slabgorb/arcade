@@ -120,6 +120,17 @@ export const GAMES: readonly GameMeta[] = [
     showcase: true,
     version: '0.0.2',
   },
+  {
+    id: 'defender',
+    title: 'DEFENDER',
+    year: 1980,
+    color: '#00d0a8',
+    controls: ['Keyboard'],
+    order: 11,
+    listed: true,
+    showcase: false,
+    version: '0.0.1',
+  },
 ]
 
 /** The games the lobby lists — `listed: false` opts a game out deliberately. */

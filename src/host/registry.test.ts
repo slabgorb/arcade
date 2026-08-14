@@ -38,6 +38,7 @@ import { meta as redBaron, build as redBaronBuild } from '../../plugins/red-baro
 import { meta as missileCommand } from '../../plugins/missile-command/plugin'
 import { meta as pacMan } from '../../plugins/pac-man/plugin'
 import { meta as millipede } from '../../plugins/millipede/plugin'
+import { meta as defender } from '../../plugins/defender/plugin'
 
 const PLUGINS = fileURLToPath(new URL('../../plugins', import.meta.url))
 
@@ -47,6 +48,7 @@ const MANIFESTS = {
   asteroids,
   battlezone,
   centipede,
+  defender,
   joust,
   millipede,
   'missile-command': missileCommand,
@@ -71,7 +73,7 @@ const dirNames = (): string[] =>
     .map((d) => d.name)
     .sort()
 
-describe('the ten real manifests', () => {
+describe('the eleven real manifests', () => {
   it('covers every plugins/ directory', () => {
     // A ninth game that never gets imported above would otherwise be validated by
     // nothing at all — the exact silent-absence failure this contract exists to stop.
@@ -151,10 +153,11 @@ describe('the generated registry', () => {
       'missile-command',
       'pac-man',
       'millipede',
+      'defender',
     ])
   })
 
-  it('lists nine games and holds red-baron back deliberately', () => {
+  it('lists ten games and holds red-baron back deliberately', () => {
     expect(LISTED_GAMES.map((g) => g.id)).toEqual([
       'tempest',
       'star-wars',
@@ -165,6 +168,7 @@ describe('the generated registry', () => {
       'missile-command',
       'pac-man',
       'millipede',
+      'defender',
     ])
     expect(getGame('red-baron')?.listed).toBe(false)
   })
