@@ -22,7 +22,7 @@ import { createGame, type GameState } from './core/game-state'
 import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
 import { DEFAULT_HIGH_SCORES } from './core/highscore'
-import { drawGridStamps, drawStampAtPx } from './shell/render'
+import { drawGridStamps, drawStampAtPx, charTile } from './shell/render'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
@@ -111,11 +111,14 @@ function render(state: GameState): void {
     for (const e of grp) if ((e as { color: number }).color !== 0) drawSprite(e.h, e.v, (e as { pic: number }).pic)
   }
 
-  // Player ship (a visible marker at the gun; exact sprite decode is a follow-up).
+  // Player ship: the ROM's ship picture is $1F (MLSUB.MAC:518 "PICTURE OF SHIP",
+  // the same picture DLIVES draws for the lives icon — core/hud.ts SHIP_STAMP).
+  // In the sheet that ship char maps to tile charTile($1F)=$5F, the archer
+  // (render.ts:71,81); drawStampAtPx stands it upright with the shared CCW turn,
+  // so the gun renders as its real decoded sprite instead of a placeholder fill.
   if (state.player.alive) {
     const [pxx, pyy] = px(state.player.h, state.player.v)
-    c.fillStyle = '#4cf'
-    c.fillRect(pxx + 2, pyy + 2, 4, 4)
+    drawStampAtPx(c, charTile(SHIP_STAMP), pxx, pyy)
   }
   // Shot.
   if (state.shot.active) {
@@ -128,7 +131,6 @@ function render(state: GameState): void {
     c,
     hudPlacements({ score: state.score, lives: state.lives, highScore: DEFAULT_HIGH_SCORES[0].score }),
   )
-  void SHIP_STAMP
 }
 
 // ── Fixed-timestep accumulator (ml7-5). stepGame is one ROM 60 Hz frame, so we

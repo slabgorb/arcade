@@ -60,18 +60,26 @@ function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: 
 }
 
 /**
- * ml7-3, measured at the visual playtest (the playbook §4 ROT trap, caught by
- * eyes exactly as designed): the hardware maps a playfield CHAR CODE to a
- * sheet tile as 0x40 | (code & 0x3F). Two measurements pin it: char 0 — the
- * ROM's blank — lands on tile $40, which IS all-blank (one of several blank
- * tiles in the 256-tile sheet; the mapping is the evidence, not uniqueness),
- * and the field codes ($40-$7F: mushrooms, DDT, rocks) map to THEMSELVES,
- * which is why the ml2-4 census page could show correct mushrooms while the
- * font hid elsewhere: the DIGITZ codes $20-$29 live at tiles $60-$69, the
- * ship $1F at $5F. The sheet's low quarter and top half are sprite tiles,
- * not chars.
+ * Playfield CHAR CODE -> sheet tile. BIT 6 selects the char BANK. The 256-tile
+ * sheet splits into a playfield-GRAPHICS bank $00-$3F (mushrooms, DDT, rocks,
+ * the bonus-score numbers) and an ALPHANUMERICS bank $40-$7F (A-Z at $41-$5A,
+ * the ship $1F at $5F, the DIGITZ $20-$29 at $60-$69). A code with bit 6 CLEAR
+ * is alphanumeric text and lands at 0x40 | code; a code with bit 6 SET is a
+ * playfield graphic and lands at code & 0x3F. Equivalently: tile = code ^ 0x40.
+ *
+ * ml7-3 derived only the TEXT half — 0x40 | (code & 0x3F) — from the HUD digits
+ * and the ship, all bit-6-CLEAR codes, and wrongly assumed the field mushroom/
+ * DDT/rock codes ($6E-$7F, all bit-6 SET) "mapped to themselves." That is the
+ * routing-!=-geometry trap the ml2-4 census could NOT catch: the census draws
+ * the raw TILES, so tile $3F (a real mushroom) looked right there, while the
+ * field render sent NORMAL-mushroom code $7F to tile $7F — a red fragment.
+ * ml7-6 measured it at the visual playtest: NORMAL mushrooms ($7C-$7F,
+ * conway.ts:49) render as mushrooms only at tiles $3C-$3F, i.e. under the bank
+ * flip; POISON ($78-$7B, conway.ts:48) at $38-$3B; DDT ($6E/$6F, ddt.ts:38) at
+ * $2E/$2F. The text half is bit-6 CLEAR, so every HUD code maps exactly as
+ * before and the ml7-3 HUD/attract render is unchanged.
  */
-export const charTile = (code: number): number => 0x40 | (code & 0x3f)
+export const charTile = (code: number): number => ((code & 0x40) === 0 ? 0x40 : 0x00) | (code & 0x3f)
 
 /**
  * The second half of the same measurement: every tile is stored ROTATED for
