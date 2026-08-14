@@ -3,7 +3,7 @@ type: epic
 title: 'Millipede — sound (phase 5): the two-POKEY, eight-channel driver and the SOUNDS routine'
 description: "Sixth Millipede epic, phase 5 — the sound subsystem, mirroring centipede cp5/cp6 audio and reusing @shared/synth + @shared/audio. Millipede has TWO POKEYs (MLDEF.MAC:20 '2 POKEYS') driving EIGHT simultaneous sound channels (CHAN table MLDEF.MAC:311 'TABLE OF 8 SIMULTANEOUS SOUNDS FOR 2 POKEYS') — one more chip than centipede. The driver is the SOUNDS routine (MLIRQ.MAC:8), indexing all channels off CHAN and writing AUDF0/AUDC0 (POKEY #0, MLDEF.MAC:83-84) and AUDF1/AUDC1 (POKEY #1, MLDEF.MAC:96-97), lower vs upper POKEY selected by channel (MLIRQ.MAC:58). Port the driver and the per-effect frequency/amplitude envelopes; THE SWEEP IS THE SOUND — a static render is flat beeps (the silent-feature trap, playbook section 4). Gate audio on the first user gesture or autoplay policy leaves it silent in prod. Reuse centipede's docs/rom-study/sound.md decode approach and its POKEY handling. Dependency: ml6 -> ml3 (needs core events to sound); can run in parallel with ml4/ml5. If any sound ships as an ASSET the code points at (not synthesized), the acceptance test is a live 200, not a green vitest (the silent-degrade trap). Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml6). OUT OF SCOPE: attract/wiring/HUD (ml7), non-audio game logic (ml3/ml4/ml5)."
 priority: p3
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: ml6-1
@@ -21,9 +21,10 @@ stories:
     points: 5
     priority: p3
     status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
-    started: '2026-08-13'
     completed: '2026-08-13'
     review_verdict: approved
     review_findings: 'Grown by owner ruling into the COMPLETE playable millipede runtime (absorbed ml7-1/ml7-2, reached ml7-3/ml7-4). Merged via PR #355 (owner-authorized). AC1 (per-family core events) + AC3 (real-browser Playwright playtest: gesture gate 0→1 running, non-silent oscillators, no full-screen strobe) verified; 1027 millipede + 481 orchestrator green. Follow-ups filed ml7-5..ml7-9 (fixed-timestep cadence, sprite decode, audio freq clamp, enemy presence voices, field scroll).'
+completed: '2026-08-13'

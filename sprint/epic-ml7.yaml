@@ -21,9 +21,9 @@ stories:
     points: 5
     priority: p3
     status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
-    started: '2026-08-13'
     completed: '2026-08-13'
     review_verdict: approved
     review_findings: 'ABSORBED into ml6-2 by owner ruling and delivered there (frame loop, GameState + stepGame orchestrator, enemy roster, mouse trackball, gesture-gated audio, render, core->shell event dispatch). Merged via PR #355. Remaining fidelity carved out as ml7-5 (cadence), ml7-8 (enemy presence voices + secondary inputs), ml7-9 (scroll).'
@@ -43,9 +43,9 @@ stories:
     points: 3
     priority: p2
     status: done
+    started: '2026-08-13'
     repos: arcade
     workflow: tdd
-    started: '2026-08-13'
     completed: '2026-08-13'
     review_verdict: approved
     review_findings: 'Delivered under ml6-2 (merged PR #355). Baked freeze-not-strobe: stepPlayerDeath flashing is a STEADY block; death/game-over holds are silent. Pinned by tests/accessibility.test.ts (flashing never on/off/on; every advancePhase transition lands on a steady phase; no flash/strobe cue in the vocabulary). AC3 browser playtest measured corner luminance 0 across 40 frames, and main.ts render always repaints a black background (no code path full-screen-flashes).'
