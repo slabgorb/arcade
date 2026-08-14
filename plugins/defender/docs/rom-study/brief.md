@@ -54,15 +54,17 @@ ways:
 (`defender/INFO.SRC:3-9`): `RASM PHR2,DEFA2,DEFB2,AMODE0;-X` (the `-X` else
 "CREF SYMBOL OVERFLOW"), `RASM PHR2,SAMEXPA7` (the notes' own spelling — the
 shipped file is `SAMEXAP7.SRC`), and `RASM PHR2,DEFA2,DEFB2`; diagnostics chain
-"ALL.CF". PHR6 is the shared equate/macro header every chain opens with —
-`SAMEXAP7.SRC` begins `INCLUDE PHR6.SRC` (`defender/SAMEXAP7.SRC:2`).
+"ALL.CF". Each chain opens with a PHR-series module — the equate/macro header
+whose shipped revision is `PHR6.SRC` — listed first in every `RASM` invocation;
+`SAMEXAP7.SRC` is the one module that also *textually* pulls it in, beginning
+`INCLUDE PHR6.SRC` (`defender/SAMEXAP7.SRC:2`).
 
 **The file ledger.** `INFO.SRC` closes with the shipped file list and line counts
 (`defender/INFO.SRC:30-39`): PHR6, DEFA7, DEFB6, AMODE1, BLK71, SAMEXAP7, MESS0,
 ROMF8, ROMC0, ROMC8 — ten `.SRC` modules (plus INFO itself and one straggler,
 below). **BRUTSUM2.SRC is absent from that ledger and was never shipped**: it is
-a stand-alone development checkbyte tool (`ORG $8000`, sums 2K ROMs), not part of
-any chain.
+a stand-alone development checkbyte tool — it assembles at `ORG $8000`
+(`defender/BRUTSUM2.SRC:1`) and sums 2K ROMs — not part of any chain.
 
 **The banked-ROM block map.** The resident code assembles at `$D000-$FFFF`
 (`ORG $D000`, `defender/DEFA7.SRC:4`: DEFA7 + DEFB6 + ROMF8 + SAMEXAP7), and
@@ -77,7 +79,9 @@ banked blocks swap through the `$C000` window under `MAPC EQU $D000 MAP CONTROL`
 | 7 | BLK71 — terrain + wave data | `LDA #7` → `STA MAPC` before BGOUT (`defender/DEFA7.SRC:2024-2025`) |
 
 **The sound-source gap.** The sound board is a **separate M6808 CPU running
-`defend.snd`**, and its source is **not in this tree** — the same gap as joust.
+`defend.snd`** (per the MAME driver — williams.cpp's defender sound-board machine
+and ROM_START list the M6808 and defend.snd; the vendored tree never names
+either), and its source is **not in this tree** — the same gap as joust.
 ROMF8/ROMC0/ROMC8 are main-CPU control and diagnostic ROMs, *not* sound; nothing
 here assembles the sound program. Sound ground truth will need the MAME set
 (`df1-6`'s problem, recorded as a gap here).

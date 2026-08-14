@@ -106,5 +106,14 @@
       "line": 2,
       "verbatim": "\tINCLUDE\tPHR6.SRC"
     }
+  },
+  {
+    "id": "SH-13",
+    "claim": "BRUTSUM2, the never-shipped development checkbyte tool, assembles stand-alone at ORG $8000 — outside every chain.",
+    "source": {
+      "file": "BRUTSUM2.SRC",
+      "line": 1,
+      "verbatim": "\tORG\t$8000"
+    }
   }
 ]

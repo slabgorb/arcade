@@ -6,16 +6,16 @@
 // implementation is what tests/audit/citations.test.ts exercises with inline
 // fixtures.
 //
-// ─── WHY DOSSIER_FILES IS EMPTY HERE ─────────────────────────────────────────
-// This is the gate-first story: the Defender dossier (brief.md, glossary.md,
-// subsystems.md, open-questions.md, board-facts.md) is built by df1-2/df1-3/df1-4,
-// AFTER this gate lands. So the enrolled list starts EMPTY. The real-dossier gate
-// `uncoveredCitations(loadClaims())` is therefore green-on-empty today; the
-// sweep's TEETH are proven by the inline fixtures in citations.test.ts (extract →
-// detect-uncovered → covered → malformed-reported), which need no real dossier
-// file. Each later story enrols its own doc into DOSSIER_FILES — the byte side of
-// the gate (loadClaims globs the whole claims/ dir) already watches any *.json
-// the moment it lands.
+// ─── ENROLMENT MODEL ─────────────────────────────────────────────────────────
+// df1-1 shipped this gate BEFORE any dossier existed (DOSSIER_FILES started
+// empty, the real-dossier gate green-on-empty, the sweep's teeth proven by the
+// inline fixtures in citations.test.ts — extract → detect-uncovered → covered →
+// malformed-reported — which need no real file). df1-2 enrolled brief.md, the
+// first dossier file, so `uncoveredCitations(loadClaims())` now bites for real:
+// every backticked citation in an enrolled doc must have a covering claim. Each
+// later story (df1-3 glossary/subsystems/open-questions, df1-4 board-facts)
+// enrols its own doc; the byte side of the gate (loadClaims globs the whole
+// claims/ dir) already watches any *.json the moment it lands.
 //
 // GRAMMAR: backtick-wrapped `FILE:LINESPEC` where FILE ends .SRC (defender's
 // twelve shipped files are all .SRC — assembler and the prose INFO.SRC alike) and
