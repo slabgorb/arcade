@@ -29,7 +29,7 @@
 import { createState, draw, stepFrame, type ProcessClass } from './frame.js'
 import type { GameEvent } from './events.js'
 import { GRAV, flap, tickTimeUp, groundMaskAt, type EntityState, type PlayerInput } from './flight.js'
-import { FLOOR, ELEFT, ERIGHT, wrapX } from './arena.js'
+import { FLOOR, ELEFT, ERIGHT, wrapX, isLavaDeath, DEATH_Y } from './arena.js'
 // jt11-5 — the egg's ledge test resolves through the MUTATED arena (the jt3-2
 // seam), so a plank that burned or a cliff a wave destroyed settles nothing.
 import {
@@ -1544,7 +1544,12 @@ export function stepEgg(egg: EggState, arena: ArenaState = PRISTINE_ARENA): EggS
 
   // Open-air fall: reuse the flight core's GRAV (no cited egg-gravity constant).
   const velY = egg.velY + GRAV
-  return { ...egg, velY, posY: egg.posY + velY, settled: false }
+  const nextPosY = egg.posY + velY
+  // jt11-18 — the FLOOR+7 lava floor (ADGFLR, JOUSTRV4.SRC:6508-6509) bounds the
+  // egg's fall too: an egg over a burned column stops at the lava rather than
+  // integrating off the bottom of the screen.
+  if (isLavaDeath(nextPosY)) return { ...egg, velY, posY: DEATH_Y << 8, settled: false }
+  return { ...egg, velY, posY: nextPosY, settled: false }
 }
 
 /**
@@ -2662,6 +2667,34 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
     }
   }
 
+  // jt11-18 — the PER-CONTACT lava-troll grab. LNDB7 ("GRIP THE PLAYER OR ENEMY",
+  // JOUSTRV4.SRC:6764) spawns a LAVAT1 from the ground-check itself the instant a
+  // bird's feet touch a lava-troll cell (VCUPROC LAVAT1, :6776-6790). That outcome
+  // is `{ kind:'troll' }` — produced only at the burned shore band — so a bird
+  // standing/walking there gets its OWN troll bound to it, instead of dropping
+  // through walkOff into the off-screen fall. This is separate from the
+  // once-per-wave CLIF5 pick above (which only ever grabs the single nearest bird),
+  // and runs after it so that pick still fires. Gated on trollSpawnable and skipping
+  // any bird already a troll's victim (one troll per bird — the natural LAVNBR cap).
+  if (trollSpawnable(arena, waveOrdinal)) {
+    const boundVictims = new Set<number>()
+    for (const p of processes) {
+      if (p.kind === 'troll' && p.victimId !== undefined) boundVictims.add(p.victimId)
+    }
+    for (const p of processes) {
+      if (p.kind !== 'player' && p.kind !== 'enemy') continue
+      if (boundVictims.has(p.id)) continue
+      const e = p.kind === 'player' ? p.entity : p.enemy?.entity
+      if (!e) continue
+      const outcome = groundOutcomeInState(arena, groundMaskAt(e.posX, (e.posY >> 8) + 1, arena))
+      if (outcome.kind !== 'troll') continue
+      // A distinct LAVID-flavoured id (clear of the once-per-wave troll's
+      // 0x100*wave+0xc0 and every enemy/ptero namespace) so both can coexist.
+      processes = insertTroll(processes, { ...trollProcess(waveOrdinal, p), id: 0x15_0000 + p.id })
+      boundVictims.add(p.id)
+    }
+  }
+
   if (pendingPteros.length > 0) {
     const stillPending: PendingPtero[] = []
     const created: SimProcess[] = []
@@ -2890,6 +2923,11 @@ function entityOp(name: string, posX: number, feetY: number, facing: Facing): Dr
  * sprites (the user's z-order bug); this list draws some arena AFTER the entities.
  * Pure.
  */
+/** jt11-18 — the exposed molten pool: COLOR1 nibble 4 (the red-orange, byte 15 →
+ *  r7 g1 b0) over the CLIF5 band height (211..227) the burned shore footing sat in. */
+const LAVA_COLOUR = 4
+const LAVA_POOL_HEIGHT = 17
+
 export function drawList(demo: SimState): DrawOp[] {
   const back: DrawOp[] = []
   const fore: DrawOp[] = []
@@ -2906,6 +2944,16 @@ export function drawList(demo: SimState): DrawOp[] {
   if (!demo.arena.bridgeBurned) {
     back.push({ kind: 'fill', name: 'BRIDGE', x: 0, y: 211, width: 54, height: 3, colour: 8 })
     back.push({ kind: 'fill', name: 'BRIDG2', x: 240, y: 211, width: 60, height: 3, colour: 8 })
+  } else {
+    // jt11-18 — once the bridge burns, the molten pool the planks sat over is
+    // exposed: fill the vacated shore spans with the lava colour so the region
+    // reads as lava, not the index-0 frame-clear BLACK the burned span showed.
+    // The lava is a BACKGROUND fill (behind the sprites, like the planks were),
+    // spanning the CLIF5 band the shore footing occupied (LAVAB the bubbling
+    // pool, JOUSTRV4.SRC:962-963,:2175). COLOR1 nibble 4 is the molten red-orange
+    // (byte 15 → r7 g1 b0); the animated LAVAB/LAVAF frames are a follow-on.
+    back.push({ kind: 'fill', name: 'LAVA', x: 0, y: 211, width: 54, height: LAVA_POOL_HEIGHT, colour: LAVA_COLOUR })
+    back.push({ kind: 'fill', name: 'LAVA', x: 240, y: 211, width: 60, height: LAVA_POOL_HEIGHT, colour: LAVA_COLOUR })
   }
   // jt11-5 — a DESTROYED cliff stops drawing: WCLFEW writes the cliff away and
   // WCLFEW's create path writes it back (JOUSTRV4.SRC:2301-2368), and the live

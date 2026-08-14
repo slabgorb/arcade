@@ -218,11 +218,14 @@ describe('AC-1 — the BRIDGE/BRIDG2 lava-shore planks are drawn as solid fills'
 //        not the wave number.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', () => {
-  it('the REAL path: advancing across wave 3 removes both fills', async () => {
+  it('the REAL path: advancing across wave 3 removes both PLANK fills', async () => {
     const demo = await loadSim()
     const d3 = await demoAtWave(3)
     expect(d3.arena.bridgeBurned, 'premise (jt3-3): wave 3 burned the bridge').toBe(true)
-    expect(fills(demo.drawList(d3)), 'no fill ops survive the burn').toHaveLength(0)
+    // jt11-18 — the burn now draws a LAVA fill over the vacated span, so "0 fills"
+    // is no longer the burn's signature; the PLANKS specifically must be gone.
+    const plankNames = fills(demo.drawList(d3)).map((op) => op.name).filter((n) => n === 'BRIDGE' || n === 'BRIDG2')
+    expect(plankNames, 'no plank fill survives the burn').toHaveLength(0)
   })
 
   it('the PRODUCER pin: a stale pristine arena on the same wave-3 demo keeps the fills', async () => {
@@ -240,14 +243,17 @@ describe('AC-2 — the burn-off removes the plank fills, driven by demo.arena', 
     ])
   })
 
-  it('and the converse: a burned arena spliced onto a FRESH wave-1 demo removes them', async () => {
+  it('and the converse: a burned arena spliced onto a FRESH wave-1 demo removes the planks', async () => {
     const demo = await loadSim()
     const fresh = demo.createWaveSim(SEED)
     const burned: SimState = {
       ...fresh,
       arena: { ...fresh.arena, bridgeBurned: true },
     }
-    expect(fills(demo.drawList(burned))).toHaveLength(0)
+    // jt11-18 — the lava fill replaces the planks over the burned span; the planks
+    // themselves must be gone (the burn's actual signature).
+    const plankNames = fills(demo.drawList(burned)).map((op) => op.name).filter((n) => n === 'BRIDGE' || n === 'BRIDG2')
+    expect(plankNames).toHaveLength(0)
   })
 })
 

@@ -34,7 +34,7 @@ import {
   type PlayerInput,
   type WingEdge,
 } from './flight.js'
-import { BCK_Y_TABLE, applyCeiling, wrapX } from './arena.js'
+import { BCK_Y_TABLE, applyCeiling, wrapX, isLavaDeath, DEATH_Y } from './arena.js'
 // jt11-5 — the enemy's ground checks and cliff look-ahead consume the MUTATED
 // arena (the jt3-2 seam): `groundOutcomeInState` vetoes a destroyed cliff's
 // landing bit, `backgroundActive` blanks a destroyed cliff's BCKXTB sample
@@ -1320,6 +1320,12 @@ function stepEntity(
 
     const outcome = groundOutcomeInState(arena, groundMaskAt(s.posX, s.posY >> 8, arena))
     if (outcome.kind === 'platform') s = land(s, outcome.platform)
+    else if (isLavaDeath(s.posY)) {
+      // jt11-18 — ADGFLR (FLOOR+7, JOUSTRV4.SRC:6508-6509): a buzzard that reaches
+      // lava depth is stopped at the floor, not integrated off-screen, exactly as
+      // frame.ts's player is (the enemy airborne path had the same missing clamp).
+      s = { ...s, posY: DEATH_Y << 8 }
+    }
   } else {
     // jt11-11 — the enemy's own PFACE signs the maintained PVELX. There is no
     // separate enemy ground loop to cite: CREEM's enemy process ends
