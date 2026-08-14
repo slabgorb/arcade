@@ -85,19 +85,27 @@ function doc(name: string): string {
 }
 
 /**
- * The pinned MAME SHA a document declares: the first hex run of 7..40 chars
- * (containing at least one digit, so a lowercase word cannot pass) on a line
- * that names mamedev/mame. Fenced blocks are stripped first. Returns '' when
- * the document pins nothing — the callers assert against that loudly.
+ * The pinned MAME SHA a document declares — and the LINE that declares it: the
+ * first hex run of 7..40 chars (containing at least one digit, so a lowercase
+ * word cannot pass) on a line that names mamedev/mame; a mamedev/mame line
+ * with no SHA on it does not pin anything and is skipped. Fenced blocks are
+ * stripped first. Returns { sha: '', line: '' } when the document pins nothing
+ * — the callers assert against that loudly. The line rides along so checks on
+ * the pin's own wording read THE SHA-BEARING LINE, not the first mention
+ * (review round 1: a decoy mamedev/mame sentence elsewhere must not satisfy a
+ * check the pin row is supposed to).
  */
-function pinnedMameSha(text: string): string {
+function pinnedMamePin(text: string): { sha: string; line: string } {
   for (const line of stripFencedBlocks(text).split('\n')) {
     if (!/mamedev\/mame/.test(line)) continue
     for (const cand of line.match(/\b[0-9a-f]{7,40}\b/g) ?? []) {
-      if (/\d/.test(cand)) return cand
+      if (/\d/.test(cand)) return { sha: cand, line }
     }
   }
-  return ''
+  return { sha: '', line: '' }
+}
+function pinnedMameSha(text: string): string {
+  return pinnedMamePin(text).sha
 }
 function referenceSourcesText(): string {
   return existsSync(REFERENCE_SOURCES) ? readFileSync(REFERENCE_SOURCES, 'utf8') : ''
@@ -106,13 +114,16 @@ function referenceSourcesText(): string {
 /** `git show <sha>:<path>` out of the local clone, cached. Works whatever HEAD
  *  the clone is parked on — the pin names an object, not a checkout. */
 const showCache = new Map<string, string>()
-function mameFileAt(sha: string, file: string): string {
-  const spec = `${sha}:src/mame/williams/${file}`
+function mameObjectAt(sha: string, treePath: string): string {
+  const spec = `${sha}:${treePath}`
   const hit = showCache.get(spec)
   if (hit !== undefined) return hit
   const text = execFileSync('git', ['-C', mameDir, 'show', spec], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
   showCache.set(spec, text)
   return text
+}
+function mameFileAt(sha: string, file: string): string {
+  return mameObjectAt(sha, `src/mame/williams/${file}`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -291,11 +302,20 @@ const OQ_RESOLUTIONS: readonly {
       { re: /board-facts/, needs: 'the board-facts.md cross-reference' },
       { re: /CRB/, needs: "the handler's CRB $04/$05 writes — the register-level evidence that the video IRQ is a B-side (CB1) line" },
     ],
+    // Review round 1: two SEPARATE groups, not one four-line union — oqCites
+    // is .some over its lines, so a single group could not tell the entry-$04
+    // citation from the exit-$05 one (the relabel was killed today only by the
+    // accidental absence of a 1934/1935 claim).
     cites: [
       {
         file: 'DEFA7.SRC',
-        lines: [1934, 1935, 1997, 1998],
-        needs: "the IRQ handler's own CRB writes (entry $04 at 1934-1935, exit re-arm $05 at 1997-1998)",
+        lines: [1934, 1935],
+        needs: "the handler's ENTRY write — LDA #4 / STA PIA1+1, CRB=$04 masks the interrupt",
+      },
+      {
+        file: 'DEFA7.SRC',
+        lines: [1997, 1998],
+        needs: "the handler's EXIT re-arm — LDA #5 / STA PIA1+1, CRB=$05 re-enables CB1",
       },
     ],
   },
@@ -305,7 +325,7 @@ const OQ_RESOLUTIONS: readonly {
     tokens: [
       { re: /Resolved/, needs: 'a Resolved record (capital R)' },
       { re: /board-facts/, needs: 'the board-facts.md cross-reference' },
-      { re: /\$14/, needs: 'the decoded CRA value $14 (b0=0: CA1 interrupt disabled; CA2 armed for the SLAM switch)' },
+      { re: /\$14\b/, needs: 'the decoded CRA value $14 (b0=0: CA1 interrupt disabled; CA2 armed for the SLAM switch)' },
       { re: /disabled|never enabled|not enabled/i, needs: 'the answer: the CA1 interrupt stays disabled' },
     ],
     cites: [
@@ -322,7 +342,7 @@ const OQ_RESOLUTIONS: readonly {
     tokens: [
       { re: /Resolved/, needs: 'a Resolved record (capital R)' },
       { re: /board-facts/, needs: 'the board-facts.md cross-reference' },
-      { re: /\$?03E0/i, needs: 'the $03E0 mirror mask that folds $C3FC onto the $C010 register' },
+      { re: /\$?03E0\b/i, needs: 'the $03E0 mirror mask that folds $C3FC onto the $C010 register' },
     ],
     cites: [
       {
@@ -375,14 +395,15 @@ describe('df1-4 — the MAME SHA pin', () => {
   })
 
   it("the mamedev/mame pin says what it is NOT: not vendored, cited in prose (GPL)", () => {
-    const line = stripFencedBlocks(referenceSourcesText())
-      .split('\n')
-      .find((l) => /mamedev\/mame/.test(l))
-    expect(line, 'docs/reference-sources.md must carry a mamedev/mame line').toBeDefined()
+    // Review round 1: read the SHA-BEARING line itself, not the first
+    // mamedev/mame mention in the doc — a decoy sentence elsewhere carrying
+    // "GPL"/"prose" wording must not vouch for a pin row that dropped its own.
+    const { line } = pinnedMamePin(referenceSourcesText())
+    expect(line, 'docs/reference-sources.md must carry a mamedev/mame line pinning a SHA').not.toBe('')
     expect(
-      /GPL|not vendored|never vendored|prose/i.test(line ?? ''),
-      'the mamedev/mame row must state its own discipline — GPL, cited in prose, never vendored — so ' +
-        'nobody reads the pin as an invitation to vendor the tree',
+      /GPL|not vendored|never vendored|prose/i.test(line),
+      'the mamedev/mame PIN ROW must state its own discipline — GPL, cited in prose, never vendored — ' +
+        'so nobody reads the pin as an invitation to vendor the tree',
     ).toBe(true)
   })
 
@@ -458,10 +479,16 @@ describe('df1-4 — each board fact lives on its own table row, tokens + MAME po
 // GPL / prose-only discipline.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('df1-4 — MAME is cited in prose only, never copied, never backtick-cited', () => {
-  it('no MAME pointer wears citation backticks (backticks mark gate-covered, byte-verified citations)', () => {
-    const md = doc(BOARD_FACTS)
-    if (md === '') return // presence is asserted (red) above; '' has nothing to hide
-    const disguised = [...md.matchAll(/`[^`\n]*\.cpp:[^`\n]*`/g)].map((m) => m[0])
+  it('no MAME pointer in ANY enrolled dossier doc wears citation backticks', () => {
+    // Review round 1 (T3 mutant survived): the scan was scoped to
+    // board-facts.md while this same story seeded open-questions.md with a
+    // MAME pointer — and a backticked `williams_m.cpp:27-28` is structurally
+    // invisible to the .SRC-only citation sweep, so nothing else can catch it.
+    // Backticks mark gate-covered, byte-verified citations; sweep every
+    // enrolled doc.
+    const disguised = DOSSIER_FILES.flatMap((name) =>
+      [...doc(name).matchAll(/`[^`\n]*\.cpp:[^`\n]*`/g)].map((m) => `${m[0]} (in ${name})`),
+    )
     expect(
       disguised,
       'these MAME pointers are backtick-wrapped in the FILE:LINE citation form — a reader must never ' +
@@ -663,6 +690,51 @@ describe.skipIf(!mameAvailable)('df1-4 — every MAME pointer re-opens at the pi
       }
     })
   }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Review round 1 (R1 mutant survived): the claims' corroboration.line values
+  // — the MAME pointers later df* stories will actually read out of
+  // claims/*.json — verified NOWHERE: BF-4 drifted 500→501 shipped green with
+  // the checker announcing "all claims verified". Same checkable-and-wrong
+  // class as RV-7/TB-3's stale path, one layer down. Every williams
+  // corroboration therefore re-opens at the pin against an id-keyed token
+  // (identifiers/constants only — never quoted MAME text). A corroborated
+  // claim with NO token registered here is itself a failure: the drift teeth
+  // must never silently under-cover a new corroboration.
+  // ───────────────────────────────────────────────────────────────────────────
+  const CORROBORATION_TOKENS: Record<string, { re: RegExp; needs: string }> = {
+    'RV-7': { re: /ROM_START/, needs: 'the defender parent ROM set definition' },
+    'TB-3': { re: /set_raw/, needs: 'the exact-refresh video chain' },
+    'BF-1': { re: /bank_select_w/, needs: 'the bank-select handler' },
+    'BF-2': { re: /CB1/, needs: 'the CB1 wiring comment' },
+    'BF-3': { re: /COUNT240/, needs: 'the COUNT240 wiring comment' },
+    'BF-4': { re: /video_control_w/, needs: 'the mirrored video-control handler' },
+    'BF-5': { re: /decoder2/, needs: 'the two-PROM cocktail variant note' },
+    'BF-6': { re: /cb1_w/, needs: 'the CB1 write call' },
+    'BF-7': { re: /ca1_w/, needs: 'the CA1 write call' },
+  }
+
+  it('every williams corroboration line re-opens at the pin (the R1 drift class)', () => {
+    const sha = pinnedMameSha(referenceSourcesText())
+    expect(sha, 'no mamedev/mame SHA pinned in docs/reference-sources.md yet — pin it first').not.toBe('')
+    const corrs = williamsCorroborations(loadClaims())
+    expectPopulated(corrs.length, ANCHORED.length + 2, 'williams corroborations under the drift teeth')
+    for (const w of corrs) {
+      const tok = CORROBORATION_TOKENS[w.id]
+      expect(
+        tok,
+        `claim ${w.id} carries a williams corroboration but no drift token is registered for it — ` +
+          'add one to CORROBORATION_TOKENS or the R1 drift class reopens for that claim',
+      ).toBeDefined()
+      if (!tok || !Number.isInteger(w.line)) continue // line-shape failures are the path test's job
+      const text = mameObjectAt(sha, w.file).split('\n')[(w.line as number) - 1] ?? ''
+      expect(
+        tok.re.test(text),
+        `${w.id}: ${w.file}:${String(w.line)} at ${sha} must carry ${tok.needs} (pattern ${String(tok.re)}) — ` +
+          'a corroboration pointing at the wrong line is the checkable-and-wrong attribution the pin exists to prevent',
+      ).toBe(true)
+    }
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
