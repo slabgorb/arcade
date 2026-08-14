@@ -91,10 +91,11 @@ stories:
     title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
     points: 5
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
     review_verdict: approved
     review_findings: 'APPROVED round 2. Round 1 found 2 HIGH (conway-gate read post-masterStep = 1-frame-early scroll; hitDdt comment overclaimed :2060 coverage) + 4 test-rigor issues; all confirmed by comment-analyzer/test-analyzer/rule-checker + a Reviewer mutation battery, fixed in-phase (commits 7587d49b, 0e632dc6), re-verified. HITDDT register deferred to ml7-12. Green: millipede 1178, all projects 16310, orchestrator 498, lint, build.'
   - id: ml7-10
