@@ -1,5 +1,29 @@
 # Story jt11-15: A bird standing still on the ground takes off at REST — velXIndex must track actual ground motion, not the run rung it froze on
 
+> **⛔ CANCELED 2026-08-14 — keep ROM-faithful (owner ruling). NO physics change.**
+>
+> Investigation (TEA RED, measured against `flight.ts`) overturned this story's premise. The reported
+> "yank" is **authentic Joust**, not a defect:
+> - A *true* stand (PLYBR) already launches at rest — measured `velXIndex 0`. The clean hover-land case
+>   is not the leak.
+> - The yank occurs only on **run → release the stick → takeoff**, which is **jt11-3's deliberate,
+>   ROM-faithful behavior**: `UPDNO2` parks the run rung's `FLYVEL` in `PVELX`; `STFLY` inherits it; and
+>   there is **no ground friction and no air drag** (both cited ROM negatives). jt11-3 *explicitly tests*
+>   this — *"a running takeoff launches at the rung speed"* (neutral stick **holds** the rung) and
+>   *"landing at speed and flapping straight off keeps the momentum"* (touch-and-go conserves).
+> - You stop by **skidding** (flick the stick the opposite way), which already arrests to `velXIndex 0`.
+>
+> The owner was offered a friction model (releasing the stick bleeds momentum to hover) and **declined it
+> in favor of fidelity**. So the "invariant" and "recommended fix" below are **NOT to be implemented** —
+> doing so would reverse jt11-3's touch-and-go conservation and diverge from the ROM. Any residual gap is
+> **discoverability** (that skidding is how you stop), not physics; file that separately if wanted.
+>
+> The measured analysis and ROM citations below are retained as the record of *why* the behavior is
+> correct. Read them as evidence for "authentic", not as a spec to build.
+
+---
+
+
 ## Story Details
 - **Story ID:** jt11-15
 - **Epic:** jt11 (Joust — cabinet experience)
