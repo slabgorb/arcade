@@ -198,3 +198,36 @@ describe('ml6-2 stepGame — the wave loop (clear → DELAY → next wave)', () 
     expect(after.delay).toBe(5) // held, no decrement
   })
 })
+
+describe('ml6-2 stepGame — bonus life at score thresholds (SCORNG tail)', () => {
+  const play = (over?: Partial<GameState>): GameState => ({
+    ...createGame(0x1982, { phase: 'play' }),
+    ...over,
+  })
+
+  it('createGame seeds the first bonus threshold at 12,000 (bonusL/bonusM)', () => {
+    const g = createGame(0x1982)
+    // BONUS_INCREMENTS[0] = 0x0120 = BCD 1·20·00 → 12,000 (bonus.ts).
+    expect(g.bonusL).toBe(0x20)
+    expect(g.bonusM).toBe(0x01)
+  })
+
+  it('crossing 12,000 awards a life and emits bonus-life (CHAN11)', () => {
+    // Score just under 12,000; a DDT hit (+80) crosses into the [12000,21999]
+    // band comparator window, awarding the extra life.
+    const g = play({ score: 11990, lives: 3, shot: { active: true, h: 0xc7, v: 0x66 } })
+    const after = stepGame(g, idle)
+    expect(after.score).toBe(12070) // 11990 + 80 (DDT)
+    expect(after.lives).toBe(4)
+    expect(kinds(after)).toContain('bonus-life')
+    // The threshold advanced past the window (no re-fire next frame).
+    expect(after.bonusM).toBe(0x02) // 12,000 → 24,000
+  })
+
+  it('a score award that does NOT cross the threshold awards no life', () => {
+    const g = play({ score: 100, lives: 3, shot: { active: true, h: 0xc7, v: 0x66 } })
+    const after = stepGame(g, idle)
+    expect(after.lives).toBe(3)
+    expect(kinds(after)).not.toContain('bonus-life')
+  })
+})

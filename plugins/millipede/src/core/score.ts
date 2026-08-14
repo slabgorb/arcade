@@ -20,6 +20,13 @@ export const bcdByte = (pair: number): number => Math.floor(pair / 10) * 0x10 + 
  */
 export const score2Of = (score: number): number => bcdByte(Math.floor(score / 10000) % 100)
 
+/**
+ * SCORE1 — the hundreds/thousands BCD digit-pair of the running score, the low
+ * byte of the bonus-life band comparator (bonus.ts awardBonus, MLSUB.MAC:1076).
+ * `floor(score / 100) % 100` packed to BCD, the companion to score2Of.
+ */
+export const score1Of = (score: number): number => bcdByte(Math.floor(score / 100) % 100)
+
 export interface ScoreInput {
   /** Running score, in points. */
   readonly score: number

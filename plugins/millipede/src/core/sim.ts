@@ -25,7 +25,8 @@ import {
 import { WAVE_DELAY, stepWaveDelay } from './waves'
 import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent } from './events'
-import { score2Of } from './score'
+import { score1Of, score2Of } from './score'
+import { awardBonus } from './bonus'
 import { stepRoster, shootRoster } from './enemies/roster'
 import { resolveShot } from './shot'
 import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
@@ -197,11 +198,33 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     wave += 1
   }
 
-  // 10. Phase transition.
+  // 10. Bonus life — the SCORNG tail (bonus.ts awardBonus), run once per frame
+  //     the score advanced (the ROM runs it after every award). The band
+  //     comparator fires inside the [threshold, +9,999] window, adds a life
+  //     (capped at 6) and advances the threshold so it never re-fires.
+  let { bonusL, bonusM } = state
+  if (score > state.score) {
+    const b = awardBonus({
+      score1: score1Of(score),
+      score2: score2Of(score),
+      bonusL,
+      bonusM,
+      lives,
+      optns1: state.optns1,
+    })
+    bonusL = b.bonusL
+    bonusM = b.bonusM
+    if (b.awarded) {
+      lives = b.lives
+      events.push(event('bonus-life'))
+    }
+  }
+
+  // 11. Phase transition.
   const signals: PhaseSignals = { playerDied, livesRemaining: lives }
   const phase = advancePhase('play', signals)
 
-  // 11. March loop edges — start/stop the feet voice on the audible transition.
+  // 12. March loop edges — start/stop the feet voice on the audible transition.
   //     A fresh wave's train marching in is a start edge, so this also voices
   //     the wave transition (no separate wave-clear cue in the ROM's CHAN set).
   const wasMarching = state.phase === 'play' && state.segments.some(isLive)
@@ -221,6 +244,8 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     lives,
     wave,
     delay,
+    bonusL,
+    bonusM,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }

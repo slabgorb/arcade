@@ -15,6 +15,7 @@ import { createMillipede, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
 import { initRoster, type Roster } from './enemies/roster'
 import { newDdtTable, ddtPlace, ddtRestore, type DdtTable } from './ddt'
+import { initialBonusTarget } from './bonus'
 import type { GamePhase } from './phase'
 import type { GameEvent } from './events'
 
@@ -45,6 +46,11 @@ export interface GameState {
   score: number
   lives: number
   wave: number
+  /** OPTNS1 — the DIP option-switch shadow the bonus/select logic reads. */
+  optns1: number
+  /** BONUSL/BONUSM — the next extra-life score threshold, BCD hundreds (bonus.ts). */
+  bonusL: number
+  bonusM: number
   /** DELAY (MLDEF.MAC:286) — the inter-wave pause; 0 is idle, armed to WAVE_DELAY
    *  when the millipede is cleared and counted down by CHKEND (waves.ts). */
   delay: number
@@ -60,6 +66,10 @@ const START_MUSHROOM_TRIES = 96
 
 /** Standard millipede lives. */
 const START_LIVES = 3
+
+/** The default DIP option shadow: bonus-index 0 → the 12,000-point extra-life
+ *  increment (BONUS_INCREMENTS[0], the standard millipede first bonus). */
+const DEFAULT_OPTNS1 = 0x00
 
 export interface CreateGameOpts {
   /** Start phase (default 'attract'). */
@@ -81,6 +91,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
   const ddt = newDdtTable()
   ddtPlace(ddt, false)
   ddtRestore(ddt, field)
+  const bonus = initialBonusTarget(DEFAULT_OPTNS1) // seed BONUSL/BONUSM (MLSUB.MAC:393-398)
   return {
     phase: opts?.phase ?? 'attract',
     seed,
@@ -95,6 +106,9 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     score: 0,
     lives: opts?.lives ?? START_LIVES,
     wave: 0,
+    optns1: DEFAULT_OPTNS1,
+    bonusL: bonus.bonusL,
+    bonusM: bonus.bonusM,
     delay: 0,
     deathTimer: 0,
     events: [],
