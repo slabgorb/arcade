@@ -133,10 +133,11 @@ stories:
     title: 'Post-jt11-5 destruction-consumption leftovers (items 1 & 3; item 2 grip-grab-zone SUPERSEDED by jt11-18, done 2026-08-14): (1) cliffBlocksClimb (enemy.ts, the jt9-23 vertical climb sample) and any other bckMaskAt consumer still sample the PRISTINE background - thread arena/backgroundActive the way jt11-5 gave steerWake''s look-ahead, so a destroyed cliff stops blocking climb decisions. (3) LOW refactor (review F6): groundMaskAt''s burned branch re-derives landMaskAtX''s indexing minus the OR (flight.ts) - extract a shared raw-column helper so a future origin/bounds change cannot desync the twins; unify the two TypeError messages.'
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-14'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-14'
     type: chore
   - id: jt11-13
     title: 'High-score entry echo: paint the in-flight initials (and a cursor) on the entry screen'
