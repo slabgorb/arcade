@@ -89,7 +89,8 @@ stories:
     title: 'Wire core/scroll.ts field scroll — ml6-2 deferred the SCROLL half of the mushroom-regen work (MILLI.MAC:46 JSR SCROLL). Thread the scroll subsystem (SCROLD/SCROLU incl. the DDT halves) into stepGame so the field scrolls under millipede descent. Accessibility: no full-screen strobe on scroll.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
   - id: ml7-10
