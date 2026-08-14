@@ -29,9 +29,18 @@ import { score1Of, score2Of } from './score'
 import { awardBonus } from './bonus'
 import { stepRoster, shootRoster } from './enemies/roster'
 import { resolveShot } from './shot'
-import { ddtExplosionStep, ddtPlace, ddtRestore } from './ddt'
+import {
+  ddtExplosionStep,
+  ddtPlace,
+  ddtRestore,
+  ddtScrollDown,
+  ddtScrollUp,
+  anyDdtExploding,
+} from './ddt'
 import { obstacOffset, obstacleAt } from './mushroom'
 import { initConway, masterStep } from './conway'
+import { scrollDispatch, scrollDown, scrollUp, type ScrollGate } from './scroll'
+import { nextInt } from '@shared/rng'
 import type { EnemyView } from './enemies/contract'
 
 /** One frame of input: the trackball bytes, fire, and the start/coin button. */
@@ -147,12 +156,15 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   }
   const stepped = stepRoster(state.roster, view)
   let roster = stepped.roster
+  // SCROLC sources accumulate here through the frame; SCROLL consumes them below.
+  let scrollQueued = 0
   if (shot.active) {
     const rs = shootRoster(roster, { h: shot.h, v: shot.v })
     if (rs.killed) {
       roster = rs.roster
       score += rs.scoreDelta
       shot = { active: false, h: 0, v: 0 }
+      scrollQueued += rs.scroll // beetle DEC / mosquito INC (MILLI.MAC:2090/:2127)
       events.push(event('enemy-killed'))
     }
   }
@@ -164,9 +176,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   }
 
   // 6. DDT — animate any exploding bombs' clouds (FRAME & 7 gated inside).
-  //    Mutates state.field in place, as the ROM draws into playfield RAM. The
-  //    returned mush deltas feed the MushCounts threading (TODO(ml7-2 fidelity)).
-  ddtExplosionStep(state.ddt, state.field, state.frame)
+  //    Mutates state.field in place, as the ROM draws into playfield RAM. Its mush
+  //    deltas feed the MushCounts threading, folded into the scroll block below.
+  const ddtBoom = ddtExplosionStep(state.ddt, state.field, state.frame)
 
   // 7. Player death — a segment or any enemy touching the player this frame.
   let lives = state.lives
@@ -212,9 +224,50 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     // The inter-wave pause elapsed: start the next wave (new train + fresh
     // bombs re-stamped, DDTS/DDTS2). Difficulty ramps via the wave counter.
     segments = createMillipede({ headingSign: 1 })
+    scrollQueued -= 1 // CENTPC re-lays the train and scrolls DOWN (MILLI.MAC:503)
     ddtPlace(state.ddt, false)
     ddtRestore(state.ddt, state.field)
     wave += 1
+  }
+
+  // 9b. SCROLL (MILLI.MAC:46) — consume SCROLC and dispatch the field scroll.
+  //     Runs after every SCROLC source this frame (the continuous arm inside
+  //     scrollDispatch, the beetle/mosquito kills, the CENTPC re-lay) and is
+  //     mutually exclusive with masterStep via the CDONE gate (SC-6), so its
+  //     position relative to the masterStep above is immaterial.
+  let scrolc = state.scrolc + scrollQueued
+  // Death STAs SCROLC before SCROLL would run (MILLI.MAC:1812 "STOP ANY EXISTING
+  // SCROLLING") — a pending scroll is cancelled, not carried into the animation.
+  if (playerDied) scrolc = 0
+  let mushLower = state.mushCounts.lower + ddtBoom.mush
+  let mushTop = state.mushCounts.top + ddtBoom.mushTop
+  const liveSegs = segments.filter(isLive).length
+  const scrollGate: ScrollGate = {
+    attract: false, // MODE bit 7 is clear in play (SC-5)
+    conwayActive: conway.active, // CDONE — scrolling waits for metamorphosis (SC-6)
+    ddtExploding: anyDdtExploding(state.ddt), // OR of the bomb hi bytes (SC-7)
+    playerDead: !alive, // PLAYP/PEXPLD (SC-8)
+    hitDdt: false, // HITDDT auto-scroll-stop — the death cancel above covers :1805/:1812
+    segmentsRemaining: liveSegs, // DEAD (SC-2/10)
+    centin: liveSegs, // CENTIN (SC-3/11) — the continuous arm's length-4 gate
+    frame: state.frame, // the arm's 128-frame phase input (SC-13)
+  }
+  const disp = scrollDispatch(scrolc, scrollGate)
+  scrolc = disp.scrolc // post-arm counter
+  if (disp.action === 'down') {
+    const d = scrollDown(state.field, scrolc, state.rng)
+    scrolc = d.scrolc
+    mushLower += d.mush
+    mushTop += d.mushTop
+    // The SCROLD DDT half (SC-49): step the bomb bank down and seed a top-row bomb.
+    const dd = ddtScrollDown(state.ddt, state.field, nextInt(state.rng, 0x100), nextInt(state.rng, 0x100))
+    mushTop += dd.mushTop
+  } else if (disp.action === 'up') {
+    const u = scrollUp(state.field, scrolc)
+    scrolc = u.scrolc
+    mushLower += u.mush
+    mushTop += u.mushTop
+    ddtScrollUp(state.ddt) // the SCROLU DDT half (SC-50): step the bank up, no seeding
   }
 
   // 10. Bonus life — the SCORNG tail (bonus.ts awardBonus), run once per frame
@@ -268,6 +321,8 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     conway,
     bonusL,
     bonusM,
+    scrolc,
+    mushCounts: { lower: mushLower, top: mushTop },
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }

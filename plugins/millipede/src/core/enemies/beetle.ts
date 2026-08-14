@@ -99,9 +99,10 @@ export function shootBeetles(
 ): EnemyShootResult<BeetleSlot[]> {
   for (const slot of slots) {
     if (isLive(slot) && checkPlayerCollision(slot, shot)) {
-      const { points } = beetleKill(false)
+      const { points, scrollDown } = beetleKill(false)
       Object.assign(slot, vacantSlot()) // vacate — MOBJC 0 frees the slot for reuse
-      return { slots, scoreDelta: points, killed: true }
+      // DEC SCROLC — a beetle kill scrolls the playfield DOWN (MILLI.MAC:2090).
+      return { slots, scoreDelta: points, killed: true, scroll: scrollDown ? -1 : 0 }
     }
   }
   return { slots, scoreDelta: 0, killed: false }

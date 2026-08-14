@@ -43,9 +43,9 @@
 // enemy plant uses a THROWAWAY MushCounts (bee.ts:118, beetle.ts:70) and no enemy
 // writes scrolc — so they are the primary observables. Field assertions use the
 // grey-re-entry fingerprint (row 6 gains bit 7 in EVERY column on a down-scroll,
-// SC-29), which no single-cell enemy plant/eat can erase. Fixtures that depend on
-// a quiet roster ASSERT the roster stayed vacant, so a stray spawn fails loudly
-// instead of silently corrupting a count (lang-review #18).
+// SC-29), which no single-cell enemy plant/eat can erase. See the roster-isolation
+// note below the helpers for why a deterministic reserved-slot spider spawn cannot
+// corrupt these cell-specific assertions (lang-review #18).
 
 import { describe, it, expect } from 'vitest'
 import { stepGame, type GameInput } from '../src/core/sim'
@@ -60,7 +60,6 @@ import { initMosquitoes } from '../src/core/enemies/mosquito'
 import { newDdtTable, ddtPlace } from '../src/core/ddt'
 
 const idle: GameInput = { dh: 0, dv: 0, fire: false, start: false }
-const fire: GameInput = { dh: 0, dv: 0, fire: true, start: false }
 const SEED = 0x1982
 
 // ─── field geometry (mirrors scroll.test.ts; no game logic reimplemented) ─────
@@ -103,12 +102,13 @@ const downScrollFingerprint = (field: Uint8Array): boolean => {
   return true
 }
 
-/** The roster is untouched — no spawn happened this frame (fixture self-check). */
-const rosterVacant = (g: GameState): boolean => {
-  const r = g.roster
-  const pools = [r.spiders, r.bees, r.beetles, r.dragonflies, r.mosquitoes, r.earwigs, r.inchworms]
-  return pools.every((pool) => pool.every((s: { color: number }) => s.color === 0))
-}
+// Note on roster isolation: a fresh play state spawns a reserved-slot spider
+// (spider.ts:92 — slots 12/13 spawn even at score 0), but a JUST-spawned spider
+// does not move, eat, or plant that frame (spider.ts:104), so it writes NOTHING
+// to the playfield. The scroll assertions below are therefore cell-specific (the
+// exact byte at an (col,row), or the grey bit across all 30 columns' row 6) and
+// self-validating: a spawn that DID corrupt a cell would fail the very assertion,
+// not slip past a coarse "roster is vacant" gate.
 
 // ═══════════════════════════════════════════════════════════════════════════
 describe('ml7-9 AC1 — GameState carries the scroll counter and the MUSH pair', () => {
@@ -157,7 +157,6 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
     expect(out.field[idx(10, 0x10)], 'source cell vacated').toBe(0)
     expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)
     expect(scrolcOf(out), 'SCROLD consumed one down (INC toward 0, SC-18)').toBe(0)
-    expect(rosterVacant(out), 'fixture self-check: no spawn perturbed the field').toBe(true)
   })
 
   it('a pending UP (SCROLC > 0) shifts the field up and DECs toward 0 (SC-17/36)', () => {
@@ -169,7 +168,6 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
     expect(out.field[idx(10, 0x11)], 'marker climbed one row (SC-41)').toBe(0x22)
     expect(out.field[idx(10, 0x10)], 'source cell vacated').toBe(0)
     expect(scrolcOf(out), 'SCROLU consumed one up (DEC toward 0, SC-36)').toBe(0)
-    expect(rosterVacant(out), 'fixture self-check: no spawn perturbed the field').toBe(true)
   })
 
   it('SCROLC == 0 scrolls NOTHING — the field is untouched (SC-15)', () => {
@@ -196,7 +194,6 @@ describe('ml7-9 AC3 — the continuous-scroll arm drives the descent (MLSUB.MAC:
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x0f)], 'the arm scrolled the field down (SC-14)').toBe(0x33)
     expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)
-    expect(rosterVacant(out), 'fixture self-check: no spawn perturbed the field').toBe(true)
   })
 
   it('same train ONE frame off phase ($1D): NO scroll — the arm is gated (SC-13)', () => {
@@ -233,23 +230,24 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
   // NOTE the player-death gate is the OPPOSITE of this (it CANCELS — AC6, :1812),
   // so the only stepPlay-reachable PRESERVING gate is conway-active (CDONE, SC-6).
   it('CONWAY-active pauses the pending down; when CDONE clears it scrolls (SC-6)', () => {
-    const field = emptyField()
-    field[idx(10, 0x10)] = 0x22
     const gated = playState({
-      field,
       scrolc: -1,
       conway: { phase: 0, active: true, addr: 0, ngrown: 0 },
     })
     // Frame 1 — gated: the counter is preserved (scalar, immune to the masterStep
-    // growth that CONWAY-active also runs; we do not assert the field here).
+    // Conway growth that CONWAY-active also runs; we do not assert the field here).
     const held = stepGame(gated, idle)
     expect(scrolcOf(held), 'CONWAY-active preserves the pending down (SC-6)').toBe(-1)
-    // Frame 2 — the gate opens (CDONE clear): NOW the held scroll is applied.
+    // Frame 2 — the gate opens (CDONE clear): NOW the held scroll is applied. The
+    // grey re-entry fingerprint is the evidence (scrollDown ORs $80 into row 6 of
+    // every column unconditionally), so it survives whatever Conway did in frame 1.
     const opened = stepGame(
       { ...held, conway: { phase: 0, active: false, addr: 0, ngrown: 0 } } as GameState,
       idle,
     )
-    expect(opened.field[idx(10, 0x0f)], 'the held scroll applied once the gate opened').toBe(0x22)
+    expect(downScrollFingerprint(opened.field), 'the held scroll applied once the gate opened').toBe(
+      true,
+    )
     expect(scrolcOf(opened), 'and was then consumed (SC-18)').toBe(0)
   })
 })
@@ -258,32 +256,38 @@ describe('ml7-9 AC4 — an active gate PAUSES a pending scroll, it does not drop
 describe('ml7-9 AC5 — the SCROLC sources are wired (the dropped kill flags + CENTPC)', () => {
   // Differential: the ONLY difference between case and control is the kill, so a
   // scroll appearing only in the kill case proves the kill queued it (avoids the
-  // all-local-terms vacuity of lang-review #26). Arm disarmed (12-train), empty
-  // field, SCROLC starts 0 — nothing else can scroll.
-  const player = createPlayer()
+  // all-local-terms vacuity of lang-review #26). The enemy sits MID-FIELD, where a
+  // pre-seeded active shot reaches it but it is far from the player (bottom row),
+  // so the shot-kill does NOT also contact the player — a player death would
+  // cancel the scroll (AC6, :1812) and mask the source under test. Arm disarmed
+  // (12-segment boot train ⇒ CENTIN != 4), empty field, SCROLC starts 0.
+  const SHOT_H = 0x80
+  const SHOT_V = 0x40 // mid-field: reached by the shot, clear of the player at v 8
+  const activeShot = { active: true, h: SHOT_H, v: SHOT_V }
 
-  const withLiveBeetleAtPlayer = () => {
+  const liveBeetle = () => {
     const beetles = initBeetles()
-    Object.assign(beetles[0], { color: 0xb9, pic: 0x34, h: player.h, v: player.v })
+    Object.assign(beetles[0], { color: 0xb9, pic: 0x34, h: SHOT_H, v: SHOT_V, dh: 0, dv: 0 })
     return beetles
   }
-  const withLiveMosquitoAtPlayer = () => {
+  const liveMosquito = () => {
     const mosquitoes = initMosquitoes()
     // isMosquitoLive: color != 0 && 0x0E <= pic < 0x10 (mosquito.ts:90).
-    Object.assign(mosquitoes[0], { color: 0x79, pic: 0x0e, h: player.h, v: player.v })
+    Object.assign(mosquitoes[0], { color: 0x79, pic: 0x0e, h: SHOT_H, v: SHOT_V, dh: 0, dv: 0 })
     return mosquitoes
   }
 
   it('a BEETLE kill DECs SCROLC → the field scrolls DOWN this frame (MILLI.MAC:2090)', () => {
-    const hit = playState({ roster: { ...initRoster(), beetles: withLiveBeetleAtPlayer() } })
-    const out = stepGame(hit, fire)
+    const hit = playState({ shot: activeShot, roster: { ...initRoster(), beetles: liveBeetle() } })
+    const out = stepGame(hit, idle)
     expect(out.score, 'the beetle was actually killed (300 pts, BT-45)').toBe(300)
+    expect(out.player.alive, 'the shot-kill did not also kill the player').toBe(true)
     expect(downScrollFingerprint(out.field), 'the kill scrolled the field down').toBe(true)
   })
 
-  it('CONTROL — the same shot with NO beetle does not scroll (differential floor)', () => {
-    const miss = playState() // empty roster, empty field
-    const out = stepGame(miss, fire)
+  it('CONTROL — the same active shot with NO beetle does not scroll (differential floor)', () => {
+    const miss = playState({ shot: activeShot }) // empty roster, empty field
+    const out = stepGame(miss, idle)
     expect(out.score, 'nothing killed').toBe(0)
     expect(downScrollFingerprint(out.field), 'no kill ⇒ no scroll').toBe(false)
   })
@@ -291,13 +295,31 @@ describe('ml7-9 AC5 — the SCROLC sources are wired (the dropped kill flags + C
   it('a MOSQUITO kill INCs SCROLC → the field scrolls UP this frame (MILLI.MAC:2127)', () => {
     // Up-scroll's fingerprint: the grey blank $80 enters at the BOTTOM row 2
     // (SC-40) in every column, and row 6 does NOT gain the down-scroll grey bit.
-    const hit = playState({ roster: { ...initRoster(), mosquitoes: withLiveMosquitoAtPlayer() } })
-    const out = stepGame(hit, fire)
+    const hit = playState({ shot: activeShot, roster: { ...initRoster(), mosquitoes: liveMosquito() } })
+    const out = stepGame(hit, idle)
     expect(out.score, 'the mosquito was actually killed (400 pts, MQ-28)').toBe(400)
+    expect(out.player.alive, 'the shot-kill did not also kill the player').toBe(true)
     let bottomGrey = 0
     for (let c = 0; c < COLS; c++) if (out.field[idx(c, 2)] === GREY_BIT) bottomGrey += 1
     expect(bottomGrey, 'up-scroll stamped the grey blank on row 2 (SC-40)').toBe(COLS)
     expect(downScrollFingerprint(out.field), 'an up-scroll is NOT a down-scroll').toBe(false)
+  })
+
+  it('the CENTPC train re-lay at wave start scrolls the field DOWN (MILLI.MAC:503)', () => {
+    // A cleared millipede (empty train) with the inter-wave DELAY about to elapse
+    // lays a fresh train this frame — CENTPC's `DEC SCROLC` then scrolls down.
+    const relaid = playState({ segments: [], delay: 1 })
+    const out = stepGame(relaid, idle)
+    expect(out.wave, 'the next wave was laid (createMillipede ran)').toBe(1)
+    expect(downScrollFingerprint(out.field), 'the re-lay scrolled the field down').toBe(true)
+  })
+
+  it('CONTROL — a cleared train mid-pause (no re-lay this frame) does not scroll', () => {
+    // DELAY not yet elapsed: no createMillipede, so no CENTPC re-lay, no scroll.
+    const waiting = playState({ segments: [], delay: 2 })
+    const out = stepGame(waiting, idle)
+    expect(out.wave, 'no new wave yet').toBe(0)
+    expect(downScrollFingerprint(out.field), 'no re-lay ⇒ no scroll').toBe(false)
   })
 })
 
@@ -330,7 +352,6 @@ describe('ml7-9 AC7 — the MUSH count sink is threaded (scroll + ddt deltas)', 
     expect(mc, 'mushCounts present').toBeDefined()
     expect(mc!.lower, 'one mushroom left the bottom region (SC-31)').toBe(4)
     expect(mc!.top, 'top region unchanged').toBe(3)
-    expect(rosterVacant(out), 'fixture self-check: no spawn changed the field').toBe(true)
   })
 
   it('a mushroom crossing INTO the bottom region INCs mushCounts.lower (SC-21/33)', () => {
@@ -340,7 +361,6 @@ describe('ml7-9 AC7 — the MUSH count sink is threaded (scroll + ddt deltas)', 
     const out = stepGame(g, idle)
     const mc = mushCountsOf(out)
     expect(mc!.lower, 'one mushroom entered the bottom region (SC-33)').toBe(1)
-    expect(rosterVacant(out)).toBe(true)
   })
 })
 

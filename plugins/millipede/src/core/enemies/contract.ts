@@ -49,4 +49,7 @@ export interface EnemyShootResult<S> {
   readonly scoreDelta: number
   /** True if a creature was killed this call (sim.ts emits 'enemy-killed'). */
   readonly killed: boolean
+  /** SHOOT2's SCROLC delta for the kill (MILLI.MAC:2090/:2127): -1 when the kill
+   *  scrolls the playfield DOWN (beetle), +1 UP (mosquito), 0/absent otherwise. */
+  readonly scroll?: number
 }

@@ -82,20 +82,20 @@ export function stepRoster(r: Roster, view: EnemyView): { roster: Roster; player
 export function shootRoster(
   r: Roster,
   shot: { h: number; v: number },
-): { roster: Roster; scoreDelta: number; killed: boolean } {
+): { roster: Roster; scoreDelta: number; killed: boolean; scroll: number } {
   const sp = shootSpiders(r.spiders, shot)
-  if (sp.killed) return { roster: { ...r, spiders: sp.slots }, scoreDelta: sp.scoreDelta, killed: true }
+  if (sp.killed) return { roster: { ...r, spiders: sp.slots }, scoreDelta: sp.scoreDelta, killed: true, scroll: sp.scroll ?? 0 }
   const be = shootBees(r.bees, shot)
-  if (be.killed) return { roster: { ...r, bees: be.slots }, scoreDelta: be.scoreDelta, killed: true }
+  if (be.killed) return { roster: { ...r, bees: be.slots }, scoreDelta: be.scoreDelta, killed: true, scroll: be.scroll ?? 0 }
   const bt = shootBeetles(r.beetles, shot)
-  if (bt.killed) return { roster: { ...r, beetles: bt.slots }, scoreDelta: bt.scoreDelta, killed: true }
+  if (bt.killed) return { roster: { ...r, beetles: bt.slots }, scoreDelta: bt.scoreDelta, killed: true, scroll: bt.scroll ?? 0 }
   const dr = shootDragonflies(r.dragonflies, shot)
-  if (dr.killed) return { roster: { ...r, dragonflies: dr.slots }, scoreDelta: dr.scoreDelta, killed: true }
+  if (dr.killed) return { roster: { ...r, dragonflies: dr.slots }, scoreDelta: dr.scoreDelta, killed: true, scroll: dr.scroll ?? 0 }
   const mo = shootMosquitoes(r.mosquitoes, shot)
-  if (mo.killed) return { roster: { ...r, mosquitoes: mo.slots }, scoreDelta: mo.scoreDelta, killed: true }
+  if (mo.killed) return { roster: { ...r, mosquitoes: mo.slots }, scoreDelta: mo.scoreDelta, killed: true, scroll: mo.scroll ?? 0 }
   const ea = shootEarwigs(r.earwigs, shot)
-  if (ea.killed) return { roster: { ...r, earwigs: ea.slots }, scoreDelta: ea.scoreDelta, killed: true }
+  if (ea.killed) return { roster: { ...r, earwigs: ea.slots }, scoreDelta: ea.scoreDelta, killed: true, scroll: ea.scroll ?? 0 }
   const iw = shootInchworms(r.inchworms, shot)
-  if (iw.killed) return { roster: { ...r, inchworms: iw.slots }, scoreDelta: iw.scoreDelta, killed: true }
-  return { roster: r, scoreDelta: 0, killed: false }
+  if (iw.killed) return { roster: { ...r, inchworms: iw.slots }, scoreDelta: iw.scoreDelta, killed: true, scroll: iw.scroll ?? 0 }
+  return { roster: r, scoreDelta: 0, killed: false, scroll: 0 }
 }

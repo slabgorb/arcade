@@ -53,6 +53,14 @@ export interface GameState {
   /** BONUSL/BONUSM — the next extra-life score threshold, BCD hundreds (bonus.ts). */
   bonusL: number
   bonusM: number
+  /** SCROLC (MLDEF.MAC:372) — the signed pending-scroll counter: negative queues
+   *  a DOWN-scroll, positive an UP-scroll, 0 is idle. Sources DEC/INC it (the
+   *  continuous arm, beetle/mosquito kills, the CENTPC re-lay); SCROLL consumes it
+   *  each frame (scroll.ts). */
+  scrolc: number
+  /** MUSH / MUSH+2 (MLDEF.MAC:342-343) — mushrooms counted in the lower and top
+   *  row bands. The scatter seeds them, and every scroll/ddt delta adjusts them. */
+  mushCounts: MushCounts
   /** DELAY (MLDEF.MAC:286) — the inter-wave pause; 0 is idle, armed to WAVE_DELAY
    *  when the millipede is cleared and counted down by CHKEND (waves.ts). */
   delay: number
@@ -113,6 +121,8 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     optns1: DEFAULT_OPTNS1,
     bonusL: bonus.bonusL,
     bonusM: bonus.bonusM,
+    scrolc: 0, // SCROLC idle — nothing pending at boot (MLDEF.MAC:372)
+    mushCounts: counts, // the scatter's MUSH/MUSH+2 tallies, previously discarded
     delay: 0,
     deathTimer: 0,
     events: [],
