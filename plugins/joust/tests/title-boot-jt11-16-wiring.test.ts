@@ -205,12 +205,18 @@ describe('AC-C a start press on the title routes to select, edge-debounced', () 
   it('the start press is edge-debounced so a HELD key cannot skip the title', () => {
     const branch = titlePumpBranch(mainCode())
     // Mirrors the attract branch / coin-up door: a held start button read every frame
-    // must not blow through the title. main.ts already keeps prevStartHeld for exactly
-    // this rising-edge discipline; the title branch must use it too.
-    expect(
-      /prevStartHeld|!prev\w*(start|select)|prev\w*(start|select)/i.test(branch),
-      'the title branch tracks the previous-frame start press (a rising-edge guard)',
-    ).toBe(true)
+    // must not blow through the title. The GUARD must sit ON the toSelect transition,
+    // not merely appear somewhere in the branch — a bare `prevStartHeld` presence regex
+    // (jt11-16 review, lang-review #15/#18) is satisfied by the branch's own trailing
+    // `prevStartHeld = startHeld` bookkeeping line even when the transition is UNGATED.
+    // Anchor to the statement that fires the transition and require the rising-edge
+    // condition on it. Mutation-verified: stripping `&& !prevStartHeld` from main.ts
+    // reddens this test.
+    const toSelectStmt = branch.split('\n').find((line) => /toSelect\(/.test(line))
+    expect(toSelectStmt, 'the title branch has a toSelect( transition statement').toBeDefined()
+    expect(toSelectStmt!, 'the toSelect transition is gated by the rising edge (!prevStartHeld)').toMatch(
+      /!\s*prevStartHeld/,
+    )
   })
 })
 

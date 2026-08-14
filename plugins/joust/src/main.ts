@@ -621,14 +621,16 @@ const frame = (now: number): void => {
     drawHud(overlayReadout(cabinet.game))
   } else if (cabinet.mode === 'attract') {
     // jt10-4 — the attract cycle: the self-play sim on the demo page, or a warning
-    // banner. No HUD — attract is the public face of the cabinet.
+    // banner. No HUD — attract, reached after the title dwell (jt11-16), is the
+    // self-play public face of the cabinet.
     renderAttract()
   } else if (cabinet.mode === 'gameover') {
     // The game-over overlay: the 'THY GAME IS OVER' banner, held ~88 ticks.
     renderGameOverScreen()
   } else if (cabinet.mode === 'title') {
     // The title overlay: the vector JOUST wordmark + copyright/extra-mount lines,
-    // colour-cycling every TITLE_COLOR_CADENCE frames. The hook is here now.
+    // colour-cycling every TITLE_COLOR_CADENCE frames. This is the cabinet's boot
+    // screen as of jt11-16 (the title pump branch dwells here, then hands to attract).
     renderTitleScreen()
   } else if (cabinet.mode === 'highscore') {
     // jt10-7 — the JOUST CHAMPIONS table + the rank-conditional initials prompt.
