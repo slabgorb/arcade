@@ -189,7 +189,8 @@ stories:
     description: 'Player-reported: the attract invites 1 for one player but pressing 1 leads to ANOTHER screen to choose the number of players again. The attract CTA reads PRESS 1 OR 2 TO START (attractScreen.ts:44, painted main.ts:358-359), but the attract start branch (main.ts:554-556) computes want=readSelectInput(held) and then uses ONLY its non-null-ness (startHeld), calling toSelect(cabinet) (cabinet.ts:90-92) and discarding the 1-vs-2 choice. So the select screen re-asks with SEL_ONE_PLAYER / SEL_TWO_PLAYER (select.ts:36,39; laid out selectScreen.ts:35-36; painted main.ts:225-226) and a game only starts on a SECOND digit press (main.ts:564-574 -> selectPlayerCount -> enterPlaying). Nothing is missing: selectPlayerCount (select.ts:51-55) already maps one-player/two-player to 1/2, and enterPlaying / startPlaying(count) (main.ts:432-438, cabinet.ts:99-101) already start a specific count. Fix: in the attract branch (main.ts:554-556) thread the pressed count -- const count = selectPlayerCount(want); if (count !== null) enterPlaying(count) -- starting directly and skipping the re-ask; both symbols are already imported. Keep the rising-edge discipline (prevStartHeld main.ts:419-422). NOTE: jt11-1 cited start-input at main.ts:422-426,500-503; those lines have drifted -- live logic is readSelectInput main.ts:465-470, attract press main.ts:552-556, select door main.ts:564-574. If a coin-up select step is still wanted that is a separate design decision, but the advertised CTA is a direct start. SEQUENCING: edits the main.ts start-input door shared with jt11-16 -- sequence, do not run in parallel checkouts.'
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-14'
     repos: arcade
     workflow: tdd
     type: bug
