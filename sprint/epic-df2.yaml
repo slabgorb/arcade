@@ -53,8 +53,8 @@ stories:
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
-    review_findings: 'F1 [HIGH]: ROM citations in terrain.ts + both test files are wrong (LDA #$E0 :380 not :381, DEC ROFF :387, INC ROFF :389, TLEN :18, TDATA FCB :509) and RFONR1/LFONR1 swapped (RFONR1 :435 forward = what BGALT calls; LFONR1 :481-506 backward) — violates guardrail #4 / lang-review #17. F2 [MEDIUM]: blitTerrain silently clips a finite non-integer row, contradicting its fails-loud docstring (lang-review #21) — throw + add test.'
-    review_verdict: rejected
+    review_findings: 'APPROVED round 2. R1 findings resolved: F1 (ROM citations + RFONR1/LFONR1 swap) corrected & re-verified byte-accurate; F2 (blitTerrain non-integer altitude) now throws, mutation-verified non-vacuous. A #24 straggler (TLEN :17->:18 in planning prose) was swept tree-wide (ef453293). Defender 297/297, orchestrator 498/498, lint green.'
+    review_verdict: approved
   - id: df2-6
     title: 'VISUAL playtest for orientation traps + still-frame proof: screenshot http://127.0.0.1:5270/defender/ showing planet + charset text + a sample object, compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm render orientation and colour BEFORE physics (playbook sec 4). Carry forward the df4 accessibility ruling as a note (no full-screen strobe downstream).'
     points: 1
