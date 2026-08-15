@@ -34,13 +34,16 @@ export const SHEET_PX = 128
  * the caller scales the sheet up for visibility.
  */
 export function drawStampPlayfield(ctx: CanvasRenderingContext2D): void {
-  const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+  const palette = flatPalette()
   for (let i = 0; i < STAMPS.length; i++) {
     ctx.putImageData(stampImage(ctx, i, palette), (i % 16) * 8, (i >> 4) * 8)
   }
 }
 
-type Palette = ReturnType<typeof decodeColourByte>[]
+type Palette = readonly ReturnType<typeof decodeColourByte>[]
+
+/** The census/default palette — the ml2-4 diagnostic ramp (max-distinct inks). */
+const flatPalette = (): Palette => PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
 
 /** One stamp as an opaque 8x8 ImageData, pixel value v painted as palette[v]. */
 function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
@@ -118,8 +121,11 @@ function rotatedStampImage(ctx: CanvasRenderingContext2D, stampIndex: number, pa
  * Pinned by tests/hud-render.test.ts; this function adds no geometry of its
  * own.
  */
-export function drawGridStamps(ctx: CanvasRenderingContext2D, placements: readonly HudPlacement[]): void {
-  const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+export function drawGridStamps(
+  ctx: CanvasRenderingContext2D,
+  placements: readonly HudPlacement[],
+  palette: Palette = flatPalette(),
+): void {
   for (const p of placements) {
     ctx.putImageData(rotatedStampImage(ctx, charTile(p.stamp), palette), p.col * 8, (0x1f - p.row) * 8)
   }
@@ -132,7 +138,12 @@ export function drawGridStamps(ctx: CanvasRenderingContext2D, placements: readon
  * not apply); the CCW rotation does — sprites turn with the frame like
  * everything else.
  */
-export function drawStampAtPx(ctx: CanvasRenderingContext2D, stamp: number, x: number, y: number): void {
-  const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+export function drawStampAtPx(
+  ctx: CanvasRenderingContext2D,
+  stamp: number,
+  x: number,
+  y: number,
+  palette: Palette = flatPalette(),
+): void {
   ctx.putImageData(rotatedStampImage(ctx, stamp, palette), x, y)
 }
