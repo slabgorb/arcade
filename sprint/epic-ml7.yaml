@@ -111,11 +111,14 @@ stories:
     title: Per-region playfield palette from the 99$ colour table — the millipede field currently renders through a FLAT 4-colour palette PLAYFIELD_COLOUR_BYTES=[black,red,green,white] (render.ts), so mushrooms/rocks/gun all share one colour ramp. Real Millipede colours each playfield region separately from the CLRCH init + the per-wave 99$ colour table (MLIRQ.MAC:242,304-351). Wire per-region colour (inside/outside mushroom, poison, gun/lives) so the field matches the ROM. Visual playtest; keep the accessibility no-strobe rule.
     points: 5
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
     branch: feat/ml7-11-per-region-playfield-palette
+    review_findings: 'Round 2 APPROVED. Round-1 blocking findings fixed and verified: citation MLDEF.MAC:4866 to :299 and MILLI.MAC:1169 to :1168-1170; WaveColours fields readonly (TS2540 verified); tautological test re-cast to a real provenance check. One non-blocking coverage note (ALPHANUMERIC provenance) routed as follow-up. AC3/AC4 remain a human visual playtest.'
+    review_verdict: approved
   - id: ml7-12
     title: Wire the HITDDT register so a shot-detonated bomb (MILLI.MAC:2060) and player-death-by-DDT (:1805) suppress the continuous-scroll arm (SC-9). ml7-9 left ScrollGate.hitDdt hardcoded false; GameState has no HITDDT field, so the arm fires during periods the ROM suppresses it. resolveShot already computes hitDdt:true (ddt.ts:225) but shot.ts drops it; set HITDDT on a DDT hit, clear at wave start (CENTPC :508), read from the scroll gate.
     points: 2

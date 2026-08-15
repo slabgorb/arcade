@@ -343,3 +343,8 @@ completed_stories:
     title: 'Attract CTA PRESS 1 OR 2 TO START routes to a select screen that re-asks the player count -- carry the pressed count straight into startPlaying'
     points: 2
     completed: '2026-08-15'
+  - id: ml7-11
+    epic: ml7
+    title: Per-region playfield palette from the 99$ colour table — the millipede field currently renders through a FLAT 4-colour palette PLAYFIELD_COLOUR_BYTES=[black,red,green,white] (render.ts), so mushrooms/rocks/gun all share one colour ramp. Real Millipede colours each playfield region separately from the CLRCH init + the per-wave 99$ colour table (MLIRQ.MAC:242,304-351). Wire per-region colour (inside/outside mushroom, poison, gun/lives) so the field matches the ROM. Visual playtest; keep the accessibility no-strobe rule.
+    points: 5
+    completed: '2026-08-15'
