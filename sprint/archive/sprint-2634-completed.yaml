@@ -338,3 +338,8 @@ completed_stories:
     title: 'Palette: the 16-entry CRAM/PCRAM model + the 3-3-2 decode decision. Transcribe Defender default palette bytes into a gated table; model the PCRAM (defender/PHR6.SRC:219) -> CRAM (defender/PHR6.SRC:13) per-frame copy as a pure "resolve 16 indices" step. Read the byte FORMAT from MAME in prose (williams.cpp palette init, pinned df1-4 object); if it is the 3-3-2 BBGGGRRR joust decodes, extract paletteToRgba to @shared/ and re-point BOTH joust and defender; else keep local. Palette ENTRIES are transcribed from the vendored source (source wins on software facts; MAME only on the byte format).'
     points: 3
     completed: '2026-08-14'
+  - id: jt11-17
+    epic: jt11
+    title: 'Attract CTA PRESS 1 OR 2 TO START routes to a select screen that re-asks the player count -- carry the pressed count straight into startPlaying'
+    points: 2
+    completed: '2026-08-15'
