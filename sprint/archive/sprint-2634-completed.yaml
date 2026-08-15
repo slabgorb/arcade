@@ -443,3 +443,8 @@ completed_stories:
     title: 'Player ship — velocity, thrust, reverse, vertical: plugins/defender/src/core/ship.ts — the 24-bit PLAXV accumulation + accel (defender/DEFA7.SRC:2360-2371; keep PLAXV+2, defender/PHR6.SRC:332), the VELO integration step (defender/DEFA7.SRC:2480-2499), REV reverse-facing (PLADIR flip + REVFLG debounce, defender/DEFA7.SRC:3155-3171), the thrust process, and vertical motion (PLAUP/PLADN clamp, defender/DEFA7.SRC:2441-2476). The ship is a scheduler process (df3-1), driven by a pure input snapshot (shell owns the PIA read). Depends on df3-1 + df3-2.'
     points: 5
     completed: '2026-08-15'
+  - id: ml10-1
+    epic: ml10
+    title: Wire checkOverlap — the millipede segment-vs-segment OVRLAP turn — into stepMillipede
+    points: 3
+    completed: '2026-08-15'
