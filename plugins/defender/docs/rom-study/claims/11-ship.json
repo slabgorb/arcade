@@ -1,0 +1,209 @@
+[
+  {
+    "id": "SHIP-1",
+    "claim": "The player velocity PLAXV is a 24-BIT accumulator — PLAXV RMB 3 — so its low byte (PLAXV+2) is a sub-pixel fraction; the value the camera slide consumes is the integer velocity PLAXV>>8. This is why the ship module keeps three bytes, not two.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 332,
+      "verbatim": "PLAXV\tRMB\t3"
+    }
+  },
+  {
+    "id": "SHIP-2",
+    "claim": "The player vertical velocity PLAYV is 16-bit: PLAYV RMB 2. It is integrated into PLAY16 each frame with no post-add clamp.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 333,
+      "verbatim": "PLAYV\tRMB\t2"
+    }
+  },
+  {
+    "id": "SHIP-3",
+    "claim": "PLADIR is the signed 16-bit 'THRUST+DIRECTION' vector: PLADIR RMB 2. Its sign is the ship's facing (positive right / negative left); thrust adds it into PLAXV.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 320,
+      "verbatim": "PLADIR\tRMB\t2"
+    }
+  },
+  {
+    "id": "SHIP-4",
+    "claim": "NPLAD 'NEW PLAYER DIRECTION' (RMB 2) is the deferred facing REV writes; PLADIR is copied from it. Modelled as the flipped facing in stepReverse's result.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 319,
+      "verbatim": "NPLAD\tRMB\t2\tNEW PLAYER DIRECTION"
+    }
+  },
+  {
+    "id": "SHIP-5",
+    "claim": "PLAY16 is the ship's 16-bit vertical position (RMB 2); the integer Y checked against the freeze limits is its HIGH byte (LDB PLAY16).",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 330,
+      "verbatim": "PLAY16\tRMB\t2"
+    }
+  },
+  {
+    "id": "SHIP-6",
+    "claim": "REVFLG is the REV switch DEBOUNCE latch (RMB 1): a held reverse button flips the facing exactly once because REV early-returns while REVFLG is set. Modelled as RevState.revflg.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 295,
+      "verbatim": "REVFLG\tRMB\t1\tREV SWITCH DEBOUNCE"
+    }
+  },
+  {
+    "id": "SHIP-7",
+    "claim": "PLADIR initialises to $0300 facing right — LDD #$0300 (stored into PLADIR on the next line) — the PLADIR_MAG the ship module thrusts by; facing left is its two's-complement negation.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1249,
+      "verbatim": "\tLDD\t#$0300"
+    }
+  },
+  {
+    "id": "SHIP-8",
+    "claim": "Thrust is gated on the accel button — LDA PIA21 'ACCEL?' — read from the PIA; the shell owns the read and passes it in as the pure input snapshot's accel flag.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2360,
+      "verbatim": "\tLDA\tPIA21\tACCEL?"
+    }
+  },
+  {
+    "id": "SHIP-9",
+    "claim": "The accel button is PIA21 bit $02: BITA #$02. When set, PLADIR is added into the 24-bit PLAXV.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2361,
+      "verbatim": "\tBITA\t#$02"
+    }
+  },
+  {
+    "id": "SHIP-10",
+    "claim": "Thrust accumulates into the 24-bit velocity's low 16 bits: PL02 ADDD PLAXV+1 (the high byte then takes the sign-extended carry). accelX models the full 24-bit add.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2367,
+      "verbatim": "PL02\tADDD\tPLAXV+1"
+    }
+  },
+  {
+    "id": "SHIP-11",
+    "claim": "X damping shifts the negated top-16 velocity LEFT by two (ASLB twice) — a ×4 — before adding it back into the low 16, so friction removes 4·(PLAXV>>8) per frame. This is the first of the two ASLB shifts.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2350,
+      "verbatim": "PL00\tASLB\tSHIFT"
+    }
+  },
+  {
+    "id": "SHIP-12",
+    "claim": "X damping's second ASLB completes the ×4 (two left shifts) used by dampX: PLAXV -= 4·(PLAXV>>8).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2352,
+      "verbatim": "\tASLB"
+    }
+  },
+  {
+    "id": "SHIP-13",
+    "claim": "Up motion freezes at the top of the strip: PLAUP CMPB #YMIN+1 — the integer Y is compared against YMIN+1 (=43, YMIN=42) and the following BLS returns without moving. Y_TOP_FREEZE.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2450,
+      "verbatim": "PLAUP\tCMPB\t#YMIN+1"
+    }
+  },
+  {
+    "id": "SHIP-14",
+    "claim": "While already rising the ship accelerates upward by 8 per frame: ADDD #-8. VY_STEP.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2454,
+      "verbatim": "\tADDD\t#-8"
+    }
+  },
+  {
+    "id": "SHIP-15",
+    "claim": "Upward speed clamps at $200: CMPD #-$200 (the following BGE keeps values ≥ -$200, else it loads -$200). VY_MAX.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2455,
+      "verbatim": "\tCMPD\t#-$200"
+    }
+  },
+  {
+    "id": "SHIP-16",
+    "claim": "Starting an upward move (or reversing from downward) kicks the vertical velocity to -$100: PLAUP1 LDD #-$100. VY_KICK.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2459,
+      "verbatim": "PLAUP1\tLDD\t#-$100"
+    }
+  },
+  {
+    "id": "SHIP-17",
+    "claim": "Down motion freezes at the bottom of the strip: PLADN CMPB #238 — the integer Y is compared against 238 and the following BHS returns without moving. Y_BOTTOM_FREEZE.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2461,
+      "verbatim": "PLADN\tCMPB\t#238"
+    }
+  },
+  {
+    "id": "SHIP-18",
+    "claim": "While already descending the ship accelerates downward by 8 per frame: ADDD #8 (the mirror of the upward -8). VY_STEP.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2465,
+      "verbatim": "\tADDD\t#8"
+    }
+  },
+  {
+    "id": "SHIP-19",
+    "claim": "Downward speed clamps at $200: CMPD #$200 (the following BLS keeps values ≤ $200, else it loads $200). VY_MAX.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2466,
+      "verbatim": "\tCMPD\t#$200"
+    }
+  },
+  {
+    "id": "SHIP-20",
+    "claim": "Starting a downward move (or reversing from upward) kicks the vertical velocity to +$100: PLADN1 LDD #$100. VY_KICK.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2470,
+      "verbatim": "PLADN1\tLDD\t#$100"
+    }
+  },
+  {
+    "id": "SHIP-21",
+    "claim": "REV is debounced by REVFLG: REV LDA REVFLG (the next line BNE REVX bails while the latch is set) — so holding reverse flips the facing exactly once, not every frame.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3157,
+      "verbatim": "REV\tLDA\tREVFLG"
+    }
+  },
+  {
+    "id": "SHIP-22",
+    "claim": "On the one flip, REV sets the latch: INC REVFLG — cleared only after the reverse button is released. stepReverse latches revflg=true on the flip and clears it on release.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3159,
+      "verbatim": "\tINC\tREVFLG"
+    }
+  },
+  {
+    "id": "SHIP-23",
+    "claim": "The flip is a two's-complement negation of PLADIR: LDD PLADIR (followed by COMB/COMA/ADDD #1) negates the facing vector. Modelled as pladir('left') = −pladir('right').",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3160,
+      "verbatim": "\tLDD\tPLADIR"
+    }
+  }
+]
