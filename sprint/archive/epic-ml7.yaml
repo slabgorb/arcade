@@ -3,7 +3,7 @@ type: epic
 title: 'Millipede — phase machine, runtime wiring, HUD, showcase (phase 6-7): where it becomes a cabinet, with the epilepsy accessibility gate baked in'
 description: "Seventh Millipede epic, phase 6-7 — the attract->play->death->game-over state machine and the wiring that connects core events to shell render/audio, mirroring pac-man pm4 / missile-command mc6 and centipede cp7 playtest followups. Attract from MLATR MODE FE/FF (initialize + execute, MLATR.MAC:126/313) and attract-mode action (MLATR.MAC:21); ships the PURE phase machine unwired first (pm4-5 model) then wires runtime in later stories (small diffs). HUD: score/lives/DDT-count icons + the high-score display; opt the game into the lobby showcase carousel. ACCESSIBILITY GATE — the standing exception to ROM-always-wins: the owner has photosensitive epilepsy, so NO full-screen strobe/flash anywhere (wave transitions, death, DDT explosion, attract); freeze or fade instead. Bake this into the phase machine from the start, not as a retrofit. VISUAL playtest for coordinate/colour/scroll correctness — not just green vitest (routing tests pass while a flipped/mis-scaled HUD ships; pin output coordinates). Reuse @shared (esc-overlay/pause/font/glow/view/host-helpers). Dependency: ml7 -> ml5 (needs game structure + high scores) and ml2/ml3/ml4 (render + sim) + ml6 (audio to wire). Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml7). OUT OF SCOPE: reducers themselves (ml3/ml4/ml5), sound driver (ml6), hardening batteries (ml8)."
 priority: p3
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: ml7-1
@@ -123,9 +123,11 @@ stories:
     title: Wire the HITDDT register so a shot-detonated bomb (MILLI.MAC:2060) and player-death-by-DDT (:1805) suppress the continuous-scroll arm (SC-9). ml7-9 left ScrollGate.hitDdt hardcoded false; GameState has no HITDDT field, so the arm fires during periods the ROM suppresses it. resolveShot already computes hitDdt:true (ddt.ts:225) but shot.ts drops it; set HITDDT on a DDT hit, clear at wave start (CENTPC :508), read from the scroll gate.
     points: 2
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
     review_verdict: approved
     review_findings: APPROVED round 1. One Medium-clarity comment defect (PLAY citation :1744/:1750 conflation) found and fixed during review (bc7abca6). 4 enabled subagents clean; 5-mutant battery all killed; 1268 millipede + 498 orchestrator green, tsc clean.
+completed: '2026-08-15'

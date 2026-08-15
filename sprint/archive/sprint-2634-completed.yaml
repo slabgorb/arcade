@@ -14,6 +14,7 @@ completed_epics:
   - ml6
   - ml5
   - jt11
+  - ml7
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -369,3 +370,18 @@ completed_stories:
     title: 'Character set (MESS0) transcription + text writer. MESS0 is the charset/message block, banked block 2 (SELECT CHARS, defender/DEFA7.SRC:2030-2031; header defender/MESS0.SRC:1). GENERATED charset module (transcribe tool) + an INDEPENDENT-reader gate that refuses any non-matching byte; a pure blitGlyph into the framebuffer; render a known string. Raster charset — the ROM cell pixels, not @shared/font vector glyphs.'
     points: 4
     completed: '2026-08-15'
+  - id: ml7-12
+    epic: ml7
+    title: Wire the HITDDT register so a shot-detonated bomb (MILLI.MAC:2060) and player-death-by-DDT (:1805) suppress the continuous-scroll arm (SC-9). ml7-9 left ScrollGate.hitDdt hardcoded false; GameState has no HITDDT field, so the arm fires during periods the ROM suppresses it. resolveShot already computes hitDdt:true (ddt.ts:225) but shot.ts drops it; set HITDDT on a DDT hit, clear at wave start (CENTPC :508), read from the scroll gate.
+    points: 2
+    completed: '2026-08-15'
+  - id: ml7-2
+    epic: ml7
+    title: 'Wire runtime core->shell: frame loop drives stepGame; core events (render/audio/score) reach the shell render + the ml6 sound driver; input (trackball TBLMT MLSUB.MAC:1797; resolve trackball-vs-joystick ml1 OQ-4) feeds core. Small diffs, incremental.'
+    points: 5
+    completed: '2026-08-13'
+  - id: ml7-4
+    epic: ml7
+    title: 'Accessibility gate (standing exception to ROM-always-wins): NO full-screen strobe/flash on wave transition, death, DDT explosion, or attract — freeze or fade instead. Baked into the phase machine. Verify by visual playtest across every transition.'
+    points: 3
+    completed: '2026-08-13'
