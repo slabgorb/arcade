@@ -120,3 +120,10 @@ stories:
       - "mushroomsRestoring is computed from the real conway mushroom-restoration state (not the literal false at sim.ts:290), so wave-end waits while mushrooms are still restoring, matching waves.ts's blocker read — proven through stepGame, not a hand-built blockers object."
       - "Both fixes are ROM-cited (bee gate BE-5/6/8/9, MILLI.MAC:68-78; the wave-end blocker) and land as two commits on the shared core/sim.ts surface; a mutation reverting either field to its hardcoded constant fails a test; no regression to bee movement/scoring, wave advance, or the mushroom-field reducers."
     type: bug
+  - id: ml10-4
+    title: "Capture the mouse via pointer lock in millipede, mirroring centipede's createPointerLock (plugins/centipede/src/shell/input.ts): click-to-lock the canvas via requestPointerLock and hide the cursor for unbounded movementX/Y trackball deltas; a pointerlockchange listener resets the input accumulators on lock exit (Escape/blur) so there is no runaway travel; preserve millipede's existing negated-horizontal mouse mapping (main.ts:94-99); shell-only (core stays DOM/clock-free), with a duck-typed adapter unit-tested like centipede's and a HUMAN pointer-lock smoke test noted (cannot be verified headless)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd

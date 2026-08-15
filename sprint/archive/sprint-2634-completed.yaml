@@ -433,3 +433,13 @@ completed_stories:
     title: "In-game graphics wrong colour + missing sprites vs MAME (compare sprint/planning/ml9-playthrough-refs/ingame-mame-reference.png to ingame-ours-current.png). Defects: (a) mushrooms render with the wrong palette/shape — MAME shows pink-cap/teal-stem umbrellas, ours look like red/white/green radishes; (b) DDT bomb graphic is missing — MAME shows blue rounded 'DDT'-labelled boxes, ours shows none; (c) the green playfield/grass floor band along the bottom is absent in ours; (d) overall colouring is off. Seams: shell/render.ts, shell/gfx-rom.ts, shell/playfield-palette.ts, core/palette.ts. Group the fixes by file surface per the epic rule; TEA/Architect may split if a sub-defect lives in a different file."
     points: 5
     completed: '2026-08-15'
+  - id: df3-5
+    epic: df3
+    title: 'Laser fire: plugins/defender/src/core/laser.ts — LFIRE (max 4 concurrent via LFLG<4, defender/DEFA7.SRC:2763-2766), right/left spawn by facing (LASR/LASL, defender/DEFA7.SRC:2790,2839), the laser data structure (LFLG/LCOLRX, defender/PHR6.SRC:301-303), travel + off-screen death. Each laser is a (super)process. Collision AGAINST ENEMIES is df4 — df3 fires and travels only.'
+    points: 3
+    completed: '2026-08-15'
+  - id: df3-3
+    epic: df3
+    title: 'Player ship — velocity, thrust, reverse, vertical: plugins/defender/src/core/ship.ts — the 24-bit PLAXV accumulation + accel (defender/DEFA7.SRC:2360-2371; keep PLAXV+2, defender/PHR6.SRC:332), the VELO integration step (defender/DEFA7.SRC:2480-2499), REV reverse-facing (PLADIR flip + REVFLG debounce, defender/DEFA7.SRC:3155-3171), the thrust process, and vertical motion (PLAUP/PLADN clamp, defender/DEFA7.SRC:2441-2476). The ship is a scheduler process (df3-1), driven by a pure input snapshot (shell owns the PIA read). Depends on df3-1 + df3-2.'
+    points: 5
+    completed: '2026-08-15'

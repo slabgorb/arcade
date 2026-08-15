@@ -29,9 +29,11 @@ stories:
     title: 'Player ship — velocity, thrust, reverse, vertical: plugins/defender/src/core/ship.ts — the 24-bit PLAXV accumulation + accel (defender/DEFA7.SRC:2360-2371; keep PLAXV+2, defender/PHR6.SRC:332), the VELO integration step (defender/DEFA7.SRC:2480-2499), REV reverse-facing (PLADIR flip + REVFLG debounce, defender/DEFA7.SRC:3155-3171), the thrust process, and vertical motion (PLAUP/PLADN clamp, defender/DEFA7.SRC:2441-2476). The ship is a scheduler process (df3-1), driven by a pure input snapshot (shell owns the PIA read). Depends on df3-1 + df3-2.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
   - id: df3-4
     title: 'Parallax starfield: plugins/defender/src/core/stars.ts — STINIT/STOUT (defender/DEFA7.SRC:2095-2155), STRCNT active count (defender/PHR6.SRC:294), stars scrolled by the BGL delta with edge wrap and the phase mask, composited into the df2 framebuffer by INDEX. TRAP: STOUT is self-modifying code (FCB-patched indexed stores, the ''BSO BONER'' comments defender/DEFA7.SRC:2151-2153) — transcribe the BEHAVIOUR, not the opcodes; record an encoding note (streams-are-not-rasters cousin).'
     points: 3
@@ -43,9 +45,12 @@ stories:
     title: 'Laser fire: plugins/defender/src/core/laser.ts — LFIRE (max 4 concurrent via LFLG<4, defender/DEFA7.SRC:2763-2766), right/left spawn by facing (LASR/LASL, defender/DEFA7.SRC:2790,2839), the laser data structure (LFLG/LCOLRX, defender/PHR6.SRC:301-303), travel + off-screen death. Each laser is a (super)process. Collision AGAINST ENEMIES is df4 — df3 fires and travels only.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
+    review_verdict: approved
   - id: df3-6
     title: 'VISUAL playtest — the ship flying a scrolling, wrapping world: screenshot http://127.0.0.1:5270/defender/ showing the ship over the moving starfield, thrust scrolling the world, reverse flipping facing + slide, a laser in flight — compared against a nonsense control path (must DIFFER, not just 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scroll direction, ship-leads offset, vertical clamp and colour BEFORE enemies (playbook sec 4). Carry the df4/df5 accessibility ruling forward as a note (no full-screen strobe downstream).'
     points: 3
