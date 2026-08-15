@@ -37,11 +37,11 @@
 /** The three ROM-derived colour bytes for a level's playfield field regions. */
 export interface WaveColours {
   /** 99$+0 — inside of mushroom (shared with DDT explosions). */
-  insideMushroom: number
+  readonly insideMushroom: number
   /** 99$+1 — outside of mushroom. */
-  outsideMushroom: number
+  readonly outsideMushroom: number
   /** 99$+2 — inside of poison mushroom. */
-  poison: number
+  readonly poison: number
 }
 
 /**

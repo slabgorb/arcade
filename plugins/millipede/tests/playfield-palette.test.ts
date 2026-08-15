@@ -8,9 +8,9 @@
 // distribution (MLIRQ.MAC:265-274), so a normal vs poison mushroom differ by
 // which pixel values their stamp uses, sharing one pen set.
 //
-// COLOUR INDEX: millipede colours by CENTIN, the millipede LENGTH (MLDEF.MAC:4866
+// COLOUR INDEX: millipede colours by CENTIN, the millipede LENGTH (MLDEF.MAC:299
 // "LENGTH OF CENTIPEDE"), NOT by a centipede-style per-wave scheme. INIT sets
-// CENTIN=12 (MILLI.MAC:1169 "SET CENTIPEDE SIZE"), so a full millipede — the
+// CENTIN=12 (MILLI.MAC:1169-1170 "SET CENTIPEDE SIZE"), so a full millipede — the
 // wave-start view — is colour row 12, and that is the default here. The
 // LCOLOR-gated recolour as the millipede shortens is a documented deferral (see
 // the session's Design Deviations); a fixed index is also a steady colour, which

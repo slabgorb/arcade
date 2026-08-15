@@ -34,7 +34,7 @@ export const SHEET_PX = 128
  * the caller scales the sheet up for visibility.
  */
 export function drawStampPlayfield(ctx: CanvasRenderingContext2D): void {
-  const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
+  const palette = flatPalette()
   for (let i = 0; i < STAMPS.length; i++) {
     ctx.putImageData(stampImage(ctx, i, palette), (i % 16) * 8, (i >> 4) * 8)
   }

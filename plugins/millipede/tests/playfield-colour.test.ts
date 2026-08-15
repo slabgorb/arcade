@@ -203,19 +203,25 @@ describe('ml7-11 AC3 — fixed gun/lives + alphanumeric colours', () => {
     expect(m.ALPHANUMERIC_COLOUR).toBe(0x1f)
   })
 
-  it('the fixed colours do not vary with CENTIN — they are immediate constants, not 99$ reads', async () => {
-    // CLRCH loads $1F/$00 as immediates AFTER the table walk (:294-301); they
-    // must be identical for every level. A Dev who sourced them from the table
-    // by mistake would see them drift.
+  // (Removed a tautological "does not vary with CENTIN" loop — PLAYER_COLOUR /
+  // ALPHANUMERIC_COLOUR are static exports, not functions of centin, so reading
+  // them N times could never differ; their values are pinned above. The real
+  // "immediate constant, not a 99$ read" guard is that neither value need equal
+  // any field-region byte — asserted here against the table it is NOT sourced
+  // from, so a Dev who wrongly wired them to waveColours() would redden it.)
+  it('the fixed colours are NOT sourced from the per-level field table', async () => {
     const m = await loadModule()
-    const players = new Set<number>()
-    const alnums = new Set<number>()
+    // ALPHANUMERIC ($1F) happens to equal wave-1 inside-mushroom; PLAYER ($00)
+    // appears in NO 99$ field cell. Assert PLAYER stays $00 even though it is
+    // absent from every level's field bytes — it is an immediate, not a lookup.
+    const fieldBytes = new Set<number>()
     for (let centin = 1; centin <= LEVELS; centin++) {
-      players.add(m.PLAYER_COLOUR)
-      alnums.add(m.ALPHANUMERIC_COLOUR)
+      const w = m.waveColours(centin)
+      fieldBytes.add(w.insideMushroom)
+      fieldBytes.add(w.outsideMushroom)
+      fieldBytes.add(w.poison)
     }
-    expect([...players]).toEqual([0x00])
-    expect([...alnums]).toEqual([0x1f])
+    expect(fieldBytes.has(m.PLAYER_COLOUR), 'PLAYER_COLOUR is an immediate, absent from the field table').toBe(false)
   })
 })
 
@@ -250,9 +256,9 @@ describe('ml7-11 — the region bytes decode through the palette seam', () => {
 // AC — CENTIN is a level index 1..12; anything else is a caller bug.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('ml7-11 — waveColours guards its level index', () => {
-  it.each([[0], [13], [1.5], [Number.NaN], [-1]])('rejects CENTIN=%s', async (bad) => {
+  it.each([[0], [13], [1.5], [Number.NaN], [-1]])('rejects CENTIN=%s with a RangeError', async (bad) => {
     const m = await loadModule()
-    expect(() => m.waveColours(bad)).toThrow()
+    expect(() => m.waveColours(bad)).toThrow(RangeError)
   })
 
   it('accepts the full valid range 1..12 without throwing', async () => {
