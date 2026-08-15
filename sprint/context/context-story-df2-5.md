@@ -1,7 +1,7 @@
 # Story df2-5 Context
 
 ## Title
-Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:17). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.
+Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:18). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.
 
 ## Metadata
 - **Story ID:** df2-5
@@ -20,7 +20,7 @@ Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TER
 
 The **only transcribable DATA in this block is two labels** — everything else is code or RAM:
 
-- **`TDATA`** — "TERRAIN DATA TABLE" (`defender/BLK71.SRC:507-524`). `FCB` byte stream, exactly **`TLEN` = `$100` = 256 bytes** (16 bytes × 16 lines; `TLEN EQU $100` at `:17`). This is a **packed bit-stream** (bit-per-column terrain profile), read bit-serially by the `BG*` routines and referenced as `#TDATA+TLEN` at `:423,:445,:470,:496`. It is **not a raster** — same streams-are-not-rasters discriminant as df2-4/SAMEXAP7.
+- **`TDATA`** — "TERRAIN DATA TABLE" (header comment `defender/BLK71.SRC:507`; `FCB` data rows `:509-524`). `FCB` byte stream, exactly **`TLEN` = `$100` = 256 bytes** (16 bytes × 16 lines; `TLEN EQU $100` at `:18`). This is a **packed bit-stream** (bit-per-column terrain profile), read bit-serially by the `BG*` routines and referenced as `#TDATA+TLEN` at `:423,:445,:470,:496`. It is **not a raster** — same streams-are-not-rasters discriminant as df2-4/SAMEXAP7.
 - **`MTERR`** — "MINI TERRAIN" (`defender/BLK71.SRC:527+`). `FCB` byte stream, referenced by the block's jump table at `:87` (`FDB MTERR  MINI TERRAIN DATA`). Appears to be periodic `(altitude, x, x)` triples (the scanner/mini-map terrain silhouette).
 
 **Out of scope (do NOT transcribe):** BLK71 also carries **PLAYER EXPLOSION** data/equates (`PXPOST/PYPOST/PXVELT/PYVELT`, `:21-24`) and the terrain-generation routines themselves. This story is **terrain + mini-terrain DATA only** (`TDATA` + `MTERR`). The generation/scroll engine is df3.
