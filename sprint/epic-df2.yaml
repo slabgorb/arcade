@@ -30,9 +30,11 @@ stories:
     title: 'Character set (MESS0) transcription + text writer. MESS0 is the charset/message block, banked block 2 (SELECT CHARS, defender/DEFA7.SRC:2030-2031; header defender/MESS0.SRC:1). GENERATED charset module (transcribe tool) + an INDEPENDENT-reader gate that refuses any non-matching byte; a pure blitGlyph into the framebuffer; render a known string. Raster charset — the ROM cell pixels, not @shared/font vector glyphs.'
     points: 4
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
   - id: df2-4
     title: 'Object image tables (DEFB6 + SAMEXAP7) transcription — INERT. DEFB6 inline object graphics (the OBI object-image headers, e.g. UFO at defender/DEFB6.SRC:1) and SAMEXAP7 "SAM EXPLOSIONS AND APPEARANCES" (defender/SAMEXAP7.SRC:6-7). GENERATED module + independent gate; each block records an encoding discriminant (refuse to raster a non-raster). Data lands INERT, proven only by a static gallery blit — no animation, no collision (df4).'
     points: 4

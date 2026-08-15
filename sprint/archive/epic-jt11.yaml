@@ -3,7 +3,7 @@ type: epic
 title: 'Joust — cabinet experience: start flow, HUD, landing physics, transporter cadence, lava shore, high-score UX'
 description: 'Six player-reported cabinet defects, root-caused by Architect review 2026-08-12. Pattern: in five of six cases the correct ROM-cited machinery already exists in-tree (often tested) and is simply unwired. (1) 1P/2P choice never reaches the sim - createWaveSim hardcodes both mounts (sim.ts:1229-1236) while createGame only sizes ledgers (game.ts:318); orphan P2 mount cannot respawn, felt as one life. (2) Attract exits only on Digit1/Digit2 (main.ts:422-426,500-503) with no on-screen prompt - felt as keys dead / stuck in demo. (3) HUD is the jt-era dev bar fillText (main.ts:169-180); FONT35 + PLY1R sprite are already wired/atlas-packed but unused by it. (4) velXIndex survives land->ground->takeoff untouched (flight.ts:378-431); the ROM walking-speed ladder flyVel (JOUSTRV4.SRC:7163-7175) is transcribed at flight.ts:118-131 and read NOWHERE. (5) Wave entry is a one-frame batch insert (sim.ts:2261-2271) while the ROM serve-queue ServiceQueue (transporter.ts:155-202, NPSERV/LESERV JOUSTRV4.SRC:5615-5676) is implemented+tested+unwired - note spawnProceeds is the PLAYER path and is NOT part of this defect (corrected jt11-4); ptero stagger (sim.ts:2303-2334) is the proven template. (6) BRIDGE/BRIDG2 lava-shore fills (JOUSTRV4.SRC:1126-1127) never transcribed - invisible solid ground at x 0-54/240-300 y211; destruction state computed every wave (sim.ts:2249) but consumed only by the troll gate - groundOutcomeInState/bridgeGroundOutcome/backgroundActive (arena-state.ts:172-199) have zero production callers. High-score wiring itself verified CORRECT (write and lobby read both joust-high-scores via shared highScoreKey) - the felt bug is the commit gate needing 3 initials + FLAP (main.ts:483-488). SEQUENCING: jt11-4 and jt11-5 both edit sim.ts (disjoint regions) - do not run in parallel checkouts.'
 priority: p1
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: jt11-1
@@ -157,12 +157,15 @@ stories:
     description: 'Found by Reviewer during jt11-6. jt11-6 gave the entry screen a 7680-tick budget (ROM: AMODE''s 256 x PCNAP 30, TB12REV1.SRC:77-78) that auto-commits the current initials when it runs out, so a walked-away qualifying score persists. But the budget is spent inside pumpFrames, driven by requestAnimationFrame, and MAX_CATCHUP_SECONDS = 0.25 discards elapsed wall time - so the countdown FREEZES while the tab is hidden and never advances if the tab is closed. The most literal reading of ''walked away'' (hide or close the tab) is therefore the one case the fix does not serve; it works for the visible-cabinet case, which is the arcade case and was the point. Fix: commit the in-flight entry on pagehide (and/or visibilitychange to hidden) while cabinet.mode === ''highscore'', through the SAME commitHighScore helper - main.ts asserts exactly one highScores.save( and one commitEntry( call site, and that invariant must survive. Note the listener is shell-only; core still counts ticks and must not learn about the document. Test the seam the way jt11-6 did: a source-scan on the pump/handler wiring plus a mutation to prove the guard bites.'
     points: 1
     priority: p3
-    status: in_progress
+    status: done
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
     type: bug
-    started: '2026-08-15'
     branch: feat/jt11-14-highscore-timeout-pagehide-commit
+    review_findings: "Round 1 [MEDIUM][#15] visibilitychange polarity guard was token-anchored — FIXED round 2 (commit ab609bed): tightened to require document.visibilityState === 'hidden' + forbid negated forms; mutation-verified !document.hidden / !== / drop-condition all redden, shipped 14/14 green. Round 2 APPROVED: preflight/security/rule_checker all clean."
+    review_verdict: approved
   - id: jt11-15
     title: 'Standing still after a fast landing still launches with walking airspeed (pure core, flight.ts): land->stand->takeoff yanks the mount sideways'
     description: 'Player-reported: hover, land, stand still, then flap to take off, and a large horizontal delta-v takes effect immediately and pulls the mount to the side. Root cause: since jt11-3/jt11-11 velXIndex IS the launch airspeed a takeoff inherits (takeOff flight.ts:410 deliberately never writes it; the UPDNO2 write in stepGround flight.ts:392 maintains it as signed next.flyVel each grounded frame, and frame.ts:280 steps every grounded frame with the current input). On neutral input (dir===0) stepGround follows current.onZero -- but the four RUN rows PLYCR/PLYDR/PLYER/PLYFR (flight.ts:121-124) have onZero pointing to THEMSELVES with flyVel 2/4/6/8, so landing at speed (land() seeds velXIndex from the FRCONV landed rung, flight.ts:449-467, nonzero for a fast touchdown) and then releasing the stick never decays to PLYBR (flyVel 0). takeOff() then relaunches with the retained walking airspeed. RESEARCH FIRST, then fix per the citation: read the ROM PLYRLP centered-stick path (JOUSTRV4.SRC:5948-6024) and the FLYVEL table (7163-7175) -- does a centered stick on a run state decay toward PLANT/PLYBR, or is FLYVEL only the fictitious velX for bumping (the UPDNO2 comment flight.ts:385-391) that a takeoff should NOT inherit as real airspeed? The fix is one of: (a) the onZero rows for the run states decay toward standing, or (b) takeOff derives launch velX from actual ground motion rather than the bump value. Watch the seeded-replay fixtures -- this changes player launch trajectories, the same warning jt11-3 carried. flight.ts only; disjoint from the main.ts start-flow pair jt11-16/jt11-17.'
@@ -211,3 +214,4 @@ stories:
     depends_on: jt11-5
     completed: '2026-08-14'
     type: bug
+completed: '2026-08-15'

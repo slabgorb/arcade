@@ -10,6 +10,5 @@ sprint:
 epics:
   - ml7
   - ml8
-  - jt11
   - df1
   - df2

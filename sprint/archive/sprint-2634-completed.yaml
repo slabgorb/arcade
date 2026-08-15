@@ -13,6 +13,7 @@ completed_epics:
   - ml4
   - ml6
   - ml5
+  - jt11
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -347,4 +348,24 @@ completed_stories:
     epic: ml7
     title: Per-region playfield palette from the 99$ colour table — the millipede field currently renders through a FLAT 4-colour palette PLAYFIELD_COLOUR_BYTES=[black,red,green,white] (render.ts), so mushrooms/rocks/gun all share one colour ramp. Real Millipede colours each playfield region separately from the CLRCH init + the per-wave 99$ colour table (MLIRQ.MAC:242,304-351). Wire per-region colour (inside/outside mushroom, poison, gun/lives) so the field matches the ROM. Visual playtest; keep the accessibility no-strobe rule.
     points: 5
+    completed: '2026-08-15'
+  - id: jt11-14
+    epic: jt11
+    title: 'High-score entry timeout survives a hidden tab: commit on pagehide/visibilitychange'
+    points: 1
+    completed: '2026-08-15'
+  - id: jt11-8
+    epic: jt11
+    title: 'Start-input reach: accept Numpad1/Numpad2 as start keys alongside Digit1/Digit2, and a click/tap on the attract or select screen as a start gesture (routed Delivery Finding from jt11-1: the PRESS 1 OR 2 prompt asserts a falsehood on numpad-only keyboards - bindings are key codes Digit1/Digit2 in readSelectInput main.ts; a lobby-browser player may also reasonably click). Keep the rising-edge discipline (prevStartHeld) for all new sources.'
+    points: 2
+    completed: '2026-08-15'
+  - id: jt11-15
+    epic: jt11
+    title: 'Standing still after a fast landing still launches with walking airspeed (pure core, flight.ts): land->stand->takeoff yanks the mount sideways'
+    points: 3
+    completed: '2026-08-15'
+  - id: df2-3
+    epic: df2
+    title: 'Character set (MESS0) transcription + text writer. MESS0 is the charset/message block, banked block 2 (SELECT CHARS, defender/DEFA7.SRC:2030-2031; header defender/MESS0.SRC:1). GENERATED charset module (transcribe tool) + an INDEPENDENT-reader gate that refuses any non-matching byte; a pure blitGlyph into the framebuffer; render a known string. Raster charset — the ROM cell pixels, not @shared/font vector glyphs.'
+    points: 4
     completed: '2026-08-15'
