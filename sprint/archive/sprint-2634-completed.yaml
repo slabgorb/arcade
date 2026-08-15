@@ -15,6 +15,7 @@ completed_epics:
   - ml5
   - jt11
   - ml7
+  - ml8
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -394,4 +395,19 @@ completed_stories:
     epic: ml9
     title: "Attract-mode enemy-showcase screen is missing (the 'cast of characters' + high-scores + 1 COIN 1 PLAY screen)"
     points: 3
+    completed: '2026-08-15'
+  - id: df2-5
+    epic: df2
+    title: 'Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:18). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.'
+    points: 3
+    completed: '2026-08-15'
+  - id: ml8-3
+    epic: ml8
+    title: "Cocktail cabinet (CKIND bit 7, player 2 up) is unmodelled fleet-wide in the millipede port: ml3-4's CONWAY reducer is upright-only (player area rows < 7; cocktail flips MSKORA to rows >= 0x19, CONWAY.MAC:40-44, and changes the MUSHE1/MUSHDC row bands, MLSUB.MAC:713-727/748-767). Decide: model cocktail across the core reducers, or record an explicit fleet-wide wontfix matching the centipede precedent. Filed from ml3-4's review round (Delivery Finding, TEA)."
+    points: 2
+    completed: '2026-08-15'
+  - id: ml8-4
+    epic: ml8
+    title: 'Mutation battery: column-0 edge-seed template start in conway.ts (x=0x0A / y=0x40) — two REACHABLE survivors routed from the ml8-1 review. Guard the left-edge neighbourhood scan (a col-0 cell whose count depends on the EDGE-substituted off-screen columns distinguishes both seeds; differential-confirmed over 300 edge fields). The colmax edge-extents for cols 28/29 (0x60/0x80) are EQUIVALENT mutants — the extra scan reads off-screen cells as zero — document alongside ml8-1 M07, do not guard.'
+    points: 2
     completed: '2026-08-15'
