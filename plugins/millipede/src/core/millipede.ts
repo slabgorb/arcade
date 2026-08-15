@@ -34,7 +34,11 @@
 // the body-follow (MT-20) and the screen-edge turn (MT-21/22). Poison-dive,
 // DDT, player collision and the split are deferred (ml3-2, ml4). ml3-6 wired the
 // mushroom-turn: stepMillipede now takes an OPTIONAL `field` and turns a head on
-// the cell-ahead OBSTAC (MILLI.MAC:1527-1539). Cocktail is out of scope
+// the cell-ahead OBSTAC (MILLI.MAC:1527-1539). ml10-1 wired the OVRLAP
+// overlap-turn: a head that overlaps a live segment ahead of it on the same line
+// turns via checkOverlap (13$, MILLI.MAC:1541). checkOverlap was added with the
+// ml3-2 split/death work but sat with no production caller until ml10-1 — this is
+// its first. Cocktail is out of scope
 // (CKF8/CKFE/CKFF = 0 upright), so the flips are dropped.
 
 import { nextInt, type Rng } from '@shared/rng'
@@ -256,6 +260,8 @@ function stepSegment(
   leader: Segment | undefined,
   frame: number,
   liveCount: number,
+  segs: readonly Segment[],
+  headIndex: number,
   field?: Uint8Array,
 ): Segment {
   if (seg.color === VACANT_COLOR) return seg // MT-2 — vacant slot untouched
@@ -292,20 +298,24 @@ function stepSegment(
   // (ml3-3), so this is defensive in free space.
   if (s.color === POISON_COLOR) return move(s, true)
 
-  // Head obstacle turn (MOTION :1527-1539, ml3-6): consult the mushroom field in
+  // Head obstacle turn (MOTION 12$ :1527-1539, ml3-6): consult the mushroom field in
   // the cell the head is moving toward. A letter/mushroom/rock turns it (drop a
   // row — the 15$ seam the edge turn shares); a poison mushroom [78,7C) also
   // poisons the head (MOBJC = POISON_COLOR); DDT explosion clouds [CLOUD,DDT) and
-  // empty cells fall through here. NB the ROM's "no-turn" branch (13$, :1541) runs
-  // JSR OVRLAP first — the segment-OVERLAP turn (checkOverlap) — which is a distinct
-  // segment-vs-segment mechanic NOT wired by any story yet; only the OBSTAC
-  // (mushroom) turn is wired here, so a fall-through goes straight to the edge/
-  // free-space handling.
+  // empty cells fall through here.
   if (field) {
     const reaction = obstacleReaction(obstac(field, s))
     if (reaction === 'poison') return move({ ...s, color: POISON_COLOR }, true)
     if (reaction === 'turn') return move(s, true)
   }
+
+  // Head overlap turn (OVRLAP, MOTION 13$ :1541 "JSR OVRLAP" + MLSUB.MAC:896-912,
+  // ml10-1): the ROM's no-turn branch runs OVRLAP FIRST — before the edge/free-space
+  // handling — so a head that overlaps a live segment ahead of it on the same line
+  // turns (drops a row) just as it does on a mushroom. checkOverlap's own guards skip
+  // vacant slots, dead/score segments (colour >= 0xC0) and the head itself; it reads
+  // the pre-step segment from `segs`, independent of the mushroom `field`.
+  if (checkOverlap(segs, headIndex)) return move(s, true)
 
   // Head screen-edge turn (MT-21/22), direction-aware: at the left edge marching
   // right, or the right edge marching left, drop a row and reverse; otherwise
@@ -330,7 +340,7 @@ export function stepMillipede(
 ): Segment[] {
   const liveCount = segs.reduce((n, s) => n + (s.color !== VACANT_COLOR ? 1 : 0), 0)
   return segs.map((seg, i) =>
-    stepSegment(seg, i > 0 ? segs[i - 1] : undefined, frame, liveCount, field),
+    stepSegment(seg, i > 0 ? segs[i - 1] : undefined, frame, liveCount, segs, i, field),
   )
 }
 
