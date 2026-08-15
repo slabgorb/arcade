@@ -22,6 +22,8 @@ import { createGame, type GameState } from './core/game-state'
 import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
 import { DEFAULT_HIGH_SCORES } from './core/highscore'
+import { showcasePlacements, SHOWCASE_BACKGROUND } from './core/attract-showcase'
+import { decodeColourByte } from './core/palette'
 import { drawGridStamps, drawStampAtPx, charTile } from './shell/render'
 import { playfieldPens, playerPens } from './shell/playfield-palette'
 import { createAudio } from './shell/audio'
@@ -99,8 +101,26 @@ function drawSprite(h: number, v: number, pic: number): void {
   drawStampAtPx(lctx as CanvasRenderingContext2D, 2 * pic + 1, x + 8, y)
 }
 
+// Attract mode cycles between the self-playing silent demo and the static
+// enemy-showcase screen (ml9-1, the ROM MLATR behaviour). The DEMO shows first
+// (so a fresh boot and the lobby-carousel liveness sample see live motion), then
+// the showcase for the last SHOWCASE_FRAMES of each cycle.
+const ATTRACT_CYCLE_FRAMES = 720 // ~12s at the ROM's 60 Hz
+const SHOWCASE_FRAMES = 300 // ~5s of the cycle shows the showcase
+
+function renderShowcase(c: CanvasRenderingContext2D): void {
+  const { r, g, b } = decodeColourByte(SHOWCASE_BACKGROUND)
+  c.fillStyle = `rgb(${r}, ${g}, ${b})`
+  c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+  drawGridStamps(c, showcasePlacements(DEFAULT_HIGH_SCORES))
+}
+
 function render(state: GameState): void {
   const c = lctx as CanvasRenderingContext2D
+  if (state.phase === 'attract' && state.frame % ATTRACT_CYCLE_FRAMES >= ATTRACT_CYCLE_FRAMES - SHOWCASE_FRAMES) {
+    renderShowcase(c)
+    return
+  }
   c.fillStyle = '#000'
   c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
 
