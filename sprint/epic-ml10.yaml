@@ -41,7 +41,7 @@ stories:
       nothing about wiring. Seam: core/millipede.ts (the head reaction sequence).
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
@@ -49,6 +49,7 @@ stories:
       - "stepMillipede consults checkOverlap in the head reaction sequence at the ROM ordering (mushroom/OBSTAC turn, then OVRLAP overlap turn, then edge/free-space): a marching head that overlaps a live in-front segment turns and drops a row."
       - "The overlap turn is pinned to the ROM (the 13$/MILLI.MAC:1541 JSR OVRLAP ordering + MLSUB.MAC:896-912) with citations, and a parked score (0xFF) or dead segment (colour ≥ 0xC0) does NOT trigger the turn — checkOverlap's existing semantics are preserved."
       - "A test drives the behaviour through stepMillipede (the real producer), not a direct checkOverlap call, and fails if the call is removed; no regression to the mushroom-turn, split-on-turn, edge-turn, or player-collision paths."
+    completed: '2026-08-15'
     type: bug
     review_findings: "Round 2 APPROVED. Round-1 (comment-only) findings both CLOSED and verified by comment-analyzer + rule-checker + own read: (1) SCOPE header now carries an accurate ml10-1 OVRLAP-wired note (mirrors ml3-6 precedent; checkOverlap added in ml3-2 77376b57, ml10-1 its first production caller at millipede.ts:318; 13$/MILLI.MAC:1541 exact); (2) test header softened to past tense, stale :300/:405 anchors dropped. Code unchanged since ef233738: mutation-proven wiring, ROM constants byte-cited, purity green, 1327 millipede tests pass, lint clean. FYI non-blocking: pre-existing ml3-1 baseline label 'OVRLAP (the split)' loose (out of scope). Pre-existing develop red (loose root PNGs) not this story."
     review_verdict: approved
