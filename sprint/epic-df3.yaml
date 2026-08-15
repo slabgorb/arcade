@@ -43,7 +43,8 @@ stories:
     title: 'Laser fire: plugins/defender/src/core/laser.ts — LFIRE (max 4 concurrent via LFLG<4, defender/DEFA7.SRC:2763-2766), right/left spawn by facing (LASR/LASL, defender/DEFA7.SRC:2790,2839), the laser data structure (LFLG/LCOLRX, defender/PHR6.SRC:301-303), travel + off-screen death. Each laser is a (super)process. Collision AGAINST ENEMIES is df4 — df3 fires and travels only.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
   - id: df3-6
