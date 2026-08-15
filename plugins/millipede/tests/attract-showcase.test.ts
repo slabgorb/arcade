@@ -222,20 +222,17 @@ describe('ml9-1 — attract showcase: the blue background', () => {
 })
 
 describe('ml9-1 — main.ts renders the showcase in attract mode (comment-stripped source)', () => {
-  it('render branches on the attract phase and draws showcase placements', () => {
+  it('render branches on the attract phase', () => {
     const stripComments = (src: string): string =>
       src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
     const src = stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
-    // Wiring floor, not implementation dictation: the page must key rendering off
-    // the attract phase and route the showcase's placements through the existing
-    // grid blitter.
+    // Wiring floor: the page must key rendering off the attract phase.
     expect(src, "render must branch on state.phase === 'attract'").toMatch(/phase\s*===\s*['"]attract['"]/)
-    // BIND the two calls (rule-checker round 1, #15/#25): showcasePlacements must
-    // be an ARGUMENT to drawGridStamps, not merely both present somewhere — a
-    // mutant that computes showcasePlacements then discards it, leaving the
-    // pre-existing HUD drawGridStamps call to satisfy a loose grep, must redden.
-    expect(src, 'showcasePlacements must be drawn via drawGridStamps, not discarded').toMatch(
-      /drawGridStamps\s*\([^)]*showcasePlacements\s*\(/,
-    )
+    // NOTE (ml9-3): the earlier bind here asserted the SINGLE palette-less draw
+    // `drawGridStamps(c, showcasePlacements(...))`. ml9-3 replaces that flat draw
+    // — which rendered the whole showcase green — with per-section coloured draws
+    // (white HIGH SCORES/footer, red creature labels), so the showcase-draw
+    // binding now lives in tests/attract-showcase-colour.test.ts. Pinning the old
+    // flat call here would contradict that fix.
   })
 })
