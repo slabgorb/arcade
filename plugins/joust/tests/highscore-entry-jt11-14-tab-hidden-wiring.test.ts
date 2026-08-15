@@ -286,14 +286,28 @@ describe('AC-1/AC-2 main.ts commits the in-flight entry on tab hide and tab clos
     expect(handler, `the ${event} handler routes to attract after committing`).toMatch(/toAttract\s*\(/)
   })
 
-  it('the visibilitychange handler commits only when the document is HIDDEN, not on every change', () => {
+  it('the visibilitychange handler commits only when the document is HIDDEN — the correct EDGE, not a hidden-token', () => {
     const handler = effectiveHandler(stripComments(readMain()), 'visibilitychange')
-    // visibilitychange fires on BOTH hidden and visible. Committing on the visible
-    // edge would persist a row when the player tabs BACK — the wrong edge (checklist
-    // #14: the transition that matters is "became hidden"). Pin the hidden test.
-    expect(handler, "guards on document hidden (visibilityState === 'hidden' or document.hidden)").toMatch(
-      /visibilityState[\s\S]*?['"]hidden['"]|document\.hidden|['"]hidden['"]/,
+    // visibilitychange fires on BOTH hidden and visible. Committing on the VISIBLE edge
+    // would persist a row when the player tabs BACK — the wrong edge (checklist #14: the
+    // transition that matters is "became hidden") — and it re-opens the very bug this
+    // story fixes: a hidden-then-closed tab loses the entry.
+    //
+    // POLARITY, not token presence (checklist #15, round-2 rework). The previous form
+    // OR-ed a bare `document.hidden` / `'hidden'` alternative, so it matched on the mere
+    // presence of the token — and `if (!document.hidden) commit()`, the INVERSION, slipped
+    // through green. Pin the POSITIVE comparison the shell uses and forbid the negated
+    // forms. A source-scan cannot prove control flow — an else-branch inversion is beyond
+    // its reach — but every realistic negation is killed here; that is the ceiling for
+    // this un-importable shell seam, and the reason the story sanctions "source-scan +
+    // mutation" rather than a behavioural test.
+    expect(handler, "commits on the HIDDEN edge: document.visibilityState === 'hidden'").toMatch(
+      /document\.visibilityState\s*===\s*['"]hidden['"]/,
     )
+    expect(
+      handler,
+      'must NOT invert the edge — no negated hidden test, no commit-on-visible',
+    ).not.toMatch(/!\s*document\.hidden|visibilityState\s*!==\s*['"]hidden['"]|!\s*\(?\s*document\.visibilityState|['"]visible['"]/)
   })
 })
 
