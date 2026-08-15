@@ -4329,10 +4329,10 @@ the joust double-entry pattern re-derived for RASM). The MESS0 charset format, v
 `reference/original-source/defender/MESS0.SRC` this session:
 - The `CHRTBL` descriptor table (`:441`) is 4-byte records `FDB $WWHH,<ptr>` — the ROM's own
   `TEXT7B ASLB ASLB` (×4) + `ABX #CHRTBL` proves the stride is 4. Word0 `$WWHH` is BIG-ENDIAN
-  (6809 FDB), so the **width byte is the HIGH byte** — and `ADDA ,Y` (`:766`) advances the cursor
+  (6809 FDB), so the **width byte is the HIGH byte** — and `ADDA ,Y` (:812) advances the cursor
   by exactly that first byte, confirming WW=width, HH=height. Cell data = **WW×HH bytes**.
 - **The trap that a naive `bytesForLabel` fails:** the descriptor ptr is not always an FDB label.
-  `SPACE` is `SPACE EQU *` (`:540`) — an alias for the current address — and the FDB block that
+  `SPACE` is `SPACE EQU *` (`:490`) — an alias for the current address — and the FDB block that
   immediately follows carries a *different* label, `BLANK`, whose data is an OVERSIZED all-zero
   `BSZ 3*8` (24 bytes) that a width-1 SPACE over-reads safely. So (a) the reader must resolve the
   EQU alias to the following FDB label, and (b) the effective cell is `width×height` bytes SLICED

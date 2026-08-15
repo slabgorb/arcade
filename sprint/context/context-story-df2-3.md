@@ -33,13 +33,13 @@ decimal**, no octal/binary — guardrail 3).
 
 **ROM format (verified this session, cite `defender/MESS0.SRC:<line>` in comments):**
 - `CHRTBL` (`:441`) — 4-byte descriptor records `FDB $WWHH,<ptr>`; **WW = width
-  (high byte), HH = height (low byte)**, big-endian; the ROM's `TEXT7B` (`:764`)
-  strides by 4 and `ADDA ,Y` (`:766`) advances the cursor by WW.
+  (high byte), HH = height (low byte)**, big-endian; the ROM's `TEXT7B` (`:804`)
+  strides by 4 and `ADDA ,Y` (:812) advances the cursor by WW.
 - Cell data = **WW × HH bytes** at the pointer. **Trap:** `SPACE` is `SPACE EQU *`
-  (`:540`) aliasing the oversized all-zero `BLANK` block (`BSZ 3*8` = 24 bytes) — a
+  (`:490`) aliasing the oversized all-zero `BLANK` block (`BSZ 3*8` = 24 bytes) — a
   glyph's effective cell is `width×height` bytes **sliced from the start** of the
   (possibly longer, EQU-aliased) block. The test-side `cellBytes()` already does this.
-- Invalid char → `?` (`TEXT7A`, `:786`, `LDB #3`). Default char spacing `$01` (`:747`).
+- Invalid char → `?` (`TEXT7A`, `:803`, `LDB #3`). Default char spacing `$01` (`:747`).
 
 **What GREEN (Yoda / Dev) ships:**
 1. `scripts/transcribe-charset.mjs` — the transcribe tool. Its OWN reading of

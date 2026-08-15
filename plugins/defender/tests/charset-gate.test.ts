@@ -4,7 +4,7 @@
 //
 // MESS0 is Defender's charset/message block — banked block 2, `SELECT CHARS`
 // (defender/DEFA7.SRC:2030). Its glyphs are inline FDB pixel tables
-// (defender/MESS0.SRC:441-640): a CHARACTER DESCRIPTER TABLE `CHRTBL` of 4-byte
+// (defender/MESS0.SRC:441-649): a CHARACTER DESCRIPTER TABLE `CHRTBL` of 4-byte
 // records `FDB $WWHH,<ptr>` and, per glyph, `WW × HH` bytes of cell data. This
 // story transcribes that charset into a GENERATED module and proves every byte
 // against the vendored source with an INDEPENDENT reader that refuses any
@@ -287,24 +287,37 @@ describe('the two derivations stay independent', () => {
     return out
   }
 
-  it('production code (defender src/tools + repo scripts) never imports the test-side reader', () => {
+  // Strip comments so a file may NAME the reader in prose (the self-match trap,
+  // lang-review #15) while any CODE reference — including a computed import
+  // specifier assembled from path segments — is still caught. A real module
+  // specifier is a string literal, which survives comment-stripping; the join-form
+  // `['..','tests','helpers','defender-source.js'].join('/')` keeps the literal
+  // 'defender-source.js' segment, so a bare-token match over stripped code closes
+  // the computed-import gap a `from|import`-anchored regex leaves open.
+  function stripComments(src: string): string {
+    return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ')
+  }
+
+  it('production code (defender src/tools + repo scripts) never references the test-side reader — literal OR computed import', () => {
     const roots = [
       join(repoRoot, 'plugins', 'defender', 'src'),
       join(repoRoot, 'plugins', 'defender', 'tools'),
       join(repoRoot, 'scripts'),
     ]
     const scanned = roots.flatMap(sourceFilesUnder)
-    // POSITIVE read-set floor: if the scan collapses to nothing, the guard is
-    // vacuous. defender/src and repo scripts always carry files.
-    expect(scanned.length, 'the independence scan must actually read production files').toBeGreaterThan(5)
-    // Anchor to an actual IMPORT of the reader, not the bare token — a production
-    // file may legitimately NAME the reader in a comment explaining that it does
-    // not import it (the source-scan self-match trap, lang-review #15).
-    const importsReader = /(?:from|import|require)\s*\(?\s*['"][^'"]*(?:defender-source|tests[/\\]helpers)/
-    const offenders = scanned.filter((f) => importsReader.test(readFileSync(f, 'utf8')))
+    // POSITIVE read-set floor (lang-review #28): the scan must actually reach the
+    // production file under test, or the guard can silently stop reading it.
+    expect(scanned.length, 'the independence scan must read production files').toBeGreaterThan(5)
+    expect(
+      scanned.some((f) => f.endsWith(join('scripts', 'transcribe-charset.mjs'))),
+      'the scan MUST include the transcribe tool — the one file that must not import the reader',
+    ).toBe(true)
+
+    const referencesReader = /defender-source|tests[/\\]helpers/
+    const offenders = scanned.filter((f) => referencesReader.test(stripComments(readFileSync(f, 'utf8'))))
     expect(
       offenders.map((f) => f.replace(repoRoot + '/', '')),
-      'production must not import the test-side reader — that makes the byte gate tautological',
+      'production must not consume the test-side reader (import or computed specifier) — that makes the byte gate tautological',
     ).toEqual([])
   })
 })

@@ -16,12 +16,19 @@
 // production consumes it, the two entries collapse into one and the green stops
 // meaning anything.
 //
+// SCOPE OF THE GUARANTEE (honest framing): this reader and GREEN's transcribe tool
+// were authored in the same session and share the same parsing STRATEGY, so the gate
+// catches a transcription typo (a flipped byte, a dropped row — proven by mutation)
+// but NOT a systematic misreading of the RASM grammar reproduced identically in both.
+// The independence is mechanical (no shared import), not a guarantee of independent
+// reasoning. High-value tables still warrant an out-of-session spot check.
+//
 // ─── THE RASM DIALECT (guardrail 3 — re-derive the reader, do not lift joust's)─
 // Defender's source is Williams RASM, NOT joust's MAC65. For the charset block
 // (MESS0.SRC) the operands are: `$hhhh` hex and BARE DECIMAL — a number with no
 // sigil is TEN, not sixteen. `FDB` stores 16-bit words BIG-ENDIAN (6809): `$0308`
 // → bytes [0x03, 0x08]. That order is load-bearing: the descriptor word `$WWHH`
-// gives the width byte FIRST (defender/MESS0.SRC:766-772, `ADDA ,Y` advances the
+// gives the width byte FIRST (defender/MESS0.SRC:812, `ADDA ,Y` advances the
 // cursor by that first byte). No octal (`@`), no binary (`%`), no local labels.
 //
 // Every vendored read is lazy / inside the caller's it() body (the collection trap).
@@ -97,7 +104,11 @@ export function evalOperand(token: string): number | { symbol: string } {
     }
     return sum
   }
-  if (t.startsWith('$')) return parseInt(t.slice(1), 16)
+  if (t.startsWith('$')) {
+    const n = parseInt(t.slice(1), 16)
+    if (Number.isNaN(n)) throw new Error(`malformed hex operand: ${token}`) // never fabricate 0
+    return n
+  }
   if (/^[0-9]+$/.test(t)) return parseInt(t, 10) // BARE = DECIMAL (the RASM trap)
   return { symbol: t }
 }
@@ -119,31 +130,15 @@ export function wordsToBytes(words: readonly number[]): number[] {
 }
 
 /**
- * Expand every FDB/FCB data statement in the inclusive line range [start, end]
- * of `file` to a flat byte array. FDB operands are big-endian words; FCB operands
- * are single bytes. Non-data statements (labels, EQU) contribute nothing. Throws
- * if a data operand is an unresolved symbol (a glyph's pixel rows are pure numbers).
- */
-export function bytesInRange(file: string, start: number, end: number): number[] {
-  const lines = sourceLines(file)
-  const out: number[] = []
-  for (let n = start; n <= end; n++) {
-    const st = parseStatement(lines[n - 1] ?? '', n)
-    if (!st) continue
-    if (st.op === 'FDB') out.push(...wordsToBytes(st.operands.map((o) => evalNumber(o))))
-    else if (st.op === 'FCB') out.push(...st.operands.map((o) => evalNumber(o)))
-  }
-  return out
-}
-
-/**
  * Read a glyph's cell bytes by its data LABEL — the CHRTBL pointer, exactly as the
  * module records it. The label may be an FDB row (`LETTRA`, `EXCLPT`) OR an EQU
- * ALIAS: `SPACE EQU *` (defender/MESS0.SRC:540) names the current address, and the
+ * ALIAS: `SPACE EQU *` (defender/MESS0.SRC:490) names the current address, and the
  * FDB block that follows carries a DIFFERENT label (`BLANK`) — so the reader follows
  * the alias to the first FDB row at or after the definition, then reads consecutive
  * FDB rows until the next labelled glyph, comment, or non-FDB statement. Returns the
- * flat big-endian byte stream.
+ * flat big-endian byte stream. An alias must be an actual `EQU`, not merely
+ * "not an FDB row" — any other op at the definition is a transcription fault, not a
+ * silent alias.
  */
 export function bytesForLabel(file: string, label: string): number[] {
   const lines = sourceLines(file)
@@ -151,9 +146,11 @@ export function bytesForLabel(file: string, label: string): number[] {
   if (defIdx < 0) throw new Error(`glyph label not found: ${label}`)
   // Resolve an EQU alias: the block begins at the first FDB row at/after the def.
   let startIdx = defIdx
-  if (parseStatement(lines[defIdx], defIdx + 1)?.op !== 'FDB') {
+  const defOp = parseStatement(lines[defIdx], defIdx + 1)?.op
+  if (defOp !== 'FDB') {
+    if (defOp !== 'EQU') throw new Error(`label ${label} is neither FDB data nor an EQU alias (op ${defOp})`)
     startIdx = lines.findIndex((l, i) => i >= defIdx && parseStatement(l, i + 1)?.op === 'FDB')
-    if (startIdx < 0) throw new Error(`no FDB data follows label: ${label}`)
+    if (startIdx < 0) throw new Error(`no FDB data follows EQU alias: ${label}`)
   }
   const out: number[] = []
   for (let i = startIdx; i < lines.length; i++) {
@@ -169,9 +166,10 @@ export function bytesForLabel(file: string, label: string): number[] {
 /**
  * The EFFECTIVE cell bytes for a glyph: exactly `width × height` bytes taken from
  * the START of the pointed data block. Almost every glyph's block is exactly that
- * size, but SPACE aliases BLANK (`SPACE EQU *`, defender/MESS0.SRC:540-543), whose
- * block is an oversized all-zero `BSZ 3*8` (24 bytes) that a width-1 SPACE over-reads
- * safely — so the block can be LONGER than the cell, and the cell is its prefix.
+ * size, but SPACE aliases BLANK (`SPACE EQU *`, defender/MESS0.SRC:490-492), whose
+ * block is two all-zero `FDB` rows totalling 24 bytes (the ROM's own comment annotates
+ * them `BSZ 3*8`) that a width-1 SPACE over-reads safely — so the block can be LONGER
+ * than the cell, and the cell is its prefix.
  * Throws if the block is SHORTER than width × height (a real transcription fault).
  */
 export function cellBytes(file: string, ptr: string, width: number, height: number): number[] {

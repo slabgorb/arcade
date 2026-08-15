@@ -14,7 +14,7 @@
 //     — resolves each character to a glyph and blits it left-to-right, advancing the
 //       cursor by the glyph width plus inter-character spacing (ROM CHARSP default
 //       $01, defender/MESS0.SRC:747). An unsupported character renders the '?' glyph
-//       (the ROM's TEXT7A invalid→QUESMK rule, defender/MESS0.SRC:786).
+//       (the ROM's TEXT7A invalid→QUESMK rule, defender/MESS0.SRC:803).
 //
 // ─── WHY THE ASSERTIONS ARE PACKING-AGNOSTIC ──────────────────────────────────
 // The exact ROM-byte→pixel unpacking (nibble order, the Williams screen rotation)
@@ -142,19 +142,48 @@ describe('blitGlyph — pure raster stamp into the framebuffer', () => {
     expect(rightmostLit(right)).toBe(rightmostLit(left) + 10)
   })
 
-  it('clips an out-of-bounds blit instead of crashing or corrupting', async () => {
+  it('clips an out-of-bounds blit to exactly the in-bounds subset (no wraparound corruption)', async () => {
     const { glyphForChar, blitGlyph } = await loadCharset()
-    const g = glyphForChar('A')!
-    // A glyph larger than the whole framebuffer, blitted at the origin: no throw.
+    const g = glyphForChar('A')! // 3 bytes × 8 rows → wider AND taller than a 4×4 fb
+
+    // A Uint8Array silently DISCARDS a far-out-of-range write, so `.not.toThrow()`
+    // and a ±1000 offset prove nothing on their own. The real hazard is a NEAR
+    // overflow: a pixel meant for column 4 of a 4-wide fb has flat index 4, which
+    // ALIASES cell (0,1) — a valid but WRONG cell — unless the blit clips. So pin
+    // the CONTENT: the clipped 4×4 output must equal exactly the pixels of the same
+    // glyph, blitted into a fb big enough to hold it, that fall inside [0,4)×[0,4).
+    const key = (c: Cell): string => `${c.x},${c.y}`
+    const big = fresh(16, 16)
+    blitGlyph(big, g, 0, 0, 9)
+    const inBounds = litCells(big)
+      .filter((c) => c.x < 4 && c.y < 4)
+      .map(key)
+      .sort()
     const tiny = fresh(4, 4)
     expect(() => blitGlyph(tiny, g, 0, 0, 9)).not.toThrow()
-    // Fully off the right/bottom and fully off the top/left: framebuffer untouched.
-    const off1 = fresh()
-    blitGlyph(off1, g, 1000, 1000, 9)
-    expect(litCells(off1).length, 'a fully out-of-bounds blit writes nothing').toBe(0)
-    const off2 = fresh()
-    blitGlyph(off2, g, -1000, -1000, 9)
-    expect(litCells(off2).length).toBe(0)
+    expect(litCells(tiny).map(key).sort(), 'a clipped blit must not alias overflow pixels into valid cells').toEqual(
+      inBounds,
+    )
+
+    // Same check at the RIGHT edge, where an unclipped write wraps onto the next row.
+    // Compare against the glyph in a fb wide enough to hold it, clipped to x<64.
+    const room = fresh(80, 16)
+    blitGlyph(room, g, 62, 4, 9)
+    const rightExpected = litCells(room)
+      .filter((c) => c.x < 64)
+      .map(key)
+      .sort()
+    const wide = fresh(64, 16)
+    blitGlyph(wide, g, 62, 4, 9) // glyph spans x=62..67, past the width-64 edge
+    expect(litCells(wide).every((c) => c.x < 64), 'no pixel wrapped past the right edge').toBe(true)
+    expect(litCells(wide).map(key).sort(), 'right-edge clip is the in-bounds subset').toEqual(rightExpected)
+
+    // Fully off-screen still writes nothing (kept as a cheap smoke check).
+    const off = fresh()
+    blitGlyph(off, g, 1000, 1000, 9)
+    expect(litCells(off).length, 'a fully out-of-bounds blit writes nothing').toBe(0)
+    blitGlyph(off, g, -1000, -1000, 9)
+    expect(litCells(off).length).toBe(0)
   })
 
   it('refuses to raster a non-raster block (the encoding discriminant)', async () => {
@@ -171,6 +200,34 @@ describe('blitGlyph — pure raster stamp into the framebuffer', () => {
     }
     expect(() => blitGlyph(fb, notRaster, 0, 0, 9)).toThrow()
   })
+
+  it('refuses a glyph whose bytes do not fill its width×height cell (fails loud, not silent background)', async () => {
+    // A short bytes array reads missing cells as undefined→0→background — a silently
+    // truncated glyph. Since blitGlyph is exported and df2-4/df2-5 reuse it, the
+    // invariant must be enforced AT the primitive, not only by the gate on CHARSET.
+    const { blitGlyph } = await loadCharset()
+    const fb = fresh()
+    const short: Glyph = {
+      name: 'SHORT',
+      char: null,
+      width: 3,
+      height: 8,
+      encoding: 'raster',
+      bytes: [1, 1, 1], // 3 bytes for a 24-byte cell
+      source: { file: 'MESS0.SRC', label: 'SHORT' },
+    }
+    expect(() => blitGlyph(fb, short, 0, 0, 9)).toThrow()
+  })
+
+  it('refuses a non-finite position instead of silently dropping the write', async () => {
+    // fb.data[NaN] = v is a silent no-op and every clip comparison against NaN is
+    // false, so a NaN x/y would drop pixels with no error. Guard it at the boundary.
+    const { glyphForChar, blitGlyph } = await loadCharset()
+    const g = glyphForChar('A')!
+    const fb = fresh()
+    expect(() => blitGlyph(fb, g, Number.NaN, 4, 9)).toThrow()
+    expect(() => blitGlyph(fb, g, 4, Number.POSITIVE_INFINITY, 9)).toThrow()
+  })
 })
 
 describe('writeText — lay a known string across the framebuffer', () => {
@@ -183,14 +240,30 @@ describe('writeText — lay a known string across the framebuffer', () => {
     expect([...viaText.data]).toEqual([...viaBlit.data])
   })
 
-  it('a second character is laid to the RIGHT of the first (the cursor advances)', async () => {
-    const { writeText } = await loadCharset()
-    const one = fresh()
-    writeText(one, 'A', 4, 4, 9)
-    const two = fresh()
-    writeText(two, 'AA', 4, 4, 9)
-    expect(litCells(two).length, "'AA' draws roughly twice 'A'").toBeGreaterThan(litCells(one).length)
-    expect(rightmostLit(two), 'the second A extends the message to the right').toBeGreaterThan(rightmostLit(one))
+  it('advances the cursor by EXACTLY glyph-width + spacing (not merely "to the right")', async () => {
+    const { glyphForChar, writeText } = await loadCharset()
+    const g = glyphForChar('A')! // width 3 bytes → 3 × 2 px/byte = 6 px rendered
+    const oneA = fresh()
+    writeText(oneA, 'A', 4, 4, 9)
+    const twoA = fresh()
+    writeText(twoA, 'AA', 4, 4, 9) // default spacing 1
+    expect(litCells(twoA).length, "'AA' draws two full copies of 'A'").toBe(2 * litCells(oneA).length)
+
+    // The second 'A' is the first translated by the cursor advance, so the shift in
+    // the rightmost inked column IS the advance. Pin it to the exact formula
+    // (width × 2 px/byte + spacing), not just "> previous" — an ordering check
+    // passes for ANY positive advance, so a dropped `spacing` term or a wrong
+    // multiplier would sail through (lang-review #29).
+    const advance = rightmostLit(twoA) - rightmostLit(oneA)
+    expect(advance, `advance = ${g.width} bytes × 2 px/byte + 1 spacing`).toBe(g.width * 2 + 1)
+
+    // And spacing is REALLY summed in: +4 spacing shifts the second glyph by +4.
+    const twoA5 = fresh()
+    writeText(twoA5, 'AA', 4, 4, 9, 5)
+    expect(
+      rightmostLit(twoA5) - rightmostLit(twoA),
+      'raising spacing 1→5 shifts the second glyph by exactly 4',
+    ).toBe(4)
   })
 
   it('different strings render differently', async () => {
@@ -227,7 +300,7 @@ describe('writeText — lay a known string across the framebuffer', () => {
   it("substitutes '?' for an unsupported character (ROM TEXT7A invalid→QUESMK)", async () => {
     const { writeText } = await loadCharset()
     // The charset is uppercase-only; a lowercase letter is out of range and the
-    // ROM's text routine writes a question mark (defender/MESS0.SRC:786, LDB #3).
+    // ROM's text routine writes a question mark (defender/MESS0.SRC:803, LDB #3).
     const lower = fresh()
     writeText(lower, 'a', 4, 4, 9)
     const quest = fresh()
