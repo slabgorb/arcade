@@ -248,9 +248,13 @@ describe('slide (PLAY1) — BGLX save + velocity clamp + camera integration, pin
     expect(r.bgl).toBe(0x0100) // BGL = 0 + $100 − 0
   })
 
-  it('clamps plaxv to −$100: input −$300 reports plaxv −$100 and moves BGL by −$100 (cylinder-wrapped)', async () => {
+  it('clamps plaxv to −$100: input −$200 reports plaxv −$100 and moves BGL by −$100 (cylinder-wrapped)', async () => {
     const { slide } = await loadWorld()
-    const r = slide({ bgl: 0x0100, plax16: 0x2000, plaxv: -0x0300, facing: 'right' })
+    // −$200's velocity column comes out NEGATIVE after the ASRA/RORB shifts, so facing-right
+    // CLEARS it (CLR PCX branch) → target is the bare base $2000; seed plax16 there so diff 0
+    // and only the clamp is exercised. (An input like −$300 would NOT isolate the clamp: its
+    // column byte is positive, so target = $4000, a slide — see the Dev deviation for df3-2.)
+    const r = slide({ bgl: 0x0100, plax16: 0x2000, plaxv: -0x0200, facing: 'right' })
     expect(r.plaxv).toBe(-0x0100)
     expect(r.bgl).toBe(0x0000) // $0100 + (−$100) − 0
   })
