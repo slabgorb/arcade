@@ -313,3 +313,99 @@ describe('processes snapshot — reflects the live run-list', () => {
     expect(live).not.toContain(b)
   })
 })
+
+// ─── Round-1 review hardening (df3-1) ────────────────────────────────────────────
+// Two blocking findings from review, each pinned by a test that FAILS on the pre-fix
+// code: (1) sleep(ticks) never validated `ticks`, so a 0/negative/NaN duration set a
+// PTIME the DISP `!== 0` gate could never re-zero — the process was stranded forever
+// (lang-review #21). (2) kill() marked a record dead BEFORE checking membership, so
+// killing a foreign/non-member handle silently mutated it. Fixes: sleep clamps any
+// invalid duration to 1 (MKPROC PTIME=1 semantics); removeProc only frees a record on
+// THIS run-list.
+describe('sleep — a degenerate duration never strands a process (R1 hardening, #21)', () => {
+  it('sleep(0) wakes on the NEXT tick instead of orphaning the process forever', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    const log: string[] = []
+    sched.makeProcess((_s, s) => {
+      log.push('start')
+      s.sleep(0, () => log.push('wake'))
+    }, 1)
+
+    sched.stepTick() // start runs, sleep(0) — must re-arm, not strand
+    expect(log).toEqual(['start'])
+    sched.stepTick() // clamped to 1 → wakes here. (Pre-fix: stayed ['start'] forever.)
+    expect(log).toEqual(['start', 'wake'])
+  })
+
+  it('negative and NaN durations also wake next tick, never orphan', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    const log: string[] = []
+    sched.makeProcess((_s, s) => {
+      log.push('n')
+      s.sleep(-5, () => log.push('n.wake'))
+    }, 1)
+    sched.makeProcess((_s, s) => {
+      log.push('x')
+      s.sleep(Number.NaN, () => log.push('x.wake'))
+    }, 2)
+
+    sched.stepTick()
+    expect([...log].sort()).toEqual(['n', 'x'])
+    sched.stepTick()
+    expect(log.filter((l) => l.endsWith('.wake')).sort()).toEqual(['n.wake', 'x.wake'])
+  })
+
+  it('a process that re-sleeps 0 forever runs EVERY tick — never accumulates as dead weight', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    let runs = 0
+    sched.makeProcess(function loop(_s, s): void {
+      runs += 1
+      s.sleep(0, loop)
+    }, 1)
+
+    sched.stepTick()
+    sched.stepTick()
+    sched.stepTick()
+    // Pre-fix this was stranded after the first run (runs would be 1); clamped it runs each tick.
+    expect(runs).toBe(3)
+  })
+
+  it('a positive fraction floors to whole ticks (the quantum is an integer frame count)', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    const log: string[] = []
+    sched.makeProcess((_s, s) => {
+      log.push('start')
+      s.sleep(2.9, () => log.push('wake')) // floors to 2
+    }, 1)
+
+    sched.stepTick() // start (2.9 → ptime 2)
+    sched.stepTick() // 2→1
+    expect(log).toEqual(['start']) // not yet
+    sched.stepTick() // 1→0 → wake, exactly 2 ticks after start
+    expect(log).toEqual(['start', 'wake'])
+  })
+})
+
+describe('kill — only frees a process on THIS run-list (R1 hardening)', () => {
+  it('killing a foreign / non-member handle is a true no-op, not a silent mutation', async () => {
+    const { createScheduler } = await loadScheduler()
+    const a = createScheduler()
+    const b = createScheduler()
+    const noop: Continuation = () => {}
+
+    const owned = a.makeProcess(noop, 1)
+    const foreign = b.makeProcess(noop, 2)
+
+    a.kill(foreign) // foreign belongs to b — a must not touch it
+    expect(foreign.alive).toBe(true) // pre-fix: a.kill set foreign.alive = false
+    expect(b.processes).toContain(foreign)
+
+    a.kill(owned) // the legitimate case still works
+    expect(owned.alive).toBe(false)
+    expect(a.processes).not.toContain(owned)
+  })
+})

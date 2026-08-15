@@ -79,9 +79,13 @@ export function createScheduler(): Scheduler {
   let currentRescheduled = false
 
   const removeProc = (proc: ProcRecord): void => {
-    proc.alive = false
+    // Only a record actually on THIS run-list is freed. A foreign handle (from another
+    // scheduler) or an already-removed one is a TRUE no-op — we do not touch its `alive`
+    // flag, so a mistaken kill() cannot silently mark someone else's process dead.
     const i = runList.indexOf(proc)
-    if (i !== -1) runList.splice(i, 1)
+    if (i === -1) return
+    proc.alive = false
+    runList.splice(i, 1)
   }
 
   const makeProcess = (start: Continuation, type: number): Process => {
@@ -92,16 +96,24 @@ export function createScheduler(): Scheduler {
   }
 
   const kill = (proc: Process): void => {
-    // KILL :31-49 — idempotent: a record already off the list simply stays dead.
-    // Every Process handed out is a ProcRecord minted by makeProcess (this scheduler
-    // is the only source of them), so the downcast is a view-widening, not a guess.
+    // KILL :31-49 — idempotent, and scoped to this run-list (removeProc checks
+    // membership first). NOTE: `Process` is a structural, exported interface, so this
+    // downcast is a within-module CONVENTION — makeProcess is the only place records
+    // are minted — NOT a type-system guarantee. The membership check in removeProc is
+    // what actually makes a foreign or hand-built handle safe, not the cast.
     removeProc(proc as ProcRecord)
   }
 
   const sleep = (ticks: number, wake: Continuation): void => {
     // SLEEP :12-15 — operates on CRPROC; a no-op outside a dispatch (no current proc).
     if (current === null) return
-    current.ptime = ticks
+    // Guard the boundary (lang-review #21): DISP only ever tests PTIME as it counts DOWN
+    // through exactly 0, so any ptime that cannot land on 0 — zero, negative, NaN,
+    // ±Infinity, or a fraction that steps past 0 — would strand the process forever
+    // (alive, never dispatched, never freed). Any such invalid duration is treated as 1
+    // ("wake next tick"), matching MKPROC's own PTIME=1 INIT (:82); a positive fraction
+    // floors to whole ticks. The scheduler quantum is an integer count of frames.
+    current.ptime = Number.isFinite(ticks) && ticks >= 1 ? Math.floor(ticks) : 1
     current.paddr = wake
     currentRescheduled = true
   }
