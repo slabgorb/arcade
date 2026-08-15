@@ -49,7 +49,8 @@ stories:
     title: 'Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:17). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
   - id: df2-6
