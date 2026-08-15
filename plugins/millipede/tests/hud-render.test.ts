@@ -125,7 +125,7 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
     ])
   })
 
-  it('paints the stamp PIXELS through the ml2-4 colour seam, fully opaque', async () => {
+  it('paints the stamp PIXELS through the ml2-4 colour seam; pen 0 transparent', async () => {
     // AMENDED at the ml7-3 visual playtest (the playbook §4 catch this story
     // exists for): the RED draft assumed char code == census sheet index and
     // upright storage — the live page proved both wrong. Measured: the
@@ -149,12 +149,14 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
     for (let r = 0; r < 8; r++) {
       for (let x = 0; x < 8; x++) {
         // displayed(r, x) <- stored(x, 7-r): the 90° CCW turn.
-        const { r: red, g: green, b: blue } = palette[STAMPS[tile][x][7 - r]]
+        const value = STAMPS[tile][x][7 - r]
+        const { r: red, g: green, b: blue } = palette[value]
         const off = (r * 8 + x) * 4
         expected[off] = red
         expected[off + 1] = green
         expected[off + 2] = blue
-        expected[off + 3] = 255
+        // Pen 0 (both planes clear) is the transparent pen; ink is opaque.
+        expected[off + 3] = value === 0 ? 0 : 255
       }
     }
     expect(Array.from(blits[0].data)).toEqual(Array.from(expected))
@@ -195,12 +197,14 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
     const expected = new Uint8ClampedArray(8 * 8 * 4)
     for (let r = 0; r < 8; r++) {
       for (let x = 0; x < 8; x++) {
-        const { r: red, g: green, b: blue } = palette[upright1[r][x]]
+        const value = upright1[r][x]
+        const { r: red, g: green, b: blue } = palette[value]
         const off = (r * 8 + x) * 4
         expected[off] = red
         expected[off + 1] = green
         expected[off + 2] = blue
-        expected[off + 3] = 255
+        // Pen 0 (background) is transparent; the glyph plane (value 2) is opaque.
+        expected[off + 3] = value === 0 ? 0 : 255
       }
     }
     expect(Array.from(blits[0].data)).toEqual(Array.from(expected))
@@ -223,7 +227,14 @@ describe('ml7-3 — drawGridStamps routes core placements to pinned screen pixel
 
 describe('ml7-3 — drawStampAtPx: the motion-object path (review round 1)', () => {
   interface RenderModuleWithSprite extends RenderModule {
-    drawStampAtPx: (ctx: CanvasRenderingContext2D, stamp: number, x: number, y: number) => void
+    drawStampAtPx: (
+      ctx: CanvasRenderingContext2D,
+      stamp: number,
+      x: number,
+      y: number,
+      palette?: readonly { r: number; g: number; b: number }[],
+      rotate?: boolean,
+    ) => void
   }
 
   async function loadSpritePath(): Promise<RenderModuleWithSprite> {
@@ -237,21 +248,28 @@ describe('ml7-3 — drawStampAtPx: the motion-object path (review round 1)', () 
     const STAMPS = await loadStamps()
     const { ctx, blits } = fakeCtx()
     // Off-grid coordinates on purpose: the train marches at 2px steps.
-    drawStampAtPx(ctx, 0x61, 13, 77)
+    // rotate=true: the motion-object path (main.ts drawSpritePx) opts into the
+    // CCW turn for every sprite tile, which is what this test asserts below.
+    drawStampAtPx(ctx, 0x61, 13, 77, undefined, true)
     expect(blits.map((b) => [b.x, b.y, b.w, b.h])).toEqual([[13, 77, 8, 8]])
     // RAW index: tile $61 as passed — NOT charTile(0x61)=$61's char remap of
     // some other code. Prove it by pixel identity with the stored tile $61
     // under the same CCW turn (sprite tiles rotate with the frame too).
+    // NOTE: drawStampAtPx here opts into rotation (last arg) — the caller in the
+    // motion-object path passes rotate=true; a raw call defaults to upright, so
+    // this test passes rotate to exercise the CCW turn it asserts.
     const palette = PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
     const expected = new Uint8ClampedArray(8 * 8 * 4)
     for (let r = 0; r < 8; r++) {
       for (let x = 0; x < 8; x++) {
-        const { r: red, g: green, b: blue } = palette[STAMPS[0x61][x][7 - r]]
+        const value = STAMPS[0x61][x][7 - r]
+        const { r: red, g: green, b: blue } = palette[value]
         const off = (r * 8 + x) * 4
         expected[off] = red
         expected[off + 1] = green
         expected[off + 2] = blue
-        expected[off + 3] = 255
+        // Pen 0 (background) is transparent; ink is opaque.
+        expected[off + 3] = value === 0 ? 0 : 255
       }
     }
     expect(Array.from(blits[0].data)).toEqual(Array.from(expected))

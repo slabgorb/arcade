@@ -4,12 +4,17 @@
 //
 // ml7-6 fixed charTile's bit-6 bank select and pinned the CONTENT half — "the
 // destination tile is a real non-blank graphic, not the red fragment the bug
-// drew" — for the NORMAL mushroom band ONLY ($7C-$7F → $3C-$3F, see
+// drew" — for the NORMAL mushroom band ONLY ($7C-$7F → $FC-$FF, see
 // charset-bank.test.ts). It left the OTHER bit-6-set field stamps content-
 // unchecked, because the attract field has no rocks / poison / live DDT to
-// eyeball: the DDT bomb ($6E/$6F → $2E/$2F), the ROCK ($70 → $30) and the
-// POISON mushroom band ($78-$7B → $38-$3B) were mapped mechanically through the
+// eyeball: the DDT bomb ($6E/$6F → $EE/$EF), the ROCK ($70 → $F0) and the
+// POISON mushroom band ($78-$7B → $F8-$FB) were mapped mechanically through the
 // same bank flip but never verified to land on the RIGHT graphics.
+//
+// CORRECTED 2026-08-15 (millipede-render-mapping-correct-mame): bit-6 SET maps
+// into the HIGH graphics bank $C0-$FF (0x40 base + bank*0x80), NOT $00-$3F —
+// which are the motion-object sprite tiles. The tile values below track the
+// corrected charTile.
 //
 // This file closes that gap. Every assertion is a determinable regression guard
 // — it does NOT prove "$2E looks like a bomb to a human" (that is inherently the
@@ -50,13 +55,13 @@ import { ink, tilesEqual } from './helpers/tile-pixels'
 // vitest interpolates `$code` as its raw DECIMAL value, which reads as a wrong
 // "0x…" if concatenated after a literal 0x.
 const VERIFIED: readonly { name: string; code: number; tile: number; codeHex: string; tileHex: string }[] = [
-  { name: 'DDT bomb, stamp 0', code: 0x6e, tile: 0x2e, codeHex: '$6e', tileHex: '$2e' },
-  { name: 'DDT bomb, stamp 1', code: 0x6f, tile: 0x2f, codeHex: '$6f', tileHex: '$2f' },
-  { name: 'ROCK (indestructible)', code: 0x70, tile: 0x30, codeHex: '$70', tileHex: '$30' },
-  { name: 'POISON mushroom, stage 0', code: 0x78, tile: 0x38, codeHex: '$78', tileHex: '$38' },
-  { name: 'POISON mushroom, stage 1', code: 0x79, tile: 0x39, codeHex: '$79', tileHex: '$39' },
-  { name: 'POISON mushroom, stage 2', code: 0x7a, tile: 0x3a, codeHex: '$7a', tileHex: '$3a' },
-  { name: 'POISON mushroom, stage 3', code: 0x7b, tile: 0x3b, codeHex: '$7b', tileHex: '$3b' },
+  { name: 'DDT bomb, stamp 0', code: 0x6e, tile: 0xee, codeHex: '$6e', tileHex: '$ee' },
+  { name: 'DDT bomb, stamp 1', code: 0x6f, tile: 0xef, codeHex: '$6f', tileHex: '$ef' },
+  { name: 'ROCK (indestructible)', code: 0x70, tile: 0xf0, codeHex: '$70', tileHex: '$f0' },
+  { name: 'POISON mushroom, stage 0', code: 0x78, tile: 0xf8, codeHex: '$78', tileHex: '$f8' },
+  { name: 'POISON mushroom, stage 1', code: 0x79, tile: 0xf9, codeHex: '$79', tileHex: '$f9' },
+  { name: 'POISON mushroom, stage 2', code: 0x7a, tile: 0xfa, codeHex: '$7a', tileHex: '$fa' },
+  { name: 'POISON mushroom, stage 3', code: 0x7b, tile: 0xfb, codeHex: '$7b', tileHex: '$fb' },
 ]
 
 describe('ml7-10 — source char codes match the ROM ground truth (MLDEF.MAC:202-208)', () => {
@@ -89,13 +94,13 @@ describe('ml7-10 — source char codes match the ROM ground truth (MLDEF.MAC:202
 
 describe('ml7-10 — charTile routes each field stamp into the exact graphics-bank tile', () => {
   it.each(VERIFIED)('$name: charTile($codeHex) → tile $tileHex', ({ code, tile }) => {
-    // The whole point of ml7-6's bit-6 fix: a bit-6-SET field stamp lands BELOW
-    // $40 (the graphics bank), not at its own value (the char bank). Both
+    // The whole point of ml7-6's bit-6 fix: a bit-6-SET field stamp lands in the
+    // HIGH graphics bank ($C0-$FF), not at its own value (the char bank). Both
     // assertions call the real charTile — proven able to redden by mutation
     // (reverting charTile to the ml7-3 identity turns this describe block red).
     expect(code & 0x40, `0x${code.toString(16)} must be bit-6 set`).toBe(0x40)
     expect(charTile(code)).toBe(tile)
-    expect(charTile(code), `0x${code.toString(16)} must map into the graphics bank`).toBeLessThan(0x40)
+    expect(charTile(code), `0x${code.toString(16)} must map into the $C0-$FF bank`).toBeGreaterThanOrEqual(0xc0)
   })
 })
 
@@ -120,11 +125,11 @@ describe('ml7-10 — the graphic families are mutually distinct (a bomb ≠ a ro
   // One representative tile per family. If any two decode to identical pixels,
   // the mapping has collapsed two distinct sprites onto one tile.
   const REP: readonly [string, number][] = [
-    ['DDT bomb', 0x2e],
-    ['DDT bomb 2', 0x2f],
-    ['ROCK', 0x30],
-    ['POISON', 0x38],
-    ['NORMAL mushroom', 0x3c],
+    ['DDT bomb', 0xee],
+    ['DDT bomb 2', 0xef],
+    ['ROCK', 0xf0],
+    ['POISON', 0xf8],
+    ['NORMAL mushroom', 0xfc],
   ]
   for (let i = 0; i < REP.length; i++) {
     for (let j = i + 1; j < REP.length; j++) {
@@ -136,11 +141,11 @@ describe('ml7-10 — the graphic families are mutually distinct (a bomb ≠ a ro
     }
   }
 
-  it('the whole POISON band ($38-$3B) is disjoint from the NORMAL band ($3C-$3F)', () => {
+  it('the whole POISON band ($F8-$FB) is disjoint from the NORMAL band ($FC-$FF)', () => {
     // Poison and normal mushrooms are drawn from different pictures; no poison
     // stage may decode to the same pixels as any normal stage.
-    for (let p = 0x38; p <= 0x3b; p++) {
-      for (let n = 0x3c; n <= 0x3f; n++) {
+    for (let p = 0xf8; p <= 0xfb; p++) {
+      for (let n = 0xfc; n <= 0xff; n++) {
         expect(tilesEqual(p, n), `poison tile 0x${p.toString(16)} equals normal tile 0x${n.toString(16)}`).toBe(false)
       }
     }

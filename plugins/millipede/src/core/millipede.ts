@@ -122,8 +122,17 @@ interface CreateOpts {
   centin?: number
   /** per-frame step magnitude CENTIS (default CENTIS_FAST). */
   centis?: number
-  /** required ONLY when centin < NCENT (the loose-head fill draws seeded RND0 bytes). */
+  /** required ONLY when centin < NCENT AND loose heads are laid (the fill draws seeded RND0 bytes). */
   rng?: Rng
+  /**
+   * Whether the `centin..NCENT-1` slots are filled with LOOSE HEADS (default
+   * true — the ROM's CENTPC always lays NCENT motion objects). Pass false to
+   * re-lay ONLY the `centin` connected segments and no loose heads: the death
+   * re-lay uses this, because the loose-head/split behaviour is deferred (ml3-2)
+   * and introducing loose heads only there would be inconsistent with the rest
+   * of the sim (which treats every live segment as connected). No `rng` needed.
+   */
+  looseHeads?: boolean
 }
 
 // MOBJH is a single 8-bit byte per slot (MLDEF.MAC), and the march (ADC MOBJH)
@@ -145,10 +154,11 @@ const wrapH = (h: number): number => h & 0xff
 export function createMillipede(opts: CreateOpts = {}): Segment[] {
   const headingSign = opts.headingSign ?? 1
   // The ROM cadence keeps CENTIN in 1..NCENT (it decrements to 1 then reloads to
-  // 0x0C, MT-14/15). Clamp defensively so createMillipede's contract — always
-  // exactly NCENT slots — stays total for any caller: an out-of-range centin
-  // (0, negative, or > NCENT) would otherwise mis-count the connected/loose split.
-  // `??` alone cannot do this: it passes a non-nullish 0 straight through.
+  // 0x0C, MT-14/15). Clamp defensively so the slot count — NCENT with loose fill,
+  // or exactly `centin` when looseHeads is false — stays well-defined for any
+  // caller: an out-of-range centin (0, negative, or > NCENT) would otherwise
+  // mis-count the connected/loose split. `??` alone cannot do this: it passes a
+  // non-nullish 0 straight through.
   const centin = Math.min(NCENT, Math.max(1, opts.centin ?? NCENT))
   const centis = opts.centis ?? CENTIS_FAST
   const dv = centis // MT-23 STA MOBJDV — magnitude on the vertical axis
@@ -168,9 +178,9 @@ export function createMillipede(opts: CreateOpts = {}): Segment[] {
   }
 
   // The LOOSE-HEAD fill (MILLI.MAC:609-635, loop 70$): slots centin..NCENT-1.
-  // Skipped entirely when centin === NCENT (the boot train), so no entropy is
-  // drawn there.
-  if (centin < NCENT) {
+  // Skipped when centin === NCENT (the boot train — no entropy drawn) OR when the
+  // caller opts out (looseHeads: false — the death re-lay, splits deferred ml3-2).
+  if (centin < NCENT && opts.looseHeads !== false) {
     if (opts.rng === undefined) {
       throw new Error('createMillipede: a fragmented train (centin < NCENT) needs a seeded rng for the loose heads')
     }

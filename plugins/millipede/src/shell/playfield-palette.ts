@@ -22,7 +22,7 @@
 // ml7-4 no-strobe rule holds by construction.
 
 import { decodeColourByte, type Rgb } from '../core/palette'
-import { waveColours, PLAYER_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'
+import { waveColours, spriteInkBytes, PLAYER_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'
 
 /** The background colour byte — $FF leaves every output line dark (black). */
 const BACKGROUND_COLOUR = 0xff
@@ -52,4 +52,20 @@ export function playfieldPens(centin: number = COLOUR_LEVELS): readonly Rgb[] {
 export function playerPens(): readonly Rgb[] {
   const white = decodeColourByte(PLAYER_COLOUR)
   return [decodeColourByte(BACKGROUND_COLOUR), white, white, white]
+}
+
+/**
+ * The motion-object (sprite) pens for ONE creature, indexed by a sprite's 2-bit
+ * pixel value. `color` is the motion object's MOCOL attribute byte (core
+ * *_COLOR constants: HEAD_COLOR $39, BEE_COLOR $79, SPIDER_COLOR $B9, …). This is
+ * milliped's AUTHENTIC per-object packed sprite-palette hardware (centiped_v.cpp
+ * milliped_set_color): the byte's three 2-bit fields pick the MOCOL sub-colours
+ * for pixel values 1/2/3 (core spriteInkBytes), so each creature family gets its
+ * own hue — the millipede its reference yellow body, red eyes, blue legs — rather
+ * than the earlier shared wave-table approximation. Pen 0 is the transparent pen
+ * (render.ts skips it).
+ */
+export function spritePens(color: number, centin: number = COLOUR_LEVELS): readonly Rgb[] {
+  const [v1, v2, v3] = spriteInkBytes(color, centin)
+  return [decodeColourByte(BACKGROUND_COLOUR), decodeColourByte(v1), decodeColourByte(v2), decodeColourByte(v3)]
 }

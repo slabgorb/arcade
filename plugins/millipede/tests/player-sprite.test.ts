@@ -96,16 +96,22 @@ describe('ml7-6 AC1 — the player renders as a decoded sprite, not a placeholde
 
     const ship = shipBlits[0]
     let opaque = 0
+    let transparent = 0
     let nonBackground = 0
     for (let px = 0; px < 64; px++) {
       const off = px * 4
-      if (ship.data[off + 3] === 255) opaque++
+      const alpha = ship.data[off + 3]
+      if (alpha === 255) opaque++
+      else if (alpha === 0) transparent++
       if (ship.data[off] || ship.data[off + 1] || ship.data[off + 2]) nonBackground++
     }
-    // Fully opaque: a real sprite tile, not a translucent artefact.
-    expect(opaque, 'the ship sprite must be fully opaque (every pixel alpha 255)').toBe(64)
-    // A real ship tile has visible ink; a blank/garbage tile would be all
-    // background. Exact SHAPE is the human playtest, not this unit.
+    // The render fix: pen 0 is the transparent pen (background shows through),
+    // ink pixels are fully opaque. No pixel is PARTIALLY translucent — a real
+    // sprite tile, not a blend artefact. (Every pixel is either alpha 0 or 255.)
+    expect(opaque + transparent, 'a ship pixel is partially translucent — not a clean sprite tile').toBe(64)
+    // A real ship tile has visible, opaque ink; a blank/garbage tile would be
+    // all transparent background. Exact SHAPE is the human playtest, not this unit.
+    expect(opaque, 'the ship sprite decoded to an all-transparent (blank) tile — no opaque ink').toBeGreaterThan(0)
     expect(nonBackground, 'the ship sprite decoded to an all-background (blank) tile').toBeGreaterThan(0)
   })
 

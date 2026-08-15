@@ -14,12 +14,13 @@
 // each adding its own event emission at the sites marked below.
 
 import { createGame, type GameState, type Shot } from './game-state'
-import { stepPlayer } from './input'
+import { stepPlayer, createPlayer } from './input'
 import {
   stepMillipede,
   createMillipede,
   checkPlayerCollision,
   VACANT_COLOR,
+  NCENT,
   type Segment,
 } from './millipede'
 import { WAVE_DELAY, stepWaveDelay } from './waves'
@@ -27,7 +28,7 @@ import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent, type GameEventKind } from './events'
 import { score1Of, score2Of } from './score'
 import { awardBonus } from './bonus'
-import { stepRoster, shootRoster, type Roster } from './enemies/roster'
+import { stepRoster, shootRoster, initRoster, type Roster } from './enemies/roster'
 import { resolveShot } from './shot'
 import {
   ddtExplosionStep,
@@ -405,6 +406,11 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     hitDdt,
     mushCounts: { lower: mushLower, top: mushTop },
     slow,
+    // CENTIN tracks the connected length. Splits are deferred (ml3-2) so every
+    // live segment is connected — CENTIN == the live count. A cleared millipede
+    // reloads to NCENT (MT-15, CENTIN never rests at 0), so a death during the
+    // inter-wave pause re-lays a full train.
+    centin: liveSegs === 0 ? NCENT : liveSegs,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }
@@ -426,17 +432,37 @@ function stepGameOver(state: GameState): GameState {
   return { ...state, phase, frame: state.frame + 1, delay, events: [] }
 }
 
-/** Death: hold the explosion animation, then respawn to play. Silent hold. */
+/**
+ * Death: hold the explosion animation, then respawn to play. Silent hold.
+ *
+ * On respawn the screen is RESET, matching the ROM's CHKEND death branch
+ * (MLSUB.MAC:157-234): INIT1 puts the gun and shot back at spawn, then CENTPC
+ * re-lays the millipede from the entry row. Without this the creature that
+ * killed the gun stays frozen on the spawn cell through the hold and kills the
+ * next life the instant play resumes, burning every life to game-over. The
+ * roster is parked too (the sibling centipede re-runs BUGOFF/ANTPC on respawn).
+ * The field, score, lives and wave carry through untouched — a death is not a
+ * new wave.
+ */
 function stepDeath(state: GameState): GameState {
   const deathTimer = Math.max(0, state.deathTimer - 1)
   const phase = advancePhase('death', { deathExpired: deathTimer === 0 })
-  const respawned = phase === 'play'
+  if (phase !== 'play') {
+    return { ...state, phase, frame: state.frame + 1, deathTimer, events: [] }
+  }
   return {
     ...state,
     phase,
     frame: state.frame + 1,
     deathTimer,
-    player: respawned ? { ...state.player, alive: true } : state.player,
+    player: createPlayer(), // INIT1 — gun back at spawn, alive
+    shot: { active: false, h: 0, v: 0 }, // INIT1 — no shot in flight
+    // CENTPC — re-lay from the entry row at the PRESERVED connected length
+    // (MILLI.MAC:549 "LDY X,CENTIN"), not a fresh full train. looseHeads:false:
+    // the ROM's loose-head refill rides with the deferred split (ml3-2), so the
+    // re-lay stays a flat connected train like the rest of the sim.
+    segments: createMillipede({ headingSign: 1, centin: state.centin, looseHeads: false }),
+    roster: initRoster(), // creatures parked (BUGOFF/ANTPC)
     events: [],
   }
 }

@@ -85,13 +85,15 @@ describe('ml7-11 — playfieldPens maps pixel value → per-region colour', () =
 })
 
 describe('ml7-11 — drawGridStamps APPLIES the region palette to the field', () => {
-  it('a mushroom stamp drawn with playfieldPens(12) paints its poison-value pixels blue (0xF8), impossible under the flat census palette', () => {
-    // Field char $7F -> tile $3F (a full mushroom, charTile). Its pixel value 3
-    // paints pen 3 = poison 0xF8 = pure blue; the flat census palette [black,
-    // red, green, white] contains no blue, so a blue pixel proves the region
-    // palette reached the canvas (not just the pen array in isolation).
+  it('a poison-mushroom stamp drawn with playfieldPens(12) paints its poison-value pixels blue (0xF8), impossible under the flat census palette', () => {
+    // Field char $78 -> tile $F8 (poison mushroom, stage 0, charTile). A POISON
+    // stamp uses pixel value 3 for its body; a NORMAL mushroom ($7C-$7F -> tile
+    // $FC-$FF) is inside/outside only (values 1,2) — so poison stamps are what
+    // exercise pen 3. Pen 3 = poison 0xF8 = pure blue; the flat census palette
+    // [black, red, green, white] contains no blue, so a blue pixel proves the
+    // region palette reached the canvas (not just the pen array in isolation).
     const { ctx, blits } = fakeCtx()
-    drawGridStamps(ctx, [{ col: 0, row: 0, stamp: 0x7f }], playfieldPens(12))
+    drawGridStamps(ctx, [{ col: 0, row: 0, stamp: 0x78 }], playfieldPens(12))
     expect(blits).toHaveLength(1)
     const poisonBlue = `${decodeColourByte(0xf8).r},${decodeColourByte(0xf8).g},${decodeColourByte(0xf8).b}`
     expect(paintedColours(blits[0]).has(poisonBlue), 'the poison pen (blue) was painted').toBe(true)
@@ -99,7 +101,7 @@ describe('ml7-11 — drawGridStamps APPLIES the region palette to the field', ()
 
   it('the SAME stamp under the default (census) palette paints white for value 3, never blue — the two palettes differ', () => {
     const { ctx, blits } = fakeCtx()
-    drawGridStamps(ctx, [{ col: 0, row: 0, stamp: 0x7f }]) // default flat palette
+    drawGridStamps(ctx, [{ col: 0, row: 0, stamp: 0x78 }]) // default flat palette
     const poisonBlue = `${decodeColourByte(0xf8).r},${decodeColourByte(0xf8).g},${decodeColourByte(0xf8).b}`
     expect(paintedColours(blits[0]).has(poisonBlue)).toBe(false)
   })

@@ -36,7 +36,7 @@ export const SHEET_PX = 128
 export function drawStampPlayfield(ctx: CanvasRenderingContext2D): void {
   const palette = flatPalette()
   for (let i = 0; i < STAMPS.length; i++) {
-    ctx.putImageData(stampImage(ctx, i, palette), (i % 16) * 8, (i >> 4) * 8)
+    blit(ctx, stampImage(ctx, i, palette), (i % 16) * 8, (i >> 4) * 8)
   }
 }
 
@@ -45,44 +45,65 @@ type Palette = readonly ReturnType<typeof decodeColourByte>[]
 /** The census/default palette — the ml2-4 diagnostic ramp (max-distinct inks). */
 const flatPalette = (): Palette => PLAYFIELD_COLOUR_BYTES.map((b) => decodeColourByte(b))
 
+// Composite an 8x8 stamp onto ctx at (x, y) HONOURING the transparent pen 0.
+// putImageData REPLACES pixels (it never alpha-blends), so a pen-0 hole would
+// punch through the background instead of showing it. In the browser we stage on
+// one reused 8x8 scratch canvas and drawImage it (which does blend). Under node
+// (the render tests: no `document`) we fall back to putImageData, which the
+// fake-ctx recorders observe as before.
+let scratchCtx: CanvasRenderingContext2D | null = null
+function blit(ctx: CanvasRenderingContext2D, img: ImageData, x: number, y: number): void {
+  if (typeof document === 'undefined') {
+    ctx.putImageData(img, x, y)
+    return
+  }
+  if (!scratchCtx) {
+    const sc = document.createElement('canvas')
+    sc.width = 8
+    sc.height = 8
+    scratchCtx = sc.getContext('2d')
+  }
+  if (!scratchCtx) {
+    ctx.putImageData(img, x, y)
+    return
+  }
+  scratchCtx.putImageData(img, 0, 0)
+  ctx.drawImage(scratchCtx.canvas, x, y)
+}
+
 /** One stamp as an opaque 8x8 ImageData, pixel value v painted as palette[v]. */
 function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
   const img = ctx.createImageData(8, 8)
   const stamp = STAMPS[stampIndex]
   for (let r = 0; r < 8; r++) {
     for (let x = 0; x < 8; x++) {
-      const { r: red, g: green, b: blue } = palette[stamp[r][x]]
+      const v = stamp[r][x]
+      const { r: red, g: green, b: blue } = palette[v]
       const off = (r * 8 + x) * 4
       img.data[off] = red
       img.data[off + 1] = green
       img.data[off + 2] = blue
-      img.data[off + 3] = 255
+      // Pen 0 is the transparent pen (MAME transpen/transmask 0): leave the
+      // background showing through instead of stamping an opaque black box.
+      img.data[off + 3] = v === 0 ? 0 : 255
     }
   }
   return img
 }
 
 /**
- * Playfield CHAR CODE -> sheet tile. BIT 6 selects the char BANK. The 256-tile
- * sheet splits into a playfield-GRAPHICS bank $00-$3F (mushrooms, DDT, rocks,
- * the bonus-score numbers) and an ALPHANUMERICS bank $40-$7F (A-Z at $41-$5A,
- * the ship $1F at $5F, the DIGITZ $20-$29 at $60-$69). A code with bit 6 CLEAR
- * is alphanumeric text and lands at 0x40 | code; a code with bit 6 SET is a
- * playfield graphic and lands at code & 0x3F. Equivalently: tile = code ^ 0x40.
- *
- * ml7-3 derived only the TEXT half — 0x40 | (code & 0x3F) — from the HUD digits
- * and the ship, all bit-6-CLEAR codes, and wrongly assumed the field mushroom/
- * DDT/rock codes ($6E-$7F, all bit-6 SET) "mapped to themselves." That is the
- * routing-!=-geometry trap the ml2-4 census could NOT catch: the census draws
- * the raw TILES, so tile $3F (a real mushroom) looked right there, while the
- * field render sent NORMAL-mushroom code $7F to tile $7F — a red fragment.
- * ml7-6 measured it at the visual playtest: NORMAL mushrooms ($7C-$7F,
- * conway.ts:49) render as mushrooms only at tiles $3C-$3F, i.e. under the bank
- * flip; POISON ($78-$7B, conway.ts:48) at $38-$3B; DDT ($6E/$6F, ddt.ts:38) at
- * $2E/$2F. The text half is bit-6 CLEAR, so every HUD code maps exactly as
- * before and the ml7-3 HUD/attract render is unchanged.
+ * Playfield CHAR CODE -> sheet tile, per MAME's milliped_get_tile_info
+ * (centiped_v.cpp:35-43): tile = (code & 0x3f) + 0x40 + bank*0x80, where
+ * bank = ((code >> 6) & 1) | (gfx_bank << 1). With gfx_bank 0:
+ *   • bit 6 CLEAR (ALPHANUMERICS: A-Z, DIGITZ, ship) -> $40-$7F.
+ *   • bit 6 SET   (PLAYFIELD GRAPHICS: mushrooms, DDT, rocks, bonus numbers)
+ *     -> $C0-$FF  (NOT $00-$3F — those are the MOTION-OBJECT sprite tiles).
+ * The earlier `code ^ 0x40` sent bit-6-set mushroom codes to $00-$3F, i.e. into
+ * the segment/creature sprite tiles, so the field drew sprite fragments where
+ * mushrooms belong (the ml7-6 "mushrooms at $3C-$3F" reading was those sprite
+ * tiles, not the real $FC-$FF mushrooms).
  */
-export const charTile = (code: number): number => ((code & 0x40) === 0 ? 0x40 : 0x00) | (code & 0x3f)
+export const charTile = (code: number): number => ((code & 0x40) === 0 ? 0x40 : 0xc0) | (code & 0x3f)
 
 /**
  * The second half of the same measurement: every tile is stored ROTATED for
@@ -99,12 +120,13 @@ function rotatedStampImage(ctx: CanvasRenderingContext2D, stampIndex: number, pa
   for (let r = 0; r < 8; r++) {
     for (let x = 0; x < 8; x++) {
       // out(row r, col x) <- stored(row x, col 7-r): the 90° CCW turn.
-      const { r: red, g: green, b: blue } = palette[stamp[x][7 - r]]
+      const v = stamp[x][7 - r]
+      const { r: red, g: green, b: blue } = palette[v]
       const off = (r * 8 + x) * 4
       img.data[off] = red
       img.data[off + 1] = green
       img.data[off + 2] = blue
-      img.data[off + 3] = 255
+      img.data[off + 3] = v === 0 ? 0 : 255
     }
   }
   return img
@@ -127,7 +149,12 @@ export function drawGridStamps(
   palette: Palette = flatPalette(),
 ): void {
   for (const p of placements) {
-    ctx.putImageData(rotatedStampImage(ctx, charTile(p.stamp), palette), p.col * 8, (0x1f - p.row) * 8)
+    // Every placement is a PLAYFIELD CHAR (charTile -> $40-$FF): text, mushrooms,
+    // DDT, ship, digits. Playfield chars are stored rotated for the vertical
+    // monitor, so all of them take the CCW turn. (Motion-object SPRITES, tiles
+    // $00-$3F / $80-$BF, are stored upright and are drawn by drawStampAtPx
+    // without rotation.)
+    blit(ctx, rotatedStampImage(ctx, charTile(p.stamp), palette), p.col * 8, (0x1f - p.row) * 8)
   }
 }
 
@@ -144,6 +171,12 @@ export function drawStampAtPx(
   x: number,
   y: number,
   palette: Palette = flatPalette(),
+  rotate = false,
 ): void {
-  ctx.putImageData(rotatedStampImage(ctx, stamp, palette), x, y)
+  // Motion-object graphics (millipede segments, enemies, bonus-score numbers)
+  // come from the upright playfield-graphics bank and must NOT be rotated; only
+  // the ship — an ALPHANUMERICS-bank picture ($5F) — needs the CCW turn, so the
+  // caller opts in. (See drawGridStamps for why the banks differ.)
+  const img = rotate ? rotatedStampImage(ctx, stamp, palette) : stampImage(ctx, stamp, palette)
+  blit(ctx, img, x, y)
 }

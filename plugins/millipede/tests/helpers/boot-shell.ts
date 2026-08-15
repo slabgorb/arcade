@@ -112,20 +112,36 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
   // which render.ts's stamp path reads and writes a real pixel buffer through.
   // Anything else the renderer reaches for should throw loudly rather than be
   // absorbed — a stub that answers every question cannot report a drift.
-  const makeCtx = (draws: DrawRecord[]): Record<string, unknown> => {
+  type ImgData = { width: number; height: number; data: Uint8ClampedArray }
+  // A canvas element in this stub carries __lastImage — the pixels its ctx last
+  // received via putImageData. render.ts's blit() COMPOSITES a transparent-pen
+  // tile by staging it on an 8x8 scratch canvas (putImageData) and drawImage-ing
+  // that canvas onto the target (drawImage alpha-blends; putImageData would not).
+  // So under this stub — where `document` IS defined, so blit takes the browser
+  // path — a tile reaches the target as a drawImage of the scratch canvas, not a
+  // putImageData. drawImage below reads the source canvas' __lastImage and
+  // records the blit at the DESTINATION coords, so tests still read the pixels
+  // that landed and WHERE. (The scratch's own putImageData at (0,0) is recorded
+  // in the scratch's unread draws.)
+  const makeCtx = (draws: DrawRecord[], canvasEl: Record<string, unknown>): Record<string, unknown> => {
     const ctx: Record<string, unknown> = {
       fillStyle: '',
       imageSmoothingEnabled: false,
+      canvas: canvasEl,
       fillRect: (x: number, y: number, w: number, h: number): void => {
         draws.push({ kind: 'fillRect', x, y, w, h, style: String(ctx.fillStyle) })
       },
       clearRect: () => {},
-      drawImage: () => {},
-      putImageData: (
-        img: { width: number; height: number; data: Uint8ClampedArray },
-        dx: number,
-        dy: number,
-      ): void => {
+      drawImage: (src: unknown, dx: number, dy: number): void => {
+        // Composite path: the source is a canvas whose ctx just staged a tile.
+        const img = (src as { __lastImage?: ImgData })?.__lastImage
+        if (img && typeof dx === 'number' && typeof dy === 'number') {
+          draws.push({ kind: 'blit', x: dx, y: dy, w: img.width, h: img.height, data: img.data })
+        }
+      },
+      putImageData: (img: ImgData, dx: number, dy: number): void => {
+        // Stash for any later drawImage that uses this canvas as its source.
+        canvasEl.__lastImage = img
         draws.push({ kind: 'blit', x: dx, y: dy, w: img.width, h: img.height, data: img.data })
       },
       createImageData: (w: number, h: number) => ({
@@ -156,7 +172,7 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
       clientHeight: CLIENT_H,
       // Memoised: main.ts reads getContext once per canvas, but the recorder must
       // be the SAME object across any reads so every draw lands in one `draws`.
-      getContext: (): unknown => (ctx ??= makeCtx(draws)),
+      getContext: (): unknown => (ctx ??= makeCtx(draws, el)),
     }
     Object.assign(el, listen(el))
     return { el, draws }
@@ -171,11 +187,18 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
 
   const documentStub: Record<string, unknown> = {
     // mountCanvas(document) → querySelector('#game'); createElement makes the
-    // logical backbuffer canvas main.ts blits from.
+    // logical backbuffer canvas main.ts blits from. The FIRST createElement (at
+    // main.ts module init) is that backbuffer; LATER ones are render.ts blit()'s
+    // 8x8 scratch canvas (the transparent-pen compositing stage) — those must
+    // NOT overwrite the captured `logical` reference, or draws('logical') would
+    // read the scratch canvas instead of the frame.
     querySelector: (): unknown => canvas,
     createElement: (): unknown => {
-      logical = makeCanvas()
-      return logical.el
+      if (logical === null) {
+        logical = makeCanvas()
+        return logical.el
+      }
+      return makeCanvas().el // a scratch canvas — created, but not captured
     },
   }
   Object.assign(documentStub, listen(documentStub))

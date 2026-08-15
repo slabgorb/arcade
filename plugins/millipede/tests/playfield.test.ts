@@ -138,7 +138,11 @@ describe('ml2-4 AC-4 — drawStampPlayfield renders the full stamp sheet', () =>
     expect(got).toEqual(want)
   })
 
-  it('paints every pixel opaque, as decodeColourByte(PLAYFIELD_COLOUR_BYTES[pixel])', async () => {
+  it('paints value pixels through the colour seam; pen 0 is the transparent pen', async () => {
+    // The render fix (2026-08-15): pen 0 is the MAME transparent pen — pixel
+    // value 0 is painted alpha 0 so the background shows through, not stamped as
+    // an opaque black box. Every INK pixel (value 1..3) stays fully opaque and
+    // decodes to decodeColourByte(PLAYFIELD_COLOUR_BYTES[value]).
     const { drawStampPlayfield, PLAYFIELD_COLOUR_BYTES } = await loadRender()
     const STAMPS = await loadStamps()
     const { ctx, blits } = fakeCtx()
@@ -152,11 +156,13 @@ describe('ml2-4 AC-4 — drawStampPlayfield renders the full stamp sheet', () =>
       for (let r = 0; r < 8; r++) {
         for (let x = 0; x < 8; x++) {
           const off = (r * 8 + x) * 4
-          const want = palette[stamp[r][x]]
+          const value = stamp[r][x]
+          const want = palette[value]
           expect(b.data[off], `stamp ${i} px (${x},${r}) red`).toBe(want.r)
           expect(b.data[off + 1], `stamp ${i} px (${x},${r}) green`).toBe(want.g)
           expect(b.data[off + 2], `stamp ${i} px (${x},${r}) blue`).toBe(want.b)
-          expect(b.data[off + 3], `stamp ${i} px (${x},${r}) alpha`).toBe(255)
+          // Pen 0 (background) is transparent; every ink pixel is fully opaque.
+          expect(b.data[off + 3], `stamp ${i} px (${x},${r}) alpha`).toBe(value === 0 ? 0 : 255)
           checked++
         }
       }

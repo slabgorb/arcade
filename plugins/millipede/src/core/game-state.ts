@@ -11,7 +11,7 @@
 import { createRng, nextInt, type Rng } from '@shared/rng'
 import { PLYFLD_SIZE, type ConwayState } from './conway'
 import { musher, type MushCounts } from './mushroom'
-import { createMillipede, type Segment } from './millipede'
+import { createMillipede, NCENT, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
 import { initRoster, type Roster } from './enemies/roster'
 import { newDdtTable, ddtPlace, ddtRestore, type DdtTable } from './ddt'
@@ -41,6 +41,13 @@ export interface GameState {
   player: PlayerState
   shot: Shot
   segments: Segment[]
+  /** CENTIN (MLDEF.MAC:299) — the connected millipede LENGTH, 1..NCENT. Init NCENT
+   *  (MILLI.MAC:1168-1170 "SET CENTIPEDE SIZE"), tracks the live connected count as
+   *  segments die, and — the point of holding it as a register — is PRESERVED across
+   *  a death so CENTPC re-lays the same length rather than a fresh full train
+   *  (MILLI.MAC:549 "LDY X,CENTIN"). Splits are deferred (ml3-2), so today every live
+   *  segment is connected and CENTIN == the live segment count. */
+  centin: number
   /** The enemy cast — spiders, bees, beetles, dragonflies, mosquitoes, earwigs, inchworms. */
   roster: Roster
   /** The four-entry DDTADD bomb bank (DDTS/DDTS2, ddt.ts). Stamped into `field`. */
@@ -124,6 +131,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     player: createPlayer(),
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
+    centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1168-1170) — a full train
     roster: initRoster(),
     ddt,
     score: 0,

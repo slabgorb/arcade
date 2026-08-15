@@ -28,6 +28,14 @@
 
 import type { HudPlacement } from './hud'
 import type { MilliHighScore } from './highscore'
+import { HEAD_PIC, HEAD_COLOR } from './millipede'
+import { SPIDER_PIC, SPIDER_COLOR } from './spider'
+import { BEETLE_PIC, BEETLE_COLOR } from './beetle'
+import { BEE_PIC, BEE_COLOR } from './bee'
+import { DRAGONFLY_PIC, DRAGONFLY_COLOR } from './dragonfly'
+import { MOSQUITO_PIC, MOSQUITO_COLOR } from './mosquito'
+import { EARWIG_PIC, EARWIG_COLOR } from './earwig'
+import { INCHWORM_PIC, INCHWORM_COLOR } from './inchworm'
 
 /** BKGND #0F8 (MLATR.MAC:604-605) — pure blue through the active-low palette. */
 export const SHOWCASE_BACKGROUND = 0xf8
@@ -51,18 +59,38 @@ function place(text: string, startCol: number, row: number): HudPlacement[] {
  * positions approximate attract-mame-reference.png (HIGH SCORES down the centre,
  * creature panels down the two edges, the trio along the bottom).
  */
-const CAST: readonly { name: string; col: number; row: number }[] = [
-  { name: 'DRAGONFLY', col: 0, row: 29 }, // top-left
-  { name: 'MOSQUITO', col: 22, row: 29 }, // top-right
-  { name: 'BEE', col: 26, row: 24 }, // right
-  { name: 'EARWIG', col: 0, row: 20 }, // mid-left
-  { name: 'BEETLE', col: 23, row: 20 }, // mid-right
-  { name: 'INCHWORM', col: 0, row: 15 }, // lower-left
-  { name: 'GROWTH', col: 12, row: 12 }, // centre
+const CAST: readonly { name: string; col: number; row: number; pic?: number; color?: number }[] = [
+  { name: 'DRAGONFLY', col: 0, row: 29, pic: DRAGONFLY_PIC, color: DRAGONFLY_COLOR }, // top-left
+  { name: 'MOSQUITO', col: 22, row: 29, pic: MOSQUITO_PIC, color: MOSQUITO_COLOR }, // top-right
+  { name: 'BEE', col: 26, row: 24, pic: BEE_PIC, color: BEE_COLOR }, // right
+  { name: 'EARWIG', col: 0, row: 20, pic: EARWIG_PIC, color: EARWIG_COLOR }, // mid-left
+  { name: 'BEETLE', col: 23, row: 20, pic: BEETLE_PIC, color: BEETLE_COLOR }, // mid-right
+  { name: 'INCHWORM', col: 0, row: 15, pic: INCHWORM_PIC, color: INCHWORM_COLOR }, // lower-left
+  { name: 'GROWTH', col: 12, row: 12 }, // centre (a mushroom — field graphic, no MOBJ pic)
   { name: 'DDT BOMB', col: 0, row: 4 }, // bottom-left
-  { name: 'MILLIPEDE', col: 10, row: 4 }, // bottom-centre
-  { name: 'SPIDER', col: 23, row: 4 }, // bottom-right
+  { name: 'MILLIPEDE', col: 10, row: 4, pic: HEAD_PIC, color: HEAD_COLOR }, // bottom-centre
+  { name: 'SPIDER', col: 23, row: 4, pic: SPIDER_PIC, color: SPIDER_COLOR }, // bottom-right
 ]
+
+/** One creature's showcase sprite: its MOBJ picture, colour attribute, and the
+ *  grid cell of its name label (the sprite is drawn just above the name). */
+export interface ShowcaseSprite {
+  readonly pic: number
+  readonly color: number
+  readonly col: number
+  readonly row: number
+}
+
+/** The cast members that have a motion-object picture, for the shell to blit
+ *  next to each name (GROWTH/DDT BOMB have no MOBJ picture and are omitted). */
+export function showcaseSprites(): ShowcaseSprite[] {
+  return CAST.filter((c): c is Required<typeof c> => c.pic !== undefined && c.color !== undefined).map((c) => ({
+    pic: c.pic,
+    color: c.color,
+    col: c.col,
+    row: c.row,
+  }))
+}
 
 /** The coin/bonus/copyright footer (screenshot; charset per the header above). */
 const FOOTER: readonly { text: string; col: number; row: number }[] = [
