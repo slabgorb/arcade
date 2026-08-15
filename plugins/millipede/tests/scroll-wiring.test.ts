@@ -449,8 +449,8 @@ describe('ml7-9 AC9 — accessibility: a scroll is a SHIFT, never a full-screen 
 //
 // ─── AC2 SCOPE CORRECTION (see this story's session Delivery Findings) ─────────
 // The story TITLE says "player-death-by-DDT (:1805)". It is a MISNOMER. Line 1805
-// sits inside `PLAY: CHECK FOR PLAYER COLLISION` (MILLI.MAC:1750, .SBTTL
-// "PLAY-CHECK FOR PLAYER COLLISION"): the INC HITDDT runs on ANY player-collision
+// sits inside the PLAY routine (PLAY: entry at MILLI.MAC:1750; .SBTTL
+// "PLAY-CHECK FOR PLAYER COLLISION" at :1744): the INC HITDDT runs on ANY player-collision
 // death (a segment or any creature), right beside PEXPLD (the player-explosion
 // sound), NOCENT, SLOW and the :1812 STA SCROLC this port already reproduces
 // (AC6 above). HITDDT is a persistent register, cleared only at :508 — so its job
