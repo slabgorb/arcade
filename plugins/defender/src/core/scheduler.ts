@@ -93,6 +93,8 @@ export function createScheduler(): Scheduler {
 
   const kill = (proc: Process): void => {
     // KILL :31-49 — idempotent: a record already off the list simply stays dead.
+    // Every Process handed out is a ProcRecord minted by makeProcess (this scheduler
+    // is the only source of them), so the downcast is a view-widening, not a guess.
     removeProc(proc as ProcRecord)
   }
 
