@@ -28,7 +28,8 @@ interface EventTarget {
   removeEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
 }
 
-/** A drained-per-frame trackball delta. Signs follow main.ts:94-99 exactly. */
+/** A drained-per-frame trackball delta. Signs are set by `onMouseMove` below
+ *  (negated horizontal, non-negated vertical — millipede's pre-extraction mapping). */
 export interface MouseDelta {
   dh: number
   dv: number
@@ -108,11 +109,18 @@ export function createPointerLock(
 
   return {
     async request(): Promise<void> {
-      const result = canvas.requestPointerLock()
-      if (result && typeof (result as Promise<unknown>).then === 'function') {
-        await (result as Promise<unknown>).then(undefined, (reason) => {
-          onReject?.(reason)
-        })
+      // "never rejects (R4)" must be universal: BOTH a rejected promise returned by
+      // requestPointerLock() (re-lock cooldown) AND a SYNCHRONOUS throw from calling it
+      // (the method unsupported/undefined on an older element) route to onReject and
+      // resolve. A bare `.then(undefined, onReject)` catches only the former; the sync
+      // throw would otherwise reject request()'s own async promise (ml10-4 review r1).
+      try {
+        const result = canvas.requestPointerLock()
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          await result
+        }
+      } catch (reason) {
+        onReject?.(reason)
       }
     },
     dispose(): void {

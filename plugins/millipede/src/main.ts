@@ -54,10 +54,11 @@ let game: GameState = createGame(0x1982)
 //    behaves like the cabinet trackball. The cursor is hidden while it does. ──
 const mouse = createMouseAdapter(document)
 canvas.style.cursor = 'none'
-// R5: an Escape/blur lock-exit keeps the window focused, so no 'blur' fires — the
-// pointerlockchange listener clears the last accumulated delta so the gun does not
-// keep drifting (no runaway travel). R4/cp2-8: a rejected requestPointerLock (re-lock
-// cooldown) is surfaced to the console instead of vanishing.
+// R5: an Escape-exit keeps the window focused, so 'blur' never fires — the
+// pointerlockchange listener clears the last accumulated delta regardless of what
+// caused the exit (Escape or blur) so the gun does not keep drifting (no runaway
+// travel). R4/cp2-8: a rejected requestPointerLock (re-lock cooldown) is surfaced to
+// the console instead of vanishing.
 const pointerLock = createPointerLock(
   canvas,
   document,
