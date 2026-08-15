@@ -82,41 +82,64 @@ function decodeChar(code: number): string {
 }
 
 /**
- * Read the placements as text: group by row, order each row left-to-right by
- * col, decode each stamp. Returns one string per occupied row. This reads the
- * screen the way a player does, without asserting exact coordinates.
+ * Read the placements as WHOLE FIELDS: group by row, and within each row split
+ * into maximal CONTIGUOUS-column runs (columns stepping by exactly 1). Each run
+ * is one logical field — a label, a score, an initials triple — decoded and
+ * trimmed. Returns the runs grouped per row.
+ *
+ * Contiguous-run (not substring-over-glued-row) matching is the review-round-1
+ * fix: the earlier `rowTexts` concatenated every same-row placement with no gap
+ * delimiter, so `someRowContains(_, 'BEE')` matched inside 'BEETLE' and
+ * `someRowContains(_, 'ED')` matched inside 'MILLIPEDE' — both assertions could
+ * never fail (mutation-confirmed). A run is bounded by real column gaps, so
+ * unrelated fields never glue together and a token match is a WHOLE-field match.
  */
-function rowTexts(placements: readonly Placement[]): string[] {
+function rowTokenGroups(placements: readonly Placement[]): string[][] {
   const byRow = new Map<number, Placement[]>()
   for (const p of placements) {
     const list = byRow.get(p.row) ?? []
     list.push(p)
     byRow.set(p.row, list)
   }
-  return [...byRow.values()].map((list) =>
-    list
-      .slice()
-      .sort((a, b) => a.col - b.col)
-      .map((p) => decodeChar(p.stamp))
-      .join(''),
-  )
+  return [...byRow.values()].map((list) => {
+    const sorted = list.slice().sort((a, b) => a.col - b.col)
+    const runs: string[] = []
+    let run: Placement[] = []
+    const flush = (): void => {
+      if (run.length) runs.push(run.map((p) => decodeChar(p.stamp)).join('').trim())
+      run = []
+    }
+    for (const p of sorted) {
+      if (run.length && p.col !== run[run.length - 1].col + 1) flush()
+      run.push(p)
+    }
+    flush()
+    return runs.filter((t) => t.length > 0)
+  })
 }
 
-/** True if any single row's decoded text contains `needle`. */
-function someRowContains(placements: readonly Placement[], needle: string): boolean {
-  return rowTexts(placements).some((t) => t.includes(needle))
+/** Every decoded whole-field token across every row. */
+function allTokens(placements: readonly Placement[]): string[] {
+  return rowTokenGroups(placements).flat()
+}
+
+/** True if some contiguous run decodes EXACTLY to `token` (whole-field match). */
+function hasToken(placements: readonly Placement[], token: string): boolean {
+  return allTokens(placements).includes(token)
 }
 
 const CAST = ['DDT BOMB', 'INCHWORM', 'EARWIG', 'DRAGONFLY', 'MILLIPEDE', 'SPIDER', 'BEETLE', 'BEE', 'MOSQUITO', 'GROWTH']
 
 describe('ml9-1 — attract showcase: the ROM cast of characters (MLATR.MAC:580-601)', () => {
-  it('names every creature from the ROM 80$ label table', async () => {
+  it('names every creature from the ROM 80$ label table (whole-field match)', async () => {
     const { showcasePlacements } = await loadShowcase()
     const placements = showcasePlacements(DEFAULT_HIGH_SCORES)
     for (const name of CAST) {
+      // hasToken is a WHOLE-field match, so 'BEE' does NOT match inside 'BEETLE'
+      // (review round 1): deleting the BEE entry now reddens this, as it should.
       expect(
-        someRowContains(placements, name),
-        `showcase must label "${name}" (MLATR.MAC:580-601, decoded from bytes)`,
+        hasToken(placements, name),
+        `showcase must label "${name}" as its own field (MLATR.MAC:580-601, decoded from bytes)`,
       ).toBe(true)
     }
   })
@@ -127,7 +150,7 @@ describe('ml9-1 — attract showcase: the ROM cast of characters (MLATR.MAC:580-
     // Dev who transcribes the comment instead of the data.
     const { showcasePlacements } = await loadShowcase()
     const placements = showcasePlacements(DEFAULT_HIGH_SCORES)
-    expect(rowTexts(placements).some((t) => t.includes('GROWTHS'))).toBe(false)
+    expect(allTokens(placements).includes('GROWTHS')).toBe(false)
   })
 })
 
@@ -137,16 +160,42 @@ describe('ml9-1 — attract showcase: HIGH SCORES table (core/highscore.ts)', ()
     const placements = showcasePlacements(DEFAULT_HIGH_SCORES)
     const top = DEFAULT_HIGH_SCORES[0]
     expect(top).toEqual({ name: 'BBM', score: 89175 })
-    expect(someRowContains(placements, top.name), 'top initials BBM must appear').toBe(true)
-    expect(someRowContains(placements, String(top.score)), 'top score 89175 must appear').toBe(true)
+    expect(hasToken(placements, top.name), 'top initials BBM must appear').toBe(true)
+    expect(hasToken(placements, String(top.score)), 'top score 89175 must appear').toBe(true)
   })
 
-  it('shows all eight high-score initials', async () => {
+  it('shows all eight rows — every score AND every initials, co-located on one row', async () => {
+    // Whole-field match (review round 1): 'ED' no longer matches inside 'MILLIPEDE'.
+    // Co-location catches a pairing bug — score i next to initials i±1 — that a
+    // "appears somewhere" check would miss.
     const { showcasePlacements } = await loadShowcase()
     const placements = showcasePlacements(DEFAULT_HIGH_SCORES)
+    const groups = rowTokenGroups(placements)
     for (const entry of DEFAULT_HIGH_SCORES) {
-      expect(someRowContains(placements, entry.name), `high-score initials "${entry.name}" must appear`).toBe(true)
+      expect(hasToken(placements, entry.name), `initials "${entry.name}" must appear as a field`).toBe(true)
+      expect(hasToken(placements, String(entry.score)), `score ${entry.score} must appear as a field`).toBe(true)
+      const row = groups.find((g) => g.includes(String(entry.score)))
+      expect(row, `a row must carry score ${entry.score}`).toBeDefined()
+      expect(row, `score ${entry.score} and initials ${entry.name} must share a row`).toContain(entry.name)
     }
+  })
+
+  it('threads its highScores ARGUMENT — a distinct table shows, and the defaults do not leak', async () => {
+    // Rule-checker round 1 (#18): every other test uses DEFAULT_HIGH_SCORES, so a
+    // mutant that ignores the parameter and hardcodes the defaults passed. Feed a
+    // disjoint table and assert IT renders while the defaults are absent.
+    const { showcasePlacements } = await loadShowcase()
+    const alt = [
+      { name: 'ZAX', score: 13579 },
+      { name: 'QWY', score: 24680 },
+    ]
+    const p = showcasePlacements(alt)
+    for (const e of alt) {
+      expect(hasToken(p, e.name), `arg initials ${e.name} must render`).toBe(true)
+      expect(hasToken(p, String(e.score)), `arg score ${e.score} must render`).toBe(true)
+    }
+    expect(hasToken(p, 'BBM'), 'default initials must NOT leak when a different table is passed').toBe(false)
+    expect(hasToken(p, '89175'), 'default score must NOT leak when a different table is passed').toBe(false)
   })
 })
 
@@ -155,18 +204,20 @@ describe('ml9-1 — attract showcase: the footer (screenshot)', () => {
     it(`prints "${line}"`, async () => {
       const { showcasePlacements } = await loadShowcase()
       const placements = showcasePlacements(DEFAULT_HIGH_SCORES)
-      expect(someRowContains(placements, line)).toBe(true)
+      expect(hasToken(placements, line)).toBe(true)
     })
   }
 })
 
 describe('ml9-1 — attract showcase: the blue background', () => {
-  it('exposes a blue-dominant background colour (screenshot: blue field)', async () => {
+  it('is the ROM GREYSC byte 0xF8, which decodes to pure blue', async () => {
+    // Pin the byte itself (MLATR.MAC:604-605) so a washed-out or off-hue colour
+    // that merely edged out red/green (review round 1) cannot pass.
     const { SHOWCASE_BACKGROUND } = await loadShowcase()
+    expect(SHOWCASE_BACKGROUND).toBe(0xf8)
     const { decodeColourByte } = await import('../src/core/palette')
     const { r, g, b } = decodeColourByte(SHOWCASE_BACKGROUND)
-    expect(b, 'background blue channel must dominate red').toBeGreaterThan(r)
-    expect(b, 'background blue channel must dominate green').toBeGreaterThan(g)
+    expect({ r, g, b }, '0xF8 through the active-low palette is pure blue').toEqual({ r: 0, g: 0, b: 255 })
   })
 })
 
@@ -177,9 +228,14 @@ describe('ml9-1 — main.ts renders the showcase in attract mode (comment-stripp
     const src = stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
     // Wiring floor, not implementation dictation: the page must key rendering off
     // the attract phase and route the showcase's placements through the existing
-    // grid blitter. Identifier + call-paren so an import or string cannot satisfy it.
+    // grid blitter.
     expect(src, "render must branch on state.phase === 'attract'").toMatch(/phase\s*===\s*['"]attract['"]/)
-    expect(src, 'render must draw showcasePlacements(...)').toMatch(/showcasePlacements\s*\(/)
-    expect(src, 'showcase placements route through drawGridStamps').toMatch(/drawGridStamps\s*\(/)
+    // BIND the two calls (rule-checker round 1, #15/#25): showcasePlacements must
+    // be an ARGUMENT to drawGridStamps, not merely both present somewhere — a
+    // mutant that computes showcasePlacements then discards it, leaving the
+    // pre-existing HUD drawGridStamps call to satisfy a loose grep, must redden.
+    expect(src, 'showcasePlacements must be drawn via drawGridStamps, not discarded').toMatch(
+      /drawGridStamps\s*\([^)]*showcasePlacements\s*\(/,
+    )
   })
 })
