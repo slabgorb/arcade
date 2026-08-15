@@ -20,10 +20,11 @@ stories:
     title: 'World-wrap coordinate model + camera slide (the epic''s riskiest seam): plugins/defender/src/core/world.ts — the BGL camera (defender/PHR6.SRC:215) + BGLX prev (defender/PHR6.SRC:216), the 16-bit HORIZONTAL WRAP at $10000, the pure worldX(entity)=onscreen+bgl helper (PLABX, defender/DEFA7.SRC:2432-2440), the SHIP-LEADS-SCROLL slide ported line-for-line (BGDELT / PV1..PV12, base $20 fwd / $70 rev, ±$40 step / ±$100 clamp, defender/DEFA7.SRC:2373-2431), and the vertical strip rule (YMIN=42 / YMAX=240, defender/PHR6.SRC:20-21; player-CLAMP DEFA7.SRC:2450,2461 vs object-WRAP DEFA7.SRC:2490-2496). Pin COORDINATES not just direction (routing != geometry). Expect a Reviewer mutation battery over the slide math.'
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
   - id: df3-3
     title: 'Player ship — velocity, thrust, reverse, vertical: plugins/defender/src/core/ship.ts — the 24-bit PLAXV accumulation + accel (defender/DEFA7.SRC:2360-2371; keep PLAXV+2, defender/PHR6.SRC:332), the VELO integration step (defender/DEFA7.SRC:2480-2499), REV reverse-facing (PLADIR flip + REVFLG debounce, defender/DEFA7.SRC:3155-3171), the thrust process, and vertical motion (PLAUP/PLADN clamp, defender/DEFA7.SRC:2441-2476). The ship is a scheduler process (df3-1), driven by a pure input snapshot (shell owns the PIA read). Depends on df3-1 + df3-2.'
     points: 5
