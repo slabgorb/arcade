@@ -3,7 +3,7 @@ type: epic
 title: 'Millipede — hardening / mutation batteries (phase 8): Reviewer-driven, grouped by file surface (expect this epic to GROW)'
 description: "Eighth Millipede epic, phase 8 — the hardening pass, mirroring joust jt3-jt9 and missile-command mc10. This is where a finished cabinet spends most of its commits. It is Reviewer-driven and EXPECTED TO FILE STORIES, not just close them: each completed story buys one Reviewer mutation battery over one file surface, and a battery over a weakly-asserted surface reliably yields surviving mutants, each filed as its own story. GROOMING RULE (the jt9 gotcha): group the backlog by the FILES each story edits, NOT by subsystem or the ROM routine it cites — two stories touching the same guard/test-file/decoder are one story with two commits; two stories citing adjacent ROM lines but editing different files are two stories and merging them buys nothing but a bigger diff. A mutant that reddens nothing is a finding (zero mutation coverage), not redundancy — trace reachability first. The seed stories below are a starting battery over the highest-risk, weakest-asserted surfaces (the CONWAY Life field, the scroll geometry, the two-POKEY driver); the epic grows as batteries surface mutants. Dependency: ml8 -> ml2..ml7 (hardens shipped code). Design: docs/superpowers/specs/2026-08-11-millipede-cabinet-roadmap-and-ml1-design.md (section 4, ml8). This epic is open-ended by design; points are seed-only."
 priority: p3
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: ml8-1
@@ -41,9 +41,10 @@ stories:
     priority: p3
     status: done
     started: '2026-08-15'
-    completed: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
     type: refactor
     review_verdict: approved
     branch: feat/ml8-4-mutation-battery-conway-col0-edge-seed
+completed: '2026-08-15'

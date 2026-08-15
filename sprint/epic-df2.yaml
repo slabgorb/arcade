@@ -49,10 +49,11 @@ stories:
     title: 'Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:18). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
     review_findings: 'APPROVED round 2. R1 findings resolved: F1 (ROM citations + RFONR1/LFONR1 swap) corrected & re-verified byte-accurate; F2 (blitTerrain non-integer altitude) now throws, mutation-verified non-vacuous. A #24 straggler (TLEN :17->:18 in planning prose) was swept tree-wide (ef453293). Defender 297/297, orchestrator 498/498, lint green.'
     review_verdict: approved
   - id: df2-6
