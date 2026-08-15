@@ -1,0 +1,141 @@
+// scripts/transcribe-terrain.mjs
+//
+// Story df2-5 (GREEN, Yoda) — the terrain transcribe tool. Reads the vendored
+// Defender terrain data (reference/original-source/defender/BLK71.SRC) and emits the
+// GENERATED data module plugins/defender/src/core/terrain-data.ts.
+//
+// This is Dev's OWN, independent reading of the RASM source — it deliberately does
+// NOT import the test-side reader (tests/helpers/defender-source.ts). The terrain
+// byte gate (tests/terrain-gate.test.ts) re-derives every byte with THAT separate
+// reader and refuses any mismatch; if this tool consumed it, the gate would be
+// tautological (the independence test enforces the separation).
+//
+// FORMAT (verified against BLK71.SRC): BLK71 is mostly terrain-generation CODE plus
+// PLAYER EXPLOSION data — only two labels are terrain DATA, both plain FCB byte runs:
+//   • TDATA — "TERRAIN DATA TABLE" (BLK71.SRC:507). TLEN ($100) = 256 bytes, a packed
+//     BIT-STREAM height profile consumed bit-serially by the BG* routines. Emitted
+//     with encoding 'bitstream' — decodeAltitudes walks it; it is never nibble-rastered.
+//   • MTERR — "MINI TERRAIN" (BLK71.SRC:527). 384 bytes, the scanner mini-map terrain
+//     (alt,x,x triples). Emitted with encoding 'stream' — INERT here (the scanner is df5).
+// Neither is a 'raster' (streams-are-not-rasters — df2 guardrail 2).
+//
+// Usage: node scripts/transcribe-terrain.mjs   (writes the generated module)
+
+import { readFileSync, writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+const BLK71 = 'BLK71.SRC'
+const vendored = (f) => join(repoRoot, 'reference', 'original-source', 'defender', f)
+const outPath = join(repoRoot, 'plugins', 'defender', 'src', 'core', 'terrain-data.ts')
+
+// ─── independent RASM reader ──────────────────────────────────────────────────
+const linesOf = (f) => readFileSync(vendored(f), 'utf8').split('\n')
+
+/** Parse one RASM line → { label, op, operands } or null (comment/blank/label-only). */
+function parse(raw) {
+  if (raw.length === 0 || raw.startsWith('*')) return null
+  const hasLabel = /^\S/.test(raw)
+  const fields = raw.split(/\s+/).filter((f) => f.length > 0)
+  if (fields.length === 0) return null
+  let i = 0
+  const label = hasLabel ? fields[i++] : null
+  if (i >= fields.length) return null // label-only
+  const op = fields[i++]
+  const operands = i < fields.length && fields[i].length > 0 ? fields[i].split(',') : []
+  return { label, op, operands }
+}
+
+/** Evaluate a RASM operand: $hex or BARE DECIMAL. Throws on a symbol (data is numeric). */
+function evalNum(token) {
+  const t = token.trim()
+  if (t.startsWith('$')) return parseInt(t.slice(1), 16)
+  if (/^[0-9]+$/.test(t)) return parseInt(t, 10)
+  throw new Error(`non-numeric data operand: ${token}`)
+}
+
+/**
+ * Read a run of consecutive FCB/FDB rows at `label` → a flat byte stream. FCB
+ * operands are raw bytes; FDB operands are 16-bit words, BIG-ENDIAN (6809). Stops at
+ * the next LABELLED row, a non-FCB/FDB statement, a comment or a blank. TDATA and
+ * MTERR are plain FCB runs, so this reads them whole.
+ */
+function byteRun(lines, label) {
+  const defIdx = lines.findIndex((l) => parse(l)?.label === label)
+  if (defIdx < 0) throw new Error(`terrain-data label not found: ${label}`)
+  const out = []
+  for (let i = defIdx; i < lines.length; i++) {
+    const st = parse(lines[i])
+    if (i > defIdx && (st === null || (st.op !== 'FDB' && st.op !== 'FCB') || st.label !== null)) break
+    if (st === null) continue
+    if (st.op === 'FCB') for (const o of st.operands) out.push(evalNum(o) & 0xff)
+    else if (st.op === 'FDB') for (const o of st.operands) { const w = evalNum(o); out.push((w >> 8) & 0xff, w & 0xff) }
+  }
+  return out
+}
+
+/** 1-based line of a defined label, or 0 if absent. */
+function lineOf(lines, label) {
+  const i = lines.findIndex((l) => parse(l)?.label === label)
+  return i < 0 ? 0 : i + 1
+}
+
+// ─── build the terrain list ─────────────────────────────────────────────────
+const blk71 = linesOf(BLK71)
+const terrain = [
+  {
+    name: 'TDATA',
+    encoding: 'bitstream', // a packed bit-per-step height profile — decodeAltitudes walks it
+    bytes: byteRun(blk71, 'TDATA'),
+    source: { file: BLK71, label: 'TDATA', line: lineOf(blk71, 'TDATA') },
+  },
+  {
+    name: 'MTERR',
+    encoding: 'stream', // scanner mini-terrain (alt,x,x triples) — INERT here, rendered by df5
+    bytes: byteRun(blk71, 'MTERR'),
+    source: { file: BLK71, label: 'MTERR', line: lineOf(blk71, 'MTERR') },
+  },
+]
+
+// ─── emit the generated module ──────────────────────────────────────────────
+const record = (b) =>
+  `  { name: ${JSON.stringify(b.name)}, encoding: '${b.encoding}', ` +
+  `bytes: [${b.bytes.join(', ')}], ` +
+  `source: { file: ${JSON.stringify(b.source.file)}, label: ${JSON.stringify(b.source.label)}, line: ${b.source.line} } },`
+
+const body = `// src/core/terrain-data.ts
+//
+// @generated by scripts/transcribe-terrain.mjs from
+// reference/original-source/defender/BLK71.SRC — DO NOT EDIT BY HAND.
+// Re-run \`node scripts/transcribe-terrain.mjs\` to regenerate.
+//
+// Defender's terrain data (defender/BLK71.SRC, banked block 7). The block is mostly
+// terrain-generation CODE plus PLAYER EXPLOSION data; only two labels are terrain
+// DATA: TDATA (the 256-byte 'bitstream' height profile, TLEN=\$100) and MTERR (the
+// 384-byte scanner 'stream'). NEITHER is a 'raster' — terrain is a byte/bit stream,
+// never a nibble grid (streams-are-not-rasters). Every byte is re-derived and
+// refused-on-mismatch by tests/terrain-gate.test.ts. PURE data — no colour, no clock,
+// no import.
+
+/** Block encoding discriminant. Neither kind is a nibble raster: 'bitstream' is the
+ *  TDATA height profile decodeAltitudes walks; 'stream' is the MTERR scanner data. */
+export type TerrainEncoding = 'bitstream' | 'stream'
+
+/** One transcribed BLK71 terrain block: a flat byte run from the vendored source. */
+export interface TerrainBlockData {
+  readonly name: string
+  readonly encoding: TerrainEncoding
+  /** The transcribed bytes, big-endian from source. */
+  readonly bytes: readonly number[]
+  /** Provenance: the vendored file, the label transcribed, and its 1-based line. */
+  readonly source: { readonly file: string; readonly label: string; readonly line: number }
+}
+
+export const TERRAIN: readonly TerrainBlockData[] = [
+${terrain.map(record).join('\n')}
+]
+`
+
+writeFileSync(outPath, body)
+console.log(`wrote ${terrain.length} terrain blocks → ${outPath.replace(repoRoot + '/', '')}`)
