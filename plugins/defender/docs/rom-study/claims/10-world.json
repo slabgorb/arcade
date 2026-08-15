@@ -1,0 +1,83 @@
+[
+  {
+    "id": "WD-1",
+    "claim": "YMIN, the top of the vertical strip, is DECIMAL 42: YMIN EQU 42 — the floor the player Y clamps at (YMIN+1) and objects wrap on.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 21,
+      "verbatim": "YMIN\tEQU\t42\tMIN Y COORD"
+    }
+  },
+  {
+    "id": "WD-2",
+    "claim": "YMAX, the bottom of the vertical strip, is DECIMAL 240: YMAX EQU 240 — the ceiling objects wrap on.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 20,
+      "verbatim": "YMAX\tEQU\t240"
+    }
+  },
+  {
+    "id": "WD-3",
+    "claim": "BGL is the camera — the 16-bit world-X of the screen's left edge: BGL RMB 2, 'TERRAIN LEFT POINTER'. The world is a horizontal cylinder BGL wraps around.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 215,
+      "verbatim": "BGL\tRMB\t2\tTERRAIN LEFT POINTER"
+    }
+  },
+  {
+    "id": "WD-4",
+    "claim": "BGLX is last frame's camera — 'OLD TERRAIN LEFT': BGLX RMB 2. The per-frame scroll delta objects and stars ride is BGL minus BGLX.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 216,
+      "verbatim": "BGLX\tRMB\t2\tOLD TERRAIN LEFT"
+    }
+  },
+  {
+    "id": "WD-5",
+    "claim": "The ship's target screen column is $20-based facing right: LDA #$20 '+BASE', the left-third lead column so the ship leads the scroll rightward.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2385,
+      "verbatim": "\tLDA\t#$20\t+BASE"
+    }
+  },
+  {
+    "id": "WD-6",
+    "claim": "The ship's target screen column is $70-based facing left: PV1 LDA #$70 '-BASE', the right-side lead column so the ship leads the scroll leftward.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2389,
+      "verbatim": "PV1\tLDA\t#$70\t-BASE"
+    }
+  },
+  {
+    "id": "WD-7",
+    "claim": "The camera-slide in-range window half-width is $100: CMPD #$100 'IN RANGE?' — a target-vs-onscreen diff within it means no slide (the + boundary is inclusive via the following BLS).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2400,
+      "verbatim": "\tCMPD\t#$100\tIN RANGE?"
+    }
+  },
+  {
+    "id": "WD-8",
+    "claim": "The camera-slide step (BGDELT) is $40 per frame when the ship is out of the in-range window: LDD #$40 (stored into BGDELT on the next line).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2402,
+      "verbatim": "\tLDD\t#$40"
+    }
+  },
+  {
+    "id": "WD-9",
+    "claim": "PLABX holds the ship's ABSOLUTE world X: PLABX RMB 2. It is derived, not stored — worldX = onscreen + BGL (computed at DEFA7.SRC:2432-2440); the pure worldX() helper models it.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 335,
+      "verbatim": "PLABX\tRMB\t2"
+    }
+  }
+]
