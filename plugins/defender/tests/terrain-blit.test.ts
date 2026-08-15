@@ -22,11 +22,12 @@
 // ─── SCOPE: THE STRUCTURAL DECODE, NOT THE EXACT SCROLL SILHOUETTE ────────────
 // BGALT's *base + step* rule is certain and df3-independent (base $E0; each stored
 // entry advances by two ±1 steps, so |Δ| ≤ 2; 4 entries per TDATA byte). This suite
-// pins THAT. It deliberately does NOT pin the exact per-column silhouette: the bit
-// CONSUMPTION order is RFONR1 (defender/BLK71.SRC:481-506), the bidirectional scroll
-// generator — it reads TDATA backwards from TDATA+TLEN, wraps at TLEN and rotates
-// through RTCNT — which is the SCROLLING world, explicitly df3 ("No scroll — the
-// scrolling world is df3"). Pinning a golden altitude array here would pull df3's
+// pins THAT. It deliberately does NOT pin the exact per-column silhouette: the exact
+// bidirectional scroll order is LFONR1 (defender/BLK71.SRC:481-506) — it reads TDATA
+// backwards from TDATA+TLEN, wraps at TLEN and rotates through RTCNT — which is the
+// SCROLLING world, explicitly df3 ("No scroll — the scrolling world is df3"). (BGALT's
+// own next-bit routine is the FORWARD RFONR1 at :435, which the decode approximates.)
+// Pinning a golden altitude array here would pull df3's
 // scroll machinery into a static-still story and risk a guessed spec. The exact
 // silhouette is settled by df2-6's visual playtest and df3's scroll seam. (Logged as
 // a Design Deviation in the session file.)
@@ -76,8 +77,8 @@ const tdataBlock = (m: TerrainModule) => {
   return b
 }
 
-/** BGALT's base offset ROFF (LDA #$E0, defender/BLK71.SRC:381) — the surface starts
- *  near the bottom of the 240-row screen. */
+/** BGALT's base offset ROFF (LDA #$E0, defender/BLK71.SRC:380; STA ROFF :381) — the
+ *  surface starts near the bottom of the 240-row screen. */
 const BASE_OFFSET = 0xe0 // 224
 
 // ─── small observers over a framebuffer (background index 0 = untouched) ──────
@@ -226,12 +227,15 @@ describe('blitTerrain — the static planet surface (AC: static surface across t
 })
 
 describe('blitTerrain — refuses malformed input LOUD (degenerate but not nullish)', () => {
-  it('refuses a non-finite altitude rather than silently no-op (fb.data[NaN] writes nowhere)', async () => {
+  it('refuses a non-integer altitude rather than silently dropping the column (fb.data[non-int] writes nowhere)', async () => {
     const m = await loadTerrain()
     const fb = createFramebuffer(8, 8)
     clear(fb, 0)
     expect(() => m.blitTerrain(fb, [3, NaN, 4], 5)).toThrow()
     expect(() => m.blitTerrain(fb, [3, Infinity, 4], 5)).toThrow()
+    // A FINITE non-integer is not a valid row index either — it must fail LOUD, not be
+    // clipped like an off-screen row (lang-review #21: degenerate-but-not-nullish input).
+    expect(() => m.blitTerrain(fb, [3, 3.7, 4], 5)).toThrow()
   })
 
   it('refuses a colour index that is not a real palette entry 0-15 (colours are never invented)', async () => {

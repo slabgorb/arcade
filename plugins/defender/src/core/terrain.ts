@@ -11,14 +11,16 @@
 // purity sweep (tests/purity.test.ts) scans this file. Core hands the shell indices;
 // the shell (render.ts) decodes an index to colour.
 //
-// ─── THE ALTITUDE DECODE (BGALT, defender/BLK71.SRC:372-398) ───────────────────
+// ─── THE ALTITUDE DECODE (BGALT, defender/BLK71.SRC:374-399) ───────────────────
 // BGALT builds the terrain altitude table from TDATA's packed bit-stream: base
-// offset ROFF = $E0 (:381), then a ±1 walk — a SET bit steps UP (DEC ROFF, :385), a
-// CLEAR bit steps DOWN (INC ROFF, :391) — storing one altitude per TWO bits until the
-// table holds 4*TLEN entries (:397). This is the STATIC base+step decode: the exact
-// bit-consumption order for scrolling (RFONR1's bidirectional backward-wrapping scan,
-// :481-506) is df3's scroll seam, not this static still (see the session's TEA/Dev
-// deviations). The bytes are the ROM's; the surface is derived, never invented.
+// offset ROFF = $E0 (:380), then a ±1 walk — a SET bit steps UP (DEC ROFF, :387), a
+// CLEAR bit steps DOWN (INC ROFF, :389) — storing one altitude per TWO bits until the
+// table holds 4*TLEN entries (:397). This is the STATIC base+step decode. BGALT's own
+// next-bit routine is RFONR1 (:435), which advances FORWARD through TDATA and wraps
+// forward (TDATA+TLEN → TDATA); the MSB-first walk here approximates it. The exact
+// bidirectional SCROLL order — LFONR1's backward-wrapping scan (:481-506) plus the
+// flavor tables — is df3's scroll seam, not this static still (see the session's
+// TEA/Dev deviations). The bytes are the ROM's; the surface is derived, never invented.
 
 import type { Framebuffer } from './framebuffer.js'
 import { TERRAIN, type TerrainBlockData } from './terrain-data.js'
@@ -26,10 +28,10 @@ import { TERRAIN, type TerrainBlockData } from './terrain-data.js'
 export { TERRAIN }
 export type TerrainBlock = TerrainBlockData
 
-/** BGALT base offset ROFF (LDA #$E0, defender/BLK71.SRC:381) — the surface starts
- *  near the bottom of the 240-row screen. */
+/** BGALT base offset ROFF (LDA #$E0, defender/BLK71.SRC:380; STA ROFF :381) — the
+ *  surface starts near the bottom of the 240-row screen. */
 const BASE_OFFSET = 0xe0
-/** BGALT stores one altitude per TWO bit-steps (defender/BLK71.SRC:383-395). */
+/** BGALT stores one altitude per TWO bit-steps (loop body ALTT1..ALTT5, defender/BLK71.SRC:383-396). */
 const BITS_PER_ENTRY = 2
 /** The framebuffer holds 4-bit palette indices; a colour is one of 16 CRAM entries. */
 const MAX_PALETTE_INDEX = 15
@@ -66,11 +68,13 @@ export function decodeAltitudes(block: TerrainBlock): number[] {
  * surface pixel at row = altitudes[x] AS the palette index `colorIndex`, CLIPPED to
  * the framebuffer. Pure: mutates fb in place, writes nothing outside it. Colours are
  * never invented — the caller's index is the colour (as blitGlyph takes a caller
- * colour), so `colorIndex` must be a real 4-bit palette entry (0-15). Fails LOUD
- * rather than mis-rendering: a non-finite altitude (fb.data[NaN] is a silent no-op)
- * or a colour index outside the 16-entry palette (a Uint8Array would truncate it into
- * an invented colour) each throws. An off-screen row (negative or ≥ height) is
- * clipped, not an error — the surface simply runs off the frame.
+ * colour), so `colorIndex` must be a real 4-bit palette entry (0-15) and every altitude
+ * must be an integer row. Fails LOUD rather than mis-rendering: a non-integer altitude
+ * (NaN, Infinity or a fractional value — none is a valid row index, and
+ * fb.data[non-integer] is a silent no-op) or a colour index outside the 16-entry palette
+ * (a Uint8Array would truncate it into an invented colour) each throws. An off-screen
+ * INTEGER row (negative or ≥ height) is clipped, not an error — the surface simply runs
+ * off the frame.
  */
 export function blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number): void {
   if (!Number.isInteger(colorIndex) || colorIndex < 0 || colorIndex > MAX_PALETTE_INDEX) {
@@ -79,10 +83,12 @@ export function blitTerrain(fb: Framebuffer, altitudes: readonly number[], color
   const columns = Math.min(altitudes.length, fb.width)
   for (let x = 0; x < columns; x++) {
     const row = altitudes[x]
-    if (!Number.isFinite(row)) {
-      throw new Error(`blitTerrain: non-finite altitude ${row} at column ${x}`)
+    if (!Number.isInteger(row)) {
+      // NaN/Infinity/fractional are all non-rows: fb.data[non-integer] silently writes
+      // nowhere, so fail LOUD rather than drop the column (lang-review #21).
+      throw new Error(`blitTerrain: altitude ${row} at column ${x} is not an integer row`)
     }
-    if (!Number.isInteger(row) || row < 0 || row >= fb.height) continue // clip off-screen
+    if (row < 0 || row >= fb.height) continue // clip off-screen
     fb.data[row * fb.width + x] = colorIndex
   }
 }

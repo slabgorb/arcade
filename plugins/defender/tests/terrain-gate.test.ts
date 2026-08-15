@@ -7,8 +7,9 @@
 // BGALT (:372), BGERAS (:402) and the left/right terrain functions (:411-506) — plus
 // PLAYER EXPLOSION data (PXPOST/PYPOST/…, :21+). The only transcribable DATA in the
 // block is TWO labels:
-//   • TDATA — "TERRAIN DATA TABLE" (defender/BLK71.SRC:507). An FCB byte stream,
-//     exactly TLEN = $100 = 256 bytes (TLEN EQU $100, defender/BLK71.SRC:17). It is a
+//   • TDATA — "TERRAIN DATA TABLE" (header comment defender/BLK71.SRC:507; the TDATA
+//     FCB row is :509). An FCB byte stream, exactly TLEN = $100 = 256 bytes
+//     (TLEN EQU $100, defender/BLK71.SRC:18). It is a
 //     PACKED BIT-STREAM (bit-per-step terrain profile), consumed bit-serially by the
 //     BG* routines (LTBYTE/RTBYTE "TERRAIN DATA BYTE", LTCNT/RTCNT "TERRAIN BIT
 //     COUNTER", :40-43) — NOT a nibble raster.
@@ -59,7 +60,7 @@ import { vendoredAvailable, readImageBytes } from './helpers/defender-source.js'
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
 
 const BLK71 = 'BLK71.SRC'
-/** TLEN EQU $100 = 256 — the terrain table length (defender/BLK71.SRC:17). */
+/** TLEN EQU $100 = 256 — the terrain table length (defender/BLK71.SRC:18). */
 const TLEN = 0x100
 
 // ─── The module contract GREEN must satisfy (local shim; declared here so this suite
@@ -106,8 +107,8 @@ const blockNamed = (m: TerrainModule, name: string) => m.TERRAIN.find((b) => b.n
 // ══════════════════════════════════════════════════════════════════════════════
 describe.skipIf(!vendoredAvailable)('independent reader — real BLK71 terrain facts (this session)', () => {
   it('TDATA is exactly TLEN ($100 = 256) bytes — the full terrain data table', () => {
-    // defender/BLK71.SRC:507 TDATA FCB … — sixteen 16-byte FCB rows, ending at the
-    // comment separator before MINI TERRAIN.
+    // defender/BLK71.SRC:509 `TDATA FCB …` — sixteen 16-byte FCB rows (:509-524),
+    // ending at the comment separator before MINI TERRAIN.
     expect(readImageBytes(BLK71, 'TDATA').length).toBe(TLEN)
   })
 

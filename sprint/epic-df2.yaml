@@ -49,10 +49,12 @@ stories:
     title: 'Terrain + mini-terrain (BLK71) transcription + static planet surface. BLK71 "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7 (defender/BLK71.SRC:1-8; TLEN EQU $100, defender/BLK71.SRC:17). Transcribe the terrain vectors under the gate; render a STATIC planet surface across the framebuffer bottom (the roadmap "static planet + text early"). No scroll — the scrolling world is df3.'
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    review_findings: 'F1 [HIGH]: ROM citations in terrain.ts + both test files are wrong (LDA #$E0 :380 not :381, DEC ROFF :387, INC ROFF :389, TLEN :18, TDATA FCB :509) and RFONR1/LFONR1 swapped (RFONR1 :435 forward = what BGALT calls; LFONR1 :481-506 backward) — violates guardrail #4 / lang-review #17. F2 [MEDIUM]: blitTerrain silently clips a finite non-integer row, contradicting its fails-loud docstring (lang-review #21) — throw + add test.'
+    review_verdict: rejected
   - id: df2-6
     title: 'VISUAL playtest for orientation traps + still-frame proof: screenshot http://127.0.0.1:5270/defender/ showing planet + charset text + a sample object, compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm render orientation and colour BEFORE physics (playbook sec 4). Carry forward the df4 accessibility ruling as a note (no full-screen strobe downstream).'
     points: 1
