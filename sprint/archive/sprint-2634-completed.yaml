@@ -385,3 +385,8 @@ completed_stories:
     title: 'Accessibility gate (standing exception to ROM-always-wins): NO full-screen strobe/flash on wave transition, death, DDT explosion, or attract — freeze or fade instead. Baked into the phase machine. Verify by visual playtest across every transition.'
     points: 3
     completed: '2026-08-13'
+  - id: df2-4
+    epic: df2
+    title: 'Object image tables (DEFB6 + SAMEXAP7) transcription — INERT. DEFB6 inline object graphics (the OBI object-image headers, e.g. UFO at defender/DEFB6.SRC:1) and SAMEXAP7 "SAM EXPLOSIONS AND APPEARANCES" (defender/SAMEXAP7.SRC:6-7). GENERATED module + independent gate; each block records an encoding discriminant (refuse to raster a non-raster). Data lands INERT, proven only by a static gallery blit — no animation, no collision (df4).'
+    points: 4
+    completed: '2026-08-15'
