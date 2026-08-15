@@ -10,7 +10,7 @@ stories:
     title: 'Cooperative process scheduler core (RED first): plugins/defender/src/core/scheduler.ts — a process run-list with makeProcess (MKPROC, defender/DEFA7.SRC:72), kill (KILL/SUCIDE, defender/DEFA7.SRC:19,31), sleep/nap (SLEEP, defender/DEFA7.SRC:12 — wake after N 16-msec ticks at a continuation addr), and stepTick() (the once-per-frame dispatch, the sub-128 IRQ arm''s effect, defender/DEFA7.SRC:3048-3050). Pure and clock-free; the shell calls stepTick() off @shared/loop. Re-derived and re-cited from THIS tree (jt2 is a pattern reference in prose only, never imported). purity.test.ts stays green.'
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     repos: arcade
     workflow: tdd
   - id: df3-2
