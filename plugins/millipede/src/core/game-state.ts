@@ -58,6 +58,13 @@ export interface GameState {
    *  continuous arm, beetle/mosquito kills, the CENTPC re-lay); SCROLL consumes it
    *  each frame (scroll.ts). */
   scrolc: number
+  /** HITDDT (MLDEF.MAC:373, "NON-ZERO IF DDT HAS BEEN HIT") — a persistent flag
+   *  set when a shot detonates a bomb (MILLI.MAC:2060) or the player dies from a
+   *  collision (:1805, the PLAY routine), and cleared only at wave start
+   *  (CENTPC :508). While set it suppresses the continuous-scroll arm (SC-9,
+   *  scroll.ts) — holding the auto-scroll off from death through respawn until the
+   *  wave restarts, which the frame-local player-dead gate (SC-8) cannot do. */
+  hitDdt: boolean
   /** MUSH / MUSH+2 (MLDEF.MAC:342-343) — mushrooms counted in the lower and top
    *  row bands. The scatter seeds them, and every scroll/ddt delta adjusts them. */
   mushCounts: MushCounts
@@ -126,6 +133,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     bonusL: bonus.bonusL,
     bonusM: bonus.bonusM,
     scrolc: 0, // SCROLC idle — nothing pending at boot (MLDEF.MAC:372)
+    hitDdt: false, // HITDDT clear at boot — no DDT hit yet (MLDEF.MAC:373)
     mushCounts: counts, // the scatter's MUSH/MUSH+2 tallies, previously discarded
     delay: 0,
     deathTimer: 0,

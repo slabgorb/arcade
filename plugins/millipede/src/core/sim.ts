@@ -147,11 +147,15 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //    then, if the shot passed through, the millipede segments.
   let segments = state.segments
   let score = state.score
+  // HITDDT (MLDEF.MAC:373) — a persistent flag; carry the prior value forward and
+  // set/clear it at the ROM's sites this frame (SC-9, suppresses the scroll arm below).
+  let hitDdt = state.hitDdt
   if (shot.active) {
     const field = resolveShot(state.ddt, state.field, shot.h, shot.v)
     if (field.kind === 'ddt') {
       score += field.points // +80 (DDT_HIT_POINTS)
       shot = { active: false, h: 0, v: 0 }
+      hitDdt = true // INC HITDDT — the shot detonated a bomb (MILLI.MAC:2060, DD-213)
       events.push(event('ddt-exploded'))
     } else if (field.kind === 'mushroom') {
       score += field.points // +1 only on a destroying chip
@@ -249,6 +253,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     alive = false
     playerDied = true
     lives -= 1
+    hitDdt = true // INC HITDDT — a player-collision death (MILLI.MAC:1805, PLAY routine)
     events.push(event('player-died'))
   }
 
@@ -293,6 +298,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     scrollQueued -= 1 // CENTPC re-lays the train and scrolls DOWN (MILLI.MAC:503)
     ddtPlace(state.ddt, false)
     ddtRestore(state.ddt, state.field)
+    hitDdt = false // CLEAR HITDDT when the new wave starts (CENTPC, MILLI.MAC:508)
     wave += 1
   }
 
@@ -316,12 +322,12 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     ddtExploding: anyDdtExploding(state.ddt), // OR of the bomb hi bytes (SC-7)
     playerDead: !alive, // PLAYP/PEXPLD (SC-8)
     // HITDDT (SC-9) suppresses the continuous arm. The ROM sets it at TWO sites —
-    // player-death (:1805) and a shot detonating a bomb (:2060) — and clears it at
-    // wave start (:508); GameState models no such register yet, so this gate input
-    // is not wired. The death path's SCROLC=0 cancel (:1812) is reproduced above,
-    // but the arm-suppression itself is deferred (follow-up ml7-12). Not `false` as
-    // "covered" — `false` as "unmodelled".
-    hitDdt: false,
+    // a shot detonating a bomb (:2060) and a player-collision death (:1805) — and
+    // clears it at wave start (:508); all three are wired above (ml7-12), so this
+    // reads the register as it stands AFTER this frame's set/clear, matching the
+    // ROM's INC-before-SCROLL order (:29/:1805 then :46). The death path's SCROLC=0
+    // cancel (:1812) is still reproduced above and is orthogonal to this flag.
+    hitDdt,
     segmentsRemaining: liveSegs, // DEAD (SC-2/10)
     centin: liveSegs, // CENTIN (SC-3/11) — the continuous arm's length-4 gate
     frame: state.frame, // the arm's 128-frame phase input (SC-13)
@@ -396,6 +402,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     bonusL,
     bonusM,
     scrolc,
+    hitDdt,
     mushCounts: { lower: mushLower, top: mushTop },
     slow,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
