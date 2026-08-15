@@ -31,9 +31,10 @@ stories:
     title: "Cocktail cabinet (CKIND bit 7, player 2 up) is unmodelled fleet-wide in the millipede port: ml3-4's CONWAY reducer is upright-only (player area rows < 7; cocktail flips MSKORA to rows >= 0x19, CONWAY.MAC:40-44, and changes the MUSHE1/MUSHDC row bands, MLSUB.MAC:713-727/748-767). Decide: model cocktail across the core reducers, or record an explicit fleet-wide wontfix matching the centipede precedent. Filed from ml3-4's review round (Delivery Finding, TEA)."
     points: 2
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
+    resolution: "wontfix — decision (owner, 2026-08-15): cocktail mode (player 2 up) is out of scope fleet-wide, matching the centipede precedent (cp4-2, cp2-10). Not modelling cocktail across the core reducers; the upright-only path stands. The out-of-scope status is already documented in prose at ml3-4/ml3-5/ml4-4/ml7-3, so this story records the decision only — no code change."
   - id: ml8-4
     title: 'Mutation battery: column-0 edge-seed template start in conway.ts (x=0x0A / y=0x40) — two REACHABLE survivors routed from the ml8-1 review. Guard the left-edge neighbourhood scan (a col-0 cell whose count depends on the EDGE-substituted off-screen columns distinguishes both seeds; differential-confirmed over 300 edge fields). The colmax edge-extents for cols 28/29 (0x60/0x80) are EQUIVALENT mutants — the extra scan reads off-screen cells as zero — document alongside ml8-1 M07, do not guard.'
     points: 2
