@@ -141,7 +141,7 @@ bound to this tree's file→subsystem map. Each story is single-sided-cited into
   only by a static gallery blit. No animation, no collision (that is `df4`). **(4 pts)**
 - **`df2-5` — Terrain + mini-terrain (`BLK71`) + static planet surface.** `BLK71`
   "TERRAIN, MINI-TERRAIN DATA AND PLAYER EXPLOSION", banked block 7
-  (`defender/BLK71.SRC:1-8`; `TLEN EQU $100`, `defender/BLK71.SRC:17`). Transcribe
+  (`defender/BLK71.SRC:1-8`; `TLEN EQU $100`, `defender/BLK71.SRC:18`). Transcribe
   the terrain vectors; render a **static** planet surface across the framebuffer
   bottom — the roadmap's "static planet + text early". **(3 pts)**
 - **`df2-6` — VISUAL playtest for orientation traps + still-frame proof.**
