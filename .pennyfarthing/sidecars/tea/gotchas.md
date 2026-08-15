@@ -4319,3 +4319,33 @@ discriminator. Rule of thumb: enumerate the next-coarser power-of-two mask and m
 sure at least one negative probe is a value it accepts. And do not let the assertion
 MESSAGE claim residues the body does not probe ("frames 1..3 mod 4 do not flap" over
 a single frame-5 probe) — the message oversold the probe and hid the gap.
+
+---
+
+### Defender MESS0 charset: 4-byte descriptor records + a `EQU *`-aliased, OVERSIZED shared cell — the transcribe reader MUST follow the alias and slice to width×height (df2-3, 2026-08-15)
+
+Building the charset byte-gate reader (`plugins/defender/tests/helpers/defender-source.ts`,
+the joust double-entry pattern re-derived for RASM). The MESS0 charset format, verified against
+`reference/original-source/defender/MESS0.SRC` this session:
+- The `CHRTBL` descriptor table (`:441`) is 4-byte records `FDB $WWHH,<ptr>` — the ROM's own
+  `TEXT7B ASLB ASLB` (×4) + `ABX #CHRTBL` proves the stride is 4. Word0 `$WWHH` is BIG-ENDIAN
+  (6809 FDB), so the **width byte is the HIGH byte** — and `ADDA ,Y` (`:766`) advances the cursor
+  by exactly that first byte, confirming WW=width, HH=height. Cell data = **WW×HH bytes**.
+- **The trap that a naive `bytesForLabel` fails:** the descriptor ptr is not always an FDB label.
+  `SPACE` is `SPACE EQU *` (`:540`) — an alias for the current address — and the FDB block that
+  immediately follows carries a *different* label, `BLANK`, whose data is an OVERSIZED all-zero
+  `BSZ 3*8` (24 bytes) that a width-1 SPACE over-reads safely. So (a) the reader must resolve the
+  EQU alias to the following FDB label, and (b) the effective cell is `width×height` bytes SLICED
+  FROM THE START of the block — the block can be LONGER than the cell. A reader that keys only on
+  `label === X && op === 'FDB'` throws on SPACE; a geometry check of `bytes.length === width×height`
+  fails against BLANK's 24 bytes unless you slice. My own reader-teeth test caught both on the first
+  RED run (which is the point of giving the second-entry reader its own teeth — lang-review #18).
+- This descriptor+data+alias shape almost certainly recurs in **df2-4** (DEFB6/SAMEXAP7 object-image
+  headers) and **df2-5** (BLK71 terrain), which the epic also routes through the generated-data +
+  independent-gate pattern. Reuse `cellBytes(file, ptr, w, h)` (slice-and-check) and the EQU-alias
+  resolution; do not re-discover the oversized-shared-block trap per story.
+- Decode-law scope note for TEA: the exact ROM-byte→pixel unpacking (nibble order, the Williams
+  screen rotation) is an ORIENTATION trap that df2-6's visual playtest owns. Pin the byte gate hard
+  (bytes are certain) but keep `blitGlyph`/`writeText` assertions PACKING-AGNOSTIC (blank-vs-lit,
+  colour-by-index, distinct glyphs, row-band bounds, clipping, cursor-advances-right, space-draws-
+  nothing). A byte-exact pixel assertion would ship a wrong spec if the nibble order is guessed.
