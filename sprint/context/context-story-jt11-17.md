@@ -17,31 +17,39 @@
 ## Problem / Root Cause
 
 The attract CTA names the digits — `START_PROMPT = 'PRESS 1 OR 2 TO START'`
-(`attractScreen.ts:44`, painted every attract page at `main.ts:358-359`) — but the attract start
+(`plugins/joust/src/shell/attractScreen.ts:44`, painted every attract page at `main.ts`) — but the attract start
 branch throws the specific choice away:
 
 ```
-// main.ts:554-556 (attract branch)
+// plugins/joust/src/main.ts:557-563 (attract branch)
 const want = readSelectInput(held)          // 'one-player' for Digit1, 'two-player' for Digit2
 const startHeld = want !== null
 if (startHeld && !prevStartHeld) cabinet = toSelect(cabinet)   // <-- only non-null-ness used; count DISCARDED
+prevStartHeld = startHeld
 ```
 
-`toSelect` (`cabinet.ts:90-92`) merely flips `mode` to `'select'` and carries no count. So the
+`toSelect` (`plugins/joust/src/core/cabinet.ts:90`) merely flips `mode` to `'select'` and carries no count. So the
 `'select'` screen re-asks the same 1P/2P question — `SEL_ONE_PLAYER` / `SEL_TWO_PLAYER`
-(`select.ts:36,39`; laid out `selectScreen.ts:35-36`; painted `main.ts:225-226`) — and a game only
-starts on a **second** digit press at the select door (`main.ts:564-574` →
+(`plugins/joust/src/core/select.ts:36,39`) — and a game only
+starts on a **second** digit press at the select door (`plugins/joust/src/main.ts:587-593` →
 `selectPlayerCount(want)` → `enterPlaying`).
 
 **Nothing is missing** — the pieces to start directly already exist and are simply bypassed on the
 attract keypress:
-- `selectPlayerCount(want)` (`select.ts:51-55`) already maps `'one-player'`/`'two-player'` → `1`/`2`.
-- `enterPlaying(count)` (`main.ts:432-438`) / `startPlaying(cab, seed, count)` (`cabinet.ts:99-101`)
-  already start a game for a specific count via `createGame(seed, playerCount)`.
+- `selectPlayerCount(want)` (`plugins/joust/src/core/select.ts:51`) already maps `'one-player'`/`'two-player'` → `1`/`2`.
+- `enterPlaying(count)` (`plugins/joust/src/main.ts:438`) / `startPlaying(cab, seed, count)` (`plugins/joust/src/core/cabinet.ts:99`)
+  already start a game for a specific count.
 
-**Line-drift note:** jt11-1 cited the start-input at `main.ts:422-426,500-503`; those have shifted.
-Live logic today: `readSelectInput` `main.ts:465-470`, attract press `main.ts:552-556`, select door
-`main.ts:564-574`, `prevStartHeld` declared `main.ts:419-422`. Re-anchor before editing.
+**Live anchors (verified 2026-08-14):**
+- CTA text: `plugins/joust/src/shell/attractScreen.ts:44` (START_PROMPT)
+- `readSelectInput`: `plugins/joust/src/main.ts:472`
+- attract start bug site: `plugins/joust/src/main.ts:557-563`
+- select door model (direct-start pattern): `plugins/joust/src/main.ts:587-593`
+- `selectPlayerCount`: `plugins/joust/src/core/select.ts:51`
+- `SEL_ONE_PLAYER`/`SEL_TWO_PLAYER`: `plugins/joust/src/core/select.ts:36,39`
+- `enterPlaying`: `plugins/joust/src/main.ts:438`
+- `startPlaying`/`toSelect`: `plugins/joust/src/core/cabinet.ts:99`, `:90`
+- `prevStartHeld`: `plugins/joust/src/main.ts:422`
 
 ## Design decision (Architect) — honour the advertised CTA: direct start
 
@@ -50,29 +58,44 @@ pressing 2 a 2-player game — no intervening re-selection. Thread the pressed c
 keypress straight into `startPlaying`:
 
 ```
-// main.ts:554-556
+// plugins/joust/src/main.ts:557-563 (FIXED)
 const want = readSelectInput(held)
 const startHeld = want !== null
 if (startHeld && !prevStartHeld) {
-  const count = selectPlayerCount(want)     // already imported (main.ts:29)
+  const count = selectPlayerCount(want)     // already imported
   if (count !== null) enterPlaying(count)    // start directly; skip the re-ask
 }
 prevStartHeld = startHeld                     // keep the rising-edge discipline
 ```
 
-The `'select'` screen becomes reachable only if a **distinct** coin-up gesture is kept (see Open
+This pattern is already proven at `main.ts:587-593` (the select door that direct-starts after a
+select screen choice). The `'select'` screen becomes reachable only if a **distinct** coin-up gesture is kept (see Open
 question). This is the reuse-first fix — no new functions, both symbols already imported.
 
-### Open question for the groomer / owner
-Does the cabinet still want a separate coin-up **select** screen at all? Two coherent end-states:
-- **(a) No select screen** — attract 1/2 is the only start path; retire the `'select'` mode's 1P/2P
-  re-prompt (or the whole select screen) so there is one source of truth for player count.
-- **(b) Keep select for a different gesture** — e.g. a coin/insert key opens select, while attract
-  1/2 still direct-starts. Then the CTA and the select screen are not redundant.
+### Open question for the groomer / owner — ⚠ RULED, then CORRECTED 2026-08-14 (attract-only)
 
-Recommend **(a)** unless the ROM/owner wants a coin-up select step; either way the attract 1/2 press
-must direct-start, which is the whole of this story. Coordinate the shared `main.ts` door with
-jt11-16 (which also touches the title→start transition).
+> **⚠ OWNER RULING v2 (2026-08-14, via TEA) — SUPERSEDES v1:** **Attract only; keep the title
+> coin-up.** Change ONLY the `attract` pump branch to direct-start; leave jt11-16's `title`→`select`
+> coin-up UNTOUCHED and keep the `select` mode. TEA falsified the v1 premise: jt11-16 (merged after
+> this story was filed) wired the `title` start-press to `toSelect`, so `toSelect` still has a caller
+> after the attract fix — the select mode is NOT orphaned, and retiring it would break jt11-16's
+> merged title coin-up and its passing tests (`title-boot-jt11-16-wiring.test.ts` AC-C). Accepted
+> asymmetry: after this fix, an attract start-press direct-starts while a title start-press still
+> opens the two-press select coin-up; unifying them is a separate follow-up.
+>
+> **⚠ OWNER RULING v1 (2026-08-14, via SM) — SUPERSEDED, kept for provenance:** Option (a) "retire
+> the re-prompt / whole select mode; attract 1/2 the sole start path." Made on the premise that
+> `toSelect` would lose its only caller — which jt11-16 falsified. Do not act on v1.
+
+Original framing (kept for provenance): does the cabinet still want a separate coin-up **select**
+screen at all? Two coherent end-states were —
+- **(a) No select screen** — attract 1/2 is the only start path; retire the `'select'` mode's 1P/2P
+  re-prompt (or the whole select screen) so there is one source of truth for player count. ← CHOSEN
+- **(b) Keep select for a different gesture** — e.g. a coin/insert key opens select, while attract
+  1/2 still direct-starts. ← rejected
+
+Either way the attract 1/2 press must direct-start, which is the whole of this story. Coordinate the
+shared `main.ts` door with jt11-16 (which also touches the title→start transition).
 
 ## Test Design
 
@@ -97,10 +120,11 @@ gates it. Reuse jt11-1/jt11-8's edge pattern.
 to that count (ties to jt11-1's `createGame(playerCount)` path). A pure-unit check plus one
 integration assertion that a 1P start spawns one knight.
 
-### AC-5 — the select screen's remaining role is coherent (per the Open question)
-If (a): the redundant 1P/2P re-prompt is removed and a test pins that attract is the sole start path.
-If (b): a distinct coin-up gesture opens select, and a test pins attract-1/2 still direct-starts.
-Do not leave two mutually-contradicting start paths.
+### AC-5 — jt11-16's title coin-up and the select mode are PRESERVED (owner ruling v2 — attract-only)
+CORRECTED: the fix touches ONLY the `attract` pump branch. A regression fence pins that the `title`
+branch still routes its start-press to `toSelect` (jt11-16, unchanged) and that the `select` mode is
+not removed. Do NOT retire the select mode or edit `title-boot-jt11-16-wiring.test.ts`. (v1's "remove
+the re-prompt / sole start path" is superseded — see the CORRECTED ruling banner above.)
 
 ### Rule coverage
 | Rule | Test |
@@ -115,8 +139,10 @@ Do not leave two mutually-contradicting start paths.
 2. The `'select'` re-prompt is not interposed on the attract start press (attract → playing).
 3. The rising-edge discipline holds — one press starts exactly one game.
 4. The started game's player count matches the pressed digit end to end (one knight for 1P).
-5. The select screen's remaining role is made coherent (removed, or gated behind a distinct coin-up
-   gesture) — no contradictory dual start paths.
+5. jt11-16's `title`→`select` coin-up and the `select` mode are **preserved** (owner ruling v2,
+   2026-08-14) — only the `attract` branch changes; the `title` branch still routes to `toSelect`,
+   and the select mode is not removed. (The attract-direct vs title-coin-up asymmetry is accepted;
+   unifying them is a separate follow-up.)
 
 ## Out of scope
 - Numpad/click start sources (jt11-8, canceled) — do not revive here unless the owner asks.

@@ -191,14 +191,15 @@ describe('AC-B the title dwells the ROM MARQUE dwell then transitions to attract
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AC-C — a start press during the title goes to the coin-up `select` screen, on the
-// RISING edge only (the same discipline the attract branch and the coin-up door use).
+// RISING edge only (the shared prevStartHeld rising-edge discipline; jt11-17 made the
+// ATTRACT start-press direct-start, but the title still routes to select).
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-C a start press on the title routes to select, edge-debounced', () => {
-  it('the title pump branch routes a start press to toSelect (attract/title -> select)', () => {
+  it('the title pump branch routes a start press to toSelect (title -> select)', () => {
     const branch = titlePumpBranch(mainCode())
     // Without a title branch, the generic non-playing door would take a title start
-    // press straight into a game (enterPlaying), skipping the coin-up. The title, like
-    // attract, must go to `select` first.
+    // press straight into a game (enterPlaying), skipping the coin-up. The title must go
+    // to `select` first. (jt11-17 made ATTRACT direct-start; the title coin-up is kept.)
     expect(branch, 'a start press on the title enters select').toMatch(/toSelect\(/)
   })
 
