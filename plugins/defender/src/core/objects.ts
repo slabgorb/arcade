@@ -10,14 +10,16 @@
 // purity sweep (tests/purity.test.ts) scans this file. Core hands the shell indices;
 // the shell (render.ts) decodes an index to colour.
 //
-// ─── THE CELL DECODE (derived; the byte gate owns the BYTES, this owns the pixels)─
-// A raster cell is width×height bytes, row-major (defender/DEFB6.SRC). Unlike the
-// charset (a 1-bit mask the caller colours), an OBJECT byte packs two 4-bit palette
-// INDICES — high nibble the left pixel, low nibble the right — and a non-zero nibble
-// is a foreground pixel drawn AS its own index (object images carry their own colour;
-// blitObject invents none). A cell is therefore width×2 pixels wide by height tall.
-// The exact nibble ORDER and the Williams screen rotation are an orientation question
-// df2-6's visual playtest settles; this decode is internally consistent.
+// ─── THE CELL DECODE (COLUMN-MAJOR — settled by df2-6's visual playtest) ─────────
+// A raster cell is width×height bytes, stored COLUMN-MAJOR like the charset: `width`
+// vertical strips of `height` bytes, so the byte for strip `col`, scanline `row` is
+// bytes[col*height + row]. Unlike the charset (a 1-bit mask the caller colours), an
+// OBJECT byte packs two 4-bit palette INDICES — high nibble the left pixel, low nibble
+// the right — and a non-zero nibble is a foreground pixel drawn AS its own index
+// (object images carry their own colour; blitObject invents none). A cell is therefore
+// width×2 pixels wide by height tall. df2-6 settled the orientation visually: UFOP1 and
+// PLAPIC only read as a saucer and a ship column-first (row-first is scatter), the same
+// Williams convention the charset uses.
 
 import type { Framebuffer } from './framebuffer.js'
 import { OBJECTS, type ObjectImageData } from './objects-data.js'
@@ -52,7 +54,7 @@ export function blitObject(fb: Framebuffer, obj: ObjectImage, x: number, y: numb
   }
   for (let row = 0; row < obj.height; row++) {
     for (let col = 0; col < obj.width; col++) {
-      const byte = obj.bytes[row * obj.width + col]
+      const byte = obj.bytes[col * obj.height + row] // COLUMN-major (df2-6)
       const nibbles = [(byte >> 4) & 0x0f, byte & 0x0f] // [left pixel, right pixel]
       for (let half = 0; half < PIXELS_PER_BYTE; half++) {
         const index = nibbles[half]
