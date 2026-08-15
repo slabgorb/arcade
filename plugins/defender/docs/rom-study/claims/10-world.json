@@ -70,5 +70,14 @@
       "line": 2402,
       "verbatim": "\tLDD\t#$40"
     }
+  },
+  {
+    "id": "WD-9",
+    "claim": "PLABX holds the ship's ABSOLUTE world X: PLABX RMB 2. It is derived, not stored — worldX = onscreen + BGL (computed at DEFA7.SRC:2432-2440); the pure worldX() helper models it.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 335,
+      "verbatim": "PLABX\tRMB\t2"
+    }
   }
 ]

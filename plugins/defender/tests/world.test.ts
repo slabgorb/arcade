@@ -19,19 +19,19 @@
 // mutants it will throw, pinned in advance.
 //
 // ─── THE ROM MODEL THIS SUITE PINS ───────────────────────────────────────────────
-// BGL "TERRAIN LEFT POINTER" (PHR6.SRC:215) is the CAMERA — the world-X of the
-// screen's left edge. BGLX "OLD TERRAIN LEFT" (PHR6.SRC:216) is last frame's camera.
+// BGL "TERRAIN LEFT POINTER" (defender/PHR6.SRC:215) is the CAMERA — the world-X of the
+// screen's left edge. BGLX "OLD TERRAIN LEFT" (defender/PHR6.SRC:216) is last frame's camera.
 // The world is a 16-BIT HORIZONTAL CYLINDER: BGL and every world-X wrap at $10000,
 // no clamp. Absolute world X is DERIVED, not stored: worldX = onscreen + BGL, a pure
-// helper (PLABX, PHR6.SRC:335; DEFA7.SRC:2432-2440).
+// helper (PLABX, defender/PHR6.SRC:335; defender/DEFA7.SRC:2432-2440).
 //
-// THE SHIP LEADS THE SCROLL — PLAY1 (DEFA7.SRC:2373-2431):
+// THE SHIP LEADS THE SCROLL — PLAY1 (defender/DEFA7.SRC:2373-2431):
 //   • It maps velocity to a TARGET screen column: base $20 facing-right
-//     (DEFA7.SRC:2385), base $70 facing-left (DEFA7.SRC:2389), plus a velocity
+//     (defender/DEFA7.SRC:2385), base $70 facing-left (defender/DEFA7.SRC:2389), plus a velocity
 //     column that only applies when facing AGREES with the velocity sign (the
-//     TSTB / BMI PV1A / BMI PV2 gate, DEFA7.SRC:2386-2393) — otherwise it is cleared
+//     TSTB / BMI PV1A / BMI PV2 gate, defender/DEFA7.SRC:2386-2393) — otherwise it is cleared
 //     (CLR PCX, :2392-2393) and the target is the bare base.
-//   • It slides BGL toward that target by BGDELT (DEFA7.SRC:2397-2415):
+//   • It slides BGL toward that target by BGDELT (defender/DEFA7.SRC:2397-2415):
 //       diff = target − plax16 (PV2A SUBD PLAX16, :2397)
 //       diff  >  $100     → BGDELT = +$40, plax16 += $100   (:2400-2406)
 //       diff  ≤ −$100     → BGDELT = −$40, plax16 −= $100   (:2407-2413)
@@ -45,11 +45,11 @@
 //
 // VERTICAL is a CLAMPED STRIP, not a cylinder — TWO rules on one axis (guardrail 2):
 //   • Player Y CLAMPS to [YMIN+1, 238]: PLAUP `CMPB #YMIN+1 / BLS PLAYX` freezes
-//     upward motion at YMIN+1 (DEFA7.SRC:2450); PLADN `CMPB #238 / BHS PLAYX` freezes
-//     downward motion at 238 (DEFA7.SRC:2461).
+//     upward motion at YMIN+1 (defender/DEFA7.SRC:2450); PLADN `CMPB #238 / BHS PLAYX` freezes
+//     downward motion at 238 (defender/DEFA7.SRC:2461).
 //   • Object Y WRAPS on [YMIN, YMAX]: VELO `CMPA #YMIN / …LDA #YMAX` and
-//     `CMPA #YMAX / …LDA #YMIN` (DEFA7.SRC:2490-2496).
-//   YMIN=42 / YMAX=240 are DECIMAL (PHR6.SRC:20-21; guardrail 7 — a re-radixed $42/$240
+//     `CMPA #YMAX / …LDA #YMIN` (defender/DEFA7.SRC:2490-2496).
+//   YMIN=42 / YMAX=240 are DECIMAL (defender/PHR6.SRC:20-21; guardrail 7 — a re-radixed $42/$240
 //   is silent drift). A single shared "wrap Y" helper on both axes is a fidelity bug.
 //
 // ─── CONTRACT (what GREEN/Dev must build) ────────────────────────────────────────
@@ -115,7 +115,7 @@ async function loadWorld(): Promise<WorldModule> {
   } catch (e) {
     throw new Error(
       'src/core/world.ts not built yet — GREEN (Dev) creates the pure world/camera ' +
-        'model ported from defender/DEFA7.SRC:2373-2496 + PHR6.SRC:20-21,215-216,335: ' +
+        'model ported from defender/DEFA7.SRC:2373-2496 + defender/PHR6.SRC:20-21,215-216,335: ' +
         'wrap16 (16-bit cylinder), worldX(onscreen,bgl)=onscreen+bgl (PLABX), ' +
         'targetColumn(plaxv,facing) (PLAY1 base $20/$70 + sign-gated velocity column), ' +
         'clampPlayerY→[YMIN+1,238], wrapObjectY on [YMIN,YMAX], and slide() ' +
@@ -127,7 +127,7 @@ async function loadWorld(): Promise<WorldModule> {
   }
 }
 
-describe('constants — YMIN/YMAX are DECIMAL (PHR6.SRC:20-21; guardrail 7)', () => {
+describe('constants — YMIN/YMAX are DECIMAL (defender/PHR6.SRC:20-21; guardrail 7)', () => {
   it('YMIN === 42 and YMAX === 240 — a re-radixed $42/$240 would fail here', async () => {
     const { YMIN, YMAX } = await loadWorld()
     // $42 == 66 and $240 is out of byte range; only the decimal reading passes both.
@@ -178,13 +178,13 @@ describe('targetColumn (PLAY1) — the ship-leads base column, pinned as a COORD
   // with zero dependence on the PCX bit-twiddle. This is AC3's base-column pin.
   it('at rest the target is the base column: $2000 facing-right, $7000 facing-left', async () => {
     const { targetColumn } = await loadWorld()
-    // base $20 (DEFA7.SRC:2385) / $70 (DEFA7.SRC:2389), in the high byte (column:fraction).
+    // base $20 (defender/DEFA7.SRC:2385) / $70 (defender/DEFA7.SRC:2389), in the high byte (column:fraction).
     expect(targetColumn(0x0000, 'right')).toBe(0x2000)
     expect(targetColumn(0x0000, 'left')).toBe(0x7000)
   })
 
   // The velocity column applies ONLY when facing agrees with the velocity sign
-  // (TSTB / BMI PV1A / BMI PV2, DEFA7.SRC:2386-2393). When they DISAGREE the column is
+  // (TSTB / BMI PV1A / BMI PV2, defender/DEFA7.SRC:2386-2393). When they DISAGREE the column is
   // CLEARED and the target is the bare base — an exact coordinate, no bit-twiddle.
   it('facing-left with RIGHTWARD (+) velocity clears the column → bare base $7000', async () => {
     const { targetColumn } = await loadWorld()
@@ -197,7 +197,7 @@ describe('targetColumn (PLAY1) — the ship-leads base column, pinned as a COORD
   })
 
   // When facing AGREES with velocity, the column leads the ship forward. Derivation of
-  // the max-velocity ($0100) column, from DEFA7.SRC:2373-2396:
+  // the max-velocity ($0100) column, from defender/DEFA7.SRC:2373-2396:
   //   LDD PLAXV=$0100 → ASRA/RORB ×2 (÷4) = $0040 → CLRA → B=$40
   //   ASRB: $40>>1 = $20 (this byte is the velocity column) → ADDA base
   //   facing-right: $20 + $20 = $40 → target $4000
@@ -305,7 +305,7 @@ describe('slide — the BGDELT ±$40 / ±$100 window, boundary-exact (AC4; the m
 describe('vertical — TWO rules on one axis (guardrail 2), never one shared helper', () => {
   it('player Y CLAMPS to [YMIN+1, 238]: 42→43, 43→43, 238→238, 239→238, interior untouched', async () => {
     const { clampPlayerY } = await loadWorld()
-    // PLAUP freezes at YMIN+1 (43) upward (DEFA7.SRC:2450); PLADN freezes at 238 downward (:2461).
+    // PLAUP freezes at YMIN+1 (43) upward (defender/DEFA7.SRC:2450); PLADN freezes at 238 downward (:2461).
     expect(clampPlayerY(42)).toBe(43) // below the floor → floor
     expect(clampPlayerY(43)).toBe(43) // exactly the floor
     expect(clampPlayerY(238)).toBe(238) // exactly the ceiling
@@ -316,7 +316,7 @@ describe('vertical — TWO rules on one axis (guardrail 2), never one shared hel
 
   it('object Y WRAPS on [YMIN, YMAX]: 41→240, 42→42, 240→240, 241→42, interior untouched', async () => {
     const { wrapObjectY } = await loadWorld()
-    // VELO: below YMIN → YMAX; above YMAX → YMIN (DEFA7.SRC:2490-2496).
+    // VELO: below YMIN → YMAX; above YMAX → YMIN (defender/DEFA7.SRC:2490-2496).
     expect(wrapObjectY(41)).toBe(240) // below floor → wraps to ceiling
     expect(wrapObjectY(42)).toBe(42) // exactly the floor stays
     expect(wrapObjectY(240)).toBe(240) // exactly the ceiling stays
