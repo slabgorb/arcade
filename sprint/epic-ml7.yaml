@@ -123,7 +123,9 @@ stories:
     title: Wire the HITDDT register so a shot-detonated bomb (MILLI.MAC:2060) and player-death-by-DDT (:1805) suppress the continuous-scroll arm (SC-9). ml7-9 left ScrollGate.hitDdt hardcoded false; GameState has no HITDDT field, so the arm fires during periods the ROM suppresses it. resolveShot already computes hitDdt:true (ddt.ts:225) but shot.ts drops it; set HITDDT on a DDT hit, clear at wave start (CENTPC :508), read from the scroll gate.
     points: 2
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
+    review_findings: APPROVED round 1. One Medium-clarity comment defect (PLAY citation :1744/:1750 conflation) found and fixed during review (bc7abca6). 4 enabled subagents clean; 5-mutant battery all killed; 1268 millipede + 498 orchestrator green, tsc clean.
