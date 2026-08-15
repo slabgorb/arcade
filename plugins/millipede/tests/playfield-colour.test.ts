@@ -57,7 +57,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { decodeColourByte } from '../src/core/palette'
-import { loadClaims } from './audit/dossier-sweep'
+import { loadClaims, isTextClaim } from './audit/dossier-sweep'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const modulePath = join(root, 'src', 'core', 'playfield-colour.ts')
@@ -271,7 +271,9 @@ describe('ml7-11 — the poison-mushroom slot is pinned as a claim', () => {
     // Today the colour claims cover inside/outside mushroom (PAL-5/6) but not
     // poison. GREEN adds it to 06-colour-ram-palette.json; the existing
     // citations gate byte-verifies the verbatim against the vendored MLIRQ.MAC.
-    const claimed = loadClaims().some((c) => c.source.file === 'MLIRQ.MAC' && c.source.line === 273)
+    const claimed = loadClaims()
+      .filter(isTextClaim)
+      .some((c) => c.source.file === 'MLIRQ.MAC' && c.source.line === 273)
     expect(
       claimed,
       'add a claim for ANCOL+7 (INSIDE OF POISON MUSHROOM, MLIRQ.MAC:273) to ' +

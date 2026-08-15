@@ -97,5 +97,14 @@
    "line": 262,
    "verbatim": "\tADC TPIRQ2\t\t;12* INDEX"
   }
+ },
+ {
+  "id": "PAL-12",
+  "claim": "Colour-RAM slot ANCOL+7 is the inside-of-poison-mushroom colour (the 99$ third byte), not DDT as the table comment loosely labels it.",
+  "source": {
+   "file": "MLIRQ.MAC",
+   "line": 273,
+   "verbatim": "\tSTA ANCOL+7\t\t;INSIDE OF POISON MUSHROOM"
+  }
  }
 ]

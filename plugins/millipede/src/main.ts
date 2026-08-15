@@ -23,6 +23,7 @@ import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
 import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { drawGridStamps, drawStampAtPx, charTile } from './shell/render'
+import { playfieldPens, playerPens } from './shell/playfield-palette'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
@@ -103,7 +104,7 @@ function render(state: GameState): void {
   c.fillStyle = '#000'
   c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
 
-  drawGridStamps(c, fieldPlacements(state.field))
+  drawGridStamps(c, fieldPlacements(state.field), playfieldPens())
   for (const s of state.segments) if (s.color !== VACANT_COLOR) drawSprite(s.h, s.v, s.pic)
 
   const r = state.roster
@@ -118,7 +119,7 @@ function render(state: GameState): void {
   // gun renders as its real decoded sprite instead of a placeholder fill.
   if (state.player.alive) {
     const [pxx, pyy] = px(state.player.h, state.player.v)
-    drawStampAtPx(c, charTile(SHIP_STAMP), pxx, pyy)
+    drawStampAtPx(c, charTile(SHIP_STAMP), pxx, pyy, playerPens())
   }
   // Shot.
   if (state.shot.active) {
