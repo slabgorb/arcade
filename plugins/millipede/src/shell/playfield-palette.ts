@@ -5,8 +5,14 @@
 // each field region takes from the 99$ table; this shell seam decodes those
 // bytes through the ml2-3 wiring law (decodeColourByte) into the 4-pen array the
 // blitter indexes by 2-bit pixel value. Mirrors centipede's shell/palette.ts
-// (playfieldPensForWave): one pen set serves normal and poison mushrooms alike —
-// they differ by which pixel values their stamp uses.
+// (playfieldPensForWave).
+//
+// ml9-2 correction: the ml7-11 premise "normal mushrooms use pixels 1&2, poison
+// uses 3" is contradicted by the baked stamps — normal ($7C-$7F) AND poison
+// ($78-$7B) caps BOTH use pixel value 3. The real hardware distinguishes them by
+// CHAR CODE, not pixel value: a normal cap is coloured ANCOL+5 inside-of-mushroom,
+// a poison cap ANCOL+7 inside-of-poison (MLIRQ.MAC:265-274). fieldPens() selects
+// the per-code window, so a normal cap reads salmon and a poison cap blue.
 //
 //   pen 0 = background (colour byte $FF drives no line → black)
 //   pen 1 = inside of mushroom   (ANCOL+5/+0D, 99$+0, MLIRQ.MAC:265-266)
@@ -22,7 +28,8 @@
 // ml7-4 no-strobe rule holds by construction.
 
 import { decodeColourByte, type Rgb } from '../core/palette'
-import { waveColours, spriteInkBytes, PLAYER_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'
+import { waveColours, spriteInkBytes, PLAYER_COLOUR, ALPHANUMERIC_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'
+import { POISON, NORMAL, FULL_MUSHROOM } from '../core/mushroom'
 
 /** The background colour byte — $FF leaves every output line dark (black). */
 const BACKGROUND_COLOUR = 0xff
@@ -68,4 +75,39 @@ export function playerPens(): readonly Rgb[] {
 export function spritePens(color: number, centin: number = COLOUR_LEVELS): readonly Rgb[] {
   const [v1, v2, v3] = spriteInkBytes(color, centin)
   return [decodeColourByte(BACKGROUND_COLOUR), decodeColourByte(v1), decodeColourByte(v2), decodeColourByte(v3)]
+}
+
+/**
+ * The alphanumeric (HUD/score/label) text window — RED $1F loaded as an immediate
+ * into ANCOL+2 (ALPHANUMERIC_COLOUR, MLIRQ.MAC:294-296). A one-colour window: every
+ * ink pen is red, so a glyph prints red whatever 2-bit value its stamp uses (the
+ * ROM font is monochrome). Pen 0 stays the black background. Without this the HUD
+ * draws through the diagnostic census ramp and its ink lands on the pixel-2 green.
+ */
+export function alphanumericPens(): readonly Rgb[] {
+  const red = decodeColourByte(ALPHANUMERIC_COLOUR)
+  return [decodeColourByte(BACKGROUND_COLOUR), red, red, red]
+}
+
+/**
+ * The pen set for a playfield cell given its CHAR CODE. Base is the CENTIN region
+ * palette (playfieldPens); the correction is the mushroom cap (pixel value 3): a
+ * NORMAL mushroom ($7C-$7F) caps with the inside-of-mushroom colour, a POISON
+ * mushroom ($78-$7B) with inside-of-poison (MLIRQ.MAC:265-274). Both stamps use
+ * pixel value 3 for the cap, so a single table cannot tell them apart — the ROM
+ * distinguishes by char code, and so does this. Non-mushroom codes keep the base
+ * palette unchanged.
+ */
+export function fieldPens(code: number, centin: number = COLOUR_LEVELS): readonly Rgb[] {
+  const w = waveColours(centin)
+  const pens: Rgb[] = [
+    decodeColourByte(BACKGROUND_COLOUR),
+    decodeColourByte(w.insideMushroom),
+    decodeColourByte(w.outsideMushroom),
+    decodeColourByte(w.poison),
+  ]
+  const v = code & 0x7f // strip the grey-background bit
+  if (v >= NORMAL && v <= FULL_MUSHROOM) pens[3] = decodeColourByte(w.insideMushroom)
+  else if (v >= POISON && v < NORMAL) pens[3] = decodeColourByte(w.poison)
+  return pens
 }
