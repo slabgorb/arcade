@@ -348,8 +348,13 @@ describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments 
   })
 
   it('requests pointer lock through the createPointerLock controller (R4 catch + R5 exit)', () => {
+    // main.ts drives the lock THROUGH the controller (the story mandates mirroring
+    // centipede's createPointerLock), so createPointerLock is the seam here — the raw
+    // canvas.requestPointerLock() call is encapsulated in shell/input.ts and proven by
+    // the "request() calls canvas.requestPointerLock()" unit test above. Requiring the
+    // raw call in main.ts would only pass if it bypassed the controller. (Centipede's
+    // own main-loop.test.ts pins createPointerLock, not the raw call — cp2-2.)
     expect(code, 'main.ts must drive the lock through createPointerLock').toMatch(/createPointerLock/)
-    expect(code, 'the controller wraps requestPointerLock').toMatch(/requestPointerLock/)
   })
 
   it('hides the cursor for the trackball (unbounded movementX/Y under lock)', () => {

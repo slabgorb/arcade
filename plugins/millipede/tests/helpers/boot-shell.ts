@@ -170,6 +170,9 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
       height: 0,
       clientWidth: CLIENT_W,
       clientHeight: CLIENT_H,
+      // A real canvas element always carries a style object; main.ts hides the
+      // cursor for the trackball (canvas.style.cursor = 'none', ml10-4).
+      style: {},
       // Memoised: main.ts reads getContext once per canvas, but the recorder must
       // be the SAME object across any reads so every draw lands in one `draws`.
       getContext: (): unknown => (ctx ??= makeCtx(draws, el)),
