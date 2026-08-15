@@ -20,7 +20,8 @@ stories:
     title: 'World-wrap coordinate model + camera slide (the epic''s riskiest seam): plugins/defender/src/core/world.ts — the BGL camera (defender/PHR6.SRC:215) + BGLX prev (defender/PHR6.SRC:216), the 16-bit HORIZONTAL WRAP at $10000, the pure worldX(entity)=onscreen+bgl helper (PLABX, defender/DEFA7.SRC:2432-2440), the SHIP-LEADS-SCROLL slide ported line-for-line (BGDELT / PV1..PV12, base $20 fwd / $70 rev, ±$40 step / ±$100 clamp, defender/DEFA7.SRC:2373-2431), and the vertical strip rule (YMIN=42 / YMAX=240, defender/PHR6.SRC:20-21; player-CLAMP DEFA7.SRC:2450,2461 vs object-WRAP DEFA7.SRC:2490-2496). Pin COORDINATES not just direction (routing != geometry). Expect a Reviewer mutation battery over the slide math.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
   - id: df3-3
