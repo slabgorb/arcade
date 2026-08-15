@@ -806,3 +806,76 @@ describe('ml8-1 — mutation-battery guards for ml3-4 conway.ts', () => {
     expect(state.active).toBe(false)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ml8-4 — COLUMN-0 EDGE-SEED GUARDS. A supplementary Reviewer battery over the
+// edge-column scan GEOMETRY (a surface ml8-1's 44-mutant battery never probed)
+// found four survivors in startgr's left-page seed. Two are the column-0
+// template-start seeds — the GRCODE start index `x = 0x0a` and the field-offset
+// start `y = 0x40` (conway.ts:108-111, "column 0: two template columns fall off
+// the edge", CW-29/30/67). For a column-0 cell, temp2 = addr - 0x42 is two
+// columns to the left (off-screen), so startgr must SKIP the two off-edge
+// template columns: x=0x0a starts GRCODE at column 2 (its own column) and y=0x40
+// starts the field walk at the swept cell's own column, cols 0..2, rows ±2.
+//
+// Mutating EITHER seed re-aims the 5x5 neighbourhood scan on constructible
+// fields (differential-confirmed by the Reviewer over 300 edge fields; verified
+// again this session — see .session/ml8-4-session.md for the mutant table):
+//   • x = 0x0a  — the code alignment. Set to the COLUMN-1 duplicate value 5
+//     (or 0, 9, 0x0b) and the codes shift a template column: the swept cell's
+//     own position stops being "ignore" (code 2) and is miscounted, cols 0..2
+//     get the wrong inner/fairy/ignore roles.
+//   • y = 0x40  — the window origin. Set to the COLUMN-1 duplicate value 0x20
+//     (or 0, 0x3f, 0x41, 0x60) and the whole read window slides off the column,
+//     and the loop even scans a different number of template columns.
+//
+// The other two survivors — the `colmax` edge-extents for columns 28/29
+// (0x80 / 0x60, conway.ts:120/123) — are EQUIVALENT mutants: the extra scan
+// reads off-screen cells as zero, exactly ml8-1's M07 class. Confirmed this
+// session: mutating either leaves the whole conway suite green (no reachable
+// input distinguishes them). They are documented here and DELIBERATELY NOT
+// guarded, per the ml8-1 M07 precedent.
+//
+// Witness field: a busy left-3-columns pattern; the three asserted column-0
+// cells were each confirmed to redden under the mutations named beside them and
+// to pass on faithful code. (Column-0 fates depend on cols 0..2, rows ±2 — the
+// exact span the seed re-aims — so these bytes are the seed's direct footprint.)
+// ═════════════════════════════════════════════════════════════════════════════
+describe('ml8-4 — column-0 edge-seed guards for startgr (conway.ts:108-111)', () => {
+  /** A pattern across cols 0..2 that makes column-0 fates depend on the seed. */
+  function edgeSeedField(): Uint8Array {
+    const f = emptyField()
+    const put = (c: number, r: number, v: number) => {
+      f[idx(c, r)] = v
+    }
+    put(0, 4, 0x7f); put(1, 4, 0x7f)
+    put(0, 8, 0x7f); put(1, 9, 0x7f); put(2, 10, 0x7f)
+    put(1, 12, 0x7f); put(1, 13, 0x7f); put(1, 14, 0x7f)
+    put(0, 18, 0x7f); put(2, 18, 0x7f)
+    put(1, 22, 0x7f)
+    put(0, 25, 0x78) // a poison — exercises the code-1 fairy ring vs code-0 inner
+    put(2, 25, 0x7f)
+    return f
+  }
+
+  it('the column-0 scan is aimed by x=0x0a AND y=0x40 — re-aiming either flips column-0 fates', async () => {
+    const m = await loadConway()
+    const f = edgeSeedField()
+    runPhase0(m, f)
+
+    // (0,8) is a seeded mushroom that SURVIVES faithfully (EDGE=2 + its counted
+    // neighbours land in 1..3). It DIES to 0x74 the moment x takes the column-1
+    // duplicate 5 (self-cell counted) — also under x=9 and y=0x41. This is the
+    // "slurped mutant hits the wrong duplicate" witness the ml8-1 review named.
+    expect(f[idx(0, 8)]).toBe(0x7f)
+
+    // (0,0x0a) BIRTHS to GROWTH faithfully; it fails to birth (0x00) under
+    // x=5, x=0x0b, y=0x20, y=0x60, y=0x3f and y=0 — the broadest witness.
+    expect(f[idx(0, 0x0a)]).toBe(0x75)
+
+    // (0,3) is a player-area blank (rows 2..6 → MSKORA=0x80) that STAYS blank
+    // faithfully; it spuriously births (0x75) under x=0, y=0x20, y=0x60, y=0x41
+    // when the shifted window reads a different neighbourhood.
+    expect(f[idx(0, 3)]).toBe(0x80)
+  })
+})
