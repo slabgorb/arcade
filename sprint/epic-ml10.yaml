@@ -1,0 +1,119 @@
+id: ml10
+type: epic
+title: Millipede — unwired-code findings (wire the built-but-dead seams)
+description: >-
+  Tenth Millipede epic. Architect unwired-code sweep 2026-08-15 (recorded in
+  memory: millipede-unwired-code-audit): four places where millipede code is
+  BUILT and TESTED but never reaches the running game. All four are WIRING, not
+  new systems — reuse-first; the tested code and (for the dead-branch pair) the
+  live state already exist. FALSE POSITIVE, do not refile: the seven enemy
+  presence -start/-stop voices READ as unemitted to a literal grep but ARE
+  emitted via a computed `${root}-start` template at sim.ts:229 (PRESENCE_VOICES,
+  ml7-8 shipped). CLEARED, not dead: the top-level core/<enemy>.ts files
+  (roster.ts orchestrates them). GROUPING RULE (inherit ml8/ml9): group stories
+  by the FILES they edit, not by finding — the two dead-input-branch fixes both
+  touch core/sim.ts and are one story (ml10-3) with two commits (they share the
+  dead-feature-signature-unpopulated-input-field class). The dead-branch
+  findings need a test that reaches the function through the REAL producers, not
+  a hand-built input — a data test stays green while the branch is dead (exactly
+  how joust's EGGVAL rungs stayed dead). Points are seed-only; expect the
+  reviewer's mutation batteries to file follow-ups.
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: ml10-1
+    title: Wire checkOverlap — the millipede segment-vs-segment OVRLAP turn — into stepMillipede
+    description: >-
+      checkOverlap (core/millipede.ts:405) is fully implemented, ROM-cited
+      (OVRLAP, MLSUB.MAC:896-912) and unit-tested (millipede-split-death.test.ts),
+      but has ZERO production callers — the head only ever reacts to the OBSTAC
+      (mushroom) turn. The confession at core/millipede.ts:300 spells out the
+      gap: the ROM's no-turn branch (13$, MILLI.MAC:1541) runs JSR OVRLAP FIRST
+      — the segment-vs-segment overlap turn — before the free-space/edge
+      handling, so a head that overlaps a live segment ahead of it should turn
+      (drop a row) just as it does on a mushroom. Wire checkOverlap into the head
+      reaction path in stepMillipede at the ROM's ordering: OBSTAC (mushroom)
+      turn → OVRLAP (overlap) turn → edge/free-space. Reuse checkOverlap AS-IS;
+      its dead-floor (colour ≥ OVRLAP_DEAD_MIN 0xC0) and parked-score (0xFF)
+      guards already exist. Test through the real stepMillipede — the existing
+      data test on checkOverlap passes today while the turn is dead, so it proves
+      nothing about wiring. Seam: core/millipede.ts (the head reaction sequence).
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "stepMillipede consults checkOverlap in the head reaction sequence at the ROM ordering (mushroom/OBSTAC turn, then OVRLAP overlap turn, then edge/free-space): a marching head that overlaps a live in-front segment turns and drops a row."
+      - "The overlap turn is pinned to the ROM (the 13$/MILLI.MAC:1541 JSR OVRLAP ordering + MLSUB.MAC:896-912) with citations, and a parked score (0xFF) or dead segment (colour ≥ 0xC0) does NOT trigger the turn — checkOverlap's existing semantics are preserved."
+      - "A test drives the behaviour through stepMillipede (the real producer), not a direct checkOverlap call, and fails if the call is removed; no regression to the mushroom-turn, split-on-turn, edge-turn, or player-collision paths."
+  - id: ml10-2
+    title: "Wire high-score persistence: load the ladder on boot, save it after name entry"
+    description: >-
+      shell/highscore.ts (makeMilliHighScoreStorage, loadHighScores) is built and
+      tested (high-score-persistence.test.ts) but imported by NOTHING in src/ —
+      self-labelled "Deliberately UNWIRED (ml7-3)" at shell/highscore.ts:18.
+      main.ts seeds from core/highscore DEFAULT_HIGH_SCORES only, so the ladder
+      resets on every reload and a qualifying score is never persisted. Wire it:
+      on boot, main.ts loads the table via loadHighScores(makeMilliHighScoreStorage())
+      (falls back to the seeded ROM ladder on an empty/first boot); after a game
+      ends and name-entry commits, save the updated table through the storage.
+      One-origin cabinet key (MILLI_HIGH_SCORE_GAME_ID = 'millipede') so the
+      shared arcade-lobby localStorage persists it and the lobby can read it.
+      Reuse the tested module and the existing name-entry primitives
+      (core/highscore insertHighScore / qualifiesForHighScore / stepInitials) —
+      no new logic. NOTE the "still attract-only" premise in the shell/highscore.ts:18
+      comment is STALE: main.ts already steps into play (stepGame) and has a
+      name-entry phase — verify that seam before pinning. Seams: src/main.ts
+      (boot load + post-entry save); shell/highscore.ts unchanged or minimal.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: feature
+    acceptance_criteria:
+      - "On boot, main.ts loads the ladder via loadHighScores(makeMilliHighScoreStorage()) and renders it (attract showcase + HUD hi-score), falling back to DEFAULT_HIGH_SCORES on a first/empty boot."
+      - "After a game ends and a qualifying score is entered, the updated ladder is saved via makeMilliHighScoreStorage().save under the one-origin cabinet key ('millipede') and survives a reload — a returning boot shows the persisted board."
+      - "Persistence is proven end-to-end through main.ts wiring (boot → play → name-entry → reload), not only the existing module unit tests; no regression to the name-entry flow, the self-playing attract demo, or the HUD."
+  - id: ml10-3
+    title: Thread the live mushroom state into its two dead consumers (bee MUSH spawn gate + wave-end restoring blocker)
+    description: >-
+      Two dead branches of the same class (dead-feature-signature-unpopulated-input-field),
+      both because a consumer reads a field every producer hardcodes — while the
+      REAL value already lives in state. Grouped per the epic file-surface rule
+      (both touch core/sim.ts); land as TWO commits. TEA/Architect may split only
+      if they end up on disjoint file surfaces.
+      (a) BEE MUSH SPAWN GATE — mayStartBee (core/bee.ts:122) gates on
+      `mushroomsNeeded(score2) >= env.mush`; mushroomsNeeded ∈ [5..0x2f] always,
+      but the view adapter hardcodes mush:0 (core/enemies/bee.ts:67), so the gate
+      is `>= 0` — ALWAYS true, and bees are never held back by the near-bottom
+      mushroom tally (BE-5/6/8/9, MILLI.MAC:68-78). The live count already exists
+      in state.mushCounts.lower (sim.ts maintains mushLower). Fix: carry mush on
+      EnemyView (core/enemies/contract.ts) and populate it from
+      state.mushCounts.lower where sim.ts builds the roster view; stop hardcoding
+      0. Related seam: musher's discarded `throwaway` delta at
+      core/enemies/bee.ts:118 drops the per-frame plant increment — wire it if
+      cheap, else leave a documented note.
+      (b) WAVE-END RESTORING BLOCKER — waves.ts:55 reads blockers.mushroomsRestoring
+      to hold wave-end open, but sim.ts:290 hardcodes it `false` (TODO item 4),
+      so a wave can end while conway mushroom-restoration is still running. Fix:
+      compute mushroomsRestoring from the real conway mushroom-field state instead
+      of the literal false.
+      BOTH need a test that reaches the gate/blocker through the REAL producers
+      (stepGame/stepBees; stepGame/wave-end), not a hand-built env/blocker — a
+      data test stays green while the branch is dead. Seams: core/sim.ts (view
+      population + real blocker), core/enemies/bee.ts, core/enemies/contract.ts,
+      and a read of core/conway.ts / core/waves.ts.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "EnemyView carries the near-bottom mushroom count sourced from state.mushCounts.lower (no hardcoded 0), and mayStartBee's mushroom gate actually blocks a bee spawn when the tally is below mushroomsNeeded(score2) — proven by driving stepGame/stepBees through the real roster view, not a hand-built BeeEnv."
+      - "mushroomsRestoring is computed from the real conway mushroom-restoration state (not the literal false at sim.ts:290), so wave-end waits while mushrooms are still restoring, matching waves.ts's blocker read — proven through stepGame, not a hand-built blockers object."
+      - "Both fixes are ROM-cited (bee gate BE-5/6/8/9, MILLI.MAC:68-78; the wave-end blocker) and land as two commits on the shared core/sim.ts surface; a mutation reverting either field to its hardcoded constant fails a test; no regression to bee movement/scoring, wave advance, or the mushroom-field reducers."
