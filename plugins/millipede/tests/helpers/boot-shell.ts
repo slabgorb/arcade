@@ -75,6 +75,14 @@ export interface ShellHarness {
    * across frame()s; slice by length around a single frame() to isolate it.
    */
   draws(surface: DrawSurface): readonly DrawRecord[]
+  /**
+   * How many times the display canvas' `requestPointerLock()` has been invoked
+   * (ml10-4 click-to-lock). Behavioural proof the pointer-lock seam is actually
+   * REACHED — a source-text pin cannot tell a wired `request()` from a dead one.
+   */
+  pointerLockRequests(): number
+  /** The display canvas' `style.cursor` (main.ts hides it for the trackball: 'none'). */
+  cursorStyle(): unknown
 }
 
 /** Plausible on-screen size so main.ts's blit maths produce sane numbers. */
@@ -183,6 +191,15 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
 
   const display = makeCanvas()
   const canvas = display.el
+  // The display canvas is the element main.ts pointer-locks. A real canvas exposes
+  // requestPointerLock (returning a Promise); the mock records each call so a test
+  // can prove click-to-lock actually fires, and returns a resolved promise so the
+  // shell's `void pointerLock.request()` never becomes an unhandled rejection.
+  let pointerLockRequests = 0
+  canvas.requestPointerLock = (): Promise<void> => {
+    pointerLockRequests += 1
+    return Promise.resolve()
+  }
   // The logical backbuffer main.ts creates via document.createElement — captured
   // so its recorded draws (the whole rendered frame) are readable by tests.
   let logical: { el: Record<string, unknown>; draws: DrawRecord[] } | null = null
@@ -301,6 +318,12 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
     },
     draws(surface: DrawSurface): readonly DrawRecord[] {
       return surface === 'display' ? display.draws : (logical?.draws ?? [])
+    },
+    pointerLockRequests(): number {
+      return pointerLockRequests
+    },
+    cursorStyle(): unknown {
+      return (canvas.style as Record<string, unknown>).cursor
     },
   }
 }

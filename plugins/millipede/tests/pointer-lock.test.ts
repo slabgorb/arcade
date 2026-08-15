@@ -2,9 +2,9 @@
 //
 // Story ml10-4 — RED phase (Tyr One-Handed / TEA). Capture the mouse via pointer
 // lock in millipede, mirroring centipede's shell input adapters
-// (plugins/centipede/src/shell/input.ts, cp1-5/cp2-2/cp2-8). Millipede today reads
-// the mouse with a bare `pointermove` on the canvas (src/main.ts:94-101) and NEVER
-// requests pointer lock, so the "trackball" hits the screen edge and stops — the
+// (plugins/centipede/src/shell/input.ts, cp1-5/cp2-2/cp2-8). As of RED (before this
+// story) millipede read the mouse with a bare `pointermove` on the canvas and NEVER
+// requested pointer lock, so the "trackball" hits the screen edge and stops — the
 // unbounded movementX/Y deltas pointer lock delivers are never captured, and an
 // Escape/blur that drops the lock leaves the last accumulated delta driving the gun
 // forever (runaway travel).
@@ -14,7 +14,7 @@
 //
 //   plugins/millipede/src/shell/input.ts  (RED: does not exist yet)
 //     • createMouseAdapter(target) → { sample(): {dh,dv}; reset(); dispose() }
-//         PRESERVES millipede's mapping (src/main.ts:94-99): a rightward device push
+//         PRESERVES millipede's pre-story mouse mapping: a rightward device push
 //         (+movementX) is a NEGATIVE dh (higher H = further LEFT), and vertical is
 //         NOT negated (+movementY = +dv; core COMP-reverses V so mouse-down => gun
 //         down). This is the ONE place the mapping differs from centipede, whose
@@ -34,8 +34,9 @@
 // then exercises for real; the main.ts `?raw` pins prove the running shell USES the
 // tested seams (canvas / requestPointerLock / cursor are absent in the node env).
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import mainSrc from '../src/main.ts?raw'
+import { bootMillipedeShell, type ShellHarness } from './helpers/boot-shell'
 
 type Handler = (e: Record<string, unknown>) => void
 interface Bus {
@@ -126,7 +127,7 @@ async function loadInput(): Promise<InputModuleLike> {
   if (typeof mod.createPointerLock !== 'function' || typeof mod.createMouseAdapter !== 'function') {
     throw new Error(
       'millipede pointer-lock capture not built yet — GREEN (Loki) adds plugins/millipede/src/shell/input.ts: ' +
-        'createMouseAdapter(target) → { sample():{dh,dv}, reset(), dispose() } PRESERVING main.ts:94-99 ' +
+        'createMouseAdapter(target) → { sample():{dh,dv}, reset(), dispose() } PRESERVING the mapping ' +
         '(dh -= movementX, dv += movementY), and createPointerLock(canvas, doc, onExit, onReject?) whose ' +
         'request() SWALLOWS the requestPointerLock() promise rejection (re-lock cooldown) and whose ' +
         '"pointerlockchange" listener invokes onExit when doc.pointerLockElement leaves the canvas.',
@@ -143,7 +144,24 @@ describe('ml10-4 createMouseAdapter — trackball deltas, millipede mapping pres
     b.fire('mousemove', { movementX: 10, movementY: 0 })
     const s = mouse.sample()
     expect(s.dh, 'mouse-right maps to gun-left → dh is negative').toBeLessThan(0)
-    expect(s.dh, 'dh is exactly -movementX (main.ts:99 `accDh -= e.movementX`)').toBe(-10)
+    expect(s.dh, 'dh is exactly -movementX (onMouseMove `dh -= Number(e.movementX ?? 0)`)').toBe(-10)
+  })
+
+  it('NEGATES horizontal symmetrically: a leftward push (-movementX) is a POSITIVE dh', async () => {
+    const input = await loadInput()
+    const b = makeBus()
+    const mouse = input.createMouseAdapter(b.bus)
+    b.fire('mousemove', { movementX: -10, movementY: 0 })
+    expect(mouse.sample().dh, 'the sign flip holds from the negative side too').toBe(10)
+  })
+
+  it('accumulates MIXED-SIGN horizontal deltas (does not clamp/saturate a reversal)', async () => {
+    const input = await loadInput()
+    const b = makeBus()
+    const mouse = input.createMouseAdapter(b.bus)
+    b.fire('mousemove', { movementX: 40, movementY: 0 }) // dh -= 40  → -40
+    b.fire('mousemove', { movementX: -15, movementY: 0 }) // dh -= -15 → -25
+    expect(mouse.sample().dh, '+40 then -15 nets -(40-15) = -25').toBe(-25)
   })
 
   it('does NOT negate vertical: +movementY is +dv (the millipede difference from centipede)', async () => {
@@ -156,7 +174,15 @@ describe('ml10-4 createMouseAdapter — trackball deltas, millipede mapping pres
     b.fire('mousemove', { movementX: 0, movementY: 10 })
     const s = mouse.sample()
     expect(s.dv, 'millipede vertical is NOT negated → +movementY is +dv').toBeGreaterThan(0)
-    expect(s.dv, 'dv is exactly +movementY (main.ts:100 `accDv += e.movementY`)').toBe(10)
+    expect(s.dv, 'dv is exactly +movementY (onMouseMove `dv += Number(e.movementY ?? 0)`)').toBe(10)
+  })
+
+  it('vertical is symmetric too: -movementY → negative dv (not negated, unlike centipede)', async () => {
+    const input = await loadInput()
+    const b = makeBus()
+    const mouse = input.createMouseAdapter(b.bus)
+    b.fire('mousemove', { movementX: 0, movementY: -10 })
+    expect(mouse.sample().dv, '-movementY stays -dv (a plain +=)').toBe(-10)
   })
 
   it('aggregates UNBOUNDED deltas across moves (the whole point of pointer-lock capture)', async () => {
@@ -222,6 +248,44 @@ describe('ml10-4 createPointerLock — R4: requestPointerLock() promise rejectio
     const d = makeDoc()
     const lock = input.createPointerLock(fakeCanvas(() => undefined), d.doc, () => {})
     await expect(lock.request(), 'no .then on a non-thenable → still resolves').resolves.toBeUndefined()
+  })
+
+  it('request() swallows a SYNCHRONOUS throw from requestPointerLock (never rejects — R4 is universal)', async () => {
+    // The controller documents "the returned promise never rejects (R4)". Because
+    // request() is async, a synchronous throw from CALLING canvas.requestPointerLock()
+    // — e.g. the method being unsupported/undefined on an older element, which is exactly
+    // what surfaces as an unhandled rejection when the shell boots headless — is
+    // auto-wrapped into a rejected promise unless the call itself is guarded. Pin the
+    // universal contract, not just the returned-promise-rejects case.
+    const input = await loadInput()
+    const d = makeDoc()
+    const lock = input.createPointerLock(
+      fakeCanvas(() => {
+        throw new Error('requestPointerLock is not a function')
+      }),
+      d.doc,
+      () => {},
+    )
+    await expect(lock.request(), 'a synchronous throw must not reject request()').resolves.toBeUndefined()
+  })
+
+  it('routes a SYNCHRONOUS throw to the onReject sink too (not just promise rejections)', async () => {
+    const input = await loadInput()
+    const d = makeDoc()
+    const boom = new Error('unsupported')
+    let seen: unknown = undefined
+    const lock = input.createPointerLock(
+      fakeCanvas(() => {
+        throw boom
+      }),
+      d.doc,
+      () => {},
+      (r) => {
+        seen = r
+      },
+    )
+    await lock.request()
+    expect(seen, 'the synchronous failure reason reaches the diagnostic sink').toBe(boom)
   })
 
   it('request() actually calls canvas.requestPointerLock() (click-to-lock)', async () => {
@@ -330,8 +394,8 @@ describe('ml10-4 no runaway travel — a lock EXIT clears the accumulator with n
 // the unit blocks above; these pins prove the running shell actually USES the seams.
 // RED until GREEN rewrites main.ts to import from ./shell/input. ──────────────────
 function stripComments(src: string): string {
-  // Strip block + line comments so a token surviving only in a doc comment (the
-  // existing main.ts:94-99 mapping comment already names movementX) cannot satisfy a
+  // Strip block + line comments so a token surviving only in a doc comment (main.ts's
+  // mouse-mapping comment names movementX/createMouseAdapter) cannot satisfy a
   // positive scan (raw-wiring-grep-satisfied-by-comment-prose).
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 }
@@ -365,5 +429,35 @@ describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments 
 
   it('resets the accumulator on lock exit (onExit → adapter.reset(), no runaway travel)', () => {
     expect(code, 'main.ts must delegate the lock-exit reset to the adapter').toMatch(/\.reset\s*\(/)
+  })
+})
+
+// ─── Behavioural wiring (boot harness). The source-read pins above prove the TOKENS
+// exist; they cannot prove the seam is REACHED. Deleting `void pointerLock.request()`
+// from main.ts's pointerdown handler — the exact "built but dead" wiring this ml10
+// epic exists to catch — leaves every source-read pin green. These boot the real
+// main.ts against the stub browser and assert the seam actually fires (ml10-4 review
+// rework, round 1: reviewer test-analyzer finding). ─────────────────────────────────
+describe('ml10-4 main.ts — pointer-lock is actually WIRED (boot harness, behavioural)', () => {
+  // Boot ONCE: main.ts is an ESM module with side effects, so a second
+  // bootMillipedeShell() in the same file gets the cached module and never re-runs
+  // them (the audio-gesture-gate idiom — one beforeAll boot per file). The cursor
+  // read is order-independent; the request count is checked 0→1 around a single emit.
+  let shell: ShellHarness
+  beforeAll(async () => {
+    shell = await bootMillipedeShell()
+  })
+
+  it('hides the cursor at boot (canvas.style.cursor === "none")', () => {
+    expect(shell.cursorStyle(), 'main.ts must set the display canvas cursor to none').toBe('none')
+  })
+
+  it('a canvas pointerdown INVOKES requestPointerLock (click-to-lock is not dead wiring)', () => {
+    expect(shell.pointerLockRequests(), 'no lock requested before any gesture').toBe(0)
+    shell.emit('canvas', 'pointerdown', { movementX: 0, movementY: 0 })
+    expect(
+      shell.pointerLockRequests(),
+      'the pointerdown handler must reach pointerLock.request() → canvas.requestPointerLock()',
+    ).toBe(1)
   })
 })
