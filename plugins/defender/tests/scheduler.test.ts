@@ -388,6 +388,41 @@ describe('sleep — a degenerate duration never strands a process (R1 hardening,
     sched.stepTick() // 1→0 → wake, exactly 2 ticks after start
     expect(log).toEqual(['start', 'wake'])
   })
+
+  // ─── R2: pin the two clamp CLAUSES that a mutant could silently drop ───────────
+  it('Infinity wakes next tick — pins the Number.isFinite guard (mutant: floor(Infinity)=Infinity strands)', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    const log: string[] = []
+    sched.makeProcess((_s, s) => {
+      log.push('start')
+      s.sleep(Number.POSITIVE_INFINITY, () => log.push('wake'))
+    }, 1)
+
+    sched.stepTick() // start, sleep(Infinity)
+    expect(log).toEqual(['start'])
+    // Clamped to 1 → wakes here. Drop `Number.isFinite(ticks)` and `Infinity >= 1` is true,
+    // Math.floor(Infinity) is Infinity, and this process strands forever (log stays ['start']).
+    sched.stepTick()
+    expect(log).toEqual(['start', 'wake'])
+  })
+
+  it('a fraction in (0,1) wakes next tick — pins the >= 1 boundary (mutant: floor(0.4)=0 strands)', async () => {
+    const { createScheduler } = await loadScheduler()
+    const sched = createScheduler()
+    const log: string[] = []
+    sched.makeProcess((_s, s) => {
+      log.push('start')
+      s.sleep(0.4, () => log.push('wake'))
+    }, 1)
+
+    sched.stepTick() // start, sleep(0.4)
+    expect(log).toEqual(['start'])
+    // Clamped to 1 → wakes here. Weaken the boundary from `>= 1` to `> 0` and `0.4 > 0` is true,
+    // Math.floor(0.4) is 0, and DISP's `ptime -= 1` → -1 never re-zeroes: the process strands.
+    sched.stepTick()
+    expect(log).toEqual(['start', 'wake'])
+  })
 })
 
 describe('kill — only frees a process on THIS run-list (R1 hardening)', () => {
