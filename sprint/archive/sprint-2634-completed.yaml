@@ -16,6 +16,7 @@ completed_epics:
   - jt11
   - ml7
   - ml8
+  - df2
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -410,4 +411,9 @@ completed_stories:
     epic: ml8
     title: 'Mutation battery: column-0 edge-seed template start in conway.ts (x=0x0A / y=0x40) — two REACHABLE survivors routed from the ml8-1 review. Guard the left-edge neighbourhood scan (a col-0 cell whose count depends on the EDGE-substituted off-screen columns distinguishes both seeds; differential-confirmed over 300 edge fields). The colmax edge-extents for cols 28/29 (0x60/0x80) are EQUIVALENT mutants — the extra scan reads off-screen cells as zero — document alongside ml8-1 M07, do not guard.'
     points: 2
+    completed: '2026-08-15'
+  - id: df2-6
+    epic: df2
+    title: 'VISUAL playtest for orientation traps + still-frame proof: screenshot http://127.0.0.1:5270/defender/ showing planet + charset text + a sample object, compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm render orientation and colour BEFORE physics (playbook sec 4). Carry forward the df4 accessibility ruling as a note (no full-screen strobe downstream).'
+    points: 1
     completed: '2026-08-15'
