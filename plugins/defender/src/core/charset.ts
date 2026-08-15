@@ -13,7 +13,7 @@
 // INDEX its caller passes — colours are never invented here.
 //
 // ─── THE CELL DECODE (derived; the byte gate owns the BYTES, this owns the pixels)─
-// A cell is width×height bytes, row-major (defender/MESS0.SRC:441-640). Each byte
+// A cell is width×height bytes, row-major (defender/MESS0.SRC:441-649). Each byte
 // packs two horizontal pixels as nibbles — high nibble the left pixel, low nibble the
 // right — and a non-zero nibble is a foreground pixel (the ROM font is a 1-bit mask
 // the text routine colours; here the caller's index is that colour). A glyph is
@@ -37,8 +37,12 @@ const byChar: ReadonlyMap<string, GlyphData> = new Map(
   CHARSET.filter((g) => g.char !== null).map((g) => [g.char as string, g]),
 )
 
-/** The glyph the ROM substitutes for an unsupported character (TEXT7A, MESS0.SRC:786). */
-const QUESTION: GlyphData = CHARSET.find((g) => g.name === 'QUESMK') as GlyphData
+/** The glyph the ROM substitutes for an unsupported character (TEXT7A, MESS0.SRC:803). */
+const QUESTION: GlyphData = (() => {
+  const q = CHARSET.find((g) => g.name === 'QUESMK')
+  if (!q) throw new Error("charset.ts: CHARSET is missing 'QUESMK' (the ROM's invalid-char glyph)")
+  return q
+})()
 
 /** The glyph that renders `ch`, or undefined if the charset has none (writeText → '?'). */
 export function glyphForChar(ch: string): GlyphData | undefined {
@@ -48,7 +52,11 @@ export function glyphForChar(ch: string): GlyphData | undefined {
 /**
  * Stamp a glyph's foreground pixels into `fb` as `colorIndex`, with the cell's
  * top-left at (x, y). Pure: mutates fb in place, clips to the framebuffer, and
- * writes nothing outside it. Refuses a non-raster block (streams are not rasters).
+ * writes nothing outside it. Fails LOUD on a malformed glyph or position rather
+ * than mis-rendering silently — blitGlyph is exported and df2-4/df2-5 reuse it, so
+ * a short `bytes` array (undefined→0→background) or a NaN position (fb.data[NaN] is
+ * a silent no-op) must throw here, not paint a truncated glyph or drop a message.
+ * Refuses a non-raster block (streams are not rasters).
  */
 export function blitGlyph(
   fb: Framebuffer,
@@ -59,6 +67,14 @@ export function blitGlyph(
 ): void {
   if (glyph.encoding !== 'raster') {
     throw new Error(`blitGlyph refuses a non-raster glyph: ${glyph.name} (encoding ${glyph.encoding})`)
+  }
+  if (glyph.bytes.length !== glyph.width * glyph.height) {
+    throw new Error(
+      `blitGlyph: glyph ${glyph.name} has ${glyph.bytes.length} bytes for a ${glyph.width}×${glyph.height} cell`,
+    )
+  }
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new Error(`blitGlyph: non-finite position (${x}, ${y}) for glyph ${glyph.name}`)
   }
   for (let row = 0; row < glyph.height; row++) {
     for (let col = 0; col < glyph.width; col++) {

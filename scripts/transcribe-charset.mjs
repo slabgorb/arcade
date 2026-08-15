@@ -13,7 +13,7 @@
 // FORMAT (verified against MESS0.SRC): the CHARACTER DESCRIPTER TABLE `CHRTBL`
 // (:441) is 4-byte records `FDB $WWHH,<ptr>` — big-endian, so WW is the width byte
 // (high) and HH the height byte (low); a glyph's cell is WW×HH bytes at the pointer.
-// `SPACE` is `SPACE EQU *` (:540) aliasing the oversized all-zero BLANK block, so the
+// `SPACE` is `SPACE EQU *` (:490) aliasing the oversized all-zero BLANK block, so the
 // reader follows the alias and slices the first WW×HH bytes.
 //
 // Usage: node scripts/transcribe-charset.mjs   (writes the generated module)
@@ -77,10 +77,16 @@ function bytesForLabel(label) {
   return out
 }
 
-/** The effective cell: width×height bytes sliced from the (possibly larger) block. */
+/** The effective cell: width×height bytes sliced from the (possibly larger) block.
+ *  Throws if the block is SHORTER than the declared cell (a real transcription fault) —
+ *  slice() would silently truncate, shipping a short-bytes glyph that renders blank. */
 function cellBytes(label, width, height) {
   const block = bytesForLabel(label)
-  return block.slice(0, width * height)
+  const need = width * height
+  if (block.length < need) {
+    throw new Error(`${label}: block is ${block.length} bytes, cell needs ${need} (${width}x${height})`)
+  }
+  return block.slice(0, need)
 }
 
 // ─── CHRTBL descriptor table ──────────────────────────────────────────────────
@@ -149,11 +155,16 @@ const body = `// src/core/charset-data.ts
 // reference/original-source/defender/MESS0.SRC — DO NOT EDIT BY HAND.
 // Re-run \`node scripts/transcribe-charset.mjs\` to regenerate.
 //
-// The Defender MESS0 character set (defender/MESS0.SRC:441-640): one record per
+// The Defender MESS0 character set (defender/MESS0.SRC:441-649): one record per
 // distinct CHRTBL glyph. \`bytes\` is the effective WW×HH cell (big-endian, sliced
 // from the source block; SPACE aliases the oversized BLANK). Every byte is
 // re-derived and refused-on-mismatch by tests/charset-gate.test.ts. PURE data —
 // no colour, no clock, no import; the shell decodes an index to RGBA, not this.
+
+/** Block encoding discriminant. The charset is all 'raster' (ROM cell pixels); the
+ *  union keeps blitGlyph's "refuse to raster a non-raster" guard REACHABLE for typed
+ *  callers and lets df2-4's object-image blocks carry a non-raster kind (e.g. 'stream'). */
+export type GlyphEncoding = 'raster' | 'stream'
 
 /** One transcribed charset glyph: raster ROM cell pixels as 4-bit palette indices. */
 export interface GlyphData {
@@ -163,7 +174,7 @@ export interface GlyphData {
   readonly width: number
   readonly height: number
   /** Encoding discriminant — 'raster' cells are the only kind blitGlyph may draw. */
-  readonly encoding: 'raster'
+  readonly encoding: GlyphEncoding
   /** The effective cell: exactly width×height bytes, big-endian from the source. */
   readonly bytes: readonly number[]
   /** Provenance: the MESS0.SRC CHRTBL label this cell was transcribed from. */

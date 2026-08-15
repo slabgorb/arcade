@@ -4,11 +4,16 @@
 // reference/original-source/defender/MESS0.SRC — DO NOT EDIT BY HAND.
 // Re-run `node scripts/transcribe-charset.mjs` to regenerate.
 //
-// The Defender MESS0 character set (defender/MESS0.SRC:441-640): one record per
+// The Defender MESS0 character set (defender/MESS0.SRC:441-649): one record per
 // distinct CHRTBL glyph. `bytes` is the effective WW×HH cell (big-endian, sliced
 // from the source block; SPACE aliases the oversized BLANK). Every byte is
 // re-derived and refused-on-mismatch by tests/charset-gate.test.ts. PURE data —
 // no colour, no clock, no import; the shell decodes an index to RGBA, not this.
+
+/** Block encoding discriminant. The charset is all 'raster' (ROM cell pixels); the
+ *  union keeps blitGlyph's "refuse to raster a non-raster" guard REACHABLE for typed
+ *  callers and lets df2-4's object-image blocks carry a non-raster kind (e.g. 'stream'). */
+export type GlyphEncoding = 'raster' | 'stream'
 
 /** One transcribed charset glyph: raster ROM cell pixels as 4-bit palette indices. */
 export interface GlyphData {
@@ -18,7 +23,7 @@ export interface GlyphData {
   readonly width: number
   readonly height: number
   /** Encoding discriminant — 'raster' cells are the only kind blitGlyph may draw. */
-  readonly encoding: 'raster'
+  readonly encoding: GlyphEncoding
   /** The effective cell: exactly width×height bytes, big-endian from the source. */
   readonly bytes: readonly number[]
   /** Provenance: the MESS0.SRC CHRTBL label this cell was transcribed from. */
