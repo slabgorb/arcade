@@ -364,3 +364,8 @@ completed_stories:
     title: 'Standing still after a fast landing still launches with walking airspeed (pure core, flight.ts): land->stand->takeoff yanks the mount sideways'
     points: 3
     completed: '2026-08-15'
+  - id: df2-3
+    epic: df2
+    title: 'Character set (MESS0) transcription + text writer. MESS0 is the charset/message block, banked block 2 (SELECT CHARS, defender/DEFA7.SRC:2030-2031; header defender/MESS0.SRC:1). GENERATED charset module (transcribe tool) + an INDEPENDENT-reader gate that refuses any non-matching byte; a pure blitGlyph into the framebuffer; render a known string. Raster charset — the ROM cell pixels, not @shared/font vector glyphs.'
+    points: 4
+    completed: '2026-08-15'
