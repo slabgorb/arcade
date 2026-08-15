@@ -39,7 +39,14 @@ const SPAWN_OFFSET_LEFT = 0x4 //   DEFA7.SRC:2841
 const RIGHT_EDGE = 0x9800 // CMPX #$9800 / BHS LRDIE (DEFA7.SRC:2802-2803)
 const LEFT_EDGE = 0x0500 //  CMPX #$0500 / BLS LLDIE (DEFA7.SRC:2851-2852)
 
-/** The per-tick head advance (LEAX $100,X, :2804) — uniform velocity, one NAP/tick. */
+/**
+ * The core's uniform per-tick travel step for the leading edge. It matches one
+ * `LEAX $100,X` head increment (DEFA7.SRC:2805) in DIRECTION and constancy, but it is
+ * NOT the ROM's full per-tick head advance: LASR1 runs that `LEAX` four times per frame
+ * (`LDA #4`, :2799-2807), so the ROM head actually moves $400/tick to lay its 4-segment
+ * beam. That magnitude is render-entangled (beam width), so the pure core reproduces
+ * only travel's direction + constancy and leaves the exact speed to a render/tuning story.
+ */
 const STEP = 0x100
 
 /** The scheduler PTYPE tag for a laser process (an opaque id; any distinct value). */
@@ -88,6 +95,12 @@ export function createLaserBank(sched: Scheduler): LaserBank {
   }
 
   const fire = (shipX: number, facing: Facing): Laser | null => {
+    // Guard the module boundary (lang-review #21, mirroring scheduler.ts's SLEEP guard):
+    // a non-finite shipX would make the leading edge non-finite, and offScreen() — which
+    // tests `>=`/`<=` — is ALWAYS false for NaN, so the laser process would reschedule
+    // forever and leak an LFLG slot that never frees. Reject the fire and spawn nothing.
+    if (!Number.isFinite(shipX)) return null
+
     // LFIRE: LDA LFLG / CMPA #4 / BHS LFIREX — at the cap, spawn nothing (:2763-2765).
     if (lasers.length >= MAX_LASERS) return null
 
