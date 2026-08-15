@@ -219,3 +219,80 @@ export function descriptorTable(file: string): Descriptor[] {
   }
   return out
 }
+
+// ─── df2-4 (Han Solo / TEA): the DEFB6 OBJECT-IMAGE picture table ─────────────
+// The charset above is one FDB block per glyph keyed by a CHRTBL descriptor. The
+// object images (defender/DEFB6.SRC) have a DIFFERENT shape: a PICTURE DESCRIPTOR
+// `LABEL FCB W,H` (W = bytes per row, H = rows — the blit-routine names encode the
+// pair: UFOP1 6×4 → ON64/OFF64, defender/DEFB6.SRC:1954-1955) immediately followed
+// by `FDB <data0>[,<data1>,<ON>,<OFF>]` naming the pixel-data label(s). The pixel
+// data at those labels is a run of rows that may be FDB (16-bit words, big-endian —
+// the UFO UFOD10, defender/DEFB6.SRC:2122) OR FCB (raw bytes — the smart bomb SBD10,
+// defender/DEFB6.SRC:2183), so readImageBytes below accepts BOTH. As in the charset,
+// a byte packs two 4-bit palette indices (high nibble the left pixel, low the right);
+// one field is exactly W×H bytes. The exact nibble ORDER / screen rotation is df2-6's
+// visual-playtest question — this reader owns only the BYTES.
+
+export interface PictureDescriptor {
+  /** The picture label, e.g. `UFOP1`. */
+  label: string
+  /** Bytes per row (FCB high operand); each byte is two horizontal pixels. */
+  width: number
+  /** Rows (FCB low operand). */
+  height: number
+  /** The FDB data operands: `[field0, field1?, onRoutine?, offRoutine?]`. */
+  dataPtrs: string[]
+  line: number
+}
+
+/**
+ * Read a run of consecutive FCB/FDB pixel rows at `label` into one flat byte stream.
+ * FCB operands are raw bytes; FDB operands are 16-bit words expanded BIG-ENDIAN
+ * (6809 order, high byte first). Stops at the next LABELLED row, a non-FCB/FDB
+ * statement, a comment or a blank — the block ends there. Throws on an unresolved
+ * symbol operand: pixel data is always numeric, so a symbol means the reader has
+ * walked off the block (never fabricate a byte from a label).
+ */
+export function readImageBytes(file: string, label: string): number[] {
+  const lines = sourceLines(file)
+  const defIdx = lines.findIndex((l) => parseStatement(l, 0)?.label === label)
+  if (defIdx < 0) throw new Error(`image-data label not found: ${label}`)
+  const out: number[] = []
+  for (let i = defIdx; i < lines.length; i++) {
+    const st = parseStatement(lines[i], i + 1)
+    // A LATER labelled row is the next block; a non-FCB/FDB row (or comment/blank) ends it.
+    if (i > defIdx && (st === null || (st.op !== 'FDB' && st.op !== 'FCB') || st.label !== null)) break
+    if (st === null) continue
+    if (st.op === 'FCB') for (const o of st.operands) out.push(evalNumber(o) & 0xff)
+    else if (st.op === 'FDB') out.push(...wordsToBytes(st.operands.map((o) => evalNumber(o))))
+  }
+  return out
+}
+
+/**
+ * Enumerate DEFB6's picture table: every `LABEL FCB W,H` (W,H > 0) whose next
+ * statement is an `FDB` naming pixel-data LABELS (symbols, not numeric data). That
+ * shape excludes the process code above and the raw FDB/FCB pixel rows below, so a
+ * whole-file scan lands exactly on the object-image descriptors, in source order.
+ */
+export function pictureTable(file: string): PictureDescriptor[] {
+  const lines = sourceLines(file)
+  const out: PictureDescriptor[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const st = parseStatement(lines[i], i + 1)
+    if (st === null || st.label === null || st.op !== 'FCB' || st.operands.length !== 2) continue
+    const w = evalOperand(st.operands[0])
+    const h = evalOperand(st.operands[1])
+    if (typeof w !== 'number' || typeof h !== 'number' || w <= 0 || h <= 0) continue
+    // The next non-comment/blank statement must be an FDB of data-pointer SYMBOLS.
+    let nxt: Statement | null = null
+    for (let j = i + 1; j < lines.length; j++) {
+      const s = parseStatement(lines[j], j + 1)
+      if (s !== null) { nxt = s; break }
+    }
+    if (nxt === null || nxt.op !== 'FDB' || nxt.operands.length === 0) continue
+    if (typeof evalOperand(nxt.operands[0]) === 'number') continue // numeric = pixel data, not a descriptor
+    out.push({ label: st.label, width: w, height: h, dataPtrs: nxt.operands, line: i + 1 })
+  }
+  return out
+}

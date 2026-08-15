@@ -39,7 +39,8 @@ stories:
     title: 'Object image tables (DEFB6 + SAMEXAP7) transcription — INERT. DEFB6 inline object graphics (the OBI object-image headers, e.g. UFO at defender/DEFB6.SRC:1) and SAMEXAP7 "SAM EXPLOSIONS AND APPEARANCES" (defender/SAMEXAP7.SRC:6-7). GENERATED module + independent gate; each block records an encoding discriminant (refuse to raster a non-raster). Data lands INERT, proven only by a static gallery blit — no animation, no collision (df4).'
     points: 4
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
   - id: df2-5
