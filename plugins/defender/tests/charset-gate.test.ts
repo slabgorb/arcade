@@ -297,9 +297,11 @@ describe('the two derivations stay independent', () => {
     // POSITIVE read-set floor: if the scan collapses to nothing, the guard is
     // vacuous. defender/src and repo scripts always carry files.
     expect(scanned.length, 'the independence scan must actually read production files').toBeGreaterThan(5)
-    const offenders = scanned.filter((f) =>
-      /defender-source|from\s+['"][^'"]*tests\/helpers/.test(readFileSync(f, 'utf8')),
-    )
+    // Anchor to an actual IMPORT of the reader, not the bare token — a production
+    // file may legitimately NAME the reader in a comment explaining that it does
+    // not import it (the source-scan self-match trap, lang-review #15).
+    const importsReader = /(?:from|import|require)\s*\(?\s*['"][^'"]*(?:defender-source|tests[/\\]helpers)/
+    const offenders = scanned.filter((f) => importsReader.test(readFileSync(f, 'utf8')))
     expect(
       offenders.map((f) => f.replace(repoRoot + '/', '')),
       'production must not import the test-side reader — that makes the byte gate tautological',
