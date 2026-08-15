@@ -499,6 +499,26 @@ window.addEventListener('keydown', (e) => {
   if (cabinet.mode === 'highscore') entry = enterInitial(entry, e.key)
 })
 
+// jt11-14 — the FROZEN-COUNTDOWN escape hatch. jt11-6's entry timeout is spent by
+// the frame pump, whose catch-up is clamped (MAX_CATCHUP_SECONDS), so a HIDDEN tab
+// freezes the countdown and a CLOSED tab never advances it at all — the one
+// 'walked-away' case the pumped timeout cannot reach. On pagehide (the close /
+// navigate / discard signal) and on visibilitychange→hidden (the tab-switch signal)
+// commit the in-flight entry through the SAME commitHighScore path, padded exactly
+// like the timeout so a 0- or 2-letter walk-away still keeps its rank, then route to
+// attract so a returning tab cannot re-commit the row. Shell-only: this reads the
+// document; core keeps counting ticks and never learns about it.
+function commitEntryOnExit(): void {
+  if (cabinet.mode === 'highscore') {
+    commitHighScore(timeoutInitials(entry))
+    cabinet = toAttract(cabinet, SEED)
+  }
+}
+window.addEventListener('pagehide', commitEntryOnExit)
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') commitEntryOnExit()
+})
+
 const MAX_CATCHUP_SECONDS = 0.25
 let accumulator = 0
 let last = 0
