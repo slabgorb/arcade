@@ -4,14 +4,15 @@
 // turn (checkOverlap) into stepMillipede's head reaction, at the ROM ordering.
 //
 // ─── THE GAP THIS STORY CLOSES ────────────────────────────────────────────────
-// checkOverlap (src/core/millipede.ts:405, OVRLAP MLSUB.MAC:896-912) is fully
-// built, ROM-cited and unit-tested — but it has ZERO production callers. The head
-// reaction in stepMillipede today only turns on the OBSTAC (mushroom) field
-// (ml3-6) and the screen edge; it never turns when it overlaps a LIVE segment
-// ahead of it on the same line. The confession comment at src/core/millipede.ts:300
-// spells this out: the ROM's "no-turn" branch (13$, MILLI.MAC:1541) runs
-// JSR OVRLAP FIRST — before the edge/free-space handling — so a head that overlaps
-// a live in-front segment must TURN (drop a row) exactly as it does on a mushroom.
+// checkOverlap (in src/core/millipede.ts, OVRLAP MLSUB.MAC:896-912) was fully
+// built, ROM-cited and unit-tested — but had ZERO production callers. Before this
+// story, the head reaction in stepMillipede only turned on the OBSTAC (mushroom)
+// field (ml3-6) and the screen edge; it never turned when it overlapped a LIVE
+// segment ahead of it on the same line. The confession comment that stood in that
+// file before this story spelled it out: the ROM's "no-turn" branch (13$,
+// MILLI.MAC:1541) runs JSR OVRLAP FIRST — before the edge/free-space handling — so
+// a head that overlaps a live in-front segment must TURN (drop a row) exactly as
+// it does on a mushroom.
 //
 // ─── WHAT GREEN (Dev) MUST SHIP ───────────────────────────────────────────────
 // Wire checkOverlap into stepMillipede's head reaction sequence at the ROM's

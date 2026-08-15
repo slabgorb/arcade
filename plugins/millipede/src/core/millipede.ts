@@ -34,7 +34,11 @@
 // the body-follow (MT-20) and the screen-edge turn (MT-21/22). Poison-dive,
 // DDT, player collision and the split are deferred (ml3-2, ml4). ml3-6 wired the
 // mushroom-turn: stepMillipede now takes an OPTIONAL `field` and turns a head on
-// the cell-ahead OBSTAC (MILLI.MAC:1527-1539). Cocktail is out of scope
+// the cell-ahead OBSTAC (MILLI.MAC:1527-1539). ml10-1 wired the OVRLAP
+// overlap-turn: a head that overlaps a live segment ahead of it on the same line
+// turns via checkOverlap (13$, MILLI.MAC:1541). checkOverlap was added with the
+// ml3-2 split/death work but sat with no production caller until ml10-1 — this is
+// its first. Cocktail is out of scope
 // (CKF8/CKFE/CKFF = 0 upright), so the flips are dropped.
 
 import { nextInt, type Rng } from '@shared/rng'
