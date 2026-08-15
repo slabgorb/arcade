@@ -220,13 +220,18 @@ function effectiveHandler(code: string, event: string): string {
   }
 
   // One hop: fold in the bodies of local helpers the handler calls, so a guard or a
-  // commit factored into `commitOnExit()` is still in view. commitHighScore is one
-  // such helper; its body carries no guard, so folding it in cannot mask a deleted one.
+  // commit factored into `commitOnExit()` is still in view — EXCEPT commitHighScore
+  // itself, the terminal single-save helper. Folding its body would pull `highScores.save(`
+  // into the handler text and defeat the "does not persist directly" negative check below
+  // (checklist #18 — apparatus contaminating its own assertion). The handler must still
+  // CALL commitHighScore; that token lives at the call site, which is already in `body`. A
+  // save written DIRECTLY in the handler body is still caught, and AC-4 pins the one save site.
+  const FOLD_EXCLUDE = new Set(['commitHighScore'])
   let folded = body
   const seen = new Set<string>()
   for (const call of body.matchAll(/([A-Za-z_$][\w$]*)\s*\(/g)) {
     const id = call[1]
-    if (seen.has(id)) continue
+    if (seen.has(id) || FOLD_EXCLUDE.has(id)) continue
     seen.add(id)
     folded += '\n' + localDefBody(code, id)
   }
