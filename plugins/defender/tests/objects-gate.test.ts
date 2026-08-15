@@ -82,9 +82,10 @@ async function loadObjects(): Promise<ObjectsModule> {
   try {
     return (await import(/* @vite-ignore */ spec)) as unknown as ObjectsModule
   } catch (e) {
+    const why = e instanceof Error ? e.message : String(e)
     throw new Error(
       'src/core/objects.ts not built yet (GREEN transcribes DEFB6.SRC into the ' +
-        `generated OBJECTS module): ${(e as Error).message}`,
+        `generated OBJECTS module): ${why}`,
     )
   }
 }
@@ -128,6 +129,7 @@ describe.skipIf(!vendoredAvailable)('independent reader — real DEFB6 picture f
 
   it('LASP1 is an 8×1 laser cell — LASD10 is $FFFF×4 = eight 0xFF bytes', () => {
     const las = pictureTable(DEFB6).find((d) => d.label === 'LASP1')
+    expect(las).toBeDefined()
     expect([las!.width, las!.height]).toEqual([8, 1])
     expect(readImageBytes(DEFB6, 'LASD10')).toEqual([255, 255, 255, 255, 255, 255, 255, 255])
   })

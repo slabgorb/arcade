@@ -16,8 +16,8 @@ Object image tables (DEFB6 + SAMEXAP7) transcription — INERT. DEFB6 inline obj
 
 **ROM Structure (vendored at `reference/original-source/defender/`):**
 
-- **DEFB6 (DEFB6.SRC)** — Inline object graphics containing OBI (Object-Image) headers (e.g., UFO at line 1/2)
-- **SAMEXAP7 (SAMEXAP7.SRC:6-7)** — "SAM EXPLOSIONS AND APPEARANCES" comment banner; explosion and appearance animation graphics
+- **DEFB6 (DEFB6.SRC)** — Inline object graphics. The `OBI` object-image *headers* (references, e.g. `OBI UFOP1,UFOKIL,$3333` in the UFO process at `defender/DEFB6.SRC:7`) point at the picture **descriptors** this story transcribes: `LABEL FCB W,H` + `FDB <data-ptrs>`, with the raster pixel data at the data labels (e.g. the UFO picture `UFOP1` at `defender/DEFB6.SRC:1954`, pixels `UFOD10` at `:2122`). NOT `DEFB6.SRC:1` — that is the UFO *process/AI code*, not picture data.
+- **SAMEXAP7 (SAMEXAP7.SRC:6-7)** — "SAM EXPLOSIONS AND APPEARANCES" is the explosion/appear *engine CODE* (APST/EXST/EXPU vector routines), NOT a pixel table — it holds no raster data. It is the non-raster block the encoding discriminant refuses to raster.
 
 **Design Pattern (from df2-3 precedent):**
 

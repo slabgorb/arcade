@@ -57,7 +57,8 @@ async function loadObjects(): Promise<ObjectsModule> {
   try {
     return (await import(/* @vite-ignore */ spec)) as unknown as ObjectsModule
   } catch (e) {
-    throw new Error(`src/core/objects.ts not built yet (GREEN ships blitObject): ${(e as Error).message}`)
+    const why = e instanceof Error ? e.message : String(e)
+    throw new Error(`src/core/objects.ts not built yet (GREEN ships blitObject): ${why}`)
   }
 }
 
@@ -126,16 +127,27 @@ describe('blitObject — the static object gallery (AC: static gallery blit proo
     expect(outOfBand, 'paint escaped the object cell band').toEqual([])
   })
 
-  it('clips an out-of-bounds blit — no crash, nothing written outside the framebuffer', async () => {
+  it('clips an out-of-bounds blit — no crash AND no wraparound into wrong cells', async () => {
     const m = await loadObjects()
-    const ufo = raster(m, 'UFOP1')
+    const ufo = raster(m, 'UFOP1') // 6 bytes/row → 12px wide, 4 tall
+    // Blit partly off the RIGHT edge so only x∈[14,16) is on-screen. Without the clip,
+    // `fb.data[fy*w + fx]` with fx ≥ w does not throw (a Uint8Array swallows an OOB
+    // index) — it WRAPS into the next row, silently corrupting an on-screen cell. So a
+    // length/`toThrow` check proves nothing (deleting the clip leaves both green); the
+    // real guard is that every lit cell stays inside the object's on-screen band.
     const fb = createFramebuffer(16, 16)
     clear(fb, 0)
-    // top-left off the near edge and bottom-right off the far edge — both must clip.
-    expect(() => m.blitObject(fb, ufo, -3, -2)).not.toThrow()
-    expect(() => m.blitObject(fb, ufo, 14, 14)).not.toThrow()
-    // every index still in range (Uint8Array can't hold OOB, but assert count sanity)
-    expect(fb.data.length).toBe(16 * 16)
+    expect(() => m.blitObject(fb, ufo, 14, 4)).not.toThrow()
+    const drawn = litCells(fb)
+    expect(drawn.length, 'the on-screen remainder of the UFO must still paint').toBeGreaterThan(0)
+    const stray = drawn.filter((c) => c.x < 14 || c.x >= 16 || c.y < 4 || c.y >= 4 + ufo.height)
+    expect(stray, 'a pixel escaped the clip — wrapped to another row or off the framebuffer').toEqual([])
+    // Off the NEAR edge (negative origin) must likewise not crash and not paint OOB.
+    const fb2 = createFramebuffer(16, 16)
+    clear(fb2, 0)
+    expect(() => m.blitObject(fb2, ufo, -3, -2)).not.toThrow()
+    const stray2 = litCells(fb2).filter((c) => c.x < 0 || c.x >= 16 || c.y < 0 || c.y >= 16)
+    expect(stray2).toEqual([])
   })
 
   it('distinct objects render differently (the UFO is not the lander)', async () => {
