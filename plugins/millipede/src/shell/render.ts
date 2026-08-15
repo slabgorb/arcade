@@ -17,6 +17,7 @@
 // src/core/palette.ts) — the black background.
 
 import { decodeColourByte } from '../core/palette'
+import { PLAYER_AREA_COLOUR } from '../core/playfield-colour'
 import { STAMPS } from './stamp-data'
 import type { HudPlacement } from '../core/hud'
 
@@ -28,6 +29,25 @@ export const PLAYFIELD_COLOUR_BYTES: readonly [number, number, number, number] =
 
 /** The sheet is 16x16 stamps of 8x8 pixels. */
 export const SHEET_PX = 128
+
+/** The 30x32 portrait playfield is 240x256 logical px (8px cells). */
+const PLAYFIELD_W = 240
+const PLAYFIELD_H = 256
+/** The player area is the bottom PLAYER_AREA_ROWS ($07, conway.ts) rows of 8px. */
+const PLAYER_AREA_BAND_H = 7 * 8
+
+/**
+ * Paint the green player-area (grass) band. The ROM sets BKGND $D6 for the bottom
+ * PLAYER_AREA_ROWS=7 rows ("SET GREY FOR PLAYER AREA", MILLI.MAC:1210); $D6 decodes
+ * to dark green through the active-low wiring (PLAYER_AREA_COLOUR). Row 0 is the
+ * BOTTOM (y=(0x1F-row)*8), so the band is the bottom 56 px, full width. Draw it
+ * before the field so mushrooms and the gun sit on the grass.
+ */
+export function drawPlayerAreaBand(ctx: CanvasRenderingContext2D): void {
+  const { r, g, b } = decodeColourByte(PLAYER_AREA_COLOUR)
+  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`
+  ctx.fillRect(0, PLAYFIELD_H - PLAYER_AREA_BAND_H, PLAYFIELD_W, PLAYER_AREA_BAND_H)
+}
 
 /**
  * Blit all 256 stamps, stamp i at ((i % 16) * 8, (i >> 4) * 8) — unscaled;

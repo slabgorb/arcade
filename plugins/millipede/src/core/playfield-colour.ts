@@ -69,6 +69,16 @@ export const COLOUR_LEVELS = FIELD_REGION_COLOURS.length
 /** WHITE ($00) — the gun (player ship) and lives icons (MLIRQ.MAC:297-299). */
 export const PLAYER_COLOUR = 0x00
 
+/**
+ * The player-area background — BKGND $D6, set by INIT2 ("SET GREY FOR PLAYER
+ * AREA", MILLI.MAC:1210-1211; also the first entry of the background table
+ * MILLI.MAC:990). CLRCH stores BKGND into ANCOL+8/+0C (MLIRQ.MAC:245-247). The
+ * programmers call it "grey", but the active-low wiring (src/core/palette.ts)
+ * decodes $D6 to a dark green — the grass band along the bottom PLAYER_AREA_ROWS
+ * ($07, conway.ts) rows of the playfield.
+ */
+export const PLAYER_AREA_COLOUR = 0xd6
+
 /** RED ($1F) — the alphanumeric HUD text and score (MLIRQ.MAC:294-296). */
 export const ALPHANUMERIC_COLOUR = 0x1f
 

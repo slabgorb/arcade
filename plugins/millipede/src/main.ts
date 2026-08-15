@@ -24,8 +24,8 @@ import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
 import { DEFAULT_HIGH_SCORES } from './core/highscore'
 import { showcasePlacements, showcaseSprites, SHOWCASE_BACKGROUND } from './core/attract-showcase'
 import { decodeColourByte, type Rgb } from './core/palette'
-import { drawGridStamps, drawStampAtPx, charTile } from './shell/render'
-import { playfieldPens, playerPens, spritePens } from './shell/playfield-palette'
+import { drawGridStamps, drawStampAtPx, charTile, drawPlayerAreaBand } from './shell/render'
+import { fieldPens, playerPens, alphanumericPens, spritePens } from './shell/playfield-palette'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
@@ -173,8 +173,11 @@ function render(state: GameState): void {
   }
   c.fillStyle = '#000'
   c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+  drawPlayerAreaBand(c) // the green grass band along the bottom rows, under the field
 
-  drawGridStamps(c, fieldPlacements(state.field), playfieldPens())
+  // Each field cell is coloured by its CHAR CODE: a normal mushroom cap reads
+  // salmon, a poison cap blue (fieldPens), which one global palette cannot do.
+  for (const p of fieldPlacements(state.field)) drawGridStamps(c, [p], fieldPens(p.stamp))
   // Each motion object paints in its OWN authentic per-creature MOCOL colours,
   // keyed by its `color` attribute byte (milliped's packed sprite palette).
   for (const s of state.segments) if (s.color !== VACANT_COLOR) drawSprite(s.h, s.v, s.pic, spritePens(s.color))
@@ -206,6 +209,7 @@ function render(state: GameState): void {
   drawGridStamps(
     c,
     hudPlacements({ score: state.score, lives: state.lives, highScore: DEFAULT_HIGH_SCORES[0].score }),
+    alphanumericPens(),
   )
 }
 
