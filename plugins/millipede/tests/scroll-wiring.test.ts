@@ -57,7 +57,7 @@ import { createPlayer } from '../src/core/input'
 import { initRoster } from '../src/core/enemies/roster'
 import { initBeetles } from '../src/core/enemies/beetle'
 import { initMosquitoes } from '../src/core/enemies/mosquito'
-import { newDdtTable, ddtPlace, DDT_EXPLODING_MIN } from '../src/core/ddt'
+import { newDdtTable, ddtPlace, ddtRestore, DDT_EXPLODING_MIN } from '../src/core/ddt'
 
 const idle: GameInput = { dh: 0, dv: 0, fire: false, start: false }
 const SEED = 0x1982
@@ -430,5 +430,144 @@ describe('ml7-9 AC9 — accessibility: a scroll is a SHIFT, never a full-screen 
     const scrolling = stepGame(playState({ scrolc: -1 }), idle)
     expect(downScrollFingerprint(scrolling.field), 'the seeded frame really scrolled').toBe(true)
     expect(scrolling.events, 'scrolling adds no event over a still frame').toEqual(still.events)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Story ml7-12 — RED phase (TEA). Wire the HITDDT register (SC-9). ml7-9 shipped
+// scrollDispatch's `!gate.hitDdt` arm gate but left GameState with no HITDDT
+// register, so sim.ts hardcodes `hitDdt: false` (sim.ts:324, "unmodelled"). This
+// story gives GameState the register the ROM keeps at HITDDT (MLDEF.MAC:373,
+// ".BLKB 2 ;NON-ZERO IF DDT HAS BEEN HIT"), SETS it at the ROM's two sites, CLEARS
+// it at wave start, and feeds it to the scroll gate that already reads it.
+//
+// ─── GROUND TRUTH: the three HITDDT sites (grep HITDDT, reference/…/millipede) ──
+//   MILLI.MAC:2060  INC X,HITDDT  ;WE HIT A DDT           — shot detonated a bomb
+//   MILLI.MAC:1805  INC X,HITDDT  ;STOP SCROLLING …       — the PLAY routine
+//   MILLI.MAC:508   STA X,HITDDT  ;CLEAR FLAG WHEN NEW WAVE STARTS  (A=0)
+//   MLSUB.MAC:1129  LDA X,HITDDT                          — SCROLL reads it (SC-9)
+//
+// ─── AC2 SCOPE CORRECTION (see this story's session Delivery Findings) ─────────
+// The story TITLE says "player-death-by-DDT (:1805)". It is a MISNOMER. Line 1805
+// sits inside `PLAY: CHECK FOR PLAYER COLLISION` (MILLI.MAC:1750, .SBTTL
+// "PLAY-CHECK FOR PLAYER COLLISION"): the INC HITDDT runs on ANY player-collision
+// death (a segment or any creature), right beside PEXPLD (the player-explosion
+// sound), NOCENT, SLOW and the :1812 STA SCROLC this port already reproduces
+// (AC6 above). HITDDT is a persistent register, cleared only at :508 — so its job
+// is to hold the auto-scroll OFF from the death through respawn until the wave
+// restarts, which the frame-local `playerDead` gate (SC-8) cannot do. These tests
+// therefore pin ANY player death, matching both the ROM and sim.ts's existing
+// death path (touchedBySegment || stepped.playerHit).
+//
+// ─── ISOLATION / RED SHAPE ────────────────────────────────────────────────────
+// hitDdt does not exist on GameState yet, so under vitest's type-stripping esbuild
+// these read `undefined` at runtime and the register assertions red on behaviour;
+// the AC4 SUPPRESSION case reds purely on the OBSERVABLE (the arm scrolls the
+// field when it must not), independent of the field's existence. Each register
+// assertion carries a same-frame non-vacuity anchor (score 80 / player dead /
+// wave advanced / the mushroom really chipped) so it cannot pass on a frame where
+// nothing happened. The bomb fixture mirrors shot.test.ts: ddtPlace word 0 =
+// 0x10CD ⇒ base 0xCD = idx(6,13); a shot at (0xC7,0x66) resolves to that cell.
+describe('ml7-12 — HITDDT is SET when a shot detonates a DDT bomb (MILLI.MAC:2060)', () => {
+  const armedBomb = () => {
+    const table = newDdtTable()
+    ddtPlace(table, false) // word 0 → {lo:0xCD, hi:0x10}
+    const field = emptyField()
+    ddtRestore(table, field) // stamps DDT_STAMP at base 0xCD = idx(6,13)
+    return { table, field }
+  }
+  const SHOT_AT_BOMB = { active: true, h: 0xc7, v: 0x66 } // → offset 0xCD
+
+  it('detonating a bomb this frame sets state.hitDdt (DD-213, INC HITDDT)', () => {
+    const { table, field } = armedBomb()
+    const g = playState({ ddt: table, field, segments: [], shot: SHOT_AT_BOMB })
+    const out = stepGame(g, idle)
+    expect(out.score, 'the bomb actually detonated (+80, DDT_HIT_POINTS)').toBe(80)
+    expect(out.hitDdt, 'a shot-detonated bomb sets HITDDT (MILLI.MAC:2060)').toBe(true)
+  })
+
+  it('a shot hitting a MUSHROOM (not a bomb) does NOT set hitDdt — the set is DDT-gated', () => {
+    // The shot resolves against the field FIRST (sim.ts step 3); a mushroom hit
+    // consumes it as kind 'mushroom' and never reaches the roster, so no kill
+    // noise. HITDDT must stay clear — only a DDT hit sets it.
+    const field = emptyField()
+    field[idx(6, 13)] = GREY_BIT | 0x7f // a full mushroom at the shot's cell (0xCD)
+    const g = playState({ field, segments: [], shot: { active: true, h: 0xc7, v: 0x66 } })
+    const out = stepGame(g, idle)
+    expect(out.field[idx(6, 13)], 'the shot really hit the mushroom (chipped 0x7F→0x7E)').toBe(
+      GREY_BIT | 0x7e,
+    )
+    expect(out.hitDdt, 'a mushroom hit is not a DDT hit — HITDDT stays clear').toBe(false)
+  })
+})
+
+describe('ml7-12 — HITDDT is SET when the player dies (MILLI.MAC:1805, PLAY routine)', () => {
+  it('a player killed by a segment this frame sets state.hitDdt (any-collision death)', () => {
+    // Mirrors AC6's death setup: a live player standing on a live segment dies.
+    const player = createPlayer()
+    const seg = { h: player.h, v: player.v, dh: 0, dv: 0, pic: 0, color: 0x39 }
+    const g = playState({ segments: [seg], lives: 3 })
+    const out = stepGame(g, idle)
+    expect(out.player.alive, 'the player died on the segment (the set condition)').toBe(false)
+    expect(out.hitDdt, 'player death sets HITDDT (MILLI.MAC:1805)').toBe(true)
+  })
+
+  it('a frame with NO death leaves hitDdt clear (the set is death-gated)', () => {
+    // Empty train ⇒ nothing reaches the player; no death, no detonation.
+    const g = playState({ segments: [] })
+    const out = stepGame(g, idle)
+    expect(out.player.alive, 'the player survived the frame').toBe(true)
+    expect(out.hitDdt, 'no death ⇒ HITDDT stays clear').toBe(false)
+  })
+})
+
+describe('ml7-12 — HITDDT is CLEARED at wave start and PERSISTS otherwise (MILLI.MAC:508)', () => {
+  it('a set HITDDT is cleared when the next wave is laid (CENTPC :508 STA 0)', () => {
+    // A cleared train with DELAY about to elapse lays the next wave this frame
+    // (proven by AC5's CENTPC test: out.wave → 1). :508 clears HITDDT there.
+    const g = playState({ segments: [], delay: 1, hitDdt: true })
+    const out = stepGame(g, idle)
+    expect(out.wave, 'the next wave was laid (CENTPC ran)').toBe(1)
+    expect(out.hitDdt, 'wave start clears HITDDT (MILLI.MAC:508)').toBe(false)
+  })
+
+  it('a set HITDDT PERSISTS across a frame with no wave start (a register, not a per-frame recompute)', () => {
+    // DELAY not yet elapsed ⇒ no re-lay this frame (AC5 control: out.wave stays 0).
+    // HITDDT is cleared ONLY at :508, so it must survive an ordinary frame — this
+    // is what distinguishes the modelled register from a value recomputed each step.
+    const g = playState({ segments: [], delay: 2, hitDdt: true })
+    const out = stepGame(g, idle)
+    expect(out.wave, 'no wave was laid this frame').toBe(0)
+    expect(out.hitDdt, 'HITDDT persists until wave start (cleared only at :508)').toBe(true)
+  })
+})
+
+describe('ml7-12 — the scroll gate READS the register: HITDDT suppresses the continuous arm (SC-9)', () => {
+  // The crux, and the one purely-behavioural RED: the arm fires when
+  // !gate.hitDdt && CENTIN==4 && frame phase $1E (scroll.ts:97-104). ml7-9's AC3
+  // proved fourTrain()+frame 0x1E arms it; here the ONLY change is hitDdt, so a
+  // scroll appearing/vanishing is attributable to the register alone. With
+  // sim.ts:324 hardcoding false, the SUPPRESSION case still scrolls and reds.
+  const fourTrain = () => createGame(SEED, { phase: 'play' }).segments.slice(0, 4)
+
+  it('SUPPRESSED: HITDDT set ⇒ the armed continuous arm does NOT scroll (MLSUB.MAC:1129, SC-9)', () => {
+    const field = emptyField()
+    field[idx(7, 0x10)] = 0x33
+    const g = playState({ field, segments: fourTrain(), frame: 0x1e, scrolc: 0, hitDdt: true })
+    const out = stepGame(g, idle)
+    expect(out.field[idx(7, 0x10)], 'HITDDT suppressed the arm — marker stayed put').toBe(0x33)
+    expect(downScrollFingerprint(out.field), 'no down-scroll while HITDDT is set (SC-9)').toBe(false)
+  })
+
+  it('CONTROL: same armed frame with HITDDT clear ⇒ the arm scrolls (differential floor)', () => {
+    // Identical to the suppression case but hitDdt unset — the arm fires. This
+    // proves the setup genuinely arms the arm, so the case above reds on the
+    // register, not on a mis-armed fixture. Green now and after wiring.
+    const field = emptyField()
+    field[idx(7, 0x10)] = 0x33
+    const g = playState({ field, segments: fourTrain(), frame: 0x1e, scrolc: 0 })
+    const out = stepGame(g, idle)
+    expect(out.field[idx(7, 0x0f)], 'the arm scrolled the field down (SC-14)').toBe(0x33)
+    expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)
   })
 })
