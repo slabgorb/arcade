@@ -422,3 +422,8 @@ completed_stories:
     title: 'Cooperative process scheduler core (RED first): plugins/defender/src/core/scheduler.ts — a process run-list with makeProcess (MKPROC, defender/DEFA7.SRC:72), kill (KILL/SUCIDE, defender/DEFA7.SRC:19,31), sleep/nap (SLEEP, defender/DEFA7.SRC:12 — wake after N 16-msec ticks at a continuation addr), and stepTick() (the once-per-frame dispatch, the sub-128 IRQ arm''s effect, defender/DEFA7.SRC:3048-3050). Pure and clock-free; the shell calls stepTick() off @shared/loop. Re-derived and re-cited from THIS tree (jt2 is a pattern reference in prose only, never imported). purity.test.ts stays green.'
     points: 5
     completed: '2026-08-15'
+  - id: df3-2
+    epic: df3
+    title: 'World-wrap coordinate model + camera slide (the epic''s riskiest seam): plugins/defender/src/core/world.ts — the BGL camera (defender/PHR6.SRC:215) + BGLX prev (defender/PHR6.SRC:216), the 16-bit HORIZONTAL WRAP at $10000, the pure worldX(entity)=onscreen+bgl helper (PLABX, defender/DEFA7.SRC:2432-2440), the SHIP-LEADS-SCROLL slide ported line-for-line (BGDELT / PV1..PV12, base $20 fwd / $70 rev, ±$40 step / ±$100 clamp, defender/DEFA7.SRC:2373-2431), and the vertical strip rule (YMIN=42 / YMAX=240, defender/PHR6.SRC:20-21; player-CLAMP DEFA7.SRC:2450,2461 vs object-WRAP DEFA7.SRC:2490-2496). Pin COORDINATES not just direction (routing != geometry). Expect a Reviewer mutation battery over the slide math.'
+    points: 5
+    completed: '2026-08-15'
