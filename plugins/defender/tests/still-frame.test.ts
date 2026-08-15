@@ -44,6 +44,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { createFramebuffer, clear } from '../src/core/framebuffer.js'
+import { writeText } from '../src/core/charset.js'
 
 // tests/still-frame.test.ts -> the plugin root is one level up.
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -169,6 +171,36 @@ describe('df2-6 still frame — upright orientation (the trap this story settles
       nonBg.size,
       `expected ≥3 distinct on-screen colours (planet + text + object); saw indices {${[...nonBg].sort((a, b) => a - b).join(', ')}}`,
     ).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('df2-6 still frame — the charset renders UPRIGHT (the orientation df2-6 settled)', () => {
+  // The visual playtest caught the trap the charset/objects source comments deferred to
+  // df2-6: the Williams cell is stored COLUMN-major (bytes[col*height + row]), not
+  // row-major. Read row-first, "DEFENDER" is noise; read column-first it is legible
+  // (LETTRD's 24 bytes, defender/MESS0.SRC:558, only spell a 'D' column-first). This
+  // locks that orientation so a regen or a "tidy" refactor can't silently re-transpose
+  // the font back to garbage.
+  it("'D' has a solid left vertical stroke and a top bar — the column-major signature, impossible row-major", () => {
+    const TEXT_COLOUR = 9
+    const fb = createFramebuffer(6, 8) // one 'D' cell: width 3 → 6px wide, height 8
+    clear(fb, 0)
+    writeText(fb, 'D', 0, 0, TEXT_COLOUR, 0)
+    const at = (x: number, y: number): number => fb.data[y * fb.width + x]
+
+    // Column-major 'D' is  .####. / .#..## / … / .####. — the left stroke (x=1) is a
+    // solid vertical bar down rows 0..6. Row-major 'D' dots that column instead, so
+    // this fails the moment the decode transposes back.
+    for (let row = 0; row <= 6; row++) {
+      expect(at(1, row), `'D' left stroke broken at row ${row} — charset is not upright (column-major)`).toBe(
+        TEXT_COLOUR,
+      )
+    }
+    // …and the top bar is a contiguous run (x=1..4 at row 0). Row-major leaves gaps here
+    // (its row 0 is .#.#.#), so the two checks together pin the orientation both ways.
+    for (let x = 1; x <= 4; x++) {
+      expect(at(x, 0), `'D' top bar broken at x=${x} — charset is not upright (column-major)`).toBe(TEXT_COLOUR)
+    }
   })
 })
 

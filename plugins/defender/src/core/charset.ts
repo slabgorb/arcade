@@ -12,15 +12,17 @@
 // the shell (render.ts) decodes an index to colour. blitGlyph writes only the colour
 // INDEX its caller passes — colours are never invented here.
 //
-// ─── THE CELL DECODE (derived; the byte gate owns the BYTES, this owns the pixels)─
-// A cell is width×height bytes, row-major (defender/MESS0.SRC:441-649). Each byte
-// packs two horizontal pixels as nibbles — high nibble the left pixel, low nibble the
-// right — and a non-zero nibble is a foreground pixel (the ROM font is a 1-bit mask
-// the text routine colours; here the caller's index is that colour). A glyph is
-// therefore width×2 pixels wide by height tall. The exact nibble ORDER and the
-// Williams screen rotation are an orientation question df2-6's visual playtest
-// settles; this decode is internally consistent and every charset test is
-// packing-agnostic by design.
+// ─── THE CELL DECODE (COLUMN-MAJOR — settled by df2-6's visual playtest) ─────────
+// A cell is width×height bytes. It is stored COLUMN-MAJOR: the bytes are `width`
+// vertical strips of `height` bytes each, so the byte for strip `col`, scanline `row`
+// is bytes[col*height + row] (defender/MESS0.SRC:558 LETTRD — its 24 bytes only spell
+// a 'D' read column-first, never row-first). Each byte still packs two horizontal
+// pixels as nibbles — high nibble the left pixel, low nibble the right — and a non-zero
+// nibble is a foreground pixel (the ROM font is a 1-bit mask the text routine colours;
+// here the caller's index is that colour). A glyph is therefore width×2 pixels wide by
+// height tall. df2-6 settled the row-major-vs-column-major orientation by rendering
+// "DEFENDER" both ways: row-major is noise, column-major is legible (the charset-blit
+// suite is packing-agnostic and stayed green across the fix).
 
 import type { Framebuffer } from './framebuffer.js'
 import { CHARSET, type GlyphData } from './charset-data.js'
@@ -78,7 +80,7 @@ export function blitGlyph(
   }
   for (let row = 0; row < glyph.height; row++) {
     for (let col = 0; col < glyph.width; col++) {
-      const byte = glyph.bytes[row * glyph.width + col]
+      const byte = glyph.bytes[col * glyph.height + row] // COLUMN-major (df2-6)
       const nibbles = [(byte >> 4) & 0x0f, byte & 0x0f] // [left pixel, right pixel]
       for (let half = 0; half < PIXELS_PER_BYTE; half++) {
         if (nibbles[half] === 0) continue // background — leave the framebuffer be
