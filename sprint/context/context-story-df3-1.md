@@ -1,92 +1,83 @@
-# Story df3-1 Context
+# Story Context: df3-1
 
-## Title
+## Story Title
 Cooperative process scheduler core (RED first): plugins/defender/src/core/scheduler.ts — a process run-list with makeProcess (MKPROC, defender/DEFA7.SRC:72), kill (KILL/SUCIDE, defender/DEFA7.SRC:19,31), sleep/nap (SLEEP, defender/DEFA7.SRC:12 — wake after N 16-msec ticks at a continuation addr), and stepTick() (the once-per-frame dispatch, the sub-128 IRQ arm's effect, defender/DEFA7.SRC:3048-3050). Pure and clock-free; the shell calls stepTick() off @shared/loop. Re-derived and re-cited from THIS tree (jt2 is a pattern reference in prose only, never imported). purity.test.ts stays green.
 
-## Metadata
-- **Story ID:** df3-1
-- **Type:** story
-- **Points:** 5
-- **Priority:** p2
-- **Workflow:** tdd
-- **Repo:** arcade
-- **Epic:** Defender — the ship + the scheduler (phase 4a)
+## Story Type
+Feature
 
-## Problem
+## Points
+5
 
-Defender's game logic is not a frame of straight-line updates — it is a set of
-**cooperative processes** on a linked run-list, each yielding control by *napping*
-for N 16-msec ticks and resuming at a stored continuation address. The ship, each
-star, each laser (and, later, every enemy) is one of these processes. Nothing in
-`df3` can move until this kernel exists, so it is built **first** and **RED first**:
-a pure, clock-free `src/core/scheduler.ts` that the shell drives one tick per frame.
+## Acceptance Criteria (Derived from ROM Citations)
 
-## Technical Approach
+### AC-1: makeProcess (MKPROC) — process creation
+The scheduler must provide a `makeProcess()` function that creates and enqueues a new process on the run-list, allocating process records from the FREE list and initializing them with PTIME (duration in 16-msec ticks), PADDR (continuation address), PTYPE (process type), and PCOD (process code/behavior). Citations: defender/DEFA7.SRC:72 (MKPROC PSHS A,Y,U).
 
-Port the resident kernel from `DEFA7.SRC`, re-derived and re-cited from *this* tree
-(joust's kernel is a **pattern reference in prose only** — never imported).
+**Test:** createProcess() accepts duration + callback, enqueues to run-list, state is verifiable.
 
-**The process record.** Each process carries the fields the ROM names: `PADDR`
-(continuation address — where the process resumes), `PTIME` (nap countdown in
-ticks), `PTYPE` (user type tag), `PCOD` (regular vs "super" process). In TS this is
-a small record/struct on a run-list; the ROM keeps two free-lists (`FREE`,
-`SPFREE`) — model at least the regular `FREE` list.
+### AC-2: kill (KILL) — process termination
+The scheduler must provide a `kill()` function that removes a process from the run-list and returns it to the FREE list. Citations: defender/DEFA7.SRC:31 (KILL).
 
-**The operations** (cite each):
-- `makeProcess` / `MKPROC` (`defender/DEFA7.SRC:72-87`) — pull a record off `FREE`,
-  set `PADDR`/`PTYPE`, init `PTIME=1`, link into the run-list at the current
-  process. (`MSPROC`, `defender/DEFA7.SRC:56`, is the "super process" variant — model
-  if a laser needs it in df3-5, else note and defer.)
-- `sleep` / `nap` / `SLEEP` (`defender/DEFA7.SRC:12-15`) — store the nap count into
-  `PTIME` and the continuation into `PADDR`, then yield (`DISP2`). The ROM's `NAP`
-  macro is the ergonomic form; expose a `sleep(ticks, continuation)`.
-- `kill` / `KILL` / `SUCIDE` (`defender/DEFA7.SRC:19-48`) — unlink a process from
-  the run-list and return its record to `FREE` (or `SPFREE`). `SUCIDE` is
-  kill-self-then-dispatch.
-- `stepTick()` — the once-per-frame dispatch: the effect of the IRQ's sub-128 arm
-  incrementing `TIMER` while `EXEC0` spins on it (`defender/DEFA7.SRC:3048-3050`).
-  Walk the run-list, decrement `PTIME`, run each due process from its `PADDR`, honour
-  new naps/kills issued during the tick.
+**Test:** kill() removes process from run-list, frees process record, process no longer executes.
 
-**Purity.** `stepTick()` takes no wall-clock — the SHELL calls it once per fixed
-60 Hz frame off `@shared/loop`. `plugins/defender/tests/purity.test.ts` must stay
-green (no `Date`/`Math.random`/canvas/`fetch` in `src/core/`).
+### AC-3: SUCIDE — self-terminating process
+The scheduler must support SUCIDE behavior (process self-termination at the end of its continuation), returning itself to the FREE list. Citations: defender/DEFA7.SRC:19 (SUCIDE).
 
-## Scope
+**Test:** A process that returns without rescheduling itself is freed and no longer in run-list.
 
-- **In scope:** the pure kernel — process records, `FREE` list, make/kill/sleep,
-  `stepTick()` dispatch; a trivial demo process proving nap→resume works.
-- **Out of scope:** the ship, stars, laser, world/camera (later df3 stories); any
-  enemy process (`df4`); the shell rAF wiring beyond calling `stepTick()`.
+### AC-4: sleep/nap (SLEEP) — timed process suspension
+The scheduler must provide a `sleep()` or `nap()` function that suspends a running process for N 16-msec ticks (the scheduler quantum), resuming execution at a continuation address after the delay expires. Citations: defender/DEFA7.SRC:12 (SLEEP LDU CRPROC).
 
-## Acceptance Criteria
+**Test:** sleep(N) suspends process, stepTick() advances N times, process resumes at continuation.
 
-- [ ] `plugins/defender/src/core/scheduler.ts` exists: a pure cooperative kernel
-      with `makeProcess`, `kill`, `sleep`/`nap`, and `stepTick()` — no clock read.
-- [ ] A process that naps for N ticks does **not** run for N-1 `stepTick()` calls
-      and **does** resume at its continuation on the Nth (pinned with an explicit N).
-- [ ] `kill` unlinks a process (it stops receiving ticks) and returns its record to
-      the free list so a later `makeProcess` reuses it; run-list integrity holds
-      across interleaved make/kill.
-- [ ] Every kernel constant/field introduced into `src/core` (`PTIME`/`PADDR`/
-      `PTYPE`/`PCOD`, the tick quantum) is backed by a
-      `plugins/defender/docs/rom-study/claims/*.json` entry, byte-verified by
-      `citations.test.ts` against `reference/original-source/defender/DEFA7.SRC`.
-- [ ] `purity.test.ts` stays green; the shell calls `stepTick()` once per fixed
-      60 Hz frame via `@shared/loop` (SHELL-side; core stays clock-free).
-- [ ] New comments cite ROM as `defender/DEFA7.SRC:<line>`, not `file.ts:<line>`.
+### AC-5: stepTick() — once-per-frame dispatch
+The scheduler must provide a `stepTick()` function that executes once per 16-msec frame (60 Hz), decrementing PTIME for each sleeping process, and dispatching all ready (PTIME=0) processes from the run-list to their continuation addresses. stepTick() is called by the shell off @shared/loop and must remain clock-free (no internal timers; shell drives the clock). Citations: defender/DEFA7.SRC:3048-3050 (EXEC0 / LDA TIMER / BEQ EXEC0 / CLR TIMER — the once-per-frame TIMER gate).
 
-## References
+**Test:** stepTick() decrements PTIME, dispatches ready processes, maintains run-list consistency.
 
-- **Epic context:** `sprint/context/context-epic-df3.md` — core/shell boundary, timebase, scheduler-as-pattern guardrail.
-- **Design spec:** `docs/superpowers/specs/2026-08-15-defender-df3-ship-scheduler-design.md` §2 (the seam), §4 (df3-1).
-- **Kernel source:** `reference/original-source/defender/DEFA7.SRC:12` (SLEEP), `:19` (SUCIDE), `:31` (KILL), `:72` (MKPROC), `:56` (MSPROC); `:3048-3050` (EXEC0/TIMER spin).
-- **Dossier:** `plugins/defender/docs/rom-study/subsystems.md` ("Resident control — DEFA7").
-- **Pattern reference (prose only):** joust's cooperative kernel under `plugins/joust/src/core/` — do **not** import.
-- **Gates:** `plugins/defender/tests/audit/citations.test.ts`, `plugins/defender/tests/purity.test.ts` (df1-1).
+### AC-6: purity.test.ts stays green
+The scheduler must pass the existing purity test that enforces clock-free core (no direct call to timers, no Date, no setTimeout, no global state). Re-derived from jt2 (joust scheduler) as a pattern reference in prose only — joust code is never imported.
 
----
-> **Architect-verified anchors** (checked against the current tree during df3 hydration, 2026-08-15):
-> `DEFA7.SRC:12` = `SLEEP`, `:19` = `SUCIDE`, `:31` = `KILL`, `:72` = `MKPROC`, `:56` = `MSPROC`, `:3048-3050` = the `EXEC0 LDA TIMER` spin. TEA must re-pin precisely at RED (line numbers from tool output only).
+**Test:** `npm run test:orchestrator` and `npx vitest run --project defender` both pass; no clock symbols in src/core/scheduler.ts.
 
-_Generated by `pf context create story df3-1`; body authored by Architect (df3 design spec)._
+## Workflow
+tdd
+
+## Repository
+arcade
+
+## Epic
+df3 — Defender — the ship + the scheduler (phase 4a)
+
+## Background
+
+The Defender arcade machine used a cooperative multi-process scheduler kernel to coordinate the player ship, enemies, projectiles, and game state transitions. The scheduler dispatched processes (short-running subroutines) on a fixed 16-msec (60 Hz) clock tick, using SLEEP to yield control until the next tick.
+
+The df3 epic re-derives this scheduler in TypeScript as a pure, clock-free core module (the shell provides the clock via @shared/loop and calls stepTick() once per frame). This story implements the core scheduler kernel: process creation (MKPROC), termination (KILL/SUCIDE), sleep/nap suspension with wake-up at a continuation address, and the once-per-frame dispatch loop (stepTick).
+
+The scheduler is a pattern reuse from jt2 (joust), re-cited from defender/DEFA7.SRC. No code is imported from joust; this is a fresh derivation from the ROM.
+
+## Dependencies
+- df1 (dossier + citation gate + src/core purity test)
+- df2 (framebuffer render seam, palette, charset, object/terrain tables)
+
+## Out of Scope
+- Player ship mechanics (df3-3)
+- World-wrap coordinate model (df3-2)
+- Parallax starfield (df3-4)
+- Laser fire (df3-5)
+- Enemies/collision/materialize (df4)
+- Waves/scanner/smart-bomb/hyperspace/score/2P (df5)
+- Sound (df6)
+- Attract→play phase machine/HUD/showcase (df7)
+
+## Design Notes
+
+**Pattern Reference:** jt2 (joust scheduler) is a prose reference only for understanding the Williams kernel pattern. No code is imported. The scheduler is re-derived and re-cited from THIS tree (defender/DEFA7.SRC:12-130).
+
+**Purity & Clock-Free:** The core scheduler is pure and clock-free. The shell (via @shared/loop) calls stepTick() once per 16-msec frame (60 Hz). The scheduler must not directly read a clock or call any time function (Date, setTimeout, etc.). The purity test (purity.test.ts) enforces this constraint.
+
+**Process Records:** Processes are records with fields: PTIME (time until wake, in ticks), PADDR (continuation address / callback), PTYPE (process type), PCOD (process code/behavior). The scheduler maintains a run-list and a FREE list.
+
+**ROM Citations:** Every constant and algorithm comes from defender/DEFA7.SRC or defender/PHR6.SRC, with line numbers cited in acceptance criteria and code comments. Line numbers come from SourceGen or tool output, not hand-counted.
