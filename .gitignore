@@ -74,3 +74,10 @@ out/audio/
 # 5.9MB of images that no build, suite or sprint command consumes, all of it
 # reproducible — ignored rather than deleted, since the next `pf init` restores it.
 .pennyfarthing/personas/portraits/
+
+# MAME emulator artifacts (ROM-reference work is often run inside the repo):
+# screenshots at the repo root, and MAME's cfg/ + nvram/ dumps. The orchestrator
+# topology suite forbids tracked images at the root — keep these out of git.
+/*.png
+/cfg/
+/nvram/
