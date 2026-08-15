@@ -30,7 +30,8 @@ stories:
     title: 'Character set (MESS0) transcription + text writer. MESS0 is the charset/message block, banked block 2 (SELECT CHARS, defender/DEFA7.SRC:2030-2031; header defender/MESS0.SRC:1). GENERATED charset module (transcribe tool) + an INDEPENDENT-reader gate that refuses any non-matching byte; a pure blitGlyph into the framebuffer; render a known string. Raster charset — the ROM cell pixels, not @shared/font vector glyphs.'
     points: 4
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
   - id: df2-4
