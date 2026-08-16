@@ -11,7 +11,7 @@ stories:
     description: "Deferred from ml7-11 (session Design Deviations: 'Colour index held at CENTIN=12; LCOLOR-gated per-length recolour deferred'). GROUND TRUTH (verified 2026-08-16): the ROM's CLRCH colour-RAM init (millipede/MLIRQ.MAC:242) recolours the field ONLY when the LCOLOR flag is set — `LDA LCOLOR / BNE 10$` (MLIRQ.MAC:248), and on the set path it clears the flag (STA LCOLOR, :253) and loads the colour indexed by the millipede LENGTH: `LDY X,CENTIN / DEY` (MLIRQ.MAC:255) => colour row = CENTIN-1, 0..11. CENTIN is the connected millipede length (MLDEF.MAC:299 `CENTIN: .BLKB 2 ;LENGTH OF CENTIPEDE`), init to 12 (MILLI.MAC:1168-1170). So the field recolours a step as the millipede shortens, but latched at the LCOLOR event, NOT every frame. REUSE-FIRST: the pure per-length palette function playfieldPens(centin) ALREADY EXISTS and is tested (plugins/millipede/src/shell/playfield-palette.ts:43; playfield-palette.test.ts covers centin=1 and 12) — but it is currently UNUSED by the live render, which draws the field through per-CHAR-CODE fieldPens(stamp) (ml9-2, main.ts:238-241). THE STORY IS THEREFORE (a) model a CENTIN colour-index + LCOLOR gate that GameState can expose (GameState already carries state.centin, game-state.ts:51), and (b) DECIDE + IMPLEMENT how the per-length BASE palette composes with the per-code fieldPens overrides so the ml9-2 mushroom-cap/DDT colours survive while the base band shifts with length — a straight swap back to global playfieldPens would REGRESS ml9-2. Seams: core/game-state.ts (or a small core colour-index reducer), shell/playfield-palette.ts, main.ts field draw call. Every new src/core constant carries a citations.test.ts-gated claim. ACCESSIBILITY: the recolour is a discrete per-length step latched at a wave event — steady, no strobe (ml7-4); re-verify at the visual playtest. This is the meatiest of the three and may itself split if the compose decision lands on a different file surface than the gate."
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
@@ -20,6 +20,7 @@ stories:
       - "The recolour is LCOLOR-GATED, not per-frame: it latches at the wave/length-change event (the ROM's `LDA LCOLOR / BNE` gate, MLIRQ.MAC:248-253), modelled so the field does NOT recompute its base colour every frame; a test drives a length change WITHOUT the gate set and asserts the base colour is unchanged, then with the gate set and asserts it steps."
       - "The per-length base composes with ml9-2's per-code fieldPens overrides WITHOUT regressing them: mushroom caps, poison, and the DDT two-colour glyph keep their ml9-2/ml9-3 colours while the base band shifts with length; a test asserts a poison cap stays blue ($F8) and a DDT cell stays the ml9-3 two-colour glyph across at least two CENTIN values."
       - "No full-screen strobe/flash introduced (ml7-4 accessibility, the standing owner-epilepsy exception): the recolour is a discrete steady step; verified steady-by-construction in a test and confirmed at the /millipede/ visual playtest against ingame-mame-reference.png."
+    completed: '2026-08-16'
     type: bug
     review_verdict: approved
   - id: ml11-2
