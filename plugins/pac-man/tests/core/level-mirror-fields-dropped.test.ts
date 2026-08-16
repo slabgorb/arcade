@@ -2,10 +2,10 @@
 //
 // Story pm5-2 (RED, TEA / Han Solo) — DROP the four dead `Level` mirror fields.
 //
-// `frightenedSeconds`/`frightenedFlashes`/`elroy1`/`elroy2` sit on the `Level`
-// type (level.ts:49-60) and are populated at `buildLevel` (:145-149), but the
-// running game reads NONE of them: they are pure mirrors of a single source in
-// `mode.ts` (`frightenedFramesForLevel`/`FRIGHT_FLASHES` and `elroyThresholds`).
+// `frightenedSeconds`/`frightenedFlashes`/`elroy1`/`elroy2` were fields on the
+// `Level` type, populated at `buildLevel`, but the running game read NONE of
+// them: they were pure mirrors of a single source in `mode.ts`
+// (`frightenedFramesForLevel`/`FRIGHT_FLASHES` and `elroyThresholds`). pm5-2 drops them.
 //
 // ROM RULING (see context-story-pm5-2.md): the real Pac-Man machine DISPLAYS
 // none of these four values, so the story's "wire a consumer (attract/HUD
@@ -13,18 +13,19 @@
 // forecloses it; the only ROM-faithful resolution is to DROP the fields. These
 // tests encode the deletion, not a readout.
 //
-// WHY RUNTIME, not a source-text scan: level.ts's own comments name all four
-// fields (e.g. the doc block at :105), so a grep of the source would still match
-// them after the code is gone. This suite asserts the OBSERVABLE shape of the
-// object `buildLevel` produces (via the public `levelRow`), which flips exactly
-// on the behaviour change and cannot be defeated by a comment.
+// WHY RUNTIME, not a source-text scan: before this drop, `level.ts` named all
+// four fields in its own doc comments, so a grep-based guard would have been
+// defeated the moment the drop reworded those comments (which it did). This suite
+// instead asserts the OBSERVABLE shape of the object `buildLevel` produces (via
+// the public `levelRow`), which flips exactly on the behaviour change and cannot
+// be defeated by a comment.
 //
-// SCOPE FENCE — `elroy1SpeedPct`/`elroy2SpeedPct` (level.ts:39,42) are a DIFFERENT
-// pair, genuinely consumed for Blinky's Cruise-Elroy speed at game.ts:709,711.
-// They STAY. The last `describe` guards them against an over-eager deletion.
+// SCOPE FENCE — `elroy1SpeedPct`/`elroy2SpeedPct` are a DIFFERENT pair, genuinely
+// consumed for Blinky's Cruise-Elroy speed in `game.ts`. They STAY. The last
+// `describe` guards them against an over-eager deletion.
 //
 // AC-1 (type removal) needs no bespoke compile assertion: `LEVELS: readonly
-// Level[]` (level.ts:157) pins `buildLevel`'s literal to `Level`, so dropping a
+// Level[]` in `level.ts` pins `buildLevel`'s literal to `Level`, so dropping a
 // key from the literal while it remains required on the type is a missing-property
 // error under `tsc --noEmit` (the repo lint, AC-5) — and re-adding it to the
 // literal reddens the runtime suite below. Type and population are coupled.
@@ -39,9 +40,8 @@ const DROPPED_FIELDS = ['frightenedSeconds', 'frightenedFlashes', 'elroy1', 'elr
 const SAMPLE_LEVELS = [1, 2, 5, 21] as const
 
 describe('pm5-2 — the four dead Level mirror fields are dropped (AC-1, AC-2)', () => {
-  // RED today: `buildLevel` still sets all four keys (level.ts:145-149), so each
-  // `hasOwn` is `true` and these expectations fail. GREEN once Dev stops populating
-  // them and removes them from the `Level` type.
+  // Asserts `buildLevel` (via `levelRow`) populates none of the four keys.
+  // Guards the drop: re-adding any of them to the `Level` literal reddens this.
   it.each(SAMPLE_LEVELS)('levelRow(%i) carries none of the mirror fields', (level) => {
     const row = levelRow(level)
     for (const field of DROPPED_FIELDS) {
