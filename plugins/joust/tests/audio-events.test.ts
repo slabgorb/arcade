@@ -959,13 +959,21 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // (enemy#4260097, enemy#4260098) beside enemy#256 rather than being thinned to
     // enemy#256 alone. P2 is untouched on both counts (1050, 4 lives) — it is the
     // idle knight and this seed's reshaped birds never reach it inside 2400 frames.
+    //
+    // jt12-2 RE-BASELINE (the WSMART budget refund/debit is wired into the live sim:
+    // a smart death frees a promotion slot, a remount debits one — sim.ts). Once more
+    // the headline is the field that did NOT move: `rng` is STILL 2_006_456_271 — the
+    // two budget transforms are pure arithmetic and draw no randomness, the law this
+    // group pins. `wave`, `procs` and P2 are ALSO unmoved — the change is confined to
+    // one contact: P1 now keeps a life it used to lose and books 50 fewer (a different
+    // promotion reshaped one bird's approach), so scores 200 -> 150 and lives 1 -> 2.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
       procs: 'enemy#256,enemy#4260098,player#2,enemy#4260097,player#1',
-      scores: [200, 1050],
-      lives: [1, 4],
+      scores: [150, 1050],
+      lives: [2, 4],
     })
   })
 

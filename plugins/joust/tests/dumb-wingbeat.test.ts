@@ -711,9 +711,23 @@ describe('AC6 — the dumb wing cue', () => {
       // `rng` cursor is bit-identical through this change (audio-events.test.ts
       // AC3, tenth consecutive re-baseline with `rng` unmoved): signing an
       // already-computed index draws no randomness.
-      0xbeef: { down: 174, playerDown: 153, playerUp: 151 },
+      // jt12-2 RE-BASELINE (the WSMART budget refund/debit is now wired into the
+      // live sim: creditDeath frees a promotion slot on a smart death, and a
+      // remount buzzard debits one — sim.ts). The budget no longer latches at
+      // WSMART, so promotion timing changes, which reshapes the seeded replay's
+      // enemy trajectories. The counts move in BOTH directions — 0xbeef's dumb
+      // wing cue rose, 0xface's fell, 0x2468 is untouched — which is the signature
+      // of a trajectory perturbation, not a population change (nsmart stays bounded
+      // in [0, WSMART+1], verified). The `rng` cursor is UNMOVED through this change
+      // (audio-events.test.ts AC3, seed 0xbeef): the two budget transforms are pure
+      // arithmetic and draw no randomness. Knight cues moved only where knight-death
+      // timing shifted (0xbeef +1 each, as its P1 keeps a life it used to lose).
+      //   0xbeef  down 174 -> 277, playerDown 153 -> 154, playerUp 151 -> 152
+      //   0x2468  wholly UNMOVED (256 / 154 / 153)
+      //   0xface  down 250 -> 206 (knight cues unmoved)
+      0xbeef: { down: 277, playerDown: 154, playerUp: 152 },
       0x2468: { down: 256, playerDown: 154, playerUp: 153 },
-      0xface: { down: 250, playerDown: 154, playerUp: 154 },
+      0xface: { down: 206, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)
