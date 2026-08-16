@@ -1,0 +1,112 @@
+id: mc12
+type: epic
+title: 'Missile Command — authentic play & feel, round 3 (owner playtest 2026-08-16): the MIRV swarm, the incoming lollipop, the placeholder bomber/satellite, and trackball aim'
+description: |-
+  Twelfth Missile Command epic, born from the owner's own playthrough of the current
+  build (2026-08-16, four findings + a screenshot of a MIRV fan) — the mc10 pattern:
+  mc9/mc10 shipped the DATA (stamps, palette, HUD, blast curve) and mc11 wired the
+  unwired seams, but playing it surfaces four things that still read wrong versus the
+  real cabinet. Architect (Vito Cornelius) diagnosis, each verified against the vendored
+  REV-01 source (plugins/missile-command/reference/source) and pinned to file:line.
+
+  (1) MIRV OVER-PRODUCTION — the difficulty driver. The owner cannot progress or break
+  the top-10 ("do we create multiple warheads too quickly"), and the screenshot shows a
+  single MIRV fanning into ~6 warheads from one point. Cause, read in code: mirvSplit
+  (core/mirv.ts:50) launches its 3 children AT parent.pos, whose height is inside the
+  MIRV band [MIRVLO=128, MIRVHI=160] (W3COMN.MAC:159/161), and game.ts:597-600 appends
+  the children while LEAVING the split parent in the list with no "spent" marker — so
+  every frame the in-band cluster re-qualifies (mirvEligible, mirv.ts:38) and re-splits,
+  bounded only by the NICBMS=8 slot ceiling. The ROM splits each ICBM ONCE: MIRVIX is a
+  single "ICBM TO MIRV (INDEX)" slot (W3MAIN.MAC:227), the split consumes it
+  (W3MAIN.MAC:2011-2017), and POTENT caps "NO MORE THAN 3 SHOTS FROM A MIRV"
+  (W3MAIN.MAC:2717). DECISION (ROM-always-wins): bound a MIRVed ICBM and its children so
+  they never re-split — no invented difficulty knob. (mc12-1)
+
+  (2) THE INCOMING "LOLLIPOP" — render.ts:175 fills a headR≈width/200 disc (ctx.arc) at
+  each ICBM head, reading as a ball on a stick. The cabinet draws incoming missiles as a
+  trail with a flashing 1px tip, exactly like the ABM ("TIP OF MISSILE TRAIL IS FLASH",
+  W3DSUP.MAC:931; DRAW MISSILE, W3DSUP.MAC:1221) — no disc. (mc12-2a)
+
+  (3) BOMBER/SATELLITE ARE A PLACEHOLDER RECTANGLE — render.ts:186-189 draws every
+  sputnik/plane as a fillRect wing/box whose own comment defers the real sprite to mc9;
+  mc9-1 only ever did city/base stamps, so planes still read as "a tiny rectangle" (owner
+  report). Port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP
+  stamp layer, as mc9-1 did for cities (WRITE A STAMP, W3DSUP.MAC:587; claim sputnik.json
+  already exists). (mc12-2b)
+
+  (4) AIM SHOULD BE POINTER-LOCKED (trackball), like centipede/millipede. Missile Command
+  is a TRACKBALL cabinet; mc10-1 made aim ABSOLUTE to kill the twitch of relative-WITHOUT-
+  lock (1px=1unit over a ~2000px canvas) and explicitly deferred "trackball (relative +
+  pointer-lock, scaled) as an optional later mode". This epic BUILDS that mode and makes
+  it the default, reusing centipede/millipede's createPointerLock + movementX/Y adapter
+  and the existing pure core moveCursor — completing mc10-1, not overturning its fix
+  (logged as an ADR-delta, never a silent reversal). (mc12-3)
+
+  A final VISUAL playtest verifies all four IN THE BUILD, not just green vitest — the
+  mc9->mc10 lesson was green-tests/wrong-pixels, and this whole epic is a playtest's
+  output. (mc12-4)
+
+  CONTRACT (binding, per the roadmap 2026-08-07-missile-command-full-cabinet-roadmap.md):
+  the core/shell boundary holds (contract 2) — the MIRV bound is pure core, everything
+  else (lollipop, stamps, pointer-lock) is src/shell or reuse of existing pure core;
+  purity.test.ts stays green. Ground truth is REV-01 (contract 1): every new/changed
+  src/core constant carries a claims/*.json entry and passes citations.test.ts. Verify
+  live in the build (contract 5 / the mc10 rule). ACCESSIBILITY (Pac-Man/Defender rule):
+  no new full-screen flash — none of these fixes strobe.
+
+  OUT OF SCOPE (unchanged from the roadmap): smart bombs / the REV-01<->REV-03 difficulty
+  fork (mc5-4 / open question O-3) stay DEFERRED — still blocked on vendoring citable
+  REV-03 source, which is not in the tree (MAME ships only a REV-03 ROM binary, which
+  fails the citation contract). Colour-cycling on a modern canvas (the other half of O-5,
+  palette.ts:26) stays a deliberate non-goal. Audio (mc8), attract/state machine (mc6),
+  high-score/name-entry (mc7) are done and untouched here.
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: mc12-1
+    title: "Bound the MIRV to a SINGLE split so one missile can't cascade into a swarm. Today mirvSplit (core/mirv.ts:50) launches 3 children AT parent.pos — inside the MIRV band [MIRVLO=128,MIRVHI=160] (W3COMN.MAC:159/161) — and game.ts:597-600 keeps the split parent with no spent-marker, so the in-band cluster re-qualifies (mirvEligible, mirv.ts:38) and re-splits every frame into the 6+ fan the owner screenshotted. Mark a MIRVed ICBM AND its children spent so mirvEligible returns false for both; pin the bound to REV-01's single-shot mechanism (MIRVIX single slot W3MAIN.MAC:227; consume W3MAIN.MAC:2011-2017; POTENT '<=3 shots from a MIRV' W3MAIN.MAC:2717). ROM-always-wins: no invented difficulty knob. Pure core; purity + citations gated."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    acceptance_criteria:
+      - "AC1: an Icbm carries a one-shot MIRV-spent marker set on BOTH the split parent and every child in mirvSplit (core/mirv.ts); mirvEligible (mirv.ts:38) returns false for an already-split ICBM and for any MIRV child. A test drops ONE in-band ICBM and asserts the total children it produces across ALL frames it spends in [128,160] is at most MIRV_MAX_CHILDREN (3) — not a per-frame cascade. The test reddens against today's re-splitting code (mutation-proven)."
+      - "AC2: the single-shot bound is pinned to REV-01, not invented — the spent mechanism/comment cites the MIRVIX single-slot model (W3MAIN.MAC:227) and its consume (W3MAIN.MAC:2011-2017), and the POTENT cap 'NO MORE THAN 3 SHOTS FROM A MIRV' (W3MAIN.MAC:2717). Every new/changed src/core constant has a claims/*.json entry; citations.test.ts and purity.test.ts stay green (ROM-always-wins — no difficulty tuning parameter is added)."
+      - "AC3: a population invariant — from a seeded createGame stepped through a MIRV wave, the on-screen ICBM count never exceeds NICBMS=8 and the number of MIRV events per originating ICBM is exactly one; this holds where today's code violates it (mutation-proven). Felt winnability/progression is confirmed separately in the mc12-4 playtest."
+      - "AC4: the authentic split SHAPE is unchanged — children still launch from the parent's position toward RNG-picked live structures at the parent's velocity; only the RE-qualification of already-split warheads is removed."
+  - id: mc12-2
+    title: "Render fidelity round 3 (two fixes on one render.ts surface — grouped per the file-by-surface habit so they share one review). (a) DROP the incoming-ICBM 'lollipop': render.ts:175 fills a headR disc (ctx.arc) at each ICBM head; the cabinet draws incoming missiles as a trail with a flashing 1px tip like the ABM ('TIP OF MISSILE TRAIL IS FLASH' W3DSUP.MAC:931; DRAW MISSILE W3DSUP.MAC:1221), no disc. (b) AUTHENTIC bomber/satellite: render.ts:186-189 draws each sputnik/plane as a fillRect wing/box placeholder ('pixel-authentic plane sprite ... are mc9', which mc9-1 never did); port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP stamp layer as mc9-1 did for cities (WRITE A STAMP W3DSUP.MAC:587; locate the plane/satellite stamp label; sputnik.json claim exists). Shell-only; enemy hue (COL010) unchanged; purity stays green."
+    points: 4
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "AC1: incoming ICBMs render as a trail plus an authentic flashing tip and NO filled head disc — a render-mock test asserts no head-circle is drawn for an ICBM head and that the tip matches the ABM tip treatment; the render source cites DRAW MISSILE (W3DSUP.MAC:1221) and the flash tip (W3DSUP.MAC:931)."
+      - "AC2: live bomber and satellite render from authentic W3DSUP-derived stamp geometry (not a fillRect wing/box), positioned by the existing project() mapping at the plane's position and in the enemy hue; the stamp data lives in src/shell (no src/core change) and cites WRITE A STAMP (W3DSUP.MAC:587) plus the located plane/satellite stamp label / sputnik.json."
+      - "AC3: render tests assert bomber vs satellite draw DISTINCTLY against the canvas-mock harness and that the guards are non-vacuous (a decoy that references the symbol without drawing it reddens — the mc10-7 lesson); purity.test.ts stays green. On-screen confirmation is carried by mc12-4."
+  - id: mc12-3
+    title: "Pointer-lock TRACKBALL aim, made the DEFAULT (matching centipede/millipede). Missile Command is a trackball cabinet; mc10-1 chose ABSOLUTE aim to kill the twitch of relative-WITHOUT-lock (1px=1unit over a ~2000px canvas) and explicitly deferred 'trackball (relative+pointer-lock, scaled) as an optional later mode'. Build it and default to it: reuse centipede/millipede's createPointerLock + movementX/Y mouse adapter (plugins/centipede/src/shell/input.ts) and the EXISTING pure core moveCursor (relative applier + clamp, game.ts:319/335), scaled so it is not twitchy; main.ts:85-89 stops using the absolute placeCursor for live aim. Completes mc10-1 (not a reversal of its twitch fix) — logged as an ADR-delta. Shell input + reuse of existing core; purity stays green."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "AC1: clicking the canvas requests pointer lock via the REUSED createPointerLock (from centipede/millipede — no new bespoke lock controller); while locked, mouse movementX/Y drives the crosshair through the existing pure core moveCursor, scaled to a non-twitchy trackball feel; a lock-exit resets input state (centipede parity)."
+      - "AC2: the absolute placeCursor path (main.ts:85-89) is no longer the live-aim path (kept only as an explicitly-noted unlocked fallback if retained at all); the switch is logged as a Design Deviation / ADR-delta referencing mc10-1's 'trackball as a later mode' deferral — never a silent reversal."
+      - "AC3: the crosshair still clamps to the play area and preserves the V-flip/coordinate handling (moveCursor unchanged); no clock or entropy enters core; purity.test.ts stays green."
+  - id: mc12-4
+    title: "VISUAL playtest — verify all four owner findings are fixed IN THE BUILD (not just green vitest — the mc9->mc10 green-tests/wrong-pixels lesson). Serve YOUR checkout (npx vite --port 5290 --strictPort per CLAUDE.md's port-pin note) and screenshot /missile-command/: confirm (1) a MIRV splits into a bounded fan and the early waves are progressable, not a swarm (mc12-1); (2) incoming missiles have NO lollipop head (mc12-2a); (3) bomber/satellite render as authentic shapes, not a rectangle (mc12-2b); (4) aim is a pointer-locked trackball feel (mc12-3). Compare a real game path against a nonsense control (must DIFFER, not merely 200 — the canonical-serve lesson). Record before/after notes for the archive."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "AC1: a screenshot of a live MIRV wave shows a bounded fan (no runaway swarm) and a short played session confirms the early waves are progressable; captured against a nonsense-control path that visibly DIFFERS (not just a 200)."
+      - "AC2: screenshots confirm incoming missiles draw with no lollipop disc, the bomber and satellite draw as authentic shapes (not rectangles), and aim tracks a locked pointer as a trackball; each finding's before/after is noted."
+      - "AC3: any residual gap found in the build (that green vitest missed) is filed as a follow-up story BEFORE the epic closes — a Delivery Finding is not a backlog item (the sidecar gotcha)."
