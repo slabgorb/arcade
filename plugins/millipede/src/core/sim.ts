@@ -193,6 +193,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     dead: liveSegments, // DEAD = remaining live centipede segments (MLDEF.MAC:295)
     slow: state.slow,
     mushTop: countTopMushrooms(state.field),
+    mush: state.mushCounts.lower, // MUSH[0] — near-bottom tally the bee gate reads (BE-8/9)
     beetles: liveSlots(state.roster.beetles),
     rng: state.rng,
     field: state.field,
@@ -264,8 +265,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // 9. Wave loop (MILLI.MAC:1912-1915 clear→arm, CHKEND countdown, next wave).
   //    A cleared millipede with no DELAY pending WINS the wave: arm WAVE_DELAY.
   //    CHKEND then counts it down, holding while beetles are still present
-  //    (MLSUB.MAC:56); mushroom-restoring (conway) is item 4's blocker, still
-  //    false here. When DELAY reaches 0 a fresh train marches in.
+  //    (MLSUB.MAC:56) or while the conway mushroom-restoration is still running
+  //    (MLSUB.MAC:54, wired below from conway.active — ml10-3). When DELAY
+  //    reaches 0 a fresh train marches in.
   let wave = state.wave
   let delay = state.delay
   let conway = state.conway
@@ -287,7 +289,16 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   conway = masterStep(state.field, conway)
   const beetlesPresent = roster.beetles.some((b) => b.color !== 0)
   const chkend = stepWaveDelay(delay, {
-    mushroomsRestoring: false, // TODO(item 4): conway growth still running
+    // mushroomsRestoring — CHKEND's first blocker (MLSUB.MAC:54 is `LDA MEM+1`,
+    // the RESTOR sweep pointer, MLDEF.MAC:344), NOT the conway CDONE flag. The
+    // real MEM+1/RESTOR sweep is unwired in this sim (restor() in mushroom.ts has
+    // no caller), so we APPROXIMATE "mushrooms still restoring" with conway.active
+    // — the between-wave growth/death process (CDONE, CW-8) — per the story's
+    // directive to compute the blocker from the real conway state. Caveat: the ROM
+    // windows differ — RESTOR runs only once CDONE goes idle (restor() gates on
+    // cdone===0), so this proxy holds the wave DURING conway rather than after it.
+    // Read post-masterStep, so a conway that completed THIS frame no longer holds.
+    mushroomsRestoring: conway.active,
     playerExploding: playerDied || state.deathTimer > 0,
     beetlesPresent,
   })

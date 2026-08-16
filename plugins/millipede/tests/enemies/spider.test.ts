@@ -26,6 +26,7 @@ function view(over: Partial<EnemyView> = {}): EnemyView {
     dead: 0,
     slow: 0,
     mushTop: 0,
+    mush: 0,
     beetles: 0,
     rng: createRng(1),
     field: new Uint8Array(FIELD_SIZE),

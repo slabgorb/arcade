@@ -47,9 +47,11 @@ export function initBees(): BeeSlot[] {
  * plant roll). DEAD and BEETLS are threaded from EnemyView (ml7-8) so the
  * mayStartBee BE-5..7 direct-spawn gate is exact. The near-bottom MUSH tally
  * (BE-8/9) is the LOWER band MUSH[0] — a DIFFERENT quantity from ml7-8's mushTop
- * (MUSH+2, top band); EnemyView carries no lower-band count yet, so it stays 0.
- * TODO(ml7-8 fidelity): thread MUSH[0] (the lower-band mushroom count) through
- * EnemyView so mayStartBee's mushroom-need gate (BE-8/9) is exact.
+ * (MUSH+2, top band); ml10-3 threads it through EnemyView (view.mush) from
+ * state.mushCounts.lower, so mayStartBee's mushroom-need gate (BE-8/9) reads the
+ * live tally instead of a hardcoded 0. (Not yet ROM-exact: mushCounts.lower still
+ * misses the deferred MUSHDC write-backs — shot.ts, conway.ts, and the bee's own
+ * discarded plant below — so the count is live-but-partial.)
  */
 function beeEnv(view: EnemyView, rnd0: number, rnd1: number): BeeEnv {
   return {
@@ -64,7 +66,7 @@ function beeEnv(view: EnemyView, rnd0: number, rnd1: number): BeeEnv {
     centin: view.centin,
     dead: view.dead, // ml7-8: remaining centipede segments (BE-5)
     beetles: view.beetles, // ml7-8: active beetles (BE-6)
-    mush: 0, // TODO(ml7-8 fidelity): lower-band MUSH[0], not the top-band mushTop
+    mush: view.mush, // ml10-3: lower-band MUSH[0] from state.mushCounts.lower (BE-8/9)
   }
 }
 
@@ -113,8 +115,12 @@ export function stepBees(slots: BeeSlot[], view: EnemyView): EnemyStepResult<Bee
     } else if (move.kind === 'moved' && move.plantMushroom) {
       const offset = beePlantOffset(slot)
       if (offset >= 0 && offset < PLYFLD_SIZE) {
-        // TODO(ml7-2 fidelity): the MUSH register is not threaded yet, so the
-        // count MUSHER increments is discarded this pass.
+        // ml10-3: view.mush (the lower-band tally) is now READ from state for the
+        // spawn gate, but the write-back path — folding MUSHER's per-frame plant
+        // delta into state.mushCounts.lower — stays deferred: EnemyStepResult
+        // carries no mush delta, so wiring it means changing the roster contract
+        // and sim's fold. Left as a documented note (story ml10-3 allows either);
+        // the count MUSHER increments is still discarded this pass.
         const throwaway: MushCounts = { lower: 0, top: 0 }
         musher(view.field, offset, throwaway)
       }
