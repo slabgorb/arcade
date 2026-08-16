@@ -50,13 +50,18 @@ export interface GameState {
    *  segment is connected and CENTIN == the live segment count. */
   centin: number
   /** The CENTIN the playfield is currently COLOURED for — the latched colour row
-   *  (row = fieldColourIndex-1, MLIRQ.MAC:255). Held separately from `centin` so
-   *  the base band only recolours at an LCOLOR event, not every frame (ml11-1).
+   *  (row = fieldColourIndex-1, MLIRQ.MAC:255-256). Held separately from `centin`
+   *  so the base band only recolours at an LCOLOR event, not every frame (ml11-1).
    *  Init NCENT — a fresh wave shows the full-millipede colour. */
   fieldColourIndex: number
-  /** LCOLOR (MLIRQ.MAC:248) — set when the connected length changes, telling CLRCH
-   *  to recolour the field on its next pass; cleared the moment the recolour
-   *  latches (recolourField, field-recolour.ts). Clear at boot. */
+  /** LCOLOR (MLIRQ.MAC:248) — the recolour-request flag. In this port it is armed
+   *  and CONSUMED within the same `stepPlay` (sim.ts derives a local `armed` from a
+   *  length change and passes it straight to recolourField, which always returns the
+   *  flag cleared), so the stored field is written back `false` every frame and does
+   *  not itself carry a signal across a frame boundary — it mirrors the ROM's LCOLOR
+   *  memory cell and is the reducer's flag-clear contract. It becomes genuinely
+   *  cross-frame only if a future length change (e.g. ml3-2 splits) arms it without
+   *  an immediate same-frame consume. Clear at boot. */
   lcolor: boolean
   /** The enemy cast — spiders, bees, beetles, dragonflies, mosquitoes, earwigs, inchworms. */
   roster: Roster

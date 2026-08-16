@@ -5,12 +5,13 @@
 // CENTIN=12; LCOLOR-gated per-length recolour deferred").
 //
 // GROUND TRUTH (SM-verified 2026-08-16). CLRCH recolours the field colour-RAM
-// ONLY when the LCOLOR flag is set: `LDA LCOLOR / BNE 10$` (MLIRQ.MAC:248); on
-// the set path it clears the flag (STA LCOLOR, :253) and loads the colour row
-// indexed by the millipede LENGTH — `LDY X,CENTIN / DEY` (MLIRQ.MAC:255) => row
-// = CENTIN-1, 0..11. CENTIN is the connected length (MLDEF.MAC:299), init 12
-// (MILLI.MAC:1168-1170). So the field recolours a STEP as the millipede shortens,
-// LATCHED at the LCOLOR event — NOT recomputed every frame.
+// ONLY when the LCOLOR flag is set: `LDA LCOLOR` (MLIRQ.MAC:248) / `BNE 10$` (:249);
+// on the set path it clears the flag (`LDA I,0` :252 / `STA LCOLOR` :253) and loads
+// the colour row indexed by the millipede LENGTH — `LDY X,CENTIN` (:255) / `DEY`
+// (:256, the ROM comment there is `;0 TO 11.`) => row = CENTIN-1, 0..11. CENTIN is
+// the connected length (MLDEF.MAC:299), init 12 (MILLI.MAC:1168-1170). So the field
+// recolours a STEP as the millipede shortens, LATCHED at the LCOLOR event — NOT
+// recomputed every frame.
 //
 // ─── WHAT ALREADY EXISTS (reuse-first) ───────────────────────────────────────
 // • The pure per-length pens `playfieldPens(centin)` and the per-CODE composer
@@ -89,9 +90,10 @@ function paintedColours(data: Uint8ClampedArray): Set<string> {
 // ── Self-describing loader for the not-yet-built gate: a missing export reddens
 //    with a message naming what GREEN (Dev) must ship, not an opaque TypeError. ──
 interface FieldRecolourModule {
-  /** MLIRQ.MAC:248-255 — the LCOLOR gate: when `lcolor` is set, latch the field
-   *  colour index to the live CENTIN (colour row = CENTIN-1) and clear the flag;
-   *  otherwise HOLD the previous index (steady, ml7-4 no-strobe). */
+  /** MLIRQ.MAC:248-256 — the LCOLOR gate: when `lcolor` is set, latch the field
+   *  colour index to the live CENTIN (colour row = CENTIN-1, the `LDY X,CENTIN`
+   *  :255 / `DEY` :256 pair) and clear the flag; otherwise HOLD the previous index
+   *  (steady, ml7-4 no-strobe). */
   recolourField: (
     fieldColourIndex: number,
     centin: number,
@@ -105,21 +107,21 @@ async function loadGate(): Promise<FieldRecolourModule> {
     throw new Error(
       'src/core/field-recolour.ts is missing recolourField — GREEN (Dev) ships the pure LCOLOR ' +
         'gate `recolourField(fieldColourIndex, centin, lcolor): { fieldColourIndex, lcolor }` ' +
-        '(MLIRQ.MAC:248-255): gate set → latch index to CENTIN and clear the flag; gate clear → hold.',
+        '(MLIRQ.MAC:248-256): gate set → latch index to CENTIN and clear the flag; gate clear → hold.',
     )
   }
   return mod as FieldRecolourModule
 }
 
-// Read the latched-index / flag fields off a state without coupling the file to a
-// GameState shape Dev has not landed yet (undefined reddens meaningfully in RED).
-const colourIndexOf = (s: GameState): unknown => (s as unknown as Record<string, unknown>).fieldColourIndex
-const lcolorOf = (s: GameState): unknown => (s as unknown as Record<string, unknown>).lcolor
+// The latched-index / flag fields now live on GameState directly (game-state.ts),
+// so read them typed — no cast needed post-GREEN.
+const colourIndexOf = (s: GameState): number => s.fieldColourIndex
+const lcolorOf = (s: GameState): boolean => s.lcolor
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AC2 — the recolour is LCOLOR-GATED, not per-frame (the reducer mechanism).
 // ═════════════════════════════════════════════════════════════════════════════
-describe('ml11-1 AC2 — recolourField is the LCOLOR gate (MLIRQ.MAC:248-255)', () => {
+describe('ml11-1 AC2 — recolourField is the LCOLOR gate (MLIRQ.MAC:248-256)', () => {
   it('gate CLEAR: a length change is IGNORED — the field colour index is held', async () => {
     const { recolourField } = await loadGate()
     // CENTIN dropped 12 → 8 but LCOLOR is not set: CLRCH does not recolour.
@@ -187,6 +189,20 @@ describe('ml11-1 AC1 — GameState exposes the latched colour index + gate', () 
     expect(after.centin, 'precondition: the live connected length dropped to 2').toBe(2)
     expect(colourIndexOf(after), 'the field recoloured a step — latched to the live length, not frozen at 12').toBe(2)
   })
+
+  it('INTEGRATION: across many real stepGame frames the latched index tracks the live length and stays in range', () => {
+    // Guards the THREADING through GameState (not just the pure reducer): after every
+    // frame the field colour index equals the live CENTIN (same-frame latch) and is a
+    // valid colour row 1..12 — so waveColours() (which throws outside 1..12) can never
+    // be fed a bad index by the live render, and no frame silently drifts off length.
+    let g = createGame(0x1982, { phase: 'play' })
+    for (let f = 0; f < 240; f++) {
+      g = stepGame(g, idle)
+      expect(colourIndexOf(g), `frame ${f}: index latched to the live length`).toBe(g.centin)
+      const idx = colourIndexOf(g)
+      expect(idx >= 1 && idx <= 12, `frame ${f}: index ${idx} is a valid colour row 1..12`).toBe(true)
+    }
+  })
 })
 
 describe('ml11-1 AC1 — main.ts threads the latched index into BOTH field-draw call sites', () => {
@@ -197,16 +213,30 @@ describe('ml11-1 AC1 — main.ts threads the latched index into BOTH field-draw 
   })
 
   it('the DDT-glyph field cell also threads the latched index (fieldPens 2nd arg)', () => {
+    // ANCHORED to the drawStampGridAtPx statement's OWN line ([^\n]*, not [\s\S]*?):
+    // the two field-draw calls sit on adjacent lines (main.ts:242-243), so a
+    // cross-line bridge would let a REGRESSED drawStampGridAtPx call pass on the
+    // strength of the sibling drawGridStamps line. Confining the gap to one line
+    // makes this test prove ITS OWN call site, not the neighbour's.
     expect(mainSrc(), 'drawStampGridAtPx must pass state.fieldColourIndex to fieldPens too').toMatch(
-      /drawStampGridAtPx\s*\([\s\S]*?fieldPens\s*\(\s*p\.stamp\s*,\s*state\.fieldColourIndex\s*\)\s*\)/,
+      /drawStampGridAtPx\s*\([^\n]*fieldPens\s*\(\s*p\.stamp\s*,\s*state\.fieldColourIndex\s*\)\s*\)/,
     )
   })
 
-  it('NO field cell is still drawn through the frozen CENTIN=12 default (bare fieldPens(p.stamp))', () => {
-    // This is the actual defect today: main.ts:240-241 call fieldPens(p.stamp)
-    // with no centin, so the base band never follows the length.
-    expect(mainSrc(), 'the bare, un-threaded fieldPens(p.stamp) must be gone').not.toMatch(
-      /fieldPens\s*\(\s*p\.stamp\s*\)/,
+  it('NO field cell is still drawn through the frozen CENTIN=12 default, a hardcoded index, or a base-only swap', () => {
+    // The three ways the base band could be re-frozen — all must be absent:
+    const src = mainSrc()
+    //  (1) the bare, un-threaded call (today's defect: main.ts calls fieldPens(p.stamp)).
+    expect(src, 'the bare, un-threaded fieldPens(p.stamp) must be gone').not.toMatch(/fieldPens\s*\(\s*p\.stamp\s*\)/)
+    //  (2) a hardcoded numeric 2nd arg (fieldPens(p.stamp, 12) re-freezes the base).
+    expect(src, 'no hardcoded numeric CENTIN — the index must come from state').not.toMatch(
+      /fieldPens\s*\(\s*p\.stamp\s*,\s*\d/,
+    )
+    //  (3) a swap to the global playfieldPens (drops the ml9-2/ml9-3 per-code caps/DDT).
+    //      main.ts imports fieldPens, playerPens, alphanumericPens, spritePens — never
+    //      playfieldPens; a swap would have to name it, so banning it file-wide is safe.
+    expect(src, 'the field must not draw through global playfieldPens — it drops per-code overrides').not.toMatch(
+      /\bplayfieldPens\s*\(/,
     )
   })
 })

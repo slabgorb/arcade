@@ -23,9 +23,11 @@
 // `CENTIN: .BLKB 2 ;LENGTH OF CENTIPEDE`), not a per-wave scheme. INIT sets
 // CENTIN=12 (MILLI.MAC:1169-1170 — `STA CENTIN` / `STA CENTIN+1 ;SET CENTIPEDE
 // SIZE`), so a full millipede — the wave-start view — is colour row 12, the
-// default below. The LCOLOR-gated recolour as segments die is a documented
-// deferral (session Design Deviations); a fixed index is a steady colour, so the
-// ml7-4 no-strobe rule holds by construction.
+// default below. The LCOLOR-gated recolour as segments die SHIPPED in ml11-1: the
+// live render threads the latched `state.fieldColourIndex` (game-state.ts) into
+// `fieldPens`/`playfieldPens` via their `centin` argument, so the base band steps
+// with the length. The step is discrete and latched at the length-change event
+// (a steady colour between events), so the ml7-4 no-strobe rule still holds.
 
 import { decodeColourByte, type Rgb } from '../core/palette'
 import { waveColours, spriteInkBytes, PLAYER_COLOUR, ALPHANUMERIC_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'

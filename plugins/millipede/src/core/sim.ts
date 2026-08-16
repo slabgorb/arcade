@@ -402,7 +402,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   if (nowMarching && !wasMarching) events.push(event('march-start'))
   if (!nowMarching && wasMarching) events.push(event('march-stop'))
 
-  // LCOLOR gate (MLIRQ.MAC:248-255): a change in the connected length arms the
+  // LCOLOR gate (MLIRQ.MAC:248-256): a change in the connected length arms the
   // recolour; recolourField latches the field colour index to the new CENTIN and
   // clears the flag. A steady length holds the previous colour (ml7-4 no-strobe).
   const newCentin = liveSegs === 0 ? NCENT : liveSegs

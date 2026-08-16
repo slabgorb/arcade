@@ -1,13 +1,13 @@
 // src/core/field-recolour.ts
 //
 // Story ml11-1 — the LCOLOR-gated per-length field recolour, modelled from CLRCH
-// (MLIRQ.MAC:242-255). The playfield colour-RAM is NOT recoloured every frame; it
+// (MLIRQ.MAC:242-256). The playfield colour-RAM is NOT recoloured every frame; it
 // is recoloured only when the LCOLOR flag is set:
 //
-//   LDA LCOLOR / BNE 10$   ; recolour only if the flag is set   (MLIRQ.MAC:248)
-//   ...
-//   STA LCOLOR             ; on the set path, CLEAR the flag     (:253, A=0)
-//   LDY X,CENTIN / DEY     ; index the colour row by LENGTH-1    (:255)
+//   LDA LCOLOR   (:248) / BNE 10$   (:249)   ; recolour only if the flag is set
+//   LDA I,0      (:252) / STA LCOLOR (:253)  ; on the set path, CLEAR the flag (A=0)
+//   LDY X,CENTIN (:255) / DEY        (:256)  ; index the colour row by LENGTH-1
+//                                            ; (the ROM comment on :256 is `;0 TO 11.`)
 //
 // CENTIN is the connected millipede LENGTH (MLDEF.MAC:299), so the field steps to
 // a new colour as the millipede shortens — LATCHED at the LCOLOR event, never
@@ -22,10 +22,11 @@
 // covers this file automatically.
 
 /**
- * The LCOLOR gate (MLIRQ.MAC:248-255). When `lcolor` is set, latch the field
- * colour index to the live millipede length `centin` (colour row = CENTIN-1) and
- * clear the flag; otherwise hold the previous `fieldColourIndex`. Idempotent while
- * the gate stays clear — the base colour is a steady step between length events.
+ * The LCOLOR gate (MLIRQ.MAC:248-256). When `lcolor` is set, latch the field
+ * colour index to the live millipede length `centin` (colour row = CENTIN-1, the
+ * `LDY X,CENTIN` :255 / `DEY` :256 pair) and clear the flag; otherwise hold the
+ * previous `fieldColourIndex`. Idempotent while the gate stays clear — the base
+ * colour is a steady step between length events.
  */
 export function recolourField(
   fieldColourIndex: number,

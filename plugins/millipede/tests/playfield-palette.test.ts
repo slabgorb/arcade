@@ -12,9 +12,10 @@
 // "LENGTH OF CENTIPEDE"), NOT by a centipede-style per-wave scheme. INIT sets
 // CENTIN=12 (MILLI.MAC:1169-1170 "SET CENTIPEDE SIZE"), so a full millipede — the
 // wave-start view — is colour row 12, and that is the default here. The
-// LCOLOR-gated recolour as the millipede shortens is a documented deferral (see
-// the session's Design Deviations); a fixed index is also a steady colour, which
-// keeps the ml7-4 no-strobe rule by construction.
+// LCOLOR-gated recolour as the millipede shortens SHIPPED in ml11-1 (the live
+// render threads the latched state.fieldColourIndex into fieldPens' centin arg);
+// the step is discrete and latched at the length-change event, a steady colour
+// between events, so the ml7-4 no-strobe rule still holds.
 
 import { describe, it, expect } from 'vitest'
 import { decodeColourByte } from '../src/core/palette'
