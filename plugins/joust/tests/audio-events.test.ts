@@ -637,11 +637,12 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // jt12-3 RE-BASELINE (the transporter player-queue + SELARE respawn went live): a
     // re-created knight queues in CRELP and re-materialises on an empty-third pad instead of
     // mid-screen, so it re-enters the fight more slowly and 0x1002's wave 1 now clears far
-    // LATER — swept to the first advance at frame 5525 (wave 1 -> 2). The four buzzards are
+    // LATER — swept to the first advance at frame 6179 (wave 1 -> 2). The four buzzards are
     // then served over the WCREATE walk-in below, comfortably inside the 320-frame window.
+    // (jt12-3 rework: the orphan-fix + ptero/troll SELARE census nudged this from 5525 to 6179.)
     // Seed, script, assertions unchanged.
-    const before = advanceTo(0x1002, 5525)
-    const advanceFrame = stepGame(before, inputsAt(5525))
+    const before = advanceTo(0x1002, 6179)
+    const advanceFrame = stepGame(before, inputsAt(6179))
     expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     // jt11-4 — nothing materialises on the advance frame itself: the complement has
     // only just taken its numbers and owes the transporter its PCNAP 1
@@ -665,13 +666,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
     // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
     for (let i = 0; i < 320; i++) {
-      g = stepGame(g, inputsAt(5526 + i))
+      g = stepGame(g, inputsAt(6180 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)
       const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
       expect(
         cued,
-        `frame ${5526 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+        `frame ${6180 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
       ).toBe(fresh.length)
       totalArrived += fresh.length
       totalCues += cued

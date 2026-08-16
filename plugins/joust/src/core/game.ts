@@ -510,6 +510,14 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
   let serviceQueue = sim.serviceQueue ?? newServiceQueue()
   let respawnQueue: readonly PlayerRespawn[] = game.respawnQueue ?? []
 
+  // A wave advance RE-SEEDS `serviceQueue` per wave (stepSim, `newServiceQueue`), which can
+  // leave a knight that already drew its number holding a ticket the counter no longer reaches
+  // (npserv/lpserv reset below it). Drop any entry whose ticket has fallen outside the live
+  // window `[lpserv, npserv)`; the take-a-number loop below then re-draws that knight, so a
+  // player with lives is NEVER orphaned across a queue reset. Without this a mid-respawn knight
+  // is lost forever — lives>0 && !out with no re-entry (a co-op game-over hang, a 1P softlock).
+  respawnQueue = respawnQueue.filter((r) => r.ticket >= serviceQueue.lpserv && r.ticket < serviceQueue.npserv)
+
   // SERVE the knight whose CRELP number is up FIRST (the players-first arm of `nextServed`,
   // ahead of enemies), at most one per frame like the enemy service. `servePlayer` advances
   // LPSERV. Serving before taking new numbers makes a freshly-due knight wait at least one
@@ -519,11 +527,13 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
     if (head !== undefined) {
       // CREPLY's empty-third safety (JOUSTRV4.SRC:5627-5665): steer the re-materialising
       // knight to a pad whose screen third is CLEAR so it does not land on a swarm. The
-      // census is over the current on-screen occupants (players + materialised enemies);
-      // `occupied` is the pads already stood on; `selectRespawnPad` walks the ROM's
-      // bottom→middle→top preference with a first-free fall-through.
+      // census is over EVERY active on-screen occupant with a flight body — knights, enemies,
+      // pterodactyls AND lava trolls (CREPLY walks every active PID via SELARE, :5627-5636;
+      // only eggs, which have no flight entity, are excluded). `occupied` is the pads already
+      // stood on; `selectRespawnPad` walks the ROM's bottom→middle→top preference with a
+      // first-free fall-through.
       const entityOf = (p: SimProcess): EntityState | undefined =>
-        p.kind === 'player' ? p.entity : p.enemy?.entity
+        p.kind === 'enemy' ? p.enemy?.entity : p.entity
       const occupantYs = processes
         .map(entityOf)
         .filter((e): e is EntityState => e !== undefined)
