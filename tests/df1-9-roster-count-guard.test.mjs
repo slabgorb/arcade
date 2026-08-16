@@ -95,6 +95,15 @@ test('control: the wired game set is derived, plausible, and includes known game
   assert.equal(parseCount('nine'), 9, 'parseCount must read English words');
   assert.equal(parseCount('11'), 11, 'parseCount must read digits');
   assert.equal(parseCount('banana'), null, 'parseCount must reject non-numbers');
+  // Rule #3 (prototype pollution, CWE-1321): membership must be answered by real content
+  // only. Against a plain `{}` lookup these inherited Object members leak — `constructor`
+  // returns the Object function and `__proto__` returns Object.prototype — breaking the
+  // documented "returns null for anything else" contract. The repo already ruled this shape
+  // a defect (tests/sprint-repo-routing.test.mjs:177-193). These assertions are RED until
+  // WORD_TO_NUMBER stops walking the prototype chain.
+  assert.equal(parseCount('constructor'), null, 'inherited Object members must not parse as a count (rule #3)');
+  assert.equal(parseCount('__proto__'), null, 'inherited Object members must not parse as a count (rule #3)');
+  assert.equal(parseCount('toString'), null, 'inherited Object members must not parse as a count (rule #3)');
 });
 
 // ══ AC1 — README `just build-all` comment states the true wired count ════════
