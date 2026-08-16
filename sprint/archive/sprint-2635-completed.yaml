@@ -22,3 +22,8 @@ completed_stories:
     title: "Emit the bonus count-up cue: in the 'between' bonus resolution (game.ts:401-420) emit N {type:'bonusTick'} events (one per bonus unit tallied) instead of the lump waveEndBonus with soundEvents:[], so the TK cue plays per unit. Update sound-events.ts:62 to strike the 'emitter is a filed follow-up' note. Assert the event count matches the units paid. REV-01 W3SOUN SUNABM"
     points: 5
     completed: '2026-08-16'
+  - id: pm5-1
+    epic: pm5
+    title: "Single-source the eyes/return-home predicate: route the inline checks at main.ts:232 and render.ts:312 through isReturningHome (core/game.ts:278) — reconciling the !==null vs ==='eyes' disagreement to the intended semantics — or delete the helper as redundant. Assert the render mode matches the chosen predicate. Reference pm4-3"
+    points: 2
+    completed: '2026-08-16'
