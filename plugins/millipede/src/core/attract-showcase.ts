@@ -104,24 +104,59 @@ const HS_SCORE_COL = 10
 const HS_INITIALS_COL = 17
 const HS_TOP_ROW = 29
 
-/**
- * Every grid placement of the attract enemy-showcase screen, for the given
- * high-score table: the HIGH SCORES title + eight rows, the creature cast, and
- * the footer. `stamp` is a ROM char code — shell/render.ts drawGridStamps + the
- * ml7-6 charTile map route it to the sheet.
- */
-export function showcasePlacements(highScores: readonly MilliHighScore[]): HudPlacement[] {
-  const out: HudPlacement[] = []
+/** ROM colour BYTE for the WHITE text sections (HIGH SCORES + footer): ANCOL+3,
+ *  "LDA I,0" WHITE (MLIRQ.MAC:297). Decoded to rgb by the shell's palette seam. */
+export const SHOWCASE_HIGHSCORE_INK = 0x00
+/** ROM colour BYTE for the RED creature labels: ANCOL+2, "LDA I,1F" RED
+ *  (MLIRQ.MAC:294). */
+export const SHOWCASE_LABEL_INK = 0x1f
 
-  out.push(...place(HIGH_SCORES_TITLE.text, HIGH_SCORES_TITLE.col, HIGH_SCORES_TITLE.row))
+/** One coloured section of the showcase: an ink BYTE and the placements drawn
+ *  through the one-colour palette that byte builds (main.ts). */
+export interface ShowcaseSection {
+  readonly ink: number
+  readonly placements: readonly HudPlacement[]
+}
+
+/**
+ * The attract enemy-showcase screen split into COLOURED sections, per
+ * attract-mame-reference.png (MLATR.MAC:580-610 writes no per-section colour, so
+ * this port sections the screen and gives each its own one-colour palette):
+ *   • HIGH SCORES title + every score/initials row → WHITE ($00)
+ *   • the creature cast labels                      → RED   ($1F)
+ *   • the coin/bonus/copyright footer               → WHITE ($00)
+ * `stamp` is a ROM char code — shell/render.ts drawGridStamps + the ml7-6
+ * charTile map route it to the sheet; main.ts draws each section through the
+ * palette its ink builds.
+ */
+export function showcaseSections(highScores: readonly MilliHighScore[]): readonly ShowcaseSection[] {
+  const highScoreText: HudPlacement[] = []
+  highScoreText.push(...place(HIGH_SCORES_TITLE.text, HIGH_SCORES_TITLE.col, HIGH_SCORES_TITLE.row))
   highScores.forEach((entry, i) => {
     const row = HS_TOP_ROW - i
-    out.push(...place(String(entry.score), HS_SCORE_COL, row))
-    out.push(...place(entry.name, HS_INITIALS_COL, row))
+    highScoreText.push(...place(String(entry.score), HS_SCORE_COL, row))
+    highScoreText.push(...place(entry.name, HS_INITIALS_COL, row))
   })
 
-  for (const c of CAST) out.push(...place(c.name, c.col, c.row))
-  for (const f of FOOTER) out.push(...place(f.text, f.col, f.row))
+  const labels: HudPlacement[] = []
+  for (const c of CAST) labels.push(...place(c.name, c.col, c.row))
 
-  return out
+  const footer: HudPlacement[] = []
+  for (const f of FOOTER) footer.push(...place(f.text, f.col, f.row))
+
+  return [
+    { ink: SHOWCASE_HIGHSCORE_INK, placements: highScoreText },
+    { ink: SHOWCASE_LABEL_INK, placements: labels },
+    { ink: SHOWCASE_HIGHSCORE_INK, placements: footer },
+  ]
+}
+
+/**
+ * Every grid placement of the attract enemy-showcase screen, for the given
+ * high-score table — the flattened union of showcaseSections (same order: HIGH
+ * SCORES title + eight rows, the creature cast, the footer). Kept for callers
+ * that need the content without the colour grouping.
+ */
+export function showcasePlacements(highScores: readonly MilliHighScore[]): HudPlacement[] {
+  return showcaseSections(highScores).flatMap((s) => [...s.placements])
 }

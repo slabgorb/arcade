@@ -91,24 +91,32 @@ function blit(ctx: CanvasRenderingContext2D, img: ImageData, x: number, y: numbe
   ctx.drawImage(scratchCtx.canvas, x, y)
 }
 
-/** One stamp as an opaque 8x8 ImageData, pixel value v painted as palette[v]. */
-function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
+/** An 8x8 GRID of 2-bit pixel values, the shape STAMPS entries and the ml9-3 DDT
+ *  override glyph share. */
+type Grid = readonly (readonly number[])[]
+
+/** One 8x8 grid as an ImageData, pixel value v painted as palette[v], pen 0
+ *  transparent (MAME transpen/transmask 0: leave the background showing through
+ *  instead of stamping an opaque black box). */
+function gridImage(ctx: CanvasRenderingContext2D, grid: Grid, palette: Palette): ImageData {
   const img = ctx.createImageData(8, 8)
-  const stamp = STAMPS[stampIndex]
   for (let r = 0; r < 8; r++) {
     for (let x = 0; x < 8; x++) {
-      const v = stamp[r][x]
+      const v = grid[r][x]
       const { r: red, g: green, b: blue } = palette[v]
       const off = (r * 8 + x) * 4
       img.data[off] = red
       img.data[off + 1] = green
       img.data[off + 2] = blue
-      // Pen 0 is the transparent pen (MAME transpen/transmask 0): leave the
-      // background showing through instead of stamping an opaque black box.
       img.data[off + 3] = v === 0 ? 0 : 255
     }
   }
   return img
+}
+
+/** One stamp as an opaque 8x8 ImageData, pixel value v painted as palette[v]. */
+function stampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
+  return gridImage(ctx, STAMPS[stampIndex], palette)
 }
 
 /**
@@ -134,13 +142,12 @@ export const charTile = (code: number): number => ((code & 0x40) === 0 ? 0x40 : 
  * stores a '1' lying on its side (a horizontal stroke), $5F stores the
  * archer pointing right; CCW stands both upright.
  */
-function rotatedStampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
+function rotatedGridImage(ctx: CanvasRenderingContext2D, grid: Grid, palette: Palette): ImageData {
   const img = ctx.createImageData(8, 8)
-  const stamp = STAMPS[stampIndex]
   for (let r = 0; r < 8; r++) {
     for (let x = 0; x < 8; x++) {
       // out(row r, col x) <- stored(row x, col 7-r): the 90° CCW turn.
-      const v = stamp[x][7 - r]
+      const v = grid[x][7 - r]
       const { r: red, g: green, b: blue } = palette[v]
       const off = (r * 8 + x) * 4
       img.data[off] = red
@@ -150,6 +157,29 @@ function rotatedStampImage(ctx: CanvasRenderingContext2D, stampIndex: number, pa
     }
   }
   return img
+}
+
+function rotatedStampImage(ctx: CanvasRenderingContext2D, stampIndex: number, palette: Palette): ImageData {
+  return rotatedGridImage(ctx, STAMPS[stampIndex], palette)
+}
+
+/**
+ * Story ml9-3 — composite an EXPLICIT 8x8 grid (not a STAMPS index) at a pixel
+ * position, for the hand-authored two-colour DDT glyph (src/shell/ddt-glyph.ts):
+ * STAMPS is byte-pinned to the monochrome ROM tile and cannot carry the red
+ * letters, so the DDT box is drawn from an override grid through this seam. Pen 0
+ * stays transparent; playfield chars take the CCW turn, so DDT cells pass
+ * rotate=true — the same rotation drawGridStamps applies to the ROM tile.
+ */
+export function drawStampGridAtPx(
+  ctx: CanvasRenderingContext2D,
+  grid: Grid,
+  x: number,
+  y: number,
+  palette: Palette = flatPalette(),
+  rotate = true,
+): void {
+  blit(ctx, rotate ? rotatedGridImage(ctx, grid, palette) : gridImage(ctx, grid, palette), x, y)
 }
 
 /**

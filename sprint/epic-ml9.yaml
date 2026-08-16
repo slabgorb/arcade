@@ -39,7 +39,8 @@ stories:
     description: "Two deferred visual-fidelity items from the ml9-2 review, both requiring an OWNER/DESIGN decision because the target colours are SCREENSHOT-ONLY (no ROM colour byte reproduces them). (1) DDT-bomb lettering: with per-code fieldPens (ml9-2) the DDT box already renders BLUE for free (non-mushroom code keeps base pen 3 = poison $F8), matching MAME's box colour — what REMAINS is the RED 'DDT' text INSIDE the box. The baked tile ($2E/$2F) is MONOCHROME (one pixel value), so the letters take the same pen as the box; a two-colour (blue box + red text) result needs a re-baked/two-colour DDT sprite AND an owner call, since the only DDT-labelled CLRCH slot (ANCOL+1/+9) is the DDT-EXPLOSION cloud = inside-mushroom $0b, MLIRQ.MAC:267-268, NOT a blue-box+red-text scheme. (2) Attract enemy-showcase text colours: MAME shows WHITE high scores + RED creature labels on the blue showcase; ours renders all green (census default). The colours ARE ROM slots (white $00 ANCOL+3, red $1F ANCOL+2) but MLATR.MAC:580-610 has NO per-section colour write and both letters and digits use pixel value 2, so it CANNOT be a pixel-value distinction — it needs core/attract-showcase.ts to expose SECTIONED placements + per-section palettes wired in main.ts. This is a DIFFERENT file surface (core/attract-showcase.ts) from ml9-2's in-game render path. Also decide cell backgrounds (black boxes vs blue show-through). Seams: core/attract-showcase.ts, shell/render.ts, shell/playfield-palette.ts, shell/gfx-rom.ts (DDT re-bake). Group by file surface per the epic rule; TEA/Architect may split the DDT sprite work from the showcase-text recolour if they land on different file surfaces."
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-15'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -47,3 +48,4 @@ stories:
       - "DDT-bomb renders the RED 'DDT' lettering on its blue box (two-colour treatment), with the source of the red text (re-baked/two-colour sprite vs alternative) and the screenshot-only colour choice confirmed by an owner/design decision and documented."
       - "No regression to the ml9-2 in-game colours (HUD red, grass band, per-code mushroom caps), the in-game HUD, or the self-playing attract demo."
     type: bug
+    review_verdict: approved

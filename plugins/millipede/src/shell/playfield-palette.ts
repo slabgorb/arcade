@@ -30,6 +30,7 @@
 import { decodeColourByte, type Rgb } from '../core/palette'
 import { waveColours, spriteInkBytes, PLAYER_COLOUR, ALPHANUMERIC_COLOUR, COLOUR_LEVELS } from '../core/playfield-colour'
 import { POISON, NORMAL, FULL_MUSHROOM } from '../core/mushroom'
+import { DDT_STAMP } from '../core/ddt'
 
 /** The background colour byte — $FF leaves every output line dark (black). */
 const BACKGROUND_COLOUR = 0xff
@@ -96,7 +97,11 @@ export function alphanumericPens(): readonly Rgb[] {
  * mushroom ($78-$7B) with inside-of-poison (MLIRQ.MAC:265-274). Both stamps use
  * pixel value 3 for the cap, so a single table cannot tell them apart — the ROM
  * distinguishes by char code, and so does this. Non-mushroom codes keep the base
- * palette unchanged.
+ * palette unchanged, EXCEPT the DDT-bomb codes ($6E/$6F): the ml9-3 two-colour
+ * DDT glyph (src/shell/ddt-glyph.ts) paints the box with pixel value 3 (kept at
+ * the base poison $F8 = blue) and the 'DDT' letters with pixel value 1, so pen 1
+ * is overridden to RED ($1F ALPHANUMERIC_COLOUR). Code-gated: no other field cell
+ * changes, since only DDT cells select this palette AND carry value-1 pixels.
  */
 export function fieldPens(code: number, centin: number = COLOUR_LEVELS): readonly Rgb[] {
   const w = waveColours(centin)
@@ -109,5 +114,6 @@ export function fieldPens(code: number, centin: number = COLOUR_LEVELS): readonl
   const v = code & 0x7f // strip the grey-background bit
   if (v >= NORMAL && v <= FULL_MUSHROOM) pens[3] = decodeColourByte(w.insideMushroom)
   else if (v >= POISON && v < NORMAL) pens[3] = decodeColourByte(w.poison)
+  else if (v === DDT_STAMP || v === DDT_STAMP + 1) pens[1] = decodeColourByte(ALPHANUMERIC_COLOUR)
   return pens
 }

@@ -22,9 +22,10 @@ import { createGame, type GameState } from './core/game-state'
 import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
 import { DEFAULT_HIGH_SCORES } from './core/highscore'
-import { showcasePlacements, showcaseSprites, SHOWCASE_BACKGROUND } from './core/attract-showcase'
+import { showcaseSections, showcaseSprites, SHOWCASE_BACKGROUND } from './core/attract-showcase'
 import { decodeColourByte, type Rgb } from './core/palette'
-import { drawGridStamps, drawStampAtPx, charTile, drawPlayerAreaBand } from './shell/render'
+import { drawGridStamps, drawStampAtPx, drawStampGridAtPx, charTile, drawPlayerAreaBand } from './shell/render'
+import { ddtGlyph } from './shell/ddt-glyph'
 import { fieldPens, playerPens, alphanumericPens, spritePens } from './shell/playfield-palette'
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
@@ -165,11 +166,24 @@ function drawSprite(h: number, v: number, pic: number, palette?: readonly Rgb[])
 const ATTRACT_CYCLE_FRAMES = 720 // ~12s at the ROM's 60 Hz
 const SHOWCASE_FRAMES = 300 // ~5s of the cycle shows the showcase
 
+// A one-colour text palette from a ROM colour byte (the alphanumericPens shape):
+// pen 0 is the transparent background, pens 1-3 the ink, so a glyph prints in
+// `byte` whatever 2-bit pixel value its stamp uses.
+const showcaseInkPalette = (byte: number): readonly Rgb[] => {
+  const ink = decodeColourByte(byte)
+  return [decodeColourByte(0xff), ink, ink, ink]
+}
+
 function renderShowcase(c: CanvasRenderingContext2D): void {
   const { r, g, b } = decodeColourByte(SHOWCASE_BACKGROUND)
   c.fillStyle = `rgb(${r}, ${g}, ${b})`
   c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
-  drawGridStamps(c, showcasePlacements(DEFAULT_HIGH_SCORES))
+  // Each section draws through its OWN one-colour palette: white HIGH SCORES +
+  // footer, red creature labels (ml9-3, attract-mame-reference.png). Without this
+  // the whole screen prints the census-default green.
+  for (const s of showcaseSections(DEFAULT_HIGH_SCORES)) {
+    drawGridStamps(c, s.placements, showcaseInkPalette(s.ink))
+  }
   // Each creature's sprite, blitted just above its name label, in its OWN
   // authentic MOCOL colours (spritePens keyed by the creature's colour byte).
   for (const s of showcaseSprites()) {
@@ -189,7 +203,13 @@ function render(state: GameState): void {
 
   // Each field cell is coloured by its CHAR CODE: a normal mushroom cap reads
   // salmon, a poison cap blue (fieldPens), which one global palette cannot do.
-  for (const p of fieldPlacements(state.field)) drawGridStamps(c, [p], fieldPens(p.stamp))
+  // DDT-bomb cells ($6E/$6F) render from the ml9-3 two-colour override glyph
+  // (blue box + red 'DDT' letters) instead of the monochrome ROM tile.
+  for (const p of fieldPlacements(state.field)) {
+    const glyph = ddtGlyph(p.stamp)
+    if (glyph) drawStampGridAtPx(c, glyph, p.col * 8, (0x1f - p.row) * 8, fieldPens(p.stamp))
+    else drawGridStamps(c, [p], fieldPens(p.stamp))
+  }
   // Each motion object paints in its OWN authentic per-creature MOCOL colours,
   // keyed by its `color` attribute byte (milliped's packed sprite palette).
   for (const s of state.segments) if (s.color !== VACANT_COLOR) drawSprite(s.h, s.v, s.pic, spritePens(s.color))
