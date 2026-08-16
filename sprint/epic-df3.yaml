@@ -38,10 +38,11 @@ stories:
     title: 'Parallax starfield: plugins/defender/src/core/stars.ts — STINIT/STOUT (defender/DEFA7.SRC:2095-2155), STRCNT active count (defender/PHR6.SRC:294), stars scrolled by the BGL delta with edge wrap and the phase mask, composited into the df2 framebuffer by INDEX. TRAP: STOUT is self-modifying code (FCB-patched indexed stores, the ''BSO BONER'' comments defender/DEFA7.SRC:2151-2153) — transcribe the BEHAVIOUR, not the opcodes; record an encoding note (streams-are-not-rasters cousin).'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-15'
   - id: df3-5
     title: 'Laser fire: plugins/defender/src/core/laser.ts — LFIRE (max 4 concurrent via LFLG<4, defender/DEFA7.SRC:2763-2766), right/left spawn by facing (LASR/LASL, defender/DEFA7.SRC:2790,2839), the laser data structure (LFLG/LCOLRX, defender/PHR6.SRC:301-303), travel + off-screen death. Each laser is a (super)process. Collision AGAINST ENEMIES is df4 — df3 fires and travels only.'
     points: 3
