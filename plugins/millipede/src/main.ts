@@ -234,11 +234,13 @@ function render(state: GameState): void {
   // Each field cell is coloured by its CHAR CODE: a normal mushroom cap reads
   // salmon, a poison cap blue (fieldPens), which one global palette cannot do.
   // DDT-bomb cells ($6E/$6F) render from the ml9-3 two-colour override glyph
-  // (blue box + red 'DDT' letters) instead of the monochrome ROM tile.
+  // (blue box + red 'DDT' letters) instead of the monochrome ROM tile. The base
+  // band is the LCOLOR-latched per-length colour (state.fieldColourIndex, ml11-1),
+  // so it steps with the millipede's length while the per-code caps/DDT survive.
   for (const p of fieldPlacements(state.field)) {
     const glyph = ddtGlyph(p.stamp)
-    if (glyph) drawStampGridAtPx(c, glyph, p.col * 8, (0x1f - p.row) * 8, fieldPens(p.stamp))
-    else drawGridStamps(c, [p], fieldPens(p.stamp))
+    if (glyph) drawStampGridAtPx(c, glyph, p.col * 8, (0x1f - p.row) * 8, fieldPens(p.stamp, state.fieldColourIndex))
+    else drawGridStamps(c, [p], fieldPens(p.stamp, state.fieldColourIndex))
   }
   // Each motion object paints in its OWN authentic per-creature MOCOL colours,
   // keyed by its `color` attribute byte (milliped's packed sprite palette).
