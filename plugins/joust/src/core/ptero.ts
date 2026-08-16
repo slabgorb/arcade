@@ -40,6 +40,7 @@
 // emulator (ruling C — the caveat rides in this comment + the JT34 claim).
 
 import { dispatchWaveType, type PlayersAlive } from './wave.js'
+import { patchAimLower, patchSlowDive, patchLaneReroute, LANE_TRACK2 } from './baiter.js'
 import type { EntityState, PlayerInput } from './flight.js'
 import type { JoustEntity, Facing } from './joust.js'
 
@@ -137,10 +138,26 @@ const sex8 = (v: number): number => ((v & 0xff) << 24) >> 24
  * word's low byte accumulates into `velXFrac`, only the carry plus the
  * sign-extended high byte reach `posX`. Pure — the argument is never mutated.
  */
-export function stepPteroFlight(state: EntityState, _input: PlayerInput): EntityState {
+export function stepPteroFlight(state: EntityState, _input: PlayerInput, pchase = 0): EntityState {
   // NO GRAVITY: VY is carried through untouched (no `+ GRAV`), unlike stepFlight.
-  const velY = state.velY
-  const posY = state.posY + velY
+  //
+  // jt12-1 — the RV4 anti-farming patches fire for a live BAITER (pchase ≠ 0) and are
+  // no-ops for a plain wave ptero (pchase 0), so an unpatched ptero flies exactly as
+  // jt3-4 built it. PATCH5 slow-dive halves the descent twice (signed VY ÷ 4) for the
+  // integrate only — the STORED VY is left intact, so the baiter falls at 1/4 speed
+  // without the velocity decaying to a hover (JOUSTRV4.SRC:6344-6351).
+  const integrateVelY = patchSlowDive(pchase, state.velY)
+  let posY = state.posY + integrateVelY
+
+  // PATCH6 lane-reroute: on the flanks (past the CLIF3U mid-band) a baiter retargets the
+  // LOWER lane and tracks one whole pixel toward it each wake; in the mid-band the lane is
+  // line 2, which the plain ptero never tracks, so neither reroutes there
+  // (JOUSTRV4.SRC:6323-6338). LANE_TRACK2 (line 2 / the plain target) is the no-op sentinel.
+  const lane = patchLaneReroute(pchase, state.posX)
+  if (lane !== LANE_TRACK2) {
+    const wholeY = posY >> 8
+    if (wholeY !== lane) posY += (lane > wholeY ? 1 : -1) << 8
+  }
 
   const rung = PTERO_FLYX[state.velXIndex / 2 + 4]
   if (rung === undefined) throw new RangeError(`velXIndex ${state.velXIndex} is off the FLYXP ladder`)
@@ -148,7 +165,7 @@ export function stepPteroFlight(state: EntityState, _input: PlayerInput): Entity
   const velXFrac = sum & 0xff
   const whole = sex8(((rung >> 8) & 0xff) + (sum >> 8))
 
-  return { ...state, posX: state.posX + whole, posY, velY, velXFrac }
+  return { ...state, posX: state.posX + whole, posY, velY: state.velY, velXFrac }
 }
 
 // ─── The lance-height kill window (AC-2) ─────────────────────────────────────
@@ -172,10 +189,19 @@ export function lanceOffset(player: JoustEntity, ptero: PteroEntity): number {
  * (the normal joust OSTBO, JOUSTRV4.SRC:5002 — which the ptero wins per the
  * binding story ruling; the raw ROM re-runs the height compare, we do not). Pure.
  */
-export function resolvePteroAttack(player: JoustEntity, ptero: PteroEntity): PteroAttackOutcome {
+export function resolvePteroAttack(
+  player: JoustEntity,
+  ptero: PteroEntity,
+  pchase = 0,
+): PteroAttackOutcome {
   const center = ptero.attackFrame ? ATTACK_BAND_CENTER : GLIDE_BAND_CENTER
   const tol = ptero.attackFrame ? ATTACK_BAND_TOL : GLIDE_BAND_TOL
-  const inBand = Math.abs(lanceOffset(player, ptero) - center) <= tol
+  // jt12-1 PATCH4 aim-lower: a live baiter's lance offset is raised by 2px before the
+  // band compare (ADDB #2, "JUST LOWER THE ATTACK WINDOW BY 2 PIXELS",
+  // JOUSTRV4.SRC:6357-6360), shifting the kill band; a plain ptero (pchase 0) compares
+  // the raw offset exactly as jt3-4 did.
+  const offset = patchAimLower(pchase, lanceOffset(player, ptero))
+  const inBand = Math.abs(offset - center) <= tol
 
   const oppositeFacings = player.facing !== ptero.facing
   // COLDX = ptero.posX − player.posX; the ROM tests its sign against PFACE with a

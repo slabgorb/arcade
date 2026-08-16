@@ -128,8 +128,16 @@ export interface PteroModule {
    * (JOUSTRV4.SRC:1508,6489-6494). posY integrates by VY with NO gravity add, so a
    * still ptero (velY 0, no flap) HOLDS altitude where the mount's stepFlight falls.
    * Horizontal uses PTERO_FLYX. Pure — the argument is never mutated.
+   *
+   * jt12-1 — the optional `pchase` threads the process's PCHASE (a live BAITER is
+   * PCHASE ≠ 0, JOUSTRV4.SRC:2112-2113; a plain wave ptero is 0). For a baiter the
+   * flight applies the RV4 anti-farming patches at their decision points
+   * (JOUSTRV4.SRC:6268 "PATCHES TO PREVENT PLAYER FROM PTERODACTYL HUNTING"):
+   * PATCH5 slow-dive (signed VY ÷ 4) and PATCH6 lane-reroute (drop to the lower
+   * lane on the flanks). `pchase` defaults to 0 — a plain wave ptero flies exactly
+   * as jt3-4 did (no patch fires), so every existing 2-arg call is unchanged.
    */
-  stepPteroFlight(state: EntityState, input: PlayerInput): EntityState
+  stepPteroFlight(state: EntityState, input: PlayerInput, pchase?: number): EntityState
 
   /**
    * The lance-height delta B = player.plantZ + (player.posY>>8) − (ptero.posY>>8),
@@ -144,8 +152,14 @@ export interface PteroModule {
    * (attackFrame → 8±3, else 10±2), (b) OPPOSITE facings, and (c) the player facing
    * INTO the ptero (facing === sign(ptero.posX − player.posX)). Any single failure →
    * `pteroWins` (the normal joust, which the ptero wins). Pure.
+   *
+   * jt12-1 — the optional `pchase` threads the process's PCHASE. For a live baiter
+   * (PCHASE ≠ 0) the lance-height compare applies PATCH4 aim-lower (ADDB #2, "JUST
+   * LOWER THE ATTACK WINDOW BY 2 PIXELS", JOUSTRV4.SRC:6357-6360) — the kill band
+   * shifts by AIM_LOWER_PIXELS. `pchase` defaults to 0 — a plain wave ptero resolves
+   * exactly as jt3-4 did, so every existing 2-arg call is unchanged.
    */
-  resolvePteroAttack(player: JoustEntity, ptero: PteroEntity): PteroAttackOutcome
+  resolvePteroAttack(player: JoustEntity, ptero: PteroEntity, pchase?: number): PteroAttackOutcome
 
   /** The 1000-point kill score event (reason 'kill'; ruling C caveat in the claim). */
   pteroScoreEvent(): PteroScoreEvent

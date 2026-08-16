@@ -79,6 +79,7 @@ import type { EggState } from './egg.js'
 // them so a live ptero flies and a dissolving body advances in-scheduler. Both are
 // leaf cores (ptero → wave/flight/joust, dissolve → nothing), so no import cycle back.
 import { stepPteroFlight } from './ptero.js'
+import { BAITER_PCHASE, FIRST_PASS_DELAY, patchSeekTimer } from './baiter.js'
 import { stepDissolve, type DissolveState } from './dissolve.js'
 import { rngNext } from './rng.js'
 
@@ -121,6 +122,20 @@ export interface ProcessSpec {
   egg?: EggState
   /** A `kind: 'dissolve'` process carries its death-dissolve state here (jt3-7). */
   dissolve?: DissolveState
+  /**
+   * jt12-1 — a `kind: 'ptero'` process that is a BAITER (PCHASE ≠ 0), set by sim's
+   * `baiterProcess`. The flight dispatch reads it to thread PCHASE into
+   * `stepPteroFlight` so the RV4 anti-farming patches fire; absent/false → a plain
+   * wave ptero. Mirrors sim's `SimProcess.baiter` — the shared, GENERATED
+   * `EntityState` cannot grow it, so it lives on the process like `facing`/`bumpX`.
+   */
+  baiter?: boolean
+  /**
+   * jt12-1 — `PPVELX` repurposed as the baiter's SEEK-DELAY timer (PATCH8/9). Seeded
+   * to FIRST_PASS_DELAY on spawn (first pass misses), decremented each wake and
+   * saturated at 1. Baiter-only; a plain wave ptero never carries it.
+   */
+  ppvelx?: number
   /**
    * `PFACE` — a player's facing (+1 right / −1 left, RAMDEF.SRC:186). jt2-9
    * threads it into the ground step (so the reversal/skid chain is reachable)
@@ -431,9 +446,21 @@ function runBehaviour(
   }
   // A ptero/baiter flies each wake through the gravity-EXEMPT stepPteroFlight (jt3-4)
   // — ADDGRX skips the mount's `ADDB GRAV`, so posY integrates by VY untouched. It
-  // carries no PlayerInput (a live ptero is not stick-driven here).
+  // carries no PlayerInput (a live ptero is not stick-driven here). jt12-1: a live
+  // BAITER (`p.baiter`) threads PCHASE so the RV4 anti-farming flight patches fire;
+  // a plain wave ptero passes 0 and flies exactly as jt3-4 built it.
   if (p.kind === 'ptero' && p.entity) {
-    return { process: { ...p, entity: stepPteroFlight(p.entity, NEUTRAL_INPUT) }, budget }
+    const pchase = p.baiter ? BAITER_PCHASE : 0
+    const entity = stepPteroFlight(p.entity, NEUTRAL_INPUT, pchase)
+    // PATCH9 seek-timer: a baiter DECs its PPVELX each wake, saturating at 1 (seeded
+    // to FIRST_PASS_DELAY on spawn — PATCH8). A plain ptero carries no seek timer.
+    if (p.baiter) {
+      return {
+        process: { ...p, entity, ppvelx: patchSeekTimer(pchase, p.ppvelx ?? FIRST_PASS_DELAY) },
+        budget,
+      }
+    }
+    return { process: { ...p, entity }, budget }
   }
   // A dissolving body advances its ASH animation each wake (jt3-6); when it reaches
   // `done` the demo loop removes it from the process list.

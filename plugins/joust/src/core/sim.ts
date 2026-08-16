@@ -88,7 +88,14 @@ import {
   escapeScoreEvent,
   type TrollGrip,
 } from './troll.js'
-import { seedBaiterClock, stepBaiterClock, NAP_FRAMES, type BaiterClock } from './baiter.js'
+import {
+  seedBaiterClock,
+  stepBaiterClock,
+  NAP_FRAMES,
+  BAITER_PCHASE,
+  FIRST_PASS_DELAY,
+  type BaiterClock,
+} from './baiter.js'
 import {
   waveRowAt,
   wenemyFor,
@@ -163,6 +170,12 @@ export interface SimProcess {
    * the baiter count (the DissolveState.baiter flag) on entry.
    */
   baiter?: boolean
+  /**
+   * jt12-1 — `PPVELX` as the baiter's SEEK-DELAY timer (PATCH8/9): seeded to
+   * FIRST_PASS_DELAY on spawn, DEC'd each wake (saturating at 1) by frame.ts.
+   * Baiter-only; a plain wave ptero never carries it.
+   */
+  ppvelx?: number
   /** The enemy's DVALUE type — a wave row's bounders/hunters/lords (Finding #1). */
   enemyType?: EnemyType
   /** The PID $80 collision bit: false while a materialisation window is active. */
@@ -821,6 +834,9 @@ function baiterProcess(id: number): SimProcess {
     period: 1,
     kind: 'ptero',
     baiter: true,
+    // PATCH8 first-pass-miss: seed the seek-delay timer so the baiter's first pass
+    // misses; frame.ts DECs it each wake (PATCH9).
+    ppvelx: FIRST_PASS_DELAY,
     facing: 1,
     collisionEnabled: true,
     entity: pteroFlightEntity(),
@@ -1994,7 +2010,9 @@ function collisionPass(processes: readonly SimProcess[]): {
       )
         continue
 
-      const outcome = resolvePteroAttack(playerJoust, pteroEntity)
+      // jt12-1 — a live BAITER (pt.baiter) threads PCHASE so PATCH4 aim-lower shifts
+      // its lance-height band; a plain wave ptero passes 0 (the jt3-4 window).
+      const outcome = resolvePteroAttack(playerJoust, pteroEntity, pt.baiter ? BAITER_PCHASE : 0)
       if (outcome.kind === 'kill') {
         // The 1000-pt kill event is jt3-4's (pteroScoreEvent) — emitted ONCE here on
         // the kill; the dissolve replaces the interim poof and emits no score of its own.
