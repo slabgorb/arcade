@@ -135,14 +135,23 @@ describe('ml9-3 — the rendered DDT is exactly {blue box, red letters}', () => 
 })
 
 describe('ml9-3 — main.ts renders DDT cells through the override glyph', () => {
-  it('substitutes ddtGlyph for the DDT field cells (comment-stripped source)', () => {
+  it('BINDS the ddtGlyph result to drawStampGridAtPx under if(glyph) (mutation-guarded)', () => {
     const stripComments = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
     const src = stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
-    // BIND the call: ddtGlyph's result must reach drawStampGridAtPx, not merely be
-    // present — a mutant that computes it and discards it, leaving the plain
-    // drawGridStamps field draw, must redden.
-    expect(src, 'main.ts must consult ddtGlyph for the field cells').toMatch(/ddtGlyph\s*\(/)
-    expect(src, 'the DDT glyph must be drawn via drawStampGridAtPx').toMatch(/drawStampGridAtPx\s*\(/)
+    // (a) the glyph must be COMPUTED from ddtGlyph(p.stamp).
+    expect(src, 'main.ts must compute the DDT glyph via ddtGlyph(p.stamp)').toMatch(/glyph\s*=\s*ddtGlyph\s*\(/)
+    // (b) BOUND (ml9-3 rework, checklist #15): that same glyph must reach
+    // drawStampGridAtPx as its grid argument, guarded by `if (glyph)`. This
+    // reddens under the dead-code mutant `if (false && glyph) drawStampGridAtPx(...)`
+    // — which disables the ENTIRE in-game two-colour DDT feature — because the
+    // guard is then no longer exactly `if (glyph)`. Mutation-verified in this
+    // rework. Round 1 used two UNBOUND sibling greps (/ddtGlyph\(/ and
+    // /drawStampGridAtPx\(/) that both stayed present under that mutant; this
+    // binds the guard, the call, and glyph-as-argument into one match.
+    expect(
+      src,
+      'if (glyph) must draw it via drawStampGridAtPx(c, glyph, ...)',
+    ).toMatch(/if\s*\(\s*glyph\s*\)\s*drawStampGridAtPx\s*\(\s*\w+\s*,\s*glyph\s*,/)
   })
 })
 

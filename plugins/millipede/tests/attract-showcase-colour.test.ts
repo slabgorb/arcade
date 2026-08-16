@@ -222,16 +222,24 @@ describe('ml9-3 — attract showcase sections (core/attract-showcase.ts)', () =>
 })
 
 describe('ml9-3 — main.ts draws each showcase section through its own palette', () => {
-  it('branches on the attract phase, uses showcaseSections, and drops the palette-less flat draw', () => {
+  it('BINDS showcaseInkPalette(section.ink) as the drawGridStamps palette (mutation-guarded)', () => {
     const stripComments = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
     const src = stripComments(readFileSync(join(root, 'src', 'main.ts'), 'utf8'))
     // (a) still keys rendering off the attract phase (ml9-1 wiring floor).
     expect(src, "render must branch on state.phase === 'attract'").toMatch(/phase\s*===\s*['"]attract['"]/)
-    // (b) the sectioned API is the source of the showcase draw now.
-    expect(src, 'main.ts must render via showcaseSections').toMatch(/showcaseSections\s*\(/)
+    // (b) BOUND (ml9-3 rework, checklist #15): the per-section palette
+    // showcaseInkPalette(<section>.ink) must be the palette ARGUMENT to
+    // drawGridStamps, drawing <section>.placements. This reddens under the
+    // whole-screen-green mutant `drawGridStamps(c, s.placements)` (palette arg
+    // dropped) — the exact bug ml9-3 fixes — because the third argument is then
+    // absent. Mutation-verified in this rework. A bare `showcaseSections(` grep
+    // (round 1) did NOT catch that mutant; this binds the palette to the call.
+    expect(
+      src,
+      'each showcase section must be drawn with showcaseInkPalette(section.ink) as the drawGridStamps palette',
+    ).toMatch(/drawGridStamps\s*\(\s*\w+\s*,\s*\w+\.placements\s*,\s*showcaseInkPalette\s*\(\s*\w+\.ink\s*\)\s*\)/)
     // (c) NEGATIVE guard (checklist #25 — safe over the whole file): the old
     // palette-less flat draw that renders the whole screen green must be gone.
-    // Its presence == the green-everywhere bug, so its absence is the fix.
     expect(
       src,
       'the palette-less drawGridStamps(c, showcasePlacements(...)) flat draw must be replaced by per-section draws',
