@@ -479,18 +479,22 @@ function stepCombat(state: GameState, opts: { readonly suppressMirv?: boolean } 
     // ready in play).
     planes = [spawnSputnik(state.rng, sputnikFireCadence(state.wave))]
   }
-  // A ready, IN-BOUNDS plane launches its clamped salvo (cruiseOnScreen is 0 until
-  // mc5-3) against the PRE-spawn on-screen count and reloads. The fire gate is the
+  // A ready, IN-BOUNDS plane launches its clamped salvo against the PRE-spawn
+  // on-screen count — cruise missiles included, each borrowing two salvo slots
+  // (the PLCPV cruise-borrow). Cruise missiles have existed since mc5-3, but this
+  // caller passed a hardcoded 0 until mc11-1 wired the live count in below, so the
+  // −2·cruise branch only started biting in mc11-1. The fire gate is the
   // ROM's SPUTFIR guard: HORFIR ≥ SPUTDS (readyToFire) AND PLCPH in the ±0x30 band
   // (sputnikInFireBounds, W3MAIN.MAC:2529-2537). The salvo headroom is MXICON-based
   // — the −1 below NICBMS is the aloft plane's OWN reservation (ICNORM's PLCPV
   // borrow, W3MAIN.MAC:2447-2453): it fires only when the swarm has dipped, never
   // into a full-at-seven swarm.
+  const cruiseOnScreenPreSpawn = state.icbms.filter((i) => i.kind === 'cruise').length
   let sputBudget = state.remaining
   const sputnikShots: Icbm[] = []
   planes = planes.map((p) => {
     if (!readyToFire(p) || !sputnikInFireBounds(p.pos.h)) return p
-    const count = sputnikFireCount(0, state.icbms.length + sputnikShots.length, sputBudget)
+    const count = sputnikFireCount(cruiseOnScreenPreSpawn, state.icbms.length + sputnikShots.length, sputBudget)
     const shots = sputnikLaunch(p, liveTargets, count, waveSchedule(state.wave).velocity, state.rng)
     sputnikShots.push(...shots)
     sputBudget -= shots.length

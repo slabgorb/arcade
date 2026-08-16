@@ -184,7 +184,7 @@ describe('mc5-2 rework — the bomber launches ICBMs in natural play', () => {
     expect(playCell(1, 1, 2000).shots).toBe(0)
   })
 
-  it('fires across a seed × wave matrix (>= 12 of 20 cells, >= 25 shots) under the NICBMS ceiling', () => {
+  it('fires across a seed × wave matrix (>= 9 of 20 cells, >= 17 shots; cruise waves clamp) under the NICBMS ceiling', () => {
     let total = 0
     let firingCells = 0
     let maxConcurrent = 0
@@ -196,20 +196,33 @@ describe('mc5-2 rework — the bomber launches ICBMs in natural play', () => {
         maxConcurrent = Math.max(maxConcurrent, r.maxConcurrent)
       }
     }
-    // Thresholds RE-calibrated ONCE (escalating-guard rule) against the faithful
-    // impl. mc5-2 measured 17/20 firing cells, 38 shots with NO fire gate. mc5-8
-    // then added (a) the ±0x30 PLCPH in-bounds gate — the plane holds fire in the
-    // [0,47]∪[208,255] edge bands and loses the exit-side edge fires — and (b)
-    // either/or arbitration, where skipping the normal spawner on a plane-fire
-    // frame shifts the RNG stream. Both legitimately reduce firing. Re-measured
-    // faithful (deterministic, these exact seeds): 21 distinct shots across >= 12
-    // firing cells, maxConcurrent 8. So >= 12 cells and >= 15 shots pass with margin
-    // for RNG-stream drift, while a fix that breaks firing fails (a dead gate
-    // collapses firingCells; a broken distance timer / salvo clamp drives total → 0).
-    // The GATE's own correctness is pinned by mc5-8-sputnik-fire-arbitration.test.ts
-    // (the boundary predicate + the wired h=30 / h=230 cases), not by this aggregate.
-    expect(firingCells).toBeGreaterThanOrEqual(12) // a solid majority of the 20 cells
-    expect(total).toBeGreaterThanOrEqual(15) // clearly-nonzero aggregate under the mc5-8 gate (faithful: 21)
+    // Thresholds RE-calibrated (escalating-guard rule) against the faithful impl.
+    // mc5-2 measured 17/20 firing cells, 38 shots with NO fire gate. mc5-8 then added
+    // (a) the ±0x30 PLCPH in-bounds gate — the plane holds fire in the [0,47]∪[208,255]
+    // edge bands and loses the exit-side edge fires — and (b) either/or arbitration,
+    // where skipping the normal spawner on a plane-fire frame shifts the RNG stream.
+    //
+    // mc11-1 RE-BASELINE (cruise-borrow WIRED): the plane-fire caller (game.ts) previously
+    // passed a hardcoded cruiseOnScreen=0 to sputnikFireCount; mc11-1 threads the live cruise
+    // count in, so the salvo headroom `7 − 2·cruise − icbm` now clamps in play. Under THIS
+    // budget-pinned harness (remaining refilled each frame, so the swarm never dips), the two
+    // cruise-bearing waves go quiet: per-wave (deterministic, these exact seeds) wave 3 = 5/5
+    // cells·8 shots (no cruise), wave 4 = 5/5·11 (no cruise), wave 6 = 0/5·0 (cruiseBudget 1),
+    // wave 8 = 0/5·0 (cruiseBudget 2). Net now: 10 cells, 19 shots, maxConcurrent 8.
+    //
+    // WHAT THIS AGGREGATE DOES AND DOES NOT PROVE (rule-checker mc11-1, honest scope): it does
+    // NOT distinguish wired-from-unwired — the cruise waves fire ~0 under this harness EITHER
+    // way, so the same 10/19 reproduces on the unfixed hardcoded-0 code. The cruise-borrow
+    // WIRING is pinned by the differential in mc11-1-sputnik-cruise-borrow.test.ts, which is
+    // RED on the unfixed caller; THAT file is the wiring guard. This aggregate is only a
+    // "planes still fire across the matrix in play" FLOOR — a dead gate or broken distance
+    // timer drives total → 0 across ALL waves incl. the pre-cruise ones, failing it. Floor set
+    // to >= 9 cells / >= 17 shots: below the measured 10/19 by just the RNG-drift margin, so a
+    // real regression in the load-bearing pre-cruise waves (3,4 supply all 10 cells) is caught
+    // rather than masked. The fire GATE's own correctness is pinned by
+    // mc5-8-sputnik-fire-arbitration.test.ts, not by this aggregate.
+    expect(firingCells).toBeGreaterThanOrEqual(9) // pre-cruise waves (3,4) supply 10; a 2-cell drop there reddens
+    expect(total).toBeGreaterThanOrEqual(17) // measured 19 post-mc11-1; margin matches the fix-caused delta
     // The ceiling the faithful clamp restores: plane salvo + swarm never exceed
     // the NICBMS(8) slot table (W3COMN.MAC:35). The rejected budget-priority
     // pre-spawn fire could stack plane shots ON TOP of a swarm the spawner then
