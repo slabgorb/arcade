@@ -38,6 +38,7 @@ import { fileURLToPath } from 'node:url'
 import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
 import type { SoundEvent } from '../src/core/sound-events.js'
 import { NMISBA, MAXMIS, NCITY } from '../src/core/field.js'
+import { scoreMultiplier } from '../src/core/score.js'
 
 const bonusTicks = (events: readonly SoundEvent[]): SoundEvent[] => events.filter((e) => e.type === 'bonusTick')
 
@@ -145,9 +146,49 @@ describe('mc11-2 — both halves of the count-up are wired, one tick per drawn u
   })
 })
 
+// ─── Rework r1 (Heimdall): dead-base exclusion + the N=0 census floor ─────────
+// Two mutation-proven gaps from review round 1. Both PASS on the correct code and
+// KILL a real mutant: dropping the `b.alive` ammo guard, and flooring the emitted
+// length at 1 (`Math.max(N,1)`). Each is on the story's central claim — the count.
+describe('mc11-2 (rework r1) — a destroyed base contributes no ticks, and N can be 0', () => {
+  it('a DESTROYED base with loaded ABMs is excluded — only LIVE bases count (game.ts b.alive guard)', () => {
+    // 2 cities; two live bases at 10 ABMs + one DEAD base still holding 7. The ROM's
+    // ENDWV2 tallies only ABMs at a LIVE base — a destroyed base's magazine is gone.
+    // ticks = 2 cities + (10+10) live ABMs = 22, NOT 2 + (10+10+7) = 29.
+    const base = createPlayGame(1)
+    const g: GameState = {
+      ...base,
+      phase: 'between',
+      cities: base.cities.map((c, i) => ({ ...c, alive: i < 2 })),
+      bases: base.bases.map((b, i) =>
+        i === 2 ? { ...b, alive: false, ammo: 7 } : { ...b, alive: true, ammo: 10 },
+      ),
+      icbms: [],
+      abms: [],
+      explosions: [],
+      sputniks: [],
+    }
+    const ticks = bonusTicks(stepGame(g).soundEvents).length
+    expect(ticks, 'only the two LIVE bases (10+10) plus 2 cities count').toBe(22)
+    expect(ticks, "the dead base's 7 ABMs must NOT be tallied").not.toBe(29)
+  })
+
+  it('a zero-bonus resolve emits exactly ZERO ticks — the census floor is 0, not 1', () => {
+    // No survivors, no ammo ⇒ N=0. Array.from({length:0}) is []. Pins the lower
+    // boundary against an "always emit at least one tick" (Math.max(N,1)) bug.
+    // Constructed directly: real play cannot reach 0 cities in 'between'
+    // (nextWavePhase returns 'over'), but the emitter must still floor at 0.
+    const resolved = stepGame(betweenState(0, 0))
+    expect(bonusTicks(resolved.soundEvents).length).toBe(0)
+  })
+})
+
 // ─── AC (ROM fidelity): the tick COUNT is independent of the wave multiplier ──
 describe('mc11-2 — the count-up length does not scale with the wave multiplier', () => {
   it('same 3 cities + 6 ABMs ⇒ 9 ticks at wave 1 AND at wave 10 (SMULTI scales points, not ticks)', () => {
+    // Observe that the two waves genuinely DIFFER in multiplier, so equal tick counts
+    // is a real non-dependence — not merely "wave never mattered anywhere".
+    expect(scoreMultiplier(10)).toBeGreaterThan(scoreMultiplier(1))
     const early = bonusTicks(stepGame(betweenState(3, 2, 1)).soundEvents).length
     const late = bonusTicks(stepGame(betweenState(3, 2, 10)).soundEvents).length
     const N = expectedTicks(3, 2) // 3 + 3×2 = 9
@@ -167,10 +208,15 @@ describe('mc11-2 — bonusTick fires only on the resolve frame', () => {
     expect(after.soundEvents.map((e) => e.type)).not.toContain('bonusTick')
   })
 
-  it('the bonus stream is seed-deterministic (pure data, not effects)', () => {
-    const a = stepGame(betweenState(4, 7, 3, 42)).soundEvents.map((e) => e.type)
-    const b = stepGame(betweenState(4, 7, 3, 42)).soundEvents.map((e) => e.type)
-    expect(a).toEqual(b)
+  it('the bonus census is seed-INDEPENDENT — same cities/ammo, different seeds, identical stream', () => {
+    // The census reads cities.alive and bases.ammo, never state.rng — so two DIFFERENT
+    // seeds must yield the identical bonusTick stream. (A stray Math.random() would
+    // break this; the same-seed-twice form could not.)
+    const s1 = stepGame(betweenState(4, 7, 3, 1)).soundEvents.map((e) => e.type)
+    const s2 = stepGame(betweenState(4, 7, 3, 999)).soundEvents.map((e) => e.type)
+    expect(s2).toEqual(s1)
+    expect(s1.length).toBe(expectedTicks(4, 7)) // 4 + 3×7 = 25, all bonusTick
+    expect(s1.every((t) => t === 'bonusTick')).toBe(true)
   })
 })
 
