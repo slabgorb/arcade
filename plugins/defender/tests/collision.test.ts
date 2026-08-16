@@ -1,12 +1,19 @@
 // tests/collision.test.ts
 //
 // Story df4-1 — RED phase (Han Solo / TEA). THE SHARED COLLISION SEAM, ported FIRST,
-// before any enemy exists. A pure, clock-free port of the ROM's OWN COLIDE routine
-// (reference/original-source/defender/DEFA7.SRC:2904-3020, banner `*COLLISION DETECT`
-// at :2904) — an object-pointer-list box hit test — NOT a re-derived quadtree/AABB.
-// This is Decision A (RULED, ROM-always-wins) in the df4 design spec §2: a tidier
-// structure would silently change WHICH overlaps count (routing != geometry, the df3
-// lesson), so we port COLIDE's own representation and semantics, cited.
+// before any enemy exists. A pure, clock-free port of COLIDE's BOX PRE-TEST
+// (reference/original-source/defender/DEFA7.SRC:2907-2925, banner `*COLLISION DETECT`
+// at :2904) — the object-pointer-list bounding-box overlap. It IS an AABB box test (that
+// is what the ROM does here); Decision A (RULED, ROM-always-wins, df4 design spec §2)
+// forbids swapping it for a SPATIAL INDEX (quadtree / grid / hash) that would silently
+// change WHICH overlaps count and in what ORDER (routing != geometry, the df3 lesson) —
+// so we port the ROM's own box test over the ROM's own object LIST, cited.
+//
+// SCOPE — BOX PRE-TEST ONLY: real COLIDE is two stages. Stage 1 (box overlap, :2907-2925)
+// is ported here; stage 2 (IC1 pixel intersection, :2927-3020, whose `LDA #1 / RTS HIT`
+// crash return is at :3011) needs real sprite bitmaps df4-1's SYNTHETIC lists don't carry,
+// so it is intentionally UNPORTED (a later story adds it). collide() reports a Hit on BOX
+// overlap — a superset of the ROM's pixel-level crashes. See the df4-1 Design Deviation.
 //
 // ─── THE ROM MODEL, BYTE BY BYTE (DEFA7.SRC + PHR6.SRC struct offsets) ─────────────
 //   COLIDE (:2907)  U = reference object's PICTURE descriptor (OBJW=width, OBJH=height,
@@ -26,17 +33,20 @@
 //        cand.LRY > ref.ULY  (CMPB ULY / BHI proceed)
 //        Edges EXACTLY TOUCHING do NOT collide (open intervals). This is the single
 //        semantic a "cleaner" inclusive-boundary AABB would get wrong.
-//   First hit wins (:2923-2925)  the walk returns on the FIRST overlapping object in
-//        OLINK/list order (RTS NE = crash); exhausting the list returns EQ = no crash.
+//   Box-overlap wins, in list order (:2923-2924)  the walk advances (`LDX OLINK,X` /
+//        `BNE COL1`) and returns the FIRST box-overlapping object; an exhausted list falls
+//        to `RTS RET EQ` (:2925) = no crash. NOTE the ROM's crash return (`LDA #1 / RTS
+//        HIT`, NE) is at :3011, inside the DEFERRED IC1 pixel stage — not in this range.
 //   RET+2 = COLLISION PICT (:2553, GETSHL)  each object carries the picture COLIDE
 //        dereferences for its box (stored into OPICT at GETSHL time) — so the hit
 //        carries the collision picture, not a bare boolean.
 //   CENTMP (:2998,3008)  `LDY OBJX,X` seeds the SCREEN TOP-LEFT address from the hit
 //        object's UL coord word (column in the high byte, row in the low), the pixel
-//        offset is added, and `STY CENTMP` stores the screen collision address. With
-//        SYNTHETIC object lists (no bitmap pixels) the box-level CENTMP is that UL
-//        coord-as-address: (x<<8)|y. The pixel-precise centre refinement needs real
-//        bitmap data df4-1 does not carry (df4-2's effects / a later enemy will).
+//        offset is added, and `STY CENTMP` stores the screen collision address. In the ROM
+//        this runs only after IC1 finds a matching pixel, so it belongs to the DEFERRED
+//        pixel stage; df4-1's SYNTHETIC lists carry no bitmap, so the box-level CENTMP is
+//        that UL coord-as-address (x<<8)|y — the coarse box-overlap location until the
+//        pixel stage lands (df4-2's effects / a later enemy).
 //
 // The three cited CALL SITES are the three query shapes df4 must produce (design §2):
 //   laser-vs-object  DEFA7.SRC:2775-2787 (JSR COLIDE @2787), U=#LASP1 (8x1) — a player
@@ -139,8 +149,8 @@ async function loadCollision(): Promise<CollisionModule> {
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e)
     throw new Error(
-      'src/core/collision.ts not built yet — GREEN (Dev) ports COLIDE ' +
-        '(defender/DEFA7.SRC:2904-3020) as a PURE reducer: `collide(query, objects)` + the ' +
+      'src/core/collision.ts not built yet — GREEN (Dev) ports COLIDE’s box pre-test ' +
+        '(defender/DEFA7.SRC:2907-2925) as a PURE reducer: `collide(query, objects)` + the ' +
         'three cited query wrappers (laserVsObject :2775-2787, bombVsPlayer :2699, ' +
         'shipVsObject :3130-3142), each returning a Hit {object, collisionPicture (:2553), ' +
         `screenAddr (CENTMP :3008)} or null. (${why})`,
@@ -188,6 +198,7 @@ describe('AC1 — COLIDE as a pure object-list scan returning the hit (not a boo
       obj('bomb', 101, 101, BOMB), //     overlaps
     )
     const hit = collide(query(100, 100, PLAYER), objects)
+    expect(hit, 'the overlapping bomb must produce a Hit').not.toBeNull()
     expect(hit!.object.id).toBe('bomb')
     expect(hit!.collisionPicture, 'the collision picture is the struck object’s box (2x3)').toEqual(
       { width: 2, height: 3 },
@@ -201,6 +212,7 @@ describe('AC1 — COLIDE as a pure object-list scan returning the hit (not a boo
     // so a byte-swapped (y<<8)|x=25707 differs from (x<<8)|y=27492 and is caught.
     const objects = list(obj('bomb', 107, 100, BOMB))
     const hit = collide(query(100, 100, PLAYER), objects)
+    expect(hit, 'the overlapping bomb must produce a Hit').not.toBeNull()
     expect(hit!.screenAddr, 'CENTMP = (col<<8)|row of the struck object’s UL').toBe((107 << 8) | 100)
   })
 
@@ -221,6 +233,7 @@ describe('AC1 — COLIDE as a pure object-list scan returning the hit (not a boo
     const objects = list(obj('bomb', 101, 101, BOMB))
     const a = collide(q, objects)
     const b = collide(q, objects)
+    expect(a, 'the overlapping bomb must produce a Hit').not.toBeNull()
     expect(a).toEqual(b)
     expect(a!.object.id).toBe('bomb')
   })
@@ -333,11 +346,13 @@ describe('AC2 — ship-vs-object (DEFA7.SRC:3130-3142), player 8x6 vs enemy 6x4'
 })
 
 // ══════════════════════════════════════════════════════════════════════════════════
-// AC4 — the model is the ROM object-LIST scan with the ROM's OWN box semantics, NOT a
-// re-derived quadtree/AABB. Each test below names a semantic a "tidier" structure would
-// change — the mechanical pin of Decision A. Every one is mutation-lethal: flip the
-// boundary to inclusive, drop the (0,0) skip, ignore list order, or drop the candidate's
-// own dimensions, and exactly these reden.
+// AC4 — the model is the ROM's OWN box test walked over the ROM's OWN object LIST, NOT a
+// SPATIAL INDEX (quadtree / grid / hash). (The overlap test itself IS an AABB — that is
+// what the ROM does; Decision A forbids swapping the LIST for a spatial structure that
+// changes which overlaps count or their order.) Each test below names a semantic a
+// "tidier" structure would change — the mechanical pin of Decision A. Every one is
+// mutation-lethal: flip the boundary to inclusive, drop the (0,0) skip, ignore list
+// order, or drop the candidate's own dimensions, and exactly these redden.
 // ══════════════════════════════════════════════════════════════════════════════════
 describe('AC4 — Decision A: the ROM object-list scan, not a tidier structure', () => {
   it('the box test is EXCLUSIVE on all four edges — a touching pair does not count', async () => {
