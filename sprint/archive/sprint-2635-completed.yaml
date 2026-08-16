@@ -17,3 +17,8 @@ completed_stories:
     title: "Fix the bottom HUD band in shell/render.ts drawHud: reserve-life icons render as closed-mouth discs (drawPacman frame 0 = PAC_CLOSED sprite 48; use the open-mouth left frame PAC_FRAMES.left[2]/sprite 44) AND the 16px life+fruit icons overlap the row-33 bottom border wall because the actor -4px centring offset anchors them into row 33 (compensate by +（SPRITE_PX-TILE_PX)/2 so they fill rows 34-35). Shell-render only; see context-story-pm5-4.md for the full diagnosis. Reported 2026-08-16 w/ screenshot."
     points: 3
     completed: '2026-08-16'
+  - id: mc11-2
+    epic: mc11
+    title: "Emit the bonus count-up cue: in the 'between' bonus resolution (game.ts:401-420) emit N {type:'bonusTick'} events (one per bonus unit tallied) instead of the lump waveEndBonus with soundEvents:[], so the TK cue plays per unit. Update sound-events.ts:62 to strike the 'emitter is a filed follow-up' note. Assert the event count matches the units paid. REV-01 W3SOUN SUNABM"
+    points: 5
+    completed: '2026-08-16'
