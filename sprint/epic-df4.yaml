@@ -45,7 +45,8 @@ stories:
     description: 'SCORING for a rescued/dropped humanoid (P250/P500, defender/DEFB6.SRC:408,496-503) is OUT OF SCOPE — that is df5. df4-3 delivers the abduction MECHANIC (grab, carry, fall on carrier-death), not the points. Enemies are df3 scheduler processes (NEWP,STYPE); no per-enemy tick. Colour by df2 palette index only.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
   - id: df4-4
