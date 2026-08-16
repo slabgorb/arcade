@@ -33,16 +33,27 @@ export function makeMilliHighScoreStorage(): HighScoreStorage<MilliHighScore> {
   return makeHighScoreStorage<MilliHighScore>(MILLI_HIGH_SCORE_GAME_ID, isHighScoreRow, '')
 }
 
-/** Only A-Z / 0-9 / space in a name, and a NON-NEGATIVE INTEGER score, are renderable
- *  by the millipede glyph encoder (attract-showcase.ts encodeChar throws on anything
- *  else). `isHighScoreRow` gates SHAPE only (`typeof name === 'string' && isFinite`),
- *  so a legacy-cookie seed or a hand-edited store can plant a lowercase name / a
- *  negative or fractional score that crashes the uncaught attract rAF loop. Filter to
- *  the RENDERABLE charset here — the one place the untrusted board enters GameState —
- *  so the strict encoder still guards its ROM-constant callers (ml10-2 rework [SEC]). */
+/** Only A-Z / 0-9 / space in a name, and a score whose DECIMAL STRING is those same
+ *  digits, are renderable by the millipede glyph encoder (attract-showcase.ts encodeChar
+ *  throws on anything else). `isHighScoreRow` gates SHAPE only (`typeof name === 'string'
+ *  && isFinite`), so a legacy-cookie seed or a hand-edited store can plant a lowercase
+ *  name / a negative or fractional score that crashes the uncaught attract rAF loop.
+ *  Filter to the RENDERABLE set here — the one place the untrusted board enters GameState
+ *  — so the strict encoder still guards its ROM-constant callers (ml10-2 rework [SEC]).
+ *
+ *  The score bound is `<= Number.MAX_SAFE_INTEGER`, NOT merely `Number.isInteger && >= 0`:
+ *  `Number.isInteger(1e21)` is `true`, but `String(1e21) === "1e+21"` and `encodeChar`
+ *  throws on the `e`/`+`. JS switches Number#toString to exponent notation at exactly 1e21,
+ *  and MAX_SAFE_INTEGER (~9e15) is well below that, so any admitted score stringifies to
+ *  plain digits (ml10-2 rework r2 [SEC] residual — a 21-digit plain cookie / hand-edit). */
 const RENDERABLE_NAME = /^[A-Z0-9 ]*$/
 function isRenderableRow({ name, score }: MilliHighScore): boolean {
-  return RENDERABLE_NAME.test(name) && Number.isInteger(score) && score >= 0
+  return (
+    RENDERABLE_NAME.test(name) &&
+    Number.isInteger(score) &&
+    score >= 0 &&
+    score <= Number.MAX_SAFE_INTEGER
+  )
 }
 
 /** The ladder to boot with: the persisted board when the player has one, else the

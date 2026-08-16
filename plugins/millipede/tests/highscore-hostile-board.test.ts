@@ -42,12 +42,20 @@ function makeFakeStorage(initial: Record<string, string>): Storage {
   } as Storage
 }
 
-// A board the SHAPE guard admits but the millipede glyph encoder cannot render: a lowercase
-// name and a negative score both contain characters (`a`..`z`, `-`) outside encodeChar's
-// A-Z/0-9/space set. This is exactly what the legacy-cookie seed / a sibling subdomain can plant.
+// A board the SHAPE guard admits but the millipede glyph encoder cannot render. Three ways a
+// stored row escapes `encodeChar`'s A-Z/0-9/space set:
+//   • a lowercase name (`a`..`z`),
+//   • a negative score (`-`),
+//   • a HUGE INTEGER score — `Number.isInteger(1e21)` is `true` and `1e21 >= 0`, but
+//     `String(1e21) === "1e+21"`, whose `e`/`+` `encodeChar` throws on. This is the ml10-2
+//     rework r2 [SEC] residual: reachable via a 21-digit PLAIN-DIGIT legacy cookie
+//     (`AAA:100000000000000000000` → `Number()` → `1e21`, past `isPublishableScore`'s uncapped
+//     `Number.isInteger && >0`) or a hand-edited store — the magnitude the charset/sign filter
+//     did not bound. All three are exactly what the legacy-cookie seed / a sibling subdomain can plant.
 const HOSTILE_BOARD = [
   { name: 'abc', score: 5000 },
   { name: 'AAA', score: -1 },
+  { name: 'AAA', score: 1e21 },
 ]
 
 describe('ml10-2 rework [SEC] — a hostile persisted board must not crash the attract showcase', () => {
