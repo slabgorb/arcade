@@ -28,6 +28,7 @@ import { advancePhase, type PhaseSignals } from './phase'
 import { event, type GameEvent, type GameEventKind } from './events'
 import { score1Of, score2Of } from './score'
 import { awardBonus } from './bonus'
+import { qualifiesForHighScore } from './highscore'
 import { stepRoster, shootRoster, initRoster, type Roster } from './enemies/roster'
 import { resolveShot } from './shot'
 import {
@@ -121,7 +122,9 @@ function stepAttract(state: GameState, input: GameInput): GameState {
     // Begin a NEW game: rebuild a clean starting world from the seed — the
     // millipede enters from the top, the player spawns at the bottom, a fresh
     // field. (Keeping the sunk attract train would kill the player instantly.)
-    return { ...createGame(state.seed, { phase: 'play' }), events: [] }
+    // The live ladder (a persisted board loaded on boot) is PRESERVED across the
+    // rebuild — createGame reseeds DEFAULT (ml10-2, the mc highScores carry-over).
+    return { ...createGame(state.seed, { phase: 'play' }), highScores: state.highScores, events: [] }
   }
   return { ...state, phase, frame: state.frame + 1, segments, events: [] }
 }
@@ -428,18 +431,23 @@ function stepPlay(state: GameState, input: GameInput): GameState {
 }
 
 /**
- * Game-over: hold the "GAME OVER" message (the ROM's DELAY countdown), then
- * return to a fresh attract world. Silent hold. The qualifying-score route to
- * name entry (scoreQualifies → 'entry', ml5 highscore) is deferred; for now the
- * attract-return timeout is the only exit, matching the display timeout.
+ * Game-over: hold the "GAME OVER" message (the ROM's DELAY countdown). A score
+ * that earns a rung on the ladder routes to name entry ('entry'); otherwise the
+ * attract-return timeout returns to a fresh attract world (ml10-2 wires the route
+ * the ml5 highscore module was built for). scoreQualifies takes precedence over the
+ * timeout on the same frame (advancePhase), so a qualifying player is never skipped.
  */
 function stepGameOver(state: GameState): GameState {
   const delay = Math.max(0, state.delay - 1)
-  const phase = advancePhase('game-over', { overExpired: delay === 0 })
+  const scoreQualifies = qualifiesForHighScore(state.highScores, state.score)
+  const phase = advancePhase('game-over', { scoreQualifies, overExpired: delay === 0 })
   if (phase === 'attract') {
-    // Rebuild a clean attract world from the seed (fresh score/lives/field).
-    return { ...createGame(state.seed), events: [] }
+    // Rebuild a clean attract world from the seed (fresh score/lives/field), but
+    // PRESERVE the live ladder across the rebuild (ml10-2 — createGame reseeds DEFAULT).
+    return { ...createGame(state.seed), highScores: state.highScores, events: [] }
   }
+  // 'game-over' (still holding) or 'entry' (qualifying): freeze with the clock. The
+  // entry buffer is already empty (nothing types during play), ready for name entry.
   return { ...state, phase, frame: state.frame + 1, delay, events: [] }
 }
 

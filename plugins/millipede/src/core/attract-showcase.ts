@@ -53,6 +53,12 @@ function place(text: string, startCol: number, row: number): HudPlacement[] {
   return [...text].map((ch, i) => ({ col: startCol + i, row, stamp: encodeChar(ch) }))
 }
 
+/** ml10-2 — the same A-Z/0-9/space glyph placement, exported for the name-entry
+ *  screen (main.ts renders the prompt + the in-progress initials through it). */
+export function textPlacements(text: string, startCol: number, row: number): HudPlacement[] {
+  return place(text, startCol, row)
+}
+
 /**
  * The creature cast — name + hand-laid grid position (col, row; row 0x1F is the
  * top line, matching drawGridStamps). Names are the MLATR.MAC:580-601 bytes; the

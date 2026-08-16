@@ -23,9 +23,35 @@
 // reject requestPointerLock outright — so these units cover the LOGIC and main.ts's
 // click-to-lock + cursor-hide are the human smoke test (cannot be verified headless).
 
+import type { GameState } from '../core/game-state'
+import { stepInitials, insertHighScore, MILLI_INITIALS_LENGTH } from '../core/highscore'
+
 interface EventTarget {
   addEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
   removeEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
+}
+
+/**
+ * ml10-2 — one keystroke against the name-entry screen. Outside the 'entry' phase it
+ * is inert (returns the SAME state). During 'entry': Enter with a FULL initials buffer
+ * COMMITS — insert the { name, score } row into the ladder, clear the buffer and return
+ * to attract; an incomplete Enter is inert. Any other key feeds the buffer through core
+ * stepInitials (letter appends UPPERCASED to MILLI_INITIALS_LENGTH, Backspace deletes).
+ * The mc7-3 shell reducer, bound to millipede's board; main.ts drives it from keydown and
+ * persists when the committed ladder reference changes.
+ */
+export function nameEntryFromKey(key: string, state: GameState): GameState {
+  if (state.phase !== 'entry') return state
+  if (key === 'Enter') {
+    if (state.initials.length !== MILLI_INITIALS_LENGTH) return state
+    return {
+      ...state,
+      phase: 'attract',
+      initials: '',
+      highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
+    }
+  }
+  return { ...state, initials: stepInitials(state.initials, key) }
 }
 
 /** A drained-per-frame trackball delta. Signs are set by `onMouseMove` below

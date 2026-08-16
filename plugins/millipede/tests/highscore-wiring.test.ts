@@ -116,6 +116,14 @@ const LIVE_BOARD: readonly MilliHighScore[] = [
   { name: 'KEV', score: 42_000 },
 ]
 
+// A FULL eight-rung board distinct from DEFAULT (same scores, different names): the only
+// shape against which a small score does NOT qualify (a partial board has open rungs, so
+// any positive score qualifies). Used to exercise the NON-qualifying game-over→attract path.
+const LIVE_FULL_BOARD: readonly MilliHighScore[] = DEFAULT_HIGH_SCORES.map((e) => ({
+  name: 'ZZ',
+  score: e.score,
+}))
+
 /** A GameState frozen in `game-over`, carrying the fields Dev will add. `delay` decides
  *  whether the attract-return timeout has expired this frame. */
 function gameOverState(score: number, delay: number): GameState {
@@ -186,12 +194,16 @@ describe('ml10-2 B — a qualifying game-over reaches name entry; the ladder sur
   })
 
   it('carries the live ladder back into attract (game-over→attract rebuild does not reset it)', () => {
-    // Non-qualifying, timeout expired (delay 0) → back to attract via createGame(seed).
-    const over = { ...gameOverState(NO_QUALIFY, 0), highScores: LIVE_BOARD } as EntryState
+    // A FULL distinct board + a small score that can't beat its lowest rung: the only
+    // way to reach the attract-timeout path (a partial board would qualify any score).
+    const over = { ...gameOverState(NO_QUALIFY, 0), highScores: LIVE_FULL_BOARD } as EntryState
     const after = asEntry(stepGame(over, IDLE))
     expect(after.phase, 'the timeout returns a non-qualifying game-over to attract').toBe('attract')
     expect(after.highScores, 'the live board must survive the attract rebuild, not reset to DEFAULT').toEqual(
-      LIVE_BOARD,
+      LIVE_FULL_BOARD,
+    )
+    expect(after.highScores, 'proves it is the LIVE board carried through, not the seeded default').not.toEqual(
+      DEFAULT_HIGH_SCORES,
     )
   })
 })
