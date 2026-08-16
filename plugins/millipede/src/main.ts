@@ -258,6 +258,9 @@ const frame = (ts: number): void => {
 
   // Drain the trackball delta accumulated across skipped rAFs exactly once this frame.
   const { dh, dv } = mouse.sample()
+  // Test tap (ml10-5), mirroring window.__sim below: expose the drained trackball so a
+  // boot-harness pin can prove the pointer-lock EXIT reset actually cleared it.
+  ;(window as unknown as { __trackball?: { dh: number; dv: number } }).__trackball = { dh, dv }
 
   // Step the sim a whole number of fixed 60 Hz frames for the real time elapsed
   // (runFixedSteps folds the delta + carries the remainder). Input is drained once,

@@ -136,7 +136,9 @@ stories:
     title: 'Harden ml10-4 pointer-lock test coverage: add a behavioural/source pin that main.ts wires the onReject diagnostic sink (deleting the console.warn 4th-arg currently ships green — dead-wiring class); add a boot-harness behavioural test for the R5 onExit->mouse.reset() reset-on-exit (only source-regex pinned today); and repoint the stale (main.ts:100) citation in pointer-lock.test.ts:169 to shell/input.ts onMouseMove'
     points: 1
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
     type: chore
+    review_verdict: approved

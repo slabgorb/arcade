@@ -83,6 +83,23 @@ export interface ShellHarness {
   pointerLockRequests(): number
   /** The display canvas' `style.cursor` (main.ts hides it for the trackball: 'none'). */
   cursorStyle(): unknown
+  /**
+   * Set whether the display canvas currently holds the pointer lock (ml10-5).
+   * `document.pointerLockElement` is the canvas when acquired, `null` when not —
+   * exactly what createPointerLock's `pointerlockchange` handler reads to tell an
+   * ACQUIRE from an EXIT (`doc.pointerLockElement !== canvas` → onExit). A test
+   * acquires (`true`), fires `pointerlockchange`, then exits (`false`) and fires it
+   * again to drive the R5 lock-EXIT path without a real browser.
+   */
+  setLockAcquired(acquired: boolean): void
+  /**
+   * The trackball delta main.ts drained into the LAST frame, via the
+   * `window.__trackball` tap main.ts installs alongside `window.__sim`. Behavioural
+   * read of the R5 reset: after a lock EXIT the wired `onExit → mouse.reset()` clears
+   * the accumulator, so the next frame drains `{dh:0, dv:0}`; a dead exit drains the
+   * still-pending delta. `undefined` until a frame() has run (and until the tap exists).
+   */
+  lastTrackball(): unknown
 }
 
 /** Plausible on-screen size so main.ts's blit maths produce sane numbers. */
@@ -206,6 +223,10 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
   const g = globalThis as unknown as Record<string, unknown>
 
   const documentStub: Record<string, unknown> = {
+    // The element that currently holds the pointer lock (ml10-5). `null` = unlocked;
+    // setLockAcquired(true) points it at the display canvas. createPointerLock's
+    // pointerlockchange handler reads it to tell an ACQUIRE from an EXIT.
+    pointerLockElement: null as unknown,
     // mountCanvas(document) → querySelector('#game'); createElement makes the
     // logical backbuffer canvas main.ts blits from. The FIRST createElement (at
     // main.ts module init) is that backbuffer; LATER ones are render.ts blit()'s
@@ -324,6 +345,12 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
     },
     cursorStyle(): unknown {
       return (canvas.style as Record<string, unknown>).cursor
+    },
+    setLockAcquired(acquired: boolean): void {
+      documentStub.pointerLockElement = acquired ? canvas : null
+    },
+    lastTrackball(): unknown {
+      return (windowStub as { __trackball?: unknown }).__trackball
     },
   }
 }
