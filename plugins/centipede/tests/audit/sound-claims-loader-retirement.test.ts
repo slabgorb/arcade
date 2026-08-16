@@ -2,7 +2,7 @@
 //
 // Story df1-10 — RED phase (Leeloo / TEA). Retire centipede's last residue of the
 // unhardened claims loader — the centipede analog of df1-8 (joust). `sound-dossier.test.ts`
-// carries its OWN private inline copy at :391-401:
+// carries its OWN private inline copy inside `loadSoundClaims`:
 //
 //     function loadSoundClaims(): Claim[] {
 //       if (!existsSync(soundClaimsPath)) { ...cp6-1 not delivered... }
@@ -22,10 +22,10 @@
 // dir, so adopting the shared WHOLE-DIR `loadClaims` changed nothing but the teeth.
 // centipede is NOT that shape. `loadSoundClaims` reads exactly ONE file
 // (16-sound.json), and its four callers depend on that:
-//   - "SOUNDS routine and six tables cannot reduce to zero" (sound-dossier.test.ts:980)
+//   - the "SOUNDS routine and six tables cannot reduce to zero" test in sound-dossier.test.ts
 //     is a floor on the SOUND file. Point it at the whole dir and it passes even if
 //     16-sound.json is deleted — a vacuous green.
-//   - the two-decimal-20s test (:1005) filters claims by source LINE alone (no file);
+//   - the two-decimal-20s test filters claims by source LINE alone (no file);
 //     broadening to the whole dir invites a cross-file line collision.
 // So the honest fix is NOT "call loadClaims()". It is: keep SINGLE-FILE loading, but
 // route the parse through ONE hardened implementation. GREEN therefore EXTRACTS the
@@ -56,8 +56,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import ts from 'typescript'
-// GREEN adds `loadClaimsFile` to dossier-sweep.ts. Until then this named binding is
-// undefined and PART 2 reds on "loadClaimsFile is not a function".
+// GREEN added `loadClaimsFile` to dossier-sweep.ts; before that this named binding was
+// undefined and PART 2 red on "loadClaimsFile is not a function".
 import { loadClaims, loadClaimsFile, romStudyDir } from './dossier-sweep'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
 
@@ -124,13 +124,13 @@ function callsCallee(source: string, callee: string, filename = 'module.ts'): bo
 describe('df1-10 — sound-dossier.test.ts retires its inline sound-claims parse and adopts the hardened loader', () => {
   const src = readFileSync(soundDossierFile, 'utf8')
 
-  it('sound-dossier.test.ts still loads the sound claims file (the guard has teeth)', () => {
-    // A file that no longer references soundClaimsPath would make the checks below
-    // vacuous — the sound loader would have vanished entirely, not been hardened.
-    expect(src).toMatch(/soundClaimsPath/)
-  })
+  // Anti-vacuity is carried by the adoption checks themselves, not a keyword match:
+  // if `loadSoundClaims` vanished entirely (rather than being hardened) the import
+  // and call checks below fail loudly — nothing would import or call loadClaimsFile.
+  // That is the teeth; `toMatch(/soundClaimsPath/)` would only re-find the const
+  // declaration and prove nothing about the loader.
 
-  it('no live `as Claim | Claim[]` cast survives (the unhardened tell at :399 is gone)', () => {
+  it('no live `as Claim | Claim[]` cast survives (the unhardened as-cast is gone)', () => {
     // The inline loader is the only site of this exact double-shape cast. Pin its
     // removal as a live AsExpression, not as text (a commented-out copy must not keep
     // this red, nor a mention in prose fake it).

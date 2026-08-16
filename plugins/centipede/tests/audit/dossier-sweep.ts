@@ -164,8 +164,8 @@ export function allMalformedCitations(files: readonly string[] = DOSSIER_FILES):
  *
  * df1-10 extracted this out of {@link loadClaims}'s flatMap so the whole-dir sweep
  * and sound-dossier.test.ts's SINGLE-FILE sound loader share ONE implementation
- * (lang-review #18) — retiring the inline unhardened copy that lived at
- * sound-dossier.test.ts:399. Takes a full path; the error names basename(file).
+ * (lang-review #18) — retiring the inline unhardened copy that lived inside
+ * sound-dossier.test.ts's `loadSoundClaims`. Takes a full path; the error names basename(file).
  */
 export function loadClaimsFile(file: string): Claim[] {
   const name = basename(file)
