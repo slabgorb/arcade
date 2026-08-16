@@ -10,17 +10,17 @@ the same architecture as its siblings
 [star-wars](../star-wars), [red-baron](../red-baron) and
 [centipede](../centipede).
 
-> **Status:** Live at **v0.0.8** and, since jt5-2, **audible**. Thirty-eight stories are archived
+> **Status:** Live at **v0.0.8** and, since jt5-2, **audible**. Stories are archived
 > across five epics: the scaffold and the machine-verified primary-source
-> dossier (jt1, 11); the simulation — process scheduler, enemies, the joust,
-> eggs, the wave machine, transporters and the wave-1 demo (jt2, 9); the
+> dossier (jt1); the simulation — process scheduler, enemies, the joust,
+> eggs, the wave machine, transporters and the wave-1 demo (jt2); the
 > menagerie — difficulty ramp, bridge/cliff destruction, lava troll,
-> pterodactyl, baiters, death dissolve (jt3, 7); the game structure — BCD
-> scoring, extra men, wave types and bounties, game-over and the loop (jt4, 5);
-> and the in-progress playability epic (jt8, 6 so far) that makes enemies hunt
+> pterodactyl, baiters, death dissolve (jt3); the game structure — BCD
+> scoring, extra men, wave types and bounties, game-over and the loop (jt4);
+> and the in-progress playability epic (jt8) that makes enemies hunt
 > and eggs catchable.
 > **Audio: seam and samples.** jt5-1 landed the three-file wiring —
-> `src/core/events.ts` (17 ROM-cited moments, emitted as data), the
+> `src/core/events.ts` (ROM-cited moments, emitted as data), the
 > `src/shell/audio.ts` manifest over the shared `@shared/audio` engine, and
 > `src/shell/audio-dispatch.ts` behind a `never` exhaustiveness guard — and
 > jt5-2 synthesised the samples and uploaded them: one `.wav` per manifest
@@ -45,19 +45,12 @@ Run everything from the **monorepo root**:
 
 ```bash
 npm install                         # once, for the whole cabinet
-npx vitest run --project joust      # 196 files (derived + guarded); ~3500 tests, indicative
+npx vitest run --project joust      # this game's tests only
 npx vitest run                      # the whole cabinet
 npm run lint                        # tsc --noEmit across the monorepo
 npm run test:orchestrator           # the root node:test suite
-node plugins/joust/tools/audit/check-citations.mjs   # → "checked 1093 claim(s)"
+node plugins/joust/tools/audit/check-citations.mjs   # verifies the ROM citations
 ```
-
-> **Contributor note — the file count on the `--project joust` line is DERIVED
-> and guarded.** `audio-seam-scope.test.ts` (jt5-7 AC5) reads that number off the
-> quick-start command and asserts it against what vitest discovers, so **adding a
-> new test file under `plugins/joust/tests/` requires bumping the derived file
-> count on that line in the same commit** — otherwise the suite reddens on the
-> file you added. (That coupling silently shapes test PLACEMENT; jt9-3 cited it.)
 
 > **Open joust in a browser with `just serve`, from the monorepo root.** One
 > Vite dev server holds the whole cabinet on `http://127.0.0.1:5270/` — the
@@ -100,29 +93,11 @@ this directory, not one. Six files here resolve it (`tests/helpers/joust-source.
 honours `JOUST_SOURCE_DIR` first. Get the depth wrong and nothing goes red:
 every `describe.skipIf(!vendoredAvailable)` / `it.skipIf(...)` guard in the
 suite quietly skips, the byte-for-byte citation gate degrades to schema-only,
-and the run still reports every file passed. The Task 12 import — the 2026-07-30
-monorepo migration — measured that failure mode deliberately, as a historical
-record: 1280 passed | 566 skipped, fully green — before repairing it.
+and the run still reports every file passed. The 2026-07-30 monorepo migration
+hit exactly this failure mode — a fully-green run that was silently skipping the
+citation gate — before repairing it.
 
-> **The numbers in this block are INDICATIVE, measured 2026-08-02, and nothing
-> guards them.** That is a deliberate choice, not an oversight: the block is
-> **self-referential**. A test that counted how many times
-> `skipIf(!vendoredAvailable)` occurs under `tests/` would itself be a file
-> under `tests/` containing that literal, so writing the guard would change the
-> number it guards. jt5-7 demonstrated exactly that — the comment added to
-> *explain* this took the count from 143 to 144. Re-measure before quoting;
-> do not add a guard.
->
-> Count it the way this says, or you will get a different number. **130 is the
-> executable call sites.** The literal string `skipIf(!vendoredAvailable)`
-> occurs **149** times in `tests/`, but **19** of those are inside comments
-> (`// re-derivation SKIPS there (describe.skipIf(!vendoredAvailable))…`), and
-> a comment-inclusive line count via `grep -rn '\.skipIf('` gives a third
-> answer, 145. 130 + 19 = 149 reconciles exactly. The file figure moves too:
-> 41 files *mention* the guard, 39 actually *carry* one —
-> `tests/helpers/transporter-contract.ts` only talks about it.
-
-The vendored tree **is committed to this monorepo** (49 files), so the
+The vendored tree **is committed to this monorepo**, so the
 byte-verification half of the citation gate runs everywhere, not only on a
 machine that happens to have quarried it. `.gitignore` here still excludes a
 checkout-local `reference/` for scratch work, which is a different directory.
@@ -132,7 +107,7 @@ checkout-local `reference/` for scratch work, which is a different directory.
 ## Architecture
 
 - `src/core/` — pure deterministic simulation. No DOM, no Canvas, no time,
-  no `Math.random`. 18 modules (`flight`, `arena`, `enemy`, `egg`, `wave`,
+  no `Math.random`. The core modules (`flight`, `arena`, `enemy`, `egg`, `wave`,
   `target`, `pictures`, …), guarded by `tests/purity.test.ts`.
 - `src/shell/` — render, input, timebase, audio (manifest + dispatch) and the
   per-mode screens (title, select, attract, game-over, high-score); no storage
@@ -149,17 +124,12 @@ sibling.
   `makeHighScoreStorage` from `@shared/highscore` — single-origin, so the lobby
   and every cabinet share it. Like centipede, unlike red-baron (which persists
   nothing).
-- **It consumes nine `@shared` subpaths:** `@shared/audio`, `@shared/font`,
+- **It consumes several `@shared` subpaths:** `@shared/audio`, `@shared/font`,
   `@shared/held-keys`, `@shared/highscore`, `@shared/host-helpers`,
   `@shared/loop`, `@shared/name-entry`, `@shared/rng` and `@shared/view`. The SH3
   epic retired joust's per-game re-implementations (SH3-1 the rng, SH3-2 the
   `mountCanvas` host helper), and jt5-1 had already ended joust's original run as
-  the fleet's zero-consumption outlier — the others
-  take between nine and fourteen subpaths (centipede 9, red-baron 9, asteroids
-  and tempest 11, star-wars 12, battlezone 14 — **indicative, measured
-  2026-08-06**, and nothing guards them: the whole fleet churns this figure
-  every time any cabinet adopts a shared module, so re-measure with `grep -rhoE
-  '@shared/[a-z0-9-]+' plugins/<game>/src | sort -u | wc -l` before quoting).
+  the fleet's zero-consumption outlier.
   Its mulberry32 is no longer inlined: `src/core/frame.ts` sources the seeded
   draw from `@shared/rng` through `src/core/rng.ts` (SH3-1 retired the
   byte-for-byte copy that used to live in `frame.ts`). There was
@@ -172,7 +142,7 @@ sibling.
   **That guard does not extend to a missing SOURCE TREE**, and the distinction
   is the whole of the path-depth warning above: with the tree absent the gate
   degrades *by design* to a schema-only check and still prints
-  `checked 1093 claim(s) / all claims verified`, exit 0 —
+  its `all claims verified`, exit 0 —
   `JOUST_SOURCE_DIR=/nonexistent node plugins/joust/tools/audit/check-citations.mjs`
   demonstrates it in one command. Byte-for-byte re-opening is therefore a
   property of *having the tree wired up correctly*, not something the gate can

@@ -48,6 +48,7 @@ import {
   spawnEgg,
   willHatch,
   remountEntryEdge,
+  remountBudgetDebit,
   bumpEggHits,
   eggValue,
   airCatchBonus,
@@ -71,7 +72,7 @@ import {
   type EnemyType,
   type CollisionBox,
 } from './joust.js'
-import { growWanted, type EnemyState, type IntelBudget, type SmartBrain } from './enemy.js'
+import { growWanted, creditDeath, type EnemyState, type IntelBudget, type SmartBrain } from './enemy.js'
 import {
   pteroWaveSpawnCount,
   resolvePteroAttack,
@@ -2224,6 +2225,26 @@ function countBaiterDeaths(before: readonly SimProcess[], after: readonly SimPro
 }
 
 /**
+ * The CREEM budget refund (`LDA NSMART / SUBA PCHASE,U / STA NSMART`,
+ * JOUSTRV4.SRC:2962-2963): every enemy that died this frame — present in the
+ * pre-collision set, gone from the survivors — restores its OWN `pchase` to the
+ * intelligence budget. A smart death (pchase 1) frees one promotion slot; a dumb
+ * death (pchase 0) frees none. Mirrors the DBAIT settle above, by id. Pure.
+ */
+function refundEnemyDeaths(
+  before: readonly SimProcess[],
+  after: readonly SimProcess[],
+  budget: IntelBudget,
+): IntelBudget {
+  const afterIds = new Set(after.map((p) => p.id))
+  let next = budget
+  for (const p of before) {
+    if (p.kind === 'enemy' && p.enemy && !afterIds.has(p.id)) next = creditDeath(p.enemy, next)
+  }
+  return next
+}
+
+/**
  * Reconcile the aggro slots against the live players (jt8-1). Drop a slot whose
  * knight is no longer live (the death-shift, JOUSTRV4.SRC:4746-4753); register a
  * live player not yet in a slot (STPLY, :4655-4665) with its TARTIM grace so an
@@ -2412,6 +2433,10 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   let population = processes.filter(
     (p) => p.kind === 'enemy' || (p.kind === 'egg' && p.egg?.hatchRow !== undefined),
   ).length
+  // jt12-2 — count the remount buzzards that fly in this frame, to debit the
+  // intelligence budget once each below (MOUNRI INC NSMART) — like `population`,
+  // accumulated across the hatch pass and applied after `budget` is in scope.
+  let remounts = 0
   processes = processes.flatMap((p) => {
     if (p.kind !== 'egg' || !p.egg) return [p]
     const egg = p.egg
@@ -2427,6 +2452,7 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
       if (nextRow < EGGTBL.length) {
         return [{ ...p, egg: { ...egg, hatchRow: nextRow, hatchNap: eggTblNap(nextRow) } }]
       }
+      remounts += 1
       return [remountEnemyProcess(0x40_0000 + p.id, egg)]
     }
     // ── The settled-egg wait (EGGLND, :3224-3237) ──
@@ -2468,6 +2494,14 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   })
 
   let budget = stepped.budget
+  // jt12-2 — MOUNRI INC NSMART (JOUSTRV4.SRC:3669): each remount buzzard that flew
+  // in this frame debits one intelligence-budget unit, exactly as a promotion does.
+  for (let i = 0; i < remounts; i++) budget = remountBudgetDebit(budget)
+  // jt12-2 — CREEM refund (JOUSTRV4.SRC:2962-2963): a smart enemy killed this frame
+  // restores its promotion slot, so mid-wave pressure is sustained instead of
+  // latching NSMART at WSMART. Runs beside the DBAIT settle below — both diff the
+  // pre-collision `materialised` set against the survivors.
+  budget = refundEnemyDeaths(materialised, processes, budget)
   let arena = state.arena
   let baiterClock = state.baiterClock ?? seedBaiterClock(state.wave)
   // jt11-7 — step each cliff's CLFDES crumble (JOUSTRV4.SRC:4562-4599) and retire
