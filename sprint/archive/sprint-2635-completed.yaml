@@ -37,3 +37,8 @@ completed_stories:
     title: "Resolve the Level-table mirror fields (core/level.ts:49-60): either wire a production consumer for frightenedSeconds/frightenedFlashes/elroy1/elroy2 (e.g. an attract/HUD readout) or drop the four fields and stop populating them at buildLevel (:145-149), so the row carries no value nothing reads. Update the game.test.ts reads accordingly."
     points: 2
     completed: '2026-08-16'
+  - id: mc11-4
+    epic: mc11
+    title: "Retire the redundant dead twins (delete or route the live path through them, per each): the mainline/stateCode MAINLINE-dispatch skeleton (state.ts:92, bypassed by stepGame), applyPointerMotion (shell/input.ts:42, superseded by placeCursor), launchFromKey (input.ts:69, superseded by fireFromKey), cruiseKillPoints (core/score.ts:61, inlined at game.ts:585), computeLetterbox (shell/viewport.ts:53, twin of applyLetterbox), and INITIAL_ATTRACT (state.ts:121). Keep any symbol still asserted by a claim test; only its dead runtime role goes."
+    points: 3
+    completed: '2026-08-16'
