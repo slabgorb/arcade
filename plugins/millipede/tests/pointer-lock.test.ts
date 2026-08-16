@@ -409,8 +409,8 @@ function stripComments(src: string): string {
 // console.warn) AND add any unrelated console.warn elsewhere in main.ts — because the
 // lazy `[\s\S]*?` reaches a console.warn OUTSIDE the call. ml11-3 (b) GREEN widens this
 // to a CALL-scoped form that bounds the match to before the createPointerLock(…) call's
-// own `\n)` terminator: /createPointerLock\((?:(?!\n\))[\s\S])*?console\.warn\(/
-const ONREJECT_WIRING_RE = /createPointerLock\([\s\S]*?console\.warn\(/
+// own `\n)` terminator, so a console.warn OUTSIDE the args no longer satisfies it.
+const ONREJECT_WIRING_RE = /createPointerLock\((?:(?!\n\))[\s\S])*?console\.warn\(/
 
 describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments stripped)', () => {
   const code = stripComments(mainSrc)
