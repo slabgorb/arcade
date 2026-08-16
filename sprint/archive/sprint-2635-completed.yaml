@@ -42,3 +42,8 @@ completed_stories:
     title: "Retire the redundant dead twins (delete or route the live path through them, per each): the mainline/stateCode MAINLINE-dispatch skeleton (state.ts:92, bypassed by stepGame), applyPointerMotion (shell/input.ts:42, superseded by placeCursor), launchFromKey (input.ts:69, superseded by fireFromKey), cruiseKillPoints (core/score.ts:61, inlined at game.ts:585), computeLetterbox (shell/viewport.ts:53, twin of applyLetterbox), and INITIAL_ATTRACT (state.ts:121). Keep any symbol still asserted by a claim test; only its dead runtime role goes."
     points: 3
     completed: '2026-08-16'
+  - id: jt12-2
+    epic: jt12
+    title: "Wire the WSMART budget refund/debit so smart-enemy pressure is sustained: call creditDeath (core/enemy.ts:566) in the death/removal path (alongside bookDeath/countBaiterDeaths) to decrement nsmart when a smart enemy dies, and remountBudgetDebit (core/egg.ts:339) on the egg->remount transition. Assert that after a smart enemy dies mid-wave a replacement can be promoted (nsmart no longer latches at wsmart). JOUSTRV4.SRC:2962 CREEM"
+    points: 5
+    completed: '2026-08-16'
