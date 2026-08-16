@@ -231,16 +231,17 @@ describe('df2-6 still frame — colours are never invented', () => {
   })
 })
 
-describe('df2-6 still frame — the still is actually mounted (kept the sneaky dev honest)', () => {
-  it('src/main.ts paints composeStaticFrame(...) — not a bare clear', () => {
-    // The whole point is that the transcribed pixels reach the mounted canvas. main.ts
-    // currently only does `clear(fb, 0)` (a blank screen); GREEN must wire the
-    // composition. Comment-stripped so a mention in a comment cannot satisfy the guard.
-    const code = stripComments(readFileSync(mainSourcePath, 'utf8'))
-    expect(
-      /composeStaticFrame\s*\(/.test(code),
-      'main.ts does not call composeStaticFrame(...) — the integrated still is not mounted; ' +
-        'the canvas would show a blank cleared surface',
-    ).toBe(true)
-  })
-})
+// ─── RETIRED BY df3-6 (2026-08-16) ───────────────────────────────────────────────
+// This file's final block used to assert `src/main.ts` paints composeStaticFrame(...) —
+// the df2 mount contract (a static title still blitted every rAF). df3-6 replaces that:
+// main.ts now DRIVES the sim (createLoop + stepSim + the DYNAMIC composeFrame), so it no
+// longer mounts the static still in the loop. The (inverted) main.ts mount contract now
+// lives in df3-6-shell-wiring.test.ts. composeStaticFrame itself is unchanged and its
+// correctness/orientation/colour tests above stay live — the function survives (it is the
+// transcribed still, an attract candidate for df7); only the "main.ts paints it" guard
+// moved. Retiring it here (rather than letting it go falsely RED when main.ts is rewired)
+// is the deliberate fate of a guard the story supersedes.
+//
+// `mainSourcePath` is now referenced only by df3-6-shell-wiring.test.ts; it is left in
+// place above as documentation of where the mount lives.
+void mainSourcePath
