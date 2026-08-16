@@ -30,10 +30,11 @@ stories:
     title: "Resolve the redundant high-score-qualified event (events.ts:89 / emit game.ts:803): either delete it (name entry already opens off state.nameEntry at main.ts:162) or re-document it explicitly as a pure state mirror; and demote THEME_FRAMES (tune.ts:153) / PHASES (phase.ts:26) to test-only oracles or wire the readers their docs promise. Documentation/no-op — no behaviour change."
     points: 2
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: pm5-4
     title: "Fix the bottom HUD band in shell/render.ts drawHud: reserve-life icons render as closed-mouth discs (drawPacman frame 0 = PAC_CLOSED sprite 48; use the open-mouth left frame PAC_FRAMES.left[2]/sprite 44) AND the 16px life+fruit icons overlap the row-33 bottom border wall because the actor -4px centring offset anchors them into row 33 (compensate by +（SPRITE_PX-TILE_PX)/2 so they fill rows 34-35). Shell-render only; see context-story-pm5-4.md for the full diagnosis. Reported 2026-08-16 w/ screenshot."
     points: 3
