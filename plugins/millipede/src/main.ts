@@ -21,8 +21,8 @@ import { VACANT_COLOR } from './core/millipede'
 import { createGame, type GameState } from './core/game-state'
 import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
-import { DEFAULT_HIGH_SCORES } from './core/highscore'
-import { showcaseSections, showcaseSprites, SHOWCASE_BACKGROUND } from './core/attract-showcase'
+import { MILLI_INITIALS_LENGTH, type MilliHighScore } from './core/highscore'
+import { showcaseSections, showcaseSprites, textPlacements, SHOWCASE_BACKGROUND } from './core/attract-showcase'
 import { decodeColourByte, type Rgb } from './core/palette'
 import { drawGridStamps, drawStampAtPx, drawStampGridAtPx, charTile, drawPlayerAreaBand } from './shell/render'
 import { ddtGlyph } from './shell/ddt-glyph'
@@ -30,7 +30,8 @@ import { fieldPens, playerPens, alphanumericPens, spritePens } from './shell/pla
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
-import { createMouseAdapter, createPointerLock } from './shell/input'
+import { createMouseAdapter, createPointerLock, nameEntryFromKey } from './shell/input'
+import { makeMilliHighScoreStorage, loadHighScores } from './shell/highscore'
 
 const LOGICAL_W = 240
 const LOGICAL_H = 256
@@ -46,8 +47,14 @@ if (!lctx) throw new Error('millipede: 2d context unavailable for the logical sc
 // ── Audio: built inert at module scope (no WebAudio touched until resume()). ──
 const audio = createAudio()
 
-// ── The game, booting into the silent attract demo. ──
-let game: GameState = createGame(0x1982)
+// ── High-score persistence (ml10-2): one-origin localStorage under the 'millipede'
+//    cabinet key (shell/highscore.ts). Loaded into the boot state so the attract board
+//    and the qualify check read the persisted ladder, saved when a commit changes it. ──
+const highScoreStorage = makeMilliHighScoreStorage()
+
+// ── The game, booting into the silent attract demo, seeded with the persisted ladder
+//    (the seeded ROM DEFAULT_HIGH_SCORES on a first/empty boot — loadHighScores). ──
+let game: GameState = { ...createGame(0x1982), highScores: loadHighScores(highScoreStorage) }
 
 // ── Mouse capture (ml10-4): the trackball reads pointer-lock movementX/Y deltas
 //    through the shell adapter, drained once per stepped frame. Under lock those
@@ -89,6 +96,17 @@ const startPlay = (): void => {
 // hold auto-repeats at the natural one-shot-at-a-time cadence.
 const FIRE_KEYS = new Set([' ', 'Spacebar', 'Enter', 'Control', 'z', 'Z', 'x', 'X', 'ArrowUp'])
 window.addEventListener('keydown', (e: KeyboardEvent) => {
+  // ml10-2: during name entry a keystroke types an initial (or commits on Enter) and
+  // must NOT start/fire — gate on the PRE-keystroke phase, or a committing Enter
+  // (entry→attract) then falls into startPlay and boots an unrequested new game.
+  // Persist the moment a commit changes the ladder reference (the asteroids/mc signal:
+  // commitNameEntry's insert returns a NEW array).
+  if (game.phase === 'entry') {
+    const prevScores = game.highScores
+    game = nameEntryFromKey(e.key, game)
+    if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
+    return
+  }
   startPlay()
   if (FIRE_KEYS.has(e.key)) fireHeld = true
 })
@@ -174,14 +192,15 @@ const showcaseInkPalette = (byte: number): readonly Rgb[] => {
   return [decodeColourByte(0xff), ink, ink, ink]
 }
 
-function renderShowcase(c: CanvasRenderingContext2D): void {
+function renderShowcase(c: CanvasRenderingContext2D, highScores: readonly MilliHighScore[]): void {
   const { r, g, b } = decodeColourByte(SHOWCASE_BACKGROUND)
   c.fillStyle = `rgb(${r}, ${g}, ${b})`
   c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
   // Each section draws through its OWN one-colour palette: white HIGH SCORES +
   // footer, red creature labels (ml9-3, attract-mame-reference.png). Without this
-  // the whole screen prints the census-default green.
-  for (const s of showcaseSections(DEFAULT_HIGH_SCORES)) {
+  // the whole screen prints the census-default green. The board is the LIVE ladder
+  // (ml10-2 — the persisted board on a returning boot), not the seeded default.
+  for (const s of showcaseSections(highScores)) {
     drawGridStamps(c, s.placements, showcaseInkPalette(s.ink))
   }
   // Each creature's sprite, blitted just above its name label, in its OWN
@@ -194,7 +213,18 @@ function renderShowcase(c: CanvasRenderingContext2D): void {
 function render(state: GameState): void {
   const c = lctx as CanvasRenderingContext2D
   if (state.phase === 'attract' && state.frame % ATTRACT_CYCLE_FRAMES >= ATTRACT_CYCLE_FRAMES - SHOWCASE_FRAMES) {
-    renderShowcase(c)
+    renderShowcase(c, state.highScores)
+    return
+  }
+  // ml10-2: the name-entry screen — a qualifying game-over lands here to sign the
+  // board. A minimal prompt over black with the in-progress initials (padded to the
+  // three cells); the full ROM entry-screen dressing is deferred to the visual playtest.
+  if (state.phase === 'entry') {
+    c.fillStyle = '#000'
+    c.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+    drawGridStamps(c, textPlacements('GREAT SCORE', 9, 20), showcaseInkPalette(0xff))
+    drawGridStamps(c, textPlacements('ENTER YOUR INITIALS', 6, 17), showcaseInkPalette(0xff))
+    drawGridStamps(c, textPlacements(state.initials.padEnd(MILLI_INITIALS_LENGTH, ' '), 14, 13), showcaseInkPalette(0x0f))
     return
   }
   c.fillStyle = '#000'
@@ -240,7 +270,7 @@ function render(state: GameState): void {
 
   drawGridStamps(
     c,
-    hudPlacements({ score: state.score, lives: state.lives, highScore: DEFAULT_HIGH_SCORES[0].score }),
+    hudPlacements({ score: state.score, lives: state.lives, highScore: state.highScores[0].score }),
     alphanumericPens(),
   )
 }

@@ -284,8 +284,11 @@ describe('ml6-2 stepGame — game-over holds then times out to attract', () => {
   })
 
   it('when the hold reaches 0 it returns to a FRESH attract world (score reset)', () => {
+    // A NON-qualifying score (100 can't beat the seeded ladder's lowest rung): a
+    // QUALIFYING game-over now routes to name entry instead (ml10-2), so the
+    // attract-timeout path is the non-qualifying case. See highscore-wiring.test.ts.
     const g = createGame(0x1982, { phase: 'game-over' })
-    const after = stepGame({ ...g, delay: 1, score: 99999, lives: 0 }, idle)
+    const after = stepGame({ ...g, delay: 1, score: 100, lives: 0 }, idle)
     expect(after.phase).toBe('attract')
     expect(after.score).toBe(0) // a brand-new game
     expect(after.lives).toBe(3)

@@ -16,6 +16,7 @@ import { createPlayer, type PlayerState } from './input'
 import { initRoster, type Roster } from './enemies/roster'
 import { newDdtTable, ddtPlace, ddtRestore, type DdtTable } from './ddt'
 import { initialBonusTarget } from './bonus'
+import { DEFAULT_HIGH_SCORES, type MilliHighScore } from './highscore'
 import type { GamePhase } from './phase'
 import type { GameEvent } from './events'
 
@@ -86,6 +87,14 @@ export interface GameState {
   slow: number
   /** Rebuilt every frame, never appended across frames; attract clears it. */
   events: readonly GameEvent[]
+  /** The live high-score ladder (ml10-2). Seeded from the ROM DEFAULT_HIGH_SCORES,
+   *  replaced on boot by main.ts with the persisted board, and grown by a committed
+   *  name entry. Held here (not in the shell) so sim can qualify a game-over score
+   *  against it — the missile-command GameState.highScores shape. */
+  highScores: readonly MilliHighScore[]
+  /** The in-flight initials buffer, collected during the 'entry' phase (ml10-2). Empty
+   *  except while a qualifying player is signing the board. */
+  initials: string
 }
 
 /** Mushrooms scattered at boot — a starting field for the march to weave through
@@ -147,5 +156,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     deathTimer: 0,
     slow: 0,
     events: [],
+    highScores: DEFAULT_HIGH_SCORES, // main.ts replaces this with the persisted board on boot
+    initials: '', // empty until a qualifying game-over opens name entry
   }
 }
