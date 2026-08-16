@@ -30,7 +30,8 @@ stories:
     title: "Wire the name-entry timeout + start-abort: add a per-frame countdown to the 'entry' step branch that calls abortNameEntry (core/game.ts:274) on 30-second expiry, and map the start switch to abort during entry, returning to attract with the buffer cleared and the ladder unchanged. Assert both the timeout and start-abort paths. REV-01 W3DSUP.MAC:4076/:4086 TAKE INITIALS abort"
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
   - id: mc11-4
