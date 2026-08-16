@@ -37,6 +37,7 @@ export const MIRV_EXPLOSION_SUPPRESS = 12 // EXPLCT W3MAIN.MAC:1531 (claim MC-MI
  *  block comments, so a digit here would leak into the un-cited-literal set.) */
 export function mirvEligible(icbm: Icbm): boolean {
   if (icbm.kind === 'cruise') return false // mc5-3: a MIRV never splits a cruise missile
+  if (icbm.mirvSpent) return false // mc12-1: MIRVIX is consumed by one split — a spent warhead never re-splits
   if (icbm.arrived) return false
   return icbm.pos.v >= MIRV_LO && icbm.pos.v <= MIRV_HI
 }
@@ -52,7 +53,11 @@ export function mirvSplit(parent: Icbm, liveTargets: readonly Vec[], rng: Rng): 
   const children: Icbm[] = []
   for (let k = 0; k < MIRV_MAX_CHILDREN; k++) {
     const target = liveTargets[nextInt(rng, liveTargets.length)]
-    children.push(launchIcbm(parent.pos, target, parent.velocity))
+    // mc12-1: children are born SPENT — a MIRV's own warheads never re-split (they launch
+    // in-band at parent.pos, so without this they'd re-qualify and cascade). MIRVIX is a
+    // single slot consumed by the one split (W3MAIN.MAC:227/2011-2017). Shape is otherwise
+    // unchanged: fork from parent.pos toward a live target at the parent's velocity.
+    children.push({ ...launchIcbm(parent.pos, target, parent.velocity), mirvSpent: true })
   }
   return children
 }
