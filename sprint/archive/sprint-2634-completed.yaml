@@ -473,3 +473,8 @@ completed_stories:
     title: Thread the live mushroom state into its two dead consumers (bee MUSH spawn gate + wave-end restoring blocker)
     points: 5
     completed: '2026-08-16'
+  - id: df1-8
+    epic: df1
+    title: "Harden joust inline loadClaims (citations.test.ts:641): the same unhardened JSON.parse(readFileSync(...)) as Claim | Claim[] pattern df1-6 hardened in the four dossier-sweep loaders survives in joust's INLINE loadClaims at plugins/joust/tests/audit/citations.test.ts:641 (a separate copy from joust/tests/helpers/claims.ts, which is already hardened via asClaim). Wrap the parse per-file in a controlled error naming the file + shape-assert each entry's source, mirroring df1-6. Routed from df1-6 review (reviewer round 1). joust and missile-command helpers/claims.ts are already hardened; this is the last fleet residue."
+    points: 2
+    completed: '2026-08-16'
