@@ -1,7 +1,7 @@
 // plugins/missile-command/tests/mc11-3-name-entry-timeout-abort.test.ts
 //
 // Story mc11-3 — RED phase (Han Solo / TEA). WIRE THE NAME-ENTRY ABORT. The core
-// verb `abortNameEntry` (game.ts:274) is fully built and tested but has NO caller
+// verb `abortNameEntry` (core/game.ts) is fully built and tested but has NO caller
 // (epic mc11 unwired-feature audit, 2026-08-16), so during initials entry the player
 // can only commit or edit forever. The ROM's TAKE-INITIALS screen aborts on EITHER of
 // two triggers, discarding the entry with no ladder insert:
@@ -35,7 +35,7 @@
 //     (state-threaded, reset on each entry), not the free-running boot `frame`.
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `stepGame`'s 'entry' branch (game.ts:368) today only does `frame + 1`, forever — it
+// `stepGame`'s 'entry' branch today only does `frame + 1`, forever — it
 // never aborts, so the timeout tests never leave 'entry'. `keydownReducer` treats "1"
 // during entry as inert (stepInitials no-op), so the start-abort tests never leave
 // 'entry'. And `src/core` exports no NAME_ENTRY_TIMEOUT_FRAMES, so loadTimeoutFrames()
@@ -144,9 +144,9 @@ describe('mc11-3 AC1 — NAME_ENTRY_TIMEOUT_FRAMES is the cited UCVTAB window', 
 // Magnitude, not just ordering (checklist #29): the flip frame carries the NUMBER.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc11-3 AC1 — the entry countdown aborts to attract at the timeout', () => {
-  it('flips entry -> attract at the threshold (±1 for entry alignment), never merely "eventually"', async () => {
+  it('flips entry -> attract at EXACTLY the threshold frame, never merely "eventually"', async () => {
     const frames = await loadTimeoutFrames()
-    let s = enterEntry(['A', 'B']) // partial buffer, in entry
+    let s = enterEntry(['A', 'B']) // partial buffer, in entry, entryFrames starts at 0
     let flip = -1
     for (let i = 1; i <= frames + 4; i++) {
       s = stepGame(s)
@@ -157,7 +157,10 @@ describe('mc11-3 AC1 — the entry countdown aborts to attract at the timeout', 
     }
     expect(flip, 'name entry must time out on its own with no input').toBeGreaterThan(0)
     expect(s.phase).toBe('attract')
-    expect(Math.abs(flip - frames), `timed out at frame ${flip}, expected ~${frames}`).toBeLessThanOrEqual(1)
+    // entryFrames starts at 0 and the loop starts at i=1, so the abort (`entryFrames >= frames`)
+    // fires on EXACTLY frame `frames`. Pinned tight — a one-off boundary bug (`>` instead of `>=`,
+    // shifting the flip to `frames + 1`) reddens here; a ±1 tolerance would mask it (checklist #29).
+    expect(flip, `timed out at frame ${flip}, expected exactly ${frames}`).toBe(frames)
   })
 
   it('holds in entry well short of the timeout (no premature abort; buffer preserved)', async () => {
@@ -176,6 +179,8 @@ describe('mc11-3 AC1 — the entry countdown aborts to attract at the timeout', 
     for (let i = 0; i < frames + 4; i++) s = stepGame(s)
     expect(s.phase).toBe('attract')
     expect(s.initials).toBe('')
+    // The countdown is zeroed on the way out, so the held-at-0 invariant holds in attract (#15).
+    expect(s.entryFrames, 'the timeout abort resets the entry countdown').toBe(0)
     // A commit would build a NEW array (insertHighScore); an abort preserves the reference.
     expect(s.highScores, 'a timeout inserts nothing — same ladder array reference').toBe(ladderBefore)
     expect(s.highScores.some((h) => h.name === 'ABC'), 'the discarded initials never reach the ladder').toBe(
@@ -221,6 +226,51 @@ describe('mc11-3 AC1 (hardening) — entry-scoped, boot-frame-independent, reset
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// AC3 (hardening, #15) — EVERY exit path zeroes the countdown (held-at-0 invariant)
+// Each test drives the countdown to a NONZERO value first, then leaves 'entry', so the
+// reset is load-bearing: deleting it from enterNameEntry / abortNameEntry /
+// commitNameEntry would leave entryFrames nonzero here and redden. (Without the nonzero
+// pre-step these would pass trivially — the exact mutation-survivor gap the reviewer found.)
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc11-3 (#15) — every entry/exit transition zeroes the entry countdown', () => {
+  // Enter, then step the countdown to a known NONZERO value (well short of the timeout).
+  const partwayThroughEntry = (typed: readonly string[]): GameState => {
+    let s = enterEntry(typed)
+    for (let i = 0; i < 10; i++) s = stepGame(s)
+    expect(s.phase, 'still mid-entry, well short of the timeout').toBe('entry')
+    expect(s.entryFrames, 'the entry branch advanced the countdown to a nonzero value').toBe(10)
+    return s
+  }
+
+  it('the "1" start-switch abort zeroes a nonzero countdown (abortNameEntry reset)', () => {
+    const next = keydownReducer('1', partwayThroughEntry(['A', 'B']))
+    expect(next.phase).toBe('attract')
+    expect(next.entryFrames, 'abortNameEntry must reset the countdown').toBe(0)
+  })
+
+  it('a full-buffer Enter commit zeroes a nonzero countdown (commitNameEntry reset)', () => {
+    const next = keydownReducer('Enter', partwayThroughEntry(['A', 'B', 'C']))
+    expect(next.phase).toBe('attract')
+    expect(next.entryFrames, 'commitNameEntry must reset the countdown').toBe(0)
+  })
+
+  it('enterNameEntry zeroes a stale incoming countdown (defensive entry reset)', () => {
+    // A qualifying game-over carrying a stale nonzero entryFrames must get a FRESH full
+    // window — entering name entry zeroes it (guards a future second entry path, #14).
+    const staleOver: GameState = {
+      ...createPlayGame(1),
+      phase: 'over',
+      score: QUALIFYING_SCORE,
+      cities: createCities().map((c) => ({ ...c, alive: false })),
+      entryFrames: 999,
+    }
+    const entered = enterNameEntry(staleOver)
+    expect(entered.phase).toBe('entry')
+    expect(entered.entryFrames, 'enterNameEntry must zero a stale countdown').toBe(0)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC2 (start-abort path) — the "1" START switch aborts entry via keydownReducer
 // Tested through the composed reducer main.ts actually drives (the real seam).
 // ═════════════════════════════════════════════════════════════════════════════
@@ -244,6 +294,7 @@ describe('mc11-3 AC2 — the "1" start switch aborts name entry immediately', ()
     const next = keydownReducer('1', s)
     expect(next.phase).toBe('attract')
     expect(next.initials).toBe('')
+    expect(next.entryFrames, 'the start-switch abort resets the entry countdown (#15)').toBe(0)
     expect(next.highScores, 'the start switch discards a full buffer — no insert').toBe(ladderBefore)
     expect(next.highScores.some((h) => h.name === 'ABC')).toBe(false)
   })
@@ -306,6 +357,8 @@ describe('mc11-3 regression — "1" outside entry, and the entry keys, are untou
     const ladderBefore = s.highScores
     const next = keydownReducer('Enter', s)
     expect(next.phase).toBe('attract')
+    // Commit also zeroes the entry countdown on its way out (held-at-0 invariant, #15).
+    expect(next.entryFrames, 'a commit resets the entry countdown too').toBe(0)
     // Commit builds a NEW ladder array containing the initials — the opposite of abort.
     expect(next.highScores, 'a commit is a fresh array, not the pre-entry reference').not.toBe(ladderBefore)
     expect(next.highScores.some((h) => h.name === 'ABC' && h.score === QUALIFYING_SCORE)).toBe(true)

@@ -134,7 +134,7 @@ export function fireOrStart(key: string, state: GameState): GameState {
 }
 
 // mc11-3: the START switch during name entry. Ground truth: GETINI aborts TAKE INITIALS
-// on either start switch — LDA SWSTAT / AND I,MSTRT1!MSTRT2 / BNE ABORT (W3DSUP.MAC:4076).
+// on either start switch — LDA SWSTAT / EOR I,0FF / AND I,MSTRT1!MSTRT2 / BNE ABORT (W3DSUP.MAC:4076).
 // The keyboard port maps the 1-Player START button (MSTRT1) to the '1' key, the fleet
 // convention (battlezone `key==='1'`, star-wars `Digit1`, joust/centipede START1 port);
 // Enter is unavailable here (nameEntryFromKey already COMMITS on Enter), and '1' is not an
