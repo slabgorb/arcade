@@ -155,3 +155,26 @@ export const OVER_TIMEOUT_FRAMES = (2 * ENDMAX) / ENDUPD
 export function advanceOverTimeout(phase: Phase, framesInOver: number): Phase {
   return phase === 'over' && framesInOver >= OVER_TIMEOUT_FRAMES ? 'attract' : phase
 }
+
+// mc11-3: the TAKE-INITIALS abort TIMEOUT window, derived from the ROM the way
+// OVER_TIMEOUT_FRAMES is. GETINI (W3DSUP.MAC:4068, the per-frame name-entry handler,
+// under the TAKE INITIALS .SBTTL at :4064) seeds a countdown UCVTAB = 0x84 and decrements
+// it once every 16 FRAME ticks (LDA FRAME / AND I,0F / IFEQ / DEC UCVTAB, :4078-4084),
+// aborting the entry at 0
+// (:4088 JMP ABORT). Under W3COMN.MAC's inherited .RADIX 16, 0x84 = 132 and the 0x0F
+// mask makes the tick period 0x10 = 16, so the window is 0x84 * 0x10 = 2112 frames.
+// The keyboard port models a SINGLE abort window (there is no per-letter trackball loop),
+// pinned to the seed the port's claim MC-ENTRY-ABORT names (0x84, :4180 — the ROM's larger
+// 0xFF/"60 s" FIRST-letter seed at :4010 is the trackball refinement the port does not model).
+// ROM line numbers + the value live in // comments, never JSDoc — the un-cited-literal
+// scanner strips // but not /** */; the two seed/tick literals carry own-line cites.
+const NAME_ENTRY_UCVTAB_SEED = 0x84 // W3DSUP.MAC:4180  LDA I,84 ";RESET TIMEOUT TO 30 SEC" (132)
+const NAME_ENTRY_TICK_FRAMES = 0x10 // W3DSUP.MAC:4080  AND I,0F — decrement UCVTAB once per 16 frames (16)
+
+/** The name-entry (TAKE INITIALS) abort window, in video frames: the UCVTAB countdown
+ *  seed times its 16-frame decrement period (`NAME_ENTRY_UCVTAB_SEED *
+ *  NAME_ENTRY_TICK_FRAMES`). After this many frames in `'entry'` with no input the cabinet
+ *  aborts back to attract — buffer discarded, ladder unchanged (see `abortNameEntry`). */
+// = 2112 frames (~34s @ ~61Hz). No numeric literal here — a product of two cited constants,
+// like OVER_TIMEOUT_FRAMES above; the value literal lives in this // comment, not the JSDoc.
+export const NAME_ENTRY_TIMEOUT_FRAMES = NAME_ENTRY_UCVTAB_SEED * NAME_ENTRY_TICK_FRAMES
