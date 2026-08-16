@@ -99,7 +99,10 @@ stories:
     title: "Close the games-roster staleness cycle (routed from df1-7 review): reconcile the remaining stale roster surfaces AND pin the counts so they cannot silently desync again. (1) README.md:127 just build-all comment still says 'nine games + the lobby' — true count is eleven [DOC, comment-analyzer, high conf]. (2) CLAUDE.md R2 hosting table (~lines 203-212) lists nine games and omits the defender and millipede rows [RULE/DOC, rule-checker]. (3) No guard pins the roster total/raster numerals against the wired game set, so the prose rotted once (df1-5) and df1-7 fixed it by hand without closing the mechanism; add a guard deriving total===GAMES.length (and, where feasible, the raster/vector split) from tests/monorepo-topology GAMES so a future 12th game reddens instead of silently desyncing [TEST, test-analyzer, medium]."
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
     type: chore
+    review_findings: 'APPROVED round 2. Round-1 finding (rule #3 prototype pollution in parseCount) CLOSED via Object.hasOwn + control assertions; mutation-verified. Full orchestrator suite 505/505.'
+    review_verdict: approved
