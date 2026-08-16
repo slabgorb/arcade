@@ -262,3 +262,80 @@ describe('jt12-3 player queue — a re-entering knight is routed through takePla
     )
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// REGRESSION — Reviewer [HIGH]: a knight mid-respawn must survive a wave-advance
+//   queue reset. `stepSim` re-seeds `serviceQueue` per wave (sim.ts, newServiceQueue),
+//   so a knight that drew its NPSERV number (held in `respawnQueue`) but was not yet
+//   served when a wave advances loses its ticket: the reset queue has npserv==lpserv,
+//   `nextServed` never returns 'player' again, and the take-block will not re-draw
+//   (still queued). It stays lives>0 && !out FOREVER — a co-op game-over hang; a 1P
+//   HARD SOFTLOCK. Any correct fix re-seats/re-draws the orphaned knight so it recovers.
+//   Behaviour-level assertion (the knight, having lives, MUST re-materialise) — fix-agnostic.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('jt12-3 REGRESSION (Reviewer [HIGH]) — a knight mid-respawn survives a queue reset', () => {
+  it('the constructed post-advance orphan state recovers — a knight with lives re-materialises', () => {
+    // The exact state a wave advance leaves behind: P2 absent with lives, holding ticket 0 in
+    // respawnQueue, but serviceQueue RESET (npserv=lpserv=0). No enemies, so the wave keeps
+    // clearing (re-seeding the queue) — the worst case for the orphan.
+    const base = createGame(SEED)
+    const orphaned: GameState = {
+      ...base,
+      players: [
+        { ...base.players[0], lives: NSHIP } as PlayerLedger,
+        { ...base.players[1], lives: 2, out: false } as PlayerLedger,
+      ],
+      sim: {
+        ...base.sim,
+        sim: { ...base.sim.sim, processes: [playerProc(1, 100, 100, 1, 'ostrich')] },
+        serviceQueue: { npserv: 0, lpserv: 0, neserv: 0, leserv: 0 },
+        pendingEnemies: [],
+      },
+      respawnQueue: [{ player: 2, ticket: 0 }],
+    }
+    // Staging validity: P2 is genuinely due — lives, not out, absent from the sim.
+    expect(orphaned.players[1].lives, 'staging: P2 has lives to re-enter with').toBeGreaterThan(0)
+    expect(orphaned.players[1].out, 'staging: P2 is not out').toBe(false)
+    expect(livePlayers(orphaned).includes(2), 'staging: P2 starts absent').toBe(false)
+
+    let game = orphaned
+    let reentered = false
+    for (let f = 0; f < 400 && !reentered; f++) {
+      game = stepGame(game)
+      if (livePlayers(game).includes(2)) reentered = true
+    }
+    // RED before the fix: P2 is orphaned (respawnQueue never reconciled vs the reset queue).
+    expect(reentered, 'a knight with lives MUST re-materialise even after a queue reset — not orphaned').toBe(true)
+  })
+
+  it('a knight that drew a REAL number then hits a forced wave advance still re-materialises', () => {
+    // The natural path: kill P2, let it draw its CRELP number, THEN advance the wave (which
+    // re-seeds the queue) before it is served — the exact orphan window, driven end to end.
+    const killed = afterPartnerKill() // P2 removed, lives 2, a rebirth is due
+    let game = stepGame(killed) // the frame P2 draws its number
+    expect(game.sim.serviceQueue?.npserv ?? 0, 'staging: P2 drew a real CRELP number').toBeGreaterThan(0)
+    expect(livePlayers(game).includes(2), 'staging: P2 has not been served yet').toBe(false)
+
+    // Force the wave to advance: strip the sim to just the live player (a clearable wave), so
+    // stepSim re-seeds serviceQueue — exactly what orphans P2's outstanding ticket.
+    game = {
+      ...game,
+      sim: {
+        ...game.sim,
+        sim: { ...game.sim.sim, processes: game.sim.sim.processes.filter((p) => p.kind === 'player') },
+        pendingEnemies: [],
+      },
+    }
+    const waveBefore = game.wave
+    game = stepGame(game)
+    expect(game.wave, 'staging: the wave advanced (serviceQueue re-seeded)').toBeGreaterThan(waveBefore)
+
+    let reentered = livePlayers(game).includes(2)
+    for (let f = 0; f < 400 && !reentered; f++) {
+      game = stepGame(game)
+      if (livePlayers(game).includes(2)) reentered = true
+    }
+    // RED before the fix: the reset dropped P2's ticket and it never re-draws.
+    expect(reentered, 'P2 re-materialises despite the queue reset it was caught mid-respawn by').toBe(true)
+  })
+})
