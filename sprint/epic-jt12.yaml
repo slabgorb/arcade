@@ -19,10 +19,11 @@ stories:
     title: "Wire the WSMART budget refund/debit so smart-enemy pressure is sustained: call creditDeath (core/enemy.ts:566) in the death/removal path (alongside bookDeath/countBaiterDeaths) to decrement nsmart when a smart enemy dies, and remountBudgetDebit (core/egg.ts:339) on the egg->remount transition. Assert that after a smart enemy dies mid-wave a replacement can be promoted (nsmart no longer latches at wsmart). JOUSTRV4.SRC:2962 CREEM"
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: jt12-3
     title: "Wire the transporter player-side service queue + SELARE occupancy safety: route respawnPlayerProcess (sim.ts:630) through takePlayerNumber + nextServed arbitration (players before enemies), and gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a materialisation defers into an already-crowded third. Assert the now-live 'players first' branch and that a crowded third defers a spawn. JOUSTRV4.SRC:5615-5676"
     points: 8
