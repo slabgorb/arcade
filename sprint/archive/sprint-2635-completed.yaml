@@ -32,3 +32,8 @@ completed_stories:
     title: "Wire the five RV4 baiter anti-farming patches into flight/attack: thread the process's baiter/pchase into stepPteroFlight (core/ptero.ts:140) and resolvePteroAttack (:175) and apply patchAimLower/patchSlowDive/patchFirstPassMiss/patchSeekTimer/patchLaneReroute (core/baiter.ts:199-248) at the corresponding decision points, so a live baiter (PCHASE != 0) aims 2px lower, dives at 1/4 speed, delays its first pass, decrements its seek timer, and reroutes to the lower lane on the flanks. Assert a baiter diverges from a plain wave ptero. JOUSTRV4.SRC:6268 PATCH4/5/6/8/9"
     points: 8
     completed: '2026-08-16'
+  - id: pm5-2
+    epic: pm5
+    title: "Resolve the Level-table mirror fields (core/level.ts:49-60): either wire a production consumer for frightenedSeconds/frightenedFlashes/elroy1/elroy2 (e.g. an attract/HUD readout) or drop the four fields and stop populating them at buildLevel (:145-149), so the row carries no value nothing reads. Update the game.test.ts reads accordingly."
+    points: 2
+    completed: '2026-08-16'

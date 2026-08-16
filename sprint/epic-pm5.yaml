@@ -19,10 +19,11 @@ stories:
     title: "Resolve the Level-table mirror fields (core/level.ts:49-60): either wire a production consumer for frightenedSeconds/frightenedFlashes/elroy1/elroy2 (e.g. an attract/HUD readout) or drop the four fields and stop populating them at buildLevel (:145-149), so the row carries no value nothing reads. Update the game.test.ts reads accordingly."
     points: 2
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-16'
     review_findings: "APPROVED round 2. Round-1 REJECT (6 LOW comment-only findings in the new test file's header — stale level.ts line-refs + one self-refuting premise) fully resolved by a comment-only de-brittling; comment-analyzer confirms 6/6 resolved, 0 new. Code unchanged since R1 (provably comment-only delta), was already clean: pure/single-sourced/ROM-faithful deletion, 416/416 green, tsc clean, security & rule-checker clean."
     review_verdict: approved
   - id: pm5-3
