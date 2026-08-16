@@ -37,7 +37,9 @@ stories:
     title: "Retire the redundant dead twins (delete or route the live path through them, per each): the mainline/stateCode MAINLINE-dispatch skeleton (state.ts:92, bypassed by stepGame), applyPointerMotion (shell/input.ts:42, superseded by placeCursor), launchFromKey (input.ts:69, superseded by fireFromKey), cruiseKillPoints (core/score.ts:61, inlined at game.ts:585), computeLetterbox (shell/viewport.ts:53, twin of applyLetterbox), and INITIAL_ATTRACT (state.ts:121). Keep any symbol still asserted by a claim test; only its dead runtime role goes."
     points: 3
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_findings: 'APPROVED round 3 (final). Retired 3 dead twins (launchFromKey/cruiseKillPoints/computeLetterbox); kept 4 claim-pinned symbols; behavioural tests re-pointed onto live symbols (verified non-vacuous by rule-checker mutation test + test-analyzer). 3 review rounds: rounds 1-2 rejected on doc-only stale comments (4 total), all fixed and re-verified clean; code byte-identical since first GREEN. Full cabinet green.'
+    review_verdict: approved
