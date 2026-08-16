@@ -50,7 +50,6 @@ import { writeText } from '../src/core/charset.js'
 // tests/still-frame.test.ts -> the plugin root is one level up.
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const sceneSourcePath = join(root, 'src', 'core', 'scene.ts')
-const mainSourcePath = join(root, 'src', 'main.ts')
 
 /** Strip `//` line comments and block comments so a source-text guard scans CODE, not
  *  prose — the rule's own explanation ("colours are never invented") must neither red
@@ -235,13 +234,10 @@ describe('df2-6 still frame — colours are never invented', () => {
 // This file's final block used to assert `src/main.ts` paints composeStaticFrame(...) —
 // the df2 mount contract (a static title still blitted every rAF). df3-6 replaces that:
 // main.ts now DRIVES the sim (createLoop + stepSim + the DYNAMIC composeFrame), so it no
-// longer mounts the static still in the loop. The (inverted) main.ts mount contract now
-// lives in df3-6-shell-wiring.test.ts. composeStaticFrame itself is unchanged and its
-// correctness/orientation/colour tests above stay live — the function survives (it is the
-// transcribed still, an attract candidate for df7); only the "main.ts paints it" guard
-// moved. Retiring it here (rather than letting it go falsely RED when main.ts is rewired)
-// is the deliberate fate of a guard the story supersedes.
-//
-// `mainSourcePath` is now referenced only by df3-6-shell-wiring.test.ts; it is left in
-// place above as documentation of where the mount lives.
-void mainSourcePath
+// longer mounts the static still in the loop. main.ts's live mount contract is now
+// covered independently — structurally by df3-6-shell-wiring.test.ts (its own `?raw`
+// read of main.ts) and behaviourally by df3-6-boot-shell.test.ts. composeStaticFrame
+// itself is unchanged and its correctness/orientation/colour tests above stay live — the
+// function survives (it is the transcribed still, an attract candidate for df7); only the
+// "main.ts paints it" guard moved. Retiring it here (rather than letting it go falsely RED
+// when main.ts is rewired) is the deliberate fate of a guard the story supersedes.

@@ -43,6 +43,9 @@ const ACTIONS = ['thrust', 'reverse', 'up', 'down', 'fire'] as const
 /** A KeyMembership whose `has()` gives a fixed answer for every id. */
 const membership = (answer: boolean): KeyMembership => ({ has: () => answer })
 
+/** A KeyMembership that is held for exactly the given key ids. */
+const heldKeys = (...codes: readonly string[]): KeyMembership => ({ has: (id) => codes.includes(id) })
+
 // A variable specifier so `tsc --noEmit` does not statically resolve a module that does
 // not exist yet (TS2307 during RED); vitest resolves it at runtime, so the import throws
 // and the loader reports the self-describing message below.
@@ -58,7 +61,7 @@ async function loadInput(): Promise<InputModule> {
       'src/shell/input.ts not built yet — GREEN (Dev) adds the pure mapper ' +
         '`mapInput(held: KeyMembership): Input` (joust shell/input.ts precedent): read the held-key set ' +
         'and return { thrust, reverse, up, down, fire }. Pure — no DOM read, no clock; the DOM sampling ' +
-        `lives in the adapter main.ts installs via @shared/held-keys. (${(e as Error).message})`,
+        `lives in the adapter main.ts installs via @shared/held-keys. (${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -90,5 +93,19 @@ describe('df3-6 input snapshot — the pure key-membership → Input mapper', ()
     const { mapInput } = await loadInput()
     const held = membership(true)
     expect(mapInput(held)).toEqual(mapInput(held))
+  })
+
+  it('binds actions to DISTINCT keys — holding one key lights only its action', async () => {
+    // The all/none fixtures above prove each action is bound to SOME key; they can't
+    // catch a mapper that binds all five to the SAME key. Holding exactly the thrust key
+    // ('KeyD', shell/input.ts) must set thrust and leave the other four false. (Reviewer
+    // r1, LOW: an accidental shared binding would otherwise pass the whole file.)
+    const { mapInput } = await loadInput()
+    const snap = mapInput(heldKeys('KeyD'))
+    expect(snap.thrust, "holding thrust's key ('KeyD') did not set thrust").toBe(true)
+    expect(snap.reverse, 'reverse shares a key with thrust').toBe(false)
+    expect(snap.up, 'up shares a key with thrust').toBe(false)
+    expect(snap.down, 'down shares a key with thrust').toBe(false)
+    expect(snap.fire, 'fire shares a key with thrust').toBe(false)
   })
 })

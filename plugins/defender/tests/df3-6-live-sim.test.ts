@@ -94,7 +94,7 @@ async function loadSim(): Promise<SimModule> {
         'initStars) and `stepSim(state, input): SimState` advancing ship (stepVelocityX/stepReverse/' +
         'stepVerticalY), world (slide), stars (stepStars) and lasers (scheduler.stepTick) once, plus ' +
         'the Input snapshot type { thrust, reverse, up, down, fire }. PURE src/core — purity.test.ts ' +
-        `sweeps it (no DOM, no clock, no Math.random). (${(e as Error).message})`,
+        `sweeps it (no DOM, no clock, no Math.random). (${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -171,6 +171,43 @@ describe('df3-6 dynamic composer — the game is a live frame, not the df2 still
   })
 })
 
+describe('df3-6 composer isolates each element — the ship and laser are actually drawn (AC3)', () => {
+  // "Differs from rest / not blank" is satisfiable by the starfield scroll ALONE, so the
+  // composer half needs seams isolated: hold stars/camera/lasers fixed and move only the
+  // ship (then only the lasers). Mutation-proven: deleting the ship blitObject, or the
+  // laser-draw loop, from composeFrame reddens exactly these two (Reviewer r1, HIGH).
+  const overStars = () => makeRand(2)
+
+  it('moving ONLY the ship changes the frame (the ship sprite is composited)', async () => {
+    const { createSim } = await loadSim()
+    const { composeFrame } = await loadDynamicScene()
+    const base = createSim(overStars())
+    const at = (x: number, y: number): SimState => ({ ...base, ship: { x, y, facing: 'right' } })
+    const a = composeFrame(at(30, 120), LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    const b = composeFrame(at(200, 120), LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    expect(
+      digest(a),
+      'the ship position does not affect the frame — the ship sprite is not being drawn',
+    ).not.toBe(digest(b))
+  })
+
+  it('adding a laser in flight changes the frame (lasers are composited)', async () => {
+    const { createSim } = await loadSim()
+    const { composeFrame } = await loadDynamicScene()
+    const base = createSim(overStars())
+    const none = composeFrame({ ...base, lasers: [] }, LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    const one = composeFrame(
+      { ...base, lasers: [{ x: 0x4000, facing: 'right', alive: true }] },
+      LOGICAL_WIDTH,
+      LOGICAL_HEIGHT,
+    )
+    expect(
+      digest(one),
+      'a laser in flight does not affect the frame — the laser is not being drawn',
+    ).not.toBe(digest(none))
+  })
+})
+
 describe('df3-6 the sim ADVANCES, and only under input (60 Hz step, not the wall clock)', () => {
   it('sustained thrust drives the frame somewhere REST never goes', async () => {
     // The riskiest wiring bug is motion that does not respond to input (a static compose,
@@ -229,14 +266,15 @@ describe('df3-6 ship-leads offset — pin the COORDINATES, not just the directio
     // exact settled pixel, which df3-2's world.test.ts already owns.
     const right = await run(11, 200, withInput({ thrust: true }))
     const left = await run(11, 200, withInput({ thrust: true, reverse: true }))
-    expect(
-      right.ship.x,
-      `facing right, the ship should lead near column 0x20 (32); saw ${right.ship.x}`,
-    ).toBeLessThan(0x50)
-    expect(
-      left.ship.x,
-      `facing left, the ship should lead near column 0x70 (112); saw ${left.ship.x}`,
-    ).toBeGreaterThanOrEqual(0x50)
+    // Pin the COORDINATE, not just the side (routing != geometry). Measured settled
+    // columns for seed 11 / 200 ticks: right = 55 (base 0x20 + a velocity column), left =
+    // 89 (base 0x70 side). The bands are tight enough to KILL the 24->16 seam mutation:
+    // feeding slide the full `plaxv24` instead of `plaxv24 >> 8` settles right=32 / left=112,
+    // both of which the old coarse `< 0x50` / `>= 0x50` split let through (Reviewer r1).
+    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~55`).toBeGreaterThanOrEqual(48)
+    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~55`).toBeLessThanOrEqual(64)
+    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~89`).toBeGreaterThanOrEqual(80)
+    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~89`).toBeLessThanOrEqual(96)
     expect(left.ship.x, 'the facing-left lead column must sit RIGHT of the facing-right one').toBeGreaterThan(
       right.ship.x,
     )
