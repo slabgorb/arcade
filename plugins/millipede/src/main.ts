@@ -29,6 +29,7 @@ import { fieldPens, playerPens, alphanumericPens, spritePens } from './shell/pla
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
+import { createMouseAdapter, createPointerLock } from './shell/input'
 
 const LOGICAL_W = 240
 const LOGICAL_H = 256
@@ -47,9 +48,24 @@ const audio = createAudio()
 // ── The game, booting into the silent attract demo. ──
 let game: GameState = createGame(0x1982)
 
-// ── Input accumulators drained once per stepped frame. ──
-let accDh = 0
-let accDv = 0
+// ── Mouse capture (ml10-4): the trackball reads pointer-lock movementX/Y deltas
+//    through the shell adapter, drained once per stepped frame. Under lock those
+//    deltas are UNBOUNDED (the cursor never hits a screen edge), so the mouse
+//    behaves like the cabinet trackball. The cursor is hidden while it does. ──
+const mouse = createMouseAdapter(document)
+canvas.style.cursor = 'none'
+// R5: an Escape-exit keeps the window focused, so 'blur' never fires — the
+// pointerlockchange listener clears the last accumulated delta regardless of what
+// caused the exit (Escape or blur) so the gun does not keep drifting (no runaway
+// travel). R4/cp2-8: a rejected requestPointerLock (re-lock cooldown) is surfaced to
+// the console instead of vanishing.
+const pointerLock = createPointerLock(
+  canvas,
+  document,
+  () => mouse.reset(),
+  (reason) => console.warn('millipede: pointer lock request rejected', reason),
+)
+
 let firePending = false // a fresh press this frame (edge)
 let fireHeld = false // the fire button is currently held down (auto-repeat)
 let startPending = false
@@ -80,6 +96,7 @@ window.addEventListener('keyup', (e: KeyboardEvent) => {
 })
 canvas.addEventListener('pointerdown', () => {
   startPlay()
+  void pointerLock.request() // click-to-lock the canvas for the trackball (R4-safe)
   fireHeld = true
   firePending = true
 })
@@ -91,14 +108,9 @@ canvas.addEventListener('pointercancel', releaseFire)
 canvas.addEventListener('pointerleave', releaseFire)
 window.addEventListener('pointerup', releaseFire)
 window.addEventListener('blur', releaseFire)
-canvas.addEventListener('pointermove', (e: PointerEvent) => {
-  // Horizontal is NEGATED: input.ts models the ROM trackball where a higher H is
-  // further LEFT (positive dh ⇒ gun left), so mouse-right (+movementX) must map
-  // to a NEGATIVE dh for the gun to track the mouse. Vertical needs no negate —
-  // input.ts already COMP-reverses dv (mouse-down ⇒ gun-down).
-  accDh -= e.movementX
-  accDv += e.movementY
-})
+// The mouse-move → {dh, dv} mapping (negated horizontal, non-negated vertical) now
+// lives in createMouseAdapter (shell/input.ts, ml10-4); it listens on `document` so
+// it receives the movementX/Y deltas pointer lock dispatches there.
 
 /** Every occupied field cell as a grid placement (low 7 bits = stamp). */
 function fieldPlacements(field: Uint8Array): HudPlacement[] {
@@ -224,17 +236,18 @@ const frame = (ts: number): void => {
   const elapsed = lastTs === null ? 0 : ts - lastTs
   lastTs = ts
 
+  // Drain the trackball delta accumulated across skipped rAFs exactly once this frame.
+  const { dh, dv } = mouse.sample()
+
   // Step the sim a whole number of fixed 60 Hz frames for the real time elapsed
   // (runFixedSteps folds the delta + carries the remainder). Input is drained once,
   // into the first sub-step, so a catch-up burst can't replay the same fire/start
-  // and the mouse travel accumulated across skipped rAFs is consumed whole.
+  // and the mouse travel is consumed whole.
   accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
     const input: GameInput = isFirst
-      ? { dh: toByte(accDh), dv: toByte(accDv), fire: firePending || fireHeld, start: startPending }
+      ? { dh: toByte(dh), dv: toByte(dv), fire: firePending || fireHeld, start: startPending }
       : { dh: 0, dv: 0, fire: false, start: false }
     if (isFirst) {
-      accDh = 0
-      accDv = 0
       firePending = false
       startPending = false
     }
