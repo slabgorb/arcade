@@ -1,11 +1,10 @@
 sprint:
-  name: TO Sprint 2634
-  jira_sprint_id: 5
-  jira_sprint_name: TO Sprint 2634
-  goal: Smoothing out the game factory (Millipede ml1)
-  start_date: '2026-08-11'
-  end_date: '2026-08-25'
+  name: TO Sprint 2635
+  jira_sprint_id: 6
+  jira_sprint_name: TO Sprint 2635
+  goal: Missile Command mc7 and follow-ups
+  start_date: '2026-08-16'
+  end_date: '2026-08-30'
   status: active
-  number: 2634
-epics:
-  - ml10
+  number: 2635
+epics: []

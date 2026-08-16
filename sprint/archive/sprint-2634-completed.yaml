@@ -4,6 +4,9 @@ sprint:
   jira_sprint_id: 5
   jira_sprint_name: "TO Sprint 2634"
   goal: Smoothing out the game factory (Millipede ml1)
+  status: closed
+  start_date: '2026-08-11'
+  end_date: '2026-08-25'
 
 completed_epics:
   - sw11
@@ -20,7 +23,13 @@ completed_epics:
   - ml9
   - df3
   - df1
+  - ml10
 completed_stories:
+  - id: ml10-2
+    epic: ml10
+    title: 'Wire high-score persistence: load the ladder on boot, save it after name entry'
+    points: 5
+    completed: '2026-08-16'
   - id: ml1-5
     epic: ml1
     title: 'Four-file scaffold + three registrations -> boots black canvas at /millipede/: copy plugins/joust/ (index.html, plugin.ts, package.json, tsconfig.json extends ../../tsconfig.json); add millipede to justfile games and vitest.config.ts GAMES; npm run gen:registry. Green npx vitest run --project millipede + npm run lint; visual boot check at http://127.0.0.1:5270/millipede/ (compare against a nonsense control path, not just a 200).'
