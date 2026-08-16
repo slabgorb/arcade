@@ -23,7 +23,7 @@
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
 import { launchAbm } from '../core/abm.js'
-import { startGame, stepInitials, commitNameEntry, type GameState } from '../core/game.js'
+import { startGame, stepInitials, commitNameEntry, abortNameEntry, type GameState } from '../core/game.js'
 import { togglePause } from '../core/state.js'
 import { isPauseKey } from '@shared/pause'
 
@@ -133,6 +133,27 @@ export function fireOrStart(key: string, state: GameState): GameState {
   return fireFromKey(key, state)
 }
 
+// mc11-3: the START switch during name entry. Ground truth: GETINI aborts TAKE INITIALS
+// on either start switch — LDA SWSTAT / AND I,MSTRT1!MSTRT2 / BNE ABORT (W3DSUP.MAC:4076).
+// The keyboard port maps the 1-Player START button (MSTRT1) to the '1' key, the fleet
+// convention (battlezone `key==='1'`, star-wars `Digit1`, joust/centipede START1 port);
+// Enter is unavailable here (nameEntryFromKey already COMMITS on Enter), and '1' is not an
+// A-Z initials letter so it never collides with typing.
+function isStartKey(key: string): boolean {
+  return key === '1'
+}
+
+/**
+ * mc11-3 the START-switch abort: while entering initials, the '1' start switch aborts the
+ * entry via core `abortNameEntry` — back to attract, buffer discarded, ladder UNCHANGED (no
+ * insert, even from a full buffer). Outside `'entry'`, and for any non-start key, the state
+ * is returned unchanged (so '1' still begins a game from attract via fireOrStart). Pure —
+ * the core owns the abort result; this shell only decides WHEN to trigger it.
+ */
+export function startAbortFromKey(key: string, state: GameState): GameState {
+  return state.phase === 'entry' && isStartKey(key) ? abortNameEntry(state) : state
+}
+
 /**
  * mc7-3 the KEYBOARD name-entry reducer (fleet-consistent — NOT the ROM trackball).
  * During `'entry'`, ENTER commits the buffer via core `commitNameEntry` (inserts the
@@ -163,6 +184,10 @@ export function nameEntryFromKey(key: string, state: GameState): GameState {
 export function keydownReducer(key: string, state: GameState): GameState {
   const wasEntry = state.phase === 'entry'
   let next = pauseFromKey(key, state)
+  // mc11-3: the '1' start switch aborts entry (-> attract) BEFORE nameEntryFromKey, which
+  // would treat '1' as an inert non-letter keystroke. It is a no-op outside 'entry', so a
+  // '1' in attract still falls through to fireOrStart below and begins a game.
+  next = startAbortFromKey(key, next)
   next = nameEntryFromKey(key, next)
   if (!wasEntry) next = fireOrStart(key, next)
   return next
