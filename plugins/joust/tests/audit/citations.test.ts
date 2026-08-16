@@ -44,7 +44,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   readFileSync,
-  readdirSync,
   existsSync,
   mkdtempSync,
   mkdirSync,
@@ -57,13 +56,21 @@ import { join, dirname, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
+// df1-8: the claims loader is the SHARED hardened chokepoint (jt9-2/jt9-31), not a
+// private copy. `loadClaims` narrows every entry via `asClaim`, so a WRONG-SHAPE
+// claims/*.json names its own file instead of surfacing as `undefined` deep in the
+// sweep. (A *syntactically* broken JSON still throws an unnamed `SyntaxError` from the
+// shared loader's unguarded `JSON.parse` — a known fleet-wide residual, out of df1-8
+// scope.) The shared loader types claims with its own looser `Claim`; this file keeps
+// the richer check-citations `Claim` for its checker literals and views the loaded
+// claims through it via `committedClaims()` below.
+import { loadClaims } from '../helpers/claims.js'
 
 type CheckClaims = (claims: Claim[], opts: { vendoredRoot: string | null }) => string[]
 
 // tests/audit/citations.test.ts → repo root is two levels up.
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const romStudyDir = join(repoRoot, 'docs', 'rom-study')
-const claimsDir = join(romStudyDir, 'claims')
 
 // The vendored 1982 Williams source lives at the MONOREPO root — now TWO levels
 // above plugins/joust, not one (the monorepo migration moved this tree). It is
@@ -638,12 +645,12 @@ function allProseCitations(): ProseCitation[] {
   return DOSSIER_FILES.flatMap((f) => extractProseCitations(readDossier(f)))
 }
 
-function loadClaims(): Claim[] {
-  if (!existsSync(claimsDir)) return []
-  return readdirSync(claimsDir)
-    .filter((f) => f.endsWith('.json'))
-    .flatMap((f) => JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as Claim | Claim[])
-    .flat()
+// df1-8: the ONE bridge from the shared loader's looser `Claim` to the richer
+// check-citations `Claim` this file's checker literals use. The shared `loadClaims`
+// already shape-checks every entry via `asClaim` (naming the file on a bad shape),
+// so this view is sound at runtime; the cast only reconciles the two static types.
+function committedClaims(): Claim[] {
+  return loadClaims() as Claim[]
 }
 
 describe('AC-2 — every dossier citation is pinned by a claim', () => {
@@ -669,7 +676,7 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
     // re-verified by hand at synthesis. AC-2 requires that sample to be among
     // the machine-checked claims — so subsystems.md alone must contribute at
     // least 20 covered citations, not merely 20 scanned ones.
-    const claims = loadClaims()
+    const claims = committedClaims()
     const subsystem = extractProseCitations(readDossier('subsystems.md'))
     expect(subsystem.length, 'subsystems.md must carry at least the cross-sample').toBeGreaterThanOrEqual(20)
     const covered = subsystem.filter((c) => coveredBy(claims, c))
@@ -681,7 +688,7 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
   })
 
   it('every primary-source citation in the dossier has a covering claim', () => {
-    const claims = loadClaims()
+    const claims = committedClaims()
     const missing = [
       ...new Set(
         allProseCitations()
@@ -700,7 +707,7 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
     // The story: "MAME citations (williams*.cpp) get schema-only claims".
     // Reported separately from the primary bucket so Dev sees two work items,
     // not one undifferentiated list.
-    const claims = loadClaims()
+    const claims = committedClaims()
     const missing = [
       ...new Set(
         allProseCitations()
@@ -778,7 +785,7 @@ describe('AC-2 — every dossier citation is pinned by a claim', () => {
     // Scoped to this story's prefix on purpose. 135 of the 287 pre-existing
     // claims predate the standard; retrofitting them is a separate decision,
     // not a 3-point citation story.
-    const mine = loadClaims().filter((c) => /^JT8-/.test(c.id ?? ''))
+    const mine = committedClaims().filter((c) => /^JT8-/.test(c.id ?? ''))
     expect(mine.length, 'jt1-8 must add claims under a JT8- prefix').toBeGreaterThanOrEqual(120)
     const bare = mine
       .filter((c) => !/[\w./]+\.(?:SRC|DOC|PIC|FRM|cpp):\d/.test(c.claim ?? ''))
@@ -805,7 +812,7 @@ function coveredBy(claims: Claim[], c: ProseCitation): boolean {
 describe('the committed claims all re-open byte-for-byte (AC-1/AC-2)', () => {
   it('has a non-empty claims/ set (GREEN converts the dossier — RED until then)', () => {
     expect(
-      loadClaims().length,
+      committedClaims().length,
       'docs/rom-study/claims/*.json must exist and be non-empty',
     ).toBeGreaterThan(0)
   })
@@ -813,17 +820,17 @@ describe('the committed claims all re-open byte-for-byte (AC-1/AC-2)', () => {
   it('every committed claim has a unique id and passes schema-only validation', async () => {
     // Runs on CI too — this is the schema half of the gate.
     const checkClaims = await loadChecker()
-    expect(checkClaims(loadClaims(), { vendoredRoot: null })).toEqual([])
+    expect(checkClaims(committedClaims(), { vendoredRoot: null })).toEqual([])
   })
 
   it.skipIf(!vendoredAvailable)('every committed claim re-opens byte-for-byte against the vendored tree', async () => {
     const checkClaims = await loadChecker()
-    expect(checkClaims(loadClaims(), { vendoredRoot })).toEqual([])
+    expect(checkClaims(committedClaims(), { vendoredRoot })).toEqual([])
   })
 
   it.skipIf(!vendoredAvailable)('a deliberately drifted committed claim reddens the gate (AC-1, proven on real data)', async () => {
     const checkClaims = await loadChecker()
-    const claims = loadClaims()
+    const claims = committedClaims()
     const primary = claims.find((c) => !basename(c.source?.file ?? '').endsWith('.cpp'))
     expect(primary, 'need at least one primary-source claim to drift').toBeDefined()
     // Same claim, line number nudged by one — the exact shape of a study-session
@@ -967,7 +974,7 @@ describe('jt1-9 — externality is earned, not asserted by filename', () => {
   it('the committed external claims all still pass', async () => {
     // The regression half: hardening must not redden the 20 real ones.
     const checkClaims = await loadChecker()
-    const external = loadClaims().filter((c) => /\.cpp$/i.test(c.source?.file ?? ''))
+    const external = committedClaims().filter((c) => /\.cpp$/i.test(c.source?.file ?? ''))
     expect(external.length, 'the dossier cites the MAME driver').toBeGreaterThanOrEqual(20)
     for (const c of external) {
       expect(KNOWN_EXTERNAL, `${c.id} cites ${c.source!.file}`).toContain(basename(c.source!.file))
