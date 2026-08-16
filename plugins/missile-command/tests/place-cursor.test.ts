@@ -205,57 +205,34 @@ describe('AC4 — moveCursor survives alongside placeCursor', () => {
 
   it('applyPointerMotion remains defined in shell/input.ts (AC4 keeps it)', () => {
     // AC4 in the session mislabels the file as cursor.ts; applyPointerMotion has
-    // always lived in shell/input.ts. The story keeps it even though main.ts stops
-    // calling it — pin that it is not deleted.
+    // always lived in shell/input.ts. mc10-1 kept it as dead-but-defined; mc12-3
+    // re-wires main.ts back onto it for the trackball live aim. Either way it must
+    // not be deleted — pin that it survives.
     const input = readFileSync(join(root, 'src', 'shell', 'input.ts'), 'utf8')
     expect(input).toMatch(/export function applyPointerMotion\b/)
   })
 })
 
-// ─── AC2 — the shell wiring: absolute placement replaces relative movement ────
+// ─── AC2 (mc10-1) — SUPERSEDED by mc12-3 ─────────────────────────────────────
 //
-// main.ts is the DOM entry (top-level document access) and cannot be imported
-// under node/vitest, so this pins the wiring by SOURCE TEXT — the fleet ?raw-style
-// idiom. The observable spec: main.ts's pointer handler no longer derives the
-// cursor from event.movementX/movementY, and the shell now maps an absolute canvas
-// position (clientX/clientY relative to the canvas rect) through core placeCursor.
-
-describe('AC2 — main.ts is rewired from relative motion to absolute placement', () => {
-  const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
-  const input = readFileSync(join(root, 'src', 'shell', 'input.ts'), 'utf8')
-  const shell = main + '\n' + input
-
-  it('main.ts no longer reads relative movementX/movementY', () => {
-    // The twitchy relative aim (mc1-3, main.ts:42) must be gone from main.ts.
-    // Scope this to main.ts alone: input.ts's applyPointerMotion legitimately keeps
-    // movementX/movementY in its (retained) signature per AC4.
-    expect(main).not.toMatch(/movementX/)
-    expect(main).not.toMatch(/movementY/)
-  })
-
-  it('the shell places the cursor via core placeCursor', () => {
-    // Anchor to the actual assignment `cursor: placeCursor(` — a bare /placeCursor/
-    // is satisfied by the word appearing in a comment, so it cannot tell "wired into
-    // the handler" from "merely mentioned in prose". (Reviewer mc10-1: rules 15/25.)
-    expect(shell).toMatch(/cursor:\s*placeCursor\(/)
-  })
-
-  it('the shell maps an absolute canvas position (rect + clientX/clientY)', () => {
-    // Absolute placement needs the canvas rect to make the pointer canvas-relative.
-    // Anchor each to its CODE expression (`canvas.getBoundingClientRect()`,
-    // `event.clientX`, `event.clientY`) so comment prose cannot satisfy them.
-    expect(shell).toMatch(/canvas\.getBoundingClientRect\(\)/)
-    expect(shell).toMatch(/event\.clientX/)
-    expect(shell).toMatch(/event\.clientY/)
-  })
-
-  it('placeCursor is imported from core/cursor with the .js ESM extension (TS lang-review)', () => {
-    // Node16/ESM resolution requires the explicit .js extension on relative imports.
-    // Scoped to a placeCursor binding so this reddens until the feature is wired —
-    // a bare core/cursor.js import already exists (moveCursor) and must not green it.
-    expect(shell).toMatch(/import\s*\{[^}]*\bplaceCursor\b[^}]*\}\s*from\s*'[^']*core\/cursor\.js'/)
-  })
-})
+// mc10-1's AC2 pinned main.ts's *wiring* to ABSOLUTE placement: main.ts must read
+// no movementX/movementY, must assign `cursor: placeCursor(...)`, must map
+// clientX/clientY through the canvas rect, and must import placeCursor. mc12-3
+// (pointer-lock TRACKBALL aim, made the default) DELIBERATELY reverses exactly that
+// main.ts wiring — completing mc10-1's own explicit deferral of "trackball
+// (relative + pointer-lock, scaled) as an optional later mode," NOT a silent
+// reversal of its twitch fix (logged as a Design Deviation / ADR-delta in the
+// mc12-3 session). main.ts now reads locked movementX/movementY, drives the pure
+// applyPointerMotion (→ core moveCursor) scaled by TRACKBALL_SCALE, and no longer
+// uses placeCursor for live aim. The four source-text pins that asserted the
+// superseded absolute wiring are therefore RETIRED here; the main.ts aim wiring is
+// now owned by tests/pointer-lock.test.ts (source-read pins + a boot-harness proof
+// that a canvas click actually reaches requestPointerLock).
+//
+// What is NOT retired: the AC1 tests above still pin the pure core `placeCursor`
+// FUNCTION (interior scale/V-flip mapping + clamp) — that function is unchanged and
+// still exported from core/cursor.ts; mc12-3 only stops main.ts from calling it for
+// live aim.
 
 // ─── Anti-drift anchor: the projection basis placeCursor inverts is real ──────
 // Green now (reads shell/render.ts as data). If a later edit changes the render

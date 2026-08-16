@@ -43,6 +43,70 @@ export function applyPointerMotion(cursor: Cursor, movementX: number, movementY:
   return moveCursor(cursor, { dh: movementX, dv: -movementY })
 }
 
+// mc12-3: the trackball sensitivity factor. Missile Command is a trackball cabinet;
+// the ROM cursor motion is a bare `ADD TBALL TO CURSOR` (W3MAIN:546) with NO scale
+// constant, so this is a SHELL feel factor, not a ROM value. mc10-1 proved that raw
+// 1px=1unit relative aim is twitchy (a ~2000px canvas over a 256-unit field), so the
+// mouse-under-lock deltas are DE-SENSITISED below unity before they reach the pure
+// applier. Sub-unity (0,1) is the pinned direction (tests/pointer-lock.test.ts); the
+// exact value is feel tuning — trackball games want a deliberate swipe, not a flick.
+export const TRACKBALL_SCALE = 0.35
+
+// mc12-3: pointer-lock controller, mirroring millipede's ml10-4 / centipede's cp2-2.
+// Each plugin owns its own copy (mc has no cross-plugin imports); this is the mc port.
+interface LockTarget {
+  requestPointerLock(): unknown
+}
+interface LockDoc {
+  pointerLockElement: unknown
+  addEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
+  removeEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
+}
+
+export interface PointerLockController {
+  /** Request pointer lock; the returned promise NEVER rejects (R4). */
+  request(): Promise<void>
+  /** Detach the pointerlockchange listener this controller wired. */
+  dispose(): void
+}
+
+/**
+ * Wire a pointer-lock controller for a canvas. `onExit` fires when the lock LEAVES
+ * the canvas (Escape/blur EXIT — the pointerlockchange whose pointerLockElement is no
+ * longer the canvas, cp2-2 R5). `request()` never rejects: BOTH a rejected thenable
+ * (the re-lock cooldown) AND a synchronous throw (requestPointerLock unsupported on an
+ * older element) are caught and routed to the optional `onReject` diagnostic sink
+ * (cp2-8), then request() resolves — an unhandled rejection here would surface on every
+ * headless boot (millipede ml10-4 review, round 1). `dispose()` detaches the listener.
+ */
+export function createPointerLock(
+  canvas: LockTarget,
+  doc: LockDoc,
+  onExit: () => void,
+  onReject?: (reason: unknown) => void,
+): PointerLockController {
+  const onPointerLockChange = (): void => {
+    if (doc.pointerLockElement !== canvas) onExit()
+  }
+  doc.addEventListener('pointerlockchange', onPointerLockChange)
+
+  return {
+    async request(): Promise<void> {
+      try {
+        const result = canvas.requestPointerLock()
+        if (result && typeof (result as Promise<unknown>).then === 'function') {
+          await result
+        }
+      } catch (reason) {
+        onReject?.(reason)
+      }
+    },
+    dispose(): void {
+      doc.removeEventListener('pointerlockchange', onPointerLockChange)
+    },
+  }
+}
+
 /**
  * Map a keyboard key to its missile base index — Z→0 (left), X→1 (centre),
  * C→2 (right), matching the three FIREMA switches (ABMLAU, W3MAIN:606). Returns
