@@ -57,9 +57,11 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import type { Claim } from '../../tools/audit/check-citations.mjs'
 // df1-8: the claims loader is the SHARED hardened chokepoint (jt9-2/jt9-31), not a
-// private copy. `loadClaims` narrows every entry via `asClaim`, so a malformed
+// private copy. `loadClaims` narrows every entry via `asClaim`, so a WRONG-SHAPE
 // claims/*.json names its own file instead of surfacing as `undefined` deep in the
-// sweep. The shared loader types claims with its own looser `Claim`; this file keeps
+// sweep. (A *syntactically* broken JSON still throws an unnamed `SyntaxError` from the
+// shared loader's unguarded `JSON.parse` — a known fleet-wide residual, out of df1-8
+// scope.) The shared loader types claims with its own looser `Claim`; this file keeps
 // the richer check-citations `Claim` for its checker literals and views the loaded
 // claims through it via `committedClaims()` below.
 import { loadClaims } from '../helpers/claims.js'

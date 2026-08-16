@@ -1,6 +1,6 @@
 // tests/audit/load-claims-hardening.test.ts
 //
-// Story df1-8 — RED phase (Tyr One-Handed / TEA). Retire the last fleet residue of
+// Story df1-8 — RED phase (Tyr One-Handed / TEA). Retire joust's last residue of
 // the unhardened claims loader. `citations.test.ts` carries its OWN inline copy of
 // loadClaims at :641-647:
 //
@@ -12,17 +12,24 @@
 //
 // That is a byte-for-byte lift of the pattern df1-6 hardened in defender's
 // dossier-sweep loaders, with the same two defects on the same line:
-//   (1) a bare JSON.parse → a malformed claims/*.json throws a raw SyntaxError that
-//       NAMES NO FILE, so the operator cannot tell which of N files is broken;
+//   (1) a bare JSON.parse → a SYNTACTICALLY broken claims/*.json throws a raw
+//       SyntaxError that NAMES NO FILE, so the operator cannot tell which of N files
+//       is broken;
 //   (2) the `as Claim | Claim[]` cast is a compile-time lie — a well-formed-JSON,
-//       wrong-shape file flows into the AC-2 sweep unchecked.
+//       WRONG-SHAPE file flows into the AC-2 sweep unchecked.
 //
-// joust ALREADY owns the hardened chokepoint: `../helpers/claims.ts` exports
-// `asClaim` (shape-checks every entry, error NAMES the file) and `loadClaims` built
-// on it. 40+ joust source-audit tests import it (jt9-2). `citations.test.ts` is the
-// ONE file that never adopted it — a separate, un-narrowed copy. This story deletes
-// that copy and sources loadClaims from the shared helper, exactly as SH3-1 retired
-// joust's inlined mulberry32 copies onto @shared/rng.
+// This story closes defect (2) ONLY. joust already owns the hardened chokepoint:
+// `../helpers/claims.ts` exports `asClaim` (shape-checks every entry, error NAMES the
+// file) and `loadClaims` built on it — 39 joust source-audit tests already import it
+// (jt9-2). `citations.test.ts` is the ONE joust file that never adopted it, a separate
+// un-narrowed copy; this story deletes that copy and sources loadClaims from the shared
+// helper, exactly as SH3-1 retired joust's inlined mulberry32 onto @shared/rng.
+//
+// Defect (1) is NOT closed here: the shared `loadClaims` has the SAME unguarded
+// JSON.parse, so a syntactically-broken file still throws an unnamed SyntaxError. That
+// is a known fleet-wide residual (the helper wraps no try/catch — see the session's TEA
+// Delivery Finding), out of df1-8 scope (one function, one file). PART 2 below therefore
+// exercises the SHAPE half only (via asClaim); it does not test the JSON-syntax path.
 //
 // ─── WHY THE GUARD PARSES, IT DOES NOT GREP ──────────────────────────────────
 // A flat-text search for `function loadClaims` or `as Claim | Claim[]` is defeated
@@ -44,7 +51,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import ts from 'typescript'
-import { asClaim } from '../helpers/claims'
+import { asClaim } from '../helpers/claims.js'
 
 const auditDir = dirname(fileURLToPath(import.meta.url))
 const citationsFile = join(auditDir, 'citations.test.ts')
@@ -151,12 +158,14 @@ describe('df1-8 — citations.test.ts retires its inline loadClaims and adopts t
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// PART 2 — THE ADOPTED LOADER IS HARDENED (self-contained; green now, green after)
+// PART 2 — THE ADOPTED LOADER SHAPE-CHECKS (self-contained; green now, green after)
 // ═════════════════════════════════════════════════════════════════════════════
 //
-// citations.test.ts adopts `asClaim` (via loadClaims). These anchor that the loader
-// it adopts genuinely does what the inline copy did NOT: name the file on a bad
-// shape, while KEEPING joust's deliberately-loose source rule. This is the guarantee
+// citations.test.ts adopts `asClaim` (via loadClaims). These anchor the SHAPE half of
+// the guarantee — the loader it adopts does what the inline copy did NOT: name the file
+// on a bad SHAPE, while KEEPING joust's deliberately-loose source rule. (The JSON-SYNTAX
+// half — defect (1) in the header — is NOT tested here: the shared loader's JSON.parse is
+// unguarded fleet-wide and stays a filed residual, out of df1-8 scope.) This is the guarantee
 // df1-8 buys; it must not silently rot even though it is green today.
 
 const FILE = 'FIXTURE.json'
