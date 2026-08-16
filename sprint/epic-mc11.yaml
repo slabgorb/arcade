@@ -10,9 +10,11 @@ stories:
     title: "Wire the sputnik cruise-borrow: pass the live on-screen cruise count to sputnikFireCount at game.ts:493 (e.g. state.icbms.filter(i => i.kind === 'cruise').length) instead of the hardcoded 0, and delete the stale 'cruiseOnScreen is 0 until mc5-3' comment (game.ts:482). Assert a wave with cruise missiles on screen clamps the plane salvo (the 2*cruiseOnScreen branch fires in play). REV-01 plane-salvo clamp"
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-16'
   - id: mc11-2
     title: "Emit the bonus count-up cue: in the 'between' bonus resolution (game.ts:401-420) emit N {type:'bonusTick'} events (one per bonus unit tallied) instead of the lump waveEndBonus with soundEvents:[], so the TK cue plays per unit. Update sound-events.ts:62 to strike the 'emitter is a filed follow-up' note. Assert the event count matches the units paid. REV-01 W3SOUN SUNABM"
     points: 5
