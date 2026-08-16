@@ -1,59 +1,54 @@
 // tests/transporter-player-queue-wiring-jt12-3.test.ts
 //
-// Story jt12-3 — RED phase (Leeloo / TEA). WIRING the transporter's player-side
-// service queue and the SELARE occupancy safety into the live sim. Both mechanics'
-// pure transforms already exist, are byte-verified against JOUSTRV4.SRC and are
-// unit-tested in transporter.test.ts — they simply have NO production callers today:
+// Story jt12-3 — WIRING the transporter's player-side service queue and the SELARE
+// occupancy safety into the live sim. The pure transforms already exist, are byte-verified
+// against JOUSTRV4.SRC and unit-tested; they simply had NO production callers.
 //
-//   • `takePlayerNumber` / `servePlayer` / `nextServed` (core/transporter.ts:179-220,
-//     the CREP→CRELP take-a-number path, JOUSTRV4.SRC:5615-5676) — grep confirms ZERO
-//     callers outside their own definitions and the transporter unit test. So no player
-//     ever draws NPSERV: `nextServed` can never return 'player' in play (npserv == lpserv
-//     always), and serveEnemies' players-first guard (`enemyTurn`'s `npserv === lpserv`
-//     clause) is DEAD — it never once blocks an enemy. The re-created knight in
-//     game.ts (`respawnPlayerProcess`, sim.ts:644) is spliced straight into the arena,
-//     bypassing the deli-counter the ROM sends it through (`CREP1/CREP2 → LDA NPSERV …
-//     BRA CRELP`, JOUSTRV4.SRC:5615-5618).
-//   • `spawnProceeds(scanAreas(occupantYs), tier)` (core/transporter.ts:139-151, SELARE,
-//     JOUSTRV4.SRC:5641-5654) — the empty-third rule. serveEnemies serves an arrival onto
-//     any FREE pad regardless of how crowded that pad's third already is, so a
-//     materialisation never defers on occupancy.
+// ─── THE STORY'S OCCUPANCY PREMISE IS REFUTED BY THE ROM IT CITES ─────────────
+// jt12-3 was filed as "gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a
+// materialisation DEFERS into an already-crowded third." Reading the cited source
+// (JOUSTRV4.SRC:5619-5715) says two different things:
+//   1. The empty-third census (SELARE) + preference is on the PLAYER re-create path
+//      (`CREPLY`), NOT the enemy. An enemy takes its VRAND-drawn pad via FREET with no
+//      area census (`CREEM`→`CRELP`→`CREALL`→`FREET`, :5658-5680).
+//   2. It NEVER defers on occupancy. `CREPLY` walks the on-screen objects, marks each
+//      one's third (`SELARE`, :6413-6424), then PREFERS a pad in an EMPTY third — bottom
+//      (TR4), then middle (TR2/TR3), then top (TR1), each only if that third is clear and
+//      the pad free — and at `70$` FALLS THROUGH to `CREALL`/`GOTTR` and creates via the
+//      default anyway (:5665-5709). The served knight lands AT that pad (`GOTTR: LDD
+//      TPOSX,X → PPOSX`, :5710-5715). It is never starved.
+// So the real mechanic is a re-entering knight materialising ONTO A TRANSPORTER PAD IN AN
+// EMPTY THIRD (a safety, so it does not appear on a swarm) — which also retires jt4-5's
+// re-materialise at the FIXED initial spawn (`LDX #100/#200`, :1023/:1039 — the FIRST-ever
+// create only). This suite pins the ROM, not the story's "defers"/"serveEnemy" prose. See
+// the session's Design Deviations.
 //
-// This suite drives both wires through the public seams that own them:
-//   • the occupancy gate at `stepSim` (core/sim.ts serveEnemies) — a staged crowded
-//     third must DEFER an otherwise-serveable arrival, an empty third must still SERVE it;
-//   • the player queue at `stepGame` (core/game.ts respawn block) — a re-entering knight
-//     must draw a player number (`npserv` advances) and be served THROUGH the queue
-//     (`lpserv` advances, which only `servePlayer` does and only when the players-first
-//     `nextServed` branch fires).
-//
-// ─── DUAL-ASSERTION DISCIPLINE (jt12-2 precedent) ────────────────────────────
-// Every test first proves its STAGING is valid on TODAY's unwired code (the arrival is
-// really serve-eligible; the knight really re-enters), so a RED failure is unambiguously
-// the MISSING WIRE and never a mis-staged scenario. Then the wire assertion fails RED.
+// ─── THE TWO WIRES ───────────────────────────────────────────────────────────
+//   • the player queue at `stepGame`: a re-entering knight draws NPSERV (`takePlayerNumber`)
+//     and is served THROUGH the queue (`servePlayer`, only when the players-first
+//     `nextServed` branch fires) — CREP1/CREP2 → LDA NPSERV … BRA CRELP (:5615-5676).
+//   • the SELARE safety at the serve: the served knight lands on a pad in an EMPTY third
+//     (`selectRespawnPad`), in the ROM's bottom→middle→top preference, never starved.
 
 import { describe, it, expect } from 'vitest'
-import {
-  createWaveSim,
-  stepSim,
-  type SimState,
-  type SimProcess,
-  type PendingEnemy,
-} from '../src/core/sim.js'
 import { createGame, stepGame, GOVER_RUNNING, type GameState, type PlayerLedger } from '../src/core/game.js'
 import { type EntityState } from '../src/core/enemy.js'
-import { nextServed, type ServiceQueue } from '../src/core/transporter.js'
+import { nextServed, PADS } from '../src/core/transporter.js'
+import type { SimProcess } from '../src/core/sim.js'
 import { withNoPendingEnemies, seatWaveInstantly } from './helpers/wave-entry.js'
 
 const SEED = 0x1234
 const NSHIP = 5
 
-// The TR2 pad — evaluated x=231, y=128, tier MIDDLE (JOUSTRV4.SRC:5588). The arrival
-// below is drawn onto it, so its target third is MIDDLE and crowding MIDDLE must defer it.
-const TR2_X = 231
-const TR2_PIXEL_Y = 128
+const padOf = (id: string) => {
+  const p = PADS.find((q) => q.id === id)
+  if (!p) throw new Error(`no pad ${id}`)
+  return p
+}
+const TR1 = padOf('TR1') // top    (113, 80)
+const TR4 = padOf('TR4') // bottom (127, 210)
 
-// ─── staging helpers (game-jt4-5 / jt12-2 vocabulary, replicated) ─────────────
+// ─── staging helpers (game-jt4-5 vocabulary, replicated) ──────────────────────
 
 function entity(over: Partial<EntityState> = {}): EntityState {
   return {
@@ -86,8 +81,9 @@ function playerProc(id: number, posX: number, pixelY: number, facing: -1 | 1, mo
   }
 }
 
-/** A materialised ground enemy at a chosen position — an arena OCCUPANT (its Y feeds
- *  scanAreas), NOT on a pad (posX off every pad, so it is never "in use"). */
+/** A materialised ground enemy — an arena OCCUPANT (its Y feeds the SELARE census) that
+ *  also holds the wave open (a `kind:'enemy'` counts as alive). Placed OFF every pad X so
+ *  it is never "in use", and far from the knights so it joustles nobody mid-probe. */
 function enemyProc(id: number, posX: number, pixelY: number): SimProcess {
   return {
     id,
@@ -101,65 +97,85 @@ function enemyProc(id: number, posX: number, pixelY: number): SimProcess {
   } as unknown as SimProcess
 }
 
-/** A pending arrival drawn onto TR2 (middle third), first in line and off its nap, whose
- *  ticket is up — so on today's code serveEnemies serves it the moment a pad is free. */
-function pendingOnTR2(id: number): PendingEnemy {
-  return { arrival: enemyProc(id, TR2_X, TR2_PIXEL_Y), ticket: 0, nap: 0 }
+/** Replace the wrapped sim's process list (a constructed arena), clearing events and the
+ *  waiting room (a queued arrival left in would hold the wave open and materialise
+ *  mid-probe). Preserves serviceQueue — the queue under test. */
+function withProcesses(game: GameState, procs: SimProcess[]): GameState {
+  return {
+    ...game,
+    sim: { ...withNoPendingEnemies(game.sim), sim: { ...game.sim.sim, processes: procs }, events: [] },
+  }
 }
 
-/** A queue where an enemy holds the up ticket (`enemyTurn(q,0)` true: leserv 0, and
- *  npserv == lpserv so the players-first clause does not itself block it). */
-const enemyIsUp: ServiceQueue = { npserv: 0, lpserv: 0, neserv: 1, leserv: 0 }
+/** Seat the wave's queued complement at once (a materialising hold-enemy on the board). */
+const seated = (game: GameState): GameState => ({ ...game, sim: seatWaveInstantly(game.sim) })
 
-/** Stage an explicit arena + waiting room + queue onto a clean wave-1 sim. */
-function stagedSim(processes: readonly SimProcess[], pending: readonly PendingEnemy[], queue: ServiceQueue): SimState {
-  const base = withNoPendingEnemies(createWaveSim(SEED))
-  return { ...base, sim: { ...base.sim, processes }, pendingEnemies: pending, serviceQueue: queue, events: [] }
+const livePlayers = (game: GameState): number[] =>
+  game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SELARE occupancy safety — a re-entering knight materialises ONTO A PAD in an
+//   EMPTY third (CREPLY, JOUSTRV4.SRC:5627-5715). Never a fixed spawn, never starved.
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Stage a partner-kill in a controlled arena, run the respawn to completion, and return the
+ * re-entering knight's landing (pixel x, pixel y). P1 (higher) survives and sits at `p1`;
+ * `occupants` crowd chosen thirds (and hold the wave open). P2 (8px lower) dies and re-enters
+ * — its landing is decided by `selectRespawnPad` over the census of P1 + `occupants`.
+ */
+function respawnLanding(p1: { x: number; y: number }, occupants: SimProcess[]): { x: number; y: number } {
+  const base = withProcesses(createGame(SEED), [
+    playerProc(1, p1.x, p1.y, 1, 'ostrich'),
+    playerProc(2, p1.x + 4, p1.y + 8, -1, 'stork'),
+    ...occupants,
+  ])
+  let game: GameState = {
+    ...base,
+    players: [
+      { ...base.players[0], lives: NSHIP } as PlayerLedger,
+      { ...base.players[1], lives: 3 } as PlayerLedger,
+    ],
+  }
+  game = stepGame(game) // P1 kills P2 (the partner-joust)
+  if (livePlayers(game).includes(2)) throw new Error('staging: P2 did not die to the partner-joust')
+  for (let f = 0; f < 600; f++) {
+    game = stepGame(game)
+    const p2 = game.sim.sim.processes.find((p) => p.kind === 'player' && p.id === 2)
+    if (p2?.entity) return { x: p2.entity.posX, y: p2.entity.posY >> 8 }
+  }
+  throw new Error('staging: P2 never re-entered within the window')
 }
 
-const served = (d: SimState, id: number): boolean => d.sim.processes.some((p) => p.id === id)
-const stillPending = (d: SimState, id: number): boolean => (d.pendingEnemies ?? []).some((pe) => pe.arrival.id === id)
-
-// ═════════════════════════════════════════════════════════════════════════════
-// SELARE occupancy safety — a materialisation DEFERS into an already-crowded third.
-//   gate: serveEnemy on spawnProceeds(scanAreas(occupantYs), tier)
-//   (JOUSTRV4.SRC:5641-5654). RED today: serveEnemies has no occupancy gate.
-// ═════════════════════════════════════════════════════════════════════════════
-describe('jt12-3 SELARE gate — an arrival into an already-crowded third DEFERS', () => {
-  const ARRIVAL = 0xe001
-  // A knight parked in the BOTTOM third (constant across both cases, never touches MIDDLE)
-  // so the sim always has a live process and the ONLY variable is the crowd's third.
-  const parkedKnight = playerProc(1, 3, 0xe0, 1, 'ostrich')
-
-  it('a crowded MIDDLE third defers the TR2 arrival (the SELARE gate is wired)', () => {
-    // Crowd MIDDLE with a materialised enemy at y=0x80. TR2's third is MIDDLE, so
-    // spawnProceeds(scanAreas(occupantYs), 'middle') is false — the arrival must NOT serve.
-    const crowd = enemyProc(0x7001, 5, 0x80)
-    const before = stagedSim([parkedKnight, crowd], [pendingOnTR2(ARRIVAL)], enemyIsUp)
-
-    const after = stepSim(before)
-
-    // STAGING VALIDITY: on today's UNwired code the arrival IS served (proves it was
-    // otherwise serve-eligible — its ticket was up and TR2 was free). This assertion is
-    // what will FLIP: green now, and after the wire the arrival is deferred instead.
-    // THE WIRE (red today): a crowded MIDDLE third defers the spawn — the arrival stays
-    // in the waiting room and does NOT materialise.
-    expect(served(after, ARRIVAL), 'a crowded third must DEFER the arrival — it does not materialise').toBe(false)
-    expect(stillPending(after, ARRIVAL), 'the deferred arrival re-naps with its ticket intact').toBe(true)
+describe('jt12-3 SELARE safety — a re-entering knight lands on a pad in an EMPTY third', () => {
+  it('materialises ON a transporter pad, NOT the fixed initial spawn (x=100/200)', () => {
+    // P1 in the TOP third, one enemy in the TOP third: bottom+middle are empty, so the ROM
+    // prefers the bottom pad TR4. The point here is the CLASS of the landing — a real pad,
+    // not PLAYER2_SPAWN. RED before this story: respawn re-entered at the fixed x=200.
+    const landing = respawnLanding({ x: 100, y: 0x20 }, [enemyProc(0x7001, 5, 0x20)])
+    const onAPad = PADS.some((p) => p.x === landing.x && p.y === landing.y)
+    expect(onAPad, `the re-entry must be on a transporter pad; landed at (${landing.x}, ${landing.y})`).toBe(true)
+    expect(landing.x, 'and NOT the fixed initial-spawn X (PLAYER1_SPAWN=100 / PLAYER2_SPAWN=200)').not.toBe(200)
+    expect(landing.x, 'nor P1 s initial spawn').not.toBe(100)
   })
 
-  it('an empty MIDDLE third still SERVES the TR2 arrival (control — the gate is occupancy-typed)', () => {
-    // Same arrival, but the crowd sits in the TOP third instead, leaving MIDDLE empty.
-    // spawnProceeds(...,'middle') is true → the arrival serves exactly as before. Green
-    // today AND after the wire: kills an "always defer" mutant that would starve every
-    // pad, and a mutant that reads the wrong third.
-    const crowd = enemyProc(0x7001, 5, 0x20)
-    const before = stagedSim([parkedKnight, crowd], [pendingOnTR2(ARRIVAL)], enemyIsUp)
+  it('prefers an EMPTY third — top chosen when middle and bottom are both crowded', () => {
+    // P1 sits in MIDDLE (0x80); an enemy crowds BOTTOM (0xE0). Only the TOP third is empty,
+    // so selectRespawnPad must steer the knight to TR1 (top). Kills a mutant that ignores
+    // occupancy (would land bottom-first on TR4) and one that reads the wrong third.
+    const landing = respawnLanding({ x: 100, y: 0x80 }, [enemyProc(0x7001, 5, 0xe0)])
+    expect(landing, 'middle+bottom crowded → the only empty third (TOP) is chosen: TR1').toEqual({
+      x: TR1.x,
+      y: TR1.y,
+    })
+  })
 
-    const after = stepSim(before)
-
-    expect(served(after, ARRIVAL), 'an empty target third serves the arrival normally').toBe(true)
-    expect(stillPending(after, ARRIVAL), 'a served arrival leaves the waiting room').toBe(false)
+  it('honours the ROM preference ORDER — BOTTOM first when it is empty (TR4)', () => {
+    // P1 and the hold-enemy both in the TOP third: bottom AND middle are empty, and the ROM
+    // checks bottom (AREA3) FIRST (CREPLY :5641-5644). So the knight lands on TR4 (bottom),
+    // not a middle or top pad. Kills a top-first / middle-first ordering mutant.
+    const landing = respawnLanding({ x: 100, y: 0x20 }, [enemyProc(0x7001, 5, 0x20)])
+    expect(landing, 'bottom empty and checked first → TR4').toEqual({ x: TR4.x, y: TR4.y })
   })
 })
 
@@ -170,64 +186,37 @@ describe('jt12-3 SELARE gate — an arrival into an already-crowded third DEFERS
 //   the enemies, served ahead of them (the players-first branch).
 // ═════════════════════════════════════════════════════════════════════════════
 
-/** Replace the wrapped sim's process list (a constructed arena), clearing events and
- *  the waiting room (jt11-4: a queued arrival left in would hold the wave open and
- *  materialise mid-probe). Preserves serviceQueue — the queue under test. */
-function withProcesses(game: GameState, procs: SimProcess[]): GameState {
-  return {
-    ...game,
-    sim: { ...withNoPendingEnemies(game.sim), sim: { ...game.sim.sim, processes: procs }, events: [] },
-  }
-}
-
-/** Seat the wave's queued complement at once (the pre-queue frame-0 arrangement) so a
- *  materialising hold-enemy is on the board to keep the wave open through the respawn. */
-const seated = (game: GameState): GameState => ({ ...game, sim: seatWaveInstantly(game.sim) })
-
-const livePlayers = (game: GameState): number[] =>
-  game.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
-
 /**
- * Stage the proven game-jt4-5 partner-kill: P1 (higher) wins, P2 (8px lower) dies with
- * lives left, so DECLIV falls THROUGH the zero-gate to a CREP re-create. A materialising
- * wave-1 enemy holds the wave open so a survivor-only wave does not clear and re-seed
- * (which would reset the queue). Returns the game AFTER the killing step (P2 removed,
- * lives left, a rebirth due) so each test drives the respawn from an identical state.
+ * Stage the proven game-jt4-5 partner-kill (P1 kills P2, P2 keeps 2 lives → a CREP re-create
+ * is due). A seated wave-1 enemy holds the wave open so it does not clear and re-seed (which
+ * would reset the queue). Returns the game AFTER the killing step.
  */
-function afterPartnerKill(g: {
-  createGame: typeof createGame
-  stepGame: typeof stepGame
-}): GameState {
-  const base = seated(g.createGame(SEED))
+function afterPartnerKill(): GameState {
+  const base = seated(createGame(SEED))
   const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as SimProcess
-  const p1 = playerProc(1, 100, 100, 1, 'ostrich')
-  const p2 = playerProc(2, 104, 108, -1, 'stork')
   const start: GameState = {
-    ...withProcesses(base, [p1, p2, holdEnemy]),
+    ...withProcesses(base, [playerProc(1, 100, 100, 1, 'ostrich'), playerProc(2, 104, 108, -1, 'stork'), holdEnemy]),
     players: [
       { ...base.players[0], lives: NSHIP } as PlayerLedger,
       { ...base.players[1], lives: 3 } as PlayerLedger,
     ],
   }
-  const stepped = g.stepGame(start)
-  return stepped
+  return stepGame(start)
 }
 
 describe('jt12-3 player queue — a re-entering knight is routed through takePlayerNumber', () => {
   it('a re-materialising knight draws a player service number (npserv advances past 0)', () => {
-    const g = { createGame, stepGame }
-    const killed = afterPartnerKill(g)
+    const killed = afterPartnerKill()
 
-    // STAGING VALIDITY (green today — jt4-5 respawn shipped): P2 lost the partner-joust,
-    // keeps two men, is NOT out, and the game is running — a rebirth is genuinely due.
+    // STAGING VALIDITY (green — jt4-5 respawn shipped): P2 lost the partner-joust, keeps two
+    // men, is NOT out, and the game is running — a rebirth is genuinely due.
     expect(livePlayers(killed).includes(2), 'P2 lost the partner-joust and was removed').toBe(false)
     expect(killed.players[1].lives, 'P2 spent one man but keeps two — a rebirth is due').toBe(2)
     expect(killed.players[1].out, 'P2 is not out — it must re-enter').toBe(false)
     expect(killed.gover, 'the game is running through the respawn').toBe(GOVER_RUNNING)
 
-    // Drive the respawn and watch the player counter. THE WIRE (red today): the re-entry
-    // draws NPSERV (`takePlayerNumber`), so npserv climbs past 0. Today no player path
-    // ever touches the queue, so npserv is pinned at 0 forever.
+    // THE WIRE (red before this story): the re-entry draws NPSERV (`takePlayerNumber`), so
+    // npserv climbs past 0. Before jt12-3 no player path ever touched the queue.
     let game = killed
     let reentered = false
     let maxNpserv = game.sim.serviceQueue?.npserv ?? 0
@@ -246,10 +235,8 @@ describe('jt12-3 player queue — a re-entering knight is routed through takePla
     // `lpserv` is advanced ONLY by `servePlayer`, and a knight is served ONLY when
     // `nextServed(queue) === 'player'` — the players-first branch (JOUSTRV4.SRC:5672-5676).
     // So lpserv climbing past 0 is direct proof the now-live branch fired and the knight
-    // was served through CRELP arbitration, ahead of the enemies. RED today: lpserv is
-    // pinned at 0 because no player is ever served through the queue.
-    const g = { createGame, stepGame }
-    const killed = afterPartnerKill(g)
+    // was served through CRELP arbitration, ahead of the enemies.
+    const killed = afterPartnerKill()
     expect(killed.players[1].out, 'staging: P2 has lives left — a rebirth is due').toBe(false)
 
     let game = killed
@@ -270,10 +257,6 @@ describe('jt12-3 player queue — a re-entering knight is routed through takePla
       maxLpserv,
       'the knight was served through the players-first branch (servePlayer via nextServed=player): lpserv > 0',
     ).toBeGreaterThan(0)
-    // Corroborating the same branch from the other side: the queue reported the player
-    // as next-to-serve at least once during the re-entry (the now-live 'players first'
-    // arm of nextServed). Documented as ROM-faithful CRELP-wait — a knight waits its
-    // turn like an enemy (CREP→LDA NPSERV→BRA CRELP).
     expect(sawPlayerNext, "nextServed reported 'player' during the re-entry (the now-live players-first branch)").toBe(
       true,
     )

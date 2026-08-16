@@ -630,21 +630,26 @@ function playerProcess(
 
 /**
  * A RESPAWNING player re-entering via the transporter (the ROM CREP1/CREP2 re-create →
- * transporter-served re-materialise, JOUSTRV4.SRC:5610-5620): a fresh player process at its
- * spawn constants (PLAYER1_SPAWN / PLAYER2_SPAWN), re-materialising inside the SAME bounded
- * jt2-6 window an entering enemy uses — collisions OFF while it lands so a swarm does not
- * re-kill the re-created knight the instant it materialises, then re-enabled when the window
- * ENDS. `advanceMaterialisation` counts the `mat` window down and TIMES IT OUT after
- * `MATERIALISE_WINDOW` naps, at which point PLYINT re-enables collisions (`stepMaterialise`).
- * So a re-entered knight becomes VULNERABLE again and CAN lose
- * all its lives → the loop closes through play (Reviewer Ruling #1). The session layer
- * (game.ts stepGame) owns the lives ledger and the zero-lives gate; this only builds the
- * re-created process. Pure. `playerId` is 1 (P1) or 2 (P2).
+ * CREPLY → GOTTR, JOUSTRV4.SRC:5610-5676): a fresh player process re-materialising ON a
+ * transporter pad, at that pad's `TPOSX/TPOSY` (`GOTTR: LDD TPOSX,X → PPOSX`, :5710-5715).
+ * The pad is chosen by CREPLY's empty-third safety search (`selectRespawnPad`, threaded in
+ * by game.ts's serve), so a re-created knight lands where the arena is CLEAR rather than at
+ * a fixed mid-screen point — the initial spawn X of 100 (P1) / 200 (P2) at :1023/:1039 is
+ * the FIRST-EVER create only, never the re-create. It keeps its P1/P2 identity (facing + mount)
+ * from the spawn constants. Re-materialises inside the SAME bounded jt2-6 window an entering
+ * enemy uses — collisions OFF while it lands so a swarm does not re-kill it the instant it
+ * appears, then re-enabled when the window ENDS (`stepMaterialise` TIMES OUT after
+ * `MATERIALISE_WINDOW` naps → PLYINT re-enable). So a re-entered knight becomes VULNERABLE
+ * again and CAN lose all its lives → the loop closes through play (Reviewer Ruling #1). The
+ * session layer (game.ts stepGame) owns the lives ledger and the zero-lives gate; this only
+ * builds the re-created process. Pure. `playerId` is 1 (P1) or 2 (P2).
  */
-export function respawnPlayerProcess(playerId: number): SimProcess {
+export function respawnPlayerProcess(playerId: number, pad: TransporterPad): SimProcess {
   const spawn = playerId === PLAYER2_ID ? PLAYER2_SPAWN : PLAYER1_SPAWN
   return {
-    ...playerProcess(playerId, spawn.x, spawn.facing, spawn.mount),
+    ...playerProcess(playerId, pad.x, spawn.facing, spawn.mount),
+    // Materialise ON the pad — TPOSX via playerProcess's X, TPOSY here (GOTTR :5710-5715).
+    entity: { ...playerEntity(pad.x), posY: pad.y << 8 },
     collisionEnabled: false,
     mat: beginMaterialise(MATERIALISE_WINDOW),
   }

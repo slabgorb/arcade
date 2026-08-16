@@ -309,7 +309,11 @@ describe('AC-3 integration — a real kill through stepGame credits the right le
     game = { ...game, sim: seatWaveInstantly(game.sim) }
     let killed = false
     let prevP2 = 0
-    for (let f = 1; f <= 400 && !killed; f++) {
+    // jt12-3 RE-BASELINE: the transporter player-queue + SELARE respawn (a re-created knight
+    // queues in CRELP and re-materialises on an empty-third pad) shifts P2's first bounder
+    // kill from ~frame 315 to 406 (a 1-frame queue delay + repositioned re-entries). P2 is
+    // STILL the killer here — the mirror's intent is unchanged; only the window widens.
+    for (let f = 1; f <= 450 && !killed; f++) {
       game = g.stepGame(game, input)
       if (game.players[1].score - prevP2 >= 500) killed = true
       prevP2 = game.players[1].score

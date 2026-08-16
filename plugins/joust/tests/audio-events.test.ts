@@ -537,8 +537,12 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // jt11-11 RE-BASELINE: 2055 -> 958, riding the death above (still death + 1).
     // Measured off the process list, 958 is still a knight-TWO re-entry, so the
     // SNPCR2 attribution survives a seventh move.
-    const before = advanceTo(0xface, 958)
-    const after = stepGame(before, inputsAt(958))
+    // jt12-3 RE-BASELINE: 958 -> 959 (still death + 1). The transporter player-side CRELP
+    // queue went live, so a re-created knight waits one frame in CRELP before it is served —
+    // every re-entry slides +1. Still the knight-TWO re-entry on this seed (measured off the
+    // process list), so the SNPCR2 attribution survives an eighth move.
+    const before = advanceTo(0xface, 959)
+    const after = stepGame(before, inputsAt(959))
     expect(countOf(after, 'player'), 'precondition: the knight really re-enters here').toBe(
       countOf(before, 'player') + 1,
     )
@@ -630,8 +634,14 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // a wave the anti-farming patches cannot reach. 0x1002 deals four buzzards, none on the
     // advance frame itself, served across the WCREATE walk-in below. Script + assertions
     // unchanged.
-    const before = advanceTo(0x1002, 1650)
-    const advanceFrame = stepGame(before, inputsAt(1650))
+    // jt12-3 RE-BASELINE (the transporter player-queue + SELARE respawn went live): a
+    // re-created knight queues in CRELP and re-materialises on an empty-third pad instead of
+    // mid-screen, so it re-enters the fight more slowly and 0x1002's wave 1 now clears far
+    // LATER — swept to the first advance at frame 5525 (wave 1 -> 2). The four buzzards are
+    // then served over the WCREATE walk-in below, comfortably inside the 320-frame window.
+    // Seed, script, assertions unchanged.
+    const before = advanceTo(0x1002, 5525)
+    const advanceFrame = stepGame(before, inputsAt(5525))
     expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     // jt11-4 — nothing materialises on the advance frame itself: the complement has
     // only just taken its numbers and owes the transporter its PCNAP 1
@@ -655,13 +665,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
     // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
     for (let i = 0; i < 320; i++) {
-      g = stepGame(g, inputsAt(1651 + i))
+      g = stepGame(g, inputsAt(5526 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)
       const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
       expect(
         cued,
-        `frame ${1651 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+        `frame ${5526 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
       ).toBe(fresh.length)
       totalArrived += fresh.length
       totalCues += cued
@@ -967,13 +977,21 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // group pins. `wave`, `procs` and P2 are ALSO unmoved — the change is confined to
     // one contact: P1 now keeps a life it used to lose and books 50 fewer (a different
     // promotion reshaped one bird's approach), so scores 200 -> 150 and lives 1 -> 2.
+    //
+    // jt12-3 RE-BASELINE (the transporter player-queue + SELARE respawn is wired: a
+    // re-created knight queues in CRELP and re-materialises on an empty-third pad — sim.ts/
+    // game.ts). ELEVENTH consecutive re-baseline with the headline unmoved: `rng` is STILL
+    // 2_006_456_271 and `wave` still 1 — the selector and queue transforms are pure and draw
+    // no randomness, the law this group pins. Play moved: the repositioned re-entries let both
+    // knights keep a life longer (lives 2/4 -> 3/3) and bank more (scores 150/1050 -> 850/1100),
+    // and enemy#256 is no longer in the frame-2400 arena.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'enemy#256,enemy#4260098,player#2,enemy#4260097,player#1',
-      scores: [150, 1050],
-      lives: [2, 4],
+      procs: 'enemy#4260098,player#2,enemy#4260097,player#1',
+      scores: [850, 1100],
+      lives: [3, 3],
     })
   })
 
@@ -1005,13 +1023,17 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // (3_436_766_652) and `wave` still 1 — the law this group pins. What moved is
     // play-dependent only: the screen-precise mask leaves an uncollected egg#65794 in
     // the arena and P2 banks 600 rather than 1350; lives unchanged at 5/3.
+    // jt12-3 RE-BASELINE (transporter player-queue + SELARE respawn): `rng` bit-identical
+    // AGAIN (3_436_766_652), `wave`, `procs` and P1 all unmoved — the queue/selector are pure.
+    // The only shift is P2 keeps a life it used to lose (lives 5/3 -> 5/4) and banks 50 fewer
+    // (600 -> 550) as one repositioned re-entry changes a single contact.
     expect(fingerprint(0x2468, 900)).toEqual({
       frame: 900,
       rng: 3_436_766_652,
       wave: 1,
       procs: 'player#1,enemy#256,enemy#257,egg#65794,player#2',
-      scores: [0, 600],
-      lives: [5, 3],
+      scores: [0, 550],
+      lives: [5, 4],
     })
   })
 
