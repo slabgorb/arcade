@@ -31,6 +31,6 @@ stories:
     title: "Fix the bottom HUD band in shell/render.ts drawHud: reserve-life icons render as closed-mouth discs (drawPacman frame 0 = PAC_CLOSED sprite 48; use the open-mouth left frame PAC_FRAMES.left[2]/sprite 44) AND the 16px life+fruit icons overlap the row-33 bottom border wall because the actor -4px centring offset anchors them into row 33 (compensate by +（SPRITE_PX-TILE_PX)/2 so they fill rows 34-35). Shell-render only; see context-story-pm5-4.md for the full diagnosis. Reported 2026-08-16 w/ screenshot."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
