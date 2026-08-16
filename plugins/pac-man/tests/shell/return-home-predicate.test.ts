@@ -6,17 +6,17 @@
 // DIFFERENT questions, and today each site spells its own inline:
 //
 //   • "draw this ghost at all?"  →  returning[id] !== null   (eyes IN TRANSIT
-//     OR the regenerated body climbing back out).  main.ts:232 inlines this;
-//     core already exports the SAME predicate as `isReturningHome` (game.ts:278)
-//     but NO production code calls it — only tests do.
+//     OR the regenerated body climbing back out).  main.ts's draw gate inlines
+//     this; core already exports the SAME predicate as `isReturningHome`
+//     (game.ts `isReturningHome`) but NO production code calls it — only tests do.
 //   • "render it AS EYES?"       →  returning[id] === 'eyes'  (the eyes phase
 //     ONLY, never the regenerated body).  render.ts's `ghostRenderMode` owns
 //     this and it MUST stay distinct — routing it through `isReturningHome`
 //     would draw a climbing-out body as eyes, a regression.
 //
 // SM RULING (pm5-1): ROUTE-THROUGH, not delete. Give `isReturningHome` its
-// first production consumer — main.ts:232 calls it in place of the inline
-// `!== null`. render.ts's `=== 'eyes'` is LEFT ALONE. Behaviour is unchanged
+// first production consumer — main.ts's draw gate calls it in place of the
+// inline `!== null`. render.ts's `=== 'eyes'` is LEFT ALONE. Behaviour is unchanged
 // (a pure refactor), which is why Part B below is GREEN on arrival.
 //
 //   Part A (AC1, RED on arrival): main.ts routes the draw gate through
@@ -53,6 +53,12 @@ const mainSource = readFileSync(join(srcDir, MAIN_TS), 'utf8')
 
 function parse(source: string, filename: string): ts.SourceFile {
   const sf = ts.createSourceFile(filename, source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TS)
+  // `parseDiagnostics` is a real but UNEXPORTED field on the SourceFile the API
+  // returns — there is no public typed accessor, so the double-cast is the only
+  // way to read it. Same idiom, same reason, as tests/helpers/purity-scanner.ts
+  // (its anti-fallback rule): a source this scanner cannot PARSE must fail the
+  // scan loudly, never certify silently. Without this an unparseable main.ts
+  // would make callCount()/returningNullCompareCount() both return 0 and pass.
   const parseErrors = (sf as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics
   expect(parseErrors?.length ?? 0, `${filename} must parse for this scan to mean anything`).toBe(0)
   return sf
