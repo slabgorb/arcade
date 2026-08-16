@@ -799,8 +799,11 @@ function stepPlayingSim(state: GameState, input: GameInput): void {
         state.gameOverFrames = 0 // pm4-10: start the GAME OVER hold clean (mirrors dying's freezeFrames reset)
         const qualifies = qualifiesForHighScore(state.highScoreTable, state.score)
         if (qualifies) {
+          // Name entry rides the STATE contract — the shell opens it off
+          // `state.nameEntry` (main.ts) via @shared/name-entry. No event is
+          // emitted: a parallel `high-score-qualified` event had no consumer
+          // and was removed in pm5-3.
           state.nameEntry = { qualifies: true, buffer: '', confirmed: false }
-          state.events.push({ type: 'high-score-qualified' })
         }
       } else {
         state.freezeFrames = 0

@@ -5,7 +5,9 @@ sprint:
   jira_sprint_name: "TO Sprint 2635"
   goal: Missile Command mc7 and follow-ups
 
-completed_epics: []
+completed_epics:
+  - mc11
+  - pm5
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -46,4 +48,14 @@ completed_stories:
     epic: jt12
     title: "Wire the WSMART budget refund/debit so smart-enemy pressure is sustained: call creditDeath (core/enemy.ts:566) in the death/removal path (alongside bookDeath/countBaiterDeaths) to decrement nsmart when a smart enemy dies, and remountBudgetDebit (core/egg.ts:339) on the egg->remount transition. Assert that after a smart enemy dies mid-wave a replacement can be promoted (nsmart no longer latches at wsmart). JOUSTRV4.SRC:2962 CREEM"
     points: 5
+    completed: '2026-08-16'
+  - id: mc11-3
+    epic: mc11
+    title: "Wire the name-entry timeout + start-abort: add a per-frame countdown to the 'entry' step branch that calls abortNameEntry (core/game.ts:274) on 30-second expiry, and map the start switch to abort during entry, returning to attract with the buffer cleared and the ladder unchanged. Assert both the timeout and start-abort paths. REV-01 W3DSUP.MAC:4076/:4086 TAKE INITIALS abort"
+    points: 5
+    completed: '2026-08-16'
+  - id: pm5-3
+    epic: pm5
+    title: "Resolve the redundant high-score-qualified event (events.ts:89 / emit game.ts:803): either delete it (name entry already opens off state.nameEntry at main.ts:162) or re-document it explicitly as a pure state mirror; and demote THEME_FRAMES (tune.ts:153) / PHASES (phase.ts:26) to test-only oracles or wire the readers their docs promise. Documentation/no-op — no behaviour change."
+    points: 2
     completed: '2026-08-16'

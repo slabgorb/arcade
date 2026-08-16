@@ -149,7 +149,9 @@ export const THEME_MELODY: TunePart = decodeNoteStream(THEME_MELODY_STREAM, 4)
 const partFrames = (part: TunePart): number =>
   part.notes.reduce((sum, note) => sum + note.frames, 0)
 
-/** Theme length in engine frames (the longer part — the bass, 256). */
+/** Theme length in engine frames — the longer part (the bass, 256).
+ *  Test-only oracle: derived here so the tune/audio tests can drive a full theme
+ *  cycle; no runtime reader by design (the driver loops on its own part lengths). */
 export const THEME_FRAMES = Math.max(partFrames(THEME_BASS), partFrames(THEME_MELODY))
 
 /** Which `wsg.play` channels the two parts ride. The pm2-3 driver keeps its

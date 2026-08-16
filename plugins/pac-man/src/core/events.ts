@@ -84,12 +84,6 @@ export interface GameOverEvent {
   readonly type: 'game-over'
 }
 
-/** The final score qualifies for the persisted high-score table — the shell
- *  opens name entry (`@shared/name-entry`) in response. */
-export interface HighScoreQualifiedEvent {
-  readonly type: 'high-score-qualified'
-}
-
 export type GameEvent =
   | DotEatenEvent
   | EnergizerEatenEvent
@@ -101,4 +95,3 @@ export type GameEvent =
   | ExtraLifeEvent
   | LevelClearedEvent
   | GameOverEvent
-  | HighScoreQualifiedEvent

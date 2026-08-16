@@ -267,3 +267,39 @@ describe('pm4-10: the full game-over -> attract loop runs from a real death', ()
     expect(frames, 'and the post-confirm window is exactly the constant').toBe(GAME_OVER_HOLD_FRAMES)
   })
 })
+
+// ───────────────────────────────────────────────────────────────────────────────
+// pm5-3 AC1 (RED) — the `high-score-qualified` event is REDUNDANT and deleted.
+// Name entry opens off the STATE contract (`state.nameEntry`, main.ts gate),
+// driven by @shared/name-entry — nothing ever consumed the event (overlays/audio
+// explicitly skip it; grep of src/shared is empty). This drives the deletion:
+// the same lethal frame that opens initials must NOT carry the event, while the
+// state contract that actually opens them is proven still intact.
+// RED now (game.ts:803 still pushes it); GREEN once the emit + union member go.
+// ───────────────────────────────────────────────────────────────────────────────
+describe('pm5-3 AC1: the redundant high-score-qualified event is deleted', () => {
+  it('opens name entry off state on a qualifying game-over WITHOUT emitting the event', () => {
+    const s = createGameState(SEED)
+    forcePhase(s, 'playing')
+    s.lives = 1
+    s.score = 5000 // a clearly-qualifying score against the empty default table
+    arrangeDeath(s)
+
+    stepGame(s, { dir: 'none' }) // the lethal frame: playing -> game-over
+
+    // Behaviour PRESERVED — deletion must not touch the real (state) mechanism.
+    expect(s.phase, 'the last life ends the run in game-over').toBe('game-over')
+    expect(s.nameEntry, 'the state contract still opens the initials screen').not.toBeNull()
+    expect(s.nameEntry?.qualifies, 'and flags it qualifying').toBe(true)
+
+    // The redundant event is gone. `as string` widens off the GameEvent['type']
+    // union so this line still type-checks AFTER the member is removed (checklist
+    // #1: the cast is deliberate, not a type-safety escape) — a bare literal
+    // comparison would become an impossible-overlap error (TS2367) post-deletion.
+    const kinds = s.events.map((e) => e.type as string)
+    expect(
+      kinds,
+      'pm5-3: high-score-qualified is deleted — name entry rides state.nameEntry, not this event',
+    ).not.toContain('high-score-qualified')
+  })
+})

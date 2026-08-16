@@ -54,7 +54,15 @@ import {
 } from './sputnik.js'
 import { killIcbmsInBlasts, resolveGroundImpacts, killSputniksInBlasts } from './damage.js'
 import { scoreKills, scoreMultiplier, CRUISE_SCORE_MULT } from './score.js'
-import { nextPhase, nextWavePhase, resumePlay, advanceOverTimeout, INITIAL_PHASE, type Phase } from './state.js'
+import {
+  nextPhase,
+  nextWavePhase,
+  resumePlay,
+  advanceOverTimeout,
+  NAME_ENTRY_TIMEOUT_FRAMES,
+  INITIAL_PHASE,
+  type Phase,
+} from './state.js'
 import {
   DEFAULT_HIGH_SCORES,
   qualifiesForHighScore,
@@ -106,6 +114,16 @@ export interface GameState {
    *  `OVER_TIMEOUT_FRAMES` the MAINLINE loop closes back to the attract demo. Held at 0
    *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
   readonly overFrames: number
+  // mc11-3: the entry-abort TIMEOUT models the ROM's TAKE-INITIALS countdown
+  // (W3DSUP.MAC:4080-4088); the frame count itself is NAME_ENTRY_TIMEOUT_FRAMES in state.ts.
+  // (ROM line ref in a // comment, not the JSDoc below — the un-cited-literal scanner strips
+  // // but not /** */.)
+  /** Frames elapsed in phase `'entry'` (mc11-3). Counts up while the initials screen waits
+   *  for input; at `NAME_ENTRY_TIMEOUT_FRAMES` the entry aborts back to attract (buffer
+   *  discarded, ladder unchanged). Reset to 0 on EVERY entry/exit transition —
+   *  `enterNameEntry`, `abortNameEntry` and `commitNameEntry` all zero it — so it is held at
+   *  0 in every non-entry phase; only the `'entry'` branch of `stepGame` advances it. */
+  readonly entryFrames: number
   /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
    *  boot; commit inserts into it; the shell loads/saves it on boot/commit (mc7-3 —
    *  src/main.ts + shell/highscore.ts, one-origin localStorage). */
@@ -155,6 +173,7 @@ export function createPlayGame(seed = 1): GameState {
     score: 0,
     phase: 'play',
     overFrames: 0,
+    entryFrames: 0,
     highScores: DEFAULT_HIGH_SCORES,
     initials: '',
     remaining: waveSchedule(INITIAL_WAVE).count,
@@ -237,7 +256,9 @@ export const MC_INITIALS_LEN = 3
  *  `'over'`->`'attract'` timeout is mc6's edge). Pure. */
 export function enterNameEntry(state: GameState): GameState {
   if (state.phase !== 'over' || !qualifiesForHighScore(state.highScores, state.score)) return state
-  return { ...state, phase: 'entry', initials: '' }
+  // mc11-3: reset the abort countdown on entry so every entry gets a fresh TAKE-INITIALS
+  // window (a prior entry's leftover count must not abort this one on frame 1).
+  return { ...state, phase: 'entry', initials: '', entryFrames: 0 }
 }
 
 /** One initials keydown during `'entry'`: advance the buffer via
@@ -261,19 +282,21 @@ export function commitNameEntry(state: GameState): GameState {
     highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
     initials: '',
     phase: 'attract',
+    entryFrames: 0, // mc11-3: zero the entry countdown on this exit path too (held-at-0 invariant)
   }
 }
 
 // abortNameEntry — the shared result of BOTH ROM abort triggers (a start-switch
 // press, W3DSUP.MAC:4076; or the timeout, :4086-:4088): return to attract with the
-// buffer cleared and the ladder UNCHANGED. The shell decides WHEN to call it; the
-// per-frame countdown wiring is the deferred O-7b input-mapping item.
-/** Abort name entry: return to attract, clear the buffer, and leave the ladder
- *  UNCHANGED — no insert, even from a full buffer (a timeout on the last letter
- *  discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
+// buffer cleared, the ladder UNCHANGED, and the entry countdown zeroed. mc11-3 WIRED
+// both triggers (this is the O-7b input-mapping item): the timeout via stepGame's
+// 'entry' branch, the start switch via shell startAbortFromKey — both call this verb.
+/** Abort name entry: return to attract, clear the buffer, reset the entry countdown,
+ *  and leave the ladder UNCHANGED — no insert, even from a full buffer (a timeout on the
+ *  last letter discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
 export function abortNameEntry(state: GameState): GameState {
   if (state.phase !== 'entry') return state
-  return { ...state, initials: '', phase: 'attract' }
+  return { ...state, initials: '', phase: 'attract', entryFrames: 0 }
 }
 
 // mc6-4: the SMART CURSOR MOVER (ATTRACT) — AUTCUR, W3MAIN.MAC:895 (.SBTTL :891,
@@ -365,7 +388,17 @@ export function stepGame(state: GameState): GameState {
   // dropping the screen + initials buffer). Advance only the clock, keep the sound
   // channel quiet, and hold every game field — including the initials buffer —
   // byte-identical while the shell drives stepInitials/commitNameEntry over it.
-  if (state.phase === 'entry') return { ...state, frame: state.frame + 1, soundEvents: [] }
+  //
+  // mc11-3: WIRE THE TAKE-INITIALS TIMEOUT. GETINI counts a per-frame countdown down from
+  // UCVTAB and aborts the entry when it hits 0 (W3DSUP.MAC:4080-4088); we model that as an
+  // entry-frame counter that, at NAME_ENTRY_TIMEOUT_FRAMES, returns abortNameEntry -> attract
+  // with the buffer discarded and the ladder unchanged (a timeout on the last letter does NOT
+  // commit). Below the threshold, freeze exactly as before, advancing the entry counter too.
+  if (state.phase === 'entry') {
+    const entryFrames = state.entryFrames + 1
+    if (entryFrames >= NAME_ENTRY_TIMEOUT_FRAMES) return abortNameEntry(state)
+    return { ...state, frame: state.frame + 1, entryFrames, soundEvents: [] }
+  }
 
   // mc6-3: while paused, freeze the battle exactly as 'over' does — advance only the
   // clock, keep the sound channel quiet, hold every game field byte-identical, and

@@ -104,7 +104,7 @@ export function createOverlays(): Overlays {
           banner = 'game-over'
           break
         // level-cleared/energizer-eaten/fruit-spawned/fruit-expired/pac-died/
-        // extra-life/high-score-qualified have no overlay: score/lives render
+        // extra-life have no overlay: score/lives render
         // every frame via drawHud, and the level-clear pause (a sim freeze, no
         // strobe) is core work in pm4-7 — see the pm4-1 note by POPUP_FRAMES.
         default:

@@ -3,7 +3,7 @@ type: epic
 title: 'Missile Command — wire the post-mc5 unwired seams: sputnik cruise-borrow, bonus count-up cue, name-entry timeout; retire dead twins'
 description: "Eleventh Missile Command epic. Three built-and-tested seams never reach production play, two of them because a post-mc5 comment went stale after the story it named shipped (unwired-feature audit 2026-08-16). (1) sputnikFireCount (core/sputnik.ts:107) clamps a plane's salvo by 2*cruiseOnScreen (the PLCPV cruise-borrow), but its sole caller (game.ts:493) hardcodes cruiseOnScreen=0 behind a stale comment 'cruiseOnScreen is 0 until mc5-3' — mc5-3 (cruise missiles) shipped, so planes now fire oversized salvos whenever cruise missiles are on screen; the fix is one line (pass the live cruise count). (2) The bonus count-up cue (bonusTick/TK, sound-events.ts:63 -> audio-dispatch.ts:51 -> audio.ts:39, TK table sound-tables.ts:75) is fully wired downstream but nothing ever constructs a {type:'bonusTick'} event — the 'between' resolution (game.ts:401-420) pays the bonus as a lump waveEndBonus with soundEvents:[] (confession sound-events.ts:62 'Emitter is a filed follow-up'), so the per-unit end-of-wave count-up (W3SOUN/SUNABM) is silent. (3) abortNameEntry (core/game.ts:274) — the ROM's TAKE-INITIALS 30-second timeout and start-switch abort (W3DSUP.MAC:4076/:4086) — has no caller, so during initials entry the player can only commit or edit forever (confession game.ts:270: the per-frame countdown is the deferred O-7b item). A fourth cleanup story retires redundant dead twins that later stories superseded inline. Reuses existing tested code; ground truth REV-01 (W3DSUP.MAC / W3SOUN). Every new src/core constant carries a citation-gated claim; purity.test.ts stays green."
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc11-1
@@ -30,9 +30,13 @@ stories:
     title: "Wire the name-entry timeout + start-abort: add a per-frame countdown to the 'entry' step branch that calls abortNameEntry (core/game.ts:274) on 30-second expiry, and map the start switch to abort during entry, returning to attract with the buffer cleared and the ladder unchanged. Assert both the timeout and start-abort paths. REV-01 W3DSUP.MAC:4076/:4086 TAKE INITIALS abort"
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-16'
+    review_findings: "APPROVED (round 3). All findings across 3 rounds resolved and mutation-verified: R1 stale 'deferred O-7b' confession + self-contradictory ROM citations fixed; R2 test-rigor gaps CLOSED — rule-checker live-mutation-confirmed the flip test (>=/> reddens 'expected exactly 2112') and all three entryFrames:0 resets (each deletion reddens). Rule-checker clean (32 rules/0 violations); preflight 1404/1404; security clean. One LOW non-blocking follow-up: game.ts:388 reword the mc7-3 'byte-identical' comment (correct behaviour already documented adjacent)."
+    review_verdict: approved
   - id: mc11-4
     title: "Retire the redundant dead twins (delete or route the live path through them, per each): the mainline/stateCode MAINLINE-dispatch skeleton (state.ts:92, bypassed by stepGame), applyPointerMotion (shell/input.ts:42, superseded by placeCursor), launchFromKey (input.ts:69, superseded by fireFromKey), cruiseKillPoints (core/score.ts:61, inlined at game.ts:585), computeLetterbox (shell/viewport.ts:53, twin of applyLetterbox), and INITIAL_ATTRACT (state.ts:121). Keep any symbol still asserted by a claim test; only its dead runtime role goes."
     points: 3
@@ -44,3 +48,4 @@ stories:
     completed: '2026-08-16'
     review_findings: 'APPROVED round 3 (final). Retired 3 dead twins (launchFromKey/cruiseKillPoints/computeLetterbox); kept 4 claim-pinned symbols; behavioural tests re-pointed onto live symbols (verified non-vacuous by rule-checker mutation test + test-analyzer). 3 review rounds: rounds 1-2 rejected on doc-only stale comments (4 total), all fixed and re-verified clean; code byte-identical since first GREEN. Full cabinet green.'
     review_verdict: approved
+completed: '2026-08-16'
