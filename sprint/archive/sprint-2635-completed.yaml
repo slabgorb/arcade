@@ -73,3 +73,8 @@ completed_stories:
     title: 'Collision core FIRST (RED first, TDD): plugins/defender/src/core/collision.ts — port the ROM COLIDE object-pointer-list box hit test (defender/DEFA7.SRC:2904-2907), the collision-picture return (RET+2=COLLISION PICT, defender/DEFA7.SRC:2553) and the screen-collision address model (CENTMP, defender/DEFA7.SRC:3008), exposed as the three cited query shapes: laser-vs-object (defender/DEFA7.SRC:2775-2787), bomb-vs-player (defender/DEFA7.SRC:2699), ship-vs-object (defender/DEFA7.SRC:3130-3142). Pure and clock-free, tested against SYNTHETIC object lists (no enemy needed yet); the shared seam every df4 enemy inherits. purity.test.ts stays green; every constant gated by a claims/*.json entry.'
     points: 5
     completed: '2026-08-16'
+  - id: ml11-2
+    epic: ml11
+    title: "Attract enemy-showcase: draw the per-creature BLACK cell panels behind the sprites (attract-mame-reference.png shows solid black panels; renderShowcase currently blits sprites straight onto the blue background)."
+    points: 2
+    completed: '2026-08-16'
