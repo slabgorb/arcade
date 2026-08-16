@@ -37,7 +37,8 @@
 // ─── THE ADR-0005 SUBSTITUTION (the ONE exception to ROM-always-wins) ──────────────
 // Three ROM effects are full-screen white/inverse STROBES the owner (photosensitive
 // epilepsy) cannot safely playtest: player death / terrain explosion (the `TERBLO`
-// 'BLOW UP TERRAIN' process, DEFB6.SRC:434 `NEWP TERBLO` / :437 label), and — in df5 —
+// 'BLOW UP TERRAIN' process, triggered by `NEWP TERBLO` DEFB6.SRC:434; the TERBLO label is
+// DEFB6.SRC:439, under the `*TERRAIN BLOW PROCESS` banner at :437), and — in df5 —
 // smart bomb and hyperspace. ADR-0005 rules: the effect's TRIGGER and TIMING are ported and
 // cited as usual (the constants below, enrolled in claims/14-effects.json and byte-verified
 // by tests/audit/brief-dossier.test.ts); only the strobe PRESENTATION is substituted by a
@@ -131,14 +132,29 @@ export function startExplode(picture: ObjectImage): EffectState {
  *            (CMPA #$30 / BLS — the high byte passing $30).
  *   APPEAR : `size -= APPEAR_STEP` (SUBD #$100); finished once `size < 0x8000` (BPL — the
  *            signed value going non-negative as $AF00 counts down through $8000 to $7F00).
+ * A non-finite `size` (a corrupted, hand-built EffectState) throws rather than animating
+ * forever — with NaN, `(size >> 8)` folds to 0 and `size < SIGN_BIT` is false, so `done`
+ * would never fire and a per-frame `advance` loop would never retire the effect.
  */
 export function advance(effect: EffectState): EffectState {
-  if (effect.kind === 'explode') {
-    const size = effect.size + EXPLODE_GROW
-    return { ...effect, size, done: (size >> 8) > EXPLODE_DONE_HI }
+  if (!Number.isFinite(effect.size)) {
+    throw new Error(
+      `advance: non-finite effect size (${String(effect.size)}) — an EffectState must be seeded ` +
+        'by startAppear/startExplode, not hand-built; a corrupted size never reaches `done`.',
+    )
   }
-  const size = effect.size - APPEAR_STEP
-  return { ...effect, size, done: size < SIGN_BIT }
+  switch (effect.kind) {
+    case 'explode': {
+      const size = effect.size + EXPLODE_GROW
+      return { ...effect, size, done: (size >> 8) > EXPLODE_DONE_HI }
+    }
+    case 'appear': {
+      const size = effect.size - APPEAR_STEP
+      return { ...effect, size, done: size < SIGN_BIT }
+    }
+    default:
+      return assertNever(effect.kind)
+  }
 }
 
 // ─── The ADR-0005 effect-policy classifier (AC2) ─────────────────────────────────────
@@ -146,7 +162,8 @@ export function advance(effect: EffectState): EffectState {
 /**
  * Classify an effect event: LOCALIZED (rastered normally) vs FULL-FRAME-STROBE (rendered as
  * an ADR-0005 safe variant). The player death becomes a freeze+fade of the existing frame;
- * the terrain explosion (TERBLO, DEFB6.SRC:434,437) becomes a non-strobing particle burst.
+ * the terrain explosion (TERBLO — trigger `NEWP TERBLO` DEFB6.SRC:434, label at :439) becomes
+ * a non-strobing particle burst.
  */
 export function classify(event: EffectEvent): EffectPolicy {
   switch (event) {
@@ -170,20 +187,38 @@ function assertNever(event: never): never {
 // ─── The ADR-0005 render-side guard (AC3) ────────────────────────────────────────────
 
 /**
- * The render guard ADR-0005 §Decision.4 requires. Throws if applying an effect turned
- * `before` into `after` as a WHOLE-FRAMEBUFFER strobe in a single frame — either
- *   • a WHITE-FILL: every cell is the max index ($F), and it was not already uniformly $F, or
- *   • an INVERSION: every cell is the 4-bit complement of the cell it replaced ($F ^ before).
- * A bounded/localized change, a freeze (no change), or a partial fade passes. Frame nibble
- * indices are compared cell-for-cell; mismatched lengths are treated as a change but never a
- * whole-frame strobe.
+ * The render guard ADR-0005 §Decision.4 requires. This is a MEDICAL-SAFETY guard, so it
+ * FAILS CLOSED: a frame pair it cannot compare is refused, not waved through.
+ *
+ * It throws when:
+ *   • the frames are un-comparable — `after` is empty, or the two lengths differ, or any cell
+ *     is non-finite (a corrupted frame it cannot certify safe), OR
+ *   • applying an effect turned `before` into `after` as a WHOLE-FRAMEBUFFER strobe in a
+ *     single frame — either a WHITE-FILL (every cell the max index $F, not already uniform $F)
+ *     or an INVERSION (every cell the 4-bit complement, $F ^ before).
+ * A bounded/localized change, a freeze (no change), or a partial fade of an equal-length,
+ * finite frame passes.
+ *
+ * SCOPE (df4-2): it catches the ROM's two literal strobe forms — the COM-inversion (df5's
+ * smart bomb inverts colour RAM) and the white-fill — which is AC3's "whole-framebuffer
+ * inversion/white-fill". A near-total strobe that spares a cell, or a uniform fill to a
+ * bright index other than $F, is NOT caught here; generalising to a tolerance-based
+ * "no near-full-screen flash" is df7's job (the "no strobe anywhere" assertion). See the
+ * df4-2 review follow-up.
  */
 export function assertNoFullFrameStrobe(
   before: Uint8Array | readonly number[],
   after: Uint8Array | readonly number[],
 ): void {
+  // Fail CLOSED: a guard that cannot line the two frames up must refuse to certify the frame
+  // safe rather than vacuously pass it (the repo's own "zero-canvas no-NaN guard vacuous" trap).
   const n = after.length
-  if (n === 0) return
+  if (n === 0 || before.length !== n) {
+    throw new Error(
+      `assertNoFullFrameStrobe: cannot certify a malformed frame pair safe — before.length=` +
+        `${before.length}, after.length=${n} (both must be equal and non-zero) — ADR-0005 fails closed.`,
+    )
+  }
 
   let changed = false
   let allWhite = true
@@ -191,11 +226,18 @@ export function assertNoFullFrameStrobe(
   for (let i = 0; i < n; i++) {
     const b = before[i]
     const a = after[i]
+    // A non-finite cell (NaN/±Infinity, reachable on the `number[]` overload) makes every
+    // `!==` below true, which would silently clear allWhite/allInverted and PASS a corrupted
+    // frame. Refuse it instead — a corrupted frame cannot be certified safe.
+    if (!Number.isFinite(a) || !Number.isFinite(b)) {
+      throw new Error(
+        `assertNoFullFrameStrobe: non-finite cell at index ${i} (before=${String(b)}, after=${String(a)}) — ` +
+          'a corrupted frame cannot be certified safe — ADR-0005 fails closed.',
+      )
+    }
     if (a !== b) changed = true
     if (a !== INDEX_MAX) allWhite = false
-    // A cell outside `before`'s range (length mismatch) has no complement to match, so it
-    // cannot be part of a whole-frame inversion.
-    if (i >= before.length || a !== (INDEX_MAX ^ b)) allInverted = false
+    if (a !== (INDEX_MAX ^ b)) allInverted = false
   }
 
   if (!changed) return // a freeze holds the frame — safe

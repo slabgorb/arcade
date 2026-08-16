@@ -37,7 +37,8 @@
 // ─── THE ADR-0005 SUBSTITUTION (the ONE exception to ROM-always-wins) ──────────────
 //   Three ROM effects are full-screen white/inverse STROBES the owner (photosensitive
 //   epilepsy) cannot safely playtest: player death / terrain explosion (the `TERBLO`
-//   'BLOW UP TERRAIN' process, DEFB6.SRC:434 `NEWP TERBLO` / :437 label), smart bomb and
+//   'BLOW UP TERRAIN' process, triggered by `NEWP TERBLO` DEFB6.SRC:434; the TERBLO label is
+//   DEFB6.SRC:439, under the `*TERRAIN BLOW PROCESS` banner at :437), smart bomb and
 //   hyperspace (df5). ADR-0005 rules: the effect's TRIGGER and TIMING are ported and cited
 //   as usual; only the strobe PRESENTATION is replaced by a seizure-safe variant —
 //     player death        → a brief FREEZE + FADE of the existing frame
@@ -284,7 +285,8 @@ describe('AC1 — the APST/EXST lifecycle over an INERT picture, as a pure reduc
 // AC2 — the effect-policy classifier distinguishes LOCALIZED effects (rastered normally)
 // from FULL-FRAME-STROBE effects (rendered as an ADR-0005 safe variant). The ordinary enemy
 // explosion rasters; the player death renders as freeze/fade; the terrain explosion
-// (TERBLO, DEFB6.SRC:434,437) renders as a non-strobing particle burst. Mutation-lethal: a
+// (TERBLO — trigger `NEWP TERBLO` DEFB6.SRC:434, label at :439) renders as a non-strobing
+// particle burst. Mutation-lethal: a
 // classifier that returns one class for everything fails half these, in either direction.
 // ══════════════════════════════════════════════════════════════════════════════════════
 describe('AC2 — the ADR-0005 effect-policy classifier', () => {
@@ -303,7 +305,7 @@ describe('AC2 — the ADR-0005 effect-policy classifier', () => {
     ).toContain(death.presentation)
   })
 
-  it('the terrain explosion (TERBLO, DEFB6.SRC:434,437) is a FULL-FRAME-STROBE rendered as a particle burst', async () => {
+  it('the terrain explosion (TERBLO, trigger DEFB6.SRC:434 / label :439) is a FULL-FRAME-STROBE rendered as a particle burst', async () => {
     const { classify } = await loadEffects()
     expect(classify('terrain-blow')).toEqual({ class: 'full-frame-strobe', presentation: 'particle' })
   })
@@ -407,5 +409,74 @@ describe('AC4 — the lifecycle constants are the ROM’s, and are enrolled in c
         'lifecycle constants (:136/:138/:163) and the TERBLO trigger (DEFB6.SRC:434); ' +
         'brief-dossier.test.ts then byte-verifies each verbatim against the vendored source',
     ).toBeDefined()
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════════════
+// REWORK (df4-2 review, round 1) — the ADR-0005 guard and advance() must FAIL CLOSED.
+// The Reviewer found the guard passed silently on frames it could not compare (empty,
+// mismatched-length, NaN cells) and advance() never terminated on a non-finite size. A
+// medical-safety guard must refuse a frame it cannot certify, not wave it through. These
+// tests pin the fail-closed behaviour (R3/R4) and advance()'s guards (R5/R6).
+// ══════════════════════════════════════════════════════════════════════════════════════
+describe('Rework — assertNoFullFrameStrobe fails CLOSED on frames it cannot certify', () => {
+  it('THROWS on an empty `after` frame (zero-canvas — no vacuous safe pass)', async () => {
+    const { assertNoFullFrameStrobe } = await loadEffects()
+    // The repo's own recorded "zero-canvas no-NaN guard vacuous" trap: a 0-length frame must
+    // not certify as safe. before is non-empty so this is unambiguously a malformed pair.
+    expect(() => assertNoFullFrameStrobe(variedFrame(), new Uint8Array(0))).toThrow()
+    expect(() => assertNoFullFrameStrobe(new Uint8Array(0), new Uint8Array(0))).toThrow()
+  })
+
+  it('THROWS on a length-mismatched frame pair (cannot line the frames up)', async () => {
+    const { assertNoFullFrameStrobe } = await loadEffects()
+    // A truncated/oversized `after` cannot be compared cell-for-cell against `before`; the
+    // guard must refuse rather than check only the overlapping prefix.
+    expect(() => assertNoFullFrameStrobe(variedFrame(), variedFrame().slice(0, 32))).toThrow()
+    expect(() => assertNoFullFrameStrobe(variedFrame().slice(0, 32), variedFrame())).toThrow()
+  })
+
+  it('THROWS on a non-finite cell value (a corrupted frame cannot be certified safe)', async () => {
+    const { assertNoFullFrameStrobe } = await loadEffects()
+    // A NaN cell (reachable on the readonly number[] overload) makes every `!==` true, which
+    // would silently clear the strobe flags and PASS a corrupted-to-white frame — the fail-OPEN
+    // direction. It must throw instead. Same-length arrays so ONLY the NaN triggers the throw.
+    const before = Array.from({ length: 64 }, (_, i) => i % 16)
+    const corrupted = before.map((v, i) => (i === 7 ? NaN : v))
+    expect(() => assertNoFullFrameStrobe(before, corrupted)).toThrow()
+    // A NaN hiding in `before` is equally uncertifiable.
+    const badBefore = before.map((v, i) => (i === 3 ? NaN : v))
+    expect(() => assertNoFullFrameStrobe(badBefore, before)).toThrow()
+  })
+
+  it('still PASSES a well-formed equal-length frame that is not a strobe (no over-blocking)', async () => {
+    const { assertNoFullFrameStrobe } = await loadEffects()
+    // The fail-closed guards must not reject legitimate frames: a freeze and a one-cell change
+    // on an equal-length, finite frame still pass.
+    const before = variedFrame()
+    expect(() => assertNoFullFrameStrobe(before, Uint8Array.from(before))).not.toThrow()
+    const nudged = Uint8Array.from(before)
+    nudged[9] = (nudged[9] + 1) & 0xf
+    expect(() => assertNoFullFrameStrobe(before, nudged)).not.toThrow()
+  })
+})
+
+describe('Rework — advance() guards its inputs (R5/R6)', () => {
+  it('THROWS on a non-finite `size` instead of animating forever', async () => {
+    const { advance, startExplode, startAppear } = await loadEffects()
+    // A hand-built corrupted state: with NaN, `(size>>8)` folds to 0 and `size<0x8000` is false,
+    // so `done` would never fire and a per-frame loop would never retire the effect.
+    const badExplode = { ...startExplode(UFOP1), size: NaN }
+    const badAppear = { ...startAppear(UFOP1), size: Number.POSITIVE_INFINITY }
+    expect(() => advance(badExplode)).toThrow()
+    expect(() => advance(badAppear)).toThrow()
+  })
+
+  it('THROWS on an unknown EffectKind (exhaustiveness guard, not a silent appear)', async () => {
+    const { advance, startExplode } = await loadEffects()
+    // A value outside the EffectKind union (reachable from untyped JS) must not fall through to
+    // the appear branch — assertNever throws. Cast through unknown to bypass the type system.
+    const bogus = { ...startExplode(UFOP1), kind: 'teleport' } as unknown as Parameters<typeof advance>[0]
+    expect(() => advance(bogus)).toThrow()
   })
 })
