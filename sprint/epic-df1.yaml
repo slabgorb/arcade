@@ -116,4 +116,4 @@ stories:
     workflow: tdd
     type: chore
     review_findings: "REJECT→green rework: (1) [RULE #15/#25] vacuous whole-file toMatch(/soundClaimsPath/) 'teeth' guard at sound-claims-loader-retirement.test.ts:130 — satisfied by the const declaration, proves nothing (cannot dismiss, confirmed rule violation); (2) [DOC] 5 this-PR-introduced line-ref drifts (dossier-sweep.ts:168; new test :5/:25/:28/:133) — reword to symbol-based refs. All low severity but this-PR-introduced in a new guard file and surgically fixable."
-    review_verdict: rejected
+    review_verdict: approved
