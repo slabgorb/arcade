@@ -157,9 +157,10 @@ export function advanceOverTimeout(phase: Phase, framesInOver: number): Phase {
 }
 
 // mc11-3: the TAKE-INITIALS abort TIMEOUT window, derived from the ROM the way
-// OVER_TIMEOUT_FRAMES is. GETINI (W3DSUP.MAC:4064, the per-frame name-entry handler)
-// seeds a countdown UCVTAB = 0x84 and decrements it once every 16 FRAME ticks
-// (LDA FRAME / AND I,0F / IFEQ / DEC UCVTAB, :4080-4084), aborting the entry at 0
+// OVER_TIMEOUT_FRAMES is. GETINI (W3DSUP.MAC:4068, the per-frame name-entry handler,
+// under the TAKE INITIALS .SBTTL at :4064) seeds a countdown UCVTAB = 0x84 and decrements
+// it once every 16 FRAME ticks (LDA FRAME / AND I,0F / IFEQ / DEC UCVTAB, :4078-4084),
+// aborting the entry at 0
 // (:4088 JMP ABORT). Under W3COMN.MAC's inherited .RADIX 16, 0x84 = 132 and the 0x0F
 // mask makes the tick period 0x10 = 16, so the window is 0x84 * 0x10 = 2112 frames.
 // The keyboard port models a SINGLE abort window (there is no per-letter trackball loop),

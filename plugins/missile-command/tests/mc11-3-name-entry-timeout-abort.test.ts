@@ -6,17 +6,17 @@
 // can only commit or edit forever. The ROM's TAKE-INITIALS screen aborts on EITHER of
 // two triggers, discarding the entry with no ladder insert:
 //   • a START-SWITCH press           — W3DSUP.MAC:4076  BNE ABORT ";ABORT IF EITHER START SWITCH"
-//   • a TIMEOUT                        — W3DSUP.MAC:4082-4088  AND I,0F / DEC UCVTAB / IFEQ -> JMP ABORT
+//   • a TIMEOUT                        — W3DSUP.MAC:4080-4088  AND I,0F / DEC UCVTAB / IFEQ -> JMP ABORT
 // This story wires both to `abortNameEntry` -> attract, buffer cleared, ladder UNCHANGED.
 //
 // ─── GROUND TRUTH (REV-01, W3DSUP.MAC; project claim MC-ENTRY-ABORT) ──────────
 // GETINI (the per-frame TAKE-INITIALS handler) runs, in order:
-//     LDA SWSTAT / EOR I,0FF / AND I,MSTRT1!MSTRT2 / BNE ABORT   ; :4072-4076 start-switch abort
-//     LDA FRAME  / AND I,0F  / IFEQ / DEC UCVTAB / IFEQ / JMP ABORT ; :4080-4088 timeout
+//     LDA SWSTAT / EOR I,0FF / AND I,MSTRT1!MSTRT2 / BNE ABORT   ; :4070-4076 start-switch abort
+//     LDA FRAME  / AND I,0F  / IFEQ / DEC UCVTAB / IFEQ / JMP ABORT ; :4078-4088 timeout
 // so UCVTAB is decremented once every 16 FRAME ticks (FRAME & 0x0F == 0) and the entry
 // aborts when it reaches 0. The countdown SEED is UCVTAB = 0x84 ("RESET TIMEOUT TO 30
 // SEC", :4180 — the value the port's claim MC-ENTRY-ABORT pins as the canonical window;
-// the ROM's larger 0xFF first-letter window at :4012 is the trackball per-letter refinement
+// the ROM's larger 0xFF first-letter window at :4010 is the trackball per-letter refinement
 // the KEYBOARD port does not model). Under W3COMN.MAC's inherited .RADIX 16, 0x84 = 132 and
 // 0x0F masks to a 16-frame tick, so the abort window is:
 //     NAME_ENTRY_TIMEOUT_FRAMES = 0x84 * 0x10 = 132 * 16 = 2112 frames
@@ -79,7 +79,7 @@ async function loadTimeoutFrames(): Promise<number> {
     'NAME_ENTRY_TIMEOUT_FRAMES not exported yet — GREEN (Dev) adds it to src/core, PURE: ' +
       'export const NAME_ENTRY_TIMEOUT_FRAMES = 0x84 * 0x10 = 2112 (UCVTAB seed 0x84 ' +
       '"RESET TIMEOUT TO 30 SEC" W3DSUP.MAC:4180, decremented once per 16 FRAME ticks by ' +
-      'AND I,0F :4082; cite the derivation in // comments not JSDoc, and file the claim per ' +
+      'AND I,0F :4080; cite the derivation in // comments not JSDoc, and file the claim per ' +
       'the un-cited-literal rule). Then wire stepGame\'s entry branch to count ENTRY-frames ' +
       'and return abortNameEntry(state) at the threshold, and map the "1" start switch to ' +
       'abortNameEntry in the shell keydownReducer. No clock, no entropy, no shell import in core.',
@@ -124,10 +124,10 @@ describe('mc11-3 precondition — a qualifying game-over routes into name entry'
 // self-referential identity — checklist #26/#18).
 // ═════════════════════════════════════════════════════════════════════════════
 describe('mc11-3 AC1 — NAME_ENTRY_TIMEOUT_FRAMES is the cited UCVTAB window', () => {
-  it('equals the UCVTAB seed 0x84 times the 16-frame tick = 2112 (W3DSUP.MAC:4180/:4082)', async () => {
+  it('equals the UCVTAB seed 0x84 times the 16-frame tick = 2112 (W3DSUP.MAC:4180/:4080)', async () => {
     const frames = await loadTimeoutFrames()
     const UCVTAB_SEED = 0x84 // 132 — W3DSUP.MAC:4180 "RESET TIMEOUT TO 30 SEC" (.RADIX 16)
-    const TICK_FRAMES = 0x10 // 16  — AND I,0F decrements UCVTAB once per 16 FRAME ticks (:4082)
+    const TICK_FRAMES = 0x10 // 16  — AND I,0F decrements UCVTAB once per 16 FRAME ticks (:4080)
     // Derived here from the equates, NOT copied from Dev's constant — a wrong value reddens.
     expect(frames).toBe(UCVTAB_SEED * TICK_FRAMES) // 2112
   })

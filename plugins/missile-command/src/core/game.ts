@@ -114,11 +114,15 @@ export interface GameState {
    *  `OVER_TIMEOUT_FRAMES` the MAINLINE loop closes back to the attract demo. Held at 0
    *  in every non-over phase (only the `'over'` branch of `stepGame` advances it). */
   readonly overFrames: number
+  // mc11-3: the entry-abort TIMEOUT models the ROM's TAKE-INITIALS countdown
+  // (W3DSUP.MAC:4080-4088); the frame count itself is NAME_ENTRY_TIMEOUT_FRAMES in state.ts.
+  // (ROM line ref in a // comment, not the JSDoc below — the un-cited-literal scanner strips
+  // // but not /** */.)
   /** Frames elapsed in phase `'entry'` (mc11-3). Counts up while the initials screen waits
    *  for input; at `NAME_ENTRY_TIMEOUT_FRAMES` the entry aborts back to attract (buffer
-   *  discarded, ladder unchanged — the ROM's TAKE-INITIALS timeout, W3DSUP.MAC:4080-4088).
-   *  Reset to 0 on each `enterNameEntry`, so a re-entry gets a fresh window; held at 0 in
-   *  every non-entry phase (only the `'entry'` branch of `stepGame` advances it). */
+   *  discarded, ladder unchanged). Reset to 0 on EVERY entry/exit transition —
+   *  `enterNameEntry`, `abortNameEntry` and `commitNameEntry` all zero it — so it is held at
+   *  0 in every non-entry phase; only the `'entry'` branch of `stepGame` advances it. */
   readonly entryFrames: number
   /** The cabinet high-score ladder (the mc7-1 table). Seeded to the ROM default at
    *  boot; commit inserts into it; the shell loads/saves it on boot/commit (mc7-3 —
@@ -278,19 +282,21 @@ export function commitNameEntry(state: GameState): GameState {
     highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
     initials: '',
     phase: 'attract',
+    entryFrames: 0, // mc11-3: zero the entry countdown on this exit path too (held-at-0 invariant)
   }
 }
 
 // abortNameEntry — the shared result of BOTH ROM abort triggers (a start-switch
 // press, W3DSUP.MAC:4076; or the timeout, :4086-:4088): return to attract with the
-// buffer cleared and the ladder UNCHANGED. The shell decides WHEN to call it; the
-// per-frame countdown wiring is the deferred O-7b input-mapping item.
-/** Abort name entry: return to attract, clear the buffer, and leave the ladder
- *  UNCHANGED — no insert, even from a full buffer (a timeout on the last letter
- *  discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
+// buffer cleared, the ladder UNCHANGED, and the entry countdown zeroed. mc11-3 WIRED
+// both triggers (this is the O-7b input-mapping item): the timeout via stepGame's
+// 'entry' branch, the start switch via shell startAbortFromKey — both call this verb.
+/** Abort name entry: return to attract, clear the buffer, reset the entry countdown,
+ *  and leave the ladder UNCHANGED — no insert, even from a full buffer (a timeout on the
+ *  last letter discards it). Any non-`'entry'` phase is returned unchanged. Pure. */
 export function abortNameEntry(state: GameState): GameState {
   if (state.phase !== 'entry') return state
-  return { ...state, initials: '', phase: 'attract' }
+  return { ...state, initials: '', phase: 'attract', entryFrames: 0 }
 }
 
 // mc6-4: the SMART CURSOR MOVER (ATTRACT) — AUTCUR, W3MAIN.MAC:895 (.SBTTL :891,
