@@ -15,7 +15,14 @@ import { pumpFrame } from './shell/timebase'
 import { createWsg } from './shell/wsg'
 import { createAudioDriver, type AudioDriver } from './shell/audio'
 import { createOverlays } from './shell/overlays'
-import { createGameState, stepGame, enterInitial, confirmNameEntry, type GameState } from './core/game'
+import {
+  createGameState,
+  stepGame,
+  enterInitial,
+  confirmNameEntry,
+  isReturningHome,
+  type GameState,
+} from './core/game'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { mountCanvas } from '@shared/host-helpers'
@@ -228,8 +235,12 @@ const frame = (now: number): void => {
   drawMaze(logicalCtx, game.pac.eaten)
   for (const id of ['blinky', 'pinky', 'inky', 'clyde'] as const) {
     // pm4-3: also draw a returning ghost (eyes / regenerating body), which is
-    // not `released` while in transit but must still appear on screen.
-    if (game.house.released[id] || game.returning[id] !== null) {
+    // not `released` while in transit but must still appear on screen. pm5-1:
+    // single-sourced through core `isReturningHome` (the same `returning !== null`
+    // predicate) rather than inlined — its first production consumer. NB this is
+    // deliberately BROADER than render.ts's `=== 'eyes'`: it keeps a regenerated
+    // body on screen too, which then renders as a body, not eyes.
+    if (game.house.released[id] || isReturningHome(game, id)) {
       drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), heldAnimPhase(animClock))
     }
   }

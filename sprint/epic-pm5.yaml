@@ -10,7 +10,8 @@ stories:
     title: "Single-source the eyes/return-home predicate: route the inline checks at main.ts:232 and render.ts:312 through isReturningHome (core/game.ts:278) — reconciling the !==null vs ==='eyes' disagreement to the intended semantics — or delete the helper as redundant. Assert the render mode matches the chosen predicate. Reference pm4-3"
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
   - id: pm5-2
