@@ -21,14 +21,16 @@
 //   CMKILL LDX I,4 → "5X ICBM"  (W3MAIN.MAC:2113, in the CMKILL routine :2105+).
 //     A cruise kill is worth 5× the ICBM value at that wave. (claim MC-CRUISE-SCORE)
 //
-// ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `src/core/icbm.ts` exists (ballistic) but exports no `launchCruise`/`stepCruise`/
-// `stepAnyIcbm`; `spawn.ts` exports no `cruiseBudget`; `score.ts` exports no
-// `cruiseKillPoints`. Each loader below dynamic-imports the built module and throws
-// a self-describing "not built yet — RED" when the cruise export is still absent,
-// so ONLY the cruise tests redden while every ballistic test stays green. The new
-// `kind` field is OPTIONAL, so existing `Icbm` literals/tests are untouched
-// (purity.test.ts / citations.test.ts sweep the GREEN edits automatically).
+// ─── WHY THIS WAS RED (mc5-3), AND WHAT REMAINS ──────────────────────────────
+// Originally RED because `src/core/icbm.ts`/`spawn.ts` had no `launchCruise`/
+// `stepCruise`/`stepAnyIcbm`/`cruiseBudget` (mc5-3 built them all). Each loader below
+// dynamic-imports the built module and throws a self-describing "not built yet — RED"
+// if a cruise export is absent, so ONLY the cruise tests redden while every ballistic
+// test stays green. The scoring loader once gated on `cruiseKillPoints`, which shipped
+// at mc5-3 and was RETIRED at mc11-4 — Loader 3 below now anchors the ×5 CMKILL relation
+// on the live `scoreKills`/`CRUISE_SCORE_MULT` it was sugar over. The `kind` field is
+// OPTIONAL, so existing `Icbm` literals/tests are untouched (purity.test.ts /
+// citations.test.ts sweep the GREEN edits automatically).
 
 import { describe, it, expect } from 'vitest'
 // launchIcbm/stepIcbm already ship (mc3); imported through the cruise loader below

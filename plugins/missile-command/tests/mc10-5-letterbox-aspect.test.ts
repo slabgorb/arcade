@@ -28,8 +28,11 @@
 //     ratio". This constant is the tripwire if the field dims ever drift.
 //   MAX_DPR       = 2           — HiDPI backing-store cap (the shared view's).
 //
-//   fit(windowW, windowH, rawDpr, aspect = TARGET_ASPECT): Letterbox
-//     Pure. { cssWidth, cssHeight, bufferWidth, bufferHeight }:
+//   The pure fit — a Letterbox { cssWidth, cssHeight, bufferWidth, bufferHeight } —
+//   that applyLetterbox COMPUTES and returns. (mc11-4 retired the standalone
+//   `computeLetterbox` twin that used to expose this directly; these tests now drive
+//   it through a TEST-LOCAL `fit()` wrapper, defined below, over a throwaway canvas —
+//   `fit` is NOT a viewport.ts export.)
 //       - cssWidth/cssHeight = the largest `aspect`-ratio box that FITS inside the
 //         window, touching the constraining edge.
 //           * window wider than 256:222  → height-constrained (bars left/right)

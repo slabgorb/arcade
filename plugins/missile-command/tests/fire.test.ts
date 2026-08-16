@@ -24,10 +24,13 @@
 // drawing the trail+blast and main.ts wiring the frame loop are the screenshot's
 // job (see the Delivery Finding).
 //
-// ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `fireKeyToBase` / `launchFromKey` do not exist on shell/input.ts yet, and
-// core/abm.ts is unbuilt. Both loaders throw a self-describing "not built yet", so
-// every test reddens for the FEATURE's absence, not a bare resolution stack trace.
+// ─── WHY THIS WAS RED (mc1-4), AND WHAT REMAINS ──────────────────────────────
+// Originally RED because `fireKeyToBase` and core/abm.ts were unbuilt (mc1-4); the
+// loaders throw a self-describing "not built yet" so a miss reddens for the FEATURE's
+// absence, not a bare resolution stack trace. `fireKeyToBase` shipped at mc1-4 GREEN;
+// `launchFromKey` shipped then too but was RETIRED at mc11-4 (superseded by
+// fireFromKey's ammo-gated reducer). This file now pins `fireKeyToBase` and the
+// composed fire→flight→blast path over core/abm.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
