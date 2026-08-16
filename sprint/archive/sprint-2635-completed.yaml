@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2635 - Completed Stories
-# Jira Sprint ID: 6
-# Archived: 2026-08-16
-
 sprint:
   name: "TO Sprint 2635"
   number: 2635
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2635"
   goal: Missile Command mc7 and follow-ups
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: mc11-1
+    epic: mc11
+    title: "Wire the sputnik cruise-borrow: pass the live on-screen cruise count to sputnikFireCount at game.ts:493 (e.g. state.icbms.filter(i => i.kind === 'cruise').length) instead of the hardcoded 0, and delete the stale 'cruiseOnScreen is 0 until mc5-3' comment (game.ts:482). Assert a wave with cruise missiles on screen clamps the plane salvo (the 2*cruiseOnScreen branch fires in play). REV-01 plane-salvo clamp"
+    points: 2
+    completed: '2026-08-16'
