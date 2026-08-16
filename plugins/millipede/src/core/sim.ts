@@ -193,6 +193,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     dead: liveSegments, // DEAD = remaining live centipede segments (MLDEF.MAC:295)
     slow: state.slow,
     mushTop: countTopMushrooms(state.field),
+    mush: state.mushCounts.lower, // MUSH[0] — near-bottom tally the bee gate reads (BE-8/9)
     beetles: liveSlots(state.roster.beetles),
     rng: state.rng,
     field: state.field,
