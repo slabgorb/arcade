@@ -7,5 +7,4 @@ sprint:
   end_date: '2026-08-30'
   status: active
   number: 2635
-epics:
-  - jt12
+epics: []

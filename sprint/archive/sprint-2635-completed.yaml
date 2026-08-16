@@ -8,6 +8,7 @@ sprint:
 completed_epics:
   - mc11
   - pm5
+  - jt12
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -58,4 +59,9 @@ completed_stories:
     epic: pm5
     title: "Resolve the redundant high-score-qualified event (events.ts:89 / emit game.ts:803): either delete it (name entry already opens off state.nameEntry at main.ts:162) or re-document it explicitly as a pure state mirror; and demote THEME_FRAMES (tune.ts:153) / PHASES (phase.ts:26) to test-only oracles or wire the readers their docs promise. Documentation/no-op — no behaviour change."
     points: 2
+    completed: '2026-08-16'
+  - id: jt12-3
+    epic: jt12
+    title: "Wire the transporter player-side service queue + SELARE occupancy safety: route respawnPlayerProcess (sim.ts:630) through takePlayerNumber + nextServed arbitration (players before enemies), and gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a materialisation defers into an already-crowded third. Assert the now-live 'players first' branch and that a crowded third defers a spawn. JOUSTRV4.SRC:5615-5676"
+    points: 8
     completed: '2026-08-16'
