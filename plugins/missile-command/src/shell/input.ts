@@ -22,7 +22,7 @@
 // this shell just picks the base and hands its position to core/abm.launchAbm.
 
 import { moveCursor, type Cursor } from '../core/cursor.js'
-import { launchAbm, type Abm, type Vec } from '../core/abm.js'
+import { launchAbm } from '../core/abm.js'
 import { startGame, stepInitials, commitNameEntry, type GameState } from '../core/game.js'
 import { togglePause } from '../core/state.js'
 import { isPauseKey } from '@shared/pause'
@@ -59,17 +59,6 @@ export function fireKeyToBase(key: string): number | null {
     default:
       return null
   }
-}
-
-/**
- * Launch an ABM from the base the fire `key` selects (via `bases`, i.e. field.ts
- * BASES) toward `target` (the current crosshair), using core/abm.launchAbm — the
- * flight is core geometry, not re-implemented here. Returns null for a non-fire key.
- */
-export function launchFromKey(key: string, bases: readonly Vec[], target: Vec): Abm | null {
-  const base = fireKeyToBase(key)
-  if (base === null) return null
-  return launchAbm(bases[base], target)
 }
 
 /**
