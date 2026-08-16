@@ -38,6 +38,13 @@ export interface Icbm {
   readonly kind?: 'ballistic' | 'cruise'
   // mc5-3: a cruise missile's CMANGL flight direction (0->13). Ignored for ballistic.
   readonly angle?: number
+  // mc12-1: the one-shot MIRV-spent marker. Set true on the ICBM that MIRVs AND on
+  // every child it spawns, modelling the ROM's single MIRVIX slot being consumed by a
+  // split (MIRVIX "ICBM TO MIRV (INDEX)" W3MAIN.MAC:227; consume W3MAIN.MAC:2011-2017).
+  // A spent warhead is never MIRV-eligible again (mirvEligible), so one ICBM splits at
+  // most once — "NO MORE THAN 3 SHOTS FROM A MIRV" (W3MAIN.MAC:2717). Optional so every
+  // pre-mc12 Icbm literal stays valid; a launched ICBM omits it (undefined = not spent).
+  readonly mirvSpent?: boolean
 }
 
 /** Launch a warhead from `origin` toward `target` at `velocity` cabinet units/tick

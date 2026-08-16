@@ -594,10 +594,17 @@ function stepCombat(state: GameState, opts: { readonly suppressMirv?: boolean } 
   if (!opts.suppressMirv && state.explosions.length < MIRV_EXPLOSION_SUPPRESS && openSlots > 0) {
     for (let i = 0; i < flownIcbms.length; i++) if (mirvEligible(flownIcbms[i])) mirvAt = i // one per frame
   }
+  // mc12-1: a split CONSUMES the MIRVIX slot (W3MAIN.MAC:2011-2017) — mark the parent
+  // spent so it re-qualifies never again (children are born spent in mirvSplit). Without
+  // this the in-band parent + its in-band children re-split every frame and cascade.
+  const splitChildren = mirvAt < 0 ? [] : mirvSplit(flownIcbms[mirvAt], liveTargets, state.rng).slice(0, openSlots)
   const withMirvs =
-    mirvAt < 0
+    splitChildren.length === 0
       ? flownIcbms
-      : [...flownIcbms, ...mirvSplit(flownIcbms[mirvAt], liveTargets, state.rng).slice(0, openSlots)]
+      : [
+          ...flownIcbms.map((icbm, i) => (i === mirvAt ? { ...icbm, mirvSpent: true } : icbm)),
+          ...splitChildren,
+        ]
 
   // (The plane's salvo is already inside spawned.icbms — folded into the roster
   // before the spawn — so withMirvs carries it; no re-add here.)
