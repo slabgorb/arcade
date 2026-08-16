@@ -76,6 +76,10 @@ const withInput = (over: Partial<Input>): Input => ({ ...NEUTRAL, ...over })
 // not exist yet (it would be TS2307 during RED); vitest still resolves it at runtime, so
 // the import throws and the loader reports the self-describing message below.
 const SIM_SPECIFIER = '../src/core/sim.js'
+// scene.js exists (composeStaticFrame) but composeFrame may not yet, and its real param
+// is the full SimState — a variable specifier keeps tsc from binding this to the concrete
+// signature (which would conflict with the observable-subset SimState the tests read).
+const SCENE_SPECIFIER = '../src/core/scene.js'
 
 async function loadSim(): Promise<SimModule> {
   try {
@@ -96,7 +100,7 @@ async function loadSim(): Promise<SimModule> {
 }
 
 async function loadDynamicScene(): Promise<DynamicSceneModule> {
-  const mod = (await import('../src/core/scene.js')) as Partial<DynamicSceneModule>
+  const mod = (await import(/* @vite-ignore */ SCENE_SPECIFIER)) as Partial<DynamicSceneModule>
   if (typeof mod.composeFrame !== 'function') {
     throw new Error(
       'src/core/scene.ts has no `composeFrame` export yet — GREEN (Dev) adds the DYNAMIC composer ' +
@@ -239,17 +243,22 @@ describe('df3-6 ship-leads offset — pin the COORDINATES, not just the directio
   })
 })
 
-describe('df3-6 vertical CLAMP — the player strip is [YMIN+1, 238] (one of the axis two rules)', () => {
-  it('holding UP never lifts the ship above row 43', async () => {
+describe('df3-6 vertical CLAMP — the player strip (one of the axis two rules)', () => {
+  // The ROM freezes upward at YMIN+1 (43) and downward at 238 (DEFA7.SRC:2450,2461) but
+  // INTEGRATES with NO post-add clamp (:2472-2474), so a max ±$200 step overshoots one
+  // row past the freeze line before it re-freezes: the faithful reachable strip is
+  // [YMIN, 239] = [42, 239], not the epic description's simplified [43, 238]. ROM wins.
+  // (Corrected from the first RED draft by Dev — see the df3-6 vertical-clamp deviation.)
+  const YMAX_ROW = 239 // YMAX(240) − 1: the lowest row the down-overshoot can reach
+
+  it('holding UP never lifts the ship above row YMIN (42)', async () => {
     const s = await run(13, 400, withInput({ up: true }))
-    expect(s.ship.y, `ship rose to row ${s.ship.y}, above the clamp floor ${YMIN + 1}`).toBeGreaterThanOrEqual(
-      YMIN + 1,
-    )
+    expect(s.ship.y, `ship rose to row ${s.ship.y}, above the strip floor ${YMIN}`).toBeGreaterThanOrEqual(YMIN)
   })
 
-  it('holding DOWN never drops the ship below row 238', async () => {
+  it('holding DOWN never drops the ship below row 239', async () => {
     const s = await run(13, 400, withInput({ down: true }))
-    expect(s.ship.y, `ship fell to row ${s.ship.y}, past the clamp floor 238`).toBeLessThanOrEqual(238)
+    expect(s.ship.y, `ship fell to row ${s.ship.y}, past the strip floor ${YMAX_ROW}`).toBeLessThanOrEqual(YMAX_ROW)
   })
 })
 

@@ -1,26 +1,40 @@
 // src/main.ts
 //
-// Story df2-6 (GREEN, Yoda) — the shell entry now paints the df2 STATIC still. It builds
-// the composed 292x240 frame (core/scene.ts: cleared surface + title text + a sample
-// object + the planet surface, all transcribed in df2-1..df2-5) and lets the shell
-// scale-and-blit it. This is pixels, not physics: no clock is read and no simulation is
-// stepped (df3 grows the scheduler and the ship). The rAF loop exists only to re-fit the
-// blit when the canvas resizes; every frame paints the same still. SHELL only — it owns
-// the canvas and the board dimensions and calls the seam; the purity boundary lives in
-// src/core/, which takes those dimensions as arguments.
+// Story df3-6 (GREEN) — the shell now DRIVES the sim. df2-6 painted a static still every
+// rAF; this wires the df3 core into a live cabinet: a fixed-timestep 60 Hz loop
+// (@shared/loop.createLoop, which owns the rAF pump) steps the pure sim (core/sim.ts)
+// once per tick with the keyboard snapshot the shell samples (@shared/held-keys +
+// shell/input.ts mapInput), and paints the DYNAMIC composer (core/scene.ts composeFrame)
+// through the index blit (shell/render.ts). SHELL only: it owns the canvas, the keyboard
+// and the board dimensions and hands the pure core nothing but an Input snapshot and the
+// board size; the purity boundary lives in src/core/.
 
 import { mountCanvas } from '@shared/host-helpers'
-import { composeStaticFrame } from './core/scene.js'
+import { createLoop } from '@shared/loop'
+import { installHeldKeys } from '@shared/held-keys'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT, render } from './shell/render.js'
+import { createSim, stepSim } from './core/sim.js'
+import { composeFrame } from './core/scene.js'
+import { mapInput } from './shell/input.js'
 
 const { canvas, ctx } = mountCanvas(document)
 
-const fb = composeStaticFrame(LOGICAL_WIDTH, LOGICAL_HEIGHT)
+// The shell owns the PIA read. Prevent the browser from scrolling on the game keys.
+const held = installHeldKeys(window, {
+  preventDefaultFor: new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']),
+})
 
-const frame = (): void => {
-  canvas.width = canvas.clientWidth
-  canvas.height = canvas.clientHeight
-  render(ctx, fb)
-  requestAnimationFrame(frame)
-}
-requestAnimationFrame(frame)
+// Entropy is the shell's to own (STINIT's RAND is injected into the pure core).
+let sim = createSim(() => (Math.random() * 256) | 0)
+
+const loop = createLoop(
+  () => {
+    sim = stepSim(sim, mapInput(held))
+  },
+  () => {
+    canvas.width = canvas.clientWidth
+    canvas.height = canvas.clientHeight
+    render(ctx, composeFrame(sim, LOGICAL_WIDTH, LOGICAL_HEIGHT))
+  },
+)
+loop.start()

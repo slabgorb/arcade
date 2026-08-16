@@ -30,6 +30,8 @@ import { createFramebuffer, clear, type Framebuffer } from './framebuffer.js'
 import { writeText } from './charset.js'
 import { blitObject, OBJECTS } from './objects.js'
 import { blitTerrain, decodeAltitudes, TERRAIN } from './terrain.js'
+import { drawStars, STAR_COUNT } from './stars.js'
+import type { SimState } from './sim.js'
 
 /** Background palette index — the cleared surface (SPACE $00, palette entry 0). */
 const BACKGROUND = 0
@@ -78,6 +80,57 @@ export function composeStaticFrame(width: number, height: number): Framebuffer {
 
   const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
   blitTerrain(fb, surface, TERRAIN_COLOUR)
+
+  return fb
+}
+
+// ─── df3-6: the DYNAMIC composer ──────────────────────────────────────────────────
+// composeFrame renders the LIVE sim (sim.ts) each frame — the parallax starfield
+// (df3-4) scrolling under the ship, the planet surface (df2 terrain), the player ship
+// (PLAPIC) at its display column/row (df3-3), and any lasers in flight (df3-5). Same
+// purity contract as composeStaticFrame: palette INDICES only, board dims as arguments,
+// no clock/entropy/shell import. This is what main.ts paints once the sim is wired.
+
+/** The player ship object, drawn at its live display column/row. */
+const SHIP_OBJECT = 'PLAPIC'
+/** LASER colour: palette entry 1 (core/palette.ts DEFAULT_PCRAM label 1 = LASER). */
+const LASER_COLOUR = 1
+/** Pixels of the laser's leading streak drawn behind its head. */
+const LASER_LENGTH = 4
+
+/** Draw a short horizontal laser streak trailing the leading edge `headX` at row `y`. */
+function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'left' | 'right'): void {
+  if (y < 0 || y >= fb.height) return
+  // The streak trails BEHIND the head: to the left when travelling right, and vice versa.
+  const dir = facing === 'right' ? -1 : 1
+  for (let i = 0; i < LASER_LENGTH; i++) {
+    const x = headX + dir * i
+    if (x < 0 || x >= fb.width) continue
+    fb.data[y * fb.width + x] = LASER_COLOUR
+  }
+}
+
+/**
+ * Compose the live frame from the current sim state into a fresh `width × height` index
+ * surface: clear, scroll-composite the starfield, lay the planet surface, blit the ship
+ * at its display column/row, and streak any lasers in flight. Pure and deterministic —
+ * same state in, same indices out. Returns the framebuffer of palette INDICES.
+ */
+export function composeFrame(state: SimState, width: number, height: number): Framebuffer {
+  const fb = createFramebuffer(width, height)
+  clear(fb, BACKGROUND)
+
+  drawStars(fb, state.stars, STAR_COUNT)
+
+  const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
+  blitTerrain(fb, surface, TERRAIN_COLOUR)
+
+  blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
+
+  for (const laser of state.lasers) {
+    if (!laser.alive) continue
+    drawLaserStreak(fb, laser.x >> 8, state.ship.y, laser.facing)
+  }
 
   return fb
 }
