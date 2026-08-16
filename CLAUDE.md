@@ -210,6 +210,8 @@ it the front door at `/` — and each game owns its own **`<id>/` key prefix**.
 | joust      | `https://arcade.slabgorb.com/joust/`             | `joust/`          |
 | missile-command | `https://arcade.slabgorb.com/missile-command/` | `missile-command/` |
 | pac-man    | `https://arcade.slabgorb.com/pac-man/`           | `pac-man/`        |
+| millipede  | `https://arcade.slabgorb.com/millipede/`         | `millipede/`      |
+| defender   | `https://arcade.slabgorb.com/defender/`          | `defender/`       |
 
 One origin means the lobby and every game share `localStorage`, which is what retires
 the cross-origin high-score cookie of ADR-0004 (see that ADR's 2026-07-30 amendment).
