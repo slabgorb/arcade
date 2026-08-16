@@ -28,7 +28,8 @@ stories:
     description: "Deferred from ml9-3 (Delivery Finding, Dev: 'the showcase black-box cell backgrounds are not implemented — attract-mame-reference.png shows solid black panels behind the creature sprites, but the showcase still renders them over the blue background'). The decision (black boxes, not blue show-through) is ALREADY PINNED in ml9-3's Design Deviations — this story implements it only, no re-decision. GROUND TRUTH (verified 2026-08-16): renderShowcase (plugins/millipede/src/main.ts:195) fills the whole canvas with SHOWCASE_BACKGROUND (blue), draws the sectioned text stamps (white high-scores + red creature labels, ml9-3), then blits each creature sprite via drawSpritePx — with NO black rectangle behind any cell. THE STORY: before blitting each showcase sprite/cell, draw a black rect behind it (a per-creature panel), sized/placed to match attract-mame-reference.png. Single file surface: src/main.ts (renderShowcase). This is a pure render addition on the attract path; it must NOT regress the white high-scores + red labels (ml9-3) or the self-playing attract demo. ACCESSIBILITY: a static black panel is steady — no strobe. Confirm at the /millipede/ visual playtest (the attract screen cycles in every ATTRACT_CYCLE_FRAMES window)."
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
