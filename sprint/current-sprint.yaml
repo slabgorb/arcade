@@ -7,4 +7,8 @@ sprint:
   end_date: '2026-08-30'
   status: active
   number: 2635
-epics: []
+epics:
+  - mc7
+  - jt12
+  - mc11
+  - pm5

@@ -1,0 +1,29 @@
+id: jt12
+type: epic
+title: 'Joust — wire the unwired RV4 fidelity mechanics: baiter anti-farming, smart-enemy budget refund, transporter player queue'
+description: "Twelfth Joust epic. Three ROM behaviours are fully implemented, unit-tested, and reachable in the sim's data model, but have ZERO production callers, so the live game silently diverges from JOUSTRV4.SRC — every one a self-confessed scope boundary a follow-up story never closed (unwired-feature audit 2026-08-16). (1) The five RV4 anti-farming PATCHES (PATCH4/5/6/8/9, JOUSTRV4.SRC:6268 'PATCHES TO PREVENT PLAYER FROM PTERODACTYL HUNTING') live as pure functions in core/baiter.ts:199-248 but stepPteroFlight (core/ptero.ts:140) and resolvePteroAttack (:175) take no baiter argument, so a live baiter is mechanically identical to a plain wave pterodactyl — the anti-camping difficulty never engages (confession baiter.ts:8-10: jt3-7 wired the spawn cadence, not the patches). (2) The WSMART intelligence-budget economy only ever DEBITS: promote (wired, frame.ts:407) increments nsmart, but creditDeath (core/enemy.ts:566, CREEM JOUSTRV4.SRC:2962) and remountBudgetDebit (core/egg.ts:339) have no callers, so mid-wave nsmart climbs monotonically, latches at wsmart, and no further enemy can turn smart no matter how many the player kills — the game gets EASIER than the ROM. (3) The transporter's player-side service queue and SELARE area-occupancy safety (takePlayerNumber/servePlayer/nextServed/scanAreas/spawnProceeds, core/transporter.ts, JOUSTRV4.SRC:5615-5676) are unwired while the enemy side is fully wired; respawnPlayerProcess (sim.ts:630) builds a fresh player directly, so npserv==lpserv forever (the 'players first' clause in the wired enemyTurn is a dead-true branch) and enemies materialise with no crowded-third check. All three reuse existing tested code — this epic is wiring, not new systems. Ground truth: JOUSTRV4.SRC (RV4 revision). Every wire lands with a test that fails without it (mutation-verified per the joust suite conventions) and keeps purity/comment-line-refs green."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: jt12-1
+    title: "Wire the five RV4 baiter anti-farming patches into flight/attack: thread the process's baiter/pchase into stepPteroFlight (core/ptero.ts:140) and resolvePteroAttack (:175) and apply patchAimLower/patchSlowDive/patchFirstPassMiss/patchSeekTimer/patchLaneReroute (core/baiter.ts:199-248) at the corresponding decision points, so a live baiter (PCHASE != 0) aims 2px lower, dives at 1/4 speed, delays its first pass, decrements its seek timer, and reroutes to the lower lane on the flanks. Assert a baiter diverges from a plain wave ptero. JOUSTRV4.SRC:6268 PATCH4/5/6/8/9"
+    points: 8
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt12-2
+    title: "Wire the WSMART budget refund/debit so smart-enemy pressure is sustained: call creditDeath (core/enemy.ts:566) in the death/removal path (alongside bookDeath/countBaiterDeaths) to decrement nsmart when a smart enemy dies, and remountBudgetDebit (core/egg.ts:339) on the egg->remount transition. Assert that after a smart enemy dies mid-wave a replacement can be promoted (nsmart no longer latches at wsmart). JOUSTRV4.SRC:2962 CREEM"
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: jt12-3
+    title: "Wire the transporter player-side service queue + SELARE occupancy safety: route respawnPlayerProcess (sim.ts:630) through takePlayerNumber + nextServed arbitration (players before enemies), and gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a materialisation defers into an already-crowded third. Assert the now-live 'players first' branch and that a crowded third defers a spawn. JOUSTRV4.SRC:5615-5676"
+    points: 8
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
