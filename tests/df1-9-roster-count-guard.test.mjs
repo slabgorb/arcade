@@ -81,7 +81,9 @@ function parseCount(token) {
   if (token == null) return null;
   const t = String(token).trim().toLowerCase();
   if (/^\d+$/.test(t)) return Number(t);
-  return t in WORD_TO_NUMBER ? WORD_TO_NUMBER[t] : null;
+  // Object.hasOwn (not `t in …`) so inherited Object members ('constructor', '__proto__')
+  // cannot leak through the prototype chain — rule #3, per tests/sprint-repo-routing.test.mjs.
+  return Object.hasOwn(WORD_TO_NUMBER, t) ? WORD_TO_NUMBER[t] : null;
 }
 
 // ── Control / anti-vacuity ───────────────────────────────────────────────────
