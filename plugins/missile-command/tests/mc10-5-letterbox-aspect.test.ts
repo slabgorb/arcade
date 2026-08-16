@@ -50,9 +50,9 @@
 // so the black bars actually show. `node` has no layout engine; here we pin the
 // deterministic fit math, the HiDPI backing store, the DOM seam, and the wiring.
 //
-// WHY THIS IS RED: `src/shell/viewport.ts` does not exist, so both the module
-// import and the `main.ts` wiring scan redden until Dev builds the adapter and
-// rewires main.ts's resize path onto it.
+// WHY THIS WAS RED (mc10-5): `src/shell/viewport.ts` did not exist, so both the
+// module import and the `main.ts` wiring scan reddened until Dev built the adapter
+// and rewired main.ts's resize path onto it.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
