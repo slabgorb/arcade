@@ -289,10 +289,15 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   conway = masterStep(state.field, conway)
   const beetlesPresent = roster.beetles.some((b) => b.color !== 0)
   const chkend = stepWaveDelay(delay, {
-    // MEM+1 — mushrooms are still being restored while the between-wave conway
-    // growth/death process is running (CDONE active, CW-8); CHKEND holds the
-    // DELAY until it finishes (MLSUB.MAC:54). Post-masterStep, so a conway that
-    // completed THIS frame no longer holds the wave open.
+    // mushroomsRestoring — CHKEND's first blocker (MLSUB.MAC:54 is `LDA MEM+1`,
+    // the RESTOR sweep pointer, MLDEF.MAC:344), NOT the conway CDONE flag. The
+    // real MEM+1/RESTOR sweep is unwired in this sim (restor() in mushroom.ts has
+    // no caller), so we APPROXIMATE "mushrooms still restoring" with conway.active
+    // — the between-wave growth/death process (CDONE, CW-8) — per the story's
+    // directive to compute the blocker from the real conway state. Caveat: the ROM
+    // windows differ — RESTOR runs only once CDONE goes idle (restor() gates on
+    // cdone===0), so this proxy holds the wave DURING conway rather than after it.
+    // Read post-masterStep, so a conway that completed THIS frame no longer holds.
     mushroomsRestoring: conway.active,
     playerExploding: playerDied || state.deathTimer > 0,
     beetlesPresent,

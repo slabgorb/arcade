@@ -48,7 +48,10 @@ export function initBees(): BeeSlot[] {
  * mayStartBee BE-5..7 direct-spawn gate is exact. The near-bottom MUSH tally
  * (BE-8/9) is the LOWER band MUSH[0] — a DIFFERENT quantity from ml7-8's mushTop
  * (MUSH+2, top band); ml10-3 threads it through EnemyView (view.mush) from
- * state.mushCounts.lower, so mayStartBee's mushroom-need gate (BE-8/9) is exact.
+ * state.mushCounts.lower, so mayStartBee's mushroom-need gate (BE-8/9) reads the
+ * live tally instead of a hardcoded 0. (Not yet ROM-exact: mushCounts.lower still
+ * misses the deferred MUSHDC write-backs — shot.ts, conway.ts, and the bee's own
+ * discarded plant below — so the count is live-but-partial.)
  */
 function beeEnv(view: EnemyView, rnd0: number, rnd1: number): BeeEnv {
   return {
