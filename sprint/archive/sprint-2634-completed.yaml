@@ -478,3 +478,8 @@ completed_stories:
     title: "Harden joust inline loadClaims (citations.test.ts:641): the same unhardened JSON.parse(readFileSync(...)) as Claim | Claim[] pattern df1-6 hardened in the four dossier-sweep loaders survives in joust's INLINE loadClaims at plugins/joust/tests/audit/citations.test.ts:641 (a separate copy from joust/tests/helpers/claims.ts, which is already hardened via asClaim). Wrap the parse per-file in a controlled error naming the file + shape-assert each entry's source, mirroring df1-6. Routed from df1-6 review (reviewer round 1). joust and missile-command helpers/claims.ts are already hardened; this is the last fleet residue."
     points: 2
     completed: '2026-08-16'
+  - id: df1-9
+    epic: df1
+    title: "Close the games-roster staleness cycle (routed from df1-7 review): reconcile the remaining stale roster surfaces AND pin the counts so they cannot silently desync again. (1) README.md:127 just build-all comment still says 'nine games + the lobby' — true count is eleven [DOC, comment-analyzer, high conf]. (2) CLAUDE.md R2 hosting table (~lines 203-212) lists nine games and omits the defender and millipede rows [RULE/DOC, rule-checker]. (3) No guard pins the roster total/raster numerals against the wired game set, so the prose rotted once (df1-5) and df1-7 fixed it by hand without closing the mechanism; add a guard deriving total===GAMES.length (and, where feasible, the raster/vector split) from tests/monorepo-topology GAMES so a future 12th game reddens instead of silently desyncing [TEST, test-analyzer, medium]."
+    points: 3
+    completed: '2026-08-16'
