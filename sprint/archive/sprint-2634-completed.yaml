@@ -19,6 +19,7 @@ completed_epics:
   - df2
   - ml9
   - df3
+  - df1
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -488,4 +489,9 @@ completed_stories:
     epic: df3
     title: 'VISUAL playtest — the ship flying a scrolling, wrapping world: screenshot http://127.0.0.1:5270/defender/ showing the ship over the moving starfield, thrust scrolling the world, reverse flipping facing + slide, a laser in flight — compared against a nonsense control path (must DIFFER, not just 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scroll direction, ship-leads offset, vertical clamp and colour BEFORE enemies (playbook sec 4). Carry the df4/df5 accessibility ruling forward as a note (no full-screen strobe downstream).'
     points: 8
+    completed: '2026-08-16'
+  - id: df1-10
+    epic: df1
+    title: "Retire centipede inline loadSoundClaims (sound-dossier.test.ts:399), adopt the hardened dossier-sweep loader — the centipede analog of df1-8: sound-dossier.test.ts keeps its OWN private JSON.parse(readFileSync(soundClaimsPath)) as Claim or Claim-array loader, a separate copy from centipede's hardened dossier-sweep.ts loadClaims (hardened in df1-6). Delete the inline copy and source the shape-checked loader that names the offending file. Found by df1-8 reviewer (rule-checker #24 fleet-residue sweep)."
+    points: 2
     completed: '2026-08-16'
