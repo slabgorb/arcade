@@ -23,7 +23,7 @@
 // reject requestPointerLock outright — so these units cover the LOGIC and main.ts's
 // click-to-lock + cursor-hide are the human smoke test (cannot be verified headless).
 
-import type { GameState } from '../core/game-state'
+import { createGame, type GameState } from '../core/game-state'
 import { stepInitials, insertHighScore, MILLI_INITIALS_LENGTH } from '../core/highscore'
 
 interface EventTarget {
@@ -34,20 +34,25 @@ interface EventTarget {
 /**
  * ml10-2 — one keystroke against the name-entry screen. Outside the 'entry' phase it
  * is inert (returns the SAME state). During 'entry': Enter with a FULL initials buffer
- * COMMITS — insert the { name, score } row into the ladder, clear the buffer and return
- * to attract; an incomplete Enter is inert. Any other key feeds the buffer through core
- * stepInitials (letter appends UPPERCASED to MILLI_INITIALS_LENGTH, Backspace deletes).
- * The mc7-3 shell reducer, bound to millipede's board; main.ts drives it from keydown and
- * persists when the committed ladder reference changes.
+ * COMMITS — insert the { name, score } row into the ladder and return a FRESH attract
+ * world carrying the updated board; an incomplete Enter is inert. Any other key feeds
+ * the buffer through core stepInitials (letter appends UPPERCASED to
+ * MILLI_INITIALS_LENGTH, Backspace deletes). Unlike missile-command's shell reducer —
+ * which dispatches to a CORE commitNameEntry — millipede has no 'entry' step in the sim
+ * (sim.ts freezes 'entry'), so the commit + world rebuild are inlined here; main.ts
+ * drives this from keydown and persists when the committed ladder reference changes.
  */
 export function nameEntryFromKey(key: string, state: GameState): GameState {
   if (state.phase !== 'entry') return state
   if (key === 'Enter') {
     if (state.initials.length !== MILLI_INITIALS_LENGTH) return state
+    // Rebuild a clean attract world from the seed (fresh score/lives/field, empty
+    // buffer) carrying the updated ladder — the SAME reset the non-qualifying
+    // game-over→attract timeout does via createGame (sim.ts:447). Returning
+    // {...state, phase:'attract'} left the ended game's score on the attract demo
+    // (ml10-2 rework [EDGE] HIGH).
     return {
-      ...state,
-      phase: 'attract',
-      initials: '',
+      ...createGame(state.seed),
       highScores: insertHighScore(state.highScores, { name: state.initials, score: state.score }),
     }
   }

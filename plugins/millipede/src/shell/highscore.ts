@@ -33,14 +33,27 @@ export function makeMilliHighScoreStorage(): HighScoreStorage<MilliHighScore> {
   return makeHighScoreStorage<MilliHighScore>(MILLI_HIGH_SCORE_GAME_ID, isHighScoreRow, '')
 }
 
+/** Only A-Z / 0-9 / space in a name, and a NON-NEGATIVE INTEGER score, are renderable
+ *  by the millipede glyph encoder (attract-showcase.ts encodeChar throws on anything
+ *  else). `isHighScoreRow` gates SHAPE only (`typeof name === 'string' && isFinite`),
+ *  so a legacy-cookie seed or a hand-edited store can plant a lowercase name / a
+ *  negative or fractional score that crashes the uncaught attract rAF loop. Filter to
+ *  the RENDERABLE charset here — the one place the untrusted board enters GameState —
+ *  so the strict encoder still guards its ROM-constant callers (ml10-2 rework [SEC]). */
+const RENDERABLE_NAME = /^[A-Z0-9 ]*$/
+function isRenderableRow({ name, score }: MilliHighScore): boolean {
+  return RENDERABLE_NAME.test(name) && Number.isInteger(score) && score >= 0
+}
+
 /** The ladder to boot with: the persisted board when the player has one, else the
  *  seeded ROM DEFAULT_HIGH_SCORES. `load()` returns [] for a first boot OR an
  *  unreachable/corrupt store, and an empty ladder would let ANY positive score qualify
  *  and blank the attract high-score readout — so the seeded 99$-block defaults stand
- *  until a real board is saved. */
+ *  until a real board is saved. Rows the millipede encoder cannot render are dropped
+ *  (ml10-2 rework [SEC]); if that empties the board, the seeded default stands. */
 export function loadHighScores(
   storage: HighScoreStorage<MilliHighScore>,
 ): readonly MilliHighScore[] {
-  const saved = storage.load()
+  const saved = storage.load().filter(isRenderableRow)
   return saved.length > 0 ? saved : DEFAULT_HIGH_SCORES
 }

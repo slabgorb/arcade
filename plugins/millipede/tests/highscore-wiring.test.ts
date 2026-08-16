@@ -350,6 +350,8 @@ describe('ml10-2 E — main.ts wires load-on-boot, save-on-commit and the entry 
     // reference is the save trigger. Identifier + call-paren so an import line alone
     // cannot satisfy it.
     expect(src).toMatch(/highScores\s*!==/)
-    expect(src).toMatch(/\.save\s*\(/)
+    // Anchored to the storage handle, not a bare `.save(` — a `ctx.save()` canvas call
+    // (common in this 2D renderer) must NOT satisfy the persistence guard (ml10-2 rework).
+    expect(src).toMatch(/highScoreStorage\.save\s*\(/)
   })
 })
