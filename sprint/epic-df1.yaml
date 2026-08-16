@@ -107,3 +107,11 @@ stories:
     type: chore
     review_findings: 'APPROVED round 2. Round-1 finding (rule #3 prototype pollution in parseCount) CLOSED via Object.hasOwn + control assertions; mutation-verified. Full orchestrator suite 505/505.'
     review_verdict: approved
+  - id: df1-10
+    title: "Retire centipede inline loadSoundClaims (sound-dossier.test.ts:399), adopt the hardened dossier-sweep loader — the centipede analog of df1-8: sound-dossier.test.ts keeps its OWN private JSON.parse(readFileSync(soundClaimsPath)) as Claim or Claim-array loader, a separate copy from centipede's hardened dossier-sweep.ts loadClaims (hardened in df1-6). Delete the inline copy and source the shape-checked loader that names the offending file. Found by df1-8 reviewer (rule-checker #24 fleet-residue sweep)."
+    points: 2
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
