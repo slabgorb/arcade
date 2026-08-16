@@ -470,7 +470,7 @@ describe('ml11-3 (b) — the onReject-wiring guard is relocation-proof (mutation
   const FILE_SCOPED_RE = /createPointerLock\([\s\S]*?console\.warn\(/
 
   // The exact compound mutant ml10-5's Reviewer described, in main.ts's own layout (the
-  // createPointerLock call closes with `)` at column 0, as at main.ts:76): the onReject
+  // createPointerLock call closes with `)` at column 0, as at main.ts:75): the onReject
   // 4th arg is deleted and an unrelated console.warn is relocated after the call.
   const RELOCATION_MUTANT = stripComments(
     [

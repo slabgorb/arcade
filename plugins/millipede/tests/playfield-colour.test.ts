@@ -248,10 +248,10 @@ describe('ml11-3 (a) — ALPHANUMERIC_COLOUR provenance is an immediate, not a w
     return m ? m[1].trim() : null
   }
 
-  // Provenance predicate: true iff the RHS is a bare numeric immediate (hex or decimal),
-  // i.e. NOT sourced from waveColours()/the 99$ field table.
-  const isImmediate = (rhs: string): boolean =>
-    /^(0x[0-9a-fA-F]+|\d+)$/.test(rhs) && !/waveColours|insideMushroom/.test(rhs)
+  // Provenance predicate: true iff the RHS is a bare numeric immediate (hex or decimal).
+  // The anchored ^…$ already excludes ANY expression (a waveColours()/99$-table read among
+  // them), so a wave-wire mutant fails on the anchor alone — proven by the mutation test below.
+  const isImmediate = (rhs: string): boolean => /^(0x[0-9a-fA-F]+|\d+)$/.test(rhs)
 
   it('a VALUE check is BLIND here — $1F is BOTH the alphanumeric colour AND wave-1 inside-mushroom', async () => {
     const m = await loadModule()
@@ -270,11 +270,24 @@ describe('ml11-3 (a) — ALPHANUMERIC_COLOUR provenance is an immediate, not a w
 
   it('mutation-verified: the waveColours-wire mutant (same value $1F) is REJECTED by the provenance guard', () => {
     // The exact mutant ml7-11 r2 named: identical value at the colliding level, wrong
-    // provenance. The SAME predicate that accepts the real RHS must reject this one.
-    const realRhs = alnumRhs(readFileSync(modulePath, 'utf8')) as string
-    const mutantRhs = 'waveColours(1).insideMushroom'
-    expect(isImmediate(realRhs), 'non-vacuity: the real literal is accepted').toBe(true)
-    expect(isImmediate(mutantRhs), 'the wave-wire mutant must NOT satisfy the immediate-literal guard').toBe(false)
+    // provenance. Run the FULL guard PIPELINE (alnumRhs extraction + isImmediate) against a
+    // mutant derived from the REAL source — so this verifies the file-read guard end to end,
+    // not just the predicate on a hand-typed string.
+    const realSrc = readFileSync(modulePath, 'utf8')
+    const mutatedSrc = realSrc.replace(
+      /export const ALPHANUMERIC_COLOUR = 0x1f/,
+      'export const ALPHANUMERIC_COLOUR = waveColours(1).insideMushroom',
+    )
+    expect(mutatedSrc, 'precondition: the mutation applied to the real source').not.toBe(realSrc)
+    const realRhs = alnumRhs(realSrc)
+    const mutantRhs = alnumRhs(mutatedSrc)
+    expect(realRhs, 'ALPHANUMERIC_COLOUR must be exported').not.toBeNull()
+    expect(mutantRhs, 'the mutant RHS must be extractable by alnumRhs').not.toBeNull()
+    expect(isImmediate(realRhs as string), 'non-vacuity: the real literal is accepted').toBe(true)
+    expect(
+      isImmediate(mutantRhs as string),
+      'the wave-wire mutant, extracted via alnumRhs from the mutated source, must be REJECTED',
+    ).toBe(false)
   })
 })
 
