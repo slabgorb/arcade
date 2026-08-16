@@ -98,8 +98,8 @@ export function createAudioDriver(wsg: Wsg): AudioDriver {
           ambient = null
           break
         // energizer-eaten drives frightened mode, voiced by onFrame's poll; the
-        // remaining events (fruit-spawned/expired, high-score-qualified) have no
-        // sound in this cabinet and fall through deliberately.
+        // remaining events (fruit-spawned/expired) have no sound in this cabinet
+        // and fall through deliberately.
         default:
           break
       }

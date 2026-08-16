@@ -114,11 +114,10 @@ describe('audio driver — one cue per event', () => {
     }
   })
 
-  it('ignores forward-seam events with no sound (fruit-spawned, high-score)', () => {
+  it('ignores forward-seam events with no sound (fruit-spawned)', () => {
     const { wsg, calls } = spyWsg()
     createAudioDriver(wsg).onEvents([
       { type: 'fruit-spawned', fruit: 'cherry', points: 100 },
-      { type: 'high-score-qualified' },
     ])
     expect(calls).toEqual([])
   })

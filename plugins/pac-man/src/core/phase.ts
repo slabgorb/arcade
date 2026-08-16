@@ -21,8 +21,9 @@
 
 import type { GamePhase } from './game'
 
-/** The six cabinet phases, in lifecycle order. The single runtime list of the
- *  `GamePhase` union — iterate this rather than re-typing the string literals. */
+/** The six cabinet phases, in lifecycle order — a runtime enumeration of the
+ *  `GamePhase` union. Test-only oracle: read only by the phase tests to check the
+ *  union's members and transitions; no runtime reader by design. */
 export const PHASES: readonly GamePhase[] = [
   'attract',
   'ready',
