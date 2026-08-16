@@ -166,8 +166,10 @@ describe('ml10-4 createMouseAdapter — trackball deltas, millipede mapping pres
 
   it('does NOT negate vertical: +movementY is +dv (the millipede difference from centipede)', async () => {
     // centipede's mouse adapter does `dv -= movementY`; millipede does `dv += movementY`
-    // (main.ts:100) because core COMP-reverses V (mouse-down ⇒ gun-down). A copy of the
-    // centipede sign here is the exact regression this pins.
+    // (shell/input.ts:57, in onMouseMove) because core COMP-reverses V (mouse-down ⇒
+    // gun-down). A copy of the centipede sign here is the exact regression this pins.
+    // (ml10-5: repointed off the stale `main.ts:100` cite — that line is the
+    // click-to-lock `pointerLock.request()`, not the vertical-sign mapping.)
     const input = await loadInput()
     const b = makeBus()
     const mouse = input.createMouseAdapter(b.bus)
@@ -429,6 +431,18 @@ describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments 
 
   it('resets the accumulator on lock exit (onExit → adapter.reset(), no runaway travel)', () => {
     expect(code, 'main.ts must delegate the lock-exit reset to the adapter').toMatch(/\.reset\s*\(/)
+  })
+
+  it('wires the onReject diagnostic sink (console.warn) as the createPointerLock 4th arg (ml10-5)', () => {
+    // ml10-5 / cp2-8: main.ts passes a 4th arg to createPointerLock — the diagnostic
+    // sink that surfaces a rejected requestPointerLock (re-lock cooldown) to the
+    // console instead of a black hole. Every pin above stays GREEN if that arg is
+    // deleted — `createPointerLock`, `.reset(` (the 3rd-arg onExit) and the cursor
+    // token all survive the deletion, so the dead-wiring is invisible. This pin
+    // reddens on it: main.ts has exactly one console.warn, inside that call.
+    expect(code, 'main.ts must route a rejected pointer-lock request to a console.warn sink').toMatch(
+      /createPointerLock\([\s\S]*?console\.warn\(/,
+    )
   })
 })
 
