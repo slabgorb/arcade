@@ -346,9 +346,10 @@ describe('jt4-5 round-2 — game-over reached THROUGH a respawn cycle (Reviewer 
 
   it('the re-materialise window ENDS — a re-entered knight regains collisions (not a permanent shield)', async () => {
     const g = await loadGameLoop()
-    // P1 (higher) wins the partner-joust; P2 (8px lower) dies with lives left and RE-ENTERS at
-    // PLAYER2_SPAWN (x=200), far from P1 — so nothing re-kills it and we can watch its window
-    // CLOSE. A materialising wave-1 enemy holds the wave open (it does not reach the spawn).
+    // P1 (higher) wins the partner-joust; P2 (8px lower) dies with lives left and RE-ENTERS on
+    // a transporter pad chosen by the empty-third safety (jt12-3 — not the old fixed PLAYER2_SPAWN).
+    // Collisions are OFF during the materialise window, so nothing re-kills it and we can watch
+    // its window CLOSE. A materialising wave-1 enemy holds the wave open.
     const base = seated(g.createGame(SEED)) // jt11-4: seat the queued complement (hold enemy)
     const holdEnemy = base.sim.sim.processes.find((p) => p.kind === 'enemy') as SimProcess
     expect(holdEnemy, 'wave 1 supplies a materialising enemy to hold the wave open').toBeTruthy()

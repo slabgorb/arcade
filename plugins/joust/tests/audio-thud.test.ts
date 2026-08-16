@@ -1024,9 +1024,19 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // on that pair and nothing else: the buzzard, the earlier process (OSTXTP's
     // REG.U), is pushed DOWN to y=130 and the knight UP to y=126 — the same shape
     // every prior staging carried. Every assertion unchanged.
-    const before = stepGame(advanceTo(0x1035, 504), inputsAt(504))
+    //
+    // jt12-3 RE-BASELINE (the transporter player-queue + SELARE respawn went live: a
+    // re-created knight queues in CRELP and re-materialises on an empty-third pad — sim.ts/
+    // game.ts): seed 0x1035 frame 505 no longer produces a clean isolated player-thud (the
+    // repositioned re-entries reshape every contact on that seed). Re-swept the same
+    // [0x1000,0x1120) over 2500 frames by this test's own precondition (a stream of EXACTLY
+    // one `player-thud`, with a silent frame before): the earliest clean hit is now frame
+    // 1713, where 0x1001 is the lowest of the seeds tied there (0x1006, 0x1034, 0x107a … also
+    // tie) — the same "earliest frame, lowest seed" rule every prior move used. The assertion
+    // is unchanged: it still pins the SNPTHD (person) path, not SNETHD (enemy).
+    const before = stepGame(advanceTo(0x1001, 1712), inputsAt(1712))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1035, 505), inputsAt(505))
+    const fired = stepGame(advanceTo(0x1001, 1713), inputsAt(1713))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })

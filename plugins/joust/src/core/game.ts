@@ -40,9 +40,19 @@ import {
   respawnPlayerProcess,
   type SimState,
   type SimEvent,
+  type SimProcess,
 } from './sim.js'
 import { dispatchWaveType, waveRowAt, type ResolvedWaveType, type PlayersAlive } from './wave.js'
-import type { PlayerInput } from './flight.js'
+import {
+  takePlayerNumber,
+  servePlayer,
+  nextServed,
+  newServiceQueue,
+  selectRespawnPad,
+  scanAreas,
+  PADS,
+} from './transporter.js'
+import type { PlayerInput, EntityState } from './flight.js'
 import type { GameEvent } from './events.js'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -100,6 +110,21 @@ export interface GameState {
    * jt4-1/jt4-2 GameState consumers still typecheck; createGame seeds it.
    */
   guards?: WaveGuards
+  /**
+   * jt12-3 — re-entering knights holding a CRELP number, waiting their turn. A spent
+   * player with lives left draws NPSERV the frame it becomes due (`takePlayerNumber`,
+   * CREP1/CREP2 → LDA NPSERV, JOUSTRV4.SRC:5615-5617) and waits here until
+   * `nextServed` reaches it (players first, ahead of enemies), at which point it is
+   * re-materialised and LPSERV advances. Optional / default-empty so existing GameState
+   * literals still typecheck.
+   */
+  respawnQueue?: readonly PlayerRespawn[]
+}
+
+/** jt12-3 — one knight waiting in CRELP to re-materialise, and the NPSERV number it drew. */
+export interface PlayerRespawn {
+  player: number
+  ticket: number
 }
 
 /**
@@ -478,29 +503,87 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
   // re-enables collisions (jt2-6), so the re-entered knight is vulnerable again and lives
   // naturally reach 0 through real play — the loop CLOSES (Reviewer Ruling #1).
   let processes = sim.sim.processes
+  // jt12-3 — the re-entry now goes through the SAME transporter deli-counter the enemies
+  // queue in (`CREP1/CREP2 → LDA NPSERV … BRA CRELP`, JOUSTRV4.SRC:5615-5676). The player
+  // counters live in the shared `serviceQueue` so the enemy service inside `stepSim` sees a
+  // waiting knight and defers to it (`enemyTurn`'s NPSERV==LPSERV guard — players first).
+  let serviceQueue = sim.serviceQueue ?? newServiceQueue()
+  let respawnQueue: readonly PlayerRespawn[] = game.respawnQueue ?? []
+
+  // A wave advance RE-SEEDS `serviceQueue` per wave (stepSim, `newServiceQueue`), which can
+  // leave a knight that already drew its number holding a ticket the counter no longer reaches
+  // (npserv/lpserv reset below it). Drop any entry whose ticket has fallen outside the live
+  // window `[lpserv, npserv)`; the take-a-number loop below then re-draws that knight, so a
+  // player with lives is NEVER orphaned across a queue reset. Without this a mid-respawn knight
+  // is lost forever — lives>0 && !out with no re-entry (a co-op game-over hang, a 1P softlock).
+  respawnQueue = respawnQueue.filter((r) => r.ticket >= serviceQueue.lpserv && r.ticket < serviceQueue.npserv)
+
+  // SERVE the knight whose CRELP number is up FIRST (the players-first arm of `nextServed`,
+  // ahead of enemies), at most one per frame like the enemy service. `servePlayer` advances
+  // LPSERV. Serving before taking new numbers makes a freshly-due knight wait at least one
+  // frame in CRELP — the ROM re-create queues behind the counter rather than jumping it.
+  if (nextServed(serviceQueue) === 'player') {
+    const head = respawnQueue.find((r) => r.ticket === serviceQueue.lpserv)
+    if (head !== undefined) {
+      // CREPLY's empty-third safety (JOUSTRV4.SRC:5627-5665): steer the re-materialising
+      // knight to a pad whose screen third is CLEAR so it does not land on a swarm. The
+      // census is over EVERY active on-screen occupant with a flight body — knights, enemies,
+      // pterodactyls AND lava trolls (CREPLY walks every active PID via SELARE, :5627-5636;
+      // only eggs, which have no flight entity, are excluded). `occupied` is the pads already
+      // stood on; `selectRespawnPad` walks the ROM's bottom→middle→top preference with a
+      // first-free fall-through.
+      const entityOf = (p: SimProcess): EntityState | undefined =>
+        p.kind === 'enemy' ? p.enemy?.entity : p.entity
+      const occupantYs = processes
+        .map(entityOf)
+        .filter((e): e is EntityState => e !== undefined)
+        .map((e) => e.posY >> 8)
+      const occupied = PADS.filter((pad) =>
+        processes.some((p) => {
+          const e = entityOf(p)
+          return e !== undefined && e.posX === pad.x && e.posY === pad.y << 8
+        }),
+      ).map((pad) => pad.id)
+      const pad = selectRespawnPad(scanAreas(occupantYs), occupied)
+      // `null` = every pad in use (BNE CRELP): the knight keeps its number and waits — no
+      // serve, LPSERV not advanced, so it is still head of the queue next frame.
+      if (pad !== null) {
+        processes = [...processes, respawnPlayerProcess(head.player, pad)]
+        // The CREP re-create this IS. Each knight has its OWN table — SNPCR1 "PLAYER 1
+        // RE-CREATED (TRANSPORTER)" (:8116-8118, bound at P1DEC :5552) and SNPCR2 "PLAYER 2
+        // RE-CREATED (TRANSPORTER)" (:8119-8121, bound at P2DEC :5556). The machine has
+        // exactly two knight tables, so anything that is not knight 2 sounds knight 1's.
+        cues.push({ type: 'player-materialise', player: head.player === 2 ? 2 : 1 })
+        serviceQueue = servePlayer(serviceQueue)
+        respawnQueue = respawnQueue.filter((r) => r !== head)
+      }
+    }
+  }
+
+  // TAKE a number for each knight that JUST became due to re-enter and is not already
+  // waiting (`LDA NPSERV / INC NPSERV`, JOUSTRV4.SRC:5615-5617). `!priorLive` rules out the
+  // frame it died on (that frame still shows the removal); `!survivingIds` the frames it is
+  // absent; the `respawnQueue` membership guard stops it re-drawing a number every frame it
+  // waits. `livePlayerNow` excludes a knight the serve just spliced THIS frame — `due` was
+  // computed from the pre-serve sets, so without this guard the knight served above would be
+  // re-queued and materialise a SECOND time. A player at ZERO lives stays OUT (BEQ PLYDIE).
+  const livePlayerNow = (id: number): boolean => processes.some((p) => p.kind === 'player' && p.id === id)
   settled.players.forEach((p, i) => {
     const id = i + 1
-    if (p.lives > 0 && !p.out && !survivingIds.has(id) && !priorLive.has(id)) {
-      processes = [...processes, respawnPlayerProcess(id)]
-      // The CREP re-create this block IS. Each knight has its OWN table —
-      // SNPCR1 "PLAYER 1 RE-CREATED (TRANSPORTER)" (:8116-8118, bound at P1DEC
-      // :5552) and SNPCR2 "PLAYER 2 RE-CREATED (TRANSPORTER)" (:8119-8121,
-      // bound at P2DEC :5556) — so the moment carries WHICH knight and the
-      // shell's dispatch picks the table. `id` is this loop's 1-based ledger
-      // index; a constant here would re-collapse the two cues jt5-6 split.
-      //
-      // Narrowed explicitly rather than cast. `id` is `number` — `createGame`
-      // takes an unclamped `playerCount`, so nothing in the TYPE stops a third
-      // ledger existing and `id as PlayerId` would have asserted a range the
-      // signature does not guarantee. The machine has exactly two knight tables
-      // (SNPCR1/SNPCR2, bound at P1DEC/P2DEC), so anything that is not knight 2
-      // sounds knight 1's — the same fallback the dispatch documents, stated
-      // where it is decided instead of hidden behind an `as`.
-      cues.push({ type: 'player-materialise', player: id === 2 ? 2 : 1 })
+    const due = p.lives > 0 && !p.out && !survivingIds.has(id) && !priorLive.has(id)
+    if (due && !livePlayerNow(id) && !respawnQueue.some((r) => r.player === id)) {
+      const drawn = takePlayerNumber(serviceQueue)
+      serviceQueue = drawn.queue
+      respawnQueue = [...respawnQueue, { player: id, ticket: drawn.ticket }]
     }
   })
+
+  const processesChanged = processes !== sim.sim.processes
+  const queueChanged = serviceQueue !== sim.serviceQueue
   const finalSim: SimState =
-    processes === sim.sim.processes ? sim : { ...sim, sim: { ...sim.sim, processes } }
+    processesChanged || queueChanged
+      ? { ...sim, sim: { ...sim.sim, processes }, serviceQueue }
+      : sim
 
   // SNREPL "EXTRA MAN" (:8089) — one cue per man awarded, counted off the ledger
   // thresholds across the WHOLE frame, so an award from a kill, an egg, the
@@ -518,6 +601,10 @@ export function stepGame(game: GameState, inputs?: Record<number, PlayerInput>):
     // them in. The shell dispatches the list as given (jt5-1 AC4).
     events: [...finalSim.cues, ...cues],
     guards,
+    // jt12-3 — carry the CRELP waiting room forward so a knight that drew its number
+    // this frame is still holding it next frame when its turn comes up. Omitted when
+    // empty so a quiet game's GameState stays byte-identical to before this story.
+    ...(respawnQueue.length > 0 ? { respawnQueue } : {}),
   }
 }
 

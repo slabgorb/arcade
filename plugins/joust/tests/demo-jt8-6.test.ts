@@ -66,11 +66,17 @@ import {
 import { loadFlight } from './helpers/flight-contract.js'
 import { loadArena } from './helpers/arena-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
+import { PADS, type TransporterPad } from '../src/core/transporter.js'
 
 const SEED = 0x1234_5678
 
 const PLAYER1_ID = 1
 const PLAYER2_ID = 2
+
+// jt12-3 — a re-created knight now materialises ON a transporter pad. These catch/credit
+// tests re-position the reborn process themselves (readyToCatch / seatedAt), so ANY pad
+// serves; the pad's identity is irrelevant to what they assert.
+const RESPAWN_PAD = PADS[0]
 
 /** The ladder, for readable expectations (EGGVAL, jt2-4 / JT24-021..024). */
 const RUNG_1 = 250
@@ -396,17 +402,17 @@ describe('jt8-6 AC-1 — a WAVE ADVANCE clears the egg ladder (WNRM :1979-1980)'
 describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :4669/:4675)', () => {
   it('a re-created knight carries NO ladder credit (the CREP re-entry)', async () => {
     const mod = (await import('../src/core/sim.js')) as {
-      respawnPlayerProcess: (id: number) => SimProcess
+      respawnPlayerProcess: (id: number, pad: TransporterPad) => SimProcess
     }
-    expect(creditOf(mod.respawnPlayerProcess(PLAYER1_ID))).toBe(0)
-    expect(creditOf(mod.respawnPlayerProcess(PLAYER2_ID))).toBe(0)
+    expect(creditOf(mod.respawnPlayerProcess(PLAYER1_ID, RESPAWN_PAD))).toBe(0)
+    expect(creditOf(mod.respawnPlayerProcess(PLAYER2_ID, RESPAWN_PAD))).toBe(0)
   })
 
   it("the story's REPRODUCED case, in the ROM's direction: 1000 before the death, 250 after", async () => {
     const demo = await loadSim()
     const air = await findAir()
     const mod = (await import('../src/core/sim.js')) as {
-      respawnPlayerProcess: (id: number) => SimProcess
+      respawnPlayerProcess: (id: number, pad: TransporterPad) => SimProcess
     }
     const base = demo.createWaveSim(SEED)
 
@@ -418,7 +424,7 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
     // He dies (the process leaves) and re-enters through the transporter. The
     // materialise window is jt2-6's law, not this story's — collisions are forced
     // back on so the catch under test can actually happen.
-    const reborn = readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID))
+    const reborn = readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID, RESPAWN_PAD))
     const after = await catchOneEgg(before.after, reborn, air)
 
     expect(after.values).toEqual([RUNG_1])
@@ -437,7 +443,7 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
     const demo = await loadSim()
     const air = await findAir()
     const mod = (await import('../src/core/sim.js')) as {
-      respawnPlayerProcess: (id: number) => SimProcess
+      respawnPlayerProcess: (id: number, pad: TransporterPad) => SimProcess
     }
 
     // Earn credit, then lose the man and re-create him.
@@ -449,7 +455,7 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
     expect(veteran.values).toEqual([RUNG_4]) // the credit was real
 
     let state = withProcesses(veteran.after, [
-      readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID)),
+      readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID, RESPAWN_PAD)),
       waveHolder(), // hold the wave so no boundary reset can do this test's work
     ])
     for (let i = 0; i < 12; i++) {
@@ -462,13 +468,13 @@ describe('jt8-6 AC-2 — a player DEATH clears the egg ladder (DEATH1/DEATH2 :46
     const demo = await loadSim()
     const air = await findAir()
     const mod = (await import('../src/core/sim.js')) as {
-      respawnPlayerProcess: (id: number) => SimProcess
+      respawnPlayerProcess: (id: number, pad: TransporterPad) => SimProcess
     }
     const base = demo.createWaveSim(SEED)
 
     // P1 dies and re-enters; P2 never left and is still holding two hits.
     const survivor = playerAt(PLAYER2_ID, air.x + 80, air.y, 2)
-    const reborn = readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID))
+    const reborn = readyToCatch(mod.respawnPlayerProcess(PLAYER1_ID, RESPAWN_PAD))
     const staged = withProcesses(base, [
       seatedAt(survivor, air.x, air.y),
       seatedAt(reborn, air.x + 80, air.y),

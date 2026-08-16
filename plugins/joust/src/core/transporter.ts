@@ -168,6 +168,39 @@ export function freePad(preferred: PadId, occupied: readonly PadId[]): PadId | n
   return null
 }
 
+/**
+ * The transporter a RE-MATERIALISING KNIGHT lands on — CREPLY's empty-third safety search
+ * (JOUSTRV4.SRC:5627-5665) followed by GOTTR's first-free fall-through (:5697-5709). Unlike
+ * an enemy (which takes its VRAND-drawn pad via `freePad`), a re-created player is steered
+ * to a pad whose SCREEN THIRD is EMPTY so it does not rematerialise on top of a swarm:
+ * bottom first (TR4), then the two middle pads (TR2 then TR3), then top (TR1) — each only
+ * when that third holds no occupant (`spawnProceeds`) AND the pad itself is free. When no
+ * empty third has a free pad the ROM falls through GOTR1..GOTR4 to the first free pad in id
+ * order; `null` only when every pad is in use (`BNE CRELP`, :5709 — re-nap with the ticket).
+ *
+ * `occ` is the SELARE census of the current on-screen occupants (`scanAreas`); `occupied`
+ * is the set of pads already stood on. The one authenticity simplification: the ROM seeds
+ * the all-thirds-occupied fall-through from `VRAND`, where this takes the deterministic
+ * first-free pad — the empty-third preference itself, which IS the safety, is exact.
+ */
+export function selectRespawnPad(occ: AreaOccupancy, occupied: readonly PadId[]): TransporterPad | null {
+  const busy = new Set(occupied)
+  const free = (p: TransporterPad): boolean => !busy.has(p.id)
+  const padOf = (id: PadId): TransporterPad | undefined => PADS.find((p) => p.id === id)
+  const tr1 = padOf('TR1')
+  const tr2 = padOf('TR2')
+  const tr3 = padOf('TR3')
+  const tr4 = padOf('TR4')
+  if (tr4 && spawnProceeds(occ, 'bottom') && free(tr4)) return tr4
+  if (spawnProceeds(occ, 'middle')) {
+    if (tr2 && free(tr2)) return tr2
+    if (tr3 && free(tr3)) return tr3
+  }
+  if (tr1 && spawnProceeds(occ, 'top') && free(tr1)) return tr1
+  for (const pad of PADS) if (free(pad)) return pad
+  return null
+}
+
 // ─── The take-a-number ticket queue (JOUSTRV4.SRC:5615-5676) ─────────────────
 
 /** A fresh service state — all counters equal, so nobody is waiting or served. */

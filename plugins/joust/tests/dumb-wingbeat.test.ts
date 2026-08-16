@@ -605,8 +605,12 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     expect(rowFor('player#1:'), 'player#1 flies the jt9-8 PTIMUP arc — re-init on its wing edges').toBe(
       'player#1:172,15672,-16,2,64,8,1',
     )
-    expect(rowFor('player#2:'), 'player#2 never leaves the ground in this replay').toBe(
-      'player#2:200,32768,0,0,0,1,0',
+    // jt12-3 RE-BASELINE: player#2 dies and RE-MATERIALISES on a transporter pad in an
+    // empty third (SELARE safety) instead of the fixed mid-screen spawn — so its frozen
+    // frame-400 fingerprint moves from the old (200,32768) spawn to TR1 (113, 20480=80<<8).
+    // Same rest state (zero velocity, held), new pad-anchored position.
+    expect(rowFor('player#2:'), 'player#2 re-materialises on the TR1 pad and rests there').toBe(
+      'player#2:113,20480,0,0,0,1,0',
     )
     expect(
       rowFor('enemy#257:'),
@@ -725,9 +729,20 @@ describe('AC6 — the dumb wing cue', () => {
       //   0xbeef  down 174 -> 277, playerDown 153 -> 154, playerUp 151 -> 152
       //   0x2468  wholly UNMOVED (256 / 154 / 153)
       //   0xface  down 250 -> 206 (knight cues unmoved)
-      0xbeef: { down: 277, playerDown: 154, playerUp: 152 },
-      0x2468: { down: 256, playerDown: 154, playerUp: 153 },
-      0xface: { down: 206, playerDown: 154, playerUp: 154 },
+      // jt12-3 RE-BASELINE (the transporter player-side queue + SELARE occupancy safety
+      // went live: a re-created knight now queues in CRELP and re-materialises ON a pad in
+      // an EMPTY third instead of a fixed mid-screen point — sim.ts/game.ts). Respawn
+      // position + a 1-frame queue delay reshape the seeded replay's trajectories and
+      // knight-death timing, so the dumb-wing census moves in BOTH directions (a
+      // trajectory perturbation, not a population change). The `rng` cursor is UNMOVED
+      // through this change (audio-events.test.ts AC3): the queue transforms and the pad
+      // selector are pure and draw no randomness.
+      //   0xbeef  down 277 -> 304, playerDown 154 -> 153, playerUp 152 -> 153
+      //   0x2468  down 256 -> 342, playerDown 154, playerUp 153 -> 154
+      //   0xface  down 206 -> 172, playerDown 154, playerUp 154
+      0xbeef: { down: 304, playerDown: 153, playerUp: 153 },
+      0x2468: { down: 342, playerDown: 154, playerUp: 154 },
+      0xface: { down: 172, playerDown: 154, playerUp: 154 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

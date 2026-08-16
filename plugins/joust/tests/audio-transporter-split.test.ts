@@ -816,9 +816,14 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // 0xface still supplies the disagreeing pair. 0xbeef's 224->2 line is
     // UNMOVED and was re-run, not assumed. The sibling audio-events fixture
     // (death 957 / re-entry 958) is re-baselined in step.
-    expect(materialisedIdsAt(0xface, 605), 'seed 0xface frame 605 re-enters knight 1').toEqual([1])
-    expect(materialisedIdsAt(0xface, 958), 'seed 0xface frame 958 re-enters knight 2').toEqual([2])
-    expect(materialisedIdsAt(0xbeef, 224), 'seed 0xbeef frame 224 re-enters knight 2').toEqual([2])
+    // jt12-3 RE-BASELINE (the transporter player-side CRELP queue went live): a re-created
+    // knight now takes a NPSERV number and waits a frame in CRELP before it is served, so
+    // every re-entry slides +1 frame. Measured off the process list (same rule): 0xface
+    // knight 1 605->606, knight 2 958->959; 0xbeef knight 2 224->225. The disagreeing pair
+    // still comes from 0xface, and the SNPCR2 fixture below rides the same +1.
+    expect(materialisedIdsAt(0xface, 606), 'seed 0xface frame 606 re-enters knight 1').toEqual([1])
+    expect(materialisedIdsAt(0xface, 959), 'seed 0xface frame 959 re-enters knight 2').toEqual([2])
+    expect(materialisedIdsAt(0xbeef, 225), 'seed 0xbeef frame 225 re-enters knight 2').toEqual([2])
   })
 
   it('the emitted moment carries the knight it belongs to', async () => {
@@ -833,8 +838,9 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // jt11-3 RE-BASELINE: knight 2 at 2055, knight 1 at 1210 (the re-swept
     // earliest of each — see the sweep table in the test above).
     // jt11-11 RE-BASELINE: knight 2 at 958, knight 1 at 605 (same sweep table).
-    expect(materialiseEventsAt(0xface, 958).map((e) => e.player)).toEqual([2])
-    expect(materialiseEventsAt(0xface, 605).map((e) => e.player)).toEqual([1])
+    // jt12-3 RE-BASELINE: +1 from the CRELP queue delay — knight 2 at 959, knight 1 at 606.
+    expect(materialiseEventsAt(0xface, 959).map((e) => e.player)).toEqual([2])
+    expect(materialiseEventsAt(0xface, 606).map((e) => e.player)).toEqual([1])
   })
 
   it('the payload is the LOOP’s id, not a constant — the two frames disagree', async () => {
@@ -849,8 +855,9 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // jt11-11 RE-BASELINE: 2055 -> 958 and 1210 -> 605, riding the sweep above;
     // the two frames still disagree, so a hardcoded `player: 1` still cannot pass
     // both.
-    const two = materialiseEventsAt(0xface, 958).map((e) => e.player)
-    const one = materialiseEventsAt(0xface, 605).map((e) => e.player)
+    // jt12-3 RE-BASELINE: +1 from the CRELP queue delay (959 / 606); the two still disagree.
+    const two = materialiseEventsAt(0xface, 959).map((e) => e.player)
+    const one = materialiseEventsAt(0xface, 606).map((e) => e.player)
     expect(two, 'precondition: both frames emit').toHaveLength(1)
     expect(one).toHaveLength(1)
     expect(two[0], 'a constant would make these equal').not.toBe(one[0])
@@ -869,8 +876,10 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // jt11-11 RE-BASELINE: 2055 -> 958 — still 0xface's knight-TWO re-entry
     // (measured off the process list), so the SNPCR2 assertion is kept, not
     // weakened, at the frame where it now holds.
-    const events = materialiseEventsAt(0xface, 958)
-    expect(events, 'precondition: frame 958 still emits the moment').toHaveLength(1)
+    // jt12-3 RE-BASELINE: 958 -> 959, still 0xface's knight-TWO re-entry (the CRELP +1);
+    // the SNPCR2 assertion is kept, not weakened, at the frame where it now holds.
+    const events = materialiseEventsAt(0xface, 959)
+    expect(events, 'precondition: frame 959 still emits the moment').toHaveLength(1)
     expect(await cuesFor({ ...events[0]! })).toEqual(['player2Materialise'])
   })
 
