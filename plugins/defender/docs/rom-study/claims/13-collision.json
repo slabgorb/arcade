@@ -1,0 +1,65 @@
+[
+  {
+    "id": "CD-1",
+    "claim": "COLIDE's reference lower-right corner is the upper-left plus the picture's OBJW/OBJH: ADDD OBJW,U (then STD LRX 'LR CORNER OF PLAYER' on the next line). The box the query presents is [UL, UL+size).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2909,
+      "verbatim": "\tADDD\tOBJW,U"
+    }
+  },
+  {
+    "id": "CD-2",
+    "claim": "COLIDE skips an OFF-SCREEN candidate whose upper-left coord WORD is exactly zero: LDD OBJX,X on the prior line, then BEQ COLLP 'OFF SCREEN' — an object at (0,0) is inactive and passed over even if it would geometrically overlap.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2913,
+      "verbatim": "\tBEQ\tCOLLP\tOFF SCREEN"
+    }
+  },
+  {
+    "id": "CD-3",
+    "claim": "The box overlap test is EXCLUSIVE at the right edge: CMPA LRX (candidate ULX vs reference LRX) followed by BHS COLLP skips when ULX >= LRX, so a candidate exactly touching the right edge does not collide.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2914,
+      "verbatim": "\tCMPA\tLRX"
+    }
+  },
+  {
+    "id": "CD-4",
+    "claim": "Each CANDIDATE computes its own lower-right corner from its OWN picture, dereferenced through OPICT: ADDD [OPICT,X] 'CALC LR' — so a candidate whose upper-left is outside the box still collides when its width/height reach in.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2918,
+      "verbatim": "\tADDD\t[OPICT,X] CALC LR"
+    }
+  },
+  {
+    "id": "CD-5",
+    "claim": "The CENTMP screen-collision address is seeded from the struck object's upper-left coord read as a screen address: LDY OBJX,X 'SCREEN TOP LEFT' — the OBJX/OBJY word doubles as the on-screen beam address (column high byte, row low byte).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2998,
+      "verbatim": "\tLDY\tOBJX,X\tSCREEN TOP LEFT"
+    }
+  },
+  {
+    "id": "CD-6",
+    "claim": "One column step in the CENTMP screen address is $100 (256): LEAY $100,Y advances the address by a full column each time the pixel offset overflows a row — i.e. the column lives in the high byte of the coord-as-address word.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3003,
+      "verbatim": "\tLEAY\t$100,Y"
+    }
+  },
+  {
+    "id": "CD-7",
+    "claim": "The final screen-collision address is stored to CENTMP: STY CENTMP 'SCREEN COLLISION ADDR' — the location an explosion/effect reads to know WHERE on screen the hit was, distinct from the coarse UL/LR box coordinates.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3008,
+      "verbatim": "\tSTY\tCENTMP\tSCREEN COLLISION ADDR"
+    }
+  }
+]
