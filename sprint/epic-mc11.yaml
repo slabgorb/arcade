@@ -19,9 +19,12 @@ stories:
     title: "Emit the bonus count-up cue: in the 'between' bonus resolution (game.ts:401-420) emit N {type:'bonusTick'} events (one per bonus unit tallied) instead of the lump waveEndBonus with soundEvents:[], so the TK cue plays per unit. Update sound-events.ts:62 to strike the 'emitter is a filed follow-up' note. Assert the event count matches the units paid. REV-01 W3SOUN SUNABM"
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
+    review_findings: "APPROVED round 2. Both round-1 findings CLOSED with mutation-proven guards (independently re-verified): dead-base ammo exclusion (game.ts:403 b.alive guard) and N=0 census floor. Two LOW notes strengthened (multiplier observes 5>1; seed uses two different seeds). Production code unchanged; coverage-only rework. 19/19 file, 1376/1376 project."
   - id: mc11-3
     title: "Wire the name-entry timeout + start-abort: add a per-frame countdown to the 'entry' step branch that calls abortNameEntry (core/game.ts:274) on 30-second expiry, and map the start switch to abort during entry, returning to attract with the buffer cleared and the ladder unchanged. Assert both the timeout and start-abort paths. REV-01 W3DSUP.MAC:4076/:4086 TAKE INITIALS abort"
     points: 5

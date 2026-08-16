@@ -415,7 +415,16 @@ export function stepGame(state: GameState): GameState {
       wave: nextWave,
       multiplier: scoreMultiplier(nextWave),
       sputniks: [], // enemies clear at wave end (like ICBMs); next wave re-activates
-      soundEvents: [],
+      // mc11-2: the bonus count-up cue (TK, SUNABM). The ROM tallies the bonus one
+      // PHYSICAL unit at a time, firing SUNABM per drawn unit: ENDWV4 draws each
+      // surviving city (W3MAIN.MAC:4463) and ENDWV2 draws each unused ABM
+      // (W3MAIN.MAC:4277). So one `bonusTick` per unit — survivingCities +
+      // unusedMissiles — NOT per point: SMULTI scales the points added per tick
+      // (ICMUL2/ABMADD), never the tick count. The whole beat resolves this frame.
+      soundEvents: Array.from(
+        { length: survivingCities + unusedMissiles },
+        () => ({ type: 'bonusTick' }) as const,
+      ),
     }
   }
 
