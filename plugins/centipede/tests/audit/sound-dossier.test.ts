@@ -60,6 +60,7 @@ import {
   claimCovers,
   extractProseCitations,
   loadClaims,
+  loadClaimsFile,
   pluginRoot,
   readDossier,
   romStudyDir,
@@ -396,8 +397,12 @@ function loadSoundClaims(): Claim[] {
         'tables converted to claims the live citation gate re-opens byte-for-byte (AC-2).',
     )
   }
-  const parsed = JSON.parse(readFileSync(soundClaimsPath, 'utf8')) as Claim | Claim[]
-  return ([] as Claim[]).concat(parsed)
+  // df1-10: the inline `JSON.parse(readFileSync(...)) as Claim | Claim[]` copy is
+  // retired. Delegate to the hardened single-file loader so this SINGLE-FILE sound
+  // reader and the whole-dir loadClaims share ONE implementation (lang-review #18):
+  // a bad-shape or bad-JSON 16-sound.json now names itself instead of casting
+  // through unchecked.
+  return loadClaimsFile(soundClaimsPath)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
