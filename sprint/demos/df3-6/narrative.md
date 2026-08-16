@@ -1,0 +1,13 @@
+# df3-6
+
+## Problem
+
+Problem: The Defender game screen looked like a paused screenshot — nothing moved. Five prior engineering stories had already built the ship's flight physics, the scrolling star background, and the laser-firing logic, but none of it was actually connected to what a player sees on screen; the visible game was still running last sprint's placeholder "frozen still" image. Why it matters: A game that doesn't move can't be played, can't be demoed, and can't prove that the underlying physics work — stakeholders had no way to confirm the ship, the scrolling world, and the weapons actually function together until this was wired up and shown live in a browser.
+
+## What Changed
+
+Think of it like a car that had a fully-built engine, steering, and fuel system sitting in the garage — but nobody had bolted them to the chassis yet, so the car just sat there. This story bolted everything together: the ship's flight controls, the scrolling starfield, and the laser now all run on a steady 60-times-per-second "heartbeat" that redraws the screen continuously. Pressing the movement and thrust keys now visibly moves the ship and scrolls the star background behind it in the correct direction; firing sends a laser streak across the screen; moving up or down is stopped at the correct top/bottom boundary of the screen, faithfully matching how the original 1980s arcade cabinet behaved (including a small original-hardware quirk where the ship can drift one row past the boundary before stopping — kept intentionally rather than "fixed," to stay true to the original game). The team also confirmed there's no jarring full-screen flash or strobe effect, an accessibility requirement carried forward from earlier work on other games in this arcade.
+
+## Why This Approach
+
+Rather than building new movement or rendering logic, the team reused five already-tested building blocks from previous sprints (ship handling, camera/scrolling, star field, and laser mechanics) and simply connected them to a single steady update loop — the software equivalent of plugging existing, already-inspected parts into the chassis rather than manufacturing new ones. This keeps the "thinking" part of the game (physics and rules) cleanly separated from the "drawing" part (what appears on screen), which makes future changes safer and easier to test. To prove the fix actually worked — not just that the web page loaded — the team took a live screenshot of the running game and compared it against a deliberately broken/nonsense web address; a page that merely loads without error isn't proof of anything, so the comparison had to show genuinely different, moving content, which it did.

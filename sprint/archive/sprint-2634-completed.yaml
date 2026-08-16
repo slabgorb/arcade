@@ -18,6 +18,7 @@ completed_epics:
   - ml8
   - df2
   - ml9
+  - df3
 completed_stories:
   - id: ml1-5
     epic: ml1
@@ -482,4 +483,9 @@ completed_stories:
     epic: df1
     title: "Close the games-roster staleness cycle (routed from df1-7 review): reconcile the remaining stale roster surfaces AND pin the counts so they cannot silently desync again. (1) README.md:127 just build-all comment still says 'nine games + the lobby' — true count is eleven [DOC, comment-analyzer, high conf]. (2) CLAUDE.md R2 hosting table (~lines 203-212) lists nine games and omits the defender and millipede rows [RULE/DOC, rule-checker]. (3) No guard pins the roster total/raster numerals against the wired game set, so the prose rotted once (df1-5) and df1-7 fixed it by hand without closing the mechanism; add a guard deriving total===GAMES.length (and, where feasible, the raster/vector split) from tests/monorepo-topology GAMES so a future 12th game reddens instead of silently desyncing [TEST, test-analyzer, medium]."
     points: 3
+    completed: '2026-08-16'
+  - id: df3-6
+    epic: df3
+    title: 'VISUAL playtest — the ship flying a scrolling, wrapping world: screenshot http://127.0.0.1:5270/defender/ showing the ship over the moving starfield, thrust scrolling the world, reverse flipping facing + slide, a laser in flight — compared against a nonsense control path (must DIFFER, not just 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scroll direction, ship-leads offset, vertical clamp and colour BEFORE enemies (playbook sec 4). Carry the df4/df5 accessibility ruling forward as a note (no full-screen strobe downstream).'
+    points: 8
     completed: '2026-08-16'
