@@ -5,31 +5,27 @@
 // pure, byte-verified transforms in src/core/baiter.ts (jt3-5, pinned by
 // tests/baiter.test.ts); jt3-7 wired the baiter SPAWN CADENCE but NOT the
 // patches, so a live baiter is today mechanically identical to a plain wave
-// pterodactyl (self-confessed at baiter.ts:8-10 and the jt12 epic context). This
+// pterodactyl (self-confessed in the baiter.ts module header and the jt12 epic context). This
 // suite drives the wire: `stepPteroFlight` and `resolvePteroAttack` gain a
 // `pchase` argument, and for a live baiter (PCHASE ≠ 0) they apply the patches at
 // their decision points. The headline AC — "a baiter diverges from a plain wave
 // ptero" — is asserted directly, patch by patch.
 //
-// ─── SCOPE OF THIS RED (honest, and why) ─────────────────────────────────────
-// The five patches split by WHERE their decision point lives:
-//   • PATCH4 aim-lower  → resolvePteroAttack: shifts the lance-height band. Point
-//     transform of the existing compare. PINNED here, exact (±AIM_LOWER_PIXELS).
+// ─── SCOPE: all five patches, wired live ─────────────────────────────────────
+// Each patch is applied at its decision point in flight/attack, gated on a live
+// baiter (PCHASE ≠ 0); a plain wave ptero passes 0 and every patch is a no-op:
+//   • PATCH4 aim-lower  → resolvePteroAttack: shifts the lance-height band. PINNED
+//     exact (±AIM_LOWER_PIXELS), as the shift invariant.
 //   • PATCH5 slow-dive  → stepPteroFlight: signed VY ÷ 4 before the posY integrate.
-//     Point transform of the existing velY. PINNED here, exact, both signs.
-//   • PATCH6 lane-reroute → stepPteroFlight: a pure function of posX, recomputable
-//     each wake. PINNED here as a FLANK-SPECIFIC divergence (fires past the CLIF3U
-//     mid-band, no-op inside it) — the mechanism of how a lane biases flight is
-//     Dev's to choose (cadence-wiring.test.ts discipline: pin the invariant, not
-//     the transcript), so this asserts divergence + the boundary, not the bias.
-//   • PATCH8 first-pass-miss + PATCH9 seek-timer → a PERSISTENT `PPVELX` seek-delay
-//     counter (seed 138, DEC saturating at 1) that the ptero does NOT model today
-//     (PPVELX lives only on the enemy, enemy.ts:143; the ptero flight carries no
-//     seek state and no player-seek behaviour). Wiring these two is NOT a point
-//     transform — it needs new ptero state + a home for the counter. Marked
-//     `it.todo` below and raised as a BLOCKING Delivery Finding (Gap): the design
-//     of the counter's home / whether it splits to a jt12-1 successor is a GREEN
-//     decision, not something this RED invents a system for.
+//     PINNED exact, both signs, with a still-VY-0 no-op control.
+//   • PATCH6 lane-reroute → stepPteroFlight: a pure function of posX. PINNED as a
+//     FLANK-SPECIFIC divergence (fires past the CLIF3U mid-band, no-op inside it) —
+//     the lane→flight bias mechanism is Dev's (cadence-wiring.test.ts discipline:
+//     pin the invariant + the boundary, not the transcript).
+//   • PATCH8 first-pass-miss + PATCH9 seek-timer → a persistent `PPVELX` seek-delay
+//     counter on the baiter PROCESS (frame.ts): seeded to FIRST_PASS_DELAY on spawn,
+//     DEC'd each wake and saturated at 1. PINNED via the live frame stepper (seed +
+//     decrement + saturate); a plain wave ptero never grows the counter.
 //
 // ─── MUTATION-RESISTANCE (the jt1-4 lesson, applied) ─────────────────────────
 //   • slow-dive is pinned at the EXACT quotient (velY 0x100 → 0x40, and the SIGNED
@@ -49,6 +45,38 @@ import { loadPtero } from './helpers/ptero-contract.js'
 import { loadBaiter } from './helpers/baiter-contract.js'
 import type { EntityState, PlayerInput, JoustEntity } from './helpers/ptero-contract.js'
 import type { PteroEntity } from './helpers/ptero-contract.js'
+import { createState, spawn, stepFrame, type GameState, type ProcessSpec } from '../src/core/frame.js'
+
+const IDLE_INPUTS: Record<number, PlayerInput> = {}
+/** A `kind:'ptero'` scheduler process that wakes every frame (nap/period 1). */
+function pteroProcess(overrides: Partial<ProcessSpec>): ProcessSpec {
+  return {
+    id: 0x201,
+    cls: 'secondary',
+    nap: 1,
+    period: 1,
+    kind: 'ptero',
+    entity: {
+      posX: 100,
+      posY: 100 << 8,
+      velXIndex: 0,
+      velXFrac: 0,
+      velY: 0,
+      timeUp: 0,
+      groundState: null,
+      plantZ: 0,
+      airborne: true,
+    },
+    ...overrides,
+  }
+}
+/** Step a lone ptero process `frames` times; return its final ppvelx (or undefined). */
+function stepPteroProcess(spec: ProcessSpec, frames: number): number | undefined {
+  let g: GameState = spawn(createState(0x1234), spec)
+  for (let i = 0; i < frames; i++) g = stepFrame(g, IDLE_INPUTS)
+  const p = g.processes.find((q) => q.kind === 'ptero') as { ppvelx?: number } | undefined
+  return p?.ppvelx
+}
 
 const NO_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 
@@ -262,21 +290,30 @@ describe('jt12-1 PATCH6 — a baiter reroutes to the lower lane on the flanks on
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH8 + PATCH9 — FIRST-PASS-MISS + SEEK-TIMER. DEFERRED (blocking finding).
-// These two write and decrement a persistent PPVELX seek-delay counter (seed 138,
-// DEC saturating at 1 — JOUSTRV4.SRC:6294-6311) that gates when a baiter starts
-// actively seeking the player. The ptero models NO such counter and NO player-seek
-// flight today (PPVELX lives only on the enemy, enemy.ts:143). Wiring them needs a
-// home for the counter (mirroring enemy.ts's `homing.ppvelx` sidecar) and a seek
-// behaviour to gate — a design decision, not a point transform. Raised as a
-// blocking Delivery Finding; these stay `todo` until that home is decided (GREEN),
-// so the RED does not invent a subsystem the story under-specifies.
+// PATCH8 + PATCH9 — FIRST-PASS-MISS + SEEK-TIMER. A baiter carries a persistent
+// PPVELX seek-delay counter on its process (frame.ts): seeded to FIRST_PASS_DELAY so
+// its first pass misses (PATCH8), DEC'd each wake and SATURATED at 1 (PATCH9,
+// JOUSTRV4.SRC:6294-6311). A plain wave ptero never carries the counter.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('jt12-1 PATCH8/9 — first-pass-miss + seek-timer (deferred: needs a PPVELX home)', () => {
-  it.todo(
-    'PATCH8: a freshly spawned baiter seeds its seek-delay counter to FIRST_PASS_DELAY (138)',
-  )
-  it.todo('PATCH9: each baiter pass decrements the seek-delay counter, saturating at 1')
+describe('jt12-1 PATCH8/9 — first-pass-miss seeds + seek-timer decrements the baiter PPVELX', () => {
+  it('PATCH8: a baiter with no seed defaults its counter to FIRST_PASS_DELAY (138), then DECs', async () => {
+    const b = await loadBaiter()
+    expect(b.FIRST_PASS_DELAY, 'the ROM #138 first-pass delay').toBe(138)
+
+    // Spawn a baiter with NO ppvelx; after the first wake it must read FIRST_PASS_DELAY
+    // and DEC once → 137. A missing seed would leave it undefined; a wrong seed misses 137.
+    expect(stepPteroProcess(pteroProcess({ baiter: true }), 1)).toBe(b.FIRST_PASS_DELAY - 1)
+  })
+
+  it('PATCH9: each baiter wake decrements the counter, saturating at 1 (never 0)', async () => {
+    // Seed a small counter and step well past it: it must land on exactly 1, not 0/-.
+    expect(stepPteroProcess(pteroProcess({ baiter: true, ppvelx: 3 }), 40)).toBe(1)
+  })
+
+  it('a plain wave ptero never grows a seek-timer (PPVELX stays absent)', async () => {
+    // No `baiter` flag → the seek-timer wiring is skipped entirely.
+    expect(stepPteroProcess(pteroProcess({}), 5)).toBeUndefined()
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

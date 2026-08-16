@@ -619,8 +619,19 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // only advance, and the four buzzards are then served at 5102 / 5163 / 5224 /
     // 5285 — the 61-frame WCREATE walk-in, comfortably inside the 320-frame
     // window below. Seed, script, assertions unchanged.
-    const before = advanceTo(0xface, 5041)
-    const advanceFrame = stepGame(before, inputsAt(5041))
+    // jt12-1 RE-BASELINE (the five RV4 baiter anti-farming patches went LIVE): 0xface
+    // 5041 -> 0x1002 1650, AND THE SEED HAD TO CHANGE. A live baiter now aims 2px lower
+    // ("hit the player in the legs", PATCH4) and dives at 1/4 speed, so on 0xface it kills
+    // the camping knight and harries the survivor into a never-resolving egg cycle — that
+    // seed's wave 1 no longer clears at all (swept 15000 frames, no advance; the knights
+    // die at 6354 with an egg still live). Rather than chase a seed back into baiter
+    // territory, this re-baselines to a seed whose wave 1 clears EARLY — frame 1650, before
+    // the first baiter is sent off (~3599) — so the complement + cue window are measured on
+    // a wave the anti-farming patches cannot reach. 0x1002 deals four buzzards, none on the
+    // advance frame itself, served across the WCREATE walk-in below. Script + assertions
+    // unchanged.
+    const before = advanceTo(0x1002, 1650)
+    const advanceFrame = stepGame(before, inputsAt(1650))
     expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     // jt11-4 — nothing materialises on the advance frame itself: the complement has
     // only just taken its numbers and owes the transporter its PCNAP 1
@@ -644,13 +655,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
     // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
     for (let i = 0; i < 320; i++) {
-      g = stepGame(g, inputsAt(5042 + i))
+      g = stepGame(g, inputsAt(1651 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)
       const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
       expect(
         cued,
-        `frame ${5042 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+        `frame ${1651 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
       ).toBe(fresh.length)
       totalArrived += fresh.length
       totalCues += cued
