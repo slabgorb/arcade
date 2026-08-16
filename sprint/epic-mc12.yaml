@@ -68,15 +68,18 @@ stories:
     title: "Bound the MIRV to a SINGLE split so one missile can't cascade into a swarm. Today mirvSplit (core/mirv.ts:50) launches 3 children AT parent.pos — inside the MIRV band [MIRVLO=128,MIRVHI=160] (W3COMN.MAC:159/161) — and game.ts:597-600 keeps the split parent with no spent-marker, so the in-band cluster re-qualifies (mirvEligible, mirv.ts:38) and re-splits every frame into the 6+ fan the owner screenshotted. Mark a MIRVed ICBM AND its children spent so mirvEligible returns false for both; pin the bound to REV-01's single-shot mechanism (MIRVIX single slot W3MAIN.MAC:227; consume W3MAIN.MAC:2011-2017; POTENT '<=3 shots from a MIRV' W3MAIN.MAC:2717). ROM-always-wins: no invented difficulty knob. Pure core; purity + citations gated."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
-    type: bug
     acceptance_criteria:
       - "AC1: an Icbm carries a one-shot MIRV-spent marker set on BOTH the split parent and every child in mirvSplit (core/mirv.ts); mirvEligible (mirv.ts:38) returns false for an already-split ICBM and for any MIRV child. A test drops ONE in-band ICBM and asserts the total children it produces across ALL frames it spends in [128,160] is at most MIRV_MAX_CHILDREN (3) — not a per-frame cascade. The test reddens against today's re-splitting code (mutation-proven)."
       - "AC2: the single-shot bound is pinned to REV-01, not invented — the spent mechanism/comment cites the MIRVIX single-slot model (W3MAIN.MAC:227) and its consume (W3MAIN.MAC:2011-2017), and the POTENT cap 'NO MORE THAN 3 SHOTS FROM A MIRV' (W3MAIN.MAC:2717). Every new/changed src/core constant has a claims/*.json entry; citations.test.ts and purity.test.ts stay green (ROM-always-wins — no difficulty tuning parameter is added)."
       - "AC3: a population invariant — from a seeded createGame stepped through a MIRV wave, the on-screen ICBM count never exceeds NICBMS=8 and the number of MIRV events per originating ICBM is exactly one; this holds where today's code violates it (mutation-proven). Felt winnability/progression is confirmed separately in the mc12-4 playtest."
       - "AC4: the authentic split SHAPE is unchanged — children still launch from the parent's position toward RNG-picked live structures at the parent's velocity; only the RE-qualification of already-split warheads is removed."
+    completed: '2026-08-16'
+    type: bug
+    review_verdict: approved
   - id: mc12-2
     title: "Render fidelity round 3 (two fixes on one render.ts surface — grouped per the file-by-surface habit so they share one review). (a) DROP the incoming-ICBM 'lollipop': render.ts:175 fills a headR disc (ctx.arc) at each ICBM head; the cabinet draws incoming missiles as a trail with a flashing 1px tip like the ABM ('TIP OF MISSILE TRAIL IS FLASH' W3DSUP.MAC:931; DRAW MISSILE W3DSUP.MAC:1221), no disc. (b) AUTHENTIC bomber/satellite: render.ts:186-189 draws each sputnik/plane as a fillRect wing/box placeholder ('pixel-authentic plane sprite ... are mc9', which mc9-1 never did); port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP stamp layer as mc9-1 did for cities (WRITE A STAMP W3DSUP.MAC:587; locate the plane/satellite stamp label; sputnik.json claim exists). Shell-only; enemy hue (COL010) unchanged; purity stays green."
     points: 4
