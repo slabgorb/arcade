@@ -7,13 +7,12 @@
 // byte-cited ROM literal — the FRUIT TABLE at `pacman.asm:2b23`-`2b31`
 // (little-endian BCD x10, same encoding as the scoring table it immediately
 // follows) and the two fruit-spawn dot-eaten thresholds at `pacman.asm:0eba`/
-// `pacman.asm:0ebe`. Elroy thresholds and frightened seconds/flash count are
-// NOT re-derived here — they are read straight from mode.ts's own
-// `elroyThresholds`/`frightenedFramesForLevel`/`FRIGHT_FLASHES`, so there is
-// exactly one implementation of each and this table can never silently drift
-// from Task 7's. PURE: no DOM, no clock, no Math.random, no shell import.
-
-import { elroyThresholds, frightenedFramesForLevel, FRIGHT_FLASHES } from './mode'
+// `pacman.asm:0ebe`. PURE: no DOM, no clock, no Math.random, no shell import.
+//
+// Elroy thresholds and frightened seconds/flash count are NOT carried here:
+// they have a single source in mode.ts (`elroyThresholds`/`frightenedFramesForLevel`/
+// `FRIGHT_FLASHES`) and every consumer reads them straight from there. pm5-2
+// dropped the dead mirror columns this table used to duplicate.
 
 /** The eight bonus-fruit kinds, in the ROM's FRUIT TABLE order
  *  (`pacman.asm:2b23`-`2b31`, claims/level.json FRUIT-CHERRY..FRUIT-KEY). */
@@ -46,18 +45,9 @@ export interface Level {
    *  applies to ghosts only. Dossier Table A.1, honest-uncited — same status
    *  as `ghostSpeedPct`. */
   readonly tunnelSpeedPct: number
-  /** Frightened duration in seconds — `frightenedFramesForLevel(level) / 60`,
-   *  reused from mode.ts, never a second literal. */
-  readonly frightenedSeconds: number
-  /** End-of-frightened flash count — `mode.ts`'s `FRIGHT_FLASHES`, reused. */
-  readonly frightenedFlashes: number
   /** This level's bonus fruit: kind + points. The one column with a real,
    *  byte-cited ROM literal (claims/level.json FRUIT-*). */
   readonly fruit: LevelFruit
-  /** Cruise Elroy dots-remaining thresholds — reused from mode.ts's
-   *  `elroyThresholds`, never a second literal. */
-  readonly elroy1: number
-  readonly elroy2: number
 }
 
 /** The two dots-eaten counts that trigger a bonus-fruit spawn — REAL ROM
@@ -101,8 +91,7 @@ function speedRow(level: number): SpeedRow {
 
 /** A frightened ghost's speed — a single Dossier figure, not per-level in
  *  this table (the Dossier's frightened-speed column does vary slightly by
- *  level group too, but only the level-1 figure is test-pinned here, same
- *  scope discipline `frightenedSeconds`/`frightenedFlashes` already use).
+ *  level group too, but only the level-1 figure is test-pinned here).
  *  Honest-uncited, glossary.md §Speeds — was a bare `50` literal in
  *  `game.ts` before this fix, indistinguishable at a glance from the CITED
  *  `SCORE_ENERGIZER = 50`; now a named, documented constant. */
@@ -134,7 +123,6 @@ function fruitForLevel(level: number): LevelFruit {
 
 function buildLevel(level: number): Level {
   const speed = speedRow(level)
-  const { elroy1, elroy2 } = elroyThresholds(level)
   return {
     level,
     pacSpeedPct: speed.pac,
@@ -142,11 +130,7 @@ function buildLevel(level: number): Level {
     elroy1SpeedPct: speed.elroy1,
     elroy2SpeedPct: speed.elroy2,
     tunnelSpeedPct: speed.tunnel,
-    frightenedSeconds: frightenedFramesForLevel(level) / 60,
-    frightenedFlashes: FRIGHT_FLASHES,
     fruit: fruitForLevel(level),
-    elroy1,
-    elroy2,
   }
 }
 

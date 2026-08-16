@@ -13,6 +13,7 @@ import { tileAt, isWalkable, DOT_COUNT, TUNNEL_ROW } from '../../src/core/maze'
 import { speedPattern, TILE_PX } from '../../src/core/actor'
 import type { GhostId } from '../../src/core/ghost'
 import { LEVELS, levelRow, FRUIT_SPAWN_DOTS } from '../../src/core/level'
+import { elroyThresholds } from '../../src/core/mode'
 import {
   createGameState,
   stepGame,
@@ -76,11 +77,10 @@ describe('LEVELS[0] — the level-1 row (glossary.md §Level table)', () => {
       elroy1SpeedPct: 80, // Dossier Table A.1, honest-uncited (final-review fix)
       elroy2SpeedPct: 85, // same status
       tunnelSpeedPct: 40, // Dossier Table A.1, honest-uncited (pm3-2)
-      frightenedSeconds: 6, // mode.ts frightenedFramesForLevel(1)/60
-      frightenedFlashes: 5, // mode.ts FRIGHT_FLASHES
       fruit: { type: 'cherry', points: 100 }, // pacman.asm:2b23 (byte-cited)
-      elroy1: 20, // mode.ts elroyThresholds(1)
-      elroy2: 10,
+      // pm5-2 dropped the dead mirror columns (frightenedSeconds/frightenedFlashes/
+      // elroy1/elroy2) from the Level row; those ROM values stay pinned at their
+      // single source in mode.test.ts (frightenedFramesForLevel/FRIGHT_FLASHES/elroyThresholds).
     })
   })
 
@@ -430,6 +430,7 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
   it('Blinky moves at ghostSpeedPct above the Elroy-1 threshold, elroy1SpeedPct at/below it, elroy2SpeedPct at/below Elroy-2', () => {
     const state = playingGame(20)
     const lvl = levelRow(1)
+    const { elroy1, elroy2 } = elroyThresholds(1) // single source (pm5-2)
     state.pac.actor.xPx = 0
     state.pac.actor.yPx = 0 // parked well away — no collision/eating noise
 
@@ -463,14 +464,14 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
     expect(at(lvl.elroy2SpeedPct, 6)).toBe(false)
 
     // Just above the Elroy-1 threshold (20 dots remaining on level 1): base speed.
-    expect(blinkyMovesThisFrame(lvl.elroy1 + 5, 4), 'above Elroy-1 threshold: base ghostSpeedPct (no move at index 4)').toBe(false)
+    expect(blinkyMovesThisFrame(elroy1 + 5, 4), 'above Elroy-1 threshold: base ghostSpeedPct (no move at index 4)').toBe(false)
 
     // At the Elroy-1 threshold: bumped to elroy1SpeedPct.
-    expect(blinkyMovesThisFrame(lvl.elroy1, 4), 'at Elroy-1 threshold: elroy1SpeedPct (moves at index 4)').toBe(true)
-    expect(blinkyMovesThisFrame(lvl.elroy1, 6), 'still Elroy-1 stage: elroy1SpeedPct (moves at index 6 too)').toBe(true)
+    expect(blinkyMovesThisFrame(elroy1, 4), 'at Elroy-1 threshold: elroy1SpeedPct (moves at index 4)').toBe(true)
+    expect(blinkyMovesThisFrame(elroy1, 6), 'still Elroy-1 stage: elroy1SpeedPct (moves at index 6 too)').toBe(true)
 
     // At the Elroy-2 threshold: bumped further to elroy2SpeedPct.
-    expect(blinkyMovesThisFrame(lvl.elroy2, 6), 'at Elroy-2 threshold: elroy2SpeedPct (holds at index 6)').toBe(false)
+    expect(blinkyMovesThisFrame(elroy2, 6), 'at Elroy-2 threshold: elroy2SpeedPct (holds at index 6)').toBe(false)
   })
 
   it('does NOT bump Pinky/Inky/Clyde — Elroy is Blinky-only', () => {
@@ -479,7 +480,7 @@ describe('Cruise Elroy bumps ONLY Blinky\'s speed as dots run out', () => {
     state.pac.actor.yPx = 0
     state.house.released = { blinky: true, pinky: true, inky: true, clyde: true }
     const lvl = levelRow(1)
-    state.dotsEaten = DOT_COUNT - lvl.elroy2 // deep into Elroy-2 territory for Blinky
+    state.dotsEaten = DOT_COUNT - elroyThresholds(1).elroy2 // deep into Elroy-2 territory for Blinky (single source, pm5-2)
 
     state.ghosts.pinky.actor.xPx = 13 * 8
     state.ghosts.pinky.actor.yPx = 17 * 8
