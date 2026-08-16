@@ -3,7 +3,7 @@ type: epic
 title: 'Pac-Man — groom the redundant dead twins: single-source isReturningHome, level-table mirror fields, high-score-qualified event'
 description: "Fifth Pac-Man epic. The unwired-feature audit (2026-08-16) found NO missing gameplay in Pac-Man — the game is well-wired — but three redundancies where a tested helper/field/event is bypassed by production code that re-derives the same value inline. Left alone they are harmless but they invite drift (two inline checks that already disagree with the helper, a catalogue whose mirror nothing reads). This epic is groom-or-delete cleanup, not behaviour: (1) isReturningHome (core/game.ts:278) is a tested predicate every production consumer inlines instead — ghostRenderMode uses game.returning[id]==='eyes' (render.ts:312) and the render loop uses game.returning[id]!==null (main.ts:232), and the two don't even agree with the helper's !==null. (2) The Level-table mirror fields frightenedSeconds/frightenedFlashes/elroy1/elroy2 (core/level.ts:49-60, populated every row at :145-149) have zero production reads — game.ts computes Elroy via computeElroyStage(dotsRemaining, level) from mode.ts and render.ts imports FRIGHT_FLASHES straight from mode.ts; only tests read the mirror. (3) The high-score-qualified event (events.ts:89, emitted game.ts:803) is redundant to state.nameEntry set one line earlier (game.ts:802) — main.ts opens name entry off state (main.ts:162), no handler reads the event; audio.ts:100 already documents its silence as intentional, but the event's own doc still claims it drives name entry. NOTE (do not touch): gfx-rom.ts being imported by no production module is BY DESIGN — offline ROM-bake + fidelity-guard tooling, not an unwired feature. Reuses existing code; purity/citations stay green; each story is a single-source consolidation with its guarding test updated."
 priority: p3
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: pm5-1
@@ -30,10 +30,11 @@ stories:
     title: "Resolve the redundant high-score-qualified event (events.ts:89 / emit game.ts:803): either delete it (name entry already opens off state.nameEntry at main.ts:162) or re-document it explicitly as a pure state mirror; and demote THEME_FRAMES (tune.ts:153) / PHASES (phase.ts:26) to test-only oracles or wire the readers their docs promise. Documentation/no-op — no behaviour change."
     points: 2
     priority: p3
-    status: in_review
+    status: done
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-16'
     review_verdict: approved
   - id: pm5-4
     title: "Fix the bottom HUD band in shell/render.ts drawHud: reserve-life icons render as closed-mouth discs (drawPacman frame 0 = PAC_CLOSED sprite 48; use the open-mouth left frame PAC_FRAMES.left[2]/sprite 44) AND the 16px life+fruit icons overlap the row-33 bottom border wall because the actor -4px centring offset anchors them into row 33 (compensate by +（SPRITE_PX-TILE_PX)/2 so they fill rows 34-35). Shell-render only; see context-story-pm5-4.md for the full diagnosis. Reported 2026-08-16 w/ screenshot."
@@ -43,3 +44,4 @@ stories:
     repos: arcade
     workflow: tdd
     completed: '2026-08-16'
+completed: '2026-08-16'
