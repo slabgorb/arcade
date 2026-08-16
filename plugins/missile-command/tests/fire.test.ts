@@ -24,10 +24,13 @@
 // drawing the trail+blast and main.ts wiring the frame loop are the screenshot's
 // job (see the Delivery Finding).
 //
-// ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `fireKeyToBase` / `launchFromKey` do not exist on shell/input.ts yet, and
-// core/abm.ts is unbuilt. Both loaders throw a self-describing "not built yet", so
-// every test reddens for the FEATURE's absence, not a bare resolution stack trace.
+// ─── WHY THIS WAS RED (mc1-4), AND WHAT REMAINS ──────────────────────────────
+// Originally RED because `fireKeyToBase` and core/abm.ts were unbuilt (mc1-4); the
+// loaders throw a self-describing "not built yet" so a miss reddens for the FEATURE's
+// absence, not a bare resolution stack trace. `fireKeyToBase` shipped at mc1-4 GREEN;
+// `launchFromKey` shipped then too but was RETIRED at mc11-4 (superseded by
+// fireFromKey's ammo-gated reducer). This file now pins `fireKeyToBase` and the
+// composed fire→flight→blast path over core/abm.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -53,12 +56,6 @@ interface Abm {
 interface FireModule {
   /** Map a key to its base index — Z→0 (left), X→1 (centre), C→2 (right); else null. */
   fireKeyToBase: (key: string) => number | null
-  /**
-   * Launch an ABM from the base `key` selects (via `bases`) to `target`, using
-   * core/abm.launchAbm. Returns null for a non-fire key. Pure — the caller (the
-   * keydown listener) supplies `bases` (field.ts BASES) and the current cursor.
-   */
-  launchFromKey: (key: string, bases: readonly Vec[], target: Vec) => Abm | null
 }
 
 interface AbmModule {
@@ -84,17 +81,15 @@ const FIELD_SPECIFIER = '../src/core/field.js'
 async function loadFire(): Promise<FireModule> {
   try {
     const mod = (await import(/* @vite-ignore */ INPUT_SPECIFIER)) as Partial<FireModule>
-    if (typeof mod.fireKeyToBase !== 'function' || typeof mod.launchFromKey !== 'function') {
-      throw new Error('shell/input.ts has no `fireKeyToBase`/`launchFromKey` export')
+    if (typeof mod.fireKeyToBase !== 'function') {
+      throw new Error('shell/input.ts has no `fireKeyToBase` export')
     }
     return mod as FireModule
   } catch (e) {
     throw new Error(
       'fire seam not built yet — Dev adds to src/shell/input.ts: fireKeyToBase(key) mapping ' +
         "'z'/'Z'→0 (left), 'x'/'X'→1 (centre), 'c'/'C'→2 (right) and null otherwise (FIREMA/ABMLAU, " +
-        'W3MAIN:606), and launchFromKey(key, bases, target) that returns ' +
-        'core/abm.launchAbm(bases[fireKeyToBase(key)], target) for a fire key, null otherwise — the ' +
-        `three switches each fire their OWN base. (${(e as Error).message})`,
+        `W3MAIN:606) — the three switches each fire their OWN base. (${(e as Error).message})`,
     )
   }
 }
@@ -164,33 +159,9 @@ describe('AC2 — the three fire keys map to left / centre / right base', () => 
   })
 })
 
-describe('AC2 — a fire launches an ABM from THAT base to the crosshair, via core', () => {
-  it("Z launches from bases[0], X from bases[1], C from bases[2] — to the target", async () => {
-    const { launchFromKey } = await loadFire()
-    const { launchAbm } = await loadAbm()
-    expect(launchFromKey('z', BASES, CURSOR)).toEqual(launchAbm(BASES[0], CURSOR))
-    expect(launchFromKey('x', BASES, CURSOR)).toEqual(launchAbm(BASES[1], CURSOR))
-    expect(launchFromKey('c', BASES, CURSOR)).toEqual(launchAbm(BASES[2], CURSOR))
-  })
-
-  it('the launched ABM starts at the chosen base and aims at the crosshair', async () => {
-    const { launchFromKey } = await loadFire()
-    const abm = launchFromKey('x', BASES, CURSOR)
-    expect(abm, 'X is a fire key — it must launch').not.toBeNull()
-    expect(abm!.origin).toEqual(BASES[1])
-    expect(abm!.pos).toEqual(BASES[1])
-    expect(abm!.target).toEqual(CURSOR)
-    expect(abm!.arrived).toBe(false)
-  })
-
-  it('a non-fire key launches nothing (null)', async () => {
-    const { launchFromKey } = await loadFire()
-    expect(launchFromKey(' ', BASES, CURSOR)).toBeNull()
-    expect(launchFromKey('a', BASES, CURSOR)).toBeNull()
-  })
-
-  it('left key fires the leftmost real base, right key the rightmost (field.ts layout)', async () => {
-    const { fireKeyToBase, launchFromKey } = await loadFire()
+describe('AC2 — the fire key selects the leftmost / rightmost real base (field.ts layout)', () => {
+  it('Z selects the leftmost real base, C the rightmost', async () => {
+    const { fireKeyToBase } = await loadFire()
     const realBases = await loadBases()
     const hs = realBases.map((b) => b.h)
     const leftmost = hs.indexOf(Math.min(...hs))
@@ -198,9 +169,6 @@ describe('AC2 — a fire launches an ABM from THAT base to the crosshair, via co
     // The index mapping must agree with the spatial left/centre/right meaning.
     expect(fireKeyToBase('z'), 'Z must select the leftmost base').toBe(leftmost)
     expect(fireKeyToBase('c'), 'C must select the rightmost base').toBe(rightmost)
-    const zAbm = launchFromKey('z', realBases, CURSOR)!
-    const cAbm = launchFromKey('c', realBases, CURSOR)!
-    expect(zAbm.origin.h).toBeLessThan(cAbm.origin.h)
   })
 })
 
@@ -230,14 +198,15 @@ describe('proof-of-life — fire → straight flight → arrival → expanding/c
   // right base to the crosshair, and on arrival a blast blooms at the target and
   // collapses to nothing. This keeps the sneaky Dev honest that the pieces COMPOSE,
   // not merely pass in isolation.
-  it('a centre-key fire flies to the cursor and detonates a full blast there', async () => {
-    const { launchFromKey } = await loadFire()
-    const { stepAbm } = await loadAbm()
+  it('a centre-base fire flies to the cursor and detonates a full blast there', async () => {
+    const { launchAbm, stepAbm } = await loadAbm()
     const { startExplosion, stepExplosion, blastRadius, isExplosionDone, MAX_BLAST_RADIUS } =
       await loadExplosion()
 
-    // Fire from the centre base at the crosshair.
-    let abm = launchFromKey('x', BASES, CURSOR)!
+    // Launch from the centre base (X→base 1) at the crosshair, via the SAME core
+    // primitive the shell fire path drives (core/abm.launchAbm) — the key→base
+    // mapping itself is pinned by the fireKeyToBase tests above.
+    let abm = launchAbm(BASES[1], CURSOR)
     expect(abm.origin).toEqual(BASES[1])
 
     // Fly it straight to the target.

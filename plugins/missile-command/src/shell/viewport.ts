@@ -46,29 +46,6 @@ export interface Letterbox {
 export type CanvasLike = SharedCanvasLike
 
 /**
- * Compute the largest `aspect`-ratio box that fits inside the window, plus its
- * HiDPI backing store. Delegates the fit to the shared `letterbox` and resolves the
- * DPR the same way `resizeToDisplay` does (`Math.min(MAX_DPR, rawDpr || 1)`).
- */
-export function computeLetterbox(
-  windowW: number,
-  windowH: number,
-  rawDpr: number,
-  aspect: number = TARGET_ASPECT,
-): Letterbox {
-  const box = letterbox(windowW, windowH, aspect)
-  // A 0 / NaN / undefined devicePixelRatio is invalid, not a real "0× display" —
-  // `|| 1` degrades it to 1× rather than collapsing the backing store.
-  const dpr = Math.min(MAX_DPR, rawDpr || 1)
-  return {
-    cssWidth: box.width,
-    cssHeight: box.height,
-    bufferWidth: Math.floor(box.width * dpr),
-    bufferHeight: Math.floor(box.height * dpr),
-  }
-}
-
-/**
  * Apply the letterbox fit to a canvas via the shared DOM seam: size the CSS box to
  * the fitted rect and the backing store to its HiDPI buffer, returning the fit.
  */

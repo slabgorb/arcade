@@ -21,14 +21,16 @@
 //   CMKILL LDX I,4 → "5X ICBM"  (W3MAIN.MAC:2113, in the CMKILL routine :2105+).
 //     A cruise kill is worth 5× the ICBM value at that wave. (claim MC-CRUISE-SCORE)
 //
-// ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// `src/core/icbm.ts` exists (ballistic) but exports no `launchCruise`/`stepCruise`/
-// `stepAnyIcbm`; `spawn.ts` exports no `cruiseBudget`; `score.ts` exports no
-// `cruiseKillPoints`. Each loader below dynamic-imports the built module and throws
-// a self-describing "not built yet — RED" when the cruise export is still absent,
-// so ONLY the cruise tests redden while every ballistic test stays green. The new
-// `kind` field is OPTIONAL, so existing `Icbm` literals/tests are untouched
-// (purity.test.ts / citations.test.ts sweep the GREEN edits automatically).
+// ─── WHY THIS WAS RED (mc5-3), AND WHAT REMAINS ──────────────────────────────
+// Originally RED because `src/core/icbm.ts`/`spawn.ts` had no `launchCruise`/
+// `stepCruise`/`stepAnyIcbm`/`cruiseBudget` (mc5-3 built them all). Each loader below
+// dynamic-imports the built module and throws a self-describing "not built yet — RED"
+// if a cruise export is absent, so ONLY the cruise tests redden while every ballistic
+// test stays green. The scoring loader once gated on `cruiseKillPoints`, which shipped
+// at mc5-3 and was RETIRED at mc11-4 — Loader 3 below now anchors the ×5 CMKILL relation
+// on the live `scoreKills`/`CRUISE_SCORE_MULT` it was sugar over. The `kind` field is
+// OPTIONAL, so existing `Icbm` literals/tests are untouched (purity.test.ts /
+// citations.test.ts sweep the GREEN edits automatically).
 
 import { describe, it, expect } from 'vitest'
 // launchIcbm/stepIcbm already ship (mc3); imported through the cruise loader below
@@ -104,27 +106,31 @@ async function loadCruiseBudget(): Promise<SpawnCruiseModule> {
   }
 }
 
-// ── Loader 3: cruiseKillPoints on src/core/score.ts (task 7) ──────────────────
-// ICBM_KILL_POINTS / scoreKills / scoreMultiplier already ship (mc3/mc4); only
-// cruiseKillPoints is new, so it gates the RED and the others anchor the ×5 relation.
+// ── Loader 3: the ×5 cruise-score relation on src/core/score.ts (task 7) ───────
+// scoreKills / scoreMultiplier already ship (mc3/mc4). The live cruise kill scores
+// via scoreKills(0, CRUISE_SCORE_MULT, wave) INLINE (game.ts); mc11-4 retired the
+// redundant `cruiseKillPoints` twin, so the ×5 CMKILL relation is anchored directly
+// on the live symbols it was sugar over.
 interface ScoreCruiseModule {
   ICBM_KILL_POINTS: number
   scoreKills: (score: number, killed: number, wave?: number) => number
   scoreMultiplier: (wave: number) => number
-  /** Points for one downed cruise missile at 1-based `wave` — 5× the ICBM value. */
-  cruiseKillPoints: (wave: number) => number
+  /** The cruise kill multiplier — a downed cruise is worth CRUISE_SCORE_MULT ICBMs. */
+  CRUISE_SCORE_MULT: number
 }
 const SCORE_SPECIFIER = '../src/core/score.js'
 async function loadCruiseScore(): Promise<ScoreCruiseModule> {
   try {
     const mod = (await import(/* @vite-ignore */ SCORE_SPECIFIER)) as Partial<ScoreCruiseModule>
-    if (typeof mod.cruiseKillPoints !== 'function') throw new Error('score.ts has no `cruiseKillPoints` export')
+    if (typeof mod.scoreKills !== 'function' || typeof mod.CRUISE_SCORE_MULT !== 'number') {
+      throw new Error('score.ts has no `scoreKills`/`CRUISE_SCORE_MULT` export')
+    }
     return mod as ScoreCruiseModule
   } catch (e) {
     throw new Error(
-      'cruiseKillPoints not built yet — GREEN adds `cruiseKillPoints(wave)` = 5 × the ICBM kill ' +
-        'value at that wave to src/core/score.ts (CMKILL `LDX I,4` → ×5, W3MAIN.MAC:2113). ' +
-        `(${(e as Error).message})`,
+      'cruise scoring not built yet — src/core/score.ts must export scoreKills and ' +
+        'CRUISE_SCORE_MULT (=5), so a cruise kill scores scoreKills(0, CRUISE_SCORE_MULT, wave) ' +
+        `= 5× the ICBM value (CMKILL \`LDX I,4\` → ×5, W3MAIN.MAC:2113). (${(e as Error).message})`,
     )
   }
 }
@@ -210,19 +216,20 @@ describe('mc5-3 task 7 — cruiseBudget follows CRMWAV (0 until wave 6)', () => 
 })
 
 describe('mc5-3 task 7 — a cruise kill scores 5× an ICBM at the same wave', () => {
-  it('cruiseKillPoints = 5 × the single-ICBM kill value, at waves 1 and 6', async () => {
-    const { cruiseKillPoints, scoreKills } = await loadCruiseScore()
+  it('scoreKills(0, CRUISE_SCORE_MULT, wave) = 5 × the single-ICBM kill value, at waves 1 and 6', async () => {
+    const { scoreKills, CRUISE_SCORE_MULT } = await loadCruiseScore()
+    expect(CRUISE_SCORE_MULT).toBe(5) // CMKILL `LDX I,4` → ×5 (W3MAIN.MAC:2113)
     // The value of ONE downed ICBM at a wave is scoreKills(0, 1, wave) — reuse the
     // shipped scorer so the ×5 relation rides on the SAME wave-multiplier math.
     for (const wave of [1, 6]) {
       const oneIcbm = scoreKills(0, 1, wave)
-      expect(cruiseKillPoints(wave)).toBe(5 * oneIcbm)
+      expect(scoreKills(0, CRUISE_SCORE_MULT, wave)).toBe(5 * oneIcbm)
     }
   })
 
   it('pins the concrete cited numbers: 125 at wave 1, 375 at wave 6', async () => {
-    const { cruiseKillPoints } = await loadCruiseScore()
-    expect(cruiseKillPoints(1)).toBe(125) // 5 × 25 × scoreMultiplier(1)=1
-    expect(cruiseKillPoints(6)).toBe(375) // 5 × 25 × scoreMultiplier(6)=3
+    const { scoreKills, CRUISE_SCORE_MULT } = await loadCruiseScore()
+    expect(scoreKills(0, CRUISE_SCORE_MULT, 1)).toBe(125) // 5 × 25 × scoreMultiplier(1)=1
+    expect(scoreKills(0, CRUISE_SCORE_MULT, 6)).toBe(375) // 5 × 25 × scoreMultiplier(6)=3
   })
 })

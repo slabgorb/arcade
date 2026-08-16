@@ -55,9 +55,3 @@ export function scoreKills(score: number, killed: number, wave: number = 1): num
 // and awards X+1 = 5 units (its own comment '5X ICBM', W3MAIN.MAC:2113) — the same
 // operand+1 derivation as the sputnik's LDX I,3 -> 4. claim MC-CRUISE-SCORE.
 export const CRUISE_SCORE_MULT = 5
-
-/** Points for one downed cruise missile at the given 1-based wave — worth
- *  CRUISE_SCORE_MULT ICBM kills (5x the single-ICBM value scoreKills yields). Pure. */
-export function cruiseKillPoints(wave: number): number {
-  return scoreKills(0, CRUISE_SCORE_MULT, wave)
-}

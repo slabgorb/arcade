@@ -28,8 +28,11 @@
 //     ratio". This constant is the tripwire if the field dims ever drift.
 //   MAX_DPR       = 2           — HiDPI backing-store cap (the shared view's).
 //
-//   computeLetterbox(windowW, windowH, rawDpr, aspect = TARGET_ASPECT): Letterbox
-//     Pure. { cssWidth, cssHeight, bufferWidth, bufferHeight }:
+//   The pure fit — a Letterbox { cssWidth, cssHeight, bufferWidth, bufferHeight } —
+//   that applyLetterbox COMPUTES and returns. (mc11-4 retired the standalone
+//   `computeLetterbox` twin that used to expose this directly; these tests now drive
+//   it through a TEST-LOCAL `fit()` wrapper, defined below, over a throwaway canvas —
+//   `fit` is NOT a viewport.ts export.)
 //       - cssWidth/cssHeight = the largest `aspect`-ratio box that FITS inside the
 //         window, touching the constraining edge.
 //           * window wider than 256:222  → height-constrained (bars left/right)
@@ -47,13 +50,13 @@
 // so the black bars actually show. `node` has no layout engine; here we pin the
 // deterministic fit math, the HiDPI backing store, the DOM seam, and the wiring.
 //
-// WHY THIS IS RED: `src/shell/viewport.ts` does not exist, so both the module
-// import and the `main.ts` wiring scan redden until Dev builds the adapter and
-// rewires main.ts's resize path onto it.
+// WHY THIS WAS RED (mc10-5): `src/shell/viewport.ts` did not exist, so both the
+// module import and the `main.ts` wiring scan reddened until Dev built the adapter
+// and rewired main.ts's resize path onto it.
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { computeLetterbox, applyLetterbox, TARGET_ASPECT, MAX_DPR } from '../src/shell/viewport.js'
+import { applyLetterbox, TARGET_ASPECT, MAX_DPR, type Letterbox } from '../src/shell/viewport.js'
 import { placeCursor, HMIN, HMAX, VMIN, VMAX } from '../src/core/cursor.js'
 
 /** The logical field ratio the story pins — LOGICAL_WIDTH / LOGICAL_HEIGHT. */
@@ -69,6 +72,16 @@ function fakeCanvas(): FakeCanvas {
   return { width: 0, height: 0, style: { width: '', height: '' } }
 }
 
+// mc11-4 retired `computeLetterbox` — the DOM-free twin of `applyLetterbox`. The
+// pure fit these tests assert (the { css*, buffer* } Letterbox) is EXACTLY what
+// `applyLetterbox` returns, so drive it through the live seam over a throwaway
+// canvas. `applyLetterbox` and the deleted `computeLetterbox` both resolve the box
+// via the shared `letterbox()` and the same `min(MAX_DPR, rawDpr || 1)` DPR math,
+// so the returned dims are identical.
+function fit(windowW: number, windowH: number, rawDpr: number): Letterbox {
+  return applyLetterbox(fakeCanvas(), windowW, windowH, rawDpr)
+}
+
 // Strip line and block comments so a source-wiring scan asserts on CODE, not on a
 // dev's prose (a comment that merely names canvas.clientWidth must not satisfy — or
 // defeat — a wiring assertion).
@@ -76,7 +89,7 @@ function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
 }
 
-describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
+describe('mc10-5 — the letterbox fit pins the 256:222 field aspect', () => {
   it('TARGET_ASPECT is the 256:222 field ratio (LOGICAL_WIDTH / LOGICAL_HEIGHT)', () => {
     // Story-decision tripwire, decoupled from the fit math below: if the pinned
     // field ratio ever drifts, exactly this assertion moves — the math tests do not.
@@ -86,7 +99,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
   it('letterboxes a wide ~2:1 window — bars on the left/right (the story defect)', () => {
     // 2000×1000 (2:1, wider than 256:222) → height is the constraint. The old
     // 100%×100% stretch would smear the field to 2000px wide; the fit is ~1153px.
-    const box = computeLetterbox(2000, 1000, 1)
+    const box = fit(2000, 1000, 1)
     expect(box.cssHeight).toBe(1000) // full height used
     expect(box.cssWidth).toBeCloseTo((1000 * 256) / 222, 3) // 1153.15…, NOT 2000
     expect(box.cssWidth).toBeLessThan(2000) // leftover width = the side bars
@@ -95,7 +108,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
 
   it('letterboxes a tall window — bars on the top/bottom', () => {
     // 600×1000 (0.6, taller/narrower than 256:222) → width is the constraint.
-    const box = computeLetterbox(600, 1000, 1)
+    const box = fit(600, 1000, 1)
     expect(box.cssWidth).toBe(600) // full width used
     expect(box.cssHeight).toBeCloseTo((600 * 222) / 256, 3) // 520.31…, NOT 1000
     expect(box.cssHeight).toBeLessThan(1000) // leftover height = top/bottom bars
@@ -104,7 +117,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
 
   it('fills an exact-256:222 window completely with no bars', () => {
     // Boundary: windowAspect === TARGET_ASPECT (2560×2220 = 256×10 by 222×10).
-    const box = computeLetterbox(2560, 2220, 1)
+    const box = fit(2560, 2220, 1)
     expect(box.cssWidth).toBe(2560)
     expect(box.cssHeight).toBe(2220)
   })
@@ -121,7 +134,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
       [333, 777],
     ]
     for (const [w, h] of sizes) {
-      const box = computeLetterbox(w, h, 1)
+      const box = fit(w, h, 1)
       expect(box.cssWidth).toBeLessThanOrEqual(w + 1e-9)
       expect(box.cssHeight).toBeLessThanOrEqual(h + 1e-9)
       const touchesWidth = Math.abs(box.cssWidth - w) < 1e-6
@@ -141,7 +154,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
       [640, 640],
     ]
     for (const [w, h] of sizes) {
-      const box = computeLetterbox(w, h, 1)
+      const box = fit(w, h, 1)
       expect(box.cssWidth / box.cssHeight).toBeCloseTo(FIELD_ASPECT, 5)
     }
   })
@@ -150,7 +163,7 @@ describe('mc10-5 — computeLetterbox pins the 256:222 field aspect', () => {
 describe('mc10-5 — HiDPI backing store (device pixel ratio)', () => {
   it('scales the backing store by the device pixel ratio', () => {
     // 2560×2220 is already exactly 256:222, so css == window; dpr 2 doubles buffer.
-    const box = computeLetterbox(2560, 2220, 2)
+    const box = fit(2560, 2220, 2)
     expect(box.cssWidth).toBe(2560)
     expect(box.cssHeight).toBe(2220)
     expect(box.bufferWidth).toBe(5120)
@@ -160,13 +173,13 @@ describe('mc10-5 — HiDPI backing store (device pixel ratio)', () => {
   it('clamps devicePixelRatio to MAX_DPR (2) to bound the backing store', () => {
     expect(MAX_DPR).toBe(2)
     // A 3× display must NOT produce a 3× buffer — it is capped at 2×.
-    const box = computeLetterbox(2560, 2220, 3)
+    const box = fit(2560, 2220, 3)
     expect(box.bufferWidth).toBe(5120)
     expect(box.bufferHeight).toBe(4440)
   })
 
   it('respects a fractional dpr below the cap', () => {
-    const box = computeLetterbox(2560, 2220, 1.5)
+    const box = fit(2560, 2220, 1.5)
     expect(box.bufferWidth).toBe(3840) // floor(2560 × 1.5)
     expect(box.bufferHeight).toBe(3330) // floor(2220 × 1.5)
   })
@@ -174,7 +187,7 @@ describe('mc10-5 — HiDPI backing store (device pixel ratio)', () => {
   it('falls back to dpr 1 when devicePixelRatio is 0 or falsy (TS lang-review #4)', () => {
     // `rawDpr || 1`: a 0 / undefined devicePixelRatio is invalid, not a real 0× —
     // it must degrade to 1×, not collapse the backing store to nothing.
-    const box = computeLetterbox(2560, 2220, 0)
+    const box = fit(2560, 2220, 0)
     expect(box.bufferWidth).toBe(2560)
     expect(box.bufferHeight).toBe(2220)
   })
@@ -182,7 +195,7 @@ describe('mc10-5 — HiDPI backing store (device pixel ratio)', () => {
   it('produces an integer backing store even when the fit is fractional', () => {
     // 600×1000 → width-constrained: cssHeight = 600 × 222/256 = 520.3125, which must
     // floor to a whole-pixel backing store (canvas.width silently truncates else).
-    const box = computeLetterbox(600, 1000, 1)
+    const box = fit(600, 1000, 1)
     expect(box.cssWidth).toBe(600)
     expect(box.cssHeight).toBeCloseTo(520.3125, 5)
     expect(box.bufferWidth).toBe(600)
@@ -196,7 +209,7 @@ describe('mc10-5 — HiDPI backing store (device pixel ratio)', () => {
     // maps against the CSS box; both must carry the field ratio, or a mapped click
     // drifts. project()/placeCursor() are scale-invariant, so equal ASPECT on both
     // surfaces is exactly what keeps the crosshair on the mouse after letterboxing.
-    const box = computeLetterbox(2000, 1000, 2)
+    const box = fit(2000, 1000, 2)
     expect(box.bufferWidth / box.bufferHeight).toBeCloseTo(FIELD_ASPECT, 2)
   })
 })
@@ -205,7 +218,7 @@ describe('mc10-5 — degenerate window dimensions do not produce NaN', () => {
   it('a zero-height window yields a zero-size canvas, not NaN', () => {
     // Collapsed/minimized window: windowW/0 = Infinity must not leak NaN into the
     // canvas size (which would poison every subsequent projection and cursor map).
-    const box = computeLetterbox(1000, 0, 1)
+    const box = fit(1000, 0, 1)
     expect(Number.isNaN(box.cssWidth)).toBe(false)
     expect(Number.isNaN(box.cssHeight)).toBe(false)
     expect(box.cssWidth).toBe(0)
@@ -215,7 +228,7 @@ describe('mc10-5 — degenerate window dimensions do not produce NaN', () => {
   })
 
   it('a zero-width window yields a zero-size canvas, not NaN', () => {
-    const box = computeLetterbox(0, 1000, 1)
+    const box = fit(0, 1000, 1)
     expect(Number.isNaN(box.cssWidth)).toBe(false)
     expect(Number.isNaN(box.cssHeight)).toBe(false)
     expect(box.cssWidth).toBe(0)
@@ -265,13 +278,13 @@ describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stre
   // letterbox box (applyLetterbox writes canvas.style — pinned above), so pointermove's
   // `getBoundingClientRect()` returns cssWidth×cssHeight and it feeds
   // `placeCursor(clientX-left, clientY-top, rect.width, rect.height)`. These tests drive
-  // that exact composition — computeLetterbox → placeCursor(box dims) — with a wide ~2:1
+  // that exact composition — the letterbox fit → placeCursor(box dims) — with a wide ~2:1
   // window, and prove the mapping follows the letterboxed field, not the full window.
   // (The DOM step itself — getBoundingClientRect returning the centered rect — is node-
   // unobservable and remains the reviewer's screenshot.)
   const W = 2000
   const H = 1000
-  const box = computeLetterbox(W, H, 1) // cssWidth ≈ 1153.15 (bars L/R), cssHeight = 1000
+  const box = fit(W, H, 1) // cssWidth ≈ 1153.15 (bars L/R), cssHeight = 1000
   // The canvas is centered (index.html flexbox), so its left bar offset is:
   const left = (W - box.cssWidth) / 2 // ≈ 423.42
 
@@ -320,7 +333,7 @@ describe('mc10-5 AC4 — the cursor maps through the LETTERBOX box, not the stre
     // real (top ≈ 239.8, not 0). A window click at y=50 sits ABOVE the canvas, so its
     // canvas-relative y is negative → with the V-flip that maps to the field's TOP,
     // clamped to VMAX. Proves the vertical bar is a dead zone too.
-    const tallBox = computeLetterbox(600, 1000, 1) // cssWidth 600, cssHeight ≈ 520.31
+    const tallBox = fit(600, 1000, 1) // cssWidth 600, cssHeight ≈ 520.31
     const topOffset = (1000 - tallBox.cssHeight) / 2 // ≈ 239.84 (> 0 — the top bar)
     expect(topOffset).toBeGreaterThan(0)
     const canvasRelY = 50 - topOffset // negative — above the canvas

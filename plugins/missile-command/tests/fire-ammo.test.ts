@@ -9,9 +9,9 @@
 // (Z/X/C → left/centre/right, fireKeyToBase) is preserved.
 //
 // ─── THE SEAM (a state→state handler, per the mc3 plan Task 9) ────────────────
-// The gate needs the base's alive/ammo AND must spend a round, so unlike mc1-4's
-// `launchFromKey(key, bases, target): Abm | null` (which only builds a missile),
-// this is a reducer over the game state: `fireFromKey(key, state): GameState`.
+// The gate needs the base's alive/ammo AND must spend a round, so unlike a bare
+// missile-builder that only returns `Abm | null`, this is a reducer over the game
+// state: `fireFromKey(key, state): GameState`.
 // It reads state.bases[fireKeyToBase(key)] and state.cursor, and returns a new
 // state with abms/bases updated (or the state unchanged). Pure — no mutation.
 //
