@@ -42,6 +42,7 @@ import {
 import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
 import { initConway, masterStep } from './conway'
 import { scrollDispatch, scrollDown, scrollUp, type ScrollGate } from './scroll'
+import { recolourField } from './field-recolour'
 import { INCHWORM_SLOW } from './inchworm'
 import { nextInt } from '@shared/rng'
 import type { EnemyView } from './enemies/contract'
@@ -401,6 +402,13 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   if (nowMarching && !wasMarching) events.push(event('march-start'))
   if (!nowMarching && wasMarching) events.push(event('march-stop'))
 
+  // LCOLOR gate (MLIRQ.MAC:248-255): a change in the connected length arms the
+  // recolour; recolourField latches the field colour index to the new CENTIN and
+  // clears the flag. A steady length holds the previous colour (ml7-4 no-strobe).
+  const newCentin = liveSegs === 0 ? NCENT : liveSegs
+  const armed = state.lcolor || newCentin !== state.centin
+  const recol = recolourField(state.fieldColourIndex, newCentin, armed)
+
   return {
     ...state,
     phase,
@@ -424,7 +432,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     // live segment is connected — CENTIN == the live count. A cleared millipede
     // reloads to NCENT (MT-15, CENTIN never rests at 0), so a death during the
     // inter-wave pause re-lays a full train.
-    centin: liveSegs === 0 ? NCENT : liveSegs,
+    centin: newCentin,
+    fieldColourIndex: recol.fieldColourIndex,
+    lcolor: recol.lcolor,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,
     events,
   }

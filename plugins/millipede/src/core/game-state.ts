@@ -49,6 +49,15 @@ export interface GameState {
    *  (MILLI.MAC:549 "LDY X,CENTIN"). Splits are deferred (ml3-2), so today every live
    *  segment is connected and CENTIN == the live segment count. */
   centin: number
+  /** The CENTIN the playfield is currently COLOURED for — the latched colour row
+   *  (row = fieldColourIndex-1, MLIRQ.MAC:255). Held separately from `centin` so
+   *  the base band only recolours at an LCOLOR event, not every frame (ml11-1).
+   *  Init NCENT — a fresh wave shows the full-millipede colour. */
+  fieldColourIndex: number
+  /** LCOLOR (MLIRQ.MAC:248) — set when the connected length changes, telling CLRCH
+   *  to recolour the field on its next pass; cleared the moment the recolour
+   *  latches (recolourField, field-recolour.ts). Clear at boot. */
+  lcolor: boolean
   /** The enemy cast — spiders, bees, beetles, dragonflies, mosquitoes, earwigs, inchworms. */
   roster: Roster
   /** The four-entry DDTADD bomb bank (DDTS/DDTS2, ddt.ts). Stamped into `field`. */
@@ -141,6 +150,8 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
     centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1168-1170) — a full train
+    fieldColourIndex: NCENT, // field coloured for the full millipede at wave start (ml11-1)
+    lcolor: false, // LCOLOR clear at boot — nothing to recolour yet (MLIRQ.MAC:248)
     roster: initRoster(),
     ddt,
     score: 0,
