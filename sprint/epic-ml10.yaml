@@ -125,6 +125,18 @@ stories:
     title: "Capture the mouse via pointer lock in millipede, mirroring centipede's createPointerLock (plugins/centipede/src/shell/input.ts): click-to-lock the canvas via requestPointerLock and hide the cursor for unbounded movementX/Y trackball deltas; a pointerlockchange listener resets the input accumulators on lock exit (Escape/blur) so there is no runaway travel; preserve millipede's existing negated-horizontal mouse mapping (main.ts:94-99); shell-only (core stays DOM/clock-free), with a duck-typed adapter unit-tested like centipede's and a HUMAN pointer-lock smoke test noted (cannot be verified headless)."
     points: 3
     priority: p2
+    status: done
+    started: '2026-08-15'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-15'
+    review_findings: "HIGH: request() breaks its 'never rejects' R4 contract on a sync throw (11 unhandled rejections vitest flags as false-positive risk); HIGH: main.ts wiring tests are string-presence not behavioural (deleting void pointerLock.request() ships 20/20 green - dead-wiring, the epic's target bug). Plus 3 stale comment citations + unasserted cursor-hide."
+    review_verdict: approved
+  - id: ml10-5
+    title: 'Harden ml10-4 pointer-lock test coverage: add a behavioural/source pin that main.ts wires the onReject diagnostic sink (deleting the console.warn 4th-arg currently ships green — dead-wiring class); add a boot-harness behavioural test for the R5 onExit->mouse.reset() reset-on-exit (only source-regex pinned today); and repoint the stale (main.ts:100) citation in pointer-lock.test.ts:169 to shell/input.ts onMouseMove'
+    points: 1
+    priority: p3
     status: backlog
     repos: arcade
     workflow: tdd
+    type: chore

@@ -448,3 +448,8 @@ completed_stories:
     title: Wire checkOverlap — the millipede segment-vs-segment OVRLAP turn — into stepMillipede
     points: 3
     completed: '2026-08-15'
+  - id: ml10-4
+    epic: ml10
+    title: "Capture the mouse via pointer lock in millipede, mirroring centipede's createPointerLock (plugins/centipede/src/shell/input.ts): click-to-lock the canvas via requestPointerLock and hide the cursor for unbounded movementX/Y trackball deltas; a pointerlockchange listener resets the input accumulators on lock exit (Escape/blur) so there is no runaway travel; preserve millipede's existing negated-horizontal mouse mapping (main.ts:94-99); shell-only (core stays DOM/clock-free), with a duck-typed adapter unit-tested like centipede's and a HUMAN pointer-lock smoke test noted (cannot be verified headless)."
+    points: 3
+    completed: '2026-08-15'
