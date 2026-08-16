@@ -226,6 +226,59 @@ describe('ml7-11 AC3 — fixed gun/lives + alphanumeric colours', () => {
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// ml11-3 (a) — ALPHANUMERIC_COLOUR PROVENANCE (ml7-11 r2 hardening; source, not value)
+//
+// The AC3 guard above ("the fixed colours are NOT sourced from the per-level field
+// table") can only cover PLAYER_COLOUR ($00), which is absent from every 99$ cell.
+// ALPHANUMERIC_COLOUR ($1F) is NOT absent — it equals wave-1 inside-mushroom (pinned
+// in AC2 above at CENTIN=1) — so a VALUE check is blind to the mutant
+//     export const ALPHANUMERIC_COLOUR = waveColours(1).insideMushroom
+// which carries the SAME value $1F but the WRONG provenance (ml7-11 round 2, Reviewer).
+// Provenance can only be pinned at the SOURCE: read the module text and require the
+// ALPHANUMERIC_COLOUR definition to be a bare numeric immediate, never a wave-table read.
+// Mutation-verified in-test — the SAME predicate that accepts the real "0x1f" RHS rejects
+// the exact r2 mutant RHS. ($00-never-in-FIELD_REGION_COLOURS is already covered by the
+// AC3 guard above, across all three channels × all 12 levels — not duplicated here.)
+// ═════════════════════════════════════════════════════════════════════════════
+describe('ml11-3 (a) — ALPHANUMERIC_COLOUR provenance is an immediate, not a wave-table read', () => {
+  // The comment-stripped RHS of `export const ALPHANUMERIC_COLOUR = <rhs>`.
+  function alnumRhs(src: string): string | null {
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    const m = code.match(/export\s+const\s+ALPHANUMERIC_COLOUR\s*=\s*([^\n;]+)/)
+    return m ? m[1].trim() : null
+  }
+
+  // Provenance predicate: true iff the RHS is a bare numeric immediate (hex or decimal),
+  // i.e. NOT sourced from waveColours()/the 99$ field table.
+  const isImmediate = (rhs: string): boolean =>
+    /^(0x[0-9a-fA-F]+|\d+)$/.test(rhs) && !/waveColours|insideMushroom/.test(rhs)
+
+  it('a VALUE check is BLIND here — $1F is BOTH the alphanumeric colour AND wave-1 inside-mushroom', async () => {
+    const m = await loadModule()
+    // WHY the AC3 value-guard cannot cover ALPHANUMERIC (the ml7-11 r2 finding), pinned
+    // so the collision cannot silently drift out from under the source guard below.
+    expect(m.waveColours(1).insideMushroom, 'wave-1 inside-mushroom is $1F').toBe(m.ALPHANUMERIC_COLOUR)
+    expect(m.ALPHANUMERIC_COLOUR, 'ALPHANUMERIC_COLOUR is $1F').toBe(0x1f)
+  })
+
+  it('the real ALPHANUMERIC_COLOUR definition is a bare immediate literal (source-provenance)', () => {
+    expect(existsSync(modulePath), 'premise: the module exists').toBe(true)
+    const rhs = alnumRhs(readFileSync(modulePath, 'utf8'))
+    expect(rhs, 'ALPHANUMERIC_COLOUR must be exported from playfield-colour.ts').not.toBeNull()
+    expect(isImmediate(rhs as string), `RHS ${JSON.stringify(rhs)} must be a bare numeric immediate`).toBe(true)
+  })
+
+  it('mutation-verified: the waveColours-wire mutant (same value $1F) is REJECTED by the provenance guard', () => {
+    // The exact mutant ml7-11 r2 named: identical value at the colliding level, wrong
+    // provenance. The SAME predicate that accepts the real RHS must reject this one.
+    const realRhs = alnumRhs(readFileSync(modulePath, 'utf8')) as string
+    const mutantRhs = 'waveColours(1).insideMushroom'
+    expect(isImmediate(realRhs), 'non-vacuity: the real literal is accepted').toBe(true)
+    expect(isImmediate(mutantRhs), 'the wave-wire mutant must NOT satisfy the immediate-literal guard').toBe(false)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // AC — the region bytes are REAL colours: they decode through the ml2-3 seam.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('ml7-11 — the region bytes decode through the palette seam', () => {
