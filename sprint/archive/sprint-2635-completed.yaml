@@ -12,3 +12,8 @@ completed_stories:
     title: "Wire the sputnik cruise-borrow: pass the live on-screen cruise count to sputnikFireCount at game.ts:493 (e.g. state.icbms.filter(i => i.kind === 'cruise').length) instead of the hardcoded 0, and delete the stale 'cruiseOnScreen is 0 until mc5-3' comment (game.ts:482). Assert a wave with cruise missiles on screen clamps the plane salvo (the 2*cruiseOnScreen branch fires in play). REV-01 plane-salvo clamp"
     points: 2
     completed: '2026-08-16'
+  - id: pm5-4
+    epic: pm5
+    title: "Fix the bottom HUD band in shell/render.ts drawHud: reserve-life icons render as closed-mouth discs (drawPacman frame 0 = PAC_CLOSED sprite 48; use the open-mouth left frame PAC_FRAMES.left[2]/sprite 44) AND the 16px life+fruit icons overlap the row-33 bottom border wall because the actor -4px centring offset anchors them into row 33 (compensate by +（SPRITE_PX-TILE_PX)/2 so they fill rows 34-35). Shell-render only; see context-story-pm5-4.md for the full diagnosis. Reported 2026-08-16 w/ screenshot."
+    points: 3
+    completed: '2026-08-16'
