@@ -1,0 +1,137 @@
+[
+  {
+    "id": "ST-1",
+    "claim": "STRCNT is the count of ACTIVE stars — how many of the 16 the STOUT loop scrolls and stores each frame: STRCNT RMB 1, \"STARS ACTIVE COUNT\". Modelled as stepStars/drawStars `count`.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 294,
+      "verbatim": "STRCNT\tRMB\t1\tSTARS ACTIVE COUNT"
+    }
+  },
+  {
+    "id": "ST-2",
+    "claim": "The star table holds SNUM = 16 records (STAR_COUNT): SNUM EQU 16. STINIT seeds all 16 and sets STRCNT to this.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 541,
+      "verbatim": "SNUM\tEQU\t16"
+    }
+  },
+  {
+    "id": "ST-3",
+    "claim": "Each star record is SLGTH = 4 bytes (.SX .SY .SCOL + a waster): SLGTH EQU 4. The pure Star model keeps the three live fields {x,y,color}.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 542,
+      "verbatim": "SLGTH\tEQU\t4"
+    }
+  },
+  {
+    "id": "ST-4",
+    "claim": "STINIT seeds the active count to 16 stars: LDB #16 (then STB STRCNT). Decimal 16, not $16.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2074,
+      "verbatim": "\tLDB\t#16"
+    }
+  },
+  {
+    "id": "ST-5",
+    "claim": "STINIT writes the initial active count into STRCNT: STB STRCNT.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2075,
+      "verbatim": "\tSTB\tSTRCNT"
+    }
+  },
+  {
+    "id": "ST-6",
+    "claim": "STINIT advances the per-star colour by $11 each record: ADDB #$11. Yields the palindromic cycle $00,$11,..,$77.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2088,
+      "verbatim": "\tADDB\t#$11"
+    }
+  },
+  {
+    "id": "ST-7",
+    "claim": "STINIT masks the advancing colour to $77: ANDB #$77 — so the 8th star wraps $88&$77=$00 and the cycle repeats.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2089,
+      "verbatim": "\tANDB\t#$77"
+    }
+  },
+  {
+    "id": "ST-8",
+    "claim": "STOUT builds the phase/colour mask from $F0: LDB #$F0 — the default before the BGL bit-6 phase test toggles it to $0F.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2116,
+      "verbatim": "\tLDB\t#$F0"
+    }
+  },
+  {
+    "id": "ST-9",
+    "claim": "The star phase is selected by bit 6 of the BGL low byte: BITA #$40 \"GET PHASES\". Set keeps mask $F0; clear COMBs it to $0F.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2118,
+      "verbatim": "\tBITA\t#$40\tGET PHASES"
+    }
+  },
+  {
+    "id": "ST-10",
+    "claim": "A scrolled star X at/above $9C has left the visible field and must wrap: CMPA #$9C (BLO = no overflow). Visible X is [0,$9B].",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2142,
+      "verbatim": "\tCMPA\t#$9C"
+    }
+  },
+  {
+    "id": "ST-11",
+    "claim": "The wrap direction is decided at $C0: CMPA #$C0 \"WHICH WAY DID HE COME\". $9C..$C0 walked off the right (-> 0); above $C0 walked off the left (-> $9B).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2144,
+      "verbatim": "\tCMPA\t#$C0\tWHICH WAY DID HE COME"
+    }
+  },
+  {
+    "id": "ST-12",
+    "claim": "A star that walked off the LEFT edge re-enters at the right column $9B: LDA #$9B.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2146,
+      "verbatim": "\tLDA\t#$9B"
+    }
+  },
+  {
+    "id": "ST-13",
+    "claim": "STOUT masks each star colour by the phase mask before the store: ANDA ITEMP2. The BSO BONER marker flags the self-modifying store that follows.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2151,
+      "verbatim": "\tANDA\tITEMP2\t******************************BSO BONER*******"
+    }
+  },
+  {
+    "id": "ST-14",
+    "claim": "The star pixel is written by a SELF-MODIFYING indexed store (the BSO BONER byte-patch): FCB $A7,$98,$00 (STA [SX,X]). Ported as behaviour (drawStars writes colour&$0F into the cell), never as opcode bytes.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2152,
+      "verbatim": "\tFCB\t$A7,$98,$00 (STA [SX,X]) ***********BSO BONER*******"
+    }
+  },
+  {
+    "id": "ST-15",
+    "claim": "STINIT's Y ceiling: RAND-drawn star Y is rejected above $A8 (accepted range [YMIN+1,$A8]): CMPA #$A8 'LIMIT TEST' (BHI resamples). Modelled by Y_MAX in stars.ts.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2082,
+      "verbatim": "\tCMPA\t#$A8\tLIMIT TEST"
+    }
+  }
+]
