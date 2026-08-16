@@ -26,7 +26,7 @@
 // logged as a TEA design deviation.
 
 import { describe, it, expect } from 'vitest'
-import { drawHud, drawFruit } from '../../src/shell/render'
+import { drawHud, drawFruit, drawPacman } from '../../src/shell/render'
 import { levelRow } from '../../src/core/level'
 import type { FruitType } from '../../src/core/level'
 import { LOGICAL_W, LOGICAL_H } from '../../src/shell/layout'
@@ -233,5 +233,70 @@ describe('pm4-11 bottom HUD — placement & accessibility', () => {
     drawHud(ctx, 999990, 31415, 5, 13)
     const fullScreen = rects.filter((r) => r.w >= LOGICAL_W && r.h >= LOGICAL_H)
     expect(fullScreen, 'drawHud must never paint a full-canvas rectangle').toEqual([])
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// pm5-4 — bottom HUD display bug (reported 2026-08-16 w/ screenshot).
+// Two defects, both in drawHud, both invisible to the pm4-11 tests above:
+//   (1) the reserve-life icon is pinned to drawPacman frame 0 = PAC_CLOSED
+//       (sprite 48), a fully-closed mouth = a solid disc. The cabinet icon is
+//       the WIDE-OPEN left-facing Pac (PAC_FRAMES.left[2] / sprite 44).
+//   (2) the 16px life+fruit icons inherit drawPacman/drawFruit's -4px actor
+//       tile-centring offset, so their tops land at y=268 — 4px INTO row 33,
+//       the bottom border wall (y 264..272). The true HUD band is rows 34-35
+//       (y 272..288). The pm4-11 `inBottomBand` filter above was deliberately
+//       loosened by a full sprite height to tolerate exactly this nudge, which
+//       is why it never caught the overlap. These pin the STRICT band instead.
+// ─────────────────────────────────────────────────────────────────────────
+
+// The exact pixels drawPacman blits for a given direction+animPhase, position-
+// independent (like fruitData) — lets us identify WHICH Pac frame a HUD blit is.
+function pacFrameData(dir: 'left' | 'right' | 'up' | 'down', animPhase: number): Uint8ClampedArray {
+  const ref = fakeCtx()
+  drawPacman(ref, 0, 0, dir, animPhase)
+  return ref.blits[ref.blits.length - 1].data
+}
+// frame 0 = PAC_CLOSED (the disc); frame 2 = the wide-open left-facing pose (sprite 44).
+const CLOSED_LIFE_DATA = pacFrameData('left', 0)
+const OPEN_LIFE_DATA = pacFrameData('left', 2)
+
+// The strict bottom band: rows 34-35 only. Row 33 (y 264..272) is the maze's
+// bottom border wall (pm4-12) and must stay clear of HUD icons.
+const BAND_TOP = LOGICAL_H - SPRITE_PX // 272 — top of row 34
+const BAND_BOTTOM = LOGICAL_H // 288 — bottom of row 35 / canvas edge
+
+describe('pm5-4 bottom HUD — reserve-life icon is the open-mouth Pac, not a closed disc', () => {
+  it('draws each reserve life as the wide-open left-facing frame (sprite 44), never PAC_CLOSED (sprite 48)', () => {
+    const ctx = fakeCtx()
+    drawHud(ctx, 0, 0, 3, 1)
+    const lives = lifeBlits(ctx)
+    expect(lives.length, 'three lives → three life icons').toBe(3)
+    // Sanity: the two reference frames genuinely differ, so the assertions below mean something.
+    expect(sameData(OPEN_LIFE_DATA, CLOSED_LIFE_DATA), 'open and closed Pac frames must differ').toBe(false)
+    for (const b of lives) {
+      expect(
+        sameData(b.data, CLOSED_LIFE_DATA),
+        'reserve-life icon must NOT be the closed-mouth disc (drawPacman frame 0 / PAC_CLOSED)',
+      ).toBe(false)
+      expect(
+        sameData(b.data, OPEN_LIFE_DATA),
+        'reserve-life icon must be the wide-open left-facing Pac (PAC_FRAMES.left[2] / sprite 44)',
+      ).toBe(true)
+    }
+  })
+})
+
+describe('pm5-4 bottom HUD — icons stay within rows 34-35, clear of the row-33 border wall', () => {
+  it('every reserve-life and fruit icon fits strictly inside the 2-row band (y in [272, 288])', () => {
+    const ctx = fakeCtx()
+    drawHud(ctx, 999990, 31415, 5, 13) // ROM-max lives + a full 7-fruit window
+    expect(ctx.blits.length, 'drawHud drew HUD icons').toBeGreaterThan(0)
+    const encroaching = ctx.blits.filter((b) => b.y < BAND_TOP || b.y + b.h > BAND_BOTTOM)
+    expect(
+      encroaching.map((b) => ({ x: b.x, y: b.y, bottom: b.y + b.h })),
+      `HUD icons must sit within rows 34-35 (y ${BAND_TOP}..${BAND_BOTTOM}); any listed here overlap the row-33 ` +
+        `border wall (top < ${BAND_TOP}) or run off-canvas (bottom > ${BAND_BOTTOM})`,
+    ).toEqual([])
   })
 })

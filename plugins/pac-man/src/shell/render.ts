@@ -552,6 +552,9 @@ export function drawScorePopup(ctx: CanvasRenderingContext2D, xPx: number, yPx: 
  *      level's fruit is core's byte-cited `levelRow(l).fruit` (pacman.asm:2b23-2b31). */
 const LIFE_ICON_CAP = 5 // pacman.asm:2b41-2b62
 const FRUIT_ROW_CAP = 7 // pacman.asm:2bf0-2c41
+// The reserve-life icon is the wide-open, left-facing Pac (PAC_FRAMES.left[2], sprite 44) —
+// the pose the cabinet draws — not the closed-mouth frame 0, which is a solid disc. pm5-4.
+const LIFE_ICON_FRAME = 2
 export function drawHud(
   ctx: CanvasRenderingContext2D,
   score: number,
@@ -572,11 +575,18 @@ export function drawHud(
   ctx.fillText(String(highScore), W / 2, 14)
   ctx.textAlign = 'start'
 
-  // Bottom-left: reserve lives as Pac-life sprites, left-facing like the cabinet
-  // icons, capped at the ROM maximum of 5.
+  // drawPacman/drawFruit blit their 16px sprite CENTRED on the anchor tile (a
+  // TILE_PX/2 - SPRITE_PX/2 = -4px offset, correct for a 1-tile actor). The bottom
+  // band is 2 tiles tall (rows 34-35), so drop the HUD anchor by half the
+  // sprite-vs-tile difference to cancel that centring — otherwise the icons ride 4px
+  // up into row 33, the maze's bottom border wall (pm5-4).
+  const ICON_DROP_PX = (SPRITE_PX - TILE_PX) / 2 // +4px
+
+  // Bottom-left: reserve lives as Pac-life sprites — the wide-open left-facing
+  // cabinet pose (LIFE_ICON_FRAME), capped at the ROM maximum of 5.
   const shownLives = Math.min(Math.max(lives, 0), LIFE_ICON_CAP)
   for (let i = 0; i < shownLives; i++) {
-    drawPacman(ctx, 8 + i * SPRITE_PX, BOTTOM, 'left', 0)
+    drawPacman(ctx, 8 + i * SPRITE_PX, BOTTOM + ICON_DROP_PX, 'left', LIFE_ICON_FRAME)
   }
 
   // Bottom-right: the fruit row — the last up-to-7 levels' fruits, newest at the
@@ -588,7 +598,7 @@ export function drawHud(
     for (let k = 0; k < FRUIT_ROW_CAP; k++) {
       const l = level - k
       if (l < 1) break // fewer than 7 levels reached — no older fruit to show
-      drawFruit(ctx, 27 - 2 * k, MAZE.rows - 2, levelRow(l).fruit.type)
+      drawFruit(ctx, 27 - 2 * k, MAZE.rows - 2 + ICON_DROP_PX / TILE_PX, levelRow(l).fruit.type)
     }
   }
 }
