@@ -233,6 +233,18 @@ describe('stepStars (the STOUT per-star loop) — scrolls the field by the camer
     const out = stepStars(stars, 0x0100, 0x0000, 2) // count 2
     expect(out.map((s) => s.x)).toEqual([0x4e, 0x0e, 0x9b]) // the 3rd star is inactive → still $9B
   })
+
+  it('count 0 moves nothing — a `count || STAR_COUNT` (should be ??) bug would move all (lang-review #4)', async () => {
+    const { stepStars } = await loadStars()
+    const stars: Star[] = [
+      { x: 0x50, y: 0x60, color: 0x11 },
+      { x: 0x10, y: 0x44, color: 0x22 },
+    ]
+    // 0 is a VALID active count (falsy). `count || STAR_COUNT` would coerce it to 16
+    // and scroll the whole field; `count ?? STAR_COUNT` keeps it 0 and moves nothing.
+    const out = stepStars(stars, 0x0100, 0x0000, 0)
+    expect(out.map((s) => s.x)).toEqual([0x50, 0x10])
+  })
 })
 
 describe('initStars (STINIT :2073-2093) — 16 stars, ranged coords, the fixed colour cycle', () => {
