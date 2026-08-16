@@ -65,3 +65,8 @@ completed_stories:
     title: "Wire the transporter player-side service queue + SELARE occupancy safety: route respawnPlayerProcess (sim.ts:630) through takePlayerNumber + nextServed arbitration (players before enemies), and gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a materialisation defers into an already-crowded third. Assert the now-live 'players first' branch and that a crowded third defers a spawn. JOUSTRV4.SRC:5615-5676"
     points: 8
     completed: '2026-08-16'
+  - id: ml11-1
+    epic: ml11
+    title: "CENTIN/LCOLOR-gated per-length field recolour: the playfield base palette should shift with the millipede LENGTH (recoloured only at the LCOLOR wave event), not hold the frozen CENTIN=12 full-millipede colour. Model the CENTIN colour-index + LCOLOR gate in core and thread the LIVE index into the field draw, deciding how the per-length base composes with ml9-2's per-code fieldPens overrides."
+    points: 5
+    completed: '2026-08-16'
