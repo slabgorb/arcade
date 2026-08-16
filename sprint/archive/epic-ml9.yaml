@@ -3,7 +3,7 @@ type: epic
 title: Millipede — playthrough visual-fidelity findings (owner-observed; expect this epic to GROW)
 description: 'Ninth Millipede epic: visual/rendering fidelity gaps the owner found while actually PLAYING the shipped cabinet, not from ROM audit. Screenshots preserved at sprint/planning/ml9-playthrough-refs/ (attract-mame-reference.png, ingame-mame-reference.png = MAME ground truth; ingame-ours-current.png = our current render). These are shell/render + palette bugs, not core-sim: the seams are plugins/millipede/src/shell/render.ts, shell/gfx-rom.ts, shell/playfield-palette.ts and core/palette.ts, plus core/attract.ts (attract machinery ALREADY EXISTS in core — the intro-screen gap is likely render/wiring, NOT a from-scratch build; verify before scoping). GROUPING RULE (inherit ml8): group stories by the FILES they edit, not by which sprite looks wrong — several sprite/colour fixes that all live in render.ts/palette.ts are one story with several commits. Open-ended by design; seed stories below are the two findings reported at filing, points are seed-only.'
 priority: p2
-status: active
+status: done
 repos: arcade
 stories:
   - id: ml9-1
@@ -39,7 +39,7 @@ stories:
     description: "Two deferred visual-fidelity items from the ml9-2 review, both requiring an OWNER/DESIGN decision because the target colours are SCREENSHOT-ONLY (no ROM colour byte reproduces them). (1) DDT-bomb lettering: with per-code fieldPens (ml9-2) the DDT box already renders BLUE for free (non-mushroom code keeps base pen 3 = poison $F8), matching MAME's box colour — what REMAINS is the RED 'DDT' text INSIDE the box. The baked tile ($2E/$2F) is MONOCHROME (one pixel value), so the letters take the same pen as the box; a two-colour (blue box + red text) result needs a re-baked/two-colour DDT sprite AND an owner call, since the only DDT-labelled CLRCH slot (ANCOL+1/+9) is the DDT-EXPLOSION cloud = inside-mushroom $0b, MLIRQ.MAC:267-268, NOT a blue-box+red-text scheme. (2) Attract enemy-showcase text colours: MAME shows WHITE high scores + RED creature labels on the blue showcase; ours renders all green (census default). The colours ARE ROM slots (white $00 ANCOL+3, red $1F ANCOL+2) but MLATR.MAC:580-610 has NO per-section colour write and both letters and digits use pixel value 2, so it CANNOT be a pixel-value distinction — it needs core/attract-showcase.ts to expose SECTIONED placements + per-section palettes wired in main.ts. This is a DIFFERENT file surface (core/attract-showcase.ts) from ml9-2's in-game render path. Also decide cell backgrounds (black boxes vs blue show-through). Seams: core/attract-showcase.ts, shell/render.ts, shell/playfield-palette.ts, shell/gfx-rom.ts (DDT re-bake). Group by file surface per the epic rule; TEA/Architect may split the DDT sprite work from the showcase-text recolour if they land on different file surfaces."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-15'
     repos: arcade
     workflow: tdd
@@ -47,5 +47,7 @@ stories:
       - "Attract enemy-showcase renders WHITE high-scores and RED creature labels (per attract-mame-reference.png), via sectioned placements + per-section palettes in core/attract-showcase.ts wired through main.ts, with the section→colour mapping and any background decision (black box vs blue show-through) pinned to the ROM/MAME source or an explicit owner call."
       - "DDT-bomb renders the RED 'DDT' lettering on its blue box (two-colour treatment), with the source of the red text (re-baked/two-colour sprite vs alternative) and the screenshot-only colour choice confirmed by an owner/design decision and documented."
       - "No regression to the ml9-2 in-game colours (HUD red, grass band, per-code mushroom caps), the in-game HUD, or the self-playing attract demo."
+    completed: '2026-08-15'
     type: bug
     review_verdict: approved
+completed: '2026-08-15'
