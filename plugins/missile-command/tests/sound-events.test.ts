@@ -18,10 +18,10 @@
 // SCOPE (mc8-1 spike §5 / §8). The emitters wired by stepGame today —
 // `detonated`, `icbmKilled`, `structureDestroyed` — and the fire-driven
 // `launched` / `ammoEmpty` (fireFromKey) are DRIVEN here. `bonusTick` (the
-// wave-bonus count-up, W3MAIN:4277) has no producer in the sim yet (wave.ts is
-// not wired into stepGame), and the parametric cruise/Sputnik drone (mc8-3) has
-// none either — those are exercised at the dispatch seam only, and their sim
-// emitters are filed as follow-ups (see the mc8-2 session Delivery Findings).
+// wave-bonus count-up, W3MAIN:4277) is now emitted by the 'between' resolve and is
+// DRIVEN in mc11-2-bonus-tick-emit.test.ts (mc11-2). The parametric cruise/Sputnik
+// drone (mc8-3) still has no sim producer — it is exercised at the dispatch seam
+// only, its emitter a filed follow-up (see the mc8-2 session Delivery Findings).
 //
 // FIDELITY (spike §5 finding): Missile Command has NO incoming-ICBM sound —
 // regular ICBM trails are silent; spawning and mere flight emit nothing. The

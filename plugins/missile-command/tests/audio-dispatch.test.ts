@@ -27,9 +27,9 @@
 // triggers a sound" prose) is filed as a Delivery Finding for Reviewer/owner to
 // veto; it is a one-line change here if overruled.
 //
-// bonusTick has no sim producer yet (wave.ts is unwired — sound-events.test.ts
-// scope note), so ONLY its map is pinned here, from a hand-built event; the
-// emitter is a filed follow-up. The sustained DRONE's parametric pitch sweep is
+// bonusTick's sim producer now lives in game.ts's 'between' resolve (mc11-2,
+// driven in mc11-2-bonus-tick-emit.test.ts); here ONLY its map is pinned, from a
+// hand-built event. The sustained DRONE's parametric pitch sweep is
 // mc8-3 — mc8-2 stands up only its start/stop LIFECYCLE so the edge-silence AC
 // is provable now.
 //

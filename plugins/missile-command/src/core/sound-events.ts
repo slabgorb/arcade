@@ -59,7 +59,8 @@ export interface AmmoEmptyEvent {
 }
 
 // One unit of the end-of-wave bonus count-up was tallied — the BONUS-TICK cue
-// (TK, SUNABM, spike event map). (Emitter is a filed follow-up; the map is wired.)
+// (TK, SUNABM, spike event map). Emitted by the 'between' resolve in game.ts, one
+// per bonus unit (surviving city + unused ABM), mc11-2.
 export interface BonusTickEvent {
   readonly type: 'bonusTick'
 }
