@@ -29,7 +29,9 @@ stories:
     title: "Wire the transporter player-side service queue + SELARE occupancy safety: route respawnPlayerProcess (sim.ts:630) through takePlayerNumber + nextServed arbitration (players before enemies), and gate serveEnemy on spawnProceeds(scanAreas(occupantYs), tier) so a materialisation defers into an already-crowded third. Assert the now-live 'players first' branch and that a crowded third defers a spawn. JOUSTRV4.SRC:5615-5676"
     points: 8
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_findings: 'APPROVED round 2. Round-1 [HIGH] orphaned-respawn FIXED (respawnQueue pruned to the live [lpserv,npserv) window → orphaned knight re-draws; 2 regression tests + adversarial no-stuck probe green; security verified the arithmetic). Round-1 LOWs resolved (ptero/troll census widened; stale comment reworded). One round-2 [LOW][RULE]: a removable ''as unknown as SimProcess'' cast (test helper) — non-blocking, consistent with the joust suite''s enemyProc idiom. joust 3690/3690, orch 505/505, tsc clean.'
+    review_verdict: approved
