@@ -49,19 +49,22 @@ const LOGICAL_W = 240
 const LOGICAL_H = 256
 
 // A showcase sprite is drawn by drawSpritePx as TWO 8x8 stamps (top at x, bottom
-// at x+8), so its footprint is 16 wide x 8 tall (main.ts:169-171, 208-210).
+// at x+8), so its footprint is 16 wide x 8 tall (main.ts drawSpritePx; the
+// showcaseSprites() loop in renderShowcase).
 const SPRITE_W = 16
 const SPRITE_H = 8
 
-/** The logical-screen top-left of a showcase creature's sprite (main.ts:209). */
+/** The logical-screen top-left of a showcase creature's sprite — the position
+ *  renderShowcase's showcaseSprites() loop blits it at: (col*8, (0x1f-row)*8-18). */
 function cellXY(sprite: ShowcaseSprite): [number, number] {
   return [sprite.col * 8, (0x1f - sprite.row) * 8 - 18]
 }
 
 /** Parse a canvas fillStyle into [r,g,b], covering the forms the shell emits:
- *  `rgb(r, g, b)` (decodeColourByte's output, main.ts:197), `#000`/`#000000`
- *  (the entry/default black, main.ts:223,230), and the named `black`. Returns
- *  null for anything else so an unexpected style is never silently read as black. */
+ *  `rgb(r, g, b)` (decodeColourByte's output, used for the blue background), and
+ *  `#000`/`#000000` (the ml11-2 per-cell panel fill, and the entry/default black
+ *  fills in render()), plus the named `black`. Returns null for anything else so
+ *  an unexpected style is never silently read as black. */
 function parseRgb(style: string): [number, number, number] | null {
   const s = style.trim().toLowerCase()
   const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/)
@@ -91,9 +94,12 @@ const isBlue = (style: string): boolean => {
 const isFullScreen = (f: DrawFill): boolean =>
   f.x <= 0 && f.y <= 0 && f.w >= LOGICAL_W && f.h >= LOGICAL_H
 
-/** Does a recorded rect overlap the box (x0,y0,w0,h0)? */
-function overlaps(f: DrawFill, x0: number, y0: number, w0: number, h0: number): boolean {
-  return f.x < x0 + w0 && f.x + f.w > x0 && f.y < y0 + h0 && f.y + f.h > y0
+/** Does the fill `f` fully CONTAIN the box (x0,y0,w0,h0)? A per-cell panel must
+ *  COVER the whole sprite footprint, not merely clip a corner of it — an
+ *  intersection test would accept a 1px black speck at the corner and still read
+ *  "panel behind the cell" green (reviewer round 1 [TEST], lang-review #18). */
+function contains(f: DrawFill, x0: number, y0: number, w0: number, h0: number): boolean {
+  return f.x <= x0 && f.y <= y0 && f.x + f.w >= x0 + w0 && f.y + f.h >= y0 + h0
 }
 
 /**
@@ -183,15 +189,16 @@ describe('ml11-2 AC1 — a black per-cell panel behind every creature, before it
         `no sprite blit at the showcase cell (${x}, ${y}) — the creature never rendered, so the panel check cannot run`,
       ).toBeGreaterThanOrEqual(0)
 
-      // A qualifying panel: a black, non-full-screen fill that overlaps the sprite
-      // footprint AND was drawn BEFORE the sprite (earlier index = painted behind).
+      // A qualifying panel: a black, non-full-screen fill that fully COVERS the
+      // sprite footprint AND was drawn BEFORE the sprite (earlier index = painted
+      // behind). Containment (not mere intersection) so a 1px speck cannot pass.
       const panel = showcaseDraws.find(
         (r, i): r is DrawFill =>
           r.kind === 'fillRect' &&
           i < spriteBlitIdx &&
           !isFullScreen(r) &&
           isBlack(r.style) &&
-          overlaps(r, x, y, SPRITE_W, SPRITE_H),
+          contains(r, x, y, SPRITE_W, SPRITE_H),
       )
       expect(
         panel,
