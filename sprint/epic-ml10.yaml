@@ -113,13 +113,15 @@ stories:
       and a read of core/conway.ts / core/waves.ts.
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - "EnemyView carries the near-bottom mushroom count sourced from state.mushCounts.lower (no hardcoded 0), and mayStartBee's mushroom gate actually blocks a bee spawn when the tally is below mushroomsNeeded(score2) — proven by driving stepGame/stepBees through the real roster view, not a hand-built BeeEnv."
       - "mushroomsRestoring is computed from the real conway mushroom-restoration state (not the literal false at sim.ts:290), so wave-end waits while mushrooms are still restoring, matching waves.ts's blocker read — proven through stepGame, not a hand-built blockers object."
       - "Both fixes are ROM-cited (bee gate BE-5/6/8/9, MILLI.MAC:68-78; the wave-end blocker) and land as two commits on the shared core/sim.ts surface; a mutation reverting either field to its hardcoded constant fails a test; no regression to bee movement/scoring, wave advance, or the mushroom-field reducers."
+    completed: '2026-08-16'
     type: bug
     review_findings: "Two comment-fidelity defects in the diff's own new prose (code/tests/behavior sound): (1) [MED] sim.ts:292-295 misattributes MLSUB.MAC:54 (=LDA MEM+1, not CDONE) and inverts the ROM restoring window (restor() acts only when cdone===0 → restoring is POST-conway, not during); (2) [LOW] bee.ts:51 'is exact' overclaims — mushCounts.lower has unwired MUSHDC write paths (bee throwaway, shot.ts, conway.ts). Comment-only green rework."
     review_verdict: approved
