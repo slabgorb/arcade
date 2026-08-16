@@ -59,7 +59,8 @@ stories:
       Wire millipede high-score persistence END-TO-END, INCLUDING the name-entry runtime it depends on (scope EXPANDED 2026-08-16, re-pointed 3->5 by user ruling; the original 'no new logic / main.ts already has a name-entry phase' framing was STALE — see below). Two dead seams: (1) shell/highscore.ts (makeMilliHighScoreStorage, loadHighScores) is built + tested (high-score-persistence.test.ts) but imported by NOTHING in src/ (self-labelled 'Deliberately UNWIRED' at shell/highscore.ts:18). (2) The name-entry RUNTIME does not exist: phase.ts defines an 'entry' phase and advancePhase routes game-over->entry when scoreQualifies, BUT sim.ts:433 deliberately DEFERS it (game-over handler never passes scoreQualifies), and main.ts has NO entry-phase handling (no initials input, no stepInitials drive, no entry-screen render). main.ts seeds the HUD/attract board from core/highscore DEFAULT_HIGH_SCORES only, so the ladder resets every reload and a qualifying score can never be entered or persisted. Deliver, in order: (a) wire the entry runtime — sim.ts computes scoreQualifies via qualifiesForHighScore and routes game-over->entry; main.ts drives the entry phase (capture initials input, step stepInitials, render the entry screen, insertHighScore on commit); (b) on boot, main.ts loads the table via loadHighScores(makeMilliHighScoreStorage()), falling back to the seeded ROM ladder on empty/first boot, and renders it (attract showcase + HUD hi-score); (c) after entry commits, save the updated table through makeMilliHighScoreStorage().save under the one-origin cabinet key (MILLI_HIGH_SCORE_GAME_ID = 'millipede') so the shared arcade-lobby localStorage persists it and the lobby can read it. Reuse the tested shell module and core/highscore primitives (insertHighScore / qualifiesForHighScore / stepInitials) — the new logic is the RUNTIME WIRING in sim.ts + main.ts, not new game math. Seams: src/core/sim.ts (scoreQualifies signal), src/main.ts (entry-phase input/render + boot load + post-entry save); shell/highscore.ts unchanged or minimal.
     points: 5
     priority: p2
-    status: in_progress
+    status: done
+    completed: '2026-08-16'
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
@@ -68,6 +69,7 @@ stories:
       - "After a game ends and a qualifying score is entered, the updated ladder is saved via makeMilliHighScoreStorage().save under the one-origin cabinet key ('millipede') and survives a reload — a returning boot shows the persisted board."
       - "Persistence is proven end-to-end through main.ts wiring (boot → play → name-entry → reload), not only the existing module unit tests; no regression to the name-entry flow, the self-playing attract demo, or the HUD."
     type: feature
+    review_verdict: approved
   - id: ml10-3
     title: Thread the live mushroom state into its two dead consumers (bee MUSH spawn gate + wave-end restoring blocker)
     description: >-

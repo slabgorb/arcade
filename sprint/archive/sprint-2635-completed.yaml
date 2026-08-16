@@ -1,0 +1,13 @@
+# Sprint TO Sprint 2635 - Completed Stories
+# Jira Sprint ID: 6
+# Archived: 2026-08-16
+
+sprint:
+  name: "TO Sprint 2635"
+  number: 2635
+  jira_sprint_id: 6
+  jira_sprint_name: "TO Sprint 2635"
+  goal: Missile Command mc7 and follow-ups
+
+completed:
+  # Completed stories will be appended here by pf sprint archive
