@@ -34,6 +34,8 @@ stories:
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_findings: "APPROVED (round 3). All findings across 3 rounds resolved and mutation-verified: R1 stale 'deferred O-7b' confession + self-contradictory ROM citations fixed; R2 test-rigor gaps CLOSED — rule-checker live-mutation-confirmed the flip test (>=/> reddens 'expected exactly 2112') and all three entryFrames:0 resets (each deletion reddens). Rule-checker clean (32 rules/0 violations); preflight 1404/1404; security clean. One LOW non-blocking follow-up: game.ts:388 reword the mc7-3 'byte-identical' comment (correct behaviour already documented adjacent)."
+    review_verdict: approved
   - id: mc11-4
     title: "Retire the redundant dead twins (delete or route the live path through them, per each): the mainline/stateCode MAINLINE-dispatch skeleton (state.ts:92, bypassed by stepGame), applyPointerMotion (shell/input.ts:42, superseded by placeCursor), launchFromKey (input.ts:69, superseded by fireFromKey), cruiseKillPoints (core/score.ts:61, inlined at game.ts:585), computeLetterbox (shell/viewport.ts:53, twin of applyLetterbox), and INITIAL_ATTRACT (state.ts:121). Keep any symbol still asserted by a claim test; only its dead runtime role goes."
     points: 3
