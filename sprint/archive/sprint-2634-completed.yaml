@@ -463,3 +463,13 @@ completed_stories:
     title: 'Parallax starfield: plugins/defender/src/core/stars.ts — STINIT/STOUT (defender/DEFA7.SRC:2095-2155), STRCNT active count (defender/PHR6.SRC:294), stars scrolled by the BGL delta with edge wrap and the phase mask, composited into the df2 framebuffer by INDEX. TRAP: STOUT is self-modifying code (FCB-patched indexed stores, the ''BSO BONER'' comments defender/DEFA7.SRC:2151-2153) — transcribe the BEHAVIOUR, not the opcodes; record an encoding note (streams-are-not-rasters cousin).'
     points: 3
     completed: '2026-08-15'
+  - id: ml10-5
+    epic: ml10
+    title: 'Harden ml10-4 pointer-lock test coverage: add a behavioural/source pin that main.ts wires the onReject diagnostic sink (deleting the console.warn 4th-arg currently ships green — dead-wiring class); add a boot-harness behavioural test for the R5 onExit->mouse.reset() reset-on-exit (only source-regex pinned today); and repoint the stale (main.ts:100) citation in pointer-lock.test.ts:169 to shell/input.ts onMouseMove'
+    points: 1
+    completed: '2026-08-16'
+  - id: ml10-3
+    epic: ml10
+    title: Thread the live mushroom state into its two dead consumers (bee MUSH spawn gate + wave-end restoring blocker)
+    points: 5
+    completed: '2026-08-16'

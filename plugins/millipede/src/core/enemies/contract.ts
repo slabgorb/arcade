@@ -44,6 +44,10 @@ export interface EnemyView {
   /** MUSH+2 — the count of mushrooms near the TOP of the field (rows ≥ TOP_MIN);
    *  the dragonfly's mushroom-glut spawn veto reads it (DF-7/8). */
   readonly mushTop: number
+  /** MUSH[0] — the count of mushrooms near the BOTTOM of the field (the LOWER
+   *  band, a DIFFERENT quantity from mushTop); the bee's BEEMV1 needed-count gate
+   *  reads it (BE-8/9, MILLI.MAC:68-78). Sourced from state.mushCounts.lower. */
+  readonly mush: number
   /** BEETLS — active beetles on screen; the bee/dragonfly spawn gates read it
    *  (BE-6, DF-6). */
   readonly beetles: number
