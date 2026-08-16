@@ -45,7 +45,8 @@ stories:
     description: "Two guard-strengthening findings filed non-blocking by Reviewers, each over a WEAKLY-asserted test surface (the ml8 'a battery over a weak surface yields a survivor' shape), collected here as the epic's hardening tail per the user's chosen framing. (a) From ml7-11 round 2 (Reviewer): plugins/millipede/tests/playfield-colour.test.ts guards PLAYER_COLOUR's provenance but ALPHANUMERIC_COLOUR ($1F RED, ANCOL+2, MLIRQ.MAC:294) HAPPENS to equal wave-1 inside-mushroom, so a future mis-wire `ALPHANUMERIC_COLOUR = waveColours(1).insideMushroom` would pass every test. Add an ALPHANUMERIC provenance check against a NON-colliding level, and optionally assert $00 never appears in FIELD_REGION_COLOURS. (b) From ml10-5 round (Reviewer, the ml10-6-class finding — NEVER filed until now): the pointer-lock guard's regex is FILE-SCOPED, so a contrived relocation mutant can evade it (the named mutant IS killed today). Widen the guard so a relocation cannot slip past. NOTE THE FILE-SURFACE SPLIT: (a) edits tests/playfield-colour.test.ts and (b) edits the ml10-5 pointer-lock guard test — DIFFERENT files, so by the strict grouping rule these are two stories; they are folded here as one small tail per the materialization decision, and TEA/Architect MAY split them if the two commits prove awkward. Both are pure test-guard strengthening — no production code change, mutation-verify each guard actually reddens the mutant it targets."
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
