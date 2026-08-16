@@ -205,8 +205,21 @@ function renderShowcase(c: CanvasRenderingContext2D, highScores: readonly MilliH
   }
   // Each creature's sprite, blitted just above its name label, in its OWN
   // authentic MOCOL colours (spritePens keyed by the creature's colour byte).
+  // ml11-2: each cell sits on a solid BLACK panel (attract-mame-reference.png:
+  // the creatures show on black boxes, not floating on the blue background). The
+  // panel is drawn BEFORE the sprite so the creature sits ON it, and its geometry
+  // is DERIVED from the sprite cell (not eyeballed): the 16px-wide footprint padded
+  // out horizontally, spanning from above the sprite down to its name-label row 18px
+  // below. A static fill — no strobe (ml7-4 accessibility). The exact box extents
+  // are confirmed against the reference at the /millipede/ visual playtest (AC3).
+  const PANEL_PAD_X = 10
+  const PANEL_PAD_TOP = 8
   for (const s of showcaseSprites()) {
-    drawSpritePx(c, s.col * 8, (0x1f - s.row) * 8 - 18, s.pic, spritePens(s.color))
+    const spriteX = s.col * 8
+    const spriteY = (0x1f - s.row) * 8 - 18
+    c.fillStyle = '#000'
+    c.fillRect(spriteX - PANEL_PAD_X, spriteY - PANEL_PAD_TOP, 16 + PANEL_PAD_X * 2, 18 + PANEL_PAD_TOP)
+    drawSpritePx(c, spriteX, spriteY, s.pic, spritePens(s.color))
   }
 }
 
