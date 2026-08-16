@@ -19,7 +19,8 @@ stories:
     title: "Wire the WSMART budget refund/debit so smart-enemy pressure is sustained: call creditDeath (core/enemy.ts:566) in the death/removal path (alongside bookDeath/countBaiterDeaths) to decrement nsmart when a smart enemy dies, and remountBudgetDebit (core/egg.ts:339) on the egg->remount transition. Assert that after a smart enemy dies mid-wave a replacement can be promoted (nsmart no longer latches at wsmart). JOUSTRV4.SRC:2962 CREEM"
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-16'
     repos: arcade
     workflow: tdd
   - id: jt12-3
