@@ -43,9 +43,11 @@ describe('pm5-2 — the four dead Level mirror fields are dropped (AC-1, AC-2)',
   // `hasOwn` is `true` and these expectations fail. GREEN once Dev stops populating
   // them and removes them from the `Level` type.
   it.each(SAMPLE_LEVELS)('levelRow(%i) carries none of the mirror fields', (level) => {
-    const row = levelRow(level) as Record<string, unknown>
+    const row = levelRow(level)
     for (const field of DROPPED_FIELDS) {
       // ES2020 lib — no `Object.hasOwn`; `hasOwnProperty.call` is equivalent here.
+      // No cast needed: `.call` accepts any object, and the dropped names are no
+      // longer keys of `Level` — which is exactly what this asserts at runtime.
       expect(
         Object.prototype.hasOwnProperty.call(row, field),
         `levelRow(${level}) must not carry the dead mirror field '${field}'`,
