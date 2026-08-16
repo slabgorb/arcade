@@ -124,5 +124,14 @@
       "line": 2152,
       "verbatim": "\tFCB\t$A7,$98,$00 (STA [SX,X]) ***********BSO BONER*******"
     }
+  },
+  {
+    "id": "ST-15",
+    "claim": "STINIT's Y ceiling: RAND-drawn star Y is rejected above $A8 (accepted range [YMIN+1,$A8]): CMPA #$A8 'LIMIT TEST' (BHI resamples). Modelled by Y_MAX in stars.ts.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2082,
+      "verbatim": "\tCMPA\t#$A8\tLIMIT TEST"
+    }
   }
 ]

@@ -14,14 +14,17 @@
 //   STINIT (defender/DEFA7.SRC:2073-2093): seed 16 stars — X ∈ [0,$9B] (RAND, reject ≥$9C),
 //     Y ∈ [YMIN+1,$A8] (RAND, reject >$A8 or ≤YMIN), colour stepped +$11 AND $77 per star
 //     (defender/DEFA7.SRC:2088-2089) — a palindromic cycle $00,$11,…,$77 repeating.
-//   STOUT (defender/DEFA7.SRC:2095-2155): each frame, move every active star by the camera
-//     delta and composite it —
-//     • starDelta (defender/DEFA7.SRC:2098-2108): the signed high byte of ((BGLX' − BGL') << 1),
-//       where X' keeps the camera high byte and bit 7 of its low byte. Stars move OPPOSITE
-//       the camera (parallax). (Only bit 7 of the low byte can reach the result's high byte,
-//       so the ANDB #$80 mask is faithful but output-invisible.)
-//     • phaseMask (defender/DEFA7.SRC:2116-2118): $F0 when BGL bit 6 (low byte) is set, else $0F.
-//     • edge wrap (defender/DEFA7.SRC:2142-2146): X += delta (8-bit); if ≥$9C then $9C..$C0
+//   STOUT (defender/DEFA7.SRC:2097-2155): each frame, move every active star by the camera
+//     delta and composite it (the STRCNT-bounded loop is LDB STRCNT :2139 / DECB :2154) —
+//     • starDelta (defender/DEFA7.SRC:2101-2108): the signed high byte of ((BGLX' − BGL') << 1),
+//       where X' keeps the camera high byte and bit 7 of its low byte (ANDB #$80 on each,
+//       :2102,2105). Stars move OPPOSITE the camera (parallax). The mask is LOAD-BEARING, not
+//       cosmetic: masking the low bytes to bit 7 BEFORE the subtraction changes whether the
+//       low-byte subtraction borrows into the high byte — e.g. starDelta(0x0001,0x0000) is 0
+//       masked but would be −1 unmasked. (df3-4 review round 1 corrected an earlier comment
+//       that wrongly called this mask "output-invisible".)
+//     • phaseMask (defender/DEFA7.SRC:2116-2121): $F0 when BGL bit 6 (low byte) is set, else $0F.
+//     • edge wrap (defender/DEFA7.SRC:2140-2149): X += delta (8-bit); if ≥$9C then $9C..$C0
 //       walked off the RIGHT → 0, above $C0 walked off the LEFT → $9B.
 
 import { YMIN } from './world.js'
@@ -36,7 +39,7 @@ const X_EDGE = 0x9c
 const X_MAX = 0x9b
 /** The "which way did he come" split (defender/DEFA7.SRC:2144): ≤ this wrapped right, above it wrapped left. */
 const X_WHICH_WAY = 0xc0
-/** STINIT's Y ceiling — RAND is rejected above $A8 (defender/DEFA7.SRC, the STI1 CMPA #$A8 test). */
+/** STINIT's Y ceiling — RAND is rejected above $A8 (defender/DEFA7.SRC:2082, STI1 CMPA #$A8). */
 const Y_MAX = 0xa8
 /** STINIT's colour step and mask (defender/DEFA7.SRC:2088-2089): +$11 then AND $77. */
 const COLOR_STEP = 0x11
@@ -44,14 +47,16 @@ const COLOR_MASK = 0x77
 
 /** One star: display X ([0,$9B]), display Y ([YMIN+1,$A8]) and a palette-index colour. */
 export interface Star {
-  x: number
-  y: number
-  color: number
+  readonly x: number
+  readonly y: number
+  readonly color: number
 }
 
 /**
  * The per-frame parallax movement of every star: the signed high byte of the doubled
- * camera delta (STOUT, defender/DEFA7.SRC:2098-2108). Stars scroll opposite the camera.
+ * camera delta (STOUT, defender/DEFA7.SRC:2101-2108). Stars scroll opposite the camera. The
+ * ANDB #$80 low-byte mask is LOAD-BEARING (it sets whether the subtraction borrows into the
+ * high byte): starDelta(1,0) is 0 masked but would be −1 unmasked.
  */
 export function starDelta(bgl: number, bglx: number): number {
   // Keep the camera high byte + bit 7 of its low byte (LDD / ANDB #$80).
@@ -62,7 +67,7 @@ export function starDelta(bgl: number, bglx: number): number {
 }
 
 /**
- * The star phase/colour mask (STOUT, defender/DEFA7.SRC:2116-2118): $F0 when bit 6 of the
+ * The star phase/colour mask (STOUT, defender/DEFA7.SRC:2116-2121): $F0 when bit 6 of the
  * BGL low byte is set, else $0F. The shell uses it for the sub-pixel phase (see drawStars).
  */
 export function phaseMask(bgl: number): number {
@@ -70,7 +75,7 @@ export function phaseMask(bgl: number): number {
 }
 
 /**
- * Scroll one star's X by `delta` with the STOUT edge wrap (defender/DEFA7.SRC:2142-2146):
+ * Scroll one star's X by `delta` with the STOUT edge wrap (defender/DEFA7.SRC:2140-2149):
  * an 8-bit add, then $9C..$C0 (off the right) re-enters at 0 and above $C0 (off the left)
  * re-enters at $9B.
  */
@@ -129,6 +134,12 @@ export function drawStars(fb: Framebuffer, stars: readonly Star[], count: number
   const n = Math.min(stars.length, count)
   for (let i = 0; i < n; i++) {
     const s = stars[i]
+    if (!Number.isInteger(s.x) || !Number.isInteger(s.y)) {
+      // A NaN/Infinity/fractional index writes NOWHERE in a Uint8Array — fail LOUD rather
+      // than silently drop the star (lang-review #21; matches terrain.ts/objects.ts blitters).
+      throw new Error(`drawStars: non-integer star position (${s.x}, ${s.y}) at index ${i}`)
+    }
+    if (s.x < 0 || s.x >= fb.width || s.y < 0 || s.y >= fb.height) continue // clip off-screen
     fb.data[s.y * fb.width + s.x] = s.color & 0x0f
   }
 }

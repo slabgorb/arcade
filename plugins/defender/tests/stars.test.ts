@@ -24,22 +24,23 @@
 //     INDEPENDENT of the RNG (a clean deterministic pin). RAND is an INJECTED source
 //     (the shell owns entropy; core stays clock/entropy-free — purity.test.ts).
 //
-// STOUT (defender/DEFA7.SRC:2095-2155) — scroll + composite each frame:
-//   • The per-star X movement is derived from the camera delta (:2098-2108):
+// STOUT (defender/DEFA7.SRC:2097-2155) — scroll + composite each frame:
+//   • The per-star X movement is derived from the camera delta (:2101-2108):
 //       ITEMP = high byte of ((BGLX' − BGL') << 1), taken SIGNED, where X' keeps the
-//       camera's high byte and bit 7 of its low byte (ANDB #$80). Stars move OPPOSITE
-//       the camera (parallax): camera right ⇒ negative movement. (The low-byte mask is
-//       output-invisible — only bit 7 can reach the result's high byte — so it is a
-//       faithful note, not an observable.)
-//   • Phase/colour mask (:2110-2116): LDB #$F0 / LDA BGL+1 / BITA #$40 / (COMB) —
+//       camera's high byte and bit 7 of its low byte (ANDB #$80 on each, :2102,2105).
+//       Stars move OPPOSITE the camera (parallax): camera right ⇒ negative movement. The
+//       mask is LOAD-BEARING: it changes whether the low-byte subtraction borrows into
+//       the high byte, e.g. starDelta(0x0001,0x0000) is 0 masked but −1 unmasked (round-1
+//       review corrected an earlier note that wrongly called it "output-invisible").
+//   • Phase/colour mask (:2116-2121): LDB #$F0 / LDA BGL+1 / BITA #$40 / BNE / COMB / STB —
 //       mask = (BGL_low & $40) ? $F0 : $0F. ANDed into each star's colour before store.
-//   • Edge wrap (:2135-2149): A = SX + movement (8-bit); if A ≥ $9C then
+//   • Edge wrap (:2140-2149): A = SX + movement (8-bit); if A ≥ $9C then
 //       $9C ≤ A ≤ $C0 → 0 (walked off the RIGHT), A > $C0 → $9B (walked off the LEFT).
 //   • The SMC store (:2151-2153): LDA SCOL / ANDA ITEMP2 / `FCB $A7,$98,$00 (STA [SX,X])`
 //       — the `BSO BONER` self-modifying indexed store. Its CLEAN equivalent is
 //       "write this star's colour INDEX into its framebuffer cell". Transcribe the
 //       BEHAVIOUR; NO opcode bytes / FCB in src/core (AC4). The `LDB STRCNT / … DECB`
-//       loop bounds the work to the active count (:2131,2154).
+//       loop bounds the work to the active count (:2139,2154).
 //     ENCODING NOTE (the streams-are-not-rasters cousin the story names): SCOL steps
 //       by $11 AND $77, so every star colour is PALINDROMIC ($00,$11,…,$77 — high
 //       nibble == low nibble). framebuffer.ts is ONE 4-bit index per cell (0..15), so
@@ -52,7 +53,7 @@
 //       (Delivery Finding, this session).
 //
 // OUT OF SCOPE (context-story-df3-4.md): SBLNK star-blink (:2156-…), the STATUS-$20
-// suppress branch (:2096), hyperspace scatter (df5). "Model the count, not the effect."
+// suppress branch (:2097-2099), hyperspace scatter (df5). "Model the count, not the effect."
 //
 // ─── CONTRACT (what GREEN/Dev must build in src/core/stars.ts) ────────────────────
 //   export const STAR_COUNT: 16                                  // SNUM (PHR6.SRC:541)
@@ -80,9 +81,9 @@ import { createFramebuffer, type Framebuffer } from '../src/core/framebuffer.js'
 import { loadClaims } from './audit/dossier-sweep.js'
 
 interface Star {
-  x: number
-  y: number
-  color: number
+  readonly x: number
+  readonly y: number
+  readonly color: number
 }
 
 interface StarsModule {
@@ -166,10 +167,14 @@ describe('starDelta (STOUT :2098-2108) — the parallax move is a SIGNED functio
     expect(starDelta(0x0200, 0x0000)).toBe(-4)
   })
 
-  it('a sub-bit-7 low-byte wiggle does not move the stars ($7F contributes nothing)', async () => {
+  it('the ANDB #$80 low-byte mask is LOAD-BEARING — a borrow case an unmasked impl gets wrong', async () => {
     const { starDelta } = await loadStars()
-    // Only bit 7 of the low byte can ever reach the result's high byte; $7F is below it.
-    expect(starDelta(0x0000, 0x007f)).toBe(0)
+    // starDelta(1,0): masked → both operands mask to $0000 → diff 0 → 0. An UNMASKED impl
+    // subtracts the full low bytes ($0000−$0001 = $FFFF), doubles to $FFFE, high byte $FF →
+    // −1. So this input DISTINGUISHES the ROM-faithful mask from a dropped mask (the other
+    // starDelta cases above give the same result either way — this is the one that pins it).
+    expect(starDelta(0x0001, 0x0000)).toBe(0)
+    expect(starDelta(0x0002, 0x0001)).toBe(0) // same borrow shape, one column over
   })
 })
 
@@ -245,6 +250,16 @@ describe('stepStars (the STOUT per-star loop) — scrolls the field by the camer
     const out = stepStars(stars, 0x0100, 0x0000, 0)
     expect(out.map((s) => s.x)).toEqual([0x50, 0x10])
   })
+
+  it('the DEFAULT count is exactly STAR_COUNT=16 — an 18-star field moves only the first 16', async () => {
+    const { stepStars, STAR_COUNT } = await loadStars()
+    expect(STAR_COUNT).toBe(16)
+    const stars: Star[] = Array.from({ length: 18 }, () => ({ x: 0x50, y: 0x40, color: 0x00 }))
+    const out = stepStars(stars, 0x0100, 0x0000) // no count → the default must be 16, not ∞/length
+    expect(out.slice(0, 16).every((s) => s.x === 0x4e)).toBe(true) // first 16 scrolled by −2
+    expect(out[16].x).toBe(0x50) // 17th untouched
+    expect(out[17].x).toBe(0x50) // 18th untouched
+  })
 })
 
 describe('initStars (STINIT :2073-2093) — 16 stars, ranged coords, the fixed colour cycle', () => {
@@ -268,6 +283,30 @@ describe('initStars (STINIT :2073-2093) — 16 stars, ranged coords, the fixed c
     const stars = initStars(rand)
     expect(stars[0]).toEqual({ x: 0x30, y: 0x60, color: 0x00 })
     expect(stars).toHaveLength(16)
+  })
+
+  it('accepts the INCLUSIVE boundary draws: X=$9B, Y=$A8 (Y_MAX), Y=YMIN+1=$2B — no resample', async () => {
+    const { initStars } = await loadStars()
+    // The reject sides are pinned above; these pin the ACCEPT sides so an off-by-one on any
+    // edge (X_EDGE $9C, Y_MAX $A8, the CMPA #YMIN test) is caught. $9B is the last valid
+    // column (<$9C), $A8 the last valid row (≤$A8), $2B the first valid row (>YMIN=42).
+    const seq = [0x9b, 0xa8, 0x00, 0x2b]
+    let i = 0
+    const rand = () => (i < seq.length ? seq[i++] : 0x50)
+    const stars = initStars(rand)
+    expect(stars[0]).toEqual({ x: 0x9b, y: 0xa8, color: 0x00 })
+    expect(stars[1]).toEqual({ x: 0x00, y: 0x2b, color: 0x11 })
+  })
+
+  it('rejects the draws JUST past the ceiling: X=$9C (≥$9C) and Y=$A9 (>$A8) resample', async () => {
+    const { initStars } = await loadStars()
+    // Y=$A9 is one past Y_MAX — a ceiling widened to $A9 would wrongly ACCEPT it, so this pins
+    // the UPPER edge that the accept-side test alone cannot (accepting $A8 holds either way).
+    const seq = [0x9c, 0x30, 0xa9, 0x55]
+    let i = 0
+    const rand = () => (i < seq.length ? seq[i++] : 0x50)
+    const stars = initStars(rand)
+    expect(stars[0]).toEqual({ x: 0x30, y: 0x55, color: 0x00 })
   })
 })
 
@@ -303,6 +342,29 @@ describe('drawStars (the BSO BONER SMC store :2151-2153, clean) — the colour I
     )
     expect(fb.data[1 * 200 + 1]).toBe(0x01) // drawn
     expect(fb.data[2 * 200 + 2]).toBe(0x00) // inactive → untouched
+  })
+
+  it('fails LOUD on a non-integer star position (lang-review #21, matches terrain/objects blitters)', async () => {
+    const { drawStars } = await loadStars()
+    const fb = createFramebuffer(200, 200)
+    // A NaN/fractional index writes NOWHERE in a Uint8Array — a silent no-op is the bug the
+    // sibling blitters throw to prevent. drawStars must throw, not swallow.
+    expect(() => drawStars(fb, [{ x: 10.5, y: 20, color: 0x11 }])).toThrow(/non-integer/i)
+    expect(() => drawStars(fb, [{ x: Number.NaN, y: 20, color: 0x11 }])).toThrow(/non-integer/i)
+  })
+
+  it('clips an off-screen star instead of mis-writing a neighbouring row', async () => {
+    const { drawStars } = await loadStars()
+    const fb = createFramebuffer(200, 200)
+    drawStars(fb, [{ x: 250, y: 5, color: 0x11 }]) // x ≥ width → clipped, not (5*200+250)
+    expect(fb.data.every((v) => v === 0)).toBe(true) // nothing written, no throw
+  })
+
+  it('count larger than the array is clamped (Math.min), not an over-read past the end', async () => {
+    const { drawStars } = await loadStars()
+    const fb = createFramebuffer(200, 200)
+    drawStars(fb, [{ x: 3, y: 4, color: 0x22 }], 100) // count 100 over 1 star
+    expect(fb.data[4 * 200 + 3]).toBe(0x02) // the one star drawn, no throw
   })
 })
 
