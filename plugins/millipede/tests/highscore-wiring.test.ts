@@ -251,6 +251,25 @@ describe('ml10-2 C — nameEntryFromKey drives the buffer and commits on Enter',
     const playing = createGame(0x1982, { phase: 'play' })
     expect(nameEntryFromKey('a', playing)).toBe(playing)
   })
+
+  // ─── Reviewer [EDGE] HIGH (rework r1): commit → FRESH attract, not a stale world ──
+  it('commits to a FRESH attract demo — the ended game score does not leak into the attract screen', () => {
+    // MEASURED bug: one attract frame after a commit, score was still 100000 (the ended
+    // game's), because nameEntryFromKey returned {...state, phase:'attract'} without a
+    // world rebuild, while the non-qualifying game-over→attract path rebuilds via
+    // createGame. AC3 ("no regression to the self-playing attract demo") — the commit and
+    // the timeout exits must converge on a fresh demo. Fix-agnostic: only the observable
+    // (fresh score/lives + the committed row on the ladder) is pinned.
+    const committed = nameEntryFromKey('Enter', entry('ZZZ', QUALIFY))
+    const after = asEntry(stepGame(committed as GameState, IDLE))
+    expect(after.phase, 'a commit returns to attract').toBe('attract')
+    expect(after.score, 'the attract demo must be a FRESH world (score 0), not the ended game (was 100000)').toBe(0)
+    expect(after.lives, 'fresh lives').toBe(3)
+    expect(after.highScores[0], 'the committed row is on the ladder after the rebuild').toEqual({
+      name: 'ZZZ',
+      score: QUALIFY,
+    })
+  })
 })
 
 // ─── Group D: main.ts threads the loaded board into the boot state (behavioural) ──
