@@ -27,7 +27,8 @@ stories:
     description: "Owner playtest finding (2026-08-17): a millipede head runs off ONE side of the play area and re-enters from the OTHER side, sometimes REPEATEDLY, so the train runs perfectly horizontally across the screen several times instead of turning and dropping a row at the edge. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the horizontal position wraps mod-256 before the screen-edge turn fires. Likely seam: wrapH (core/millipede.ts:144, 'h & 0xff' — the comment already flags 'real hardware wraps mod 256') racing the screen-edge turn (atEdge with LEFT_EDGE=0xF0 / RIGHT_EDGE=0x10, core/millipede.ts:82-83 and the atEdge test ~:323). The edge-turn condition may not be catching the head before wrapH rolls it over, or the edge constants/comparison direction are off. STORY: derive the correct screen-edge turn behaviour from the millipede ROM (MILLI.MAC:1511/1519 region referenced in-code) and fix it so a head reaching either horizontal edge TURNS and drops a row (per ROM) rather than wrapping around; a repeated horizontal traverse must be impossible. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
