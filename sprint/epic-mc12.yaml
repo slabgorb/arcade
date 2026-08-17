@@ -95,7 +95,7 @@ stories:
     title: "Pointer-lock TRACKBALL aim, made the DEFAULT (matching centipede/millipede). Missile Command is a trackball cabinet; mc10-1 chose ABSOLUTE aim to kill the twitch of relative-WITHOUT-lock (1px=1unit over a ~2000px canvas) and explicitly deferred 'trackball (relative+pointer-lock, scaled) as an optional later mode'. Build it and default to it: reuse centipede/millipede's createPointerLock + movementX/Y mouse adapter (plugins/centipede/src/shell/input.ts) and the EXISTING pure core moveCursor (relative applier + clamp, game.ts:319/335), scaled so it is not twitchy; main.ts:85-89 stops using the absolute placeCursor for live aim. Completes mc10-1 (not a reversal of its twitch fix) — logged as an ADR-delta. Shell input + reuse of existing core; purity stays green."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
@@ -103,6 +103,7 @@ stories:
       - "AC1: clicking the canvas requests pointer lock via the REUSED createPointerLock (from centipede/millipede — no new bespoke lock controller); while locked, mouse movementX/Y drives the crosshair through the existing pure core moveCursor, scaled to a non-twitchy trackball feel; a lock-exit resets input state (centipede parity)."
       - "AC2: the absolute placeCursor path (main.ts:85-89) is no longer the live-aim path (kept only as an explicitly-noted unlocked fallback if retained at all); the switch is logged as a Design Deviation / ADR-delta referencing mc10-1's 'trackball as a later mode' deferral — never a silent reversal."
       - "AC3: the crosshair still clamps to the play area and preserves the V-flip/coordinate handling (moveCursor unchanged); no clock or entropy enters core; purity.test.ts stays green."
+    review_verdict: approved
   - id: mc12-4
     title: "VISUAL playtest — verify all four owner findings are fixed IN THE BUILD (not just green vitest — the mc9->mc10 green-tests/wrong-pixels lesson). Serve YOUR checkout (npx vite --port 5290 --strictPort per CLAUDE.md's port-pin note) and screenshot /missile-command/: confirm (1) a MIRV splits into a bounded fan and the early waves are progressable, not a swarm (mc12-1); (2) incoming missiles have NO lollipop head (mc12-2a); (3) bomber/satellite render as authentic shapes, not a rectangle (mc12-2b); (4) aim is a pointer-locked trackball feel (mc12-3). Compare a real game path against a nonsense control (must DIFFER, not merely 200 — the canonical-serve lesson). Record before/after notes for the archive."
     points: 2
