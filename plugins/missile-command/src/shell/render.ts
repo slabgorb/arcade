@@ -167,8 +167,16 @@ export function drawFrame(
   // body stays the enemy hue COL010 (ICBMS legend slot). `missileTip` picks whichever
   // FLASH_SLOTS colour differs from the sky so the tip stays visible (as the blast
   // does); tipR is one flash pixel. Both consts are reused by the ABM loop below.
+  //
+  // mc12-4 (owner playtest): tipR was `round(width/200)`, which is tied to nothing
+  // physical — it renders as ~1px at the 256-wide unit-test canvas (so every vitest
+  // saw a legit 1px tip) but as a ~5px RADIUS = 10px solid disc on the real ~955px
+  // display canvas: the "lollipop" the owner still saw after mc12-2 recoloured (but
+  // did NOT shrink) the disc. The authentic tip is ONE cabinet pixel (W3DSUP.MAC:931);
+  // pin it to the cabinet-pixel unit `uH = width/LOGICAL_WIDTH` so it stays one flash
+  // pixel at every display scale. uH is the DIAMETER, so the arc radius is uH/2.
   const missileTip = hue(FLASH_SLOTS.find((s) => hue(s) !== hue(SLOT.SKY)) ?? FLASH_SLOTS[0])
-  const tipR = Math.max(1, Math.round(width / 200))
+  const tipR = Math.max(1, Math.round(uH / 2))
   ctx.lineWidth = 1
   for (const icbm of state.icbms) {
     const from = project(icbm.origin, width, height)

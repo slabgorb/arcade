@@ -453,3 +453,62 @@ describe('mc12-2 AC1 — the incoming ICBM head is the ABM flash tip, not a soli
     ).toMatch(/FLASH_SLOTS|abmTip/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc12-4 — the incoming-ICBM tip stays ONE flash pixel at DISPLAY resolution.
+//
+// The mc12-2 AC1 guards above only prove the tip uses the FLASH register (a colour
+// change) — they run at the 256-wide unit canvas (W), where the shipped tipR =
+// round(width/200) = round(1.28) = 1: a legit 1px tip. They are structurally BLIND
+// to the lollipop, which only appears when the canvas scales up. On the ~955px
+// browser canvas the owner actually played, round(955/200) = 5 → a 10px SOLID DISC
+// on every incoming warhead (owner playtest, 2026-08-17): mc12-2 recoloured the disc
+// but never shrank it. This is the mc9->mc10 lesson exactly — green vitest, wrong
+// pixels — because tipR was tied to nothing physical.
+//
+// The fix pins the tip to the cabinet-pixel unit (uH = width/LOGICAL_WIDTH): the head
+// arc radius is uH/2, so the tip is ONE cabinet pixel across at every display scale.
+// This guard renders at a DISPLAY width and asserts the tip radius is ≤ one cabinet
+// pixel — which the old round(width/200) formula FAILS (5 > 4 at W=1024) and the
+// cabinet-pixel tip passes (uH/2 = 2). The mock records arc(x, y, radius) with the
+// radius in the `w` field, so the size is directly checkable.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc12-4 — the incoming ICBM tip is one flash pixel at display resolution, not a lollipop disc', () => {
+  const DISPLAY_W = 1024
+  const DISPLAY_H = Math.round((DISPLAY_W * 222) / 0x100) // preserve the cabinet aspect
+  const cabinetPx = DISPLAY_W / 0x100 // one cabinet H unit in canvas px (== render.ts uH)
+
+  const bare = withCursor({ ...createGame(1), phase: 'play' })
+  const icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 16 }, pos: { h: 100, v: 120 }, arrived: false }
+  const oneIcbm: GameState = { ...bare, icbms: [icbm] }
+
+  const paintAt = (state: GameState, w: number, h: number): Mark[] => {
+    const { ctx, marks } = recordingCtx()
+    drawFrame(ctx, state, w, h)
+    return marks
+  }
+
+  // The ICBM head projected into the DISPLAY canvas (render.ts project()).
+  const hx = (icbm.pos.h / 0x100) * DISPLAY_W
+  const hy = DISPLAY_H - (icbm.pos.v / 222) * DISPLAY_H
+  const headArcs = (marks: Mark[]): Mark[] =>
+    marks.filter((m) => m.op === 'arc' && Math.hypot(m.x - hx, m.y - hy) <= cabinetPx * 2)
+
+  it('draws a flash-tip arc at the ICBM head (the tip still exists — this is not a bare-line regression)', () => {
+    expect(headArcs(paintAt(bare, DISPLAY_W, DISPLAY_H)).length, 'the empty field draws no tip at the head').toBe(0)
+    expect(
+      headArcs(paintAt(oneIcbm, DISPLAY_W, DISPLAY_H)).length,
+      'the incoming ICBM head must carry a flash tip (W3DSUP.MAC:931)',
+    ).toBeGreaterThanOrEqual(1)
+  })
+
+  it('the tip radius is ≤ one cabinet pixel — a flash pixel, NOT the round(width/200) lollipop disc', () => {
+    const arcs = headArcs(paintAt(oneIcbm, DISPLAY_W, DISPLAY_H))
+    const maxR = Math.max(...arcs.map((m) => m.w ?? 0))
+    expect(
+      maxR,
+      `the incoming ICBM tip must be one flash pixel (radius ≤ one cabinet px = ${cabinetPx}px at W=${DISPLAY_W}); ` +
+        `the shipped round(width/200)=${Math.round(DISPLAY_W / 200)}px disc is the lollipop the owner saw (mc12-4)`,
+    ).toBeLessThanOrEqual(cabinetPx)
+  })
+})
