@@ -455,7 +455,7 @@ describe('mc12-2 AC1 — the incoming ICBM head is the ABM flash tip, not a soli
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// mc12-4 — the incoming-ICBM tip stays ONE flash pixel at DISPLAY resolution.
+// mc12-4 — the SHARED missile tip stays ONE flash pixel at DISPLAY resolution.
 //
 // The mc12-2 AC1 guards above only prove the tip uses the FLASH register (a colour
 // change) — they run at the 256-wide unit canvas (W), where the shipped tipR =
@@ -464,51 +464,82 @@ describe('mc12-2 AC1 — the incoming ICBM head is the ABM flash tip, not a soli
 // browser canvas the owner actually played, round(955/200) = 5 → a 10px SOLID DISC
 // on every incoming warhead (owner playtest, 2026-08-17): mc12-2 recoloured the disc
 // but never shrank it. This is the mc9->mc10 lesson exactly — green vitest, wrong
-// pixels — because tipR was tied to nothing physical.
+// pixels — because tipR was tied to nothing physical, so the ONLY canvas the test
+// ever rendered (256px) is precisely where the bug is invisible.
 //
-// The fix pins the tip to the cabinet-pixel unit (uH = width/LOGICAL_WIDTH): the head
-// arc radius is uH/2, so the tip is ONE cabinet pixel across at every display scale.
-// This guard renders at a DISPLAY width and asserts the tip radius is ≤ one cabinet
-// pixel — which the old round(width/200) formula FAILS (5 > 4 at W=1024) and the
-// cabinet-pixel tip passes (uH/2 = 2). The mock records arc(x, y, radius) with the
-// radius in the `w` field, so the size is directly checkable.
+// The fix pins the tip to the cabinet-pixel unit (uH = width/LOGICAL_WIDTH): the arc
+// radius is round(uH/2), so the tip is ~ONE cabinet pixel ACROSS at every scale.
+// This guard therefore does what the story is about — it renders at MULTIPLE display
+// widths (including the owner's ~955) and asserts the tip DIAMETER is at most one
+// cabinet pixel (+1px of Math.round slack). The old round(width/200) disc FAILS that
+// at every width (diameter 6→20), while the cabinet-pixel tip passes.
+//
+// tipR is SHARED by the incoming-ICBM head (render.ts:191) and the ABM head
+// (render.ts:234), so both heads are asserted — a future edit that re-sizes only one
+// call site is then caught. The mock records arc(x, y, radius) with the radius in the
+// `w` field, so the size is directly checkable; each head asserts the tip EXISTS
+// first, so an empty arc set can never pass the size bound vacuously (Math.max(...[]).
 // ═════════════════════════════════════════════════════════════════════════════
-describe('mc12-4 — the incoming ICBM tip is one flash pixel at display resolution, not a lollipop disc', () => {
-  const DISPLAY_W = 1024
-  const DISPLAY_H = Math.round((DISPLAY_W * 222) / 0x100) // preserve the cabinet aspect
-  const cabinetPx = DISPLAY_W / 0x100 // one cabinet H unit in canvas px (== render.ts uH)
-
+describe('mc12-4 — the shared missile tip is one flash pixel at display resolution, not a lollipop disc', () => {
+  // One incoming ICBM and one ABM, heads parked in open mid-field (clear of the
+  // bottom structures, the centred HUD figures, and the AWAY crosshair) so the only
+  // arc near each head is its own flash tip.
   const bare = withCursor({ ...createGame(1), phase: 'play' })
   const icbm = { origin: { h: 100, v: 222 }, target: { h: 100, v: 16 }, pos: { h: 100, v: 120 }, arrived: false }
-  const oneIcbm: GameState = { ...bare, icbms: [icbm] }
+  const abm = { origin: { h: 180, v: 16 }, target: { h: 180, v: 120 }, pos: { h: 180, v: 70 }, arrived: false }
+  const state: GameState = { ...bare, icbms: [icbm], abms: [abm] }
 
-  const paintAt = (state: GameState, w: number, h: number): Mark[] => {
+  const paintAt = (s: GameState, w: number, h: number): Mark[] => {
     const { ctx, marks } = recordingCtx()
-    drawFrame(ctx, state, w, h)
+    drawFrame(ctx, s, w, h)
     return marks
   }
-
-  // The ICBM head projected into the DISPLAY canvas (render.ts project()).
-  const hx = (icbm.pos.h / 0x100) * DISPLAY_W
-  const hy = DISPLAY_H - (icbm.pos.v / 222) * DISPLAY_H
-  const headArcs = (marks: Mark[]): Mark[] =>
-    marks.filter((m) => m.op === 'arc' && Math.hypot(m.x - hx, m.y - hy) <= cabinetPx * 2)
-
-  it('draws a flash-tip arc at the ICBM head (the tip still exists — this is not a bare-line regression)', () => {
-    expect(headArcs(paintAt(bare, DISPLAY_W, DISPLAY_H)).length, 'the empty field draws no tip at the head').toBe(0)
-    expect(
-      headArcs(paintAt(oneIcbm, DISPLAY_W, DISPLAY_H)).length,
-      'the incoming ICBM head must carry a flash tip (W3DSUP.MAC:931)',
-    ).toBeGreaterThanOrEqual(1)
+  const project = (p: { h: number; v: number }, w: number, h: number) => ({
+    x: (p.h / 0x100) * w,
+    y: h - (p.v / 222) * h,
   })
 
-  it('the tip radius is ≤ one cabinet pixel — a flash pixel, NOT the round(width/200) lollipop disc', () => {
-    const arcs = headArcs(paintAt(oneIcbm, DISPLAY_W, DISPLAY_H))
-    const maxR = Math.max(...arcs.map((m) => m.w ?? 0))
-    expect(
-      maxR,
-      `the incoming ICBM tip must be one flash pixel (radius ≤ one cabinet px = ${cabinetPx}px at W=${DISPLAY_W}); ` +
-        `the shipped round(width/200)=${Math.round(DISPLAY_W / 200)}px disc is the lollipop the owner saw (mc12-4)`,
-    ).toBeLessThanOrEqual(cabinetPx)
+  // Arcs whose centre sits on a projected head (tight window: ≤ one cabinet px away).
+  const arcsAt = (marks: Mark[], head: { x: number; y: number }, cabPx: number): Mark[] =>
+    marks.filter((m) => m.op === 'arc' && Math.hypot(m.x - head.x, m.y - head.y) <= cabPx)
+
+  // Widths spanning the reported case (955) and larger displays. NOT 256: there the
+  // old and new formulas coincide (both give tipR=1), so it cannot discriminate — the
+  // very blind spot this describe exists to cover.
+  const WIDTHS = [512, 955, 1024, 2048]
+
+  it.each(WIDTHS)('at display width %i both the ICBM and ABM heads draw a flash tip (no bare-line regression)', (w) => {
+    const h = Math.round((w * 222) / 0x100)
+    const cabPx = w / 0x100
+    const heads = { ICBM: project(icbm.pos, w, h), ABM: project(abm.pos, w, h) }
+    for (const [name, head] of Object.entries(heads)) {
+      expect(arcsAt(paintAt(bare, w, h), head, cabPx).length, `empty field draws no ${name} tip`).toBe(0)
+      expect(
+        arcsAt(paintAt(state, w, h), head, cabPx).length,
+        `the ${name} head must carry a flash tip at W=${w} (W3DSUP.MAC:931)`,
+      ).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it.each(WIDTHS)('at display width %i the shared tip DIAMETER is ≤ one cabinet pixel, not the round(width/200) lollipop', (w) => {
+    const h = Math.round((w * 222) / 0x100)
+    const cabPx = w / 0x100
+    const marks = paintAt(state, w, h)
+    const heads = { ICBM: project(icbm.pos, w, h), ABM: project(abm.pos, w, h) }
+    for (const [name, head] of Object.entries(heads)) {
+      const arcs = arcsAt(marks, head, cabPx)
+      // Non-vacuity: prove the tip exists before measuring it, so an empty set
+      // (Math.max(...[]) === -Infinity) can never satisfy the bound trivially.
+      expect(arcs.length, `${name} tip must be present to be measured at W=${w}`).toBeGreaterThanOrEqual(1)
+      const maxDiameter = 2 * Math.max(...arcs.map((m) => m.w ?? 0))
+      // "One cabinet pixel across", + 1px of Math.round() slack. Tight enough to
+      // reject the shipped round(width/200) disc at EVERY width (diameter 6→20) yet
+      // rounding-safe for the fix at non-power-of-two widths like 955.
+      expect(
+        maxDiameter,
+        `the ${name} tip must be ~one flash pixel across at W=${w} (≤ ${(cabPx + 1).toFixed(1)}px); ` +
+          `the shipped round(width/200) disc is ${2 * Math.round(w / 200)}px — the lollipop the owner saw (mc12-4)`,
+      ).toBeLessThanOrEqual(cabPx + 1)
+    }
   })
 })
