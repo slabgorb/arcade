@@ -1,0 +1,83 @@
+[
+  {
+    "id": "EN-1",
+    "claim": "The LANDER is the process the source starts under the *START LANDERS banner: LANDST spawns a run of them. This is the arcade-marketing 'Lander' — Defender's base ground enemy, mapped in glossary.md.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 649,
+      "verbatim": "*START LANDERS"
+    }
+  },
+  {
+    "id": "EN-2",
+    "claim": "Each lander is spawned as a scheduler process running the LANDS0 kidnap body: NEWP LANDS0,STYPE — an enemy IS a process (NEWP/STYPE), never its own tick.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 657,
+      "verbatim": "LNDST1\tNEWP\tLANDS0,STYPE"
+    }
+  },
+  {
+    "id": "EN-3",
+    "claim": "A freshly spawned lander is placed two rows below the top of the play-field: LDA #YMIN+2 (then STA OY16,X on the next line) — the LANDER_SPAWN_Y constant in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 663,
+      "verbatim": "\tLDA\t#YMIN+2"
+    }
+  },
+  {
+    "id": "EN-4",
+    "claim": "The HUMANOID is the process under the *ASTRONAUT PROCESS banner (ASTRO): it walks the terrain. This is the arcade-marketing 'Humanoid', the abductee, mapped in glossary.md.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 290,
+      "verbatim": "*ASTRONAUT PROCESS"
+    }
+  },
+  {
+    "id": "EN-5",
+    "claim": "A carrying lander that reaches the top triggers the transform: FLEE tests the lander's Y against YMIN+8 (CMPA #YMIN+8) and, at or above it, falls through to LANDFX — the LANDER_TOP_Y trigger point in core/landers.ts (the mutant it becomes is df4-4).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 798,
+      "verbatim": "\tCMPA\t#YMIN+8"
+    }
+  },
+  {
+    "id": "EN-6",
+    "claim": "Killing a lander that is CARRYING a humanoid drops the humanoid into a fall: LKIL1 (the swapped kill vector) starts an AFALL process. The banner *KILL KIDNAPPING LANDER marks this handler.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 903,
+      "verbatim": "*KILL KIDNAPPING LANDER"
+    }
+  },
+  {
+    "id": "EN-7",
+    "claim": "The dropped humanoid is launched as its own falling process: NEWP AFALL,STYPE START HIM FALLING — the shot-carrier -> AFALL chain.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 911,
+      "verbatim": "\tNEWP\tAFALL,STYPE START HIM FALLING"
+    }
+  },
+  {
+    "id": "EN-8",
+    "claim": "AFALL accelerates the falling humanoid downward by 8 each tick: LDD #8 (comment ACCEL DOWNWARD), then ADDD OYV,X on the next line — the AFALL_ACCEL constant in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 928,
+      "verbatim": "\tLDD\t#8\tACCEL DOWNWARD"
+    }
+  },
+  {
+    "id": "EN-9",
+    "claim": "The fall speed is capped at $300: CMPD #$300 gates the accelerating velocity — the AFALL_MAX_FALL terminal-speed constant in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 930,
+      "verbatim": "\tCMPD\t#$300"
+    }
+  }
+]
