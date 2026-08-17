@@ -223,3 +223,38 @@ describe('ml12-3 AC1 — a REAL triggered DDT explosion kills a segment in its b
     expect(after, 'the deployed DDT kills the segment in its blast').toHaveLength(0)
   })
 })
+
+describe('ml12-3 AC1 — a DDT kill scores the ROM premium (MILLI.MAC:2162-2175, DDTEX1 $80 flag)', () => {
+  // DDTEX1 (MILLI.MAC:1947 `LDA I,80`, DD-217) UNCONDITIONALLY passes the
+  // DDT-death flag into SHOOT2 before every DDTEXP-triggered kill, so SHOOT2's
+  // 142$ millipede branch always takes the premium path: `LDA I,10` (body 10) is
+  // overridden to `LDA I,30` (:2164-2165 `BIT TEMP3+1 / BPL 16$ / LDA I,30`), and
+  // the head path LSR×4's that value into the hundreds digit (:2171-2175 "100
+  // POINTS FOR A HEAD"). A DDT-cloud kill is therefore ALWAYS 30 for a body / 300
+  // for a head — NOT the flat shot-kill score. A head is any segment whose colour
+  // is below BODY_COLOR (:2168 `CMP I,3D / BCS 145$` — 0x3D and up is a body).
+  const DDT_BODY_PTS = 30 // :2165 `LDA I,30` (BCD 30)
+  const DDT_HEAD_PTS = 300 // :2171-2175 LSR×4 of 0x30 -> 3 -> 300
+
+  const killIn = (seg: Segment): GameState => {
+    const field = emptyField()
+    field[occupiedCellAfterStep(seg)] = CLOUD_STAMP // occupied-cell cloud -> kill
+    // Fresh play state, score zeroed: the ONLY score source this frame is the
+    // DDT kill (no shot, empty roster, no bonus threshold crossed by 30/300).
+    return stepGame({ ...play([seg], field), score: 0 }, NO_INPUT)
+  }
+
+  it('a BODY segment killed by a DDT cloud scores 30 (not the flat shot-kill 10)', () => {
+    expect(killIn(body(0x60)).score).toBe(DDT_BODY_PTS)
+  })
+
+  it('a HEAD segment killed by a DDT cloud scores 300', () => {
+    const head: Segment = { h: 0x60, v: 0x60, dh: 2, dv: 2, pic: 3, color: HEAD_COLOR }
+    expect(killIn(head).score).toBe(DDT_HEAD_PTS)
+  })
+
+  it('a DDT kill emits the segment-killed event (the CHAN2 explosion cue) — guard', () => {
+    // Currently emitted; pin it so a refactor cannot silently drop the audio cue.
+    expect(killIn(body(0x60)).events.map((e) => e.type)).toContain('segment-killed')
+  })
+})
