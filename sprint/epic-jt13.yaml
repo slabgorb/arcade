@@ -1,0 +1,80 @@
+id: jt13
+type: epic
+title: Joust gameplay & entry-screen bug fixes
+description: "Bugs found during joust gameplay: (1) a landed ostrich with a centered joystick keeps its stored horizontal velocity, so it runs in place and launches at full speed instead of zeroing velocity on landing with no input; (2) players and enemies should spawn with a visible 'warp-in' animation, which appears to have never been implemented (not an intentional accessibility removal); (3) the entry screen shows a wrong 'new mount every' line that should read the actual setting or be removed; (4) nothing prompts the '1' button — replace with click-to-enter, single player only."
+priority: p1
+status: ready
+repos: arcade
+stories:
+  - id: jt13-1
+    title: Landed ostrich with centered joystick should zero stored velocity
+    description: 'When the ostrich is landed and the joystick is centered (no input), the stored horizontal velocity should be 0. Currently it retains velocity: the ostrich runs in place while landed, and on launch takes off at full horizontal speed. Expected: landing with no directional input zeroes stored horizontal velocity.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-2
+    title: Players and enemies warp-in spawn animation
+    description: Players and enemies should 'warp' in with a visible spawn animation. User suspects this was never implemented (rather than removed for accessibility/safety — if it was removed, that was overkill). Investigate whether a warp-in ever existed in the joust core/shell or the ROM reference, then implement a visible spawn/warp-in animation for player and enemy spawns.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-3
+    title: "Entry screen 'new mount every' line: read the setting or remove it"
+    description: The entry/attract screen shows a 'new mount every' line that is wrong. Either read the actual value from the settings and display it correctly, or remove the line entirely. Confirm what the original joust attract screen (ATT.SRC / MARQUE) actually says before deciding.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-4
+    title: Replace 'press 1' prompt with click-to-enter, single player
+    description: "Nothing tells the player to press the '1' button and we don't want that. Replace the 'press 1'/coin-start prompt flow with click-to-enter: a click starts the game directly, single player only. Remove the 1-button prompt text."
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: chore
+  - id: jt13-5
+    title: Landing in lava must have consequences (death), not free swimming
+    description: "Right now the player can dive into the lava and swim around freely, with no death and no life lost. ROM ground truth (JOUSTRV4.SRC, routine ADGFLR 'DEATH VIA SWIMMING IN THE LAVA'): lava is a SINK-AND-DIE sequence, NOT instant death on touch. (1) On reaching the lava surface PPOSY>=FLOOR+7 (:6508-6509 CMPA #FLOOR+7 / BHS ADGFLR), horizontal velocity is cleared (CLR PVELX :6610 'PLAYER IS NOT GOING ANYWHERE') so no sideways swim, and the lava sound plays (SNPLAV player / SNELAV enemy). (2) A brief break-free window (:6614 CMPD #- 'BREAK FREE VELOCITY?') lets a hard enough upward flap escape; otherwise lava gravity keeps pulling down. (3) Death fires once the sprite is floor-clipped below full length (WCLENY<7, :6555) — rider removed, [DDEAD] death routine, life lost. (4) Body sinks (INC PPOSY) to FLOOR+20 (:6568), pause, respawn. Our bug: isLavaDeath (frame.ts:292) was repurposed by jt11-18 to only CLAMP the bird at DEATH_Y with velY=0 as an on-screen backstop — it never clears PVELX, never calls a death routine, never removes a life. Reconcile with the existing lava-troll grab (troll grab is a separate death path; ADGFLR even kills the troll tasks when the rider sinks, :6624-6640)."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-6
+    title: Wave announcements (egg / survival / etc.) never render — wire waveBeats to the shell
+    description: "Egg and survival rounds (and all wave types) do not announce themselves on screen. Core HAS the seam: wave.ts waveBeats() returns ROM WAVMSG labels per resolved type (INTRO1/2, COOP1/2, SURV1, GLAD1/2/3, EGG1, PTER1), but (a) they are converted to {kind:'beat',message} events in ONLY ONE place — sim.ts:1519, the wave-1 demo seed — the real wave-advance path emits no beats; and (b) nothing in src/shell or main.ts consumes 'beat' events, so nothing paints them, and there is no label->display-text map (SURV1 -> on-screen phrase). Wire the message beats: emit beats on real wave advances, add the label->text mapping from the ROM WAVMSG strings, and render them on the shell with the ROM timing (~1s beats, SHELL owns durations per wave.ts:352-353 #180/6,#90/6 JOUSTRV4.SRC:2045,2601)."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-7
+    title: Lava-troll grab is silent — add the SNTROL 'captured' cue
+    description: "Being grabbed by the lava troll plays no sound. ROM: LT1GRP loads SNTROL ('MAKE THE SOUND OF THE LAVA TROLL / GRIPPING THE PLAYER', JOUSTRV4.SRC:1646-1647) and JSR VSND; SNTROL is defined at :8097 'CAPTURED BY LAVA TROLL SOUND'. jt9-11 wired troll.beginGrip (sim.ts:1034) but no 'troll-grab'/SNTROL entry was added to EVENT_KINDS (core/events.ts) and no cue to audio-manifest, so the grab is silent. Add a troll-grab event kind emitted at beginGrip, map it to a SNTROL cue in audio-dispatch + audio-manifest, and play it. Also fix the stale comment at events.ts:44-49 claiming troll.beginGrip has 'zero production callers' — it now has one (sim.ts:1034). Note: the PLAYER/ENEMY-IN-LAVA sounds SNPLAV/SNELAV (:8123/:8105, played by ADGFLR) are covered under jt13-5's lava-death work, not here."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-8
+    title: "Retire joust's dead twins (per-symbol: delete behavioral-only, keep claim-pinned)"
+    description: "Joust's core exports a family of DEAD TWINS: functions with zero callers outside tests/, because a later story reimplemented the behavior inline in the real path. Never scoped before — the dead-twin retirement pattern only ever ran for missile-command (mc11-4) and pac-man (pm5); joust's twins were never put in a story. Follow the retire-dead-twin playbook + the mc11-4 precedent: this is NOT a uniform delete-all. Per-symbol judgment — a symbol still asserted by a CLAIM test (ROM-citation pin) is KEPT (only its dead runtime role goes); a symbol referenced only by BEHAVIORAL tests is deleted and its tests RE-POINTED onto the live inline symbol to preserve coverage (do not delete the coverage). Candidate twins measured by the jt13 unhooked-seam audit (VERIFY each against its current referencing tests at setup — do not trust this list blind): stepPlaying (cabinet.ts:109; live path = stepGame at main.ts:637), hatchEgg (sim.ts:1581; live = inline hatchRow/remountEntryEdge sim.ts:2480-2497), waveEnemyComplement (transporter.ts:301; live = wenemyFor/waveRowAt), toTitle (cabinet.ts:84; live = inline {mode:'title'} main.ts:383), playerTurn (transporter.ts:222), groundStep (joust.ts:417; live = inline frame.ts walk), wrapEggX (egg.ts:270), bridgeDestroyedOnWave (arena.ts:350). Separately, a longer list of tests-only CONSTANTS (cliffBits, EGG_VALUE_CAP, PTERO_FLYX_MAX, GRIP_ROUTINE, waveTypeBehaviour, etc.) are likely claim-pins that must STAY — classify, don't delete. RED = tests proving each targeted twin has no production caller; GREEN = delete + re-point. Full-cabinet green required (vitest + orchestrator + lint)."
+    points: 5
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: refactor
