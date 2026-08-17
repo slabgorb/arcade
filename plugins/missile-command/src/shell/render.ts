@@ -172,9 +172,12 @@ export function drawFrame(
   // physical — it renders as ~1px at the 256-wide unit-test canvas (so every vitest
   // saw a legit 1px tip) but as a ~5px RADIUS = 10px solid disc on the real ~955px
   // display canvas: the "lollipop" the owner still saw after mc12-2 recoloured (but
-  // did NOT shrink) the disc. The authentic tip is ONE cabinet pixel (W3DSUP.MAC:931);
-  // pin it to the cabinet-pixel unit `uH = width/LOGICAL_WIDTH` so it stays one flash
-  // pixel at every display scale. uH is the DIAMETER, so the arc radius is uH/2.
+  // did NOT shrink) the disc. The ROM's MISTIP/MOVMIS routine (W3DSUP.MAC:927-973)
+  // draws the tip as a single dot with no radius parameter (`OUTPUT DOT`,
+  // W3DSUP.MAC:969), in the FLASH register (W3DSUP.MAC:931) — so the authentic tip is
+  // ONE cabinet pixel. Pin it to the cabinet-pixel unit `uH = width/LOGICAL_WIDTH` so
+  // it stays one flash pixel at every display scale. uH is the DIAMETER, so the arc
+  // radius is uH/2.
   const missileTip = hue(FLASH_SLOTS.find((s) => hue(s) !== hue(SLOT.SKY)) ?? FLASH_SLOTS[0])
   const tipR = Math.max(1, Math.round(uH / 2))
   ctx.lineWidth = 1
