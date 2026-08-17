@@ -11,7 +11,8 @@ stories:
     description: "Owner playtest finding (2026-08-17): the millipede train enters ONE ROW TOO HIGH and runs over the score/HUD — the same shape as the analogous centipede train-start-row bug. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the enter row is off by one against the top-of-play boundary the HUD occupies. Likely seam: the train enter/spawn V in core/millipede.ts (ENTER_V and the NEWHD_SPAWN_V family, ~:101-102; the loose-head enter loop uses ENTER_V, ~:202-206) measured against the HUD region (core/hud.ts) and the playfield top. STORY: find the correct top enter row from the millipede ROM (MILLI.MAC / MLSUB.MAC — the analogous centipede fix is a reference, not the source of truth), and correct the enter row so the train's top march sits one row below where it is now, clear of the score. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/ that the train no longer overruns the score."
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
