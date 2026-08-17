@@ -21,6 +21,7 @@
 
 import { PALETTES, PIXEL_BLOCKS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
 import { CRUMBLE_FLAVOR, CRUMBLE_DEBRIS_FRAME_COUNT } from '../core/crumble.js'
+import { WARPIN_FRAME_COUNT, WARPIN_BIRD_VISIBLE_PFRAME } from '../core/warpin.js'
 import { fitIntegerScale } from '@shared/view'
 import { paletteToRgba, type Rgba } from '@shared/palette-decoder'
 
@@ -249,4 +250,54 @@ export function paintCrumble(
   // shake — the whole cliff footprint, jittered up on alternate frames.
   const jitter = (frame % 2) * 2
   context.fillRect(op.x, op.y - jitter, w, h)
+}
+
+/** The standing bird+rider footprint the warp-in silhouette grows into when the op
+ *  carries no explicit size — ~the ROM box-erase width (`#18`, JOUSTRV4.SRC:5800). */
+const WARPIN_DEFAULT_W = 16
+const WARPIN_DEFAULT_H = 16
+/** The lit transporter pad's thickness under the feet (a short owner-coloured bar). */
+const WARPIN_PAD_H = 2
+
+/**
+ * Paint one TREFF warp-in frame (jt13-2 — the shell mile of the transporter
+ * spawn animation).
+ *
+ * A `kind:'warpin'` op has no atlas silhouette, so like the dissolve/crumble it
+ * takes a dedicated `fillRect` path. `op.y` is the whole-pixel FEET; the effect is
+ * bottom-anchored there (the ROM shifts WCY to keep the feet planted while the bird
+ * grows, JOUSTRV4.SRC:5763-5772). The colour is the `DCONST` owner nibble — P1
+ * yellow ($5), P2 green ($7), enemy white ($1) (JOUSTRV4.SRC:5739) — a transcribed
+ * palette index, never an invented hex.
+ *
+ * PROCEDURAL, not pixel-accurate: the constant-filled standing sprite is a growing
+ * bar, sized by the PFRAME frame (the ROM derives WCLENY the same way, :5753-5757):
+ *   • the lit pad shows for the whole window;
+ *   • the bird silhouette appears only once PFRAME <= 20 (`CMPA #20`, :5742) and
+ *     grows UP out of the pad to full height.
+ */
+export function paintWarpIn(
+  context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>,
+  op: { x: number; y: number; width?: number; height?: number; frame?: number; facing?: number; owner?: string },
+  colours: readonly Rgba[],
+): void {
+  const w = op.width ?? WARPIN_DEFAULT_W
+  const h = op.height ?? WARPIN_DEFAULT_H
+  if (w <= 0 || h <= 0) return
+  const frame = op.frame ?? 0
+  const feetY = op.y
+  // DCONST — the owner's transporter colour, constant-filling pad AND bird.
+  const nibble = op.owner === 'p2' ? 7 : op.owner === 'enemy' ? 1 : 5
+  const colour = colours[nibble]
+  context.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  // The lit transporter pad — bottom-anchored at the feet, shown all window long.
+  context.fillRect(op.x, feetY - WARPIN_PAD_H, w, WARPIN_PAD_H)
+  // The bird silhouette grows up out of the pad, only once PFRAME <= 20.
+  const firstVisible = WARPIN_FRAME_COUNT - WARPIN_BIRD_VISIBLE_PFRAME
+  if (frame >= firstVisible) {
+    const span = WARPIN_FRAME_COUNT - firstVisible
+    const progress = (frame - firstVisible + 1) / span
+    const birdH = Math.max(1, Math.round((h - WARPIN_PAD_H) * progress))
+    context.fillRect(op.x, feetY - WARPIN_PAD_H - birdH, w, birdH)
+  }
 }

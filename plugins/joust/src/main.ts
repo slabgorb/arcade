@@ -60,6 +60,7 @@ import {
   configureContext,
   paintDissolve,
   paintCrumble,
+  paintWarpIn,
   reshapeRagged,
   rgbaPalette,
   viewport,
@@ -327,6 +328,7 @@ function paintSim(game: GameState): void {
     // silently skip it (jt3-7 B1). Decode + paint it via expandAshFrames here, the ASH
     // twin of the COMCL5 island path, indexed by op.frame.
     if (op.kind === 'crumble') paintCrumble(logicalContext, op, colours)
+    else if (op.kind === 'warpin') paintWarpIn(logicalContext, op, colours)
     else if (op.name === 'ASH1R') paintDissolve(logicalContext, op, colours)
     else blitOp(op)
   }

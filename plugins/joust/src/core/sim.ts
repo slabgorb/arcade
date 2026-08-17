@@ -80,6 +80,7 @@ import {
   type PteroEntity,
 } from './ptero.js'
 import { startDissolve, type DissolveState } from './dissolve.js'
+import { startWarpIn, stepWarpIn, type WarpInState } from './warpin.js'
 import { startCrumble, stepCrumble, type CrumbleState, type CrumblePhase } from './crumble.js'
 import {
   trollSpawnable,
@@ -211,6 +212,14 @@ export interface SimProcess {
   /** The transporter materialisation window (jt2-6), while one is in progress. */
   mat?: Materialisation
   /**
+   * jt13-2 — the TREFF warp-in animation (`src/core/warpin.ts`), while the arrival
+   * is growing in on its pad. Seeded on BOTH spawn paths (respawnPlayerProcess,
+   * enemyProcess) alongside `mat`, advanced by `advanceWarpIn` each frame, and
+   * surfaced by drawList as a `kind:'warpin'` op until it is `done`. Its clock is
+   * the ROM's 30-frame PFRAME (STAND_FRAMES), not the 120-nap `mat` collision timer.
+   */
+  warpIn?: WarpInState
+  /**
    * jt4-5 — a WAVEGG egg-wave egg (a settled complement egg, not a DEATH3 kill-egg). Set by
    * `spawnWaveEggs`.
    *
@@ -331,7 +340,7 @@ export interface DrawOp {
    * is 0 (JOUSTRV4.SRC:1126-1127), so no atlas block can carry them. The shell
    * paints a fill op with `fillRect`, not a blit.
    */
-  kind: 'arena' | 'entity' | 'fill' | 'crumble'
+  kind: 'arena' | 'entity' | 'fill' | 'crumble' | 'warpin'
   /** The atlas block (or ENTITY_RECORDS frame name) this op blits. */
   name: string
   x: number
@@ -363,6 +372,12 @@ export interface DrawOp {
    * Undefined on every non-animated op (arena/entity/fill).
    */
   frame?: number
+  /**
+   * jt13-2 — a `kind:'warpin'` op's owner, selecting the ROM's `DCONST` transporter
+   * colour: `'p1'` yellow, `'p2'` green, `'enemy'` white (JOUSTRV4.SRC:5739). The
+   * shell's `paintWarpIn` reads it; undefined on every non-warpin op.
+   */
+  owner?: 'p1' | 'p2' | 'enemy'
 }
 
 /** The demo's simulation state — the jt2-1 GameState, egg variant live. */
@@ -660,6 +675,9 @@ export function respawnPlayerProcess(playerId: number, pad: TransporterPad): Sim
     entity: { ...playerEntity(pad.x), posY: pad.y << 8 },
     collisionEnabled: false,
     mat: beginMaterialise(MATERIALISE_WINDOW),
+    // jt13-2 — the player warps in over the SAME 30-frame TREFF window an enemy
+    // gets. Previously the player inherited nap:1 and had no window to animate over.
+    warpIn: startWarpIn(),
   }
 }
 
@@ -708,6 +726,8 @@ function enemyProcess(id: number, pad: TransporterPad, period: number, type: Ene
     enemyType: type,
     collisionEnabled: false,
     mat: beginMaterialise(MATERIALISE_WINDOW),
+    // jt13-2 — the enemy grows in over the TREFF window (drawn by drawList/paintWarpIn).
+    warpIn: startWarpIn(),
   }
 }
 
@@ -2224,6 +2244,17 @@ function advanceMaterialisation(p: SimProcess): SimProcess {
 }
 
 /**
+ * jt13-2 — advance the TREFF warp-in one frame (the 30-frame PFRAME grow). Runs
+ * beside `advanceMaterialisation` on the same per-process pass: a player/enemy with
+ * an unfinished warp-in steps it; once `done` drawList stops overlaying the
+ * silhouette and the arrival is drawn normally. A process without one passes through.
+ */
+function advanceWarpIn(p: SimProcess): SimProcess {
+  if (!p.warpIn || p.warpIn.done) return p
+  return { ...p, warpIn: stepWarpIn(p.warpIn) }
+}
+
+/**
  * How many live BAITERS (a `kind:'ptero'` process tagged PCHASE≠0, `baiter`) disappeared
  * between two process lists — the DBAIT death ENTRY. A baiter leaves the live set ONLY via a
  * collisionPass kill (it becomes a baiter-tagged dissolve), so a disappearance is exactly one
@@ -2342,7 +2373,7 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   )
 
   const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as SimProcess))
-  const materialised = drainedProcesses.map((p) => advanceMaterialisation(p as SimProcess))
+  const materialised = drainedProcesses.map((p) => advanceWarpIn(advanceMaterialisation(p as SimProcess)))
   const collided = collisionPass(materialised)
 
   let wave = state.wave
@@ -2982,6 +3013,18 @@ function entityOp(name: string, posX: number, feetY: number, facing: Facing): Dr
 }
 
 /**
+ * jt13-2 — a `kind:'warpin'` op for an arrival mid-TREFF. Carries the standing mount
+ * frame (so the shell can size the silhouette), the POSOFF-placed X, the whole-pixel
+ * FEET Y (paintWarpIn grows the silhouette UP from the feet, pad pinned there), the
+ * PFRAME `frame`, and the `owner` DCONST colour. Replaces the plain entity op while
+ * the warp-in is active — the ROM draws the silhouette in place of the normal bird.
+ */
+function warpInOp(name: string, posX: number, feetY: number, facing: Facing, frame: number, owner: 'p1' | 'p2' | 'enemy'): DrawOp {
+  const { xoff } = posOffset(name)
+  return { kind: 'warpin', name, x: posX + xoff, y: feetY, facing, frame, owner }
+}
+
+/**
  * The whole frame's ordered render ops: back platforms → entity sprites →
  * FOREGROUND (lower) platforms that occlude entities standing behind them. A
  * monolithic "all arena, then all entities" leaves foreground cliffs behind the
@@ -3073,8 +3116,17 @@ export function drawList(demo: SimState): DrawOp[] {
   for (const p of demo.sim.processes) {
     if (p.kind === 'player' && p.entity) {
       const facing = p.facing ?? 1
-      for (const name of playerDrawList(p)) {
-        entities.push(entityOp(name, p.entity.posX, p.entity.posY >> 8, facing))
+      const names = playerDrawList(p)
+      if (p.warpIn && !p.warpIn.done) {
+        // jt13-2 — mid-TREFF: the owner-coloured silhouette grows in place of the
+        // normal mount+rider (P2 rides a stork → green; P1 an ostrich → yellow).
+        entities.push(
+          warpInOp(names[0], p.entity.posX, p.entity.posY >> 8, facing, p.warpIn.frame, p.mount === 'stork' ? 'p2' : 'p1'),
+        )
+      } else {
+        for (const name of names) {
+          entities.push(entityOp(name, p.entity.posX, p.entity.posY >> 8, facing))
+        }
       }
     } else if (p.kind === 'enemy' && p.enemy) {
       const e = p.enemy.entity
@@ -3082,8 +3134,14 @@ export function drawList(demo: SimState): DrawOp[] {
       // player branch above — the enemy is a bird PLUS a DPLYR knight, not a
       // bare bird (jt9-46). The remount buzzard is a kind:'enemy' too, so it is
       // covered here with no special case.
-      for (const name of enemyDrawList(p)) {
-        entities.push(entityOp(name, e.posX, e.posY >> 8, p.enemy.facing))
+      const names = enemyDrawList(p)
+      if (p.warpIn && !p.warpIn.done) {
+        // jt13-2 — mid-TREFF: the white (DCONST) enemy silhouette grows in.
+        entities.push(warpInOp(names[0], e.posX, e.posY >> 8, p.enemy.facing, p.warpIn.frame, 'enemy'))
+      } else {
+        for (const name of names) {
+          entities.push(entityOp(name, e.posX, e.posY >> 8, p.enemy.facing))
+        }
       }
     } else if (p.kind === 'egg' && p.egg) {
       entities.push(entityOp(eggFrame(p), p.egg.posX, p.egg.posY >> 8, 1))

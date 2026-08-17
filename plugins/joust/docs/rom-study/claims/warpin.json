@@ -1,0 +1,65 @@
+[
+  {
+    "id": "JT132-01",
+    "claim": "GOTTR arms the TREFF warp-in for thirty frames: LDA #30 / STA PFRAME,U (JOUSTRV4.SRC:5726-5727). This is the same 30 STAND_FRAMES transcribes; WARPIN_FRAME_COUNT re-derives from it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5726,
+      "verbatim": "\tLDA\t#30"
+    }
+  },
+  {
+    "id": "JT132-02",
+    "claim": "TREFF constant-fills the transporter in the owner's colour while active: LDB DCONST,Y \"COLORED TRANSPORTER WHEN ACTIVE\" (JOUSTRV4.SRC:5739). DCONST is a per-process colour nibble seeded from each decision block's FCB: P1 yellow (PL1=$5, :52), P2 green (PL2=$7, :54), enemies white (FCB WHI*$11, :5561/:5565; WHI=$1, :57) — paintWarpIn's owner colour.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5739,
+      "verbatim": "\tLDB\tDCONST,Y\tCOLORED TRANSPORTER WHEN ACTIVE"
+    }
+  },
+  {
+    "id": "JT132-03",
+    "claim": "The bird silhouette is drawn only for PFRAME <= 20: LDA PFRAME,U / CMPA #20 / BGT TREFF2 (JOUSTRV4.SRC:5741-5743). WARPIN_BIRD_VISIBLE_PFRAME re-derives from the #20; the first ten frames show only the lit pad.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5742,
+      "verbatim": "\tCMPA\t#20"
+    }
+  },
+  {
+    "id": "JT132-04",
+    "claim": "The standing silhouette's vertical DMA size WCLENY is derived from PFRAME: COMA \"VERT SIZE\" / ASRA / ANDA #$0F / EORA #$04 / STA WCLENY,X (JOUSTRV4.SRC:5753-5757). It grows as PFRAME falls; paintWarpIn grows the bar the same way.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5753,
+      "verbatim": "\tCOMA\t\tVERT SIZE"
+    }
+  },
+  {
+    "id": "JT132-05",
+    "claim": "TREFF2 holds one nap per frame: PCNAP 1 \"EFFECTS TIME\" (JOUSTRV4.SRC:5792). WARPIN_FRAME_NAPS re-derives from it — one nap per DEC PFRAME iteration.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5792,
+      "verbatim": "TREFF2\tPCNAP\t1\t\tEFFECTS TIME"
+    }
+  },
+  {
+    "id": "JT132-06",
+    "claim": "The window loops thirty times, PFRAME 30->0: DEC PFRAME,U / LBNE TREFF (JOUSTRV4.SRC:5802-5803).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5802,
+      "verbatim": "\tDEC\tPFRAME,U"
+    }
+  },
+  {
+    "id": "JT132-07",
+    "claim": "The full transporter materialisation sequence (the 30-frame TREFF grow-in THEN the unmodeled wait-for-first-move phase :5805-5890) ends by enabling the arrival's collisions at PLYINT: LDA #$80 \"ENABLE THIS PLAYERS COLISIONS\" / ORA PID,U / STA PID,U (JOUSTRV4.SRC:5923-5925). The clone's WarpInState.done marks only the grow-in end, not this.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5923,
+      "verbatim": "\tLDA\t#$80\t\tENABLE THIS PLAYERS COLISIONS"
+    }
+  }
+]
