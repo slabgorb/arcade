@@ -191,6 +191,14 @@ export interface SimProcess {
    */
   prevFlapHeld?: boolean
   /**
+   * jt13-1 — a PLAYER's consecutive grounded-neutral frame count, mirroring
+   * frame.ts `ProcessSpec.coast`. The owner's skid-to-rest ruling: 0/absent is
+   * the one-frame grace (touch-and-go keeps momentum), each further neutral frame
+   * increments so the ground step sheds a rung. frame.ts owns the write; it rides
+   * through `stepSim`'s `stepFrame` round-trip like `facing`/`prevFlapHeld`.
+   */
+  coast?: number
+  /**
    * jt9-17 — `PBUMPX`, the horizontal shove a non-killing bounce (`OSTLR`) parks
    * on a bird, drained ≤3 px/frame into `posX` by `drainBumpX` (`WRAPX`,
    * JOUSTRV4.SRC:7270-7288). Same home as `facing`/`prevFlapHeld` and for the

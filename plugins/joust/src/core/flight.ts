@@ -345,12 +345,35 @@ export function tickTimeUp(timeUp: number): number {
 // ─── Ground ─────────────────────────────────────────────────────────────────
 
 /**
+ * jt13-1 — sustained-neutral deceleration, the owner's ruling (2026-08-17)
+ * OVERRIDING the ROM `onZero` self-loop that jt11-3 pinned. A running mount that
+ * keeps NO direction held must shed its stored speed instead of running in place
+ * forever: after a one-frame grace it drops one FLYVEL rung per frame down the
+ * FRCONV ladder (PLYFR→PLYER→PLYDR→PLYCR→PLYBR) until it stands. `coast` is the
+ * number of consecutive grounded-neutral frames the caller (frame.ts) has already
+ * seen; `coast === 0` is the grace frame and returns the untouched `onZero`, so
+ * every legacy 2-/3-arg caller — and jt11-3's single-step tests — keep the exact
+ * pre-jt13-1 behaviour. Non-run states (already at rest, or a skid rung) fall
+ * through to `onZero`.
+ */
+function neutralNextId(current: GroundState, coast: number): string {
+  if (coast < 1) return current.onZero
+  const rung = FRCONV.indexOf(current.id)
+  return rung > 0 ? FRCONV[rung - 1] : current.onZero
+}
+
+/**
  * One frame of ground movement: the STATE row's transition for the joystick
  * direction, plus the X delta. `facing` (PFACE, threaded by the caller since
  * jt2-9) makes the transitions facing-relative. The return also maintains
  * `velXIndex` from the NEW state row's flyVel, negated for a left facing —
  * the UPDNO2 write (jt11-3) — so this, not takeOff(), is what determines the
  * launch airspeed a subsequent takeoff inherits.
+ *
+ * `coast` (jt13-1) is the caller's count of consecutive grounded-neutral frames;
+ * a positive value routes `input.dir === 0` through `neutralNextId`'s skid-to-rest
+ * decel instead of the ROM `onZero` self-loop. Defaults to 0 (the grace frame),
+ * so a 2-/3-arg call is byte-identical to the pre-jt13-1 behaviour.
  *
  * LIMITATION, stated rather than hidden: the ROM selects its per-frame delta
  * from `ORRUN` indexed by `PFRAME` (:7191-7196), the run-animation phase.
@@ -359,7 +382,12 @@ export function tickTimeUp(timeUp: number): number {
  * cycle's entry delta. Recorded as a Delivery Finding — the animation phase
  * belongs in the entity state before ground movement can be exact.
  */
-export function stepGround(state: EntityState, input: PlayerInput, facing?: -1 | 1): EntityState {
+export function stepGround(
+  state: EntityState,
+  input: PlayerInput,
+  facing?: -1 | 1,
+  coast = 0,
+): EntityState {
   const current = state.groundState === null ? null : GROUND_STATES[state.groundState]
   if (!current) return state
   // The ROM's transitions are FACING-relative (`PLYRLP`, JOUSTRV4.SRC:5968-5983):
@@ -372,7 +400,7 @@ export function stepGround(state: EntityState, input: PlayerInput, facing?: -1 |
   // direction is read as forward, exactly as before.
   const nextId =
     input.dir === 0
-      ? current.onZero
+      ? neutralNextId(current, coast)
       : facing === undefined
         ? current.onPlus
         : input.dir === facing

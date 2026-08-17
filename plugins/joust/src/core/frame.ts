@@ -160,6 +160,16 @@ export interface ProcessSpec {
    * `B2DIR`/`SHDIR`'s bump-facing arm so the shove orients the bird. Absent → 0.
    */
   bumpX?: number
+  /**
+   * jt13-1 — a PLAYER's consecutive grounded-neutral frame count, the memory
+   * behind the owner's skid-to-rest ruling (2026-08-17). 0 (or absent) is the
+   * one-frame grace that preserves touch-and-go momentum; each further neutral
+   * frame increments it and `stepGround` sheds a FLYVEL rung. Reset by any
+   * direction input, by taking off, and on the landing frame. Same home as
+   * `facing`/`prevFlapHeld` and for the identical reason — the shared, GENERATED
+   * `EntityState` cannot grow it.
+   */
+  coast?: number
 }
 
 /** A scheduled process. Plain data — the behaviour is dispatched by `kind`. */
@@ -265,16 +275,21 @@ export function draw(state: GameState): Draw {
 const NEUTRAL_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 
 /**
- * One frame of a player process, driven from the list. This is `main.ts`'s
+ * One frame of a player process, driven from the list. Originally `main.ts`'s
  * `stepPlayer` body verbatim (jt1-6) — the existing flight/ground pipeline,
- * unchanged, so the jt1-5 seeded replay reproduces bit-for-bit now that players
- * are stepped from the process list instead of the demo's own loop.
+ * so the jt1-5 seeded replay reproduces bit-for-bit (that replay never sustains
+ * grounded-neutral, so it stays in the grace region). The "verbatim/unchanged"
+ * claim is scoped to that jt1-6 migration: jt13-1 later added the `coast`
+ * parameter, which routes a SUSTAINED grounded-neutral hold through the
+ * skid-to-rest decel; `coast = 0` (the default, and every airborne/steering/
+ * single-neutral frame) is still bit-identical to the migrated body.
  */
 function stepPlayerEntity(
   state: EntityState,
   input: PlayerInput,
   facing?: -1 | 1,
   arena: ArenaState = PRISTINE_ARENA,
+  coast = 0,
 ): EntityState {
   let s = state
 
@@ -302,7 +317,7 @@ function stepPlayerEntity(
   } else {
     // Facing threaded through (jt2-9): a reversal (dir against facing) reaches the
     // onMinus skid chain — unreachable while the ground step was facing-blind.
-    s = stepGround(s, input, facing)
+    s = stepGround(s, input, facing, coast)
     s = { ...s, posX: wrapX(s.posX) }
     if (input.flap) {
       s = takeOff(s)
@@ -377,13 +392,19 @@ function runBehaviour(
     // carried entering this frame, never the one `stepPlayerEntity` computes.
     const wasAirborne = p.entity.airborne
     const prevFlapHeld = p.prevFlapHeld ?? false
+    // jt13-1 — consecutive grounded-neutral frames (the owner's skid-to-rest
+    // ruling). `coast === 0` is the grace frame, so a mount that just landed
+    // (wasAirborne) or is actively steered keeps its momentum for the immediate
+    // next flap (touch-and-go); sustained neutral counts up and `stepGround`
+    // sheds a rung per frame. Lives on the process, like `facing`/`prevFlapHeld`.
+    const coast = p.coast ?? 0
     // Step FIRST with the current facing, so a ground reversal (dir against
     // facing) enters the skid chain this frame; THEN flip PFACE from input —
     // `AIROVR` sets PFACE = sign(dir) every frame the stick is pushed, holds on
     // neutral (JOUSTRV4.SRC:6451-6481). Facing lives on the PROCESS, so the
     // entity a solo scheduler run computes is unchanged (the routing≠geometry
     // drive pin compares entities, and it stays bit-identical).
-    const stepped = stepPlayerEntity(p.entity, input, facing, arena)
+    const stepped = stepPlayerEntity(p.entity, input, facing, arena, coast)
     // jt9-8: a wing transition RE-INITs the flap-lift budget (`CLR PTIMUP,U` —
     // GOFLIP :6185 on release, GOFLAP :6219 on press, and STFLY :6135→FLAST2 on
     // take-off), which is exactly when `wingEdge` fires. Applied AFTER the step's
@@ -395,8 +416,14 @@ function runBehaviour(
     const edge = wingEdge(wasAirborne, prevFlapHeld, input)
     const entity = edge !== null && stepped.airborne ? { ...stepped, timeUp: 0 } : stepped
     const nextFacing: -1 | 1 = input.dir === 0 ? facing : input.dir > 0 ? 1 : -1
+    // jt13-1 — advance the coast counter: airborne or actively steered resets it;
+    // a mount that just landed this frame (`wasAirborne`) gets a fresh grace so
+    // touch-and-go still launches at the landed speed; a mount already grounded
+    // and neutral counts up so the skid-to-rest decel begins on the NEXT frame.
+    const nextCoast =
+      entity.airborne || input.dir !== 0 || wasAirborne ? 0 : coast + 1
     return {
-      process: { ...p, entity, facing: nextFacing, prevFlapHeld: input.flapHeld },
+      process: { ...p, entity, facing: nextFacing, prevFlapHeld: input.flapHeld, coast: nextCoast },
       budget,
       cue: wingCue(edge, 'player'),
     }
