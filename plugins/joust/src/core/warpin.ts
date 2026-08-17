@@ -22,9 +22,11 @@
 //     (`CMPA #20`, :5742) — the first ten frames show only the lit pad.
 //   • The Lantz special-effects block (:5750-5790): the standing bird's vertical
 //     size WCLENY is derived from PFRAME (`COMA/ASRA/ANDA #$0F/EORA #$04`,
-//     :5753-5757), WCY shifted so the FEET stay planted (:5763-5783) — it grows up.
+//     :5753-5757), WCY shifted so the FEET stay planted (:5763-5772) — it grows up.
+//     (:5774-5783 is a separate WCLENY "not too long" clamp, not the feet shift.)
 //   • TREFF2 (:5792-5803): `PCNAP 1  EFFECTS TIME` (one nap per frame), then
-//     `DEC PFRAME / LBNE TREFF` — thirty iterations, PFRAME 30→0, ending at PLYINT.
+//     `DEC PFRAME / LBNE TREFF` — thirty iterations, PFRAME 30→0. (The ROM then runs
+//     the unmodeled wait-for-first-move phase before PLYINT enables collisions.)
 //
 // This story builds PHASE 1 (the grow-in). The wait-for-first-move idle colour-
 // cycle (:5805-5890) is a filed follow-up, not this module.
@@ -70,7 +72,12 @@ export interface WarpInState {
   frame: number
   /** Naps remaining on the current frame (WARPIN_FRAME_NAPS — the ROM's PCNAP 1). */
   nap: number
-  /** True once all thirty frames have elapsed — the effect ends and PLYINT runs. Terminal. */
+  /**
+   * True once all thirty PFRAME frames have elapsed — the grow-in animation ends and
+   * drawList stops overlaying the silhouette. NOT the moment collisions enable: in the
+   * ROM the wait-for-first-move phase (:5805-5890) and then PLYINT (:5910) still follow,
+   * both unmodeled here; in the clone collisions stay governed by `mat`'s window. Terminal.
+   */
   done: boolean
 }
 

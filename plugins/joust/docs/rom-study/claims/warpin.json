@@ -10,7 +10,7 @@
   },
   {
     "id": "JT132-02",
-    "claim": "TREFF constant-fills the transporter in the owner's colour while active: LDB DCONST,Y \"COLORED TRANSPORTER WHEN ACTIVE\" (JOUSTRV4.SRC:5739). DCONST is P1 yellow ($5), P2 green ($7), enemy white ($1) — paintWarpIn's owner colour.",
+    "claim": "TREFF constant-fills the transporter in the owner's colour while active: LDB DCONST,Y \"COLORED TRANSPORTER WHEN ACTIVE\" (JOUSTRV4.SRC:5739). DCONST is a per-process colour nibble seeded from each decision block's FCB: P1 yellow (PL1=$5, :52), P2 green (PL2=$7, :54), enemies white (FCB WHI*$11, :5561/:5565; WHI=$1, :57) — paintWarpIn's owner colour.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 5739,
@@ -55,7 +55,7 @@
   },
   {
     "id": "JT132-07",
-    "claim": "The warp-in ends by enabling the arrival's collisions at PLYINT: LDA #$80 \"ENABLE THIS PLAYERS COLISIONS\" / ORA PID,U / STA PID,U (JOUSTRV4.SRC:5923-5925).",
+    "claim": "The full transporter materialisation sequence (the 30-frame TREFF grow-in THEN the unmodeled wait-for-first-move phase :5805-5890) ends by enabling the arrival's collisions at PLYINT: LDA #$80 \"ENABLE THIS PLAYERS COLISIONS\" / ORA PID,U / STA PID,U (JOUSTRV4.SRC:5923-5925). The clone's WarpInState.done marks only the grow-in end, not this.",
     "source": {
       "file": "JOUSTRV4.SRC",
       "line": 5923,

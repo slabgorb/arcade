@@ -266,7 +266,7 @@ const WARPIN_PAD_H = 2
  * A `kind:'warpin'` op has no atlas silhouette, so like the dissolve/crumble it
  * takes a dedicated `fillRect` path. `op.y` is the whole-pixel FEET; the effect is
  * bottom-anchored there (the ROM shifts WCY to keep the feet planted while the bird
- * grows, JOUSTRV4.SRC:5763-5783). The colour is the `DCONST` owner nibble — P1
+ * grows, JOUSTRV4.SRC:5763-5772). The colour is the `DCONST` owner nibble — P1
  * yellow ($5), P2 green ($7), enemy white ($1) (JOUSTRV4.SRC:5739) — a transcribed
  * palette index, never an invented hex.
  *

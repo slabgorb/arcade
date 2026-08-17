@@ -101,7 +101,7 @@ describe.skipIf(!vendoredAvailable)('TREFF is the warp-in effect at :5726-5803',
 
   it('the silhouette VERTICAL size is derived from PFRAME (:5753-5757)', () => {
     // COMA "VERT SIZE" / ASRA / ANDA #$0F / EORA #$04 / STA WCLENY,X — the height
-    // grows as PFRAME falls (feet pinned, WCY shifted at :5763-5783).
+    // grows as PFRAME falls (feet pinned, WCY shifted at :5763-5772).
     expect(sourceLines(FILE)[5753 - 1], 'COMA is the vertical-size derivation').toContain('COMA')
     expect(sourceLines(FILE)[5753 - 1]).toContain('VERT SIZE')
     // ASRA is inherent-mode (no operand), so match the source line, not instrAt.

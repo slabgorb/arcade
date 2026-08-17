@@ -19,8 +19,8 @@
 //
 // ─── THE ROM, READ OFF TREFF (JOUSTRV4.SRC:5726-5803, verified) ──────────────
 // `GOTTR` arms the effect: `LDA #30 / STA PFRAME,U` (:5726-5727) — the SAME 30
-// that STAND_FRAMES already transcribes (in sim.ts, :503-512 — whose comment names
-// this story: "drawn lit on the pad, TREFF, :5734-5745; the render of that lit pad
+// that `STAND_FRAMES` already transcribes (in sim.ts, whose comment names this
+// story: "drawn lit on the pad, TREFF, :5734-5745; the render of that lit pad
 // is a separate story"). Then the loop:
 //
 //   • TREFF (:5733-5743): every nap redraws the transporter cliff CONSTANT-FILLED
@@ -31,7 +31,7 @@
 //   • The Lantz "PATCHED-IN SPECIAL EFFECTS" block (:5744-5790): the standing
 //     bird's VERTICAL DMA size WCLENY is derived from PFRAME (`COMA "VERT SIZE" /
 //     ASRA / ANDA #$0F / EORA #$04 / STA WCLENY,X`, :5753-5757), and WCY is
-//     shifted (:5763-5783) so the FEET stay planted on the pad — the silhouette
+//     shifted (:5763-5772) so the FEET stay planted on the pad — the silhouette
 //     grows UPWARD out of the transporter, short → full height.
 //   • TREFF2 (:5792-5803): `PCNAP 1  EFFECTS TIME` (:5792) — one nap per PFRAME —
 //     then `DEC PFRAME,U / LBNE TREFF` (:5802-5803): thirty iterations, PFRAME
@@ -68,7 +68,12 @@ export interface WarpInState {
   frame: number
   /** Naps remaining on the current frame (WARPIN_FRAME_NAPS — the ROM's PCNAP 1). */
   nap: number
-  /** True once all thirty frames have elapsed — the effect ends and PLYINT runs. Terminal. */
+  /**
+   * True once all thirty PFRAME frames have elapsed — the grow-in animation ends and
+   * drawList stops overlaying the silhouette. NOT the moment collisions enable: the ROM's
+   * wait-for-first-move phase (:5805-5890) and PLYINT (:5910) still follow (unmodeled here);
+   * the clone leaves collisions to `mat`'s window. Terminal.
+   */
   done: boolean
 }
 

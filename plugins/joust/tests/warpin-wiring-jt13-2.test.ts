@@ -22,20 +22,16 @@
 // — the jt11-4 fact the audio suites rest on).
 
 import { describe, it, expect } from 'vitest'
-import { loadSim, type SimState, type SimProcess } from './helpers/sim-contract.js'
+import { loadSim, type SimState, type SimProcess, type DrawOp } from './helpers/sim-contract.js'
 import { loadWarpIn } from './helpers/warpin-contract.js'
 import { respawnPlayerProcess } from '../src/core/sim.js'
 import { PADS } from '../src/core/transporter.js'
 
 const SEED = 0x1234
 
-/** A process's warp-in state, if the module has been built to carry it. */
-type Warpish = { warpIn?: { frame: number; nap: number; done: boolean } }
-/** drawList ops, read loosely so the not-yet-added kind:'warpin' compiles. */
-type LooseOp = { kind: string; frame?: number; owner?: string; name?: string }
-
-const warpOps = (ops: readonly unknown[]): LooseOp[] =>
-  (ops as LooseOp[]).filter((o) => o.kind === 'warpin')
+// `warpIn` and the `kind:'warpin'` op are first-class on the contract SimProcess/DrawOp
+// (they mirror production), so these read off the real types — no casts.
+const warpOps = (ops: readonly DrawOp[]): DrawOp[] => ops.filter((o) => o.kind === 'warpin')
 const materialisingEnemies = (procs: readonly SimProcess[]): SimProcess[] =>
   procs.filter((p) => p.kind === 'enemy' && p.collisionEnabled === false)
 
@@ -64,7 +60,7 @@ async function driveToMaterialisingEnemy(
 describe('jt13-2 — the player spawn path gets a warp-in (was window-less)', () => {
   it('respawnPlayerProcess carries a WarpInState opened on frame 0', async () => {
     const w = await loadWarpIn()
-    const proc = respawnPlayerProcess(1, PADS[0]) as unknown as Warpish
+    const proc = respawnPlayerProcess(1, PADS[0])
     expect(
       proc.warpIn,
       'a re-materialising player must carry warp-in state — today it inherits nap:1 and has ' +
@@ -78,8 +74,8 @@ describe('jt13-2 — the player spawn path gets a warp-in (was window-less)', ()
   })
 
   it('both P1 and P2 respawns carry the warp-in (neither pops in opaque)', () => {
-    const p1 = respawnPlayerProcess(1, PADS[0]) as unknown as Warpish
-    const p2 = respawnPlayerProcess(2, PADS[1]) as unknown as Warpish
+    const p1 = respawnPlayerProcess(1, PADS[0])
+    const p2 = respawnPlayerProcess(2, PADS[1])
     expect(p1.warpIn, 'P1 warps in').toBeDefined()
     expect(p2.warpIn, 'P2 warps in').toBeDefined()
   })
@@ -105,7 +101,7 @@ describe('jt13-2 — a materialising enemy surfaces a warp-in overlay', () => {
     expect(hit, 'a materialising enemy was found').not.toBeNull()
     for (const e of hit!.enemies) {
       expect(
-        (e as unknown as Warpish).warpIn,
+        e.warpIn,
         'a materialising enemy carries warp-in state — the spawn animation the report wants',
       ).toBeDefined()
     }
@@ -125,5 +121,48 @@ describe('jt13-2 — a materialising enemy surfaces a warp-in overlay', () => {
       ops.every((o) => typeof o.frame === 'number'),
       'every warp-in op carries a numeric TREFF frame',
     ).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THE ADVANCEMENT + COMPLETION — stepSim actually drives the warp-in through all
+// 30 frames and, once done, drawList resumes drawing the arrival normally. This is
+// the INTEGRATION the other tests do not reach: without `advanceWarpIn` in stepSim's
+// per-frame pass the arrival would freeze at frame 0 (only the lit pad, no bird ever)
+// and stay a silhouette forever — a permanently-visible regression. Driven end-to-end
+// through the real pipeline, not simulated by deleting the warpIn field.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('jt13-2 — stepSim advances the warp-in to completion, then the arrival draws normally', () => {
+  it('a materialising enemy stepped past the 30-frame window finishes and is drawn as mount+rider', async () => {
+    const demo = await loadSim()
+    const w = await loadWarpIn()
+    const hit = await driveToMaterialisingEnemy(demo)
+    expect(hit, 'a materialising enemy was found').not.toBeNull()
+    const id = hit!.enemies[0].id
+
+    // At discovery the warp-in is still running (drawn as a silhouette).
+    const atSpawn = hit!.d.sim.processes.find((p) => p.id === id)
+    expect(atSpawn?.warpIn?.done, 'the warp-in is unfinished at spawn').toBe(false)
+    expect(warpOps(demo.drawList(hit!.d)).length, 'a warpin overlay is present at spawn').toBeGreaterThan(0)
+
+    // Step past the whole 30-frame TREFF window (no input → no early abort).
+    let d = hit!.d
+    for (let i = 0; i < w.WARPIN_FRAME_COUNT + 5; i++) d = demo.stepSim(d, {})
+
+    const live = d.sim.processes.find((p) => p.id === id)
+    expect(live, 'the enemy is still alive after its warp-in').toBeDefined()
+    expect(
+      live!.warpIn?.done,
+      'stepSim advanced the warp-in through all thirty frames to done (advanceWarpIn is wired)',
+    ).toBe(true)
+
+    // Once done, drawList draws it as the normal mount+rider entity ops, not a silhouette.
+    const solo: SimState = { ...d, sim: { ...d.sim, processes: [live!] } }
+    const ops = demo.drawList(solo)
+    expect(warpOps(ops).length, 'no warpin overlay once the warp-in is done').toBe(0)
+    expect(
+      ops.filter((o) => o.kind === 'entity').length,
+      'the live enemy is drawn as mount + rider entity ops',
+    ).toBeGreaterThan(0)
   })
 })

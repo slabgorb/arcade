@@ -12,7 +12,7 @@
 // silhouette clipping is deferred. The pins are VISIBILITY (fillRects emitted),
 // GROWTH (the painted height increases across the TREFF frames — the warp-in) and
 // FEET-PINNED (the bottom edge is fixed; the bird grows UPWARD out of the pad,
-// JOUSTRV4.SRC:5763-5783) — not exact pixels.
+// JOUSTRV4.SRC:5763-5772) — not exact pixels.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -142,7 +142,7 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
 
     expect(
       bounds(late.fills).bottom,
-      'the feet (bottom edge) stay planted on the pad across the whole warp-in (WCY shift, :5763-5783)',
+      'the feet (bottom edge) stay planted on the pad across the whole warp-in (WCY shift, :5763-5772)',
     ).toBe(bounds(early.fills).bottom)
     expect(
       bounds(late.fills).top,
