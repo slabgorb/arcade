@@ -1,5 +1,19 @@
 # Story ml12-1 Context
 
+> ⚠ **CORRECTION (TEA, red phase, 2026-08-17) — read before AC1.** The ROM refutes
+> the story's prescribed fix. `ENTER_V = 0xF8` (`core/millipede.ts:78`) is
+> byte-faithful to `MILLI.MAC:537` and CORRECT — there is no "one row below" ROM
+> value to move it to. The bug is a RENDER defect: `main.ts:260` blits the
+> wave-start train (all segments at `v=0xF8`) ungated onto the HUD score row
+> (`y=0`). The ROM-correct fix (and the settled centipede **cp7-2** family ruling)
+> is a render off-top DRAW-GATE — a pure `segmentOnScreen(v)` predicate
+> (`MILLI.MAC:1865-1872`) the `main.ts` segment loop consults — NOT a change to
+> `ENTER_V`, and NOT a vertical offset. **AC1's INTENT (train clear of the score)
+> stands; only its MECHANISM is replaced.** The RED suite
+> (`tests/train-entry-gate.test.ts`) pins the gate and GUARDS `ENTER_V === 0xF8`.
+> Full rationale: the session's Delivery Findings + Design Deviations. AC text
+> below is left unedited on purpose; follow the RED tests, not AC1's wording.
+
 ## Title
 Train enters one row too high and runs over the score/HUD (owner playtest; analogous to the centipede train-start-row bug)
 
