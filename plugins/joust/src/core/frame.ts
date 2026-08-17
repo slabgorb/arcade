@@ -275,10 +275,14 @@ export function draw(state: GameState): Draw {
 const NEUTRAL_INPUT: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 
 /**
- * One frame of a player process, driven from the list. This is `main.ts`'s
+ * One frame of a player process, driven from the list. Originally `main.ts`'s
  * `stepPlayer` body verbatim (jt1-6) — the existing flight/ground pipeline,
- * unchanged, so the jt1-5 seeded replay reproduces bit-for-bit now that players
- * are stepped from the process list instead of the demo's own loop.
+ * so the jt1-5 seeded replay reproduces bit-for-bit (that replay never sustains
+ * grounded-neutral, so it stays in the grace region). The "verbatim/unchanged"
+ * claim is scoped to that jt1-6 migration: jt13-1 later added the `coast`
+ * parameter, which routes a SUSTAINED grounded-neutral hold through the
+ * skid-to-rest decel; `coast = 0` (the default, and every airborne/steering/
+ * single-neutral frame) is still bit-identical to the migrated body.
  */
 function stepPlayerEntity(
   state: EntityState,

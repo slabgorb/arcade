@@ -75,6 +75,30 @@ function runningPlayer(facing: -1 | 1, over: Partial<EntityState> = {}): SimProc
   }
 }
 
+/** An AIRBORNE player descending toward CLIF5 (snapY 210), running at full speed. */
+function fallingPlayer(facing: -1 | 1): SimProcess {
+  return {
+    id: 1,
+    cls: 'primary',
+    nap: 1,
+    period: 1,
+    kind: 'player',
+    facing,
+    mount: 'ostrich',
+    collisionEnabled: true,
+    // posY 205, velY +0x200 lands on CLIF5 within ~2 frames (measured); velXIndex 8
+    // so land() (FRCONV) selects the top run rung PLYFR.
+    entity: entityAt({
+      posY: 205 << 8,
+      velY: 0x200,
+      velXIndex: 8 * facing,
+      timeUp: 20,
+      groundState: null,
+      airborne: true,
+    }),
+  }
+}
+
 const only = (d: SimState, procs: SimProcess[]): SimState => ({
   ...d,
   sim: { ...d.sim, processes: procs },
@@ -119,20 +143,26 @@ describe('jt13-1 — releasing all direction skids stored velocity to zero', () 
     ).toBe(0)
   })
 
-  it('the decel is a SKID: magnitude never increases and reaches 0 by frame 20', async () => {
+  it('the decel walks the FRCONV ladder one rung per frame: [8,6,4,2,0] after a 1-frame grace', async () => {
+    // Pin the EXACT ROM ladder (jt13-1 review F2/F5): grace holds the rung on the
+    // first neutral frame (8), then one FLYVEL rung sheds per frame
+    // PLYFR8→PLYER6→PLYDR4→PLYCR2→PLYBR0. A wrong decay RATE (e.g. 2 rungs/frame,
+    // 8→4→0) or a missing/extra hold reddens here — monotonicity + a loose deadline
+    // alone did not (a 2-rung skip survived both).
     const dmod = await loadSim()
     const base = dmod.createWaveSim(SEED)
-    const { trail } = await drive(only(base, [runningPlayer(1)]), 0, 24)
+    const { trail } = await drive(only(base, [runningPlayer(1)]), 0, 8)
     const mags = trail.map((p) => Math.abs(p.entity!.velXIndex))
 
-    for (let i = 1; i < mags.length; i++) {
-      expect(mags[i], `frame ${i}: |velXIndex| must not grow while coasting`).toBeLessThanOrEqual(
-        mags[i - 1],
-      )
-    }
+    // Exact leading trail — grace(8), then one rung per frame to rest, then held.
+    expect(mags.slice(0, 6), 'FRCONV ladder, one rung per neutral frame after grace').toEqual([
+      8, 6, 4, 2, 0, 0,
+    ])
+    // Reaches a dead stop at frame index 4 (the 5th neutral frame); bound is tight,
+    // not a 5x-loose backstop. `<= FRCONV.length` derives the ceiling from the ladder.
     const zeroBy = mags.findIndex((m) => m === 0)
-    expect(zeroBy, 'must reach a dead stop within 20 frames of release').toBeGreaterThanOrEqual(0)
-    expect(zeroBy, 'must reach a dead stop within 20 frames of release').toBeLessThanOrEqual(20)
+    expect(zeroBy, 'must reach a dead stop, not self-loop forever').toBeGreaterThanOrEqual(0)
+    expect(zeroBy, 'a full-speed runner stops in one FRCONV ladder length').toBeLessThanOrEqual(5)
   })
 
   it('once stopped it STAYS stopped under continued neutral (no drift, no re-launch of speed)', async () => {
@@ -154,7 +184,7 @@ describe('jt13-1 — releasing all direction skids stored velocity to zero', () 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2 — NO LAUNCH FLING FROM A STANDSTILL  (RED, end to end)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('jt13-1 — a mount that skidded to rest launches with no horizontal fling', async () => {
+describe('jt13-1 — a mount that skidded to rest launches with no horizontal fling', () => {
   it('THE BUG: coast to a stop, then flap — the launch drifts ~0 px, not across the screen', async () => {
     const dmod = await loadSim()
     const base = dmod.createWaveSim(SEED)
@@ -189,6 +219,28 @@ describe('jt13-1 — a mount that skidded to rest launches with no horizontal fl
       'a held-direction launch keeps its momentum — this is NOT the bug',
     ).toBeGreaterThan(4)
   })
+
+  it('LEFT mirror: a left-facing runner that skids to rest also launches with no fling', async () => {
+    // jt13-1 review F6 — the no-fling fix must be sign-agnostic, the same way
+    // section 1 mirrors left/right. A left-only launch-sign bug (e.g. a stale
+    // velXFrac/facing sign surviving on the left branch) would pass the rightward
+    // case above and only fail here.
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
+    let d = only(base, [runningPlayer(-1)])
+    for (let i = 0; i < 24; i++) d = dmod.stepSim(d, { 1: inp(0) })
+    const rest = d.sim.processes.find((q) => q.id === 1)!
+    expect(rest.entity!.velXIndex, 'precondition: left runner at rest before flapping').toBe(0)
+
+    const startX = rest.entity!.posX
+    d = dmod.stepSim(d, { 1: inp(0, true) })
+    for (let i = 0; i < 8; i++) d = dmod.stepSim(d, { 1: inp(0) })
+    const flown = d.sim.processes.find((q) => q.id === 1)!
+    expect(
+      Math.abs(flown.entity!.posX - startX),
+      'a rest launch (left facing) must not fling horizontally either',
+    ).toBeLessThanOrEqual(2)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -220,6 +272,11 @@ describe('jt13-1 guards — the fix must not overshoot', () => {
   })
 
   it('INSTANT FLIP (in scope): running right, press LEFT — turns and runs left within 2 frames', async () => {
+    // jt13-1 review F7 — scope note: the flip itself rides PRE-EXISTING code (the
+    // onMinus skid-chain routing + `nextFacing = sign(dir)`), which the coast change
+    // does NOT touch (coast is only read when `input.dir === 0`). So this is a
+    // REGRESSION GUARD proving the coast change did not collaterally break the
+    // owner's in-scope instant-flip requirement — not a test of new coast logic.
     const dmod = await loadSim()
     const base = dmod.createWaveSim(SEED)
     const { trail } = await drive(only(base, [runningPlayer(1)]), -1, 3)
@@ -230,5 +287,45 @@ describe('jt13-1 guards — the fix must not overshoot', () => {
       trail[2].entity!.posX,
       'and it is moving left (posX decreasing)',
     ).toBeLessThan(trail[0].entity!.posX)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4 — TOUCH-AND-GO GRACE THROUGH A REAL LANDING  (jt13-1 review F1)
+// ─────────────────────────────────────────────────────────────────────────────
+// The owner's ruling: a running landing keeps its momentum for the IMMEDIATE
+// next-frame flap. This is carried by frame.ts's `wasAirborne ? 0` reset of the
+// coast counter — the landing frame does NOT consume the grace. Every other
+// jt13-1 test seeds an already-grounded runner (wasAirborne always false), so
+// this is the ONLY test that drives a REAL airborne→grounded landing through
+// stepSim and exercises that branch. Deleting `|| wasAirborne` from frame.ts
+// reddens the final assertion here (the launch decays to rung 6 instead of 8).
+describe('jt13-1 — touch-and-go after a real landing keeps the landed momentum', () => {
+  it('land at full speed via the airborne path, flap on the very next frame → launch at the landed rung', async () => {
+    const dmod = await loadSim()
+    const base = dmod.createWaveSim(SEED)
+
+    // Fall onto CLIF5 holding NO direction; drive until the landing frame.
+    let d = only(base, [fallingPlayer(1)])
+    let landed = false
+    for (let i = 0; i < 20 && !landed; i++) {
+      d = dmod.stepSim(d, { 1: inp(0) })
+      const p = d.sim.processes.find((q) => q.id === 1)!
+      if (!p.entity!.airborne) landed = true
+    }
+    const onGround = d.sim.processes.find((q) => q.id === 1)!
+    expect(landed, 'the faller must reach CLIF5 and land').toBe(true)
+    expect(onGround.entity!.groundState, 'FRCONV selects the top rung for a full-speed landing').toBe('PLYFR')
+    expect(onGround.entity!.velXIndex, 'land() seeds the full landed rung speed').toBe(8)
+
+    // THE IMMEDIATE next frame: flap. The 1-frame landing grace must hold, so the
+    // launch keeps the full landed speed — not a decayed rung.
+    d = dmod.stepSim(d, { 1: inp(0, true) })
+    const launched = d.sim.processes.find((q) => q.id === 1)!
+    expect(launched.entity!.airborne, 'the flap took off').toBe(true)
+    expect(
+      launched.entity!.velXIndex,
+      'touch-and-go keeps the landed momentum — the landing frame must not consume the grace',
+    ).toBe(8)
   })
 })
