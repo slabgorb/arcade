@@ -32,7 +32,7 @@ import type { GameState } from '../core/game.js'
 import { CITIES, BASES, type FieldPos } from '../core/field.js'
 import { blastRadius } from '../core/explosion.js'
 import { INITIAL_WAVE } from '../core/wave.js'
-import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK } from './stamps.js'
+import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK, BOMBER_DOTS, SATELLITE_DOTS } from './stamps.js'
 import { glyphRows } from './glyphs.js'
 import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 import { drawEscOverlay } from '@shared/esc-overlay'
@@ -159,44 +159,59 @@ export function drawFrame(
   })
 
   // Incoming ICBMs (mc3-5) — a trail from each warhead's top-edge origin to its
-  // current head, plus a head dot. The enemy hue is COL010 (ICBMS legend slot).
-  ctx.strokeStyle = hue(SLOT.ICBMS)
-  ctx.fillStyle = hue(SLOT.ICBMS)
+  // current head, tipped with the authentic flashing leading dot (shared with the
+  // ABM below). MISSILE TIPS & TRAIL (W3DSUP.MAC:925): "TIP OF MISSILE TRAIL IS
+  // FLASH" (W3DSUP.MAC:931) — a missile drawn by DRAW MISSILE (W3DSUP.MAC:1221)
+  // carries a FLASH-register leading tip. mc12-2 dropped the mc3-5 solid enemy-hue
+  // "head dot" disc for this flashing tip, matching the ABM treatment; the trail
+  // body stays the enemy hue COL010 (ICBMS legend slot). `missileTip` picks whichever
+  // FLASH_SLOTS colour differs from the sky so the tip stays visible (as the blast
+  // does); tipR is one flash pixel. Both consts are reused by the ABM loop below.
+  const missileTip = hue(FLASH_SLOTS.find((s) => hue(s) !== hue(SLOT.SKY)) ?? FLASH_SLOTS[0])
+  const tipR = Math.max(1, Math.round(width / 200))
   ctx.lineWidth = 1
-  const headR = Math.max(1, Math.round(width / 200))
   for (const icbm of state.icbms) {
     const from = project(icbm.origin, width, height)
     const head = project(icbm.pos, width, height)
+    ctx.strokeStyle = hue(SLOT.ICBMS)
     ctx.beginPath()
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(head.x, head.y)
     ctx.stroke()
+    ctx.fillStyle = missileTip
     ctx.beginPath()
-    ctx.arc(head.x, head.y, headR, 0, Math.PI * 2)
+    ctx.arc(head.x, head.y, tipR, 0, Math.PI * 2)
     ctx.fill()
   }
 
-  // Sputnik/bomber planes (mc5-2) — a small fly-across glyph at each plane's position,
-  // drawn in the enemy hue (COL010) and shaped by variant (a bomber reads as a wide
-  // thin wing, a satellite as a boxier body). Functional only; the pixel-authentic
-  // plane sprite and its own palette register are mc9. `project` flips V so the
-  // bottom-origin cabinet coord lands correctly, as for every other entity.
+  // Enemy planes (mc5-2 placeholder → mc12-2 authentic silhouette). The bomber and
+  // satellite are drawn by OUTLST — MOVE AN OBJECT 1 DOT HORIZONTAL (W3MAIN.MAC:5925;
+  // routine :5947) — from their PLACOL LEADING-EDGE dot-lists (DOT LIST OUTPUT TABLES,
+  // W3MAIN.MAC:6073-6175), NOT the mc5-2 fillRect wing/box and NOT WRITE A STAMP (the
+  // city blitter). Each dot is one cabinet pixel offset from the plane's centre, painted
+  // in the enemy hue (COL010) at the same stamp-pixel size the cities use and positioned
+  // by project(). BOTH variants' dots mirror horizontally when the plane faces left
+  // (dir < 0): the ROM's `EOR PLAVEL` flip (OUTLST, W3MAIN.MAC:5997) is UNCONDITIONAL per
+  // object — and neither dot-list is H-symmetric, so a left-flying plane must mirror or it
+  // faces backward. The satellite's FLASH antenna tips and BLUE portholes are a filed
+  // follow-up (enemy hue unchanged here); the exact 1px `EOR 0FF` offset (-dh vs -dh-1) is
+  // an mc12-4 screenshot refinement.
   ctx.fillStyle = hue(SLOT.ICBMS)
-  const planeW = Math.max(3, Math.round(width / 90))
   for (const plane of state.sputniks) {
-    const c = project(plane.pos, width, height)
-    const wingH = plane.variant === 'bomber' ? Math.max(1, Math.round(planeW / 3)) : Math.max(2, Math.round(planeW / 2))
-    ctx.fillRect(c.x - planeW / 2, c.y - wingH / 2, planeW, wingH)
+    const dots = plane.variant === 'bomber' ? BOMBER_DOTS : SATELLITE_DOTS
+    const mirror = plane.dir < 0
+    for (const { dh, dv } of dots) {
+      const p = project({ h: plane.pos.h + (mirror ? -dh : dh), v: plane.pos.v + dv }, width, height)
+      ctx.fillRect(p.x - pw / 2, p.y - ph / 2, pw, ph)
+    }
   }
 
   // ABM trails (mc1-4) — a line from each missile's launch base to its head, tipped
-  // with an authentic flashing leading dot. MISSILE TIPS & TRAIL (W3DSUP.MAC:925):
-  // "TIP OF MISSILE TRAIL IS FLASH" (:931) — the trail body draws in the ABMS hue
-  // (COL110), the leading edge in a flash register. (DRAW MISSILE, W3DSUP.MAC:1221 is
-  // the base ready-ammo stack — a different routine, drawn above.) The tip picks a
-  // flash slot that differs from the sky so it stays visible, as the blast does.
-  const abmTip = hue(FLASH_SLOTS.find((s) => hue(s) !== hue(SLOT.SKY)) ?? FLASH_SLOTS[0])
-  const tipR = Math.max(1, Math.round(width / 200))
+  // with the same authentic flashing leading dot the incoming ICBM now uses (MISSILE
+  // TIPS & TRAIL, W3DSUP.MAC:925: "TIP OF MISSILE TRAIL IS FLASH", :931). The trail
+  // body draws in the ABMS hue (COL110); the leading edge is the shared `missileTip`
+  // flash register computed above. (DRAW MISSILE, W3DSUP.MAC:1221 draws either missile;
+  // the base ready-ammo stack is a separate use of it, drawn above.)
   ctx.lineWidth = 1
   for (const abm of state.abms) {
     const from = project(abm.origin, width, height)
@@ -206,7 +221,7 @@ export function drawFrame(
     ctx.moveTo(from.x, from.y)
     ctx.lineTo(to.x, to.y)
     ctx.stroke()
-    ctx.fillStyle = abmTip
+    ctx.fillStyle = missileTip
     ctx.beginPath()
     ctx.arc(to.x, to.y, tipR, 0, Math.PI * 2)
     ctx.fill()

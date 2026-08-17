@@ -289,3 +289,167 @@ describe('mc9-3 AC2 — render.ts cites the authentic trail-tip routine', () => 
     ).toMatch(/MISSILE TIPS & TRAIL|W3DSUP\.MAC:925/)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// mc12-2 — render fidelity round 3. TWO fixes on the same render.ts surface:
+//   (a) AC1 — drop the incoming-ICBM "lollipop" head disc; render the head as the
+//       ABM's flashing tip treatment (a FLASH register, not the solid enemy hue),
+//       citing the flash tip (W3DSUP.MAC:931) + DRAW MISSILE (W3DSUP.MAC:1221).
+//   (b) AC2/AC3 — replace the single-fillRect bomber/satellite PLACEHOLDER
+//       (render.ts sputnik loop) with the authentic distinct silhouettes, in the
+//       enemy hue, positioned by project(). Geometry ports from OUTLST's DOT-LIST
+//       tables (W3MAIN.MAC:5925/5947 + :6073-6175), NOT WRITE A STAMP (W3DSUP:587
+//       is the CITY/arrow 8x8 blitter — the story's AC2 citation is wrong; SM flagged).
+//
+// ─── WHY THIS IS RED (the placeholder, measured on develop) ──────────────────
+// Today the sputnik loop draws exactly ONE `fillRect(c.x-planeW/2, c.y-wingH/2,
+// planeW, wingH)` per plane — bomber and satellite differ only in `wingH`, which
+// the mock DROPS (fillRect records x,y,w only). So both variants record the SAME
+// single mark: the ≥N-marks silhouette assertions and the bomber≠satellite
+// distinctness assertion all fail. The ICBM loop draws a solid enemy-hue `arc`
+// head with no flash register and no W3DSUP:931/1221 cite.
+//
+// ─── NON-VACUITY (the mc10-7 lesson) ─────────────────────────────────────────
+// The silhouette guards count REAL draw marks near the plane — a decoy that only
+// *references* a plane-stamp symbol without drawing it stays at ~1 mark and still
+// reddens. The AC1 flash-tip guard requires the CODE symbol (FLASH_SLOTS/abmTip)
+// inside the ICBM section, so a comment-only citation decoy (cite added, disc kept)
+// stays red. The colour of a silhouette is the reviewer's screenshot (mc12-4); the
+// mock is colour-blind, so AC1's "drop the enemy disc" is enforced structurally.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('mc12-2 AC2/AC3 — bomber and satellite draw authentic, distinct silhouettes', () => {
+  // A plane parked high and mid-field (v=150, well above the bottom structures and
+  // clear of the top-left crosshair and the centred HUD figures) so the ONLY marks
+  // in its window are the plane itself.
+  const SPUTNIK_POS = { h: 100, v: 150 }
+  const bare = withCursor({ ...createGame(1), phase: 'play' })
+  const mk = (variant: 'bomber' | 'satellite'): GameState => ({
+    ...bare,
+    sputniks: [{ pos: SPUTNIK_POS, dir: 1, variant, fireTimer: 100 }],
+  })
+
+  const cx = projectX(SPUTNIK_POS.h)
+  const cy = projectY(SPUTNIK_POS.v)
+  // A box comfortably larger than the ~16x11 (bomber) / ~13x13 (satellite) cabinet
+  // silhouettes projected (H is 1:1 at W=256), but tight enough to exclude every
+  // other element (verified: structures y~200+, crosshair (5,13), HUD x~124).
+  const nearMarks = (marks: Mark[], r = 22): Mark[] =>
+    marks.filter((m) => !isBackground(m) && m.text === undefined && Math.abs(m.x - cx) <= r && Math.abs(m.y - cy) <= r)
+  const nearSig = (marks: Mark[], r = 22): string =>
+    nearMarks(marks, r)
+      .map((m) => `${m.op}:${Math.round(m.x)}:${Math.round(m.y)}:${m.w ?? ''}`)
+      .sort()
+      .join('|')
+
+  it('the empty field draws nothing where the plane will be (window is clean)', () => {
+    expect(nearMarks(paint(bare)).length, 'the bare field must not draw in the plane window').toBe(0)
+  })
+
+  it('a bomber draws a multi-pixel silhouette, not a single fillRect placeholder', () => {
+    const n = nearMarks(paint(mk('bomber'))).length
+    expect(
+      n,
+      'the bomber must render its authentic OUTLST silhouette (many marks), not one fillRect wing (today: 1 mark)',
+    ).toBeGreaterThanOrEqual(12)
+  })
+
+  it('a satellite draws a multi-pixel silhouette, not a single fillRect placeholder', () => {
+    const n = nearMarks(paint(mk('satellite'))).length
+    expect(
+      n,
+      'the satellite must render its authentic OUTLST silhouette (many marks), not one fillRect box (today: 1 mark)',
+    ).toBeGreaterThanOrEqual(8)
+  })
+
+  it('the bomber and satellite render DISTINCTLY (different shapes, not one placeholder)', () => {
+    const bomberSig = nearSig(paint(mk('bomber')))
+    const satelliteSig = nearSig(paint(mk('satellite')))
+    expect(bomberSig.length, 'the bomber must actually draw marks in its column').toBeGreaterThan(0)
+    expect(
+      bomberSig,
+      'bomber and satellite must draw DISTINCT silhouettes — today both collapse to the same single fillRect',
+    ).not.toBe(satelliteSig)
+  })
+
+  // mc12-2 review (Heimdall F2): the ROM's OUTLST EOR-PLAVEL flip (W3MAIN.MAC:5997) mirrors
+  // BOTH objects when they travel left. Neither dot-list is H-symmetric — the satellite has
+  // 6 unmirrored fuselage dots — so a left-flying plane that ISN'T mirrored faces backward.
+  // This pins the mirror for EACH variant (the first GREEN mirrored only the bomber, on a
+  // false "satellite is symmetric" premise, so the satellite arm of this reddened that code).
+  const facing = (variant: 'bomber' | 'satellite', dir: 1 | -1): GameState => ({
+    ...bare,
+    sputniks: [{ pos: SPUTNIK_POS, dir, variant, fireTimer: 100 }],
+  })
+
+  it.each(['bomber', 'satellite'] as const)(
+    'a left-facing %s mirrors horizontally (not rendered identical to facing right)',
+    (variant) => {
+      const right = nearSig(paint(facing(variant, 1)))
+      const left = nearSig(paint(facing(variant, -1)))
+      expect(right.length, `the ${variant} must draw marks to compare`).toBeGreaterThan(0)
+      expect(
+        left,
+        `a left-flying ${variant} must MIRROR its H-asymmetric silhouette (ROM EOR-PLAVEL), ` +
+          `not render identically to facing right — else it faces backward`,
+      ).not.toBe(right)
+    },
+  )
+})
+
+describe('mc12-2 AC2 — the plane silhouettes cite the authentic OUTLST dot-list geometry', () => {
+  const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
+  const stampsSrc = readFileSync(join(root, 'src', 'shell', 'stamps.ts'), 'utf8')
+  const shellSrc = renderSrc + '\n' + stampsSrc
+
+  it('names OUTLST as the plane/satellite renderer (not WRITE A STAMP, the city blitter)', () => {
+    expect(
+      shellSrc,
+      'the bomber/satellite geometry is drawn by OUTLST (W3MAIN), not WRITE A STAMP (W3DSUP:587, the city stamp) — ' +
+        'the story AC2 citation is wrong (SM flagged)',
+    ).toMatch(/OUTLST/)
+  })
+
+  it('cites the W3MAIN DOT-LIST OUTPUT TABLES for the plane geometry', () => {
+    expect(
+      shellSrc,
+      'the plane silhouette bytes must cite their W3MAIN source (OUTLST :5925/:5947 or the DOT LIST tables :6073-6175)',
+    ).toMatch(/W3MAIN\.MAC:(59[0-9]{2}|6[01][0-9]{2})/)
+  })
+})
+
+describe('mc12-2 AC1 — the incoming ICBM head is the ABM flash tip, not a solid enemy disc', () => {
+  const renderSrc = readFileSync(join(root, 'src', 'shell', 'render.ts'), 'utf8')
+  // Scope to the ICBM render section: from its header comment to the sputnik loop
+  // (anchored on `state.sputniks`, which survives a loop-var rename). Both anchors
+  // are asserted present so a moved anchor fails loudly rather than slicing empty.
+  const icbmStart = renderSrc.indexOf('Incoming ICBM')
+  const sputnikStart = renderSrc.indexOf('state.sputniks')
+  const icbmSection = renderSrc.slice(icbmStart, sputnikStart)
+
+  it('the ICBM section anchors resolve (guard against a silent empty slice)', () => {
+    expect(icbmStart, 'the "Incoming ICBM" section header must still exist').toBeGreaterThanOrEqual(0)
+    expect(sputnikStart, 'the state.sputniks loop must still follow the ICBM section').toBeGreaterThan(icbmStart)
+  })
+
+  it('cites the flash tip (W3DSUP.MAC:931) and DRAW MISSILE (W3DSUP.MAC:1221) on the ICBM path', () => {
+    expect(
+      icbmSection,
+      'the incoming ICBM tip must cite the flash tip — MISSILE TIPS & TRAIL / "TIP OF MISSILE TRAIL IS FLASH" (W3DSUP.MAC:931)',
+    ).toMatch(/W3DSUP\.MAC:931|TIP OF MISSILE TRAIL IS FLASH|MISSILE TIPS & TRAIL/)
+    expect(
+      icbmSection,
+      'the incoming ICBM must cite DRAW MISSILE (W3DSUP.MAC:1221)',
+    ).toMatch(/W3DSUP\.MAC:1221|DRAW MISSILE/)
+  })
+
+  it('colours the ICBM head with the FLASH register (dropping the solid enemy-hue disc)', () => {
+    // The colour-blind mock cannot see the hue, so this pins the flash-tip treatment
+    // structurally: the ICBM section must reference the flash mechanism (FLASH_SLOTS /
+    // the shared abmTip), exactly as the ABM tip does — NOT just carry a citation comment
+    // over a disc still filled in the enemy hue.
+    expect(
+      icbmSection,
+      'the ICBM head must use the ABM flash-tip treatment (FLASH_SLOTS / abmTip), not the solid COL010 enemy disc',
+    ).toMatch(/FLASH_SLOTS|abmTip/)
+  })
+})
