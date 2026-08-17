@@ -114,3 +114,8 @@ completed_stories:
     title: Train enters one row too high and runs over the score/HUD (owner playtest; analogous to the centipede train-start-row bug)
     points: 3
     completed: '2026-08-17'
+  - id: df4-4
+    epic: df4
+    title: "Mutants (SCZ/'SCHITZO') + the UFO pursuer: plugins/defender/src/core/ reducers for the SCZS0/SCZ0 schizoid process (START SCHITZOS, defender/DEFB6.SRC:585,592 — the mutant a lander becomes on reaching the top) and the UFOST/UFOLP process (UFO PROCESS START, defender/DEFB6.SRC:5,25 — velocity defender/DEFB6.SRC:48, shoot logic; the timeout pursuer). FIRST map both ROM labels to their arcade enemy names in the dossier, CITED (the UFO->baiter mapping in particular is a claim, not an assumption). Consumes df4-1 + df4-2; the lander->mutant transform trigger is set up by df4-3."
+    points: 3
+    completed: '2026-08-17'

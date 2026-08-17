@@ -55,10 +55,11 @@ stories:
     title: "Mutants (SCZ/'SCHITZO') + the UFO pursuer: plugins/defender/src/core/ reducers for the SCZS0/SCZ0 schizoid process (START SCHITZOS, defender/DEFB6.SRC:585,592 — the mutant a lander becomes on reaching the top) and the UFOST/UFOLP process (UFO PROCESS START, defender/DEFB6.SRC:5,25 — velocity defender/DEFB6.SRC:48, shoot logic; the timeout pursuer). FIRST map both ROM labels to their arcade enemy names in the dossier, CITED (the UFO->baiter mapping in particular is a claim, not an assumption). Consumes df4-1 + df4-2; the lander->mutant transform trigger is set up by df4-3."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
     review_findings: "APPROVED after 3 rounds. Round 1: 8 findings (hop-sign inversion F3, unguarded per-tick player() F7, vacuous strip loop F6, 4 false citations F1/F2/F4/F5, non-null ! F8) — all fixed + verified. Round 2: F9 (NaN-player tests covered only the seek half of the F7 guard) — fixed with a shots-length assertion, mutation-confirmed. Round 3: clean. Code is ROM-faithful (hop-sign matches DEFB6.SRC:884-886, constants byte-verified, UFO->Baiter identity sourced via DEFA7:1690 + MESS0:337); guards fully mutation-tested; 557/557 defender green."
     review_verdict: approved
   - id: df4-5
