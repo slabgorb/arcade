@@ -17,7 +17,7 @@
 import { mountCanvas } from '@shared/host-helpers'
 import { PLYFLD_STRIDE } from './core/conway'
 import { BACKGROUND_BIT } from './core/mushroom'
-import { VACANT_COLOR } from './core/millipede'
+import { VACANT_COLOR, segmentOnScreen } from './core/millipede'
 import { createGame, type GameState } from './core/game-state'
 import { stepGame, type GameInput } from './core/sim'
 import { hudPlacements, SHIP_STAMP, type HudPlacement } from './core/hud'
@@ -257,7 +257,11 @@ function render(state: GameState): void {
   }
   // Each motion object paints in its OWN authentic per-creature MOCOL colours,
   // keyed by its `color` attribute byte (milliped's packed sprite palette).
-  for (const s of state.segments) if (s.color !== VACANT_COLOR) drawSprite(s.h, s.v, s.pic, spritePens(s.color))
+  // segmentOnScreen gates the wave-start train off the ROM's off-top band
+  // (MOBJV >= OFFTOP_V, MILLI.MAC:1872): at wave start every segment sits at
+  // ENTER_V=0xF8, so ungated it painted straight onto the HUD score row (ml12-1).
+  for (const s of state.segments)
+    if (s.color !== VACANT_COLOR && segmentOnScreen(s.v)) drawSprite(s.h, s.v, s.pic, spritePens(s.color))
 
   const r = state.roster
   for (const grp of [r.spiders, r.bees, r.beetles, r.dragonflies, r.mosquitoes, r.earwigs, r.inchworms]) {

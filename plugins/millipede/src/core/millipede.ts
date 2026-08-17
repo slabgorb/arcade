@@ -77,6 +77,27 @@ export const POISON_COLOR = 0x1b // MT-7 (MILLI.MAC:1508 "CMP I,1B")
 export const VACANT_COLOR = 0x00 // MT-2 (MILLI.MAC:1455 "BEQ 5$ ;IF EMPTY ENTRY")
 export const ENTER_V = 0xf8 // MT-8 (MILLI.MAC:537 "LDA I,0F8")
 export const ENTER_H = 0x80 // MT-9 (MILLI.MAC:540 "LDA I,80")
+
+// The ROM's OFF-TOP-OF-SCREEN gate for a motion object: MOBJV (EOR CKF8) >= 0xF4
+// is off the top of the visible field. Read in the shot/object sweep at
+// MILLI.MAC:1869-1872 — "LDA X,MOBJV / EOR CKF8 / CMP I,0F4 / BCS ;IF OFF TOP OF
+// SCREEN" (MT-35). The wave-start train enters at ENTER_V=0xF8 (>= 0xF4) and holds
+// there, so it is off the top by the ROM's own rule — the render declines to paint
+// it rather than blitting it onto the reserved HUD score row (ml12-1). This is the
+// centipede-family ruling (cp7-2): a render DRAW-GATE, not a change to ENTER_V and
+// not a vertical offset. Upright only (CKF8=0), matching ENTER_V's upright form.
+export const OFFTOP_V = 0xf4 // MT-35 (MILLI.MAC:1871 "CMP I,0F4" → :1872 "BCS ;IF OFF TOP OF SCREEN")
+
+/**
+ * Whether a motion object at MOBJV `v` is on the visible field (true) or in the
+ * ROM's off-top score-margin band (false, MOBJV >= OFFTOP_V). The in-game render
+ * consults this so the wave-start train (all segments at ENTER_V=0xF8) is not
+ * painted onto the reserved HUD score row — the ml12-1 fix. Pure: a number
+ * predicate with no DOM, so it lives in core without crossing the core/shell line.
+ */
+export function segmentOnScreen(v: number): boolean {
+  return (v & 0xff) < OFFTOP_V
+}
 export const SEG_SPACING = 8 // MT-10 (MILLI.MAC:593/596 the ±8 body offset)
 export const LEG_ANIM_MASK = 0x07 // MT-18 (MILLI.MAC:1469 "AND I,7")
 export const LEFT_EDGE = 0xf0 // MT-21 (MILLI.MAC:1511 "CMP I,0F0")
