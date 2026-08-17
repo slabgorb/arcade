@@ -9,5 +9,4 @@ sprint:
   number: 2635
 epics:
   - df4
-  - ml11
   - mc12
