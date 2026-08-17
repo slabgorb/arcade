@@ -14,15 +14,17 @@
 //     boundary — verified over the full boot train, 400+ frames, and the full
 //     stepGame across many seeds: ZERO head wraps. (Group A pins this so it stays
 //     true — and closes a VACUOUS bound in the existing edge test, see below.)
-//   • wrapH is ROM-faithful: MILLI.MAC:1626-1628 "20$: LDA MOBJDH / CLC / ADC
-//     MOBJH" is a plain 8-bit add — real hardware wraps H mod 256 too. The wrap
-//     itself is not the defect.
+//   • wrapH is ROM-faithful: the coast-march 20$ block "LDA MOBJDH / CLC / ADC
+//     MOBJH" (MILLI.MAC:1605-1607; MT-24 pins ADC X,MOBJH @ 1607) is a plain 8-bit
+//     add — real hardware wraps H mod 256 too. The wrap itself is not the defect.
 //
 // The REAL mechanism (reproduced deterministically below): the port kills a
-// segment by SPLICING it out of the array (sim.ts:176 "segments.filter((_, i) =>
-// i !== hit)") with NO head-promotion — the ROM instead turns the segment behind
-// a dead head into a head ("STA Y,MOBJC ;TURN ON COLOR FOR EYES", MILLI.MAC:164$).
-// Shoot the head and the train goes HEADLESS: every remaining segment is a BODY
+// segment by SPLICING it out of the array (sim.ts "segments.filter((_, i) =>
+// i !== hit)") with NO head-promotion of any kind. (The only head-promotion in the
+// codebase — splitOnTurn, the BOTTOM-ROW split MS-7/MS-8, V<9, "STA Y,MOBJC ;TURN
+// ON COLOR FOR EYES" @ MILLI.MAC:1590 — is a bottom-row event, NOT a shot-kill, and
+// is unwired everywhere: ml3-2.) Shoot the head and the train goes HEADLESS: every
+// remaining segment is a BODY
 // (colour BODY_COLOR). A body has NO edge-turn — it only follows its leader down
 // (MT-20). The front body (slot 0) has NO leader, so stepMillipede runs it through
 // move(seg, false) every frame: a pure horizontal march that wrapHs 0xFE -> 0x00
@@ -81,7 +83,7 @@ interface Segment {
 }
 
 interface MillipedeModule {
-  stepMillipede: (segs: Segment[], frame: number, field?: Uint8Array) => Segment[]
+  stepMillipede: (segs: readonly Segment[], frame: number, field?: Uint8Array) => Segment[]
 }
 
 // Computed specifier (the obstac.test.ts / millipede-overlap-turn.test.ts house
@@ -113,7 +115,7 @@ function march(
   const minV = segs.map((s) => s.v)
   const wraps: string[] = []
   for (let f = 0; f < n; f++) {
-    const next = m.stepMillipede(cur as Segment[], f)
+    const next = m.stepMillipede(cur, f)
     next.forEach((s, i) => {
       if (isLive(s)) {
         if (isWrapStep(cur[i].h, s.h)) {
@@ -140,8 +142,9 @@ const head = (o: Partial<Segment> = {}): Segment => ({
 // ═══════════════════════════════════════════════════════════════════════════════
 // GROUP A — the HEAD edge-turn stays correct, with a NON-VACUOUS anti-wrap bound
 // (AC1). These are controls: the head turn already works, and they must keep
-// working. They also supersede the vacuous `h <= LEFT_EDGE + SEG_SPACING` bound in
-// millipede.test.ts, which a wrapped head (h=0x00) trivially satisfies.
+// working. They are STRONGER than the vacuous `h <= LEFT_EDGE + SEG_SPACING` bound
+// still in millipede.test.ts:410 (untouched by this story), which a wrapped head
+// (h=0x00) trivially satisfies; the per-step no-wrap check here does not.
 // ═══════════════════════════════════════════════════════════════════════════════
 describe('ml12-2 head edge-turn — turns + drops, never wraps (AC1 control)', () => {
   it('a head marching into the LEFT edge reverses, descends, and never crosses the byte boundary', async () => {
@@ -211,6 +214,43 @@ describe('ml12-2 headless train — no dead-horizontal wrap (AC2)', () => {
     const { wraps, minV } = march(m, leftbound, 80)
     expect(wraps, `headless train wrapped at the RIGHT edge:\n${wraps.join('\n')}`).toEqual([])
     expect(minV[0], 'the front segment dropped a row at the right edge').toBeLessThan(0x80)
+  })
+
+  it('a body whose ARRAY leader marches the opposite way, into the edge, turns — not wraps', async () => {
+    const m = await loadMillipede()
+    // The second scenario the fix must cover (millipede.ts body-branch comment): a
+    // split has left a sub-run whose front body's array-leader marches the OTHER
+    // way at the same V (gap 0 < a cell ⇒ no follow). Pre-fix the follower coasts
+    // 0xFE->0x00; post-fix it must edge-turn + descend like any front segment.
+    const subrun: Segment[] = [
+      { h: 0xe0, v: 0x80, dh: -2, dv: 2, pic: 0, color: BODY_COLOR }, // leader, receding LEFT
+      { h: 0xe8, v: 0x80, dh: 2, dv: 2, pic: 0, color: BODY_COLOR }, // follower marching into the RIGHT edge
+    ]
+    const { wraps, minV } = march(m, subrun, 80)
+    expect(wraps, `a split sub-run front wrapped instead of turning:\n${wraps.join('\n')}`).toEqual([])
+    expect(minV[1], 'the sub-run front descended at the edge').toBeLessThan(0x80)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GROUP B2 — no-regression control: an INTACT head+body train driven into the edge
+// must be UNAFFECTED by the body edge-turn added to the fix. The body turns by
+// FOLLOWING its leader (SEG_SPACING == BODY_FOLLOW_GAP == 8), reaching the edge
+// exactly as the follow-gap opens; the new edge-branch is never the deciding path.
+// This locks the "coincides with the follow-turn" claim the fix relies on.
+// ═══════════════════════════════════════════════════════════════════════════════
+describe('ml12-2 intact head+body train — unchanged at the edge (AC3 no-regression)', () => {
+  it('an intact head+body train turns at the edge with the body following, no wrap', async () => {
+    const m = await loadMillipede()
+    // Head at the front, one body a cell behind (the CENTPC spacing), marching right.
+    const train: Segment[] = [
+      { h: 0xe8, v: 0x80, dh: 2, dv: 2, pic: HEAD_PIC, color: HEAD_COLOR },
+      { h: 0xe0, v: 0x80, dh: 2, dv: 2, pic: 0, color: BODY_COLOR },
+    ]
+    const { wraps, minV } = march(m, train, 80)
+    expect(wraps, `an intact train wrapped at the edge:\n${wraps.join('\n')}`).toEqual([])
+    expect(minV[0], 'the head dropped a row at the edge').toBeLessThan(0x80)
+    expect(minV[1], 'the body followed the head down (MT-20), never marched off the edge').toBeLessThan(0x80)
   })
 })
 

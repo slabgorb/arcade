@@ -321,16 +321,20 @@ function stepSegment(
     if (leader && Math.abs(leader.v - s.v) >= BODY_FOLLOW_GAP) return move(s, true)
     // A body must still TURN at the screen edge instead of coasting its MOBJH past
     // the byte boundary (wrapH) and re-entering the far side (ml12-2, the owner
-    // playtest finding). The ROM never needs this because a shot train fragments
-    // into sub-trains each led by a PROMOTED head (splitOnTurn, MS-8) that owns the
-    // edge turn — but that promotion (ml3-2) is not wired into the port's kill
-    // path (sim.ts splices a shot segment out with no promotion). So a leaderless
-    // headless-train front, OR a body at the head of a split sub-run whose array
-    // leader marches the other way (gap < a cell, no follow), would otherwise
-    // march dead-horizontal across the screen and wrap. Turning any edge-bound
-    // body is the bounded stand-in until ml3-2 restores head promotion; in an
-    // intact train a body only reaches the edge as its leader's follow-gap opens,
-    // so this coincides with the follow-turn it would take anyway.
+    // playtest finding). This arises because the port's kill path splices a shot
+    // segment out (sim.ts `segments.filter((_, i) => i !== hit)`) with NO head
+    // promotion of any kind — so a shot train goes headless or fragments into
+    // sub-runs with a plain body at each front. (The only head-promotion in the
+    // codebase, splitOnTurn / the bottom-row split MS-7/MS-8 (V<9, MILLI.MAC:1561/
+    // :1590), is unwired everywhere — ml3-2 — and is a BOTTOM-ROW event, not a
+    // shot-kill; it does not cover this.) So a leaderless headless-train front, OR
+    // a body at the head of a split sub-run whose array leader marches the other
+    // way (gap < a cell, no follow), would otherwise march dead-horizontal across
+    // the screen and wrap. Turning any edge-bound body is the bounded stand-in
+    // until ml3-2 restores head promotion. This does not change an intact train:
+    // SEG_SPACING == BODY_FOLLOW_GAP (both 8), so a following body reaches the edge
+    // exactly as its leader's full-cell gap opens and takes the follow-turn above
+    // first — verified by an A/B trajectory diff (ml12-2 review, byte-identical).
     if (atScreenEdge(s)) return move(s, true)
     return move(s, false)
   }
@@ -370,7 +374,9 @@ function stepSegment(
  * Vacant slots (MT-2) are skipped untouched; the leg picture animates every other
  * frame (MT-17/18); the last surviving head speeds up; heads turn at the screen
  * edges (MT-21/22) and descend + reverse at cell-phase 4 (MT-23/25); bodies follow
- * their leader down (MT-20). With an optional `field`, a head turns on a
+ * their leader down (MT-20) and turn at the screen edge when they are NOT
+ * following a leader (ml12-2 — so a headless/fragmented train's front body cannot
+ * march off the edge and wrap). With an optional `field`, a head turns on a
  * cell-ahead mushroom (ml3-6, MILLI.MAC:1527-1539); omit it for free-space MOTION.
  */
 export function stepMillipede(
