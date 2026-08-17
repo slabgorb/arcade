@@ -14,17 +14,19 @@
 // PURE src/core (tests/purity.test.ts scans this file): the swarmer is a process on the
 // ONE shared df3 scheduler (the landers/mutants precedent) — never its own tick — `rand`,
 // `player`, and `fire` are INJECTED. SWARMER_NAP and SWARMER_MAX are fixed ROM bytes, each
-// cited and claim-pinned. The X seek speed, the Y flight (SWXV/SWYV damping/random/clamp,
-// :208-231) and the shot interval are wave-table RAM (SWXV/SWSTIM) the df5 wave logic
-// initialises — no fixed ROM byte to port — so they are df4-5 placeholders (the same
-// disclosure landers.ts/mutants.ts make for LNDYV/SZXV).
+// cited and claim-pinned. The X seek speed, the Y flight (the SWAC-masked random accel,
+// DEFB6.SRC:162, plus its damping/clamp) and the shot interval are wave-table RAM (SWXV/SWSTIM)
+// the df5 wave logic initialises — no fixed ROM byte to port — so they are df4-5 placeholders
+// (the same disclosure landers.ts/mutants.ts make for LNDYV/SZXV).
 
 import type { Scheduler, Process } from './scheduler.js'
 import { approach, type EnemyDeps } from './enemy-motion.js'
 
 /** NAP 3,MSWLP (DEFB6.SRC:249) — the swarmer's per-dispatch tick cadence. */
 export const SWARMER_NAP = 3
-/** SWCNT cap: CMPA #20 / BHI (DEFB6.SRC:148) — at most 20 swarmers alive at once. */
+/** SWCNT cap: CMPA #20 / BHI (DEFB6.SRC:148) — the ROM's ceiling of 20 live swarmers. This
+ *  synthetic story exposes the constant, cited, but does NOT cap `spawnSwarmer`; df5's
+ *  scheduler-integrated spawn enforces the SWCNT refusal (see the Dev deviation). */
 export const SWARMER_MAX = 20
 
 // ─── df4-5 placeholder magnitudes: SWXV/SWSTIM are wave RAM; no fixed ROM byte to port,

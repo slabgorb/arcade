@@ -93,13 +93,21 @@ describe('df4-5 AC-1 — bomber/pod/swarmer identities are a CITED dossier mappi
         `glossary.md row for ${id.key} — GREEN maps the ROM label to its arcade name here`,
       )
 
-      // The arcade identity is stated in plain English on the row (the anti-guess tooth). This
-      // is the assertion that catches the AC1 guess: a row that said "Probe" or mapped START
-      // BOMB to the bomber would NOT satisfy the source-true names required here.
+      // The arcade identity must be the row's BOLD PRIMARY declaration ("the **Name**"), the
+      // anti-guess tooth. Matching id.arcade anywhere in the row is VACUOUS: each row repeats
+      // the arcade name in its "TIE→Bomber identity" correction clause and its `BOMBER FCC`
+      // quote, so a WRONG bold label (the TIE row saying "the **Pod**") still matched and shipped
+      // green — the exact "wrong identity in prose ships GREEN" trap the epic names (lang-review
+      // #15). Anchor to the bold label and require EVERY matched row's bold name to be the source
+      // -true arcade name (.every, not .some — one right row must not mask a wrong sibling).
       expect(
-        rows.some((r) => id.arcade.test(r)),
-        `the glossary row for ${id.key} must state the ARCADE name in prose (${id.arcade}); ` +
-          "the story's AC1 mapping was a guess the ROM disproves — a wrong identity in prose is " +
+        rows.every((r) => {
+          const bold = /the \*\*([^*]+)\*\*/.exec(r)
+          return bold !== null && id.arcade.test(bold[1])
+        }),
+        `the glossary row for ${id.key} must declare the ARCADE name in its BOLD primary label ` +
+          `(the **Name** matching ${id.arcade}); a name buried elsewhere in the row is not enough — ` +
+          "the story's AC1 mapping was a guess the ROM disproves, and a wrong bold identity is " +
           'exactly the "ships GREEN" trap the epic names',
       ).toBe(true)
 
