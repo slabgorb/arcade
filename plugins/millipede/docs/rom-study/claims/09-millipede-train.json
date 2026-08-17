@@ -168,5 +168,10 @@
     "id": "MT-34",
     "claim": "The last-head speed-up forces the per-frame step magnitude to 2 on both axes: LDA I,2 (a BPL sign test then chooses +2 or -2) followed by STA MOBJDH / STA MOBJDV ;SPEED UP LAST HEAD.",
     "source": { "file": "MILLI.MAC", "line": 1487, "verbatim": "\tLDA I,2" }
+  },
+  {
+    "id": "MT-35",
+    "claim": "A motion object whose MOBJV (after EOR CKF8 for the cocktail flip) is >= 0xF4 is OFF THE TOP OF THE SCREEN — it is above the visible field. Read in the shot/object sweep: MOBJV is loaded, EOR CKF8, compared to 0xF4, and BCS branches to skip it \"IF OFF TOP OF SCREEN\" (MILLI.MAC:1869-1872). The wave-start train enters at ENTER_V=0xF8 (>= 0xF4), so the connected train is off the top by this rule; the render declines to paint it there (OFFTOP_V, segmentOnScreen).",
+    "source": { "file": "MILLI.MAC", "line": 1871, "verbatim": "\tCMP I,0F4" }
   }
 ]
