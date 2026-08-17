@@ -11,11 +11,13 @@ stories:
     description: 'When the ostrich is landed and the joystick is centered (no input), the stored horizontal velocity should be 0. Currently it retains velocity: the ostrich runs in place while landed, and on launch takes off at full horizontal speed. Expected: landing with no directional input zeroes stored horizontal velocity.'
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: 'Round 2 APPROVED. Round-1 findings all resolved + mutation-verified: F3 docstring restored; F1 touch-and-go-after-landing test (kills drop-wasAirborne); F2/F5 exact FRCONV ladder [8,6,4,2,0] + tight bound; F6 left no-fling mirror; F4/F7 doc scoping. Two round-2 comment nits corrected. Runtime correct + unchanged since round 1; full cabinet green (joust 3701, all-apps 17177, orchestrator 505, lint clean). No Critical/High.'
+    review_verdict: approved
   - id: jt13-2
     title: Players and enemies warp-in spawn animation
     description: Players and enemies should 'warp' in with a visible spawn animation. User suspects this was never implemented (rather than removed for accessibility/safety — if it was removed, that was overkill). Investigate whether a warp-in ever existed in the joust core/shell or the ROM reference, then implement a visible spawn/warp-in animation for player and enemy spawns.
