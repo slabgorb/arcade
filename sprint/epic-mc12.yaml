@@ -84,7 +84,7 @@ stories:
     title: "Render fidelity round 3 (two fixes on one render.ts surface — grouped per the file-by-surface habit so they share one review). (a) DROP the incoming-ICBM 'lollipop': render.ts:175 fills a headR disc (ctx.arc) at each ICBM head; the cabinet draws incoming missiles as a trail with a flashing 1px tip like the ABM ('TIP OF MISSILE TRAIL IS FLASH' W3DSUP.MAC:931; DRAW MISSILE W3DSUP.MAC:1221), no disc. (b) AUTHENTIC bomber/satellite: render.ts:186-189 draws each sputnik/plane as a fillRect wing/box placeholder ('pixel-authentic plane sprite ... are mc9', which mc9-1 never did); port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP stamp layer as mc9-1 did for cities (WRITE A STAMP W3DSUP.MAC:587; locate the plane/satellite stamp label; sputnik.json claim exists). Shell-only; enemy hue (COL010) unchanged; purity stays green."
     points: 4
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
@@ -92,6 +92,7 @@ stories:
       - "AC1: incoming ICBMs render as a trail plus an authentic flashing tip and NO filled head disc — a render-mock test asserts no head-circle is drawn for an ICBM head and that the tip matches the ABM tip treatment; the render source cites DRAW MISSILE (W3DSUP.MAC:1221) and the flash tip (W3DSUP.MAC:931)."
       - "AC2: live bomber and satellite render from authentic W3DSUP-derived stamp geometry (not a fillRect wing/box), positioned by the existing project() mapping at the plane's position and in the enemy hue; the stamp data lives in src/shell (no src/core change) and cites WRITE A STAMP (W3DSUP.MAC:587) plus the located plane/satellite stamp label / sputnik.json."
       - "AC3: render tests assert bomber vs satellite draw DISTINCTLY against the canvas-mock harness and that the guards are non-vacuous (a decoy that references the symbol without drawing it reddens — the mc10-7 lesson); purity.test.ts stays green. On-screen confirmation is carried by mc12-4."
+    completed: '2026-08-17'
   - id: mc12-3
     title: "Pointer-lock TRACKBALL aim, made the DEFAULT (matching centipede/millipede). Missile Command is a trackball cabinet; mc10-1 chose ABSOLUTE aim to kill the twitch of relative-WITHOUT-lock (1px=1unit over a ~2000px canvas) and explicitly deferred 'trackball (relative+pointer-lock, scaled) as an optional later mode'. Build it and default to it: reuse centipede/millipede's createPointerLock + movementX/Y mouse adapter (plugins/centipede/src/shell/input.ts) and the EXISTING pure core moveCursor (relative applier + clamp, game.ts:319/335), scaled so it is not twitchy; main.ts:85-89 stops using the absolute placeCursor for live aim. Completes mc10-1 (not a reversal of its twitch fix) — logged as an ADR-delta. Shell input + reuse of existing core; purity stays green."
     points: 3

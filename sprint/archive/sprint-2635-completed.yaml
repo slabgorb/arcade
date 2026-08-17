@@ -104,3 +104,8 @@ completed_stories:
     title: "Landers + humanoid abduction (the signature loop): plugins/defender/src/core/ enemy reducers for the LANDS0 lander process (START LANDERS, defender/DEFB6.SRC:649,657 — a scheduler process), the LANDER KIDNAP grab (defender/DEFB6.SRC:688), the ASTRONAUT humanoid process (defender/DEFB6.SRC:290), and the shot-carrier -> AFALL falling-humanoid chain (KILL KIDNAPPING LANDER, defender/DEFB6.SRC:903,911). The grab -> carry-to-top -> transform-trigger loop that is Defender's heart. FIRST map the ROM labels to arcade enemy names in the dossier, CITED, before naming the reducer. Consumes df4-1 (collision) + df4-2 (materialize/explode)."
     points: 5
     completed: '2026-08-17'
+  - id: mc12-2
+    epic: mc12
+    title: "Render fidelity round 3 (two fixes on one render.ts surface — grouped per the file-by-surface habit so they share one review). (a) DROP the incoming-ICBM 'lollipop': render.ts:175 fills a headR disc (ctx.arc) at each ICBM head; the cabinet draws incoming missiles as a trail with a flashing 1px tip like the ABM ('TIP OF MISSILE TRAIL IS FLASH' W3DSUP.MAC:931; DRAW MISSILE W3DSUP.MAC:1221), no disc. (b) AUTHENTIC bomber/satellite: render.ts:186-189 draws each sputnik/plane as a fillRect wing/box placeholder ('pixel-authentic plane sprite ... are mc9', which mc9-1 never did); port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP stamp layer as mc9-1 did for cities (WRITE A STAMP W3DSUP.MAC:587; locate the plane/satellite stamp label; sputnik.json claim exists). Shell-only; enemy hue (COL010) unchanged; purity stays green."
+    points: 4
+    completed: '2026-08-17'
