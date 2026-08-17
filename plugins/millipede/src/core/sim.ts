@@ -43,7 +43,7 @@ import {
   DDT_KILL_BODY_PTS,
   DDT_KILL_HEAD_PTS,
 } from './ddt'
-import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
+import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN, musher, type MushCounts } from './mushroom'
 import { initConway, masterStep } from './conway'
 import { scrollDispatch, scrollDown, scrollUp, type ScrollGate } from './scroll'
 import { recolourField } from './field-recolour'
@@ -156,6 +156,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //    then, if the shot passed through, the millipede segments.
   let segments = state.segments
   let score = state.score
+  // MUSH bumps from mushrooms a kill plants this frame (MUSHER INC MUSH); folded into
+  // the running tally below alongside the DDT-explosion deltas (ml13-1).
+  const killMush: MushCounts = { lower: 0, top: 0 }
   // HITDDT (MLDEF.MAC:373) — a persistent flag; carry the prior value forward and
   // set/clear it at the ROM's sites this frame (SC-9, suppresses the scroll arm below).
   let hitDdt = state.hitDdt
@@ -177,8 +180,15 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   if (shot.active) {
     const hit = segments.findIndex((s) => isLive(s) && checkPlayerCollision(s, { h: shot.h, v: shot.v }))
     if (hit >= 0) {
+      const dead = segments[hit]
       segments = segments.filter((_, i) => i !== hit)
       score += SEGMENT_PTS
+      // MUSHER — a shot kill leaves a mushroom at the dead segment's OWN cell (SHOOT2
+      // 142$ :2163-2164 JSR OBSTA0/JSR MUSHER, dir 0 = "GIVE NO DIRECTION" :1996).
+      // musher() no-ops on a non-empty/excluded cell, so an open cell gets a full
+      // mushroom + a MUSH tally bump. (A DDT kill lands on its CLOUD cell, which is
+      // non-empty, so MUSHER skips there — that path plants nothing, ml13-1 / :739.)
+      musher(state.field, obstacOffset(dead.h, dead.v, 0), killMush)
       shot = { active: false, h: 0, v: 0 }
       events.push(event('segment-killed'))
     }
@@ -357,8 +367,8 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // Death STAs SCROLC before SCROLL would run (MILLI.MAC:1812 "STOP ANY EXISTING
   // SCROLLING") — a pending scroll is cancelled, not carried into the animation.
   if (playerDied) scrolc = 0
-  let mushLower = state.mushCounts.lower + ddtBoom.mush
-  let mushTop = state.mushCounts.top + ddtBoom.mushTop
+  let mushLower = state.mushCounts.lower + ddtBoom.mush + killMush.lower
+  let mushTop = state.mushCounts.top + ddtBoom.mushTop + killMush.top
   const liveSegs = segments.filter(isLive).length
   const scrollGate: ScrollGate = {
     attract: false, // MODE bit 7 is clear in play (SC-5)
