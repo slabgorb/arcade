@@ -10,7 +10,7 @@ stories:
     title: Segment kills leave a mushroom (MUSHER) at the dead cell — both shot-kill and DDT-kill paths
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
     repos: arcade
     workflow: tdd
     type: bug
