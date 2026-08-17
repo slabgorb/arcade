@@ -66,9 +66,10 @@ const HEAD_COLOR = 0x39 // MT-5  (MILLI.MAC:542 "LDA I,39")
 const BODY_COLOR = 0x3d // MT-6  (MILLI.MAC:600 "LDA I,3D")
 const VACANT_COLOR = 0x00 // MT-2 (MILLI.MAC:1455)
 const HEAD_PIC = 0x03 // MT-4   (MILLI.MAC:520 "LDA I,03")
-const LEFT_EDGE = 0xf0 // MT-21  (MILLI.MAC:1511 "CMP I,0F0") — turn threshold marching right
-const RIGHT_EDGE = 0x10 // MT-22 (MILLI.MAC:1519 "CMP I,10")  — turn threshold marching left
-const SEG_SPACING = 0x08 // MT-10 (MILLI.MAC:593/596) — the ±8 body spacing / one cell
+// The horizontal turn thresholds this story is about — LEFT_EDGE = 0xF0 (MT-21,
+// MILLI.MAC:1511) marching right, RIGHT_EDGE = 0x10 (MT-22, :1519) marching left.
+// The no-wrap check below uses a wider band (0xE0 / 0x20) around the 0x00/0xFF
+// byte boundary so it catches the mod-256 re-entry itself, not the turn point.
 
 interface Segment {
   h: number

@@ -274,6 +274,13 @@ function move(seg: Segment, descending: boolean): Segment {
   return { ...seg, v: newV, h, dh }
 }
 
+/** The screen-edge turn condition (MT-21/22): a segment at the left edge marching
+ *  right, or the right edge marching left. A segment already receding from an edge
+ *  is not turned. Shared by the head reaction and the headless front-body fix
+ *  (ml12-2) so both read one definition of "at the edge". */
+const atScreenEdge = (s: Segment): boolean =>
+  (s.dh >= 0 && s.h >= LEFT_EDGE) || (s.dh < 0 && s.h < RIGHT_EDGE)
+
 /** Step one live segment one FREE-SPACE frame. `leader` is the pre-frame segment
  *  ahead (slot i-1), read before it is re-stepped this frame (ROM walks high→low). */
 function stepSegment(
@@ -312,6 +319,19 @@ function stepSegment(
   // cell; otherwise march horizontally.
   if (s.color === BODY_COLOR) {
     if (leader && Math.abs(leader.v - s.v) >= BODY_FOLLOW_GAP) return move(s, true)
+    // A body must still TURN at the screen edge instead of coasting its MOBJH past
+    // the byte boundary (wrapH) and re-entering the far side (ml12-2, the owner
+    // playtest finding). The ROM never needs this because a shot train fragments
+    // into sub-trains each led by a PROMOTED head (splitOnTurn, MS-8) that owns the
+    // edge turn — but that promotion (ml3-2) is not wired into the port's kill
+    // path (sim.ts splices a shot segment out with no promotion). So a leaderless
+    // headless-train front, OR a body at the head of a split sub-run whose array
+    // leader marches the other way (gap < a cell, no follow), would otherwise
+    // march dead-horizontal across the screen and wrap. Turning any edge-bound
+    // body is the bounded stand-in until ml3-2 restores head promotion; in an
+    // intact train a body only reaches the edge as its leader's follow-gap opens,
+    // so this coincides with the follow-turn it would take anyway.
+    if (atScreenEdge(s)) return move(s, true)
     return move(s, false)
   }
 
@@ -341,8 +361,7 @@ function stepSegment(
   // Head screen-edge turn (MT-21/22), direction-aware: at the left edge marching
   // right, or the right edge marching left, drop a row and reverse; otherwise
   // march. A head already receding from an edge is not re-turned.
-  const atEdge = (s.dh >= 0 && s.h >= LEFT_EDGE) || (s.dh < 0 && s.h < RIGHT_EDGE)
-  if (atEdge) return move(s, true)
+  if (atScreenEdge(s)) return move(s, true)
   return move(s, false)
 }
 
