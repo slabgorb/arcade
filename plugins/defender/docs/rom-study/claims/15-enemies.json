@@ -79,5 +79,59 @@
       "line": 930,
       "verbatim": "\tCMPD\t#$300"
     }
+  },
+  {
+    "id": "EN-10",
+    "claim": "A grabbing lander tracks its target horizontally in $20 steps: LANDG loads LDB #-$20 (right-branch mirror LDB #$20 at :761) — the HUNT_X_STEP magnitude in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 759,
+      "verbatim": "\tLDB\t#-$20"
+    }
+  },
+  {
+    "id": "EN-11",
+    "claim": "The humanoid (ASTRO) walks in $20 steps: ASTRX2 loads LDB #$20 for the walk-right move (left-branch mirror LDB #-$20 at :331) — the WALK_STEP magnitude in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 354,
+      "verbatim": "ASTRX2\tLDB\t#$20"
+    }
+  },
+  {
+    "id": "EN-12",
+    "claim": "LANDG3 'ARE WE ON HIM?' accepts a grab when the lander/target X distance is within $80: CMPD #$80 — the GRAB_X_TOL window in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 781,
+      "verbatim": "\tCMPD\t#$80"
+    }
+  },
+  {
+    "id": "EN-13",
+    "claim": "LANDG3 aligns the lander within 12 rows of the target's Y before grabbing: SUBA #12 against OY16 — the GRAB_Y_TOL window in core/landers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 766,
+      "verbatim": "\tSUBA\t#12"
+    }
+  },
+  {
+    "id": "EN-14",
+    "claim": "The ASTRO humanoid turns around when the SEED byte is <= 8: CMPA #8 / BLS (walk-right mirror CMPA #$8 / BLS at :335) — the WALK_TURN_THRESHOLD in core/landers.ts (a SEED<=8 turn test, not a higher guessed value).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 312,
+      "verbatim": "\tCMPA\t#8"
+    }
+  },
+  {
+    "id": "EN-15",
+    "claim": "The lander's vertical velocity is LNDYV, a 2-byte RAM cell the df5 wave logic initialises: LNDYV RMB 2. df4-3 has no fixed ROM magnitude for descent/carry speed to port, so DESCEND_STEP/CARRY_STEP in core/landers.ts are disclosed df4-3 placeholders pending df5.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 393,
+      "verbatim": "LNDYV\tRMB\t2"
+    }
   }
 ]

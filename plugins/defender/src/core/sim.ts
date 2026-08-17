@@ -113,8 +113,8 @@ function withEnemies(state: SimState): SimState {
   return { ...state, landers: state._enemyBank.landers, humanoids: state._enemyBank.humanoids }
 }
 
-/** Spawn a lander at the top, descending (LANDST, DEFB6.SRC:657). Returns a new SimState
- *  with the lander in its `landers` view. A df5 wave spawner / df4-6 calls this. */
+/** Spawn a lander at the top, descending (*START LANDERS, DEFB6.SRC:649). Returns a new
+ *  SimState with the lander in its `landers` view. A df5 wave spawner / df4-6 calls this. */
 export function spawnLander(state: SimState, x: number): SimState {
   state._enemyBank.spawnLander(x)
   return withEnemies(state)

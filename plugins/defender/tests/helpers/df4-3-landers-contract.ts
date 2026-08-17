@@ -9,8 +9,9 @@
 // The module is a brand-new core file, so it is namespace-imported and cast against
 // the contract below: the stub type-checks as `{}` today (npm run lint stays green),
 // and the runtime guard in loadLanders() fails every assertion until GREEN lands the
-// real exports. This is the sanctioned brand-new-module RED seam, deliberately the
-// one place the `as unknown as` cast lives so the suites themselves stay type-honest.
+// real exports. This is the sanctioned brand-new-module RED seam; the namespace is a
+// single-step `as` to the contract shape (the module and the contract overlap, so no
+// `unknown` hop is needed), keeping the suites themselves type-honest.
 
 import type { Scheduler } from '../../src/core/scheduler.js'
 import type { Facing } from '../../src/core/world.js'
@@ -81,7 +82,7 @@ export interface LandersModule {
  * assertion reads as an ABSENT FEATURE, not a broken test.
  */
 export function loadLanders(): LandersModule {
-  const m = landersModule as unknown as Partial<LandersModule>
+  const m = landersModule as Partial<LandersModule>
   if (typeof m.createEnemyBank !== 'function') {
     throw new Error(
       'plugins/defender/src/core/landers.ts is not built yet — GREEN (Yoda) implements ' +
@@ -90,7 +91,7 @@ export function loadLanders(): LandersModule {
         'claims/*.json entry. See tests/helpers/df4-3-landers-contract.ts for the full shape.',
     )
   }
-  return m as unknown as LandersModule
+  return m as LandersModule
 }
 
 /**

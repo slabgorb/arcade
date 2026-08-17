@@ -23,39 +23,43 @@
 // PURE src/core (tests/purity.test.ts scans this file): enemies are processes on the
 // ONE shared df3 scheduler (the laser.ts precedent) — never their own tick — the spawn
 // entropy is INJECTED as `rand`, and no colour is named here (the render blits LNDP1 /
-// ASTP1 by df2 palette INDEX). Every constant is cited above / inline and pinned by a
-// claims/*.json entry (the df1-1 gate). Velocity MAGNITUDES are df4-3 placeholders: the
-// authentic LNDYV/LNDXV are wave-table RAM (PHR6.SRC:392-393), initialised by the df5
-// wave logic — this core reproduces travel DIRECTION and the grab/carry/fall STRUCTURE,
-// leaving the exact speeds to df5 (the same call laser.ts's STEP makes).
+// ASTP1 by df2 palette INDEX). Every constant here is cited to its DEFB6.SRC instruction
+// and pinned by a claims/*.json entry (the df1-1 gate) — EXCEPT the two vertical speeds
+// DESCEND_STEP/CARRY_STEP, which are df4-3 placeholders: the authentic descent velocity
+// LNDYV is wave-table RAM (PHR6.SRC:393) the df5 wave logic initialises, so there is no
+// fixed magnitude to port yet. This core reproduces travel DIRECTION and the grab/carry/
+// fall STRUCTURE; df5 supplies the exact vertical speeds (the same call laser.ts's STEP makes).
 
 import type { Scheduler, Process } from './scheduler.js'
 import { YMIN, YMAX, type Facing } from './world.js'
 
 /** LDA #YMIN+2 / STA OY16 (DEFB6.SRC:663-664) — landers appear two rows below the top. */
 export const LANDER_SPAWN_Y = YMIN + 2
-/** CMPA #YMIN+8 / BLS LANDFX (DEFB6.SRC:798) — a carrying lander triggers the transform here. */
+/** CMPA #YMIN+8 / BLS LANDFX (DEFB6.SRC:798-799) — a carrying lander triggers the transform here. */
 export const LANDER_TOP_Y = YMIN + 8
 /** LDD #8 ACCEL DOWNWARD (DEFB6.SRC:928) — the AFALL per-tick downward acceleration. */
 export const AFALL_ACCEL = 8
 /** CMPD #$300 (DEFB6.SRC:930) — the AFALL terminal fall-speed cap. */
 export const AFALL_MAX_FALL = 0x300
 
-// ─── df4-3 placeholder magnitudes (structure is ROM, speeds await df5 wave tables) ───
-/** Lander vertical approach speed toward the target's altitude (rows/tick). */
-const DESCEND_STEP = 2
-/** Carry ascent speed once a humanoid is grabbed (rows/tick), the COM(LNDYV) up-split (:785). */
-const CARRY_STEP = 2
-/** Lander horizontal hunt step toward the target column (screen-x units; column = x>>8). */
-const HUNT_X_STEP = 0x40
-/** ASTRO walk step (±$20, DEFB6.SRC:331,354). */
+// ─── Exact ROM magnitudes (byte-cited; claims EN-10..EN-14) ──────────────────────────
+/** Lander horizontal hunt step toward the target column: the LANDG ±$20 move (DEFB6.SRC:759). */
+const HUNT_X_STEP = 0x20
+/** ASTRO walk step, ±$20 per move (DEFB6.SRC:354; mirror at :331). */
 const WALK_STEP = 0x20
 /** Grab X window — LANDG3 tests the closing distance against $80 "on him" (DEFB6.SRC:781). */
 const GRAB_X_TOL = 0x80
-/** Grab Y window — LANDG3 aligns within ~12 rows of the target (DEFB6.SRC:766). */
+/** Grab Y window — LANDG3 aligns within 12 rows of the target (DEFB6.SRC:766). */
 const GRAB_Y_TOL = 12
-/** ASTRO turn-around chance per walk step, gated on the injected entropy (SEED, DEFB6.SRC:311). */
-const WALK_TURN_THRESHOLD = 0x20
+/** ASTRO turn-around threshold: the ROM turns when SEED <= 8 (CMPA #8 / BLS, DEFB6.SRC:312; mirror :335). */
+const WALK_TURN_THRESHOLD = 8
+
+// ─── df4-3 placeholder magnitudes: the vertical speeds ARE the wave-table RAM LNDYV
+//     (PHR6.SRC:393) that df5 initialises — no fixed ROM value to port yet (claim EN-15). ──
+/** Lander vertical approach speed toward the target's altitude (rows/tick, df4-3 placeholder). */
+const DESCEND_STEP = 2
+/** Carry ascent speed once a humanoid is grabbed (rows/tick, df4-3 placeholder); COM(LNDYV) up-split (:785). */
+const CARRY_STEP = 2
 
 /** The scheduler PTYPE tags — opaque ids; any distinct values (df3 scheduler.ts). */
 const LANDER_PTYPE = 2
@@ -89,8 +93,13 @@ export interface Lander {
 export interface EnemyBank {
   readonly landers: readonly Lander[]
   readonly humanoids: readonly Humanoid[]
+  /** Place a humanoid on the terrain at (x, y). Rejects a non-finite coord (spawns nothing). */
   spawnHumanoid: (x: number, y: number) => Humanoid | null
+  /** Spawn a lander at the top (LANDER_SPAWN_Y), descending; it targets the nearest walking
+   *  humanoid (GTARG). Rejects a non-finite x (spawns nothing). */
   spawnLander: (x: number) => Lander | null
+  /** Kill a lander (LKIL1, DEFB6.SRC:905). If it was CARRYING, the humanoid is dropped into an
+   *  AFALL free-fall (NEWP AFALL,STYPE :911); a lander carrying nobody drops no one. */
   killLander: (lander: Lander) => void
 }
 
@@ -270,7 +279,9 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
   }
 
   const killLander = (lander: Lander): void => {
-    const rec = landers.find((l) => l === (lander as unknown as LanderRecord))
+    // `lander` IS one of our LanderRecord values (the views hand back the live records);
+    // LanderRecord structurally satisfies Lander, so identity comparison needs no cast.
+    const rec = landers.find((l) => l === lander)
     if (!rec || !rec.alive) return
 
     // LKIL1 (DEFB6.SRC:905): a carrier WITH a live passenger drops it into a free-fall

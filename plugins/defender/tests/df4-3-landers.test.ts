@@ -23,7 +23,7 @@
 import { describe, it, expect } from 'vitest'
 import { createScheduler } from '../src/core/scheduler.js'
 import { YMIN } from '../src/core/world.js'
-import { loadLanders, stepUntil, type EnemyBank } from './helpers/df4-3-landers-contract'
+import { loadLanders, stepUntil, type EnemyBank } from './helpers/df4-3-landers-contract.js'
 
 // A generous "eventually" bound: descent/carry speeds are GREEN's to derive from
 // LNDYV, so these scenarios assert the loop REACHES each state, not how fast. If an
@@ -43,12 +43,17 @@ function freshBank(rand: () => number = constRand): { sched: ReturnType<typeof c
 }
 
 describe('df4-3 — the LANDER: spawns at the top, descends (LANDST/LANDS0, DEFB6.SRC:649,688)', () => {
-  it('exposes the cited spawn/top constants relative to YMIN', () => {
+  it('exposes the cited spawn/top/fall constants at their byte-verified ROM magnitudes', () => {
     const m = loadLanders()
     // LDA #YMIN+2 / STA OY16 (DEFB6.SRC:663) — landers appear two rows below the top.
     expect(m.LANDER_SPAWN_Y).toBe(YMIN + 2)
     // CMPA #YMIN+8 / BLS LANDFX (DEFB6.SRC:798) — the carry triggers the transform here.
     expect(m.LANDER_TOP_Y).toBe(YMIN + 8)
+    // LDD #8 ACCEL DOWNWARD (DEFB6.SRC:928) — pin the exact AFALL acceleration, not just its
+    // sign: an ordering-only test ("Y increases") passes for any positive accel (lang-review #29).
+    expect(m.AFALL_ACCEL).toBe(8)
+    // CMPD #$300 (DEFB6.SRC:930) — pin the exact terminal-fall cap; a removed/raised cap must redden.
+    expect(m.AFALL_MAX_FALL).toBe(0x300)
   })
 
   it('a spawned lander starts at LANDER_SPAWN_Y, alive, empty-handed, and is a scheduler process', () => {
