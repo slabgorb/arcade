@@ -133,5 +133,104 @@
       "line": 393,
       "verbatim": "LNDYV\tRMB\t2"
     }
+  },
+  {
+    "id": "EN-16",
+    "claim": "The MUTANT is the process the source starts under the *START SCHITZOS banner (SCZ / 'schizoid'). This is the arcade-marketing 'Mutant' — the enemy a Lander becomes on reaching the top, mapped in glossary.md.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 585,
+      "verbatim": "*START SCHITZOS"
+    }
+  },
+  {
+    "id": "EN-17",
+    "claim": "Each schizoid is spawned as a scheduler process running the SCZ0 body: SCZS0 NEWP SCZ0,STYPE — the Mutant IS a process (NEWP/STYPE), never its own tick.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 592,
+      "verbatim": "SCZS0\tNEWP\tSCZ0,STYPE"
+    }
+  },
+  {
+    "id": "EN-18",
+    "claim": "A carrying Lander that reaches the top transforms into a Mutant: SCZ00 DEC LNDCNT (INC SCZCNT on the next line) swaps one Lander for one schizoid — the lander->mutant transform df4-3's reachedTop trigger drives (transformLander in core/mutants.ts).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 828,
+      "verbatim": "SCZ00\tDEC\tLNDCNT"
+    }
+  },
+  {
+    "id": "EN-19",
+    "claim": "The Mutant process re-naps every 3 ticks: NAP 3,SCZ0 — the SCHIZO_NAP cadence in core/mutants.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 901,
+      "verbatim": "SCZ12\tNAP\t3,SCZ0"
+    }
+  },
+  {
+    "id": "EN-20",
+    "claim": "The BAITER is Williams' internal 'UFO' process: UFOST NEWP UFOLP,STYPE spawns it running the UFOLP body. This is the arcade-marketing 'Baiter', the timeout pursuer, mapped in glossary.md.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 5,
+      "verbatim": "UFOST\tNEWP\tUFOLP,STYPE"
+    }
+  },
+  {
+    "id": "EN-21",
+    "claim": "The UFO/Baiter process body is UFOLP, under the *UFO PROCESS banner: it seeks the player and shoots.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 25,
+      "verbatim": "*UFO PROCESS"
+    }
+  },
+  {
+    "id": "EN-22",
+    "claim": "The Baiter's shot timer initialises to 8: LDA #8 (STA PD2,U INIT SHOT TIMER on the next line) — the UFO_SHOT_TIMER_INIT constant in core/ufo.ts, the first-shot delay.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 21,
+      "verbatim": "\tLDA\t#8"
+    }
+  },
+  {
+    "id": "EN-23",
+    "claim": "The UFO/Baiter process re-naps every 6 ticks: NAP 6,UFOLP — the UFO_NAP cadence in core/ufo.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 46,
+      "verbatim": "UFO3\tNAP\t6,UFOLP"
+    }
+  },
+  {
+    "id": "EN-24",
+    "claim": "The Baiter's velocity is the UFONV player-seek routine, under the *UFO VELOCITY banner: it aims the UFO's OXV/OYV toward the player (PLABX/PLAYC), with the vertical seek halved (ASRA, :76).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 48,
+      "verbatim": "*UFO VELOCITY"
+    }
+  },
+  {
+    "id": "EN-25",
+    "claim": "The Baiter is spawned on a TIMEOUT, not per-wave: the GEX002 countdown calls JSR UFOST when its timer expires (capped at 12 UFOs) — this is the 'timeout pursuer' the arcade calls the Baiter, sourcing the UFO->Baiter identity rather than assuming it.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1690,
+      "verbatim": "\tJSR\tUFOST"
+    }
+  },
+  {
+    "id": "EN-26",
+    "claim": "The arcade-marketing name for the UFO process is spelled out in the message ROM: BAITER FCC \"BAITER/\" — the UFO->Baiter identity is SOURCED here, not an assumption (the story's own caution).",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 337,
+      "verbatim": "BAITER\tFCC\t\"BAITER/\""
+    }
   }
 ]
