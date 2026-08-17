@@ -91,15 +91,20 @@ export function createUfoBank(sched: Scheduler, deps: EnemyDeps): UfoBank {
       if (!rec.alive) return // killed: UFOKIL freed it; SUCIDE
 
       const p = deps.player()
-      // SEEK the player: X toward PLABX, Y toward PLAYC at half the rate (UFONV, DEFB6.SRC:53-78).
-      rec.x = approach(rec.x, p.x, SEEK_X_STEP)
-      rec.y = approach(rec.y, p.y, SEEK_Y_STEP)
+      // Guard the per-tick injected pose (lang-review #21): a non-finite player() must not
+      // poison approach()/fire() and permanently NaN the baiter.
+      const seekable = Number.isFinite(p.x) && Number.isFinite(p.y)
+      if (seekable) {
+        // SEEK the player: X toward PLABX, Y toward PLAYC at half the rate (UFONV, DEFB6.SRC:53-78).
+        rec.x = approach(rec.x, p.x, SEEK_X_STEP)
+        rec.y = approach(rec.y, p.y, SEEK_Y_STEP)
+      }
       // SHOOT on the timer, aimed at the player (DEC PD2 / JSR SHOOT, DEFB6.SRC:30-35). The
       // timer STARTS at 8, so the first shot is delayed — it does not fire on the first tick.
       rec.shotTimer -= 1
       if (rec.shotTimer <= 0) {
         rec.shotTimer = SHOT_RELOAD // LDA UFSTIM / STA PD2 — reload
-        deps.fire(rec.x, rec.y, p.x, p.y)
+        if (seekable) deps.fire(rec.x, rec.y, p.x, p.y)
       }
       s.sleep(UFO_NAP, step) // NAP 6,UFOLP (:46)
     }

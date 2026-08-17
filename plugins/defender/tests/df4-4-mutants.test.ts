@@ -48,27 +48,39 @@ interface Shot {
   toY: number
 }
 
-/** Spin up a fresh scheduler + mutant bank with a fixed player and a recording fire sink. */
-function freshBank(player: PlayerPos): {
+interface Rig {
   sched: ReturnType<typeof createScheduler>
   bank: MutantBank
   shots: Shot[]
-} {
+}
+
+/** Spin up a fresh scheduler + mutant bank with an injectable player provider and SEED source. */
+function makeBank(playerFn: () => PlayerPos, rand: () => number = constRand): Rig {
   const sched = createScheduler()
   const shots: Shot[] = []
   const deps: EnemyDeps = {
-    rand: constRand,
-    player: () => player,
+    rand,
+    player: playerFn,
     fire: (fromX, fromY, toX, toY) => shots.push({ fromX, fromY, toX, toY }),
   }
   const bank = loadMutants().createMutantBank(sched, deps)
   return { sched, bank, shots }
 }
 
+/** Fixed player, default constant SEED. */
+function freshBank(player: PlayerPos): Rig {
+  return makeBank(() => player)
+}
+
+/** Fixed player, an explicit SEED source (for pinning the SEED-driven Y-hop sign). */
+function freshBankRand(player: PlayerPos, rand: () => number): Rig {
+  return makeBank(() => player, rand)
+}
+
 describe('df4-4 — the MUTANT: exists as a cited process (SCZS0, DEFB6.SRC:592, NAP 3 :901)', () => {
   it('exposes SCHIZO_NAP at its byte-verified ROM magnitude (NAP 3,SCZ0)', () => {
     // Pin the exact cadence, not just "some nap": NAP 3,SCZ0 (DEFB6.SRC:901). A changed
-    // cadence (e.g. copying the lander's NAP 2) must redden — the mutant is faster.
+    // cadence (e.g. copying the humanoid's NAP 2, DEFB6.SRC:359) must redden.
     expect(loadMutants().SCHIZO_NAP).toBe(3)
   })
 
@@ -145,13 +157,42 @@ describe('df4-4 — the MUTANT is a "schizo": a RANDOM Y HOP kept on-strip (SCZ1
     // …but the hop wraps/clamps onto the strip: CMPB #YMIN / BHS … / LDB #YMAX (:888-890).
     // Step a long run and assert the mutant is NEVER off-strip — a hop off the top/bottom
     // is a NaN/overflow bug (lang-review #21), not authentic schizo motion.
-    for (let t = 0; t < 3000; t++) {
+    //
+    // The mutant is never killed here, so it MUST persist all 3000 ticks: assert its presence
+    // each tick (no vacuous early `break` — a mutant that vanished early would otherwise pass
+    // this guard without checking anything, lang-review #15) and that the loop ran to completion.
+    const STRIP_TICKS = 3000
+    let ticksChecked = 0
+    for (let t = 0; t < STRIP_TICKS; t++) {
       sched.stepTick()
-      const y = bank.mutants[0]?.y
-      if (y === undefined) break
+      const m = bank.mutants[0]
+      expect(m, `the mutant must persist through tick ${t} — a vanished mutant makes this guard vacuous`).toBeDefined()
+      const y = m ? m.y : Number.NaN // a vanished mutant → NaN, which fails BOTH bounds below
       expect(y, `the mutant left the [${YMIN}, ${YMAX}] strip at tick ${t} (y=${y})`).toBeGreaterThanOrEqual(YMIN)
       expect(y).toBeLessThanOrEqual(YMAX)
+      ticksChecked++
     }
+    expect(ticksChecked, 'the strip-clamp guard must run every tick, not exit early').toBe(STRIP_TICKS)
+  })
+
+  it('hops in the ROM sign direction: SEED bit7 SET → +SZRY (down/increasing Y), CLEAR → −SZRY', () => {
+    // DEFB6.SRC:884-886: LDA SEED / BMI SCZ11 / NEGB. B starts +SZRY (LDB SZRY, :883). BMI is
+    // taken when SEED bit7 is SET → NEGB is SKIPPED → hop stays +SZRY. bit7 CLEAR falls through
+    // to NEGB → −SZRY. This pins the polarity so a flipped ternary reddens (the fix for the
+    // round-1 review finding that the sign was inverted vs the cited lines).
+    const mid = 120 // well inside [YMIN, YMAX] so one hop cannot wrap and mask the sign
+    const seedHi = 0x80 // bit7 SET  → expect Y to INCREASE (+SZRY)
+    const seedLo = 0x00 // bit7 CLEAR → expect Y to DECREASE (−SZRY)
+
+    const up = freshBankRand({ x: 5000, y: 200 }, () => seedHi)
+    up.bank.spawnMutant(1000, mid)
+    up.sched.stepTick() // one dispatch = one hop
+    expect(up.bank.mutants[0]?.y, 'SEED bit7 SET must hop +SZRY (Y increases), matching :884-886').toBeGreaterThan(mid)
+
+    const down = freshBankRand({ x: 5000, y: 200 }, () => seedLo)
+    down.bank.spawnMutant(1000, mid)
+    down.sched.stepTick()
+    expect(down.bank.mutants[0]?.y, 'SEED bit7 CLEAR must hop −SZRY (Y decreases), matching the NEGB fall-through').toBeLessThan(mid)
   })
 })
 
@@ -183,7 +224,9 @@ describe('df4-4 — the MUTANT SHOOTS at the player on a timer (SCZ0, DEFB6.SRC:
 describe('df4-4 — the MUTANT dies (SCZKIL, DEFB6.SRC:624) and guards its spawn boundary', () => {
   it('killMutant removes the mutant from the live bank', () => {
     const { sched, bank } = freshBank({ x: 5000, y: 200 })
-    const mutant = bank.spawnMutant(1000, 120)!
+    const mutant = bank.spawnMutant(1000, 120)
+    expect(mutant, 'precondition: spawn returns a live mutant').not.toBeNull()
+    if (!mutant) return // the assertion above already failed the test; this narrows the type
     expect(bank.mutants.length).toBe(1)
     bank.killMutant(mutant)
     // Give its process a tick to SUCIDE, then it is gone from the bank (DEC SCZCNT).
@@ -198,5 +241,23 @@ describe('df4-4 — the MUTANT dies (SCZKIL, DEFB6.SRC:624) and guards its spawn
     expect(bank.spawnMutant(1000, Number.POSITIVE_INFINITY), 'spawnMutant(x, Infinity) spawns nothing').toBeNull()
     expect(bank.mutants.length, 'no mutant was created from a bad coord').toBe(0)
     expect(sched.processes.length, 'a rejected spawn leaks no scheduler process').toBe(before)
+  })
+
+  it('a non-finite injected player() pose never corrupts the mutant position (per-tick #21 guard)', () => {
+    // The player pose is read EVERY dispatch; a real ShipView-backed provider could return NaN
+    // (before the ship exists, a degenerate camera frame). approach()'s Math.sign(delta)*step
+    // would then propagate NaN into x permanently. Guard the per-tick read, not just the spawn.
+    const nanPlayer = { x: Number.NaN, y: Number.NaN }
+    const { sched, bank } = makeBank(() => nanPlayer)
+    bank.spawnMutant(1000, 120)
+    for (let t = 0; t < 200; t++) {
+      sched.stepTick()
+      const m = bank.mutants[0]
+      expect(m, `the mutant must persist through tick ${t}`).toBeDefined()
+      const x = m ? m.x : Number.NaN
+      const y = m ? m.y : Number.NaN
+      expect(Number.isFinite(x), `the mutant's X stayed finite despite a NaN player at tick ${t}`).toBe(true)
+      expect(Number.isFinite(y), `the mutant's Y stayed finite despite a NaN player at tick ${t}`).toBe(true)
+    }
   })
 })

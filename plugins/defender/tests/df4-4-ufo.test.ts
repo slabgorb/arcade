@@ -14,7 +14,7 @@
 //         landers.ts's speeds are (the df4-3 precedent).
 //   OUT — the projectile ENTITY a shot becomes (df4-5/df5 — SHOOT is an injected sink);
 //         live scheduler/sim integration (synthetic processes only); the DEFA7 timeout
-//         that SPAWNS the baiter (:1687, a df5 wave concern). None asserted here.
+//         that SPAWNS the baiter (JSR UFOST, :1690, a df5 wave concern). None asserted here.
 //
 // Every scenario drives the ONE cabinet scheduler (df3 scheduler.ts) — the baiter is a
 // process, never its own tick. `rand`, `player`, and `fire` are injected (the contract).
@@ -37,21 +37,28 @@ interface Shot {
   toY: number
 }
 
-/** Spin up a fresh scheduler + UFO bank with a fixed player and a recording fire sink. */
-function freshBank(player: PlayerPos): {
+interface Rig {
   sched: ReturnType<typeof createScheduler>
   bank: UfoBank
   shots: Shot[]
-} {
+}
+
+/** Spin up a fresh scheduler + UFO bank with an injectable player provider and a fire sink. */
+function makeBank(playerFn: () => PlayerPos): Rig {
   const sched = createScheduler()
   const shots: Shot[] = []
   const deps: EnemyDeps = {
     rand: constRand,
-    player: () => player,
+    player: playerFn,
     fire: (fromX, fromY, toX, toY) => shots.push({ fromX, fromY, toX, toY }),
   }
   const bank = loadUfo().createUfoBank(sched, deps)
   return { sched, bank, shots }
+}
+
+/** Fixed player. */
+function freshBank(player: PlayerPos): Rig {
+  return makeBank(() => player)
 }
 
 describe('df4-4 — the BAITER: exists as a cited process (UFOST, DEFB6.SRC:5, NAP 6 :46)', () => {
@@ -138,7 +145,9 @@ describe('df4-4 — the BAITER SHOOTS at the player on a timer that starts at 8 
 describe('df4-4 — the BAITER dies (UFOKIL, DEFB6.SRC:81) and guards its spawn boundary', () => {
   it('killUfo removes the baiter from the live bank', () => {
     const { sched, bank } = freshBank({ x: 6000, y: 200 })
-    const ufo = bank.spawnUfo(1000, 100)!
+    const ufo = bank.spawnUfo(1000, 100)
+    expect(ufo, 'precondition: spawn returns a live baiter').not.toBeNull()
+    if (!ufo) return // the assertion above already failed the test; this narrows the type
     expect(bank.ufos.length).toBe(1)
     bank.killUfo(ufo)
     sched.stepTick() // its process SUCIDEs on its next wake
@@ -152,5 +161,23 @@ describe('df4-4 — the BAITER dies (UFOKIL, DEFB6.SRC:81) and guards its spawn 
     expect(bank.spawnUfo(1000, Number.POSITIVE_INFINITY), 'spawnUfo(x, Infinity) spawns nothing').toBeNull()
     expect(bank.ufos.length, 'no baiter was created from a bad coord').toBe(0)
     expect(sched.processes.length, 'a rejected spawn leaks no scheduler process').toBe(before)
+  })
+
+  it('a non-finite injected player() pose never corrupts the baiter position (per-tick #21 guard)', () => {
+    // The player pose is read EVERY dispatch and feeds approach() in both axes; a NaN pose from
+    // a real ShipView-backed provider (pre-spawn / degenerate camera) must not permanently NaN
+    // the baiter. Guard the per-tick read, not just the spawn.
+    const nanPlayer = { x: Number.NaN, y: Number.NaN }
+    const { sched, bank } = makeBank(() => nanPlayer)
+    bank.spawnUfo(1000, 100)
+    for (let t = 0; t < 200; t++) {
+      sched.stepTick()
+      const u = bank.ufos[0]
+      expect(u, `the baiter must persist through tick ${t}`).toBeDefined()
+      const x = u ? u.x : Number.NaN
+      const y = u ? u.y : Number.NaN
+      expect(Number.isFinite(x), `the baiter's X stayed finite despite a NaN player at tick ${t}`).toBe(true)
+      expect(Number.isFinite(y), `the baiter's Y stayed finite despite a NaN player at tick ${t}`).toBe(true)
+    }
   })
 })

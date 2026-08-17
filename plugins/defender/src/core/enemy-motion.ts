@@ -25,7 +25,9 @@ export type Fire = (fromX: number, fromY: number, toX: number, toY: number) => v
 
 /** The injected seam both seek-the-player banks consume — the pure core mints none of it. */
 export interface EnemyDeps {
-  /** SEED byte source (0..255): the mutant's random-Y-hop sign and any seek entropy. */
+  /** SEED byte source (0..255): the mutant's random-Y-hop sign (SCZ0 :884). The UFO's
+   *  SEED-gated seek probability (UFOSK, :50-52) is deferred to df5, so `ufo.ts` does not
+   *  consume `rand` yet. */
   rand: () => number
   /** The player pose the enemy seeks (PLABX/PLAYC). */
   player: () => PlayerPos

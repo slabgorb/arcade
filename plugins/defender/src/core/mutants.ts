@@ -102,17 +102,24 @@ export function createMutantBank(sched: Scheduler, deps: EnemyDeps): MutantBank 
       if (!rec.alive) return // killed: SCZKIL freed it; SUCIDE
 
       const p = deps.player()
+      // Guard the per-tick injected pose (lang-review #21): a non-finite player() — e.g. before
+      // the ship exists, or a degenerate camera frame — must not poison approach()/fire() and
+      // permanently NaN the mutant. The Y hop below has no player dependency, so it runs anyway.
+      const seekable = Number.isFinite(p.x) && Number.isFinite(p.y)
+
       // SEEK X toward the player (SCZ0: LDB SZXV, sign toward PLABX, DEFB6.SRC:845-851).
-      rec.x = approach(rec.x, p.x, SEEK_X_STEP)
-      // RANDOM Y HOP ±SZRY on the SEED sign, wrapped onto the [YMIN,YMAX] strip (the
-      // "schizo": ADDB #±SZRY to OY16 / CMPB #YMIN / LDB #YMAX, DEFB6.SRC:883-891).
-      const hop = (deps.rand() & 0x80) !== 0 ? -Y_HOP : Y_HOP
+      if (seekable) rec.x = approach(rec.x, p.x, SEEK_X_STEP)
+      // RANDOM Y HOP ±SZRY on the SEED sign, wrapped onto the [YMIN,YMAX] strip (the "schizo":
+      // LDB SZRY / BMI SCZ11 / NEGB / ADDB OY16 / CMPB #YMIN / LDB #YMAX, DEFB6.SRC:883-891).
+      // Sign polarity matches the ROM: SEED bit7 SET → BMI taken → NEGB SKIPPED → +SZRY;
+      // bit7 CLEAR → falls through to NEGB → −SZRY.
+      const hop = (deps.rand() & 0x80) !== 0 ? Y_HOP : -Y_HOP
       rec.y = wrapObjectY(rec.y + hop)
       // SHOOT on the timer, aimed at the player (DEC PD2 / JSR SHOOT, DEFB6.SRC:892-897).
       rec.shotTimer -= 1
       if (rec.shotTimer <= 0) {
         rec.shotTimer = SHOT_TIMER // LDA SZSTIM / STA PD2 — reload
-        deps.fire(rec.x, rec.y, p.x, p.y)
+        if (seekable) deps.fire(rec.x, rec.y, p.x, p.y)
       }
       s.sleep(SCHIZO_NAP, step) // NAP 3,SCZ0 (:901)
     }

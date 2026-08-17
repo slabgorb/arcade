@@ -163,7 +163,7 @@
   },
   {
     "id": "EN-19",
-    "claim": "The Mutant process re-naps every 3 ticks: NAP 3,SCZ0 — the SCHIZO_NAP cadence in core/mutants.ts (faster-ticking than the Lander).",
+    "claim": "The Mutant process re-naps every 3 ticks: NAP 3,SCZ0 — the SCHIZO_NAP cadence in core/mutants.ts.",
     "source": {
       "file": "DEFB6.SRC",
       "line": 901,
