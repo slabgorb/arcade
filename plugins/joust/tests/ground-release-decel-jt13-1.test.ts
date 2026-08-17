@@ -86,7 +86,7 @@ function fallingPlayer(facing: -1 | 1): SimProcess {
     facing,
     mount: 'ostrich',
     collisionEnabled: true,
-    // posY 205, velY +0x200 lands on CLIF5 within ~2 frames (measured); velXIndex 8
+    // posY 205, velY +0x200 lands on CLIF5 on the 3rd stepSim frame (measured); velXIndex 8
     // so land() (FRCONV) selects the top run rung PLYFR.
     entity: entityAt({
       posY: 205 << 8,
@@ -159,7 +159,8 @@ describe('jt13-1 — releasing all direction skids stored velocity to zero', () 
       8, 6, 4, 2, 0, 0,
     ])
     // Reaches a dead stop at frame index 4 (the 5th neutral frame); bound is tight,
-    // not a 5x-loose backstop. `<= FRCONV.length` derives the ceiling from the ladder.
+    // not a 5x-loose backstop. The ceiling 5 is the FRCONV ladder length (PLYBR..PLYFR),
+    // pinned as a literal — a full-speed runner needs at most one ladder to reach rest.
     const zeroBy = mags.findIndex((m) => m === 0)
     expect(zeroBy, 'must reach a dead stop, not self-loop forever').toBeGreaterThanOrEqual(0)
     expect(zeroBy, 'a full-speed runner stops in one FRCONV ladder length').toBeLessThanOrEqual(5)
