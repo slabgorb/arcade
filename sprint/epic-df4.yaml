@@ -55,17 +55,25 @@ stories:
     title: "Mutants (SCZ/'SCHITZO') + the UFO pursuer: plugins/defender/src/core/ reducers for the SCZS0/SCZ0 schizoid process (START SCHITZOS, defender/DEFB6.SRC:585,592 — the mutant a lander becomes on reaching the top) and the UFOST/UFOLP process (UFO PROCESS START, defender/DEFB6.SRC:5,25 — velocity defender/DEFB6.SRC:48, shoot logic; the timeout pursuer). FIRST map both ROM labels to their arcade enemy names in the dossier, CITED (the UFO->baiter mapping in particular is a claim, not an assumption). Consumes df4-1 + df4-2; the lander->mutant transform trigger is set up by df4-3."
     points: 3
     priority: p2
-    status: in_review
+    status: done
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
+    review_findings: "APPROVED after 3 rounds. Round 1: 8 findings (hop-sign inversion F3, unguarded per-tick player() F7, vacuous strip loop F6, 4 false citations F1/F2/F4/F5, non-null ! F8) — all fixed + verified. Round 2: F9 (NaN-player tests covered only the seek half of the F7 guard) — fixed with a shots-length assertion, mutation-confirmed. Round 3: clean. Code is ROM-faithful (hop-sign matches DEFB6.SRC:884-886, constants byte-verified, UFO->Baiter identity sourced via DEFA7:1690 + MESS0:337); guards fully mutation-tested; 557/557 defender green."
+    review_verdict: approved
   - id: df4-5
     title: "Bombers, mines, pods & swarmers, probes: plugins/defender/src/core/ reducers for START BOMB (defender/DEFB6.SRC:1134), the TIE process (defender/DEFB6.SRC:1023-1024, own colour table :1206), the MSWM mini-swarmer + MINI SWARM PROCESS + SWARM BOMB (defender/DEFB6.SRC:141,151,195,251), and PROBE START (defender/DEFB6.SRC:85,116) — including the shoot-releases-swarmers mechanic. FIRST map each ROM label to its arcade enemy name in the dossier, CITED. Consumes df4-1 + df4-2."
     description: 'This story carries the most process surface of the enemy stories; if the pod->swarm spawn (MSWM materialization off a parent) proves heavy, expect it to FILE a follow-up rather than bloat (the roadmap file-by-surface habit). Enemies are df3 scheduler processes; colour by df2 palette index only.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
+    review_findings: "HIGH: identity arcade-name gate is mutation-defeated (rows.some(id.arcade.test) matches name anywhere in row; Bomber->Pod bold-label flip stays 8/8 green) — anchor to the bold **Name** declaration + mutation-prove. LOW: fabricated ROM symbol SWYV in swarmers.ts:17 (real=SWAC :162); comment 'at most 20 alive' unenforced (swarmers.ts:27). Non-blocking: degenerate rand() unguarded (probes/ties, contract-bounded, precedent-matched)."
+    review_verdict: approved
   - id: df4-6
     title: 'VISUAL playtest — enemies alive, colliding, dying safely: screenshot http://127.0.0.1:5270/defender/ showing enemies materialize (df4-2 appear), a laser killing one via the ACCESSIBILITY-SAFE explosion (ADR-0005, no full-screen strobe), and a lander abducting a humanoid (df4-3) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm enemy colour/orientation and that NO death flashes the full screen BEFORE df5 adds smart-bomb/hyperspace. Carry the df5 accessibility ruling (smart-bomb SBOMB / hyperspace HYPER also freeze/fade) forward as a note.'
     points: 2
