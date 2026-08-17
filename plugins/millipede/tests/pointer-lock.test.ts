@@ -402,6 +402,16 @@ function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 }
 
+// ml11-3 (b): the onReject-wiring guard, shared by the source-read pin below and the
+// relocation-mutant differential (the ml11-3 (b) describe at the foot of this file).
+// ml10-5's Reviewer (ml10-6-class finding) proved this FILE-scoped form false-passes a
+// COMPOUND relocation mutant — delete the createPointerLock 4th arg (the onReject
+// console.warn) AND add any unrelated console.warn elsewhere in main.ts — because the
+// lazy `[\s\S]*?` reaches a console.warn OUTSIDE the call. ml11-3 (b) GREEN widens this
+// to a CALL-scoped form that bounds the match to before the createPointerLock(…) call's
+// own `\n)` terminator, so a console.warn OUTSIDE the args no longer satisfies it.
+const ONREJECT_WIRING_RE = /createPointerLock\((?:(?!\n\))[\s\S])*?console\.warn\(/
+
 describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments stripped)', () => {
   const code = stripComments(mainSrc)
 
@@ -441,8 +451,54 @@ describe('ml10-4 main.ts — pointer-lock capture wiring (source-read, comments 
     // token all survive the deletion, so the dead-wiring is invisible. This pin
     // reddens on it: main.ts has exactly one console.warn, inside that call.
     expect(code, 'main.ts must route a rejected pointer-lock request to a console.warn sink').toMatch(
-      /createPointerLock\([\s\S]*?console\.warn\(/,
+      ONREJECT_WIRING_RE,
     )
+  })
+})
+
+// ─── ml11-3 (b): the onReject-wiring guard must be RELOCATION-PROOF ───────────────────
+// ml10-5's Reviewer (ml10-6-class finding) reproduced a false-pass: the onReject pin
+// above is FILE-scoped, so a COMPOUND relocation mutant — delete the createPointerLock
+// 4th arg (the console.warn onReject) AND add any unrelated console.warn elsewhere in
+// main.ts — leaves the guard GREEN while the diagnostic sink is DEAD. This differential
+// pins the fix: the CALL-scoped ONREJECT_WIRING_RE accepts the faithful main.ts and
+// REJECTS the relocation mutant, where the pre-ml11-3 file-scoped scan is fooled. ────────
+describe('ml11-3 (b) — the onReject-wiring guard is relocation-proof (mutation-verified)', () => {
+  const code = stripComments(mainSrc)
+
+  // The pre-ml11-3 (weak) form, kept ONLY to prove it is fooled by the mutant.
+  const FILE_SCOPED_RE = /createPointerLock\([\s\S]*?console\.warn\(/
+
+  // The exact compound mutant ml10-5's Reviewer described, in main.ts's own layout (the
+  // createPointerLock call closes with `)` at column 0, as at main.ts:75): the onReject
+  // 4th arg is deleted and an unrelated console.warn is relocated after the call.
+  const RELOCATION_MUTANT = stripComments(
+    [
+      'const pointerLock = createPointerLock(',
+      '  canvas,',
+      '  document,',
+      '  () => mouse.reset(),',
+      ')',
+      'function reportBoot() { console.warn("millipede: unrelated boot diagnostic") }',
+    ].join('\n'),
+  )
+
+  it('the faithful main.ts (console.warn INSIDE createPointerLock) satisfies the guard — non-vacuous', () => {
+    expect(ONREJECT_WIRING_RE.test(code), 'real main.ts wires the onReject sink inside the controller').toBe(true)
+  })
+
+  it('the pre-ml11-3 file-scoped scan is FOOLED by the relocation mutant (documents the ml10-6 gap)', () => {
+    expect(
+      FILE_SCOPED_RE.test(RELOCATION_MUTANT),
+      'a bare createPointerLock…console.warn scan reaches the relocated warn',
+    ).toBe(true)
+  })
+
+  it('the shipping guard REJECTS the relocation mutant (onReject deleted, console.warn moved out of the call)', () => {
+    expect(
+      ONREJECT_WIRING_RE.test(RELOCATION_MUTANT),
+      'a console.warn OUTSIDE createPointerLock(…) must NOT satisfy the guard',
+    ).toBe(false)
   })
 })
 
