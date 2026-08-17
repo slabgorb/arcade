@@ -45,10 +45,11 @@ stories:
     description: 'SCORING for a rescued/dropped humanoid (P250/P500, defender/DEFB6.SRC:408,496-503) is OUT OF SCOPE — that is df5. df4-3 delivers the abduction MECHANIC (grab, carry, fall on carrier-death), not the points. Enemies are df3 scheduler processes (NEWP,STYPE); no per-enemy tick. Colour by df2 palette index only.'
     points: 5
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
+    review_verdict: approved
   - id: df4-4
     title: "Mutants (SCZ/'SCHITZO') + the UFO pursuer: plugins/defender/src/core/ reducers for the SCZS0/SCZ0 schizoid process (START SCHITZOS, defender/DEFB6.SRC:585,592 — the mutant a lander becomes on reaching the top) and the UFOST/UFOLP process (UFO PROCESS START, defender/DEFB6.SRC:5,25 — velocity defender/DEFB6.SRC:48, shoot logic; the timeout pursuer). FIRST map both ROM labels to their arcade enemy names in the dossier, CITED (the UFO->baiter mapping in particular is a claim, not an assumption). Consumes df4-1 + df4-2; the lander->mutant transform trigger is set up by df4-3."
     points: 3
