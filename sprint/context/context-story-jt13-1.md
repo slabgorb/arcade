@@ -1,5 +1,39 @@
 # Story jt13-1: Landed ostrich with centered joystick should zero stored velocity
 
+> ## ⚠ REFINED SPEC — owner rulings (2026-08-17), supersede the ACs below where they differ
+>
+> TEA verified the bug live (`arcade.slabgorb.com/joust/`, from the owner's screen recording):
+> a landed mount cycles a **run-in-place** animation and, per code, keeps its stored
+> `velXIndex`, which `stepFlight` then launches at full speed. The mechanism is the ROM
+> ground table's **`onZero` self-loop** for the running rungs (`GROUND_STATES`,
+> `JOUSTRV4.SRC:7165-7168`) — so the current port is arguably ROM-faithful, and this story
+> **deliberately overrides it** on the owner's ruling (they own the design and have played
+> the cabinet). NOTE: input is **buttons**, not a joystick — "centered/neutral" = no
+> left/right button held (`input.dir === 0`).
+>
+> **The spec the RED tests encode (`plugins/joust/tests/ground-release-decel-jt13-1.test.ts`):**
+> 1. **Release skids to 0** — sustained neutral (`dir 0`) on a running mount coasts
+>    `velXIndex` to 0 within a few frames, magnitude never increasing; then stays 0. No
+>    infinite run-in-place. (This is the RED core; today it stays pinned at ±8 forever.)
+> 2. **1-frame GRACE, then decay** — the FIRST neutral frame HOLDS the rung, so
+>    touch-and-go / flap-hopping still launches at the landed speed; only *sustained*
+>    neutral decays. This is why **jt11-3's `ground-momentum.test.ts` stays green** (its
+>    tests only ever take a single neutral step) — its touch-and-go test is now the guard
+>    that FORCES the grace. If your implementation lacks the grace, that jt11-3 test goes
+>    red: that is the signal, not a regression to "fix" by deleting momentum.
+> 3. **No launch fling from rest** — a mount that skidded to rest launches with ~0
+>    horizontal drift; a mount launched while HOLDING a direction still travels (control).
+> 4. **Instant flip (IN SCOPE)** — pressing the OPPOSITE button turns the bird and runs the
+>    other way within a frame or two, velocity re-signed. Already works via the onMinus skid
+>    chain; the guard locks it so the fix does not regress it.
+>
+> **Momentum model:** velocity lives only while a direction is actively held; neutral =
+> coast to a stop (after the 1-frame grace). The decel PATH (through the skid states vs
+> stepping down the run rungs) is Dev's choice — the tests pin the observable, not the path.
+> **Placement:** the grace/coast memory must live on the **process** (like `facing`/
+> `prevFlapHeld`), not the shared generated `EntityState` — mirror how `facing` is threaded.
+> Full-cabinet green required (vitest + orchestrator + lint).
+
 ## Story Summary
 **Type:** bug  
 **Points:** 3  
