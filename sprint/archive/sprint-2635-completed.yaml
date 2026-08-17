@@ -119,3 +119,8 @@ completed_stories:
     title: "Mutants (SCZ/'SCHITZO') + the UFO pursuer: plugins/defender/src/core/ reducers for the SCZS0/SCZ0 schizoid process (START SCHITZOS, defender/DEFB6.SRC:585,592 — the mutant a lander becomes on reaching the top) and the UFOST/UFOLP process (UFO PROCESS START, defender/DEFB6.SRC:5,25 — velocity defender/DEFB6.SRC:48, shoot logic; the timeout pursuer). FIRST map both ROM labels to their arcade enemy names in the dossier, CITED (the UFO->baiter mapping in particular is a claim, not an assumption). Consumes df4-1 + df4-2; the lander->mutant transform trigger is set up by df4-3."
     points: 3
     completed: '2026-08-17'
+  - id: df4-5
+    epic: df4
+    title: "Bombers, mines, pods & swarmers, probes: plugins/defender/src/core/ reducers for START BOMB (defender/DEFB6.SRC:1134), the TIE process (defender/DEFB6.SRC:1023-1024, own colour table :1206), the MSWM mini-swarmer + MINI SWARM PROCESS + SWARM BOMB (defender/DEFB6.SRC:141,151,195,251), and PROBE START (defender/DEFB6.SRC:85,116) — including the shoot-releases-swarmers mechanic. FIRST map each ROM label to its arcade enemy name in the dossier, CITED. Consumes df4-1 + df4-2."
+    points: 3
+    completed: '2026-08-17'
