@@ -248,3 +248,81 @@ export function assertNoFullFrameStrobe(
     throw new Error('effect strobe blocked: whole-framebuffer inversion in a single frame (ADR-0005)')
   }
 }
+
+// ─── df4-6: the placed-effect BANK — the lifecycle above, given a SCREEN POSITION ────
+// df4-2 built the pure APST/EXST lifecycle over a passed-in picture; df4-6 wires it into
+// the live sim (like laser.ts's createLaserBank). An in-flight effect is a lifecycle PLUS
+// where it plays and which INERT picture it animates (SAMEXAP7 animates the object's own
+// picture — no pixel is re-transcribed). The bank spawns, advances, and retires them; the
+// shell composer (scene.ts) reads the `effects` view and blits each by palette INDEX only.
+
+/** One in-flight effect: its lifecycle (`size`/`done`, the ROM's RSIZE), where it plays
+ *  (world-x `x` — column is `x >> 8` — and display row `y`), and the INERT picture it
+ *  animates (referenced from OBJECTS, never copied). The read-only face the sim exposes. */
+export interface PlacedEffect {
+  readonly kind: EffectKind
+  readonly x: number
+  readonly y: number
+  readonly done: boolean
+  /** RSIZE (SAMEXAP7): the animation counter, so the composer can size the burst. */
+  readonly size: number
+  /** The df2-4 INERT ObjectImage this effect animates — the SAME object, by reference. */
+  readonly picture: ObjectImage
+}
+
+/** The effect bank: the live effects + spawn/step, carried by reference across ticks. */
+export interface EffectBank {
+  readonly effects: readonly PlacedEffect[]
+  /** APST: begin a MATERIALIZE at (x, y) over `picture` (played when an enemy appears). */
+  spawnAppear: (x: number, y: number, picture: ObjectImage) => void
+  /** EXST: begin an EXPLOSION at (x, y) over `picture` (played when an enemy is killed). */
+  spawnExplode: (x: number, y: number, picture: ObjectImage) => void
+  /** Advance every effect one frame; retire the ones the ROM's finish test has fired. */
+  step: () => void
+}
+
+/** The internal mutable record — `PlacedEffect` is its read-only face. */
+interface EffectRecord {
+  effect: EffectState
+  x: number
+  y: number
+}
+
+/**
+ * Create an effect bank. Pure and clock-free (the purity sweep scans this file): it reads
+ * no clock and mints no entropy — the same discipline as createLaserBank. `step()` retires
+ * a finished effect the frame AFTER its `done` fires, so the composer paints the last frame
+ * of the animation before it disappears.
+ */
+export function createEffectBank(): EffectBank {
+  const records: EffectRecord[] = []
+
+  const view = (r: EffectRecord): PlacedEffect => ({
+    kind: r.effect.kind,
+    x: r.x,
+    y: r.y,
+    done: r.effect.done,
+    size: r.effect.size,
+    picture: r.effect.picture,
+  })
+
+  return {
+    get effects(): readonly PlacedEffect[] {
+      return records.map(view)
+    },
+    spawnAppear(x, y, picture): void {
+      records.push({ effect: startAppear(picture), x, y })
+    },
+    spawnExplode(x, y, picture): void {
+      records.push({ effect: startExplode(picture), x, y })
+    },
+    step(): void {
+      // Drop the effects that finished LAST frame, then advance the survivors — so a `done`
+      // effect is shown once (this frame) and removed next, never animating forever.
+      for (let i = records.length - 1; i >= 0; i--) {
+        if (records[i].effect.done) records.splice(i, 1)
+      }
+      for (const r of records) r.effect = advance(r.effect)
+    },
+  }
+}

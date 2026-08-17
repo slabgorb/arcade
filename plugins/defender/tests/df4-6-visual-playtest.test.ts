@@ -70,9 +70,9 @@ const YMIN = 42 // world.ts YMIN — enemies live in the [YMIN, YMAX] band
 // The neutral input snapshot: no thrust, no fire — the sim coasts, so the abduction
 // scenario is undisturbed by lasers scrolling the world.
 const IDLE = { thrust: false, reverse: false, up: false, down: false, fire: false } as const
-// Hold fire (and climb) — the kill scenario, where the player's laser stream meets a
-// descending lander.
-const FIRE_UP = { thrust: false, reverse: false, up: true, down: false, fire: true } as const
+// Hold fire (ship dwelling in place) — the kill scenario, where the player's laser stream
+// meets a lander descending into the beam row.
+const FIRE = { thrust: false, reverse: false, up: false, down: false, fire: true } as const
 
 // ─── Observable subsets ──────────────────────────────────────────────────────────
 // The df4-6 addition is the `effects` view; the enemy/ship views come from df3/df4-3.
@@ -286,19 +286,23 @@ describe('df4-6 — the COLIDE seam runs in stepSim: a laser kills a descending 
     // If an authentic geometry needs a different staging, GREEN adjusts the scenario;
     // it may NOT satisfy this by leaving collision unwired.
     const sim = await loadSim()
-    // A humanoid low and ahead keeps the lander descending through the ship's climb path;
-    // the lander spawns in the same forward column (to the RIGHT of the ship's start).
-    const COL = 90 << 8
+    // STAGING (within the license above): the ship dwells at its start row and holds fire, so
+    // its laser stream is a steady beam along SHIP_ROW. The humanoid sits AT that beam row but
+    // FAR to the right, so the lander descends to the humanoid's altitude yet can never close
+    // the X-gap to grab it — it lingers in the beam, hunting, where an authentic laser box
+    // (df4-1 laserVsObject) overlaps and kills it. SHIP_ROW mirrors sim.ts INITIAL_Y; the
+    // lander spawns in the near firing-lane the beam sweeps first. Deterministic under the seed.
+    const SHIP_ROW = 120
     let s = sim.createSim(makeRand(7))
-    s = sim.spawnHumanoid(s, COL, YMIN + 150)
-    s = sim.spawnLander(s, COL)
+    s = sim.spawnHumanoid(s, 200 << 8, SHIP_ROW) // far to the right, at the beam row
+    s = sim.spawnLander(s, 50 << 8) // near the ship's firing lane
     const before = s.landers.length
     expect(before, 'precondition: one lander is airborne').toBeGreaterThan(0)
 
     const { state, met } = stepUntil(
       sim,
       s,
-      FIRE_UP,
+      FIRE,
       (st) => st.landers.length < before && st.effects.some((e) => e.kind === 'explode'),
       20_000,
     )

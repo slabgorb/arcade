@@ -28,9 +28,10 @@
 
 import { createFramebuffer, clear, type Framebuffer } from './framebuffer.js'
 import { writeText } from './charset.js'
-import { blitObject, OBJECTS } from './objects.js'
+import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeAltitudes, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
+import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
 
 /** Background palette index — the cleared surface (SPACE $00, palette entry 0). */
@@ -102,6 +103,68 @@ const LASER_COLOUR = 1
 /** Pixels of the laser's leading streak drawn behind its head. */
 const LASER_LENGTH = 4
 
+// ─── df4-6: the df4-2 materialize/explosion effects, blitted over the world ─────────
+// An effect renders the object's INERT picture (rastered normally — the ADR-0005 LOCALIZED
+// path) plus a small expanding "spark" RING (SAMEXAP7's grow/shrink, approximated) so the
+// materialize/explosion reads even where it sits over its own enemy. Colour is taken from
+// the sprite itself (never invented); the ring is bounded, so no death touches more than a
+// tiny region — the whole point of the ADR-0005 accessibility exception.
+
+/** The ring's minimum radius — larger than the biggest enemy sprite's half-extent, so the
+ *  spark always shows even atop the object it animates; it then grows a few pixels. */
+const EFFECT_RING_MIN = 6
+/** How far the ring grows over the animation — kept small so the burst stays LOCALIZED. */
+const EFFECT_RING_GROW = 4
+/** RSIZE bounds (SAMEXAP7): APPEAR runs $AF00→$8000, EXPLODE runs $0100→~$3100. Used only
+ *  to derive the ring's animation phase (0..1), not as new gameplay values. */
+const APPEAR_HI = 0xaf00
+const APPEAR_LO = 0x8000
+const EXPLODE_LO = 0x0100
+const EXPLODE_HI = 0x3100
+
+/** The effect's animation phase (0 = just started, 1 = finishing), from its RSIZE counter. */
+function effectPhase(e: PlacedEffect): number {
+  const p =
+    e.kind === 'explode'
+      ? (e.size - EXPLODE_LO) / (EXPLODE_HI - EXPLODE_LO)
+      : (APPEAR_HI - e.size) / (APPEAR_HI - APPEAR_LO)
+  return Math.max(0, Math.min(1, p))
+}
+
+/** A colour the sprite actually uses (its first non-transparent nibble) — so the spark is
+ *  reached BY INDEX from the transcribed picture, never an invented RGB. */
+function spriteColour(pic: ObjectImage): number {
+  for (const byte of pic.bytes) {
+    const hi = byte >> 4
+    const lo = byte & 0x0f
+    if (hi !== 0) return hi
+    if (lo !== 0) return lo
+  }
+  return LASER_COLOUR // a pathological all-transparent sprite still gets a visible spark
+}
+
+/** Draw a diamond-ring outline (|dx|+|dy| == r) centred at (cx, cy), clipped to the frame. */
+function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: number): void {
+  for (let dx = -r; dx <= r; dx++) {
+    const dy = r - Math.abs(dx)
+    for (const y of dy === 0 ? [cy] : [cy - dy, cy + dy]) {
+      const x = cx + dx
+      if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
+      fb.data[y * fb.width + x] = colour
+    }
+  }
+}
+
+/** Blit one in-flight effect: its picture (rastered normally) plus the expanding spark. */
+function drawEffect(fb: Framebuffer, e: PlacedEffect): void {
+  const col = e.x >> 8 // world-x → screen column (the laser/lander convention)
+  blitObject(fb, e.picture, col, e.y)
+  const cx = col + e.picture.width // sprite centre-x (the cell is width×2 pixels wide)
+  const cy = e.y + (e.picture.height >> 1)
+  const radius = EFFECT_RING_MIN + Math.round(effectPhase(e) * EFFECT_RING_GROW)
+  drawRing(fb, cx, cy, radius, spriteColour(e.picture))
+}
+
 /** Draw a short horizontal laser streak trailing the leading edge `headX` at row `y`. */
 function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'left' | 'right'): void {
   if (y < 0 || y >= fb.height) return
@@ -147,6 +210,12 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
   for (const laser of state.lasers) {
     if (!laser.alive) continue
     drawLaserStreak(fb, laser.x >> 8, state.ship.y, laser.facing)
+  }
+
+  // df4-6: the materialize/explosion effects, painted on top (a fresh sim has none, so
+  // every pre-df4-6 frame is unchanged). `?? []` tolerates a hand-built pre-df4-6 state.
+  for (const effect of state.effects ?? []) {
+    drawEffect(fb, effect)
   }
 
   return fb
