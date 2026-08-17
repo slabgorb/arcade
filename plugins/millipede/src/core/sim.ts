@@ -43,7 +43,7 @@ import {
   DDT_KILL_BODY_PTS,
   DDT_KILL_HEAD_PTS,
 } from './ddt'
-import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
+import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN, musher, type MushCounts } from './mushroom'
 import { initConway, masterStep } from './conway'
 import { scrollDispatch, scrollDown, scrollUp, type ScrollGate } from './scroll'
 import { recolourField } from './field-recolour'
@@ -156,6 +156,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //    then, if the shot passed through, the millipede segments.
   let segments = state.segments
   let score = state.score
+  // MUSH bumps from mushrooms a kill plants this frame (MUSHER INC MUSH); folded into
+  // the running tally below alongside the DDT-explosion deltas (ml13-1).
+  const killMush: MushCounts = { lower: 0, top: 0 }
   // HITDDT (MLDEF.MAC:373) — a persistent flag; carry the prior value forward and
   // set/clear it at the ROM's sites this frame (SC-9, suppresses the scroll arm below).
   let hitDdt = state.hitDdt
@@ -177,8 +180,16 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   if (shot.active) {
     const hit = segments.findIndex((s) => isLive(s) && checkPlayerCollision(s, { h: shot.h, v: shot.v }))
     if (hit >= 0) {
+      const dead = segments[hit]
       segments = segments.filter((_, i) => i !== hit)
       score += SEGMENT_PTS
+      // MUSHER — a kill leaves a mushroom at OBSTA0's cell (SHOOT2 142$ :2155-2157
+      // JSR OBSTA0/JSR MUSHER). OBSTA0 (MLSUB.MAC:834-839) derives dir from the
+      // segment's own MOBJDH sign and OBSTAC adds 8*dir (:860-863 TYA/ASL×3), so the
+      // target is the cell 8px AHEAD in travel — same derivation as obstac() (mushroom.ts:186).
+      // musher() no-ops on a non-empty/excluded cell, else stamps a full mushroom +
+      // bumps MUSH. (The DDT path shares this tail — see step 8b.)
+      musher(state.field, obstacOffset(dead.h, dead.v, dead.dh < 0 ? -1 : 1), killMush)
       shot = { active: false, h: 0, v: 0 }
       events.push(event('segment-killed'))
     }
@@ -286,6 +297,11 @@ function stepPlay(state: GameState, input: GameInput): GameState {
         // Head vs body: a body is colour >= $3D (MILLI.MAC:2168 CMP I,3D / BCS 145$);
         // a head (0x39) or poisoned head (0x1B) is below it and scores in the 100s.
         score += s.color >= BODY_COLOR ? DDT_KILL_BODY_PTS : DDT_KILL_HEAD_PTS
+        // MUSHER — a DDT kill runs the SAME SHOOT2 142$ tail as a shot kill (DDTEX1
+        // :1946 → JSR SHOOT2 :1949), so it also plants at OBSTA0's cell: the cell 8px
+        // AHEAD in travel (dir = sign(dh)), NOT the occupied cloud cell the kill read above.
+        // If that ahead-cell is empty, a mushroom is left there (musher no-ops otherwise).
+        musher(state.field, obstacOffset(s.h, s.v, s.dh < 0 ? -1 : 1), killMush)
         events.push(event('segment-killed'))
         continue // OBJECT DESTROYED — dropped from the roster
       }
@@ -357,8 +373,8 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // Death STAs SCROLC before SCROLL would run (MILLI.MAC:1812 "STOP ANY EXISTING
   // SCROLLING") — a pending scroll is cancelled, not carried into the animation.
   if (playerDied) scrolc = 0
-  let mushLower = state.mushCounts.lower + ddtBoom.mush
-  let mushTop = state.mushCounts.top + ddtBoom.mushTop
+  let mushLower = state.mushCounts.lower + ddtBoom.mush + killMush.lower
+  let mushTop = state.mushCounts.top + ddtBoom.mushTop + killMush.top
   const liveSegs = segments.filter(isLive).length
   const scrollGate: ScrollGate = {
     attract: false, // MODE bit 7 is clear in play (SC-5)
