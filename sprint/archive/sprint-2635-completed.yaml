@@ -94,3 +94,8 @@ completed_stories:
     title: "Test-hardening tail (2 commits, 2 test files — TEA/Architect may split): (a) ml7-11 r2 — add an ALPHANUMERIC_COLOUR provenance guard at a NON-colliding level (today $1F collides with wave-1 inside-mushroom, so a mis-wire would pass) + assert $00 never appears in FIELD_REGION_COLOURS; (b) ml10-6 — widen the file-scoped pointer-lock relocation-mutant regex guard so a relocation mutant cannot evade it."
     points: 2
     completed: '2026-08-16'
+  - id: mc12-3
+    epic: mc12
+    title: "Pointer-lock TRACKBALL aim, made the DEFAULT (matching centipede/millipede). Missile Command is a trackball cabinet; mc10-1 chose ABSOLUTE aim to kill the twitch of relative-WITHOUT-lock (1px=1unit over a ~2000px canvas) and explicitly deferred 'trackball (relative+pointer-lock, scaled) as an optional later mode'. Build it and default to it: reuse centipede/millipede's createPointerLock + movementX/Y mouse adapter (plugins/centipede/src/shell/input.ts) and the EXISTING pure core moveCursor (relative applier + clamp, game.ts:319/335), scaled so it is not twitchy; main.ts:85-89 stops using the absolute placeCursor for live aim. Completes mc10-1 (not a reversal of its twitch fix) — logged as an ADR-delta. Shell input + reuse of existing core; purity stays green."
+    points: 3
+    completed: '2026-08-17'
