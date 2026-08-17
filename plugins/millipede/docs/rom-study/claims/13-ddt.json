@@ -1996,5 +1996,23 @@
       "line": 2159,
       "verbatim": "\tDEC X,DEAD\t\t;REDUCE COUNT OF CENTIPEDES"
     }
+  },
+  {
+    "id": "DD-223",
+    "claim": "A DDT-cloud kill scores 30 for a BODY segment: SHOOT2 142$ loads the base LDA I,10 (BODY=10) then, because DDTEX1 always set the DDT-death flag (DD-217), overrides it to LDA I,30 (BIT TEMP3+1 / BPL 16$ falls through) — so a DDT body kill is BCD 30, tripled from the base 10.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2165,
+      "verbatim": "\tLDA I,30"
+    }
+  },
+  {
+    "id": "DD-224",
+    "claim": "A HEAD scores in the hundreds: SHOOT2 142$ LSR×4's the score byte into the high digit (100 POINTS FOR A HEAD), so the DDT-death value 30 becomes 300 (0x30 >> 4 = 3 → 3*100), tripled from a shot head's 100.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2171,
+      "verbatim": "\tLSR\t\t\t;100 POINTS FOR A HEAD"
+    }
   }
 ]

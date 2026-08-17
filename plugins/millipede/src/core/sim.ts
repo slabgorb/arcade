@@ -20,6 +20,7 @@ import {
   createMillipede,
   checkPlayerCollision,
   VACANT_COLOR,
+  BODY_COLOR,
   NCENT,
   type Segment,
 } from './millipede'
@@ -39,6 +40,8 @@ import {
   ddtScrollUp,
   anyDdtExploding,
   inDdtCloud,
+  DDT_KILL_BODY_PTS,
+  DDT_KILL_HEAD_PTS,
 } from './ddt'
 import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
 import { initConway, masterStep } from './conway'
@@ -272,13 +275,17 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   //     cell-ahead the turn check reads (:1527 OBSTA0) — and DDTEXP destroys it
   //     when that stamp is a cloud in [CLOUD, DDT) (DD-220/221). A destroyed
   //     segment neither turns nor hurts the player (:1614 BCS 30$ skips both).
-  //     Represented as a shot kill is (filter + SEGMENT_PTS + segment-killed);
-  //     read post-march, before the wave-clear check below.
+  //     Removal + segment-killed cue mirror a shot kill, but the SCORE does NOT:
+  //     DDTEX1's $80 flag (DD-217) is always set for a cloud kill, so SHOOT2 142$
+  //     scores the premium — body 30, head 300 (DD-223/224), tripled from the
+  //     base 10/100. Read post-march, before the wave-clear check below.
   if (segments.some(isLive)) {
     const survivors: Segment[] = []
     for (const s of segments) {
       if (isLive(s) && inDdtCloud(obstacleAt(state.field, obstacOffset(s.h, s.v, 0)))) {
-        score += SEGMENT_PTS
+        // Head vs body: a body is colour >= $3D (MILLI.MAC:2168 CMP I,3D / BCS 145$);
+        // a head (0x39) or poisoned head (0x1B) is below it and scores in the 100s.
+        score += s.color >= BODY_COLOR ? DDT_KILL_BODY_PTS : DDT_KILL_HEAD_PTS
         events.push(event('segment-killed'))
         continue // OBJECT DESTROYED — dropped from the roster
       }
