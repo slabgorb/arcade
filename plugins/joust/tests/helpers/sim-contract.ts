@@ -88,6 +88,12 @@ export interface SimProcess {
    * enemy cannot be jousted.
    */
   collisionEnabled?: boolean
+  /**
+   * jt13-2 — the TREFF warp-in animation, while the arrival grows in on its pad.
+   * Seeded on both spawn paths, surfaced by drawList as a `kind:'warpin'` op until
+   * `done`. The mirror of `src/core/warpin.ts`'s WarpInState.
+   */
+  warpIn?: { frame: number; nap: number; done: boolean }
   /** `PFACE` for a player — the demo's home for player facing (Finding #2). */
   facing?: Facing
   /**
@@ -254,7 +260,7 @@ export interface DrawOp {
    * so no atlas block can carry them. The shell paints a `fill` op with
    * `fillRect`, not a blit.
    */
-  kind: 'arena' | 'entity' | 'fill' | 'crumble'
+  kind: 'arena' | 'entity' | 'fill' | 'crumble' | 'warpin'
   /** The atlas block (or a foreground tag) this op blits. */
   name: string
   x: number
@@ -284,6 +290,11 @@ export interface DrawOp {
    * CLFDES frame index. Shared by both animated op kinds; undefined otherwise.
    */
   frame?: number
+  /**
+   * jt13-2 — a `kind:'warpin'` op's owner, selecting the DCONST transporter colour
+   * (`'p1'` yellow, `'p2'` green, `'enemy'` white). Undefined on non-warpin ops.
+   */
+  owner?: 'p1' | 'p2' | 'enemy'
 }
 
 export interface SimModule {

@@ -239,8 +239,18 @@ describe('jt9-46 AC-1 — enemyDrawList stacks a rider on the mount, and drawLis
     const fresh = base.sim.processes.find((p) => p.kind === 'enemy')
     expect(fresh, 'wave 1 sends in ground enemies').toBeDefined()
 
-    const ents = entityOps(r.drawList(only(base, [fresh!])))
-    expect(ents.length, 'the fresh-wave enemy is drawn as a mount + rider, not a bare bird').toBe(2)
+    // jt13-2: a fresh-wave enemy WARPS IN first — for the 30-frame TREFF window
+    // drawList emits a kind:'warpin' silhouette in place of the opaque mount+rider,
+    // so it does NOT pop in fully drawn. That is the whole point of the story.
+    const warping = r.drawList(only(base, [fresh!]))
+    expect(warping.some((o) => o.kind === 'warpin'), 'the fresh arrival warps in (jt13-2)').toBe(true)
+    expect(entityOps(warping).length, 'the opaque bird is suppressed during the warp-in').toBe(0)
+
+    // The rider-stacking invariant this guard protects is about the LIVE bird —
+    // once the warp-in completes it is drawn as a mount + rider, not a bare bird.
+    const live = { ...fresh!, warpIn: undefined }
+    const ents = entityOps(r.drawList(only(base, [live])))
+    expect(ents.length, 'once live, the enemy is drawn as a mount + rider, not a bare bird').toBe(2)
     expect(ents.some((o) => isMount(o.name)), 'its BR* mount is drawn').toBe(true)
     expect(ents.some((o) => isRider(o.name)), 'its PLYR* rider is drawn').toBe(true)
   })
@@ -291,7 +301,12 @@ describe('jt9-46 AC-4 — a matured-egg remount buzzard is drawn with a rider to
     }
     expect(remount, 'the settled egg hatched into a remount buzzard').toBeDefined()
 
-    const ents = entityOps(r.drawList(only(d, [remount!])))
+    // jt13-2: if the found arrival is still mid-warp-in it draws a kind:'warpin'
+    // silhouette; the rider-stacking invariant is about the LIVE bird, so assert it
+    // past the warp-in (the remount itself carries no warpIn — remountEnemyProcess
+    // does not seed one — but a co-served wave enemy would).
+    const live = { ...remount!, warpIn: undefined }
+    const ents = entityOps(r.drawList(only(d, [live])))
     expect(ents.some((o) => isRider(o.name)), 'the remount buzzard carries a rider, not a bare bird').toBe(true)
     expect(ents.length, 'it is drawn as a mount + rider like every other enemy').toBe(2)
   })
