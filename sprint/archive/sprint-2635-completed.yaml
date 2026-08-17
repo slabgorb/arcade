@@ -133,3 +133,8 @@ completed_stories:
     title: DDT has no effect killing millipede segments — deploying DDT does not damage/kill the train (gameplay, NOT the already-shipped ml9-3/ml11 DDT visual)
     points: 3
     completed: '2026-08-17'
+  - id: jt13-1
+    epic: jt13
+    title: Landed ostrich with centered joystick should zero stored velocity
+    points: 3
+    completed: '2026-08-17'
