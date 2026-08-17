@@ -53,7 +53,8 @@ stories:
     description: "Right now the player can dive into the lava and swim around freely, with no death and no life lost. ROM ground truth (JOUSTRV4.SRC, routine ADGFLR 'DEATH VIA SWIMMING IN THE LAVA'): lava is a SINK-AND-DIE sequence, NOT instant death on touch. (1) On reaching the lava surface PPOSY>=FLOOR+7 (:6508-6509 CMPA #FLOOR+7 / BHS ADGFLR), horizontal velocity is cleared (CLR PVELX :6610 'PLAYER IS NOT GOING ANYWHERE') so no sideways swim, and the lava sound plays (SNPLAV player / SNELAV enemy). (2) A brief break-free window (:6614 CMPD #- 'BREAK FREE VELOCITY?') lets a hard enough upward flap escape; otherwise lava gravity keeps pulling down. (3) Death fires once the sprite is floor-clipped below full length (WCLENY<7, :6555) — rider removed, [DDEAD] death routine, life lost. (4) Body sinks (INC PPOSY) to FLOOR+20 (:6568), pause, respawn. Our bug: isLavaDeath (frame.ts:292) was repurposed by jt11-18 to only CLAMP the bird at DEATH_Y with velY=0 as an on-screen backstop — it never clears PVELX, never calls a death routine, never removes a life. Reconcile with the existing lava-troll grab (troll grab is a separate death path; ADGFLR even kills the troll tasks when the rider sinks, :6624-6640)."
     points: 3
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     type: bug
