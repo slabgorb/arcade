@@ -1,0 +1,47 @@
+id: ml12
+type: epic
+title: 'Millipede — owner playtest findings round 2 (2026-08-17): the train enters one row too high over the score, heads wrap horizontally off-screen instead of turning at the edge, and DDT does not kill segments'
+description: "Twelfth Millipede epic — owner-observed playtest findings (the ml9 model: bugs found while actually PLAYING the shipped cabinet, not from ROM audit; expect this epic to GROW). Three findings reported at filing (2026-08-17). SEAMS BELOW ARE UNVERIFIED HYPOTHESES for the pipeline to confirm/refute against the ROM + live code — they are NOT audited citations (SM did light seam discovery only; TEA/Architect must ground each before pinning). (1) TRAIN ENTERS ONE ROW TOO HIGH — like the analogous centipede bug, the train spawns a row above where it should and runs over the score/HUD. Likely seam: the enter row (ENTER_V / spawn V) in core/millipede.ts vs the top-of-play boundary the HUD occupies (core/hud.ts). (2) HEADS WRAP HORIZONTALLY OFF THE SIDE — a head runs off one edge and re-enters from the other, sometimes repeatedly, so the train runs perfectly horizontally across the screen several times instead of turning+dropping at the edge. Likely seam: wrapH (core/millipede.ts:144, 'h & 0xff' — the mod-256 wrap the comment flags) racing the screen-edge turn (atEdge / LEFT_EDGE=0xF0 / RIGHT_EDGE=0x10, core/millipede.ts:82-83,323); the edge-turn may not be firing so the head wraps. (3) DDT DOES NOT KILL SEGMENTS — deploying DDT appears to have no effect on millipede segments. Likely seam: core/ddt.ts explosion/cloud vs the segment-kill path in core/sim.ts. TRAP — do NOT conflate with the DDT *visual* already shipped: ml9-3 + ml11 delivered the DDT blue-box + red 'DDT' glyph (shell/ddt-glyph.ts); THIS finding is about DDT *gameplay* (killing segments), a different subsystem — do not refile the visual as fixed and do not assume this is already done. GROUPING RULE (inherit ml8/ml9): group stories by the FILES they edit, not by which symptom looks wrong. ACCESSIBILITY GATE STILL BINDS (standing owner-epilepsy exception to ROM-always-wins): no full-screen strobe/flash on any transition; re-verify at the /millipede/ visual playtest. Ground truth is the millipede ROM source (MILLI.MAC / MLSUB.MAC etc.); every new/changed core constant carries a citations.test.ts-gated claim. Verify each fix LIVE in the build (the ml9 green-tests/wrong-pixels lesson), not just green vitest. OUT OF SCOPE: new subsystems; sound; the already-shipped DDT visual."
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: ml12-1
+    title: Train enters one row too high and runs over the score/HUD (owner playtest; analogous to the centipede train-start-row bug)
+    description: "Owner playtest finding (2026-08-17): the millipede train enters ONE ROW TOO HIGH and runs over the score/HUD — the same shape as the analogous centipede train-start-row bug. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the enter row is off by one against the top-of-play boundary the HUD occupies. Likely seam: the train enter/spawn V in core/millipede.ts (ENTER_V and the NEWHD_SPAWN_V family, ~:101-102; the loose-head enter loop uses ENTER_V, ~:202-206) measured against the HUD region (core/hud.ts) and the playfield top. STORY: find the correct top enter row from the millipede ROM (MILLI.MAC / MLSUB.MAC — the analogous centipede fix is a reference, not the source of truth), and correct the enter row so the train's top march sits one row below where it is now, clear of the score. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/ that the train no longer overruns the score."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "The train's top enter row is corrected so it no longer overlaps/overwrites the score/HUD: pinned by a test that spawns the train and asserts its topmost segment row is at the ROM-correct enter row (one row below the current value), with the value cited to the millipede ROM (not the centipede analogue) and gated by citations.test.ts."
+      - 'The corrected enter row does not regress existing millipede movement/turn behaviour: the existing millipede core suite stays green, and the loose-head enter path (fragmented-train reseed) enters at the same corrected boundary.'
+      - 'Verified LIVE at the /millipede/ visual playtest: the train marches across the top clear of the score, with no full-screen strobe/flash introduced (ml7-4 owner-epilepsy accessibility gate).'
+    type: bug
+  - id: ml12-2
+    title: Millipede heads wrap horizontally off the side of the play area and re-enter from the other side (sometimes repeatedly, running dead-horizontal across the screen) instead of turning + dropping a row at the edge
+    description: "Owner playtest finding (2026-08-17): a millipede head runs off ONE side of the play area and re-enters from the OTHER side, sometimes REPEATEDLY, so the train runs perfectly horizontally across the screen several times instead of turning and dropping a row at the edge. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the horizontal position wraps mod-256 before the screen-edge turn fires. Likely seam: wrapH (core/millipede.ts:144, 'h & 0xff' — the comment already flags 'real hardware wraps mod 256') racing the screen-edge turn (atEdge with LEFT_EDGE=0xF0 / RIGHT_EDGE=0x10, core/millipede.ts:82-83 and the atEdge test ~:323). The edge-turn condition may not be catching the head before wrapH rolls it over, or the edge constants/comparison direction are off. STORY: derive the correct screen-edge turn behaviour from the millipede ROM (MILLI.MAC:1511/1519 region referenced in-code) and fix it so a head reaching either horizontal edge TURNS and drops a row (per ROM) rather than wrapping around; a repeated horizontal traverse must be impossible. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'A head reaching either horizontal play-area edge turns and drops a row per the ROM, and never wraps to the opposite side: pinned by a test that drives a head into the left edge and into the right edge and asserts it reverses dh + drops a row (no h wrap-around), with the edge constants/behaviour cited to the millipede ROM and gated by citations.test.ts.'
+      - 'The repeated dead-horizontal traverse is impossible: a test steps a head for many frames along a clear row and asserts it cannot cross an edge and re-enter the far side (no mod-256 wrap survives as reachable train motion).'
+      - 'No regression to normal march/mushroom-turn/overlap-turn behaviour: the existing millipede core suite stays green; verified LIVE at /millipede/ that the train turns at the edges, with no full-screen strobe/flash introduced (ml7-4 accessibility gate).'
+    type: bug
+  - id: ml12-3
+    title: DDT has no effect killing millipede segments — deploying DDT does not damage/kill the train (gameplay, NOT the already-shipped ml9-3/ml11 DDT visual)
+    description: "Owner playtest finding (2026-08-17): DDT has NO EFFECT killing millipede segments — deploying a DDT bomb does not damage or kill the train. HARD TRAP — this is DDT *gameplay*, NOT the DDT *visual*: ml9-3 + ml11 already shipped the DDT blue-box + red 'DDT' glyph (shell/ddt-glyph.ts, wired main.ts). Do NOT close this as 'DDT already done' by pointing at the visual, and do NOT refile the visual — the visual renders; the KILL does not land. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the DDT explosion/cloud is not applying its segment-kill (the cloud may deploy and render but its damage region never intersects/marks millipede segments, or the sim never runs the DDT-vs-segment resolution). Likely seam: core/ddt.ts (explosion/cloud state + radius) and the segment-damage path in core/sim.ts and core/millipede.ts (note obstacle.ts already lets a head pass THROUGH a DDT cloud — code < DDT returns 'none', millipede.ts:64 — so the kill is a separate mechanic from the turn logic, confirm which). STORY: derive DDT's segment-kill behaviour from the millipede ROM and wire it so a deployed/triggered DDT actually kills the segments in its blast per ROM. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/ that DDT kills train segments."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - "A triggered DDT kills the millipede segments within its blast region per the ROM: pinned by a core test that places segments inside a triggered DDT's radius and asserts they are removed/killed (and segments outside are not), with the DDT damage geometry/timing cited to the millipede ROM and gated by citations.test.ts."
+      - 'The fix is DISTINCT from and does not regress the shipped DDT visual (ml9-3/ml11 glyph) nor the head-passes-through-cloud turn behaviour (obstacle.ts): the existing DDT/glyph and millipede-turn tests stay green while the new kill lands.'
+      - 'Verified LIVE at the /millipede/ visual playtest: deploying DDT visibly kills train segments in its blast, with no full-screen strobe/flash introduced (ml7-4 owner-epilepsy accessibility gate).'
+    type: bug

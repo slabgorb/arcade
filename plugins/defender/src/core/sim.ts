@@ -23,6 +23,7 @@
 
 import { createScheduler, type Scheduler } from './scheduler.js'
 import { createLaserBank, type LaserBank, type Laser } from './laser.js'
+import { createEnemyBank, type EnemyBank, type Lander, type Humanoid } from './landers.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
 import { slide, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
@@ -56,6 +57,10 @@ export interface SimState {
   readonly camera: number
   readonly stars: readonly Star[]
   readonly lasers: readonly Laser[]
+  /** The df4-3 abduction population — snapshots refreshed each tick from the enemy bank,
+   *  exactly as `lasers` refreshes from the laser bank. Empty on a fresh sim. */
+  readonly landers: readonly Lander[]
+  readonly humanoids: readonly Humanoid[]
   /** PLAXV — the 24-bit horizontal velocity accumulator (ship.ts). */
   readonly _plaxv24: number
   /** REV facing + debounce latch (ship.ts). */
@@ -66,6 +71,8 @@ export interface SimState {
   readonly _plax16: number
   readonly _sched: Scheduler
   readonly _laserBank: LaserBank
+  /** The df4-3 abduction bank (landers + humanoids), carried by reference like _laserBank. */
+  readonly _enemyBank: EnemyBank
 }
 
 /** The ship's initial pose: onscreen column $20 (the facing-right base, world.ts), mid-strip. */
@@ -79,19 +86,45 @@ const INITIAL_Y = 120 // a row well inside the [YMIN, 239] strip
 export function createSim(rand: () => number): SimState {
   const sched = createScheduler()
   const laserBank = createLaserBank(sched)
+  // Minted here but consumes no entropy at construction, so star seeding is unchanged and
+  // a fresh sim carries no enemies (spawning is explicit; the df5 wave logic drives it).
+  const enemyBank = createEnemyBank(sched, rand)
   const facing: Facing = 'right'
   return {
     ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },
     camera: 0,
     stars: initStars(rand),
     lasers: laserBank.lasers,
+    landers: enemyBank.landers,
+    humanoids: enemyBank.humanoids,
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
     _plax16: INITIAL_PLAX16,
     _sched: sched,
     _laserBank: laserBank,
+    _enemyBank: enemyBank,
   }
+}
+
+/** Snapshot-refresh helper: a new SimState reflecting the current enemy-bank views, used
+ *  by stepSim and the spawn entries so `landers`/`humanoids` never go stale. */
+function withEnemies(state: SimState): SimState {
+  return { ...state, landers: state._enemyBank.landers, humanoids: state._enemyBank.humanoids }
+}
+
+/** Spawn a lander at the top, descending (*START LANDERS, DEFB6.SRC:649). Returns a new
+ *  SimState with the lander in its `landers` view. A df5 wave spawner / df4-6 calls this. */
+export function spawnLander(state: SimState, x: number): SimState {
+  state._enemyBank.spawnLander(x)
+  return withEnemies(state)
+}
+
+/** Place a humanoid on the terrain at (x, y) (ASTRO, DEFB6.SRC:290). Returns a new
+ *  SimState with the humanoid in its `humanoids` view. */
+export function spawnHumanoid(state: SimState, x: number, y: number): SimState {
+  state._enemyBank.spawnHumanoid(x, y)
+  return withEnemies(state)
 }
 
 /** Advance the sim one 60 Hz tick under `input`. Returns the next state; the scheduler and
@@ -116,11 +149,14 @@ export function stepSim(state: SimState, input: Input): SimState {
     camera: camera.bgl,
     stars,
     lasers: state._laserBank.lasers,
+    landers: state._enemyBank.landers,
+    humanoids: state._enemyBank.humanoids,
     _plaxv24: plaxv24,
     _rev: rev,
     _vy: vy,
     _plax16: camera.plax16,
     _sched: state._sched,
     _laserBank: state._laserBank,
+    _enemyBank: state._enemyBank,
   }
 }
