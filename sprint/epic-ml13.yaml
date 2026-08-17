@@ -10,9 +10,10 @@ stories:
     title: Segment kills leave a mushroom (MUSHER) at the dead cell — both shot-kill and DDT-kill paths
     points: 2
     priority: p2
-    status: in_progress
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
     type: bug
   - id: ml13-2
     title: Shot-kill of a segment scores the ROM head/body split (body 10 / head 100), not a flat SEGMENT_PTS=10
