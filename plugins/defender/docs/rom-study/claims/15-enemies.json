@@ -232,5 +232,140 @@
       "line": 337,
       "verbatim": "BAITER\tFCC\t\"BAITER/\""
     }
+  },
+  {
+    "id": "EN-27",
+    "claim": "The BOMBER is Williams' internal 'TIE' process: the source banner *TIE PROCESS marks the formation flyer's body. This is the arcade-marketing 'Bomber' — the flyer that lays bombs — mapped in glossary.md (the story's AC1 guess of START BOMB->Bomber is corrected: the TIE is the Bomber, and BOMBST is the bomb it lays).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1023,
+      "verbatim": "*TIE PROCESS"
+    }
+  },
+  {
+    "id": "EN-28",
+    "claim": "The TIE process DROPS BOMBS — this is the behavioral proof that the TIE is the arcade BOMBER: TIE31 gates on (LSEED & 7)==0 and, when open, BSR BOMBST lays a bomb (the 1/8 drop gate). BOMBST is the bomb/mine, not an enemy.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1115,
+      "verbatim": "\tBSR\tBOMBST"
+    }
+  },
+  {
+    "id": "EN-29",
+    "claim": "The bomber's process re-naps every tick: NAP 1,TIE — the TIE_NAP cadence in core/ties.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1116,
+      "verbatim": "TIEX\tNAP\t1,TIE"
+    }
+  },
+  {
+    "id": "EN-30",
+    "claim": "The bomb-drop gate masks the LSEED byte with $7 (1-in-8): ANDA #$7 (BNE TIEX on the next line skips the drop unless the low 3 bits are zero) — the BOMB_DROP_MASK in core/ties.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1113,
+      "verbatim": "\tANDA\t#$7"
+    }
+  },
+  {
+    "id": "EN-31",
+    "claim": "The number of live bombs is capped at 10: BOMBST loads BMBCNT and CMPA #10 / BHS refuses a new bomb at the cap — the BOMB_MAX in core/ties.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1137,
+      "verbatim": "\tCMPA\t#10"
+    }
+  },
+  {
+    "id": "EN-32",
+    "claim": "A laid bomb's lifetime is (SEED & $1F) + 1: ANDA #$1F masks the seed (INCA on the next line adds one), so the lifetime is always at least 1 — the BOMB_LIFETIME_MASK in core/ties.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1146,
+      "verbatim": "\tANDA\t#$1F"
+    }
+  },
+  {
+    "id": "EN-33",
+    "claim": "The POD is Williams' internal 'PROBE' process: the source banner *PROBE START marks the drifting blob's spawn. This is the arcade-marketing 'Pod' — the 1000-pt blob that bursts into swarmers when shot — mapped in glossary.md (correcting the story's AC1 guess of PROBE->Probe).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 85,
+      "verbatim": "*PROBE START"
+    }
+  },
+  {
+    "id": "EN-34",
+    "claim": "Killing a PROBE RELEASES SWARMERS — the behavioral proof that the PROBE is the arcade POD: PRBKIL loads the count (LDA #6, :119) then JSR MMSW materializes 1..6 mini-swarmers at the pod's position before DEC PRBCNT.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 122,
+      "verbatim": "\tJSR\tMMSW"
+    }
+  },
+  {
+    "id": "EN-35",
+    "claim": "A killed pod releases up to six swarmers: PRBKIL loads LDA #6 as the RMAX ceiling before JSR MMSW (RMAX returns 1..6, so a shot pod ALWAYS bursts into at least one swarmer) — the POD_SWARMER_MAX in core/probes.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 119,
+      "verbatim": "\tLDA\t#6"
+    }
+  },
+  {
+    "id": "EN-36",
+    "claim": "The SWARMER is Williams' internal 'MSWM' (mini swarmer): the source banner *MAKE A MINI SWARMER marks its spawn routine. This is the arcade-marketing 'Swarmer' — the fast pursuer a Pod bursts into — mapped in glossary.md (correcting the story's AC1 guess of MSWM->Pod).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 141,
+      "verbatim": "*MAKE A MINI SWARMER"
+    }
+  },
+  {
+    "id": "EN-37",
+    "claim": "The number of live swarmers is capped at 20: MMSW spawn tests CMPA #20 / BHI and refuses a new swarmer above the cap — the SWARMER_MAX (SWCNT cap) in core/swarmers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 148,
+      "verbatim": "\tCMPA\t#20"
+    }
+  },
+  {
+    "id": "EN-38",
+    "claim": "The swarmer process re-naps every 3 ticks: MSWL NAP 3,MSWLP — the SWARMER_NAP cadence in core/swarmers.ts.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 249,
+      "verbatim": "MSWL\tNAP\t3,MSWLP"
+    }
+  },
+  {
+    "id": "EN-39",
+    "claim": "The arcade-marketing name for the TIE process is spelled out in the message ROM: BOMBER FCC \"BOMBER/\" — the TIE->Bomber identity is SOURCED here from the marketing string, not assumed.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 341,
+      "verbatim": "BOMBER\tFCC\t\"BOMBER/\""
+    }
+  },
+  {
+    "id": "EN-40",
+    "claim": "The arcade-marketing name for the PROBE process is spelled out in the message ROM: POD FCC \" POD/\" — the PROBE->Pod identity is SOURCED here from the marketing string, not assumed.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 399,
+      "verbatim": "POD\tFCC\t\" POD/\""
+    }
+  },
+  {
+    "id": "EN-41",
+    "claim": "The arcade-marketing name for the MSWM process is spelled out in the message ROM: SWARMR FCC \"SWARMER/\" — the MSWM->Swarmer identity is SOURCED here from the marketing string, not assumed.",
+    "source": {
+      "file": "MESS0.SRC",
+      "line": 418,
+      "verbatim": "SWARMR\tFCC\t\"SWARMER/\""
+    }
   }
 ]
