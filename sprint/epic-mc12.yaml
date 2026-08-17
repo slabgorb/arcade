@@ -84,7 +84,8 @@ stories:
     title: "Render fidelity round 3 (two fixes on one render.ts surface — grouped per the file-by-surface habit so they share one review). (a) DROP the incoming-ICBM 'lollipop': render.ts:175 fills a headR disc (ctx.arc) at each ICBM head; the cabinet draws incoming missiles as a trail with a flashing 1px tip like the ABM ('TIP OF MISSILE TRAIL IS FLASH' W3DSUP.MAC:931; DRAW MISSILE W3DSUP.MAC:1221), no disc. (b) AUTHENTIC bomber/satellite: render.ts:186-189 draws each sputnik/plane as a fillRect wing/box placeholder ('pixel-authentic plane sprite ... are mc9', which mc9-1 never did); port the plane (bomber) and satellite (sputnik) stamp geometry from the W3DSUP stamp layer as mc9-1 did for cities (WRITE A STAMP W3DSUP.MAC:587; locate the plane/satellite stamp label; sputnik.json claim exists). Shell-only; enemy hue (COL010) unchanged; purity stays green."
     points: 4
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
