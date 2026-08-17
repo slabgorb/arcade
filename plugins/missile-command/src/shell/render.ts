@@ -190,13 +190,16 @@ export function drawFrame(
   // W3MAIN.MAC:6073-6175), NOT the mc5-2 fillRect wing/box and NOT WRITE A STAMP (the
   // city blitter). Each dot is one cabinet pixel offset from the plane's centre, painted
   // in the enemy hue (COL010) at the same stamp-pixel size the cities use and positioned
-  // by project(). The bomber's dots mirror horizontally when it faces left (dir < 0 —
-  // the ROM's EOR-0FF on a negative PLAVEL); the satellite is symmetric. Its FLASH
-  // antenna tips and BLUE portholes are a filed follow-up (enemy hue unchanged here).
+  // by project(). BOTH variants' dots mirror horizontally when the plane faces left
+  // (dir < 0): the ROM's `EOR PLAVEL` flip (OUTLST, W3MAIN.MAC:5997) is UNCONDITIONAL per
+  // object — and neither dot-list is H-symmetric, so a left-flying plane must mirror or it
+  // faces backward. The satellite's FLASH antenna tips and BLUE portholes are a filed
+  // follow-up (enemy hue unchanged here); the exact 1px `EOR 0FF` offset (-dh vs -dh-1) is
+  // an mc12-4 screenshot refinement.
   ctx.fillStyle = hue(SLOT.ICBMS)
   for (const plane of state.sputniks) {
     const dots = plane.variant === 'bomber' ? BOMBER_DOTS : SATELLITE_DOTS
-    const mirror = plane.variant === 'bomber' && plane.dir < 0
+    const mirror = plane.dir < 0
     for (const { dh, dv } of dots) {
       const p = project({ h: plane.pos.h + (mirror ? -dh : dh), v: plane.pos.v + dv }, width, height)
       ctx.fillRect(p.x - pw / 2, p.y - ph / 2, pw, ph)

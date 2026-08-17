@@ -370,6 +370,30 @@ describe('mc12-2 AC2/AC3 — bomber and satellite draw authentic, distinct silho
       'bomber and satellite must draw DISTINCT silhouettes — today both collapse to the same single fillRect',
     ).not.toBe(satelliteSig)
   })
+
+  // mc12-2 review (Heimdall F2): the ROM's OUTLST EOR-PLAVEL flip (W3MAIN.MAC:5997) mirrors
+  // BOTH objects when they travel left. Neither dot-list is H-symmetric — the satellite has
+  // 6 unmirrored fuselage dots — so a left-flying plane that ISN'T mirrored faces backward.
+  // This pins the mirror for EACH variant (the first GREEN mirrored only the bomber, on a
+  // false "satellite is symmetric" premise, so the satellite arm of this reddened that code).
+  const facing = (variant: 'bomber' | 'satellite', dir: 1 | -1): GameState => ({
+    ...bare,
+    sputniks: [{ pos: SPUTNIK_POS, dir, variant, fireTimer: 100 }],
+  })
+
+  it.each(['bomber', 'satellite'] as const)(
+    'a left-facing %s mirrors horizontally (not rendered identical to facing right)',
+    (variant) => {
+      const right = nearSig(paint(facing(variant, 1)))
+      const left = nearSig(paint(facing(variant, -1)))
+      expect(right.length, `the ${variant} must draw marks to compare`).toBeGreaterThan(0)
+      expect(
+        left,
+        `a left-flying ${variant} must MIRROR its H-asymmetric silhouette (ROM EOR-PLAVEL), ` +
+          `not render identically to facing right — else it faces backward`,
+      ).not.toBe(right)
+    },
+  )
 })
 
 describe('mc12-2 AC2 — the plane silhouettes cite the authentic OUTLST dot-list geometry', () => {

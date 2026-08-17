@@ -120,9 +120,12 @@ function zipDots(h: readonly number[], v: readonly number[]): readonly PlaneDot[
 }
 
 // SATELLITE — object 0 LEADING EDGE, PLACOL (DOTCOL[0]). 23 dots: a round body
-// with four diagonal antennae, H+V symmetric (no mirror). H = HPLEAD
-// (W3MAIN.MAC:6109); V = VPLEAD (W3MAIN.MAC:6143). The FLASH antenna tips
-// (HTIPS/VTIPS) and BLUE portholes (HWINDO/VWINDO) are the deferred two-tone
+// cluster (right-heavy leading edge) with four diagonal antennae. V-mirror
+// symmetric ONLY — it is NOT H-symmetric: 6 of the 23 dots (the fuselage dots at
+// dh=1,3) have no left-side counterpart, so a left-flying satellite mirrors just
+// like the bomber (render.ts applies the ROM's unconditional EOR-PLAVEL flip).
+// H = HPLEAD (W3MAIN.MAC:6109); V = VPLEAD (W3MAIN.MAC:6143). The FLASH antenna
+// tips (HTIPS/VTIPS) and BLUE portholes (HWINDO/VWINDO) are the deferred two-tone
 // detail — this story paints the PLACOL silhouette only (enemy hue unchanged).
 const HPLEAD: readonly number[] = [3, 3, 4, 4, 4, 3, 3, 1, 1, 5, 4, 4, 5, -5, -4, -4, -5, 0, 0, 0, -4, -4, -4]
 const VPLEAD: readonly number[] = [3, 2, 1, 0, -1, -2, -3, 4, -4, 5, 4, -4, -5, 5, 4, -4, -5, 1, 0, -1, 1, 0, -1]
