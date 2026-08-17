@@ -2409,6 +2409,18 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   processes = trollStep.processes
   const trollEvents = trollStep.events
 
+  // jt13-5 — DEATH VIA SWIMMING IN THE LAVA (ADGFLR, JOUSTRV4.SRC:6508-6640): a
+  // NON-gripped player that reaches lava depth drowns. frame.ts already clears its
+  // PVELX and pins it at the FLOOR+7 surface (the jt11-18 on-screen backstop); the
+  // life is booked by stepGame off the player-process REMOVAL, so removing the
+  // rider here is what turns the old free-swim clamp into a real death. A player in
+  // the lava troll's grip (`grippedBy` set) is exempt — that troll owns its
+  // victim's death (the SEPARATE path, ADGFLR :6624-6640). Enemies and eggs keep
+  // the jt11-18 clamp; this story is the player's lava death only.
+  processes = processes.filter(
+    (p) => !(p.kind === 'player' && p.entity !== undefined && p.grippedBy === undefined && isLavaDeath(p.entity.posY)),
+  )
+
   // jt4-5 — the SELF-CLEAR: a SETTLED egg MATURES into a remounting buzzard
   // (egg.ts willHatch/remountEntryEdge — the jt2-4 laws, cited EGGLND/EGGMAN :3239-3279) so an
   // arena full of eggs is no longer a permanent egg-lock. The egg leaves and a live enemy flies

@@ -312,7 +312,15 @@ function stepPlayerEntity(
       // backstop that keeps a non-gripped bird on-screen (the felt bug). velY is
       // zeroed so a bird held at the floor is not still accelerating — otherwise
       // the pinned-posY/growing-velY pair eventually int16-wraps in flap/stepFlight.
-      s = { ...s, posY: DEATH_Y << 8, velY: 0 }
+      //
+      // jt13-5 — ADGFLR "PLAYER IS NOT GOING ANYWHERE" (`CLR PVELX`,
+      // JOUSTRV4.SRC:6610): horizontal velocity is cleared the instant the bird
+      // reaches the lava, so it cannot swim sideways (a steer no longer moves it;
+      // the break-free escape is a hard FLAP, not a stick push). Removing the
+      // drowned rider — and the life lost — is the sim layer's job (sim.ts, off
+      // this same lava depth), which keeps this frame-level clamp as jt11-18's
+      // on-screen backstop for the raw scheduler and the enemy/egg paths.
+      s = { ...s, posY: DEATH_Y << 8, velY: 0, velXIndex: 0, velXFrac: 0 }
     }
   } else {
     // Facing threaded through (jt2-9): a reversal (dir against facing) reaches the
