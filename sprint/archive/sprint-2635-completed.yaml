@@ -10,6 +10,7 @@ completed_epics:
   - pm5
   - jt12
   - ml11
+  - ml12
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -125,5 +126,10 @@ completed_stories:
   - id: ml12-2
     epic: ml12
     title: Millipede heads wrap horizontally off the side of the play area and re-enter from the other side (sometimes repeatedly, running dead-horizontal across the screen) instead of turning + dropping a row at the edge
+    points: 3
+    completed: '2026-08-17'
+  - id: ml12-3
+    epic: ml12
+    title: DDT has no effect killing millipede segments — deploying DDT does not damage/kill the train (gameplay, NOT the already-shipped ml9-3/ml11 DDT visual)
     points: 3
     completed: '2026-08-17'
