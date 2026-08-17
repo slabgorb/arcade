@@ -1,0 +1,74 @@
+[
+  {
+    "id": "EF-1",
+    "claim": "SAMEXAP7's effect-vector table dispatches APPEAR START at APST: JMP APST 'APPEAR START' — the materialize lifecycle entry (df4-2 startAppear).",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 16,
+      "verbatim": "\tJMP\tAPST\tAPPEAR START"
+    }
+  },
+  {
+    "id": "EF-2",
+    "claim": "The next effect vector dispatches EXPLOSION START at EXST: JMP EXST 'EXPLOSION START' — the explode lifecycle entry (df4-2 startExplode).",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 17,
+      "verbatim": "\tJMP\tEXST\tEXPLOSION START"
+    }
+  },
+  {
+    "id": "EF-3",
+    "claim": "APST seeds the APPEAR animation counter to a NEGATIVE size: LDD #$AF00 (bit 15 set) then STD RSIZE,Y — the ROM's tag for an appear (EXPU BMI). df4-2 APPEAR_INIT_SIZE.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 58,
+      "verbatim": "\tLDD\t#$AF00\tINTIALIZE SIZE"
+    }
+  },
+  {
+    "id": "EF-4",
+    "claim": "EXST seeds the EXPLODE animation counter to a POSITIVE size: LDD #$100 then STD RSIZE,Y — the ROM's tag for an explosion. df4-2 EXPLODE_INIT_SIZE.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 91,
+      "verbatim": "\tLDD\t#$100\tINITIALIZE SIZE"
+    }
+  },
+  {
+    "id": "EF-5",
+    "claim": "EXPU grows an explosion by $AA each frame: ADDD #$AA 'INCREASE SIZE'. df4-2 EXPLODE_GROW.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 136,
+      "verbatim": "\tADDD\t#$AA\tINCREASE SIZE"
+    }
+  },
+  {
+    "id": "EF-6",
+    "claim": "The explosion is finished once the size's HIGH byte exceeds $30: CMPA #$30 'CHECK IF FINISHED' (followed by BLS to continue). df4-2 EXPLODE_DONE_HI — done when (size>>8) > $30.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 138,
+      "verbatim": "\tCMPA\t#$30\tCHECK IF FINISHED"
+    }
+  },
+  {
+    "id": "EF-7",
+    "claim": "EXPU shrinks an appear by $100 each frame: SUBD #$100 'DECREASE SIZE' (labelled EXPU4); the appear finishes when the value goes non-negative (BPL). df4-2 APPEAR_STEP.",
+    "source": {
+      "file": "SAMEXAP7.SRC",
+      "line": 163,
+      "verbatim": "EXPU4\tSUBD\t#$100\tDECREASE SIZE"
+    }
+  },
+  {
+    "id": "EF-8",
+    "claim": "The terrain-explosion strobe is triggered by NEWP TERBLO,STYPE 'BLOW UP TERRAIN' — the full-frame flash df4-2 substitutes with a non-strobing particle burst under ADR-0005 (presentation only; trigger ported).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 434,
+      "verbatim": "\tNEWP\tTERBLO,STYPE BLOW UP TERRAIN"
+    }
+  }
+]

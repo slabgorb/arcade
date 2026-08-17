@@ -78,3 +78,13 @@ completed_stories:
     title: "Attract enemy-showcase: draw the per-creature BLACK cell panels behind the sprites (attract-mame-reference.png shows solid black panels; renderShowcase currently blits sprites straight onto the blue background)."
     points: 2
     completed: '2026-08-16'
+  - id: mc12-1
+    epic: mc12
+    title: "Bound the MIRV to a SINGLE split so one missile can't cascade into a swarm. Today mirvSplit (core/mirv.ts:50) launches 3 children AT parent.pos — inside the MIRV band [MIRVLO=128,MIRVHI=160] (W3COMN.MAC:159/161) — and game.ts:597-600 keeps the split parent with no spent-marker, so the in-band cluster re-qualifies (mirvEligible, mirv.ts:38) and re-splits every frame into the 6+ fan the owner screenshotted. Mark a MIRVed ICBM AND its children spent so mirvEligible returns false for both; pin the bound to REV-01's single-shot mechanism (MIRVIX single slot W3MAIN.MAC:227; consume W3MAIN.MAC:2011-2017; POTENT '<=3 shots from a MIRV' W3MAIN.MAC:2717). ROM-always-wins: no invented difficulty knob. Pure core; purity + citations gated."
+    points: 5
+    completed: '2026-08-16'
+  - id: df4-2
+    epic: df4
+    title: "Materialize/explode effects + the ADR-0005 accessibility policy (the ONE exception to ROM-always-wins, decided HERE): plugins/defender/src/core/effects.ts — the SAMEXAP7 APST 'APPEAR START' / EXST 'EXPLOSION START' lifecycle (defender/SAMEXAP7.SRC:16-17) animating the df2-4 INERT image tables; PLUS the effect-policy classifier that renders full-frame strobes (player death/terrain explosion TERBLO defender/DEFB6.SRC:434,437) as freeze/fade/particle, and a render-side guard that no effect writes a whole-framebuffer inversion in a single frame. ROM trigger+timing ported and cited; only the strobe PRESENTATION is substituted, logged as a Design Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md."
+    points: 3
+    completed: '2026-08-16'
