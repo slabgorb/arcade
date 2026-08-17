@@ -93,6 +93,10 @@ export function composeStaticFrame(width: number, height: number): Framebuffer {
 
 /** The player ship object, drawn at its live display column/row. */
 const SHIP_OBJECT = 'PLAPIC'
+/** df4-3 abduction sprites — the lander (LNDP1) and the humanoid (ASTP1), each carrying
+ *  its own palette indices (blitObject invents no colour). */
+const LANDER_OBJECT = 'LNDP1'
+const HUMANOID_OBJECT = 'ASTP1'
 /** LASER colour: palette entry 1 (core/palette.ts DEFAULT_PCRAM label 1 = LASER). */
 const LASER_COLOUR = 1
 /** Pixels of the laser's leading streak drawn behind its head. */
@@ -126,6 +130,19 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
   blitTerrain(fb, surface, TERRAIN_COLOUR)
 
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
+
+  // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1).
+  // Screen column = world-x >> 8 (the laser convention); the row is already display-space.
+  const landerPic = require_(OBJECTS, LANDER_OBJECT, 'object')
+  for (const lander of state.landers ?? []) {
+    if (!lander.alive) continue
+    blitObject(fb, landerPic, lander.x >> 8, lander.y)
+  }
+  const humanoidPic = require_(OBJECTS, HUMANOID_OBJECT, 'object')
+  for (const humanoid of state.humanoids ?? []) {
+    if (!humanoid.alive) continue
+    blitObject(fb, humanoidPic, humanoid.x >> 8, humanoid.y)
+  }
 
   for (const laser of state.lasers) {
     if (!laser.alive) continue

@@ -31,3 +31,17 @@ in-house words. This table translates each to plain English. Line numbers are
 The message module groups its vector tables by the programmer whose code consumes
 them. The names are the authors' own — the vector tables are organized by who
 wrote the consuming code, not by function.
+
+## Enemies — Williams process label → arcade-marketing name (df4)
+
+The Williams source names its enemies in an internal vocabulary that does **not**
+map 1:1 to the arcade-marketing names players know (Lander/Mutant/Baiter/Bomber/
+Pod/Swarmer). Each `df4` enemy story maps its process label to the arcade name here,
+CITED, before naming a reducer — a wrong identity stated in prose would otherwise
+ship green. The abduction loop (df4-3):
+
+| Author word | Plain English | Where |
+|---|---|---|
+| `LANDS0` / `*START LANDERS` | the **Lander** — Defender's base ground enemy: spawned at the top of the screen, it descends and hunts a humanoid to carry off (the arcade name; the Williams source uses only the internal process label) | `defender/DEFB6.SRC:649`, `defender/DEFB6.SRC:657` |
+| `ASTRO` / `*ASTRONAUT PROCESS` | the **Humanoid** — the abductee that walks the planet surface; a Lander grabs it and carries it toward the top (arcade "Humanoid"; Williams calls it the astronaut) | `defender/DEFB6.SRC:290` |
+| `*KILL KIDNAPPING LANDER` → `AFALL` | when a Lander carrying a Humanoid is shot, the Humanoid is released and falls — the AFALL free-fall (df4-3 starts the fall; catching it, or its hitting the planet, is df5) | `defender/DEFB6.SRC:903`, `defender/DEFB6.SRC:911` |
