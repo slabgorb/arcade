@@ -248,8 +248,10 @@ describe('df4-4 — the MUTANT dies (SCZKIL, DEFB6.SRC:624) and guards its spawn
     // (before the ship exists, a degenerate camera frame). approach()'s Math.sign(delta)*step
     // would then propagate NaN into x permanently. Guard the per-tick read, not just the spawn.
     const nanPlayer = { x: Number.NaN, y: Number.NaN }
-    const { sched, bank } = makeBank(() => nanPlayer)
+    const { sched, bank, shots } = makeBank(() => nanPlayer)
     bank.spawnMutant(1000, 120)
+    // 200 ticks spans several shot-timer expiries (SHOT_TIMER reloads), so the FIRE half of
+    // the guard is exercised, not just the SEEK half.
     for (let t = 0; t < 200; t++) {
       sched.stepTick()
       const m = bank.mutants[0]
@@ -259,5 +261,9 @@ describe('df4-4 — the MUTANT dies (SCZKIL, DEFB6.SRC:624) and guards its spawn
       expect(Number.isFinite(x), `the mutant's X stayed finite despite a NaN player at tick ${t}`).toBe(true)
       expect(Number.isFinite(y), `the mutant's Y stayed finite despite a NaN player at tick ${t}`).toBe(true)
     }
+    // The FIRE half of the #21 guard: no shot is aimed at a non-finite player. Without the
+    // `if (seekable)` guard around deps.fire(), the timer would expire and push a NaN-target
+    // shot into the sink — so this reddens if the fire-side guard is removed (mutation-proven).
+    expect(shots.length, 'no shot fires while the player pose is non-finite').toBe(0)
   })
 })

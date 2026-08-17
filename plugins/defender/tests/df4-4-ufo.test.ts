@@ -168,8 +168,10 @@ describe('df4-4 — the BAITER dies (UFOKIL, DEFB6.SRC:81) and guards its spawn 
     // a real ShipView-backed provider (pre-spawn / degenerate camera) must not permanently NaN
     // the baiter. Guard the per-tick read, not just the spawn.
     const nanPlayer = { x: Number.NaN, y: Number.NaN }
-    const { sched, bank } = makeBank(() => nanPlayer)
+    const { sched, bank, shots } = makeBank(() => nanPlayer)
     bank.spawnUfo(1000, 100)
+    // 200 ticks spans several shot-timer expiries (UFO_SHOT_TIMER_INIT then SHOT_RELOAD), so
+    // the FIRE half of the guard is exercised, not just the SEEK half.
     for (let t = 0; t < 200; t++) {
       sched.stepTick()
       const u = bank.ufos[0]
@@ -179,5 +181,8 @@ describe('df4-4 — the BAITER dies (UFOKIL, DEFB6.SRC:81) and guards its spawn 
       expect(Number.isFinite(x), `the baiter's X stayed finite despite a NaN player at tick ${t}`).toBe(true)
       expect(Number.isFinite(y), `the baiter's Y stayed finite despite a NaN player at tick ${t}`).toBe(true)
     }
+    // The FIRE half of the #21 guard: no shot is aimed at a non-finite player. Reddens if the
+    // `if (seekable)` guard around deps.fire() is removed (mutation-proven by round-2 review).
+    expect(shots.length, 'no shot fires while the player pose is non-finite').toBe(0)
   })
 })
