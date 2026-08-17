@@ -24,8 +24,8 @@
 // is stamped but uncounted).
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────
-// sim.ts's shot-kill path (:177-193) and DDT-kill step 8b drop the segment + score +
-// emit the event but never call MUSHER — no mushroom at the cell-ahead, no MUSH bump.
+// sim.ts's shot-kill path and its DDT-kill step 8b drop the segment + score + emit the
+// event but never call MUSHER — no mushroom at the cell-ahead, no MUSH bump.
 
 import { describe, it, expect } from 'vitest'
 import { createGame, type GameState } from '../src/core/game-state'
