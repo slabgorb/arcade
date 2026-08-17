@@ -48,6 +48,15 @@ export const DDT_HIT_POINTS = 80 // "80 POINTS FOR HITTING DDT" (MILLI.MAC:2058,
 export const DDT_ANCHOR_BACKSTEP = 0x61 // SBC I,61 (MILLI.MAC:2049, DD-210)
 export const DDT_CLOUD_KILL_FLAG = 0x80 // DDTEX1 LDA I,80 (MILLI.MAC:1947, DD-217)
 
+// ─── DDT-cloud KILL scores (SHOOT2 142$) ────────────────────────────────────
+// DDTEX1 (MILLI.MAC:1947, DD-217) unconditionally passes DDT_CLOUD_KILL_FLAG
+// into SHOOT2 before every cloud kill, so 142$ always takes the premium path:
+// the base body score (LDA I,10) is overridden to LDA I,30 (MILLI.MAC:2165), and
+// a head LSR×4's that value into the hundreds digit (MILLI.MAC:2171-2175, "100
+// POINTS FOR A HEAD") → 300. BCD point values; a body is colour >= $3D (:2168).
+export const DDT_KILL_BODY_PTS = 30 // LDA I,30 on DDT death (MILLI.MAC:2165, DD-223)
+export const DDT_KILL_HEAD_PTS = 300 // LSR×4 → 100s digit (MILLI.MAC:2171, DD-224)
+
 // ─── BOMBS constants ────────────────────────────────────────────────────────
 export const BOMBS_DELAY = 0x80 // MILLI.MAC:456-457 (DD-78)
 export const BOMBS_RND_MASK = 7 // AND I,7 (MILLI.MAC:454, DD-77)

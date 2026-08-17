@@ -20,6 +20,7 @@ import {
   createMillipede,
   checkPlayerCollision,
   VACANT_COLOR,
+  BODY_COLOR,
   NCENT,
   type Segment,
 } from './millipede'
@@ -38,6 +39,9 @@ import {
   ddtScrollDown,
   ddtScrollUp,
   anyDdtExploding,
+  inDdtCloud,
+  DDT_KILL_BODY_PTS,
+  DDT_KILL_HEAD_PTS,
 } from './ddt'
 import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN } from './mushroom'
 import { initConway, masterStep } from './conway'
@@ -265,6 +269,30 @@ function stepPlay(state: GameState, input: GameInput): GameState {
 
   // 8. March the surviving segments.
   segments = stepMillipede(segments, state.frame, state.field)
+
+  // 8b. DDT cloud kill (MOTION, MILLI.MAC:1611-1614). After a segment has moved,
+  //     the ROM reads the cell it now OCCUPIES — OBSTAC with Y=0 (DD-219), NOT the
+  //     cell-ahead the turn check reads (:1527 OBSTA0) — and DDTEXP destroys it
+  //     when that stamp is a cloud in [CLOUD, DDT) (DD-220/221). A destroyed
+  //     segment neither turns nor hurts the player (:1614 BCS 30$ skips both).
+  //     Removal + segment-killed cue mirror a shot kill, but the SCORE does NOT:
+  //     DDTEX1's $80 flag (DD-217) is always set for a cloud kill, so SHOOT2 142$
+  //     scores the premium — body 30, head 300 (DD-223/224), tripled from the
+  //     base 10/100. Read post-march, before the wave-clear check below.
+  if (segments.some(isLive)) {
+    const survivors: Segment[] = []
+    for (const s of segments) {
+      if (isLive(s) && inDdtCloud(obstacleAt(state.field, obstacOffset(s.h, s.v, 0)))) {
+        // Head vs body: a body is colour >= $3D (MILLI.MAC:2168 CMP I,3D / BCS 145$);
+        // a head (0x39) or poisoned head (0x1B) is below it and scores in the 100s.
+        score += s.color >= BODY_COLOR ? DDT_KILL_BODY_PTS : DDT_KILL_HEAD_PTS
+        events.push(event('segment-killed'))
+        continue // OBJECT DESTROYED — dropped from the roster
+      }
+      survivors.push(s)
+    }
+    segments = survivors
+  }
 
   // 9. Wave loop (MILLI.MAC:1912-1915 clear→arm, CHKEND countdown, next wave).
   //    A cleared millipede with no DELAY pending WINS the wave: arm WAVE_DELAY.
