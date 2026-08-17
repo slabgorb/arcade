@@ -30,7 +30,7 @@
 // (main.ts:260 `for (const s of state.segments) ... drawSprite(s.h, s.v, ...)`),
 // through px(h,v) = [0xf7-h, 0xf8-v]. At wave start every segment sits at v=0xF8,
 // so each paints at y=0 — exactly the reserved HUD score row, where hudPlacements
-// also draws (row 0x1F -> y=(0x1F-0x1F)*8 = 0, main.ts:286). That shared top row
+// also draws (row 0x1F -> y=(0x1F-0x1F)*8 = 0, main.ts:291). That shared top row
 // is the owner's "the train runs over the score."
 //
 // ─── WHAT GREEN (Dev) MUST SHIP ─────────────────────────────────────────────────
@@ -57,7 +57,7 @@
 
 import { describe, it, expect } from 'vitest'
 import mainSrc from '../src/main.ts?raw'
-import { createMillipede, ENTER_V, NCENT, VACANT_COLOR, type Segment } from '../src/core/millipede'
+import { createMillipede, ENTER_V, NCENT, OFFTOP_V, VACANT_COLOR, type Segment } from '../src/core/millipede'
 
 // ── Self-describing loader (the ml1-1 / hud-render pattern): RED proves the
 //    feature ABSENT with a readable message instead of a static-import type error.
@@ -89,6 +89,14 @@ describe('ml12-1 — the render gates the wave-start train off the ROM off-top b
     expect(segmentOnScreen(ENTER_V), 'the wave-start enter row v=0xF8 is off the top (MILLI.MAC:1872)').toBe(false)
     // A segment that has descended well into the field draws normally.
     expect(segmentOnScreen(0xe0), 'a descended field row (v=0xE0) is on-screen and draws').toBe(true)
+    // Pin the EXACT off-top boundary to the ROM value 0xF4 (MILLI.MAC:1871
+    // "CMP I,0F4", MT-35) — NOT centipede's 0xF8 — so OFFTOP_V cannot silently
+    // drift from its claim, and the `BCS` (>=) boundary is exact: 0xF4 is the
+    // first off-top row, 0xF3 the last on-screen one. (Review-round hardening:
+    // the value was otherwise unpinned — a mutant 0xF0/0xF8 passed the suite.)
+    expect(OFFTOP_V, 'off-top threshold is the ROM 0xF4 (MILLI.MAC:1871), not centipede 0xF8').toBe(0xf4)
+    expect(segmentOnScreen(0xf4), '0xF4 is the first off-top row (ROM BCS is >=)').toBe(false)
+    expect(segmentOnScreen(0xf3), '0xF3 is the last on-screen row below the band').toBe(true)
   })
 
   it('gates the ENTIRE wave-start train — createMillipede() lays all NCENT segments at v=0xF8, none on-screen', async () => {
@@ -126,12 +134,19 @@ describe('ml12-1 — the render gates the wave-start train off the ROM off-top b
     expect(ENTER_V, 'ENTER_V stays byte-faithful to MILLI.MAC:537 "LDA I,0F8"').toBe(0xf8)
   })
 
-  it('WIRING: main.ts consults the off-top gate in its segment draw path (comment-stripped source)', () => {
+  it('WIRING: the segment draw loop itself gates on segmentOnScreen(s.v) (comment-stripped source)', () => {
     // main.ts is the page script (no exports), so — as with the ml7-2 wiring test
     // — the render wiring is pinned on comment-stripped source. The behavioural
     // weight is on segmentOnScreen's unit tests above; this asserts the page
     // actually routes the train through the gate rather than blitting it ungated.
-    const code = stripComments(mainSrc)
-    expect(code, 'main.ts references the segmentOnScreen off-top gate').toMatch(/segmentOnScreen\s*\(/)
+    // Review-round hardening: a bare /segmentOnScreen\(/ token match is too weak —
+    // a mutant that removes `&& segmentOnScreen(s.v)` from the draw condition but
+    // leaves ANY other segmentOnScreen(...) call in main.ts keeps it green (proven
+    // by the rule-checker). SCOPE the match to the `state.segments` draw loop and
+    // its `s.v` argument so the gate cannot be relocated away from the sprite draw.
+    const code = stripComments(mainSrc).replace(/\s+/g, ' ')
+    expect(code, 'the state.segments draw loop gates on segmentOnScreen(s.v)').toMatch(
+      /state\.segments\)\s*if\s*\(\s*[^)]*segmentOnScreen\(\s*s\.v\s*\)/,
+    )
   })
 })
