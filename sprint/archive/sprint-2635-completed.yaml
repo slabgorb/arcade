@@ -11,6 +11,7 @@ completed_epics:
   - jt12
   - ml11
   - ml12
+  - df4
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -152,4 +153,9 @@ completed_stories:
     epic: jt13
     title: Players and enemies warp-in spawn animation
     points: 5
+    completed: '2026-08-17'
+  - id: df4-6
+    epic: df4
+    title: 'VISUAL playtest — enemies alive, colliding, dying safely: screenshot http://127.0.0.1:5270/defender/ showing enemies materialize (df4-2 appear), a laser killing one via the ACCESSIBILITY-SAFE explosion (ADR-0005, no full-screen strobe), and a lander abducting a humanoid (df4-3) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm enemy colour/orientation and that NO death flashes the full screen BEFORE df5 adds smart-bomb/hyperspace. Carry the df5 accessibility ruling (smart-bomb SBOMB / hyperspace HYPER also freeze/fade) forward as a note.'
+    points: 2
     completed: '2026-08-17'
