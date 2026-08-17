@@ -23,9 +23,12 @@
 // i.e. [0x2E, 0x6E) — is "inside a cloud"; anything else exits carry-clear (no
 // kill). Inside, DDTEX1 (:1946-1959) sets the explosion picture ($FF), scores,
 // plays CHAN2=$14, and returns carry-set = destroyed. SHOOT2's millipede branch
-// (142$, MILLI.MAC:2148-2176) drops a mushroom (MUSHER) at the dead cell and
-// DECs DEAD — so a cloud kill removes the segment from the live count and plants
-// a mushroom, exactly like a shot kill (sim.ts's SHOOT2-vs-segment path).
+// (142$, MILLI.MAC:2148-2176) DECs DEAD and, in the ROM, leaves a mushroom
+// (MUSHER) at the dead cell — so a cloud kill removes the segment from the live
+// count exactly like a shot kill (sim.ts's SHOOT2-vs-segment path). NB the port
+// models removal + the segment-killed event only; the MUSHER mushroom-plant is
+// an unmodelled ROM gap shared by BOTH kill paths (sim.ts plants no mushroom on
+// a shot OR a DDT kill), not something this story changes.
 //
 // Claims: DD-215/216 (the [CLOUD,DDT) range), DD-217/218 (DDTEX1->SHOOT2), and
 // the MOTION call-site DD-219..222 — all byte-verified against the vendored 1982
