@@ -89,6 +89,53 @@ export const MISSILE_STACK: readonly MissileSlot[] = MISTBH.map((dh, k) => ({
   dv: MISTBV[k] + MISSILE_SEAT,
 }))
 
+// ─── ENEMY PLANE SILHOUETTES: the OUTLST dot-lists (W3MAIN, not W3DSUP) ───────
+// The bomber and satellite are NOT stamps. They are drawn by OUTLST — MOVE AN
+// OBJECT 1 DOT HORIZONTAL (W3MAIN.MAC:5925; routine OUTLST W3MAIN.MAC:5947),
+// called from PROCESS THE PLANE (PROPLA, W3MAIN.MAC:5853). Each frame OUTLST
+// RE-STAMPS every dot of the object's PLACOL LEADING-EDGE list at the current
+// position (its BCKGND trailing list erases only the 1-pixel motion smear), so
+// the PLACOL leading-edge contour IS the object's visible per-frame silhouette.
+// The object's lists run from LISTRT[obj] down to the ENDFLG=-1 list
+// (W3MAIN.MAC:6081/:6105): satellite=object 0 → PLEAD; bomber=object 1 → BMLEA.
+// Geometry: the paired H/V DOT LIST OUTPUT TABLES (W3MAIN.MAC:6073-6175),
+// transcribed verbatim below. NOT WRITE A STAMP (W3DSUP:587 — the CITY 8x8 blitter).
+// ⚠ ROM NAMING INVERSION: the ROM's PL* tables hold the SATELLITE; BM* the BOMBER.
+// NOTE (fidelity): this is the LEADING-EDGE contour — front-weighted, so the shape
+// is directional (a rounded leading edge, flatter trailing edge), not a filled body.
+// On-screen confirmation that it reads correctly is mc12-4's screenshot; the FLASH
+// antenna tips + BLUE portholes (satellite) are a separate filed follow-up.
+
+/** One OUTLST dot: a signed (dh, dv) offset from the plane's centre, in cabinet
+ *  pixels. dv is cabinet-V (grows upward, as render.ts's project() maps). */
+export interface PlaneDot {
+  readonly dh: number
+  readonly dv: number
+}
+
+/** Zip the ROM's separate H- and V-offset tables (the OUTLST table layout) into
+ *  paired dots — the MISTBH/MISTBV idiom, applied to the plane dot-lists. */
+function zipDots(h: readonly number[], v: readonly number[]): readonly PlaneDot[] {
+  return h.map((dh, i) => ({ dh, dv: v[i] }))
+}
+
+// SATELLITE — object 0 LEADING EDGE, PLACOL (DOTCOL[0]). 23 dots: a round body
+// with four diagonal antennae, H+V symmetric (no mirror). H = HPLEAD
+// (W3MAIN.MAC:6109); V = VPLEAD (W3MAIN.MAC:6143). The FLASH antenna tips
+// (HTIPS/VTIPS) and BLUE portholes (HWINDO/VWINDO) are the deferred two-tone
+// detail — this story paints the PLACOL silhouette only (enemy hue unchanged).
+const HPLEAD: readonly number[] = [3, 3, 4, 4, 4, 3, 3, 1, 1, 5, 4, 4, 5, -5, -4, -4, -5, 0, 0, 0, -4, -4, -4]
+const VPLEAD: readonly number[] = [3, 2, 1, 0, -1, -2, -3, 4, -4, 5, 4, -4, -5, 5, 4, -4, -5, 1, 0, -1, 1, 0, -1]
+export const SATELLITE_DOTS: readonly PlaneDot[] = zipDots(HPLEAD, VPLEAD)
+
+// BOMBER — object 1 LEADING EDGE, PLACOL (DOTCOL[4]). 13 dots: a swept plane —
+// nose at +7 facing travel, tail fin upper-rear, lower wing swept back. H = HBMLEA
+// (W3MAIN.MAC:6131); V = VBMLEA (W3MAIN.MAC:6167). Mirror dh horizontally when the
+// plane faces left (the ROM's EOR-0FF on a negative PLAVEL); render.ts does that.
+const HBMLEA: readonly number[] = [7, 5, 3, -1, -2, -3, 0, -1, -2, -3, -4, -7, -6]
+const VBMLEA: readonly number[] = [0, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5, 4, 3]
+export const BOMBER_DOTS: readonly PlaneDot[] = zipDots(HBMLEA, VBMLEA)
+
 /**
  * Decode a stamp's row-bitmaps into the set (lit) pixels, as {col,row} with
  * col 0 = leftmost (MSB) and row 0 = top. Pure: the caller projects each pixel
