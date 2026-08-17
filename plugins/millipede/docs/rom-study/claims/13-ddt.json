@@ -1960,5 +1960,41 @@
       "line": 1949,
       "verbatim": "\tJSR SHOOT2\t\t;PROCESS COLLISION RESULTS"
     }
+  },
+  {
+    "id": "DD-219",
+    "claim": "MOTION's DDT-cloud kill reads the cell the segment NOW OCCUPIES: after the move (:1601-1608), OBSTAC is called with Y=0 (LDY I,0), so the 8*DIR term vanishes and it looks at (H,V) itself, NOT the cell-ahead the turn check (:1527 OBSTA0, Y=DIR) reads.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1611,
+      "verbatim": "\tLDY I,0"
+    }
+  },
+  {
+    "id": "DD-220",
+    "claim": "Per-segment DDT-cloud collision: MOTION calls DDTEXP on the occupied cell's stamp every step - this is the segment-kill wiring (a millipede segment marching onto a DDT cloud dies), distinct from the shot-vs-bomb detonation (SHOOT1).",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1613,
+      "verbatim": "\tJSR DDTEXP\t\t;CHECK FOR DDT CLOUD COLLISION"
+    }
+  },
+  {
+    "id": "DD-221",
+    "claim": "DDTEXP carry-set means the segment was DESTROYED: MOTION branches to 30$ (next entry), skipping BOTH the player-collision PLAY (:1615) and the direction-change turn (:1621-1631) - a killed segment neither hurts the player nor turns.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1614,
+      "verbatim": "\tBCS 30$\t\t\t;OBJECT DESTROYED"
+    }
+  },
+  {
+    "id": "DD-222",
+    "claim": "SHOOT2's millipede branch (142$) leaves a mushroom at the dead segment's cell (MUSHER) and DECs DEAD - so a DDT-cloud kill both removes the segment from the live count and plants a mushroom, exactly as a shot kill does.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2159,
+      "verbatim": "\tDEC X,DEAD\t\t;REDUCE COUNT OF CENTIPEDES"
+    }
   }
 ]
