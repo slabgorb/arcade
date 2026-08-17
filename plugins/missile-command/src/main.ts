@@ -10,10 +10,15 @@
 import { createLoop } from '@shared/loop'
 import { mountCanvas } from '@shared/host-helpers'
 import { createGame, stepGame, type GameState } from './core/game.js'
-import { placeCursor } from './core/cursor.js'
 import { drawFrame } from './shell/render.js'
 import { applyLetterbox } from './shell/viewport.js'
-import { keydownReducer, beginSetupOnInput } from './shell/input.js'
+import {
+  keydownReducer,
+  beginSetupOnInput,
+  applyPointerMotion,
+  createPointerLock,
+  TRACKBALL_SCALE,
+} from './shell/input.js'
 import { makeMcHighScoreStorage, loadHighScores } from './shell/highscore.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
@@ -70,23 +75,50 @@ const drain = (): void => {
   game = { ...game, soundEvents: [] }
 }
 
-// Mouse → crosshair (mc1-3, made ABSOLUTE in mc10-1). The pointer's canvas
-// position maps straight to a cabinet coordinate via the pure core placeCursor
-// (the inverse of render.project), so the crosshair tracks the mouse 1:1 instead
-// of accumulating the per-move relative deltas the old path did. The pointer is
-// made canvas-relative through the element rect and divided by the rect SIZE to
-// get the [0,1] fraction placeCursor works in. This is dpr-INVARIANT: both the
-// event's clientX/Y and rect.width/height are CSS pixels, so the fraction is
-// correct regardless of the HiDPI backing store. (mc10-5 removed the old per-frame
-// `canvas.width = canvas.clientWidth`, so `canvas.width/height` is now the
-// letterboxed device buffer = CSS × dpr — larger than the rect on HiDPI. That does
-// NOT matter here: placeCursor never sees the buffer, only the CSS rect; and on the
-// render side project() reads the same fraction out of the buffer, so the two agree.)
-canvas.addEventListener('pointermove', (event: PointerEvent): void => {
-  const rect = canvas.getBoundingClientRect()
+// Mouse → crosshair, mc12-3: TRACKBALL aim, the DEFAULT (completing mc10-1). Missile
+// Command is a trackball cabinet. mc10-1 chose ABSOLUTE placement (core/cursor.placeCursor)
+// to kill the twitch of relative-WITHOUT-lock (1px≈1unit over a ~2000px canvas) and
+// explicitly deferred "trackball (relative + pointer-lock, scaled) as an optional later
+// mode." This builds that mode and defaults to it — NOT a reversal of the twitch fix (see
+// the Design Deviation / ADR-delta in the mc12-3 session): under pointer lock the mouse
+// delivers UNBOUNDED movementX/Y deltas (the cursor never hits a screen edge), so it
+// behaves like the cabinet trackball, and TRACKBALL_SCALE de-sensitises the raw pixels so
+// it is not twitchy. The lock is REUSED from the fleet controller (shell/input.createPointerLock,
+// mirroring centipede/millipede); the aim math is the EXISTING pure applyPointerMotion →
+// core moveCursor (relative applier + V-flip + clamp), untouched.
+
+// The controller: an Escape/blur EXIT keeps window focus, so no 'blur' fires — the
+// pointerlockchange listener restores the OS cursor on lock exit. A rejected request
+// (the re-lock cooldown) is surfaced to the console instead of a black hole.
+const pointerLock = createPointerLock(
+  canvas,
+  document,
+  () => {
+    canvas.style.cursor = ''
+  },
+  (reason) => console.warn('missile-command: pointer lock request rejected', reason),
+)
+
+// Click to lock (the AC1 gesture; centipede main.ts:123 idiom). Only hide the OS cursor
+// once the lock is ACTUALLY held — request() resolves on a swallowed rejection too, so a
+// rejected re-lock must not leave the cursor hidden with no lock.
+canvas.addEventListener('click', () => {
+  unlock()
+  void pointerLock.request().then(() => {
+    if (document.pointerLockElement === canvas) canvas.style.cursor = 'none'
+  })
+})
+
+// The DEFAULT live aim: while the lock holds the canvas, each mouse delta drives the
+// crosshair through the pure applyPointerMotion (→ moveCursor's V-flip + clamp), scaled
+// by TRACKBALL_SCALE. Gated on the lock so a stray unlocked mousemove never twitches the
+// crosshair — that is mc12-3's "lock-exit resets input state" (the gate goes false the
+// instant the lock leaves the canvas, with no accumulator to drift).
+canvas.addEventListener('mousemove', (event: MouseEvent): void => {
+  if (document.pointerLockElement !== canvas) return
   game = {
     ...game,
-    cursor: placeCursor(event.clientX - rect.left, event.clientY - rect.top, rect.width, rect.height),
+    cursor: applyPointerMotion(game.cursor, event.movementX * TRACKBALL_SCALE, event.movementY * TRACKBALL_SCALE),
   }
 })
 
