@@ -148,3 +148,8 @@ completed_stories:
     title: Segment kills leave a mushroom (MUSHER) at the dead cell — both shot-kill and DDT-kill paths
     points: 2
     completed: '2026-08-17'
+  - id: jt13-2
+    epic: jt13
+    title: Players and enemies warp-in spawn animation
+    points: 5
+    completed: '2026-08-17'
