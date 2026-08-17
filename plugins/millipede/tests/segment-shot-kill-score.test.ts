@@ -2,8 +2,9 @@
 //
 // Story ml13-2 — RED phase (Leeloo / TEA). SHOT-KILL SCORING: a player shot that
 // kills a millipede segment must score the ROM head/body split — body 10, head 100
-// — NOT the flat provisional SEGMENT_PTS = 10 the port awards today (sim.ts:72,185).
-// This is the shot-kill sibling of ml12-3, which already made the DDT-cloud kill
+// — NOT a single flat per-segment award (the provisional SEGMENT_PTS=10 the port used
+// before this fix, now split into SEGMENT_BODY_PTS/HEAD_PTS at sim.ts:75-76, awarded
+// at sim.ts:192). This is the shot-kill sibling of ml12-3, which already made the DDT-cloud kill
 // path ROM-faithful (body 30 / head 300, tripled from this base).
 //
 // ─── GROUND TRUTH (reference/original-source/millipede/MILLI.MAC, .RADIX 16) ──────
@@ -40,12 +41,13 @@
 // ";100 POINTS FOR A HEAD" comment. The shipped DDT head constant (300 = 0x30 >> 4)
 // is the same arithmetic on the tripled byte.
 //
-// ─── WHY THIS IS RED ────────────────────────────────────────────────────────────
-// sim.ts:185 does `score += SEGMENT_PTS` (a flat 10) for EVERY shot kill, head or
-// body. So a body kill already scores 10 (these body tests are GREEN guards that
-// pin it survives the fix), but a HEAD kill scores a wrong 10 — the head=100 and
-// discriminator tests below are RED until GREEN adds the head/body branch (mirroring
-// sim.ts:299's DDT-kill split `s.color >= BODY_COLOR ? … : …`).
+// ─── WHY THIS WAS RED (history; GREEN has since landed in this same PR) ──────────
+// Before this fix the shot-kill site did `score += SEGMENT_PTS` (a flat 10) for EVERY
+// shot kill, head or body. So a body kill already scored 10 (these body tests are
+// GREEN guards that pin it survives the fix), but a HEAD kill scored a wrong 10 — the
+// head=100 and discriminator tests below were the RED drivers. GREEN added the
+// head/body branch at sim.ts:192, mirroring sim.ts:299's DDT-kill split
+// `dead.color >= BODY_COLOR ? … : …`.
 
 import { describe, it, expect } from 'vitest'
 import { createGame, type GameState } from '../src/core/game-state'
