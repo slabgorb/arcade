@@ -1,0 +1,166 @@
+id: df5
+type: epic
+title: 'Defender — game structure & the scanner (phase 4c): waves, scoring + extra men, the humanoid rescue loop and the planet-explodes-to-mutant-space panic, the two emergency powers (smart-bomb + hyperspace, citing ADR-0005), and the pure end-of-game core'
+description: |-
+  Fifth Defender epic and phase 4c of the framebuffer-raster cabinet build
+  (docs/playbooks/next-sprite-game.md). df4 populated the world — enemies materialize,
+  move, collide and die safely (ADR-0005) — but they attack in no waves, nothing is
+  scored, no humanoid can be rescued, the ship has no emergency powers, the radar is
+  dark, and the game never ends. df5 is the STRUCTURE that turns the menagerie into a
+  game. It builds: the SCANNER (src/core/scanner.ts — port SCNR's world->radar
+  projection, AMODE1.SRC:1180, bezel :1225, reading the df3 world.ts model; gameplay-
+  critical, not HUD garnish); the WAVE DIRECTOR (src/core/waves.ts — WVTAB attackers/
+  size/time per wave, BLK71.SRC:676-689, plus the "new guys every Nth wave" escalation
+  GTWV00 DEFA7.SRC:1859); SCORING + the men counter + the EXTRA MAN (src/core/score.ts —
+  the humanoid P250/P500 pop-ups DEFB6.SRC:499,506, the BONUS collect DEFA7.SRC:1788);
+  the humanoid RESCUE loop and the signature PLANET-EXPLODES-TO-MUTANT-SPACE panic
+  (catch a falling humanoid AFALL DEFB6.SRC:927 -> return to ground; all humanoids lost
+  -> planet explodes -> every lander becomes a df4-4 mutant/SCZ, en masse); the two
+  player EMERGENCY POWERS (src/core/powers.ts — smart-bomb SBOMB DEFA7.SRC:3175 and
+  hyperspace HYPER :3213, random dir :3228); and the pure END-OF-GAME core (men<0 ->
+  game-over, final score -> hall of fame via @shared/highscore + @shared/name-entry,
+  HALLOF AMODE1.SRC:119; the CMOS coin/credit ledger ROMF8.SRC:16-38 -> one-origin
+  localStorage). Stands entirely on shipped seams (df1 dossier+gate+purity; df2
+  framebuffer/palette/charset; df3 scheduler/world/ship/laser; df4 collision/effects/
+  the menagerie + the ADR-0005 policy). Introduces NO new enemy and NO new picture.
+  Every constant re-opens under the df1-1 gate: no src/core value without a claims/*.json
+  entry citing defender/<FILE>.SRC:<line>; all line numbers from tool output only (RASM
+  radix trap: $hex vs bare decimal).
+  DECISION A (RULED, ROM-always-wins): the scanner ports SCNR's own world->radar
+  projection (AMODE1.SRC:1180), cited, reading the ONE df3 world.ts model — NOT a
+  re-derived "divide world width by radar width" minimap, which would silently misplace
+  the $10000 wrap seam and the off-camera attackers the player relies on the radar to
+  see (routing != geometry, the df3 lesson). scanner.ts is pure, tested against
+  synthetic object lists BEFORE the HUD draws it; this is df5-1, first.
+  DECISION B (RULED): smart-bomb and hyperspace CITE ADR-0005, they do not re-decide it.
+  The ROM smart-bomb is SBMBX0 COM PCRAM (DEFA7.SRC:3199) — a whole-page invert — and
+  hyperspace flashes on re-entry; both are exactly the full-frame strobes the df4-2
+  render guard forbids. df5 ports the ROM trigger+timing and routes the PRESENTATION
+  through the existing df4-2 effect-policy (freeze/fade/particle); the df4-2 guard stays
+  GREEN with these effects live, and each substitution is logged as a 6-field Design
+  Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md.
+  DECISION C (RULED): the end of the game is PURE-FIRST here, phase-wired in df7 (the
+  pm4/mc6 "pure first, wired after" split). df5 ships the men-counter/game-over reducer
+  and the hall-of-fame + localStorage persistence; df7 wires it into the attract->play->
+  death->game-over phase machine and renders the screens. df5 ships no attract loop.
+  DECISION D (RULED, scope): two-player alternating handoff DEFERS to df7. The player-
+  switch (P1SW/P2SW, PLAYER START PROCESS, DEFA7.SRC:1179-1237) is the death->next-player
+  transition — phase-machine territory df7 builds — and the cocktail screen-flip it
+  drives is documented-not-ported (arcade is desktop-only, upright). df5 is the complete
+  SINGLE-PLAYER game loop; 2P citations are preserved in the design spec.
+  Reuse-first: df3 world.ts (scanner projects it), df3 scheduler.ts (waves/bonus/AFALL/
+  powers are processes), df4-1 collision.ts (smart-bomb clear + catch test), df4-2
+  effects.ts + the ADR-0005 policy (power presentation), df4-3 abduction/AFALL (rescue
+  extends it), df4-4 SCZ mutant (the panic spawns these), and @shared/highscore +
+  @shared/name-entry (the hall of fame — CONSUMED, not re-implemented). No new @shared
+  extraction (the scanner is the ROM's projection with no second consumer; the wave
+  director/scoring/panic are Defender-specific game structure — the "extract on the
+  second game" bar is not met). IDENTITY IS A CITED DOSSIER TASK, NOT A GUESS: the
+  df4 law now applies to VALUES — P250/P500 and which rescue event pays which are pinned
+  in the dossier from the ROM before the reducer is named; a wrong point value in prose
+  ships GREEN.
+  Design + full story rationale: docs/superpowers/specs/2026-08-17-defender-df5-game-structure-scanner-design.md;
+  roadmap parent: docs/superpowers/specs/2026-08-13-defender-cabinet-roadmap-and-df1-design.md sec 4 df5 (approx 24 pts).
+  Traps carried in: scoring values are a cited mapping not a guess; ADR-0005 is cited not
+  re-decided (guard stays green); the scanner projects the ONE world model (no second
+  coordinate system); enemies/powers/bonus are scheduler processes (no per-subsystem rAF);
+  colour by index only; the hall of fame is @shared not new code; line numbers from tool
+  output only; RASM radix.
+  OUT OF SCOPE: attract mode + the attract->play->death->game-over PHASE MACHINE + HUD
+  render + lobby showcase (df7); 2P alternating handoff (df7, Decision D); sound (df6);
+  hardening/mutation batteries (df8+).
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: df5-1
+    title: "Scanner core FIRST (RED first, TDD): plugins/defender/src/core/scanner.ts — port the ROM SCNR world->radar projection (*SCANNER defender/AMODE1.SRC:1180, bezel *SCANNER BEZEL :1225, vector JMP SCNR :115, init JSR SCINIT :476), reading the df3 world.ts model; every live object -> a blip (radar position + palette INDEX), with the $10000 horizontal wrap seam correct. Pure and clock-free, tested against SYNTHETIC object lists BEFORE any HUD draws it — the projection every later df5 story and df7's HUD inherit. NOT a re-derived minimap (Decision A). purity.test.ts stays green; every constant gated by a claims/*.json entry."
+    description: 'Decision A: ROM-always-wins. The scanner is a projection of the df3 world.ts model (BGL camera + $10000 wrap + worldX helper), not a second coordinate system — collision (df4-1) and the scanner read the SAME model (the df4 spec named this). A cleaner "world width / radar width" minimap would silently misplace the wrap seam and the off-camera attackers the player relies on the radar to see (routing != geometry, the df3 lesson). Pure; reads df3 world.ts; colour by df2 palette index only.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/src/core/scanner.ts exists as a PURE reducer (no fetch/canvas/Date/Math.random — purity.test.ts green) porting SCNR (defender/AMODE1.SRC:1180) as a projection of the df3 world.ts model; given a world snapshot it returns a blip list (radar-space position + palette index per object), owning no shell state.'
+      - 'AC2: the projection is tested against SYNTHETIC object lists with the $10000 horizontal wrap seam pinned by COORDINATES (an object just past the wrap plots on the correct side of the radar strip), not just a boolean — an object off the visible camera still appears on the scanner at the right radar position.'
+      - 'AC3: every scanner constant introduced (radar strip dimensions/scale, the wrap modulus, bezel geometry per defender/AMODE1.SRC:1225) has a claims/*.json entry verifying byte-for-byte against reference/original-source/defender/ under the df1-1 gate; no un-cited src/core constant; blip colour is a df2 palette INDEX, never a hex literal.'
+      - 'AC4: the model is the ROM SCNR projection reading world.ts, NOT a re-derived minimap — a test names the world-model projection (worldX/$10000 wrap) so a swap to a naive width-ratio mapping that moves the wrap seam or the off-camera blips would redden (Decision A).'
+  - id: df5-2
+    title: "Wave director + escalation: plugins/defender/src/core/waves.ts — port the WVTAB wave-data table (*WAVE DATA defender/BLK71.SRC:673; WVTAB :676; body :676-689 with WAVE TIME :687 and WAVE SIZE :689; pointer FDB WVTAB :89) and the 'new guys every Nth wave' escalation (GTWV00 defender/DEFA7.SRC:1859); wave-clear -> advance to the next wave, attackers spawned via the df3 scheduler (NEWP,STYPE). The game-structure spine that makes df4's enemies attack in escalating waves. Consumes df3 scheduler + the df4 enemy reducers."
+    description: 'The wave director is a df3 scheduler process; it does not invent its own tick. It reads the WVTAB size/time per wave and escalates attacker count per the ROM (GTWV00 "NEW GUYS EVERY NTH WAVE"). Wave-clear is detected from the enemy population, not a timer. Colour by df2 palette index only; every constant gated.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/src/core/waves.ts exists (PURE) modelling the WVTAB wave table (defender/BLK71.SRC:676-689 — attackers, WAVE SIZE :689, WAVE TIME :687); each wave constant gated by a claims/*.json entry verified byte-for-byte under the df1-1 gate.'
+      - 'AC2: the "new guys every Nth wave" escalation (GTWV00, defender/DEFA7.SRC:1859) is ported and cited — a test pins that attacker count increases at the ROM-specified wave cadence, by the ROM value, not an invented ramp.'
+      - 'AC3: wave-clear -> advance is driven by the ENEMY POPULATION reaching empty (not a wall-clock timer); attackers are spawned via the df3 scheduler (NEWP,STYPE), the wave director owning no rAF/tick of its own.'
+      - 'AC4: citations.test.ts covers every wave constant; a mutation to a WVTAB size/time or the escalation cadence reddens a value assertion (not merely a coverage/presence check — the vacuous-guard trap).'
+  - id: df5-3
+    title: "Scoring, the men counter + the extra man: plugins/defender/src/core/score.ts — per-enemy points, the humanoid P250/P500 score pop-ups (P250 OBI C25P1 defender/DEFB6.SRC:499, P500 OBI C5P1 :506, P5000 JSR SCORE :508; spawned LDX #P250/#P500 :959,962), the BONUS collect process (*BONUS COLLECT PROCESS defender/DEFA7.SRC:1786,1788), the men (lives) counter and the extra-man award. FIRST pin each score VALUE and which event pays it in the dossier, CITED, before naming the reducer (the df4 identity-first law, now applied to values). Consumes df4-1 collision (deaths) + df3 scheduler (pop-ups are processes)."
+    description: 'Scoring identity is a cited dossier task: P250/P500 and which rescue/kill event pays which are pinned from the ROM BEFORE the reducer is named — a wrong point value in prose ships GREEN. The men counter and extra-man award live here; df5-6 reads the men counter for the game-over condition (different file, coherent commit). Score pop-ups are df3 scheduler processes. Colour by df2 palette index only.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: the dossier maps each score EVENT -> its ROM VALUE (per-enemy points, humanoid rescue/kill P250/P500 per defender/DEFB6.SRC:499,506, bonus collect per defender/DEFA7.SRC:1788), CITED, and a per-value expectPopulated assertion runs BEFORE any rowCites/coverage sweep so a wrong value cannot pass vacuously (the df4 identity-glossary-gate shape).'
+      - 'AC2: plugins/defender/src/core/score.ts exists (PURE) awarding those points on the cited events; every score constant has a claims/*.json entry verified byte-for-byte under the df1-1 gate; no un-cited src/core value.'
+      - 'AC3: a men (lives) counter is introduced, decremented on ship death and incremented by the extra-man award at the ROM-cited threshold; the award is tested by COORDINATES/COUNT (crossing the threshold grants exactly one man), not a boolean.'
+      - 'AC4: score pop-ups are df3 scheduler processes (NEWP,STYPE), not per-pop-up ticks; purity.test.ts stays green; blips/HUD figures reach colour by df2 palette index only.'
+  - id: df5-4
+    title: "Humanoid rescue + the planet-explodes-to-mutant-space panic: plugins/defender/src/core/ — close the df4-3 abduction loop. The RESCUE: catch a falling humanoid (AFALL *ASTRONAUT FALL defender/DEFB6.SRC:925,927; ground test GETALT :933; ASTKIL :399) and return it to the ground. The PANIC (Defender's signature terror): all humanoids lost -> the planet explodes -> every remaining lander becomes a df4-4 mutant (SCZ) en masse. Consumes df4-3 (abduction/AFALL) + df4-4 (the SCZ transform)."
+    description: 'df4-3 delivered grab -> carry-to-top -> transform-trigger and the AFALL fall-on-carrier-death; df5-4 closes the loop with the CATCH (rescue) and the all-humanoids-lost PANIC that mass-transforms landers to mutants (the df4-4 SCZ). Enemies are df3 scheduler processes; the transform reuses the df4-4 mutant, it does not re-model it. Scoring for the rescue is df5-3 (this story delivers the MECHANIC, points come from score.ts). Colour by df2 palette index only.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: the RESCUE mechanic — a falling humanoid (AFALL, defender/DEFB6.SRC:927) caught by the ship before it hits the ground (GETALT ground test :933) is returned to the surface — is a PURE reducer; the catch uses df4-1 collision, not a re-derived overlap test; every constant gated by a claims/*.json entry.'
+      - 'AC2: the PANIC trigger — humanoid count reaching zero -> planet explodes -> every remaining lander transforms into a df4-4 mutant (SCZ) — is modelled and cited to the ROM trigger; the transform REUSES the df4-4 SCZ reducer (no re-model), and a test pins that the mass-transform fires exactly once on the zero-humanoid transition, not per frame.'
+      - 'AC3: the planet-explosion presentation obeys ADR-0005 (no full-framebuffer inversion in a single frame) — the df4-2 render guard stays GREEN with the panic live; if the explosion is a full-screen effect it renders as the safe freeze/fade/particle variant and the substitution is logged as a 6-field Design Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md.'
+      - 'AC4: humanoids and the falling/caught states are df3 scheduler processes (NEWP,STYPE) killed via the df3 kill path — no per-humanoid rAF/tick; purity.test.ts stays green; every new constant cited under the df1-1 gate.'
+  - id: df5-5
+    title: "Smart-bomb + hyperspace (the two emergency powers, both CITING ADR-0005): plugins/defender/src/core/powers.ts — smart-bomb (*SMART BOMB SBOMB defender/DEFA7.SRC:3173,3175; clears on-screen enemies) and hyperspace (*HYPERSPACE HYPER :3211,3213; *RANDOM HYPER DIRECTION :3228; teleport with re-entry risk). Port the ROM trigger + timing and route the PRESENTATION through the existing df4-2 effect-policy — freeze/fade/particle, NOT the ROM's SBMBX0 COM PCRAM whole-page invert (:3199). The df4-2 guard stays GREEN. Consumes df4-1 collision (smart-bomb clear) + df4-2 effects/policy."
+    description: 'Decision B: df5 CITES ADR-0005, it does not re-decide it. df4-2 already built the effect-policy classifier and the no-full-frame-strobe render guard and named these two as its future consumers. Port SBOMB/HYPER trigger+timing, cited; substitute only the strobe PRESENTATION; log a Design Deviation citing ADR-0005; the df4-2 guard must stay green with both powers live. Smart-bomb clears via df4-1 collision; powers are df3 scheduler-driven player actions.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/src/core/powers.ts exists (PURE) modelling smart-bomb (SBOMB, defender/DEFA7.SRC:3175 — clears on-screen enemies via df4-1 collision) and hyperspace (HYPER, defender/DEFA7.SRC:3213; random direction defender/DEFA7.SRC:3228 — teleport with re-entry risk); the ROM trigger + timing of each are ported and cited (citations.test.ts covers the timing constants).'
+      - 'AC2: the smart-bomb and hyperspace PRESENTATION routes through the df4-2 effect-policy as freeze/fade/particle; NEITHER writes a whole-framebuffer inversion — the df4-2 render guard stays GREEN with both effects live (a planted full-frame invert on either path reddens it), and the substitution of the ROM SBMBX0 COM PCRAM strobe (defender/DEFA7.SRC:3199) is logged as a 6-field Design Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md.'
+      - 'AC3: hyperspace teleports to a RANDOM position (per *RANDOM HYPER DIRECTION defender/DEFA7.SRC:3228) drawn from the df3/seeded rng seam (not Math.random — purity.test.ts green), with the re-entry risk modelled and cited; a test pins the teleport is bounded to the world and does not leave the ship in an invalid state.'
+      - 'AC4: powers are df3 scheduler-driven player actions (no per-power rAF/tick); every new constant has a claims/*.json entry verified byte-for-byte under the df1-1 gate; no un-cited src/core value.'
+  - id: df5-6
+    title: "End-of-game core (PURE-first; phase-wired in df7): plugins/defender/src/core/ — the men<0 -> game-over reducer reading the df5-3 men counter; final score -> hall of fame via @shared/highscore + @shared/name-entry (HALLOF *HALL OF FAME ENTRY defender/AMODE1.SRC:117,119; initials display :242; add-score :270 — CONSUMED, not re-implemented); the CMOS coin/credit ledger (* CMOS RAM ALLOCATION SLOT1/2/3/TOTPDC defender/ROMF8.SRC:16-38) mapped to one-origin localStorage. Ships the reducer + persistence, NOT the attract loop (df7 wires it). Consumes df5-3 (men counter) + @shared."
+    description: 'Decision C: the end of the game is pure-first here, phase-wired in df7 (the pm4/mc6 split). df5-6 delivers the pure lives<0 -> game-over condition and the hall-of-fame + localStorage data flow; df7 wires it into the attract->play->death->game-over phase machine and renders the screens. The hall of fame is @shared (highscore + name-entry), NOT new persistence code — df5-6 maps Defender''s score format onto them. The CMOS ledger -> localStorage ties to the ADR-0004 cross-origin-cookie retirement this monorepo already made (one origin, shared localStorage).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: a PURE game-over reducer signals end-of-game when the df5-3 men counter falls below zero (lives<0), cited to the ROM condition; it is pure/data with no phase-machine wiring and no attract loop (that is df7 — Decision C); purity.test.ts stays green.'
+      - 'AC2: the final score is committed to the hall of fame via @shared/highscore + @shared/name-entry (HALLOF, defender/AMODE1.SRC:119) — the shared modules are CONSUMED, not re-implemented; a test asserts Defender''s score format maps onto the shared table and that no bespoke high-score persistence is introduced.'
+      - 'AC3: the CMOS coin/credit ledger (SLOT1/SLOT2/SLOT3 coin totals, TOTPDC total paid credits, defender/ROMF8.SRC:16-38) is modelled and persisted to one-origin localStorage; every ledger constant has a claims/*.json entry verified byte-for-byte under the df1-1 gate.'
+      - 'AC4: a Design note records that the phase-machine WIRING (attract->play->death->game-over) and the HUD render are deferred to df7 (Decision C), and that 2P alternating handoff is deferred to df7 (Decision D) with its DEFA7.SRC:1179-1237 citations preserved in the design spec.'
+  - id: df5-7
+    title: "VISUAL playtest — a whole game loop on screen: screenshot http://127.0.0.1:5270/defender/ showing the SCANNER populated with off-camera attackers (df5-1), waves visibly escalating (df5-2), the score/men HUD (df5-3), a smart-bomb firing as an ACCESSIBILITY-SAFE freeze/fade (df5-5, ADR-0005 — NO full-screen strobe), and a hall-of-fame entry (df5-6) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scanner blip positions/colour and that NO effect flashes the full screen. Carry the df7 note (2P handoff + the attract/phase machine) forward."
+    description: 'The eyes for df5, mirroring df4-6. An all-200 sweep proves nothing (the SPA fallback answers 200 to everything) — assert the defender path DIFFERS from a nonsense control. Confirm the ADR-0005 discipline visually: a smart-bomb clears the screen as a freeze/fade, never a full-frame strobe. Colour by df2 palette index only.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: a screenshot of http://127.0.0.1:5270/defender/ shows the scanner populated with at least one OFF-CAMERA attacker (df5-1), an escalated wave (df5-2) and the score/men HUD (df5-3); the defender path is confirmed to DIFFER from a nonsense control path (not merely return 200 — the canonical-serve lesson).'
+      - 'AC2: a smart-bomb (df5-5) is captured firing as the ACCESSIBILITY-SAFE freeze/fade variant — NO full-screen strobe — and the hall-of-fame entry (df5-6) renders; a note confirms the df4-2 no-full-frame-strobe guard held throughout.'
+      - 'AC3: scanner blip position and colour (df2 palette index) and enemy orientation are confirmed correct against the design; any discrepancy is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.'
+      - 'AC4: the df7 hand-forward note (2P alternating handoff per Decision D; the attract->play->death->game-over phase machine + HUD render per Decision C) is recorded in the session file for the next epic.'
