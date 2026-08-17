@@ -1,44 +1,40 @@
 // tests/lava-death-jt13-5.test.ts
 //
-// Story jt13-5 — RED phase (Tyr One-Handed / TEA). "Landing in lava must have
-// consequences (death), not free swimming."
+// Story jt13-5 — "Landing in lava must have consequences (death), not free
+// swimming." RED authored by Tyr One-Handed (TEA); re-scoped by Loki Silvertongue
+// (Dev) in review round 1 after Heimdall (Reviewer) caught a ROM mis-citation.
 //
 // ─── THE BUG ─────────────────────────────────────────────────────────────────
-// jt11-18 turned the FLOOR+7 lava plane (isLavaDeath in arena.ts, the `CMPA
-// #FLOOR+7 / BHS ADGFLR` test, JOUSTRV4.SRC:6508-6509) into an ON-SCREEN
-// BACKSTOP: the airborne branch of stepPlayerEntity (frame.ts, the isLavaDeath
-// arm around line 307) merely CLAMPS a fallen bird at DEATH_Y with velY=0 so it
-// does not integrate off the bottom of the screen. It never clears the player's
-// horizontal velocity, never removes the player, and never books a life. The
-// felt result: a knight who reaches the lava can SWIM sideways there forever with
-// no death and no life lost.
+// jt11-18 turned the FLOOR+7 lava plane (isLavaDeath, arena.ts) into an ON-SCREEN
+// BACKSTOP: the airborne lava arm of stepPlayerEntity (frame.ts) merely CLAMPS a
+// fallen bird at DEATH_Y with velY=0 so it does not integrate off the bottom of
+// the screen. It never removes the player and never books a life, so a knight who
+// reaches the lava can SWIM there forever — the felt bug.
 //
-// The ROM's ADGFLR ("DEATH VIA SWIMMING IN THE LAVA") is a SINK-AND-DIE sequence:
-//   • CLR PVELX (JOUSTRV4.SRC:6610, "PLAYER IS NOT GOING ANYWHERE") — horizontal
-//     velocity is zeroed on lava contact, so there is no sideways swim.
-//   • death fires once the sprite is floor-clipped below full length (WCLENY<7,
-//     JOUSTRV4.SRC:6555) — the rider is removed, the [DDEAD] death routine runs
-//     and a life is lost (SPDIE2, JOUSTRV4.SRC:4700-4732).
+// ─── THE ROM (corrected in round 1) ──────────────────────────────────────────
+// The non-gripped lava death is ADGFLR, "DEATH VIA SWIMMING IN THE LAVA"
+// (JOUSTRV4.SRC:6523): once ADGCEI's FLOOR+7 test trips (:6508 `CMPA #FLOOR+7 /
+// BHS ADGFLR`), the bird is DEAD — SNPLAV/SNELAV plays, WCLENY<7 (:6555) fires
+// the [DDEAD] death routine (life lost), and the body sinks to FLOOR+20 (:6568).
+// The ROM does NOT clear PVELX on this path — the `CLR PVELX` "PLAYER IS NOT
+// GOING ANYWHERE" (~:6611) belongs to ADDLAV, the TROLL-GRIP gravity, which
+// funnels into the SAME ADGFLR death via its JMP (~:6643). So "no sideways swim"
+// is a CONSEQUENCE of the death (a removed knight cannot swim), not a separate
+// velocity clear.
 //
-// ─── WHAT THIS FILE PINS (and what it deliberately does NOT) ──────────────────
-// These are the two BEHAVIOUR reds that encode the story title unambiguously and
-// WITHOUT prejudging the fidelity refinements that need a design ruling (recorded
-// as Delivery Findings on the session — the SNPLAV/SNELAV lava SOUND, the exact
-// break-free window, the sink-to-FLOOR+20 depth, and the jt11-18 `maxY<=DEATH_Y`
-// reconciliation). Passing BOTH of these means the two things the title promises
-// are true: no sideways swim, and a real life lost.
-//
-//   AC1 — PVELX is cleared on lava contact (no sideways swim).
-//   AC3 — a knight who sinks in the lava LOSES A LIFE (death has a consequence).
+// ─── WHAT THIS FILE PINS ─────────────────────────────────────────────────────
+//   A — a non-gripped knight that reaches lava depth is REMOVED (no free swim).
+//   B — that removal costs the knight exactly one life (death has a consequence).
+// The full ROM cinematic — the break-free window (ADDLAV), the visible sink to
+// FLOOR+20, and the SNPLAV/SNELAV cue — is deferred to a filed follow-up (jt13-10);
+// see the session's Delivery Findings.
 
 import { describe, it, expect } from 'vitest'
-import { loadScheduler } from './helpers/scheduler-contract.js'
-import { loadArenaState } from './helpers/arena-state-contract.js'
 import {
+  loadSim,
   type SimState,
   type SimProcess,
   type EntityState,
-  type PlayerInput,
 } from './helpers/sim-contract.js'
 import { loadGameExtra } from './helpers/game-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
@@ -46,8 +42,7 @@ import { withNoPendingEnemies } from './helpers/wave-entry.js'
 const SEED = 0x1234
 
 // ROM scalars (re-derived elsewhere; used here to drive + bound the behaviour).
-// FLOOR = $DF (JOUSTRV4.SRC:37); DEATH_Y = FLOOR+7 = the lava surface / kill plane
-// the jt11-18 backstop pins to.
+// FLOOR = $DF (JOUSTRV4.SRC:37); DEATH_Y = FLOOR+7 = the lava surface / kill plane.
 const FLOOR = 0xdf
 const DEATH_Y = FLOOR + 7 // 230
 const NSHIP = 5 // free-play men per player (TB12REV3.SRC:135)
@@ -106,119 +101,88 @@ function enemyAt(id: number, posX: number, entity: EntityState, over: Partial<Si
 }
 
 const trollsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
+const playerIn = (d: SimState, id: number): SimProcess | undefined =>
+  d.sim.processes.find((p) => p.kind === 'player' && p.id === id)
+
+/** A wave-1 sim (troll-free — `trollSpawnable` gates the troll to wave >= 4) with
+ *  the bridge burned by hand, carrying exactly the given cast. A keep-alive island
+ *  buzzard (collisions off, on a real platform) holds the wave open so it never
+ *  advances into troll territory behind our backs. */
+async function burnedWave1Sim(extra: SimProcess[]): Promise<SimState> {
+  const smod = await loadSim()
+  const base = smod.createWaveSim(SEED, 1)
+  return withNoPendingEnemies({
+    ...base,
+    wave: 1,
+    sim: {
+      ...base.sim,
+      processes: [enemyAt(0x201, ISLAND, stander(ISLAND)), ...extra],
+    },
+    arena: { ...base.arena, bridgeBurned: true },
+  })
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC1 — PVELX is cleared on lava contact: no sideways swim.
+// A — a non-gripped knight that reaches lava depth is REMOVED (no free swim).
 //
-// A knight sits AT lava depth over a burned column and HOLDS the stick. The ROM
-// clears PVELX unconditionally on lava contact (CLR PVELX, JOUSTRV4.SRC:6610) —
-// the break-free escape is a hard FLAP, never a steer — so even while the stick is
-// pushed the horizontal velocity must be zero.
-//
-// RED on develop: the isLavaDeath arm of stepPlayerEntity zeroes velY but leaves
-// velXIndex untouched, and the held stick keeps re-accelerating it, so the knight
-// swims sideways in the lava frame after frame. GREEN: velXIndex is cleared.
+// The knight starts airborne AT the lava surface over the burned plank. RED on
+// develop: the isLavaDeath arm only CLAMPS it there, so it stays alive and swims
+// forever. GREEN: the sim layer removes it — the death routine, not a clamp.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('jt13-5 AC1 — the lava clears horizontal velocity (no sideways swim)', () => {
-  it('a knight held in the lava while pushing the stick has its horizontal velocity zeroed', async () => {
-    const sched = await loadScheduler()
-    const a = await loadArenaState()
-    const burned = a.applyWaveDestruction(a.initialArenaState(), 3, 0x00)
+describe('jt13-5 A — reaching the lava removes the knight (no free swimming)', () => {
+  it('a non-gripped knight at lava depth over a burned column is removed, not left swimming', async () => {
+    const smod = await loadSim()
+    let d = await burnedWave1Sim([playerAt(1, PLANK_L, DEATH_Y, { velXIndex: 4 })])
 
-    // Start AIRBORNE, already at the lava surface over the burned plank, and moving
-    // sideways (velXIndex=4). No footing exists this deep, so the lava arm — not a
-    // landing — is the branch under test every frame.
-    let state = sched.spawn(sched.createState(SEED), {
-      id: 1,
-      cls: 'primary',
-      nap: 1,
-      period: 1,
-      kind: 'player',
-      entity: entityAt(PLANK_L, DEATH_Y, { velXIndex: 4, airborne: true }),
-    })
+    // Non-vacuity: the knight really is at lava depth and present before we step.
+    const before = playerIn(d, 1)
+    expect(before?.entity && before.entity.posY >> 8, 'the knight starts at the lava surface').toBe(DEATH_Y)
 
-    const before = state.processes.find((p) => p.id === 1)?.entity
-    expect(before?.velXIndex, 'non-vacuity: the knight starts with real sideways velocity').toBe(4)
+    for (let i = 0; i < 4; i++) d = smod.stepSim(d)
 
-    // Hold the stick toward the drift for several frames — a steer must NOT keep the
-    // knight swimming. Capture the deepest velXIndex seen once at lava depth.
-    const HELD: PlayerInput = { dir: 1, flap: false, flapHeld: false }
-    let maxVelXIndexAtLava = 0
-    let sawLavaDepth = false
-    for (let i = 0; i < 6; i++) {
-      state = sched.stepFrame(state, { 1: HELD }, { arena: burned })
-      const e = state.processes.find((p) => p.id === 1)?.entity
-      if (!e) break
-      if (e.posY >> 8 >= DEATH_Y) {
-        sawLavaDepth = true
-        maxVelXIndexAtLava = Math.max(maxVelXIndexAtLava, Math.abs(e.velXIndex))
-      }
-    }
-
-    expect(sawLavaDepth, 'non-vacuity: the knight really was at lava depth under the arm').toBe(true)
-    // RED today: the held stick keeps velXIndex non-zero at lava depth (free swim).
-    expect(
-      maxVelXIndexAtLava,
-      'ADGFLR CLR PVELX — horizontal velocity is zeroed in the lava, even while steering',
-    ).toBe(0)
+    // Isolation: no lava troll can exist at wave 1, so removal is the SWIM death.
+    expect(trollsIn(d).length, 'wave 1 has no lava troll — the removal is the swim death').toBe(0)
+    // RED on develop: the knight is still present (clamped, swimming). GREEN: gone.
+    expect(playerIn(d, 1), 'a knight who reaches the lava is removed, not left to swim').toBeUndefined()
   })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC3 — sinking in the lava costs a life.
+// B — that removal costs the knight exactly one life.
 //
-// A lone knight falls into the lava over a burned column at WAVE 1 (with the
-// bridge burned by hand): trollSpawnable gates the lava troll to wave >= 4, so at
-// wave 1 there is NO troll to seize the knight — this isolates the SWIM death from
-// the separate troll-grab death path (AC5). A keep-alive buzzard parked on the
-// real CLIF5 island (collisions off) holds the wave open so it never advances into
-// troll territory behind our backs.
-//
-// RED on develop: the knight clamps at DEATH_Y and swims forever — stepGame books
-// a death only when a player process DISAPPEARS from the sim, and the clamp keeps
-// it alive, so `lives` stays at NSHIP. GREEN: the sink removes the knight, stepGame
-// books the mount death, and `lives` drops below NSHIP.
+// A lone knight falls into the lava over a burned column at WAVE 1 (troll-free).
+// stepGame books a mount death when a player process disappears from the sim, so
+// the removal above must show up as a lost life. RED on develop: the clamp keeps
+// the knight alive, so no death is booked and `lives` stays at NSHIP.
 // ═════════════════════════════════════════════════════════════════════════════
-describe('jt13-5 AC3 — a knight who sinks in the lava loses a life', () => {
+describe('jt13-5 B — sinking in the lava costs exactly one life', () => {
   it('falling into the lava over a burned column costs exactly one life (no troll involved)', async () => {
     const gmod = await loadGameExtra()
-
     const base = gmod.createGame(SEED, 1)
     expect(base.players[0].lives, 'the game opens at NSHIP men').toBe(NSHIP)
 
-    // Wave-1 sim, bridge burned by hand, carrying only: a keep-alive island buzzard
-    // (holds the wave) and the falling knight (id 1 -> ledger 0) over the burned plank.
-    const burnedSim: SimState = withNoPendingEnemies({
-      ...base.sim,
-      wave: 1,
-      sim: {
-        ...base.sim.sim,
-        processes: [
-          enemyAt(0x201, ISLAND, stander(ISLAND)), // on a real platform — never a lava contact
-          playerAt(1, PLANK_L, 200, { velY: 0x100 }), // 1 px/frame downward, into the lava
-        ],
-      },
-      arena: { ...base.sim.arena, bridgeBurned: true },
-    })
-    let game = { ...base, sim: burnedSim }
+    const burned = await burnedWave1Sim([playerAt(1, PLANK_L, 200, { velY: 0x100 })]) // 1 px/frame down
+    let game = { ...base, sim: burned }
 
     let maxPlayerY = 200
     for (let i = 0; i < 60; i++) {
       game = gmod.stepGame(game)
-      const p = game.sim.sim.processes.find((q) => q.kind === 'player' && q.id === 1)
+      const p = playerIn(game.sim, 1)
       if (p?.entity) maxPlayerY = Math.max(maxPlayerY, p.entity.posY >> 8)
     }
 
-    // Isolation: no lava troll ever existed, so any life lost is the SWIM death.
-    expect(trollsIn(game.sim).length, 'wave 1 has no lava troll — the swim death is isolated').toBe(0)
-    // Non-vacuity: the knight really did descend into the lava (past the floor).
+    // Isolation: no troll ever existed, so the life lost is the swim death.
+    expect(trollsIn(game.sim).length, 'wave 1 has no lava troll — the death is isolated').toBe(0)
+    // Non-vacuity: the knight descended into lava territory. The guard is FLOOR
+    // (223), NOT DEATH_Y (230), on purpose: the knight is REMOVED the frame it
+    // reaches DEATH_Y, so its deepest OBSERVABLE pixel is DEATH_Y-1 — a >= DEATH_Y
+    // guard would be unsatisfiable under the same-frame removal this story adds.
     expect(maxPlayerY, 'the knight fell into lava territory — the drop was exercised').toBeGreaterThanOrEqual(
       FLOOR,
     )
-    // RED today: the clamp keeps the knight swimming, so no death is ever booked and
-    // lives stays at NSHIP. GREEN: the sink death removes the knight and a life is lost.
-    expect(game.players[0].lives, 'sinking in the lava must cost a life, not free swimming').toBeLessThan(
-      NSHIP,
-    )
+    // RED on develop: the clamp keeps the knight swimming, so lives stays at NSHIP.
+    // Exactly one death: respawn lands on a safe pad (max pad Y 210 < DEATH_Y), so
+    // the knight cannot re-drown within the window — a double-book would fail this.
+    expect(game.players[0].lives, 'sinking in the lava costs exactly one life').toBe(NSHIP - 1)
   })
 })

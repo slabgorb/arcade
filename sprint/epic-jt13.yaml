@@ -53,11 +53,13 @@ stories:
     description: "Right now the player can dive into the lava and swim around freely, with no death and no life lost. ROM ground truth (JOUSTRV4.SRC, routine ADGFLR 'DEATH VIA SWIMMING IN THE LAVA'): lava is a SINK-AND-DIE sequence, NOT instant death on touch. (1) On reaching the lava surface PPOSY>=FLOOR+7 (:6508-6509 CMPA #FLOOR+7 / BHS ADGFLR), horizontal velocity is cleared (CLR PVELX :6610 'PLAYER IS NOT GOING ANYWHERE') so no sideways swim, and the lava sound plays (SNPLAV player / SNELAV enemy). (2) A brief break-free window (:6614 CMPD #- 'BREAK FREE VELOCITY?') lets a hard enough upward flap escape; otherwise lava gravity keeps pulling down. (3) Death fires once the sprite is floor-clipped below full length (WCLENY<7, :6555) — rider removed, [DDEAD] death routine, life lost. (4) Body sinks (INC PPOSY) to FLOOR+20 (:6568), pause, respawn. Our bug: isLavaDeath (frame.ts:292) was repurposed by jt11-18 to only CLAMP the bird at DEATH_Y with velY=0 as an on-screen backstop — it never clears PVELX, never calls a death routine, never removes a life. Reconcile with the existing lava-troll grab (troll grab is a separate death path; ADGFLR even kills the troll tasks when the rider sinks, :6624-6640)."
     points: 3
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: "R1 REJECT: HIGH ROM mis-citation — CLR PVELX is ADDLAV (troll-grip), not the general ADGFLR non-gripped lava death; correct frame.ts/sim.ts/test comments and decide keep/drop the non-ROM velX-clear. MEDIUM: file follow-up for deferred sink/window/sound and fix jt13-7 stale 'covered under jt13-5' note. MEDIUM: AC1 needs a below-DEATH_Y scope control + velXFrac assert; AC3 assert toBe(NSHIP-1)."
+    review_verdict: rejected
   - id: jt13-6
     title: Wave announcements (egg / survival / etc.) never render — wire waveBeats to the shell
     description: "Egg and survival rounds (and all wave types) do not announce themselves on screen. Core HAS the seam: wave.ts waveBeats() returns ROM WAVMSG labels per resolved type (INTRO1/2, COOP1/2, SURV1, GLAD1/2/3, EGG1, PTER1), but (a) they are converted to {kind:'beat',message} events in ONLY ONE place — sim.ts:1519, the wave-1 demo seed — the real wave-advance path emits no beats; and (b) nothing in src/shell or main.ts consumes 'beat' events, so nothing paints them, and there is no label->display-text map (SURV1 -> on-screen phrase). Wire the message beats: emit beats on real wave advances, add the label->text mapping from the ROM WAVMSG strings, and render them on the shell with the ROM timing (~1s beats, SHELL owns durations per wave.ts:352-353 #180/6,#90/6 JOUSTRV4.SRC:2045,2601)."
@@ -69,7 +71,7 @@ stories:
     type: bug
   - id: jt13-7
     title: Lava-troll grab is silent — add the SNTROL 'captured' cue
-    description: "Being grabbed by the lava troll plays no sound. ROM: LT1GRP loads SNTROL ('MAKE THE SOUND OF THE LAVA TROLL / GRIPPING THE PLAYER', JOUSTRV4.SRC:1646-1647) and JSR VSND; SNTROL is defined at :8097 'CAPTURED BY LAVA TROLL SOUND'. jt9-11 wired troll.beginGrip (sim.ts:1034) but no 'troll-grab'/SNTROL entry was added to EVENT_KINDS (core/events.ts) and no cue to audio-manifest, so the grab is silent. Add a troll-grab event kind emitted at beginGrip, map it to a SNTROL cue in audio-dispatch + audio-manifest, and play it. Also fix the stale comment at events.ts:44-49 claiming troll.beginGrip has 'zero production callers' — it now has one (sim.ts:1034). Note: the PLAYER/ENEMY-IN-LAVA sounds SNPLAV/SNELAV (:8123/:8105, played by ADGFLR) are covered under jt13-5's lava-death work, not here."
+    description: "Being grabbed by the lava troll plays no sound. ROM: LT1GRP loads SNTROL ('MAKE THE SOUND OF THE LAVA TROLL / GRIPPING THE PLAYER', JOUSTRV4.SRC:1646-1647) and JSR VSND; SNTROL is defined at :8097 'CAPTURED BY LAVA TROLL SOUND'. jt9-11 wired troll.beginGrip (sim.ts:1034) but no 'troll-grab'/SNTROL entry was added to EVENT_KINDS (core/events.ts) and no cue to audio-manifest, so the grab is silent. Add a troll-grab event kind emitted at beginGrip, map it to a SNTROL cue in audio-dispatch + audio-manifest, and play it. Also fix the stale comment at events.ts:44-49 claiming troll.beginGrip has 'zero production callers' — it now has one (sim.ts:1034). Note: the PLAYER/ENEMY-IN-LAVA sounds SNPLAV/SNELAV (:8123/:8105, played by ADGFLR) were DEFERRED from jt13-5 (which shipped the lava death/removal only) and are filed as jt13-10, not here."
     points: 3
     priority: p2
     status: backlog
@@ -92,3 +94,12 @@ stories:
     status: backlog
     repos: arcade
     workflow: tdd
+  - id: jt13-10
+    title: 'Lava death cinematic: ADDLAV break-free window, sink to FLOOR+20, and the SNPLAV/SNELAV cue'
+    description: "Follow-up to jt13-5, which shipped the essential non-gripped lava DEATH (a knight reaching FLOOR+7 is removed and loses a life) but deferred the ROM cinematic. Add, faithful to ADGFLR/ADDLAV (JOUSTRV4.SRC): (1) the ADDLAV break-free window (CMPD #-0180 'BREAK FREE VELOCITY?', ~:6617) so a hard enough upward flap escapes within a limited window, after which lava gravity holds the bird down (today any flap that clears lava depth escapes — the window never closes); (2) the visible SINK — the body descends past FLOOR+7 to FLOOR+20 (:6568) with a pause before respawn, rather than being removed the same frame it touches the lava; (3) the SNPLAV (player) / SNELAV (enemy) lava sound (ADGFLR loads them) — a NEW EVENT_KIND in core/events.ts wired through audio-manifest + audio-dispatch (none exists today; adding it ripples the audio-seam sweeps). Reconcile the visible sink with jt11-18's burned-shore-grab maxY<=DEATH_Y assertions (they will need updating if the player sink is implemented at the frame layer)."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug

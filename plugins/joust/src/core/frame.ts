@@ -313,14 +313,16 @@ function stepPlayerEntity(
       // zeroed so a bird held at the floor is not still accelerating — otherwise
       // the pinned-posY/growing-velY pair eventually int16-wraps in flap/stepFlight.
       //
-      // jt13-5 — ADGFLR "PLAYER IS NOT GOING ANYWHERE" (`CLR PVELX`,
-      // JOUSTRV4.SRC:6610): horizontal velocity is cleared the instant the bird
-      // reaches the lava, so it cannot swim sideways (a steer no longer moves it;
-      // the break-free escape is a hard FLAP, not a stick push). Removing the
-      // drowned rider — and the life lost — is the sim layer's job (sim.ts, off
-      // this same lava depth), which keeps this frame-level clamp as jt11-18's
-      // on-screen backstop for the raw scheduler and the enemy/egg paths.
-      s = { ...s, posY: DEATH_Y << 8, velY: 0, velXIndex: 0, velXFrac: 0 }
+      // jt13-5 — this frame-level clamp STAYS jt11-18's on-screen backstop (still
+      // used for the enemy/egg paths and the raw scheduler). The player's actual
+      // lava DEATH — rider removed, life lost — is booked one layer up in sim.ts,
+      // off this same lava depth: ADGFLR, the non-gripped "DEATH VIA SWIMMING IN
+      // THE LAVA" (JOUSTRV4.SRC:6523 — SNPLAV/SNELAV, WCLENY<7 -> DDEAD, sink to
+      // FLOOR+20). The ROM does NOT clear PVELX on that non-gripped path — the
+      // `CLR PVELX` at ADDLAV (~JOUSTRV4.SRC:6611) is the TROLL-GRIP path only
+      // (PADGRA swapped by LT1GRP), and it funnels into the same ADGFLR via JMP.
+      // A non-gripped faller simply dies, so nothing horizontal is zeroed here.
+      s = { ...s, posY: DEATH_Y << 8, velY: 0 }
     }
   } else {
     // Facing threaded through (jt2-9): a reversal (dir against facing) reaches the

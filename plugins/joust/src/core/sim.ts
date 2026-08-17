@@ -2409,14 +2409,17 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   processes = trollStep.processes
   const trollEvents = trollStep.events
 
-  // jt13-5 — DEATH VIA SWIMMING IN THE LAVA (ADGFLR, JOUSTRV4.SRC:6508-6640): a
-  // NON-gripped player that reaches lava depth drowns. frame.ts already clears its
-  // PVELX and pins it at the FLOOR+7 surface (the jt11-18 on-screen backstop); the
+  // jt13-5 — the non-gripped lava death, ADGFLR "DEATH VIA SWIMMING IN THE LAVA"
+  // (JOUSTRV4.SRC:6523): a player that reaches lava depth (ADGCEI's FLOOR+7 test,
+  // :6508) is DEAD — SNPLAV/SNELAV, WCLENY<7 -> DDEAD, life lost, body sinks to
+  // FLOOR+20. frame.ts pins it at the FLOOR+7 surface (jt11-18's backstop); the
   // life is booked by stepGame off the player-process REMOVAL, so removing the
   // rider here is what turns the old free-swim clamp into a real death. A player in
-  // the lava troll's grip (`grippedBy` set) is exempt — that troll owns its
-  // victim's death (the SEPARATE path, ADGFLR :6624-6640). Enemies and eggs keep
-  // the jt11-18 clamp; this story is the player's lava death only.
+  // the lava troll's GRIP (`grippedBy` set) is exempt: that troll path runs ADDLAV
+  // (`CLR PVELX` + the break-free window, ~:6609-6642) over a swapped PADGRA and
+  // funnels into this SAME ADGFLR via its JMP (~:6643) — one shared death routed by
+  // a different gravity, not a second mechanism. Enemies and eggs keep the jt11-18
+  // clamp; this story is the player's lava death only.
   processes = processes.filter(
     (p) => !(p.kind === 'player' && p.entity !== undefined && p.grippedBy === undefined && isLavaDeath(p.entity.posY)),
   )
