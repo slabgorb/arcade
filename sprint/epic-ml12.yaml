@@ -11,7 +11,7 @@ stories:
     description: "Owner playtest finding (2026-08-17): the millipede train enters ONE ROW TOO HIGH and runs over the score/HUD — the same shape as the analogous centipede train-start-row bug. HYPOTHESIS (unverified, verify against ROM + live code before pinning): the enter row is off by one against the top-of-play boundary the HUD occupies. Likely seam: the train enter/spawn V in core/millipede.ts (ENTER_V and the NEWHD_SPAWN_V family, ~:101-102; the loose-head enter loop uses ENTER_V, ~:202-206) measured against the HUD region (core/hud.ts) and the playfield top. STORY: find the correct top enter row from the millipede ROM (MILLI.MAC / MLSUB.MAC — the analogous centipede fix is a reference, not the source of truth), and correct the enter row so the train's top march sits one row below where it is now, clear of the score. Every changed core constant carries a citations.test.ts-gated claim. Confirm LIVE at /millipede/ that the train no longer overruns the score."
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
@@ -19,6 +19,7 @@ stories:
       - "The train's top enter row is corrected so it no longer overlaps/overwrites the score/HUD: pinned by a test that spawns the train and asserts its topmost segment row is at the ROM-correct enter row (one row below the current value), with the value cited to the millipede ROM (not the centipede analogue) and gated by citations.test.ts."
       - 'The corrected enter row does not regress existing millipede movement/turn behaviour: the existing millipede core suite stays green, and the loose-head enter path (fragmented-train reseed) enters at the same corrected boundary.'
       - 'Verified LIVE at the /millipede/ visual playtest: the train marches across the top clear of the score, with no full-screen strobe/flash introduced (ml7-4 owner-epilepsy accessibility gate).'
+    completed: '2026-08-17'
     type: bug
     review_findings: 'APPROVED round 1. No Critical/High. Fix is a render off-top draw-gate (segmentOnScreen/OFFTOP_V=0xF4, MILLI.MAC:1871, cp7-2 family ruling); ENTER_V unchanged. Subagents: preflight clean (1450+505 green, lint clean), security clean, rule-checker 4 findings ALL in the test file (0 in production logic). 3 confirmed test-apparatus findings FIXED + mutation-verified this round (pinned OFFTOP_V=0xF4 + boundary; scoped the wiring regex to the segment draw loop; re-anchored stale main.ts:286->:291); 1 LOW dismissed (stripComments = established cross-file convention). Live pixel playtest: wave-start train 0 score-row pixels (523 without gate). Filed non-blocking follow-up: enemy roster (bees/flies at v=0xF8) shares the bug -> ml12-4.'
     review_verdict: approved
