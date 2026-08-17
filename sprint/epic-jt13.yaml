@@ -24,10 +24,11 @@ stories:
     description: Players and enemies should 'warp' in with a visible spawn animation. User suspects this was never implemented (rather than removed for accessibility/safety — if it was removed, that was overkill). Investigate whether a warp-in ever existed in the joust core/shell or the ROM reference, then implement a visible spawn/warp-in animation for player and enemy spawns.
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
     type: bug
   - id: jt13-3
     title: "Entry screen 'new mount every' line: read the setting or remove it"
@@ -83,3 +84,10 @@ stories:
     repos: arcade
     workflow: tdd
     type: refactor
+  - id: jt13-9
+    title: 'Joust transporter wait-for-first-move idle colour-cycle (ROM TREFF phase 2, JOUSTRV4.SRC:5805-5890): after the 30-frame warp-in grow, the full-size bird colour-cycles owner/white/grey (TREPL1/2/3) at an accelerating rate (16-8-4-2-1 naps) until the player flaps or it times out; descoped from jt13-2'
+    points: 3
+    priority: p3
+    status: backlog
+    repos: arcade
+    workflow: tdd
