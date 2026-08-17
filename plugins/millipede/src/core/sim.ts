@@ -183,12 +183,13 @@ function stepPlay(state: GameState, input: GameInput): GameState {
       const dead = segments[hit]
       segments = segments.filter((_, i) => i !== hit)
       score += SEGMENT_PTS
-      // MUSHER — a shot kill leaves a mushroom at the dead segment's OWN cell (SHOOT2
-      // 142$ :2163-2164 JSR OBSTA0/JSR MUSHER, dir 0 = "GIVE NO DIRECTION" :1996).
-      // musher() no-ops on a non-empty/excluded cell, so an open cell gets a full
-      // mushroom + a MUSH tally bump. (A DDT kill lands on its CLOUD cell, which is
-      // non-empty, so MUSHER skips there — that path plants nothing, ml13-1 / :739.)
-      musher(state.field, obstacOffset(dead.h, dead.v, 0), killMush)
+      // MUSHER — a kill leaves a mushroom at OBSTA0's cell (SHOOT2 142$ :2155-2157
+      // JSR OBSTA0/JSR MUSHER). OBSTA0 (MLSUB.MAC:834-839) derives dir from the
+      // segment's own MOBJDH sign and OBSTAC adds 8*dir (:860-863 TYA/ASL×3), so the
+      // target is the cell 8px AHEAD in travel — same derivation as obstac() (mushroom.ts:186).
+      // musher() no-ops on a non-empty/excluded cell, else stamps a full mushroom +
+      // bumps MUSH. (The DDT path shares this tail — see step 8b.)
+      musher(state.field, obstacOffset(dead.h, dead.v, dead.dh < 0 ? -1 : 1), killMush)
       shot = { active: false, h: 0, v: 0 }
       events.push(event('segment-killed'))
     }
@@ -296,6 +297,11 @@ function stepPlay(state: GameState, input: GameInput): GameState {
         // Head vs body: a body is colour >= $3D (MILLI.MAC:2168 CMP I,3D / BCS 145$);
         // a head (0x39) or poisoned head (0x1B) is below it and scores in the 100s.
         score += s.color >= BODY_COLOR ? DDT_KILL_BODY_PTS : DDT_KILL_HEAD_PTS
+        // MUSHER — a DDT kill runs the SAME SHOOT2 142$ tail as a shot kill (DDTEX1
+        // :1946 → JSR SHOOT2 :1949), so it also plants at OBSTA0's cell: the cell 8px
+        // AHEAD in travel (dir = sign(dh)), NOT the occupied cloud cell the kill read above.
+        // If that ahead-cell is empty, a mushroom is left there (musher no-ops otherwise).
+        musher(state.field, obstacOffset(s.h, s.v, s.dh < 0 ? -1 : 1), killMush)
         events.push(event('segment-killed'))
         continue // OBJECT DESTROYED — dropped from the roster
       }
