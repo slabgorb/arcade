@@ -45,7 +45,7 @@ stories:
     description: "Two guard-strengthening findings filed non-blocking by Reviewers, each over a WEAKLY-asserted test surface (the ml8 'a battery over a weak surface yields a survivor' shape), collected here as the epic's hardening tail per the user's chosen framing. (a) From ml7-11 round 2 (Reviewer): plugins/millipede/tests/playfield-colour.test.ts guards PLAYER_COLOUR's provenance but ALPHANUMERIC_COLOUR ($1F RED, ANCOL+2, MLIRQ.MAC:294) HAPPENS to equal wave-1 inside-mushroom, so a future mis-wire `ALPHANUMERIC_COLOUR = waveColours(1).insideMushroom` would pass every test. Add an ALPHANUMERIC provenance check against a NON-colliding level, and optionally assert $00 never appears in FIELD_REGION_COLOURS. (b) From ml10-5 round (Reviewer, the ml10-6-class finding — NEVER filed until now): the pointer-lock guard's regex is FILE-SCOPED, so a contrived relocation mutant can evade it (the named mutant IS killed today). Widen the guard so a relocation cannot slip past. NOTE THE FILE-SURFACE SPLIT: (a) edits tests/playfield-colour.test.ts and (b) edits the ml10-5 pointer-lock guard test — DIFFERENT files, so by the strict grouping rule these are two stories; they are folded here as one small tail per the materialization decision, and TEA/Architect MAY split them if the two commits prove awkward. Both are pure test-guard strengthening — no production code change, mutation-verify each guard actually reddens the mutant it targets."
     points: 2
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-16'
     repos: arcade
     workflow: tdd
@@ -54,4 +54,6 @@ stories:
       - "The ml10-6 pointer-lock guard no longer depends on the mutant staying in its original file location: a relocation mutant that today evades the file-scoped regex now REDDENS the guard (mutation-verified with the relocation mutant that ml10-5's Reviewer described)."
       - "No production source changes (this is test-only hardening); the full millipede + orchestrator suites stay green, and each strengthened guard is shown to kill the specific mutant it targets (not a vacuous pass)."
     type: chore
+    review_findings: 'APPROVED round 2. Round 1 REJECTED on 4 LOW guard-rigor findings (R1 pipeline-level mutation test, R2 null-guard the cast, R3 citation :76->:75, R4 remove dead isImmediate clause); ALL fixed in commit 16b4245a and re-verified clean by a fresh 4-subagent pass + my own mutation battery. ACs met and mutation-verified. Non-blocking follow-up F5 (SM to file): the onReject guard regex is format-coupled and not arg-position scoped - needs an AST/balanced-paren rewrite.'
+    review_verdict: approved
 completed:
