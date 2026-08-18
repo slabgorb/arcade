@@ -267,3 +267,8 @@ completed_stories:
     title: "Wire the TREFF phase-2 idle colour-cycle into the playable game: hold the re-materialising bird stationary on its pad, render the accelerating owner/white/grey (TREPL) tint through drawList/paintWarpIn, and release on the player's flap (or the ~376-nap timeout). jt13-9 shipped the pure IdleCycleState + sim state but nothing draws it and the bird falls during the wait; this makes it visible and correct in-play."
     points: 3
     completed: '2026-08-18'
+  - id: df5-11
+    epic: df5
+    title: "Terrain fidelity: render the full 1024-entry ALTTBL profile at the ROM's native terrain granularity instead of the 256-entry slice df5-9 tiles"
+    points: 3
+    completed: '2026-08-18'
