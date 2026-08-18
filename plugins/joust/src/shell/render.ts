@@ -278,7 +278,7 @@ const WARPIN_PAD_H = 2
  */
 export function paintWarpIn(
   context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>,
-  op: { x: number; y: number; width?: number; height?: number; frame?: number; facing?: number; owner?: string },
+  op: { x: number; y: number; width?: number; height?: number; frame?: number; facing?: number; owner?: string; colour?: number },
   colours: readonly Rgba[],
 ): void {
   const w = op.width ?? WARPIN_DEFAULT_W
@@ -286,8 +286,10 @@ export function paintWarpIn(
   if (w <= 0 || h <= 0) return
   const frame = op.frame ?? 0
   const feetY = op.y
-  // DCONST — the owner's transporter colour, constant-filling pad AND bird.
-  const nibble = op.owner === 'p2' ? 7 : op.owner === 'enemy' ? 1 : 5
+  // The constant-fill colour: an explicit `colour` nibble (jt13-12 — the cycling TREPL
+  // idle role) when the op carries one, else the `DCONST` owner colour (jt13-2 grow-in:
+  // P1 yellow $5, P2 green $7, enemy white $1, JOUSTRV4.SRC:5739).
+  const nibble = op.colour ?? (op.owner === 'p2' ? 7 : op.owner === 'enemy' ? 1 : 5)
   const colour = colours[nibble]
   context.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
   // The lit transporter pad — bottom-anchored at the feet, shown all window long.

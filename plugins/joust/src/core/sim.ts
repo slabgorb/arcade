@@ -85,9 +85,12 @@ import {
   stepWarpIn,
   startIdleCycle,
   stepIdleCycle,
+  idleColour,
+  WARPIN_FRAME_COUNT,
   type WarpInState,
   type IdleCycleState,
   type IdleOwner,
+  type IdleColour,
 } from './warpin.js'
 import { startCrumble, stepCrumble, type CrumbleState, type CrumblePhase } from './crumble.js'
 import {
@@ -2341,31 +2344,34 @@ function advanceMaterialisation(p: SimProcess): SimProcess {
 }
 
 /**
- * jt13-2 / jt13-9 — advance the TREFF materialisation one frame, beside
+ * jt13-2 / jt13-9 / jt13-12 — advance the TREFF materialisation one frame, beside
  * `advanceMaterialisation` on the same per-process pass. Two phases:
  *   • Phase 1 (jt13-2) — the 30-frame PFRAME grow: an unfinished `warpIn` steps until
  *     `done`, after which drawList stops overlaying the silhouette.
- *   • Phase 2 (jt13-9) — once `warpIn.done`, open the wait-for-first-move idle
- *     colour-cycle (`idleCycle`) and step it each frame to its PFEET→0 timeout.
+ *   • Phase 2 (jt13-9 sim, jt13-12 render) — once `warpIn.done`, open the wait-for-first-
+ *     move idle colour-cycle (`idleCycle`) and step it each frame. `flapped` is the
+ *     arrival's first-move input this frame (CURJOY ≠ 0): for a PLAYER a flap ends the
+ *     wait ('moved'), which stops drawList tinting the (now flying) bird — without it the
+ *     cycling colour would ghost onto the bird as it takes off. An un-flapping arrival
+ *     (enemy AI, or a still player) runs to the PFEET→0 timeout. The idle drives RENDER
+ *     only (drawList paints the standing bird in the cycling TREPL colour); it does not
+ *     move or pin the entity.
  * A process with neither passes through unchanged.
  */
-function advanceWarpIn(p: SimProcess): SimProcess {
+function advanceWarpIn(p: SimProcess, flapped: boolean): SimProcess {
   // Phase 1 — the 30-frame PFRAME grow-in.
   if (p.warpIn && !p.warpIn.done) return { ...p, warpIn: stepWarpIn(p.warpIn) }
+  if (!p.warpIn?.done) return p
 
-  // jt13-9 — Phase 2: once the grow-in is done, the ROM runs the wait-for-first-move
-  // idle colour-cycle (:5805-5890) before PLYINT. Open it the frame after the grow-in
-  // finishes, then advance it each frame. The sim's per-process pass carries no input,
-  // so an un-flapping arrival runs to its natural PFEET→0 timeout (enemies always; a
-  // player's flap-abort is a further render-layer wiring, deferred).
-  if (p.warpIn?.done) {
-    if (!p.idleCycle) {
-      const owner: IdleOwner = p.kind === 'player' ? 'player' : 'enemy'
-      return { ...p, idleCycle: startIdleCycle(owner) }
-    }
-    if (p.idleCycle.end === 'active') return { ...p, idleCycle: stepIdleCycle(p.idleCycle, false) }
+  // Phase 2 — open the idle colour-cycle the frame after the grow-in finishes.
+  if (!p.idleCycle) {
+    const owner: IdleOwner = p.kind === 'player' ? 'player' : 'enemy'
+    return { ...p, idleCycle: startIdleCycle(owner) }
   }
-  return p
+  if (p.idleCycle.end !== 'active') return p
+  // A player's flap ends the cycle (stops the tint); enemies/still players time out.
+  const moved = p.kind === 'player' ? flapped : false
+  return { ...p, idleCycle: stepIdleCycle(p.idleCycle, moved) }
 }
 
 /**
@@ -2487,7 +2493,9 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   )
 
   const drainedProcesses = stepped.processes.map((p) => drainProcessBumpX(p as SimProcess))
-  const materialised = drainedProcesses.map((p) => advanceWarpIn(advanceMaterialisation(p as SimProcess)))
+  const materialised = drainedProcesses.map((p) =>
+    advanceWarpIn(advanceMaterialisation(p as SimProcess), inputs?.[(p as SimProcess).id]?.flap ?? false),
+  )
   const collided = collisionPass(materialised)
 
   let wave = state.wave
@@ -3161,9 +3169,28 @@ function entityOp(name: string, posX: number, feetY: number, facing: Facing): Dr
  * PFRAME `frame`, and the `owner` DCONST colour. Replaces the plain entity op while
  * the warp-in is active — the ROM draws the silhouette in place of the normal bird.
  */
-function warpInOp(name: string, posX: number, feetY: number, facing: Facing, frame: number, owner: 'p1' | 'p2' | 'enemy'): DrawOp {
+function warpInOp(
+  name: string,
+  posX: number,
+  feetY: number,
+  facing: Facing,
+  frame: number,
+  owner: 'p1' | 'p2' | 'enemy',
+  colour?: number,
+): DrawOp {
   const { xoff } = posOffset(name)
-  return { kind: 'warpin', name, x: posX + xoff, y: feetY, facing, frame, owner }
+  return { kind: 'warpin', name, x: posX + xoff, y: feetY, facing, frame, owner, colour }
+}
+
+/**
+ * jt13-12 — the colour PROM nibble for one TREFF phase-2 idle role: white ($1), grey
+ * ($D, "LITE GREY FOR TRANSPORTER EFFECT", JOUSTRV4.SRC:58), or the arrival's own DCONST
+ * owner colour (P1 yellow $5 / P2 green $7). The TREPL tables cycle these.
+ */
+function idleNibble(role: IdleColour, owner: 'p1' | 'p2' | 'enemy'): number {
+  if (role === 'white') return 1
+  if (role === 'grey') return 0xd
+  return owner === 'p2' ? 7 : owner === 'enemy' ? 1 : 5
 }
 
 /**
@@ -3264,6 +3291,24 @@ export function drawList(demo: SimState): DrawOp[] {
         // normal mount+rider (P2 rides a stork → green; P1 an ostrich → yellow).
         entities.push(
           warpInOp(names[0], p.entity.posX, p.entity.posY >> 8, facing, p.warpIn.frame, p.mount === 'stork' ? 'p2' : 'p1'),
+        )
+      } else if (p.idleCycle && p.idleCycle.end === 'active') {
+        // jt13-12 — TREFF phase 2: the full-size bird STANDS on its pad (held by
+        // advanceWarpIn) and colour-cycles owner/white/grey through the TREPL palette
+        // until the player flaps. A full-height (`WARPIN_FRAME_COUNT - 1`) constant-fill
+        // in the cycling nibble — the ROM draws the bird solid-filled in TREPL, exactly
+        // as the grow-in fills it in DCONST.
+        const owner = p.mount === 'stork' ? 'p2' : 'p1'
+        entities.push(
+          warpInOp(
+            names[0],
+            p.entity.posX,
+            p.entity.posY >> 8,
+            facing,
+            WARPIN_FRAME_COUNT - 1,
+            owner,
+            idleNibble(idleColour(p.idleCycle), owner),
+          ),
         )
       } else {
         for (const name of names) {
