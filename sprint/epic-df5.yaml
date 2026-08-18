@@ -193,7 +193,7 @@ stories:
     description: "Found live on defender-v0.0.5: df5-8 spawns lander waves, but no humanoids are ever placed on the ground in the live sim, so landers have no abduction target — each falls back to the 'no target yet -> keep descending' path (landers.ts, approach(rec.y, YMAX)) and drifts off the bottom of the screen instead of hunting. So a wave spawns, sinks, and idles, and the field never clears to advance to wave 2. Wire the level-start humanoid ground population into plugins/defender/src/core/sim.ts (the humanoid analog of df5-8's lander wiring: place the ground humanoids across the world at game start via enemyBank.spawnHumanoid), so waves actually play out — landers hunt, abduct, and can be shot to clear the wave and escalate. RELATES TO df5-4 (humanoid rescue + panic, which closes the abduction loop): this is the upstream 'populate the ground' seam df5-4's rescue/panic assume already exists — sequence before df5-4 or fold into it as the PM decides. Consumes df4-3 spawnHumanoid + df3 scheduler. Pair with df5-9 (world scroll) for the waves to be visible/reachable on screen."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
