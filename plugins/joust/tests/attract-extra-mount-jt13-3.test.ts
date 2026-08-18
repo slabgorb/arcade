@@ -88,43 +88,42 @@ function renderTitleBody(): string {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-2/AC-4 the replay level is derived from the setting', () => {
   it('core/game exports REPLAY_INTERVAL — the operator replay setting (20,000)', () => {
-    const ri = (gameCore as Record<string, unknown>).REPLAY_INTERVAL
-    // Today REPLAY_INTERVAL is an un-exported const; the shell must be able to READ it.
-    expect(ri, 'core/game must export REPLAY_INTERVAL for the title to source the value').toBe(20_000)
+    // The export is enforced at compile time (typed access below); this pins the value.
+    expect(gameCore.REPLAY_INTERVAL, 'REPLAY_INTERVAL is the 20,000-point replay interval').toBe(20_000)
   })
 
   it('extraMountThousands(interval) yields the OUTBCD thousands, derived not hardcoded', () => {
-    const fn = (titleCore as Record<string, unknown>).extraMountThousands as
-      | ((interval: number) => number)
-      | undefined
-    expect(typeof fn, 'core/title must export a pure extraMountThousands(interval)').toBe('function')
+    const fn = titleCore.extraMountThousands
+    expect(typeof fn, 'core/title exports a pure extraMountThousands(interval)').toBe('function')
     // OUTBCD prints the thousands of REPLAY: 20,000 -> 20.
-    expect(fn!(20_000), '20,000 points prints "20" thousands').toBe(20)
+    expect(fn(20_000), '20,000 points prints "20" thousands').toBe(20)
     // Genuinely derived from the argument — a body that `return 20` would pass the
     // line above but fails here (kills the hardcoded-constant mutant).
-    expect(fn!(30_000), 'derived from the setting, not a fixed 20').toBe(30)
-    expect(fn!(50_000), 'derived from the setting, not a fixed 20').toBe(50)
+    expect(fn(30_000), 'derived from the setting, not a fixed 20').toBe(30)
+    expect(fn(50_000), 'derived from the setting, not a fixed 20').toBe(50)
     // Fed the real setting, it is 20.
-    const ri = (gameCore as Record<string, unknown>).REPLAY_INTERVAL as number
-    expect(fn!(ri), 'the default setting prints 20').toBe(20)
+    expect(fn(gameCore.REPLAY_INTERVAL), 'the default setting prints 20').toBe(20)
   })
 
   it('the default line composes to "EXTRA MOUNT EVERY 20,000 POINTS" from the core strings', () => {
-    const fn = (titleCore as Record<string, unknown>).extraMountThousands as
-      | ((interval: number) => number)
-      | undefined
-    expect(typeof fn, 'extraMountThousands must exist').toBe('function')
-    const ri = (gameCore as Record<string, unknown>).REPLAY_INTERVAL as number
     // Reuses TITLE_EXTRA_MOUNT + the derived number + TITLE_POINTS_SUFFIX — no new literal.
-    const line = titleCore.TITLE_EXTRA_MOUNT + String(fn!(ri)) + titleCore.TITLE_POINTS_SUFFIX
+    const line =
+      titleCore.TITLE_EXTRA_MOUNT +
+      String(titleCore.extraMountThousands(gameCore.REPLAY_INTERVAL)) +
+      titleCore.TITLE_POINTS_SUFFIX
     expect(line, 'the authentic MARQUE extra-mount line').toBe('EXTRA MOUNT EVERY 20,000 POINTS')
   })
 
-  it('core/title cites the ROM OUTBCD source for the replay-level derivation', () => {
+  it('the extraMountThousands derivation cites its ROM OUTBCD source', () => {
     const src = existsSync(coreTitlePath) ? readFileSync(coreTitlePath, 'utf8') : ''
-    // The derivation is the ROM's OUTBCD "thousands of replay points" (ATT.SRC).
-    expect(src, 'core/title cites ATT.SRC').toContain('ATT.SRC')
-    expect(src, 'the replay-level derivation cites its OUTBCD ROM anchor').toContain('OUTBCD')
+    const at = src.indexOf('export function extraMountThousands')
+    expect(at, 'extraMountThousands exists in core/title').toBeGreaterThan(0)
+    // Scope the citation check to the function's OWN preceding docstring, so deleting
+    // THIS citation reddens — not merely the pre-existing logo/palette ATT.SRC cites
+    // elsewhere in the file (which would leave a whole-file toContain green).
+    const docstring = src.slice(Math.max(0, at - 500), at)
+    expect(docstring, 'the derivation cites its ATT.SRC / OUTBCD ROM anchor').toContain('ATT.SRC')
+    expect(docstring, 'the derivation cites the OUTBCD thousands-of-replay anchor').toContain('OUTBCD')
   })
 })
 
