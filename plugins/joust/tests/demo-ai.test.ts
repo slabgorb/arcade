@@ -40,7 +40,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { createGame, stepGame, GOVER_OVER, type GameState } from '../src/core/game.js'
+import { createGame, stepGame, type GameState } from '../src/core/game.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { demoInput } from '../src/core/demo-ai.js'
 import { violations } from './helpers/purity-scanner.js'
@@ -53,15 +53,13 @@ const playerIdsOf = (g: GameState): number[] =>
   g.sim.sim.processes.filter((p) => p.kind === 'player').map((p) => p.id)
 
 interface Fingerprint {
-  frame: number
   rng: number
   wave: number
   procs: string
   scores: number[]
   lives: number[]
 }
-const fingerprint = (g: GameState, frame: number): Fingerprint => ({
-  frame,
+const fingerprint = (g: GameState): Fingerprint => ({
   rng: g.sim.sim.rng,
   wave: g.wave,
   procs: g.sim.sim.processes.map((p) => `${p.kind}#${p.id}`).join(','),
@@ -145,7 +143,7 @@ describe('jt13-13 demoInput — purity & determinism', () => {
   it('replays bit-for-bit from a fixed seed — the fingerprint (incl. rng) is identical across runs (AC-3)', () => {
     const first = runActive(SEED, 1500).end
     const second = runActive(SEED, 1500).end
-    expect(fingerprint(first, 1500)).toEqual(fingerprint(second, 1500))
+    expect(fingerprint(first)).toEqual(fingerprint(second))
     // The rng cursor is part of the fingerprint: a non-deterministic AI (Date/Math.random)
     // would desync it. This is the property jt13-14's re-baseline depends on.
     expect(second.sim.sim.rng, 'the durable seed word must be reproducible').toBe(first.sim.sim.rng)
@@ -188,32 +186,34 @@ describe('jt13-13 demoInput — it actually PLAYS (the deliverable)', () => {
     expect(flaps1, 'player 1 must actually flap over ~20s of demo (passive = 0)').toBeGreaterThan(20)
   })
 
-  it('SUSTAINS play after clearing wave 1 — survives the escalating waves, not one lucky clear (AC-6)', () => {
-    // Survival is NOT measured against the passive bird: the passive demo "loses fewer
-    // lives" only because it barely acts (an immortal landed twin, a P1 that just sits on a
-    // ledge — measured: passive P1 loses ~2 lives to enemy jousts by frame 3000, neither
-    // bird ever reaches the lava). Rewarding the active demo for losing FEWER lives than a
-    // near-inert bird would test for timidity — the opposite of "actually plays and clears
-    // waves". The sound survival signal a do-nothing CANNOT fake and a suicidal AI FAILS:
-    // clear wave 1, then keep playing through the harder waves for a sustained stretch.
-    const BUDGET = 20000
-    let g = createGame(SEED)
-    let clearedAt: number | null = null
-    let goverAt: number | null = null
-    for (let f = 1; f <= BUDGET; f++) {
-      g = stepGame(g, demoInput(g))
-      if (clearedAt === null && g.wave >= 2) clearedAt = f
-      if (g.gover === GOVER_OVER) {
-        goverAt = f
-        break
-      }
-    }
-    expect(clearedAt, 'the demo must clear wave 1 to sustain play (a do-nothing bird never gets here)').not.toBeNull()
-    const survivedAfterClear = (goverAt ?? BUDGET) - (clearedAt as number)
+  it('SUSTAINS multi-wave play — reaches wave ≥ 3, which a timid or suicidal AI cannot (AC-6)', () => {
+    // Survival is NOT measured as "fewer lives lost than the passive bird": that metric is
+    // confounded (the passive demo barely acts — an immortal landed twin, a P1 that just
+    // sits on a ledge losing ~2 lives to jousts by frame 3000; neither bird ever reaches the
+    // lava), so it would reward TIMIDITY — the opposite of "actually plays and clears waves".
+    // A frame-survival threshold is also vacuous: a bird that free-falls into the lava after
+    // clearing wave 1 still burns its 10 lives slowly enough to survive thousands of frames.
+    // The sound signal — verified by mutation — is REACHING wave 3: a do-nothing never clears
+    // wave 1, and a post-clear suicide/hover mutant stalls at wave 2; only genuine sustained
+    // play (clear wave 1, then clear wave 2) reaches wave 3.
+    const active = runActive(SEED, 20000, /* stopWave */ 3)
     expect(
-      survivedAfterClear,
-      `the demo survived only ${survivedAfterClear} frames after clearing wave 1 (cleared@${clearedAt}, gover@${goverAt}) — it must handle the escalating waves, not suicide after one clear`,
-    ).toBeGreaterThanOrEqual(1500)
+      active.end.wave,
+      `the AI reached wave ${active.end.wave} after ${active.frames} frames — it must sustain past wave 2 (a suicide/hover-after-clear mutant stalls at wave 2)`,
+    ).toBeGreaterThanOrEqual(3)
+  })
+
+  it('collects eggs and scores — it jousts and gathers, not just survives (AC-6b)', () => {
+    // Guards the egg-collection tactic (untested before) and asserts the demo actually earns
+    // points, so a bug that advanced the wave without defeating/gathering would be caught.
+    let g = createGame(SEED)
+    let sawEggCollected = false
+    for (let f = 1; f <= 6000 && !sawEggCollected; f++) {
+      g = stepGame(g, demoInput(g))
+      if (g.events.some((ev) => ev.type === 'egg-collected')) sawEggCollected = true
+    }
+    expect(sawEggCollected, 'the demo must collect at least one egg (egg-collected cue) — the egg tactic must fire').toBe(true)
+    expect(Math.max(...g.players.map((p) => p.score)), 'the demo must earn points by playing').toBeGreaterThan(0)
   })
 
   it('CLEARS wave 1 — reaches wave ≥ 2, which the passive demo never does in 20000 frames (AC-7)', () => {
@@ -231,21 +231,23 @@ describe('jt13-13 demoInput — it actually PLAYS (the deliverable)', () => {
   })
 })
 
-describe('jt13-13 wiring — main.ts drives the demo through demoInput, seam preserved (AC-8)', () => {
+describe('jt13-13 wiring — main.ts feeds demoInput straight into stepGame (AC-8)', () => {
   const mainSrc = (): string => readFileSync(fileURLToPath(new URL('../src/main.ts', import.meta.url)), 'utf8')
 
-  it('the demo branch no longer steps with an empty input object', () => {
+  it("passes demoInput(cabinet.game) INTO stepGame in one expression (not a separable regex-bait)", () => {
+    // A single combined anchor: the return of demoInput must be the argument to stepGame in
+    // the same call. This defeats the trivial bypass (`stepGame(cabinet.game, {})` alongside
+    // a dead `demoInput(cabinet.game)` call) that two independent substring checks let slip.
     expect(
       mainSrc(),
-      "main.ts must stop passing `{}` to stepGame in the demo branch (that IS the passive-demo bug)",
+      "the demo branch must step `stepGame(cabinet.game, demoInput(cabinet.game))` — demoInput's output fed straight in",
+    ).toMatch(/stepGame\s*\(\s*cabinet\.game\s*,\s*demoInput\s*\(\s*cabinet\.game\s*\)/)
+  })
+
+  it('the demo branch no longer steps with an empty input object (the passive-demo bug)', () => {
+    expect(
+      mainSrc(),
+      'main.ts must not step the demo with `{}` anywhere (that IS the passive-demo bug)',
     ).not.toMatch(/stepGame\s*\(\s*cabinet\.game\s*,\s*\{\s*\}\s*\)/)
-  })
-
-  it('main.ts calls demoInput to synthesise the demo inputs', () => {
-    expect(mainSrc(), 'main.ts must drive the demo through demoInput').toMatch(/demoInput\s*\(/)
-  })
-
-  it('keeps the literal stepGame( seam (demo-source.test.ts / gameover-wiring.test.ts pin)', () => {
-    expect(mainSrc(), 'the jt4-5 stepGame( seam must survive').toMatch(/stepGame\s*\(/)
   })
 })
