@@ -35,11 +35,12 @@ stories:
     description: The entry/attract screen shows a 'new mount every' line that is wrong. Either read the actual value from the settings and display it correctly, or remove the line entirely. Confirm what the original joust attract screen (ATT.SRC / MARQUE) actually says before deciding.
     points: 2
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: jt13-4
     title: Replace 'press 1' prompt with click-to-enter, single player
     description: "Nothing tells the player to press the '1' button and we don't want that. Replace the 'press 1'/coin-start prompt flow with click-to-enter: a click starts the game directly, single player only. Remove the 1-button prompt text."
