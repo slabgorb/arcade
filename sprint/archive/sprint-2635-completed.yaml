@@ -12,6 +12,7 @@ completed_epics:
   - ml11
   - ml12
   - df4
+  - mc12
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -188,4 +189,9 @@ completed_stories:
     epic: jt13
     title: 'Lava death cinematic: ADDLAV break-free window, sink to FLOOR+20, and the SNPLAV/SNELAV cue'
     points: 3
+    completed: '2026-08-18'
+  - id: mc12-5
+    epic: mc12
+    title: 'Retire the last magic width/200 divisor in render.ts: the base ready-missile stack marker (dot, render.ts:142) uses the same non-physical /200 the mc12-4 tip fix removed, so it renders an oversized ~10px square at 955px display while looking correct at the 256px unit-test canvas (the same green-vitest/wrong-pixels blind spot). Tie it to the cabinet-pixel unit uH at the intended DRAW MISSILE marker size (W3DSUP.MAC:1221; offsets :1329-1331) after checking ROM ground truth for the marker dimensions, and add a display-resolution size guard mirroring mc12-4. Filed by mc12-4 review (rule-checker #24/#33, no invented magic constants); out of mc12-4 four-finding scope; pre-existing, not a regression.'
+    points: 2
     completed: '2026-08-18'
