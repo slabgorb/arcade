@@ -367,6 +367,39 @@ export function waveBeats(type: ResolvedWaveType): readonly Beat[] {
   return BEATS[type]
 }
 
+// ─── The WAVMSG label → on-screen display string (the text seam) ─────────────
+//
+// The ROM strings each WAVMSG beat label puts on screen. Transcribed from the
+// original message table — MESSEQU.SRC:104-153 (the MSW## EQU comments) and
+// PHRASE.SRC (the phrase table the game actually renders), reached from the
+// WAVMSG beat-label FDBs (JOUSTRV4.SRC:2416-2433). Core-owned, exactly as
+// GAME_OVER_TEXT is (core/cabinet.ts): the shell REUSES this, never re-transcribes.
+// INTRO1 is 'PREPARE TO JOUST' per the PHRASE table the game reads — MESSEQU's
+// '...' is a comment, not part of the rendered string.
+const WAVMSG_TEXT: Readonly<Record<string, string>> = Object.freeze({
+  INTRO1: 'PREPARE TO JOUST', // MSW00
+  INTRO2: 'BUZZARD BAIT!', // MSW01
+  COOP1: 'TEAM WAVE', // MSW02
+  COOP2: 'BONUS AWARDED FOR TEAM PLAY', // MSW03
+  SURV1: 'SURVIVAL WAVE', // MSW14
+  GLAD1: 'GLADIATOR WAVE', // MSW08
+  GLAD2: '3000 POINT BOUNTY', // MSW09
+  GLAD3: 'FOR DISMOUNTING FIRST OSTRICH', // MSW10
+  EGG1: 'EGG WAVE', // MSW13
+  PTER1: 'BEWARE OF THE "UNBEATABLE?" PTERODACTYL', // MSW07
+})
+
+/**
+ * The on-screen display string for a WAVMSG beat label (`SURV1` → 'SURVIVAL WAVE').
+ * Throws for an unknown label so a beat that gains no text fails loudly rather than
+ * announcing blank — every label `waveBeats` emits must be mapped here.
+ */
+export function waveMessageText(label: string): string {
+  const text = WAVMSG_TEXT[label]
+  if (text === undefined) throw new Error(`no WAVMSG display text for label '${label}'`)
+  return text
+}
+
 // ─── Seeding into jt2-2's budget inputs ─────────────────────────────────────
 
 /** `EMYTIM` on waves 1-2 = 2 (the divider). */
