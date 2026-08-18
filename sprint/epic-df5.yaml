@@ -110,7 +110,8 @@ stories:
     description: 'Scoring identity is a cited dossier task: P250/P500 and which rescue/kill event pays which are pinned from the ROM BEFORE the reducer is named — a wrong point value in prose ships GREEN. The men counter and extra-man award live here; df5-6 reads the men counter for the game-over condition (different file, coherent commit). Score pop-ups are df3 scheduler processes. Colour by df2 palette index only.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
