@@ -15,7 +15,15 @@
 // the logo.
 
 import { layoutText, type LaidOutText } from './fontRender.js'
-import { TITLE_COPYRIGHT, TITLE_EXTRA_MOUNT, TITLE_POINTS_SUFFIX, JOUST_LOGO, type JoustLogo } from '../core/title.js'
+import {
+  TITLE_COPYRIGHT,
+  TITLE_EXTRA_MOUNT,
+  TITLE_POINTS_SUFFIX,
+  extraMountThousands,
+  JOUST_LOGO,
+  type JoustLogo,
+} from '../core/title.js'
+import { REPLAY_INTERVAL } from '../core/game.js'
 import type { Rgba } from './render.js'
 
 /** The laid-out title overlay. All strings reused from core/title (one home,
@@ -25,6 +33,9 @@ export interface TitleScreenLayout {
   readonly copyright: LaidOutText
   /** TITLE_EXTRA_MOUNT — MSW17 $F7, MESSEQU.SRC:158 — in FONT57 (BCD level prints after it). */
   readonly extraMount: LaidOutText
+  /** The BCD replay level (OUTBCD, ATT.SRC:78) that prints between MSW17 and MSW18 —
+   *  the extra-man threshold in thousands, read from the setting (default 20). */
+  readonly replayLevel: LaidOutText
   /** TITLE_POINTS_SUFFIX — MSW18 $F8, MESSEQU.SRC:157 — in FONT57. */
   readonly pointsSuffix: LaidOutText
   /** The vector JOUST wordmark (reused from core, not re-transcribed). */
@@ -40,6 +51,8 @@ export function layoutTitleScreen(colour: Rgba): TitleScreenLayout {
   return {
     copyright: layoutText('FONT57', TITLE_COPYRIGHT, colour),
     extraMount: layoutText('FONT57', TITLE_EXTRA_MOUNT, colour),
+    // The BCD replay level (OUTBCD) sourced from the REPLAY_INTERVAL setting: 20,000 → "20".
+    replayLevel: layoutText('FONT57', String(extraMountThousands(REPLAY_INTERVAL)), colour),
     pointsSuffix: layoutText('FONT57', TITLE_POINTS_SUFFIX, colour),
     logo: JOUST_LOGO,
   }

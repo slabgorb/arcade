@@ -314,7 +314,13 @@ function renderTitleScreen(): void {
   const screen = layoutTitleScreen(colour)
   strokeLogo(screen.logo, Math.round((LOGICAL_WIDTH - 292) / 2), TITLE_LOGO_Y, colour)
   paintText(screen.copyright, Math.round((LOGICAL_WIDTH - screen.copyright.width) / 2), TITLE_COPYRIGHT_Y)
-  paintText(screen.extraMount, Math.round((LOGICAL_WIDTH - screen.extraMount.width) / 2), TITLE_EXTRA_MOUNT_Y)
+  // The extra-mount line is three adjacent parts — "EXTRA MOUNT EVERY " + the replay
+  // level ("20") + ",000 POINTS" — centred as one line (MSW17 / OUTBCD / MSW18, ATT.SRC:67-79).
+  const extraMountWidth = screen.extraMount.width + screen.replayLevel.width + screen.pointsSuffix.width
+  const extraMountX = Math.round((LOGICAL_WIDTH - extraMountWidth) / 2)
+  paintText(screen.extraMount, extraMountX, TITLE_EXTRA_MOUNT_Y)
+  paintText(screen.replayLevel, extraMountX + screen.extraMount.width, TITLE_EXTRA_MOUNT_Y)
+  paintText(screen.pointsSuffix, extraMountX + screen.extraMount.width + screen.replayLevel.width, TITLE_EXTRA_MOUNT_Y)
   titleFrame++
 }
 

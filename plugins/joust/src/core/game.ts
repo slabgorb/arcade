@@ -220,7 +220,7 @@ const NSHIP = 5
  * LEVPAS / SPLY1+8 / SPLY2+8 (JOUSTRV4.SRC:915-928); BCD 20 × 1000 = 20,000. An extra man
  * lands at each multiple, re-armed +20,000 per award (SCRLEV, JOUSTRV4.SRC:7382-7411).
  */
-const REPLAY_INTERVAL = 20_000
+export const REPLAY_INTERVAL = 20_000
 /**
  * The 50-for-dying BCD digit: the death path does `LDA #$50 / JSR SCRTEN`
  * (JOUSTRV4.SRC:4730-4732). Decoded through the SAME jt4-1 SCRTEN routine, $50 (backwards)
