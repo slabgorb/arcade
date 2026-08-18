@@ -174,7 +174,8 @@ stories:
     title: "Wire the df5-2 wave director into sim.ts: call createWaveDirector(sched, getPopulation, spawnWave) from the running sim so waves actually drive play — getPopulation reads the live enemy population (_enemyBank.landers alive count, sim.ts), spawnWave spawns each wave's WVTAB attacker counts via enemyBank.spawnLander (NEWP,STYPE). Closes the df5-2 injected-dependency seam (waves.ts is pure and unwired today) so df5-7's playtest can show waves escalating on screen. Consumes df5-2 waves.ts + df3 scheduler + df4 landers."
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-18'
