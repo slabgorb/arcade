@@ -2341,10 +2341,13 @@ function advanceMaterialisation(p: SimProcess): SimProcess {
 }
 
 /**
- * jt13-2 — advance the TREFF warp-in one frame (the 30-frame PFRAME grow). Runs
- * beside `advanceMaterialisation` on the same per-process pass: a player/enemy with
- * an unfinished warp-in steps it; once `done` drawList stops overlaying the
- * silhouette and the arrival is drawn normally. A process without one passes through.
+ * jt13-2 / jt13-9 — advance the TREFF materialisation one frame, beside
+ * `advanceMaterialisation` on the same per-process pass. Two phases:
+ *   • Phase 1 (jt13-2) — the 30-frame PFRAME grow: an unfinished `warpIn` steps until
+ *     `done`, after which drawList stops overlaying the silhouette.
+ *   • Phase 2 (jt13-9) — once `warpIn.done`, open the wait-for-first-move idle
+ *     colour-cycle (`idleCycle`) and step it each frame to its PFEET→0 timeout.
+ * A process with neither passes through unchanged.
  */
 function advanceWarpIn(p: SimProcess): SimProcess {
   // Phase 1 — the 30-frame PFRAME grow-in.

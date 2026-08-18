@@ -7,7 +7,7 @@
 // grow-in and filed this as a follow-up (warpin.ts header, "the wait-for-first-move
 // idle colour-cycle (:5805-5890) is a filed follow-up, not this module").
 //
-// ─── THE ROM, READ OFF THE WAIT LOOP (JOUSTRV4.SRC:5805-5871, verified) ───────
+// ─── THE ROM, READ OFF THE WAIT LOOP (JOUSTRV4.SRC:5805-5890, verified) ───────
 // After TREFF's grow-in, the full-size silhouette stands on its lit pad and colour-
 // cycles through the owner/white/grey TREPL palette at an ACCELERATING cadence,
 // until the player flaps/moves or the phase times out. Two interacting counters:

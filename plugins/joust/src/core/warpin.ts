@@ -26,10 +26,11 @@
 //     (:5774-5783 is a separate WCLENY "not too long" clamp, not the feet shift.)
 //   • TREFF2 (:5792-5803): `PCNAP 1  EFFECTS TIME` (one nap per frame), then
 //     `DEC PFRAME / LBNE TREFF` — thirty iterations, PFRAME 30→0. (The ROM then runs
-//     the unmodeled wait-for-first-move phase before PLYINT enables collisions.)
+//     the wait-for-first-move phase before PLYINT enables collisions.)
 //
-// This story builds PHASE 1 (the grow-in). The wait-for-first-move idle colour-
-// cycle (:5805-5890) is a filed follow-up, not this module.
+// PHASE 1 (the grow-in) is above. PHASE 2 — the wait-for-first-move idle colour-cycle
+// (:5805-5890) — was added by jt13-9 and lives at the foot of this module (the
+// IdleCycleState section); PLYINT's collision-enable itself is still unmodeled here.
 //
 // CORE: deterministic, no clock, no entropy, no browser surface, no shell import
 // (the jt1-7 purity scanner sweeps it). The RENDER of the silhouette + lit pad is
@@ -75,8 +76,9 @@ export interface WarpInState {
   /**
    * True once all thirty PFRAME frames have elapsed — the grow-in animation ends and
    * drawList stops overlaying the silhouette. NOT the moment collisions enable: in the
-   * ROM the wait-for-first-move phase (:5805-5890) and then PLYINT (:5910) still follow,
-   * both unmodeled here; in the clone collisions stay governed by `mat`'s window. Terminal.
+   * ROM the wait-for-first-move phase (:5805-5890, now modelled by IdleCycleState below,
+   * which `advanceWarpIn` opens when this flag fires) and then PLYINT (:5910) still
+   * follow; in the clone collisions stay governed by `mat`'s window. Terminal.
    */
   done: boolean
 }
@@ -107,7 +109,7 @@ export function stepWarpIn(state: WarpInState): WarpInState {
 // ─── PHASE 2 — the TREFF "WAIT FOR 1ST MOVE, OR TIME OUT" idle colour-cycle ───
 //
 // Story jt13-9 (GREEN, Yoda). The wait loop the ROM runs AFTER the 30-frame grow-in
-// above finishes and BEFORE PLYINT hands the bird to the brain (JOUSTRV4.SRC:5805-5871).
+// above finishes and BEFORE PLYINT hands the bird to the brain (JOUSTRV4.SRC:5805-5890).
 // The full-size silhouette stands on its lit pad and colour-cycles through the
 // owner/white/grey TREPL palette at an ACCELERATING cadence until the arrival flaps/
 // moves or the phase times out. Two interacting counters, read off the loop:
