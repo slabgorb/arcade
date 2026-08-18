@@ -31,16 +31,23 @@ describe('df3-6 boot-shell — main.ts drives a LIVE loop (frozen-sim guard)', (
     expect(h.scheduled(), 'the loop did not reschedule — it is a one-shot, not a loop').toBe(true)
   })
 
-  it('steps the sim each frame: thrust changes the drawn frame, and rest holds', () => {
-    // Two resting frames (each frame advances real time by 100 ms → ~6 fixed steps): with
-    // no input the sim is stable, so the drawn image must be byte-identical. A frame that
-    // keeps changing at rest would mean the sim reads a clock; a frame that NEVER changes
-    // under thrust means the loop is not stepping the sim at all (the frozen-game mutation).
+  it('steps the sim each frame: the sim advances at rest (df5-8 waves) and thrust changes the frame', () => {
+    // Two resting frames (each frame advances real time by 100 ms → ~6 fixed steps). Since
+    // df5-8 wired the wave director into the live sim, waves now DRIVE PLAY even with no
+    // input: the drawn image evolves at rest, so the two hashes must DIFFER. A frozen loop
+    // (stepSim called once at boot) would draw the same bytes forever — this is the exact
+    // frozen-game regression the ?raw guards cannot see. (The sim's evolution is
+    // DETERMINISTIC, not clock-driven: the wall-clock ban is pinned by purity.test.ts and
+    // the same-seed determinism test in df5-8-sim-wave-wiring.test.ts.)
     h.frame(100)
     const rest1 = h.drawnHash()
     h.frame(200)
     const rest2 = h.drawnHash()
-    expect(rest2, 'the resting frame drifted — the sim is advancing without input').toBe(rest1)
+    expect(
+      rest2,
+      'the resting frame did not advance — a live loop steps the sim each frame (df5-8 waves evolve it), ' +
+        'so a frozen/one-shot compose is the regression this catches',
+    ).not.toBe(rest1)
 
     h.keyDown('KeyD') // thrust (shell/input.ts binds KeyD → thrust)
     h.frame(300)

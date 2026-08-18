@@ -24,6 +24,7 @@
 import { createScheduler, type Scheduler } from './scheduler.js'
 import { createLaserBank, type LaserBank, type Laser } from './laser.js'
 import { createEnemyBank, type EnemyBank, type Lander, type Humanoid } from './landers.js'
+import { createWaveDirector, type WaveDirector } from './waves.js'
 import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.js'
 import { laserVsObject, type CollObject } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
@@ -83,6 +84,9 @@ export interface SimState {
   /** The df4-6 in-flight effects (df4-2 APST materialize / EXST explosion), refreshed each
    *  tick from the effect bank like `lasers`/`landers`. Empty on a fresh sim. */
   readonly effects: readonly PlacedEffect[]
+  /** df5-8: the current wave number (GETWV). Refreshed each tick from the wave director;
+   *  0 on a fresh sim, 1 after the first cleared-field tick spawns wave 1. */
+  readonly wave: number
   /** PLAXV — the 24-bit horizontal velocity accumulator (ship.ts). */
   readonly _plaxv24: number
   /** REV facing + debounce latch (ship.ts). */
@@ -97,6 +101,10 @@ export interface SimState {
   readonly _enemyBank: EnemyBank
   /** The df4-6 effect bank (materialize/explosion), carried by reference like _laserBank. */
   readonly _effectBank: EffectBank
+  /** df5-8: the df5-2 wave director, carried by reference so stepSim can read its `wave`
+   *  counter. It is a df3 scheduler PROCESS (registered on `_sched` at construction), so
+   *  the scheduler — not this handle — keeps it dispatching; the handle is read-only. */
+  readonly _waveDirector: WaveDirector
 }
 
 /** The ship's initial pose: onscreen column $20 (the facing-right base, world.ts), mid-strip. */
@@ -114,6 +122,19 @@ export function createSim(rand: () => number): SimState {
   // a fresh sim carries no enemies (spawning is explicit; the df5 wave logic drives it).
   const enemyBank = createEnemyBank(sched, rand)
   const effectBank = createEffectBank()
+  // df5-8: wire the df5-2 wave director over the scheduler + enemy bank. It advances when
+  // the LIVE lander population empties (alive count, not the array length — killLander flags
+  // records in place) and spawns each wave's WVTAB lander count through the bank. The x
+  // placement spreads the wave evenly across the 16-bit world cylinder ($10000 wrap,
+  // world.ts) — a deterministic, pure choice (no entropy), so same-seed runs stay identical.
+  const waveDirector = createWaveDirector(
+    sched,
+    () => enemyBank.landers.filter((l) => l.alive).length,
+    (_wave, params) => {
+      const n = params.counts.landers
+      for (let i = 0; i < n; i++) enemyBank.spawnLander(Math.floor((i / n) * 0x10000))
+    },
+  )
   const facing: Facing = 'right'
   return {
     ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },
@@ -123,6 +144,7 @@ export function createSim(rand: () => number): SimState {
     landers: enemyBank.landers,
     humanoids: enemyBank.humanoids,
     effects: effectBank.effects,
+    wave: waveDirector.wave,
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
@@ -131,6 +153,7 @@ export function createSim(rand: () => number): SimState {
     _laserBank: laserBank,
     _enemyBank: enemyBank,
     _effectBank: effectBank,
+    _waveDirector: waveDirector,
   }
 }
 
@@ -205,6 +228,7 @@ export function stepSim(state: SimState, input: Input): SimState {
     landers: state._enemyBank.landers,
     humanoids: state._enemyBank.humanoids,
     effects: state._effectBank.effects,
+    wave: state._waveDirector.wave,
     _plaxv24: plaxv24,
     _rev: rev,
     _vy: vy,
@@ -213,6 +237,7 @@ export function stepSim(state: SimState, input: Input): SimState {
     _laserBank: state._laserBank,
     _enemyBank: state._enemyBank,
     _effectBank: state._effectBank,
+    _waveDirector: state._waveDirector,
   }
 }
 
