@@ -1285,22 +1285,16 @@ describe('jt5-3 AC6 — the flap leaves jt5-1’s deferred list, and only the fl
     return [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1])
   }
 
-  it('the guard still exists and still forbids the kinds jt5-3 does NOT wire', () => {
+  it('the last deferral is now wired — the guard has shrunk only as its owners shipped', () => {
     const deferred = deferredNames()
-    expect(deferred.length, 'an emptied guard forbids nothing').toBeGreaterThan(0)
-    // jt5-3 shipped requiring 'player-thud', 'enemy-thud', 'thud' and
-    // 'troll-grab' here — its point being that jt5-3 must not clear the guard
-    // wholesale. jt5-4 has since WIRED the thuds (it applies the bounce
-    // collisionPass discarded), so requiring them would now make this guard the
-    // lie it was written to prevent; tests/audio-thud.test.ts asserts they are
-    // gone AND that both kinds are declared and emitted. 'troll-grab' is the
-    // remaining deferral (uf1-10/uf1-11) and is still required here, so this
-    // test keeps its original job: jt5-3's list may shrink only as far as the
-    // stories that own each name.
-    expect(
-      deferred,
-      "'troll-grab' belongs to uf1-10/uf1-11 and must stay deferred",
-    ).toContain('troll-grab')
+    // jt5-3 shipped requiring 'player-thud', 'enemy-thud', 'thud' and 'troll-grab'
+    // deferred — its point being that jt5-3 must not clear the guard wholesale.
+    // Each has since been wired by the story that owns it: jt5-4 the thuds, and
+    // jt13-7 the lava-troll grab (SNTROL — troll.beginGrip got production callers
+    // in jt9-11). So the deferred list is now legitimately EMPTY, and the canary
+    // flips: 'troll-grab' must NOT be deferred, and MUST be a declared kind.
+    expect(deferred, "jt13-7 wired 'troll-grab' — it must no longer be deferred").not.toContain('troll-grab')
+    expect(kindsTuple, "the grab is wired now — 'troll-grab' is in EVENT_KINDS").toContain('troll-grab')
   })
 
   it('no flap-family name is deferred any more — the emitters exist now', () => {

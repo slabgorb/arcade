@@ -11,7 +11,7 @@
 // depend on what the shell passed in. `stepGame` rebuilds this list every frame
 // and the shell reads it off the returned state (`GameState.events`).
 //
-// ─── NINETEEN MOMENTS, AND WHY EXACTLY THESE ─────────────────────────────────
+// ─── THE MOMENTS, AND WHY EXACTLY THESE ──────────────────────────────────────
 // Each kind below is a REAL Williams sound table (JOUSTRV4.SRC:8051-8131, under
 // the format header at :8045-8049) whose moment THIS port can actually reach.
 // The byte-exact citations — table row, priority byte and call site — live in
@@ -41,15 +41,15 @@
 // (020 vs 009), and a collapsed kind cannot be arbitrated by the priority
 // jt5-5 owns.
 //
-// The machine has 38 tables. One family is still left out, for a measured
-// reason, not an oversight — a Delivery Finding on the jt5-1 session with its
-// ROM lines: the LAVA TROLL grab (SNTROL :8097) cannot fire — `troll.beginGrip`
-// has zero production callers, which `ROW_DISPOSITION.LAVGRA` in difficulty.ts
-// already records by name under owner `uf1-10`. (Named, not line-cited: uf1-9
-// rewrote that table and the entry moved.)
+// jt13-7 wires the LAVA TROLL grab (SNTROL :8097, LT1GRP :1646) — the family
+// jt5-1 measured out as unreachable. That reason has since expired: jt9-11 gave
+// `troll.beginGrip` its first production callers (the grip-commit branch of
+// `stepTrolls`, and `demo.stepTrolls`), so the grab IS a reachable moment now and
+// `ROW_DISPOSITION.LAVGRA` in difficulty.ts records the caller by name. `stepTrolls`
+// emits `troll-grab` the instant the hand closes, and audio maps it to the SNTROL cue.
 // A kind declared here but never emitted would sail through the manifest and
 // dispatch sweeps — they read this same tuple — and ship a cue that can never
-// sound. So the tuple names only what an emitter exists for.
+// sound. So the tuple still names only what an emitter exists for.
 
 /**
  * Every event kind, as a runtime TUPLE. This is a VALUE on purpose: the shell's
@@ -77,6 +77,7 @@ export const EVENT_KINDS = [
   'enemy-thud', //         an enemy-vs-enemy (or ptero-vs-ptero) tie — SNETHD (priority 009)
   'player-lava-death', //  a knight sank in the lava — SNPLAV (ADGFLR, JOUSTRV4.SRC:6534,8123)
   'enemy-lava-death', //   a buzzard sank in the lava — SNELAV (ADGFLR, JOUSTRV4.SRC:6538,8105)
+  'troll-grab', //         the lava troll's hand closed on a bird — SNTROL (LT1GRP, JOUSTRV4.SRC:1646,8097)
 ] as const
 
 /** The discriminant of every event — derived from the tuple, never re-typed. */
@@ -92,7 +93,7 @@ export type PlayerId = 1 | 2
  * dispatch can narrow its default branch to `never` — which is what makes
  * adding a kind without a cue a COMPILE error instead of a silent drop.
  *
- * EIGHTEEN of the nineteen carry no payload, and that is still deliberate: a
+ * All but one carry no payload, and that is still deliberate: a
  * field nothing reads would be a promise the seam does not keep.
  *
  * `player-materialise` is the exception, since jt5-6. The two knights have

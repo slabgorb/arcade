@@ -119,6 +119,8 @@ const ROM: Record<SoundName, { priority: number; frames: number; lines: string }
   // jt13-10 — the lava death cues (ADGFLR). Single-row tables, duration 30.
   playerLavaDeath: { priority: 60, frames: 30, lines: '8123' },
   enemyLavaDeath: { priority: 40, frames: 30, lines: '8105' },
+  // jt13-7 — the lava-troll grab (SNTROL, LT1GRP). Single-row table, duration 30.
+  trollGrab: { priority: 50, frames: 30, lines: '8097' },
   eggCollected: { priority: 45, frames: 30, lines: '8098' },
   eggHatched: { priority: 45, frames: 30, lines: '8099' },
   pteroArrives: { priority: 65, frames: 60, lines: '8094' },

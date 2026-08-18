@@ -307,6 +307,17 @@ const SPECS = {
       ),
       { decay: 8 },
     ),
+  // SNTROL "CAPTURED BY LAVA TROLL SOUND" (LT1GRP) — the hand clamps shut on the
+  // bird: a low square grab-tone falling as the grip closes, over a growling
+  // one-pole rumble (jt13-7).
+  trollGrab: (n, rng) =>
+    env(
+      mix(
+        tone(n, { wave: 'square', f0: 260, f1: 55, gain: 0.42 }),
+        noise(n, rng, { lp: 0.18, gain: 0.28 }),
+      ),
+      { attack: 0.01, decay: 2.5 },
+    ),
 }
 
 // ─── WAV encoding (16-bit PCM mono) ──────────────────────────────────────────

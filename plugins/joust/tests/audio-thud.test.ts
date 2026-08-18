@@ -1455,13 +1455,14 @@ describe('jt5-4 — the thuds leave jt5-1’s deferred list, and only the thuds'
     return [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1])
   }
 
-  it('the guard still exists and still forbids what jt5-4 does NOT wire', () => {
+  it('the last deferral is now wired — the guard has shrunk only as its owners shipped', () => {
     const deferred = deferredNames()
-    expect(deferred.length, 'an emptied guard forbids nothing').toBeGreaterThan(0)
-    expect(
-      deferred,
-      "'troll-grab' belongs to uf1-10/uf1-11 and must stay deferred — jt5-4 must not clear the guard wholesale",
-    ).toContain('troll-grab')
+    // jt5-4 wired the thuds; jt13-7 has since wired the last deferral, the
+    // lava-troll grab (SNTROL — troll.beginGrip got production callers in jt9-11).
+    // The deferred list is now legitimately EMPTY, so the canary flips: 'troll-grab'
+    // must NOT be deferred, and MUST be a declared kind.
+    expect(deferred, "jt13-7 wired 'troll-grab' — it must no longer be deferred").not.toContain('troll-grab')
+    expect(kindsTuple, "the grab is wired now — 'troll-grab' is in EVENT_KINDS").toContain('troll-grab')
   })
 
   it('no thud-family name is deferred any more — the emitters exist now', () => {
