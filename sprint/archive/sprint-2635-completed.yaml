@@ -272,3 +272,8 @@ completed_stories:
     title: "Terrain fidelity: render the full 1024-entry ALTTBL profile at the ROM's native terrain granularity instead of the 256-entry slice df5-9 tiles"
     points: 3
     completed: '2026-08-18'
+  - id: df5-5
+    epic: df5
+    title: "Smart-bomb + hyperspace (the two emergency powers, both CITING ADR-0005): plugins/defender/src/core/powers.ts — smart-bomb (*SMART BOMB SBOMB defender/DEFA7.SRC:3173,3175; clears on-screen enemies) and hyperspace (*HYPERSPACE HYPER :3211,3213; *RANDOM HYPER DIRECTION :3228; teleport with re-entry risk). Port the ROM trigger + timing and route the PRESENTATION through the existing df4-2 effect-policy — freeze/fade/particle, NOT the ROM's SBMBX0 COM PCRAM whole-page invert (:3199). The df4-2 guard stays GREEN. Consumes df4-1 collision (smart-bomb clear) + df4-2 effects/policy."
+    points: 3
+    completed: '2026-08-18'
