@@ -94,6 +94,12 @@ export interface SimProcess {
    * `done`. The mirror of `src/core/warpin.ts`'s WarpInState.
    */
   warpIn?: { frame: number; nap: number; done: boolean }
+  /**
+   * jt13-9 — the TREFF phase-2 idle colour-cycle. Opened when `warpIn.done` fires
+   * (the grow-in ends) and advanced each frame until the arrival flaps or the phase
+   * times out (PFEET → 0). The mirror of the IdleCycleState in `src/core/warpin.ts`.
+   */
+  idleCycle?: { owner: 'player' | 'enemy'; colourIndex: number; step: number; speed: number; windowNaps: number; end: 'active' | 'moved' | 'timed-out' }
   /** `PFACE` for a player — the demo's home for player facing (Finding #2). */
   facing?: Facing
   /**
