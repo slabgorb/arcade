@@ -9,10 +9,11 @@
 // wait; only the colour cycles. `drawList`'s idle branch even claims the idle bird "STANDS on
 // its pad (held by advanceWarpIn)" — that hold was never implemented. This story delivers it.
 //
-// THE ROM (JOUSTRV4.SRC TREFF, :5726-5890): GOTTR plants the arrival on its transporter pad
-// (feet planted); the 30-frame grow-in draws it growing UP; then the phase-2 "wait for 1st
+// THE ROM (JOUSTRV4.SRC TREFF..PLYINT, :5726-5925): GOTTR plants the arrival on its transporter
+// pad (feet planted); the 30-frame grow-in draws it growing UP; then the phase-2 "wait for 1st
 // move, or time out" loop stands it on the pad colour-cycling until the player flaps (CURJOY)
-// or the phase times out. The bird runs NO flight physics during either phase — it is held by
+// or the phase times out — the flap-abort (:5892) / timeout (:5896) exits then run PLYINT
+// (:5910-5927), which re-enables collisions. The bird runs NO flight physics during either phase — it is held by
 // the TREFF logic, not by falling onto a floor.
 //
 // ─── WHAT THE CURRENT BUILD ACTUALLY DOES (measured against the live sim, jt13-14 RED) ───

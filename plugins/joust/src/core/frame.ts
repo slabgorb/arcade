@@ -412,7 +412,8 @@ function runBehaviour(
     // CURJOY≠0 'moved' edge `advanceWarpIn` keys on (sim.ts). Skip the flight step while held.
     // Without it the airborne respawn integrates gravity through the whole ~6.4 s wait and only
     // stays on its pad by ACCIDENTALLY landing on a platform that sits at the pad Y (the ROM
-    // holds it by the TREFF logic itself, JOUSTRV4.SRC:5726-5890). The warp-in fields live on
+    // holds it by the TREFF logic itself, JOUSTRV4.SRC:5726-5925 — TREFF..PLYINT, the release
+    // path at :5910-5927 re-enables collisions and drops the bird to ground state PLYBR). The warp-in fields live on
     // `SimProcess`, read here the same cast-based way the grip/lava-sink skip above reads its.
     const warpIn = (p as { warpIn?: { done: boolean } }).warpIn
     const idleCycle = (p as { idleCycle?: { end: string } }).idleCycle

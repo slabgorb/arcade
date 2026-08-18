@@ -2352,18 +2352,20 @@ function advanceMaterialisation(p: SimProcess): SimProcess {
 }
 
 /**
- * jt13-2 / jt13-9 / jt13-12 — advance the TREFF materialisation one frame, beside
+ * jt13-2 / jt13-9 / jt13-12 / jt13-14 — advance the TREFF materialisation one frame, beside
  * `advanceMaterialisation` on the same per-process pass. Two phases:
  *   • Phase 1 (jt13-2) — the 30-frame PFRAME grow: an unfinished `warpIn` steps until
  *     `done`, after which drawList stops overlaying the silhouette.
- *   • Phase 2 (jt13-9 sim, jt13-12 render) — once `warpIn.done`, open the wait-for-first-
- *     move idle colour-cycle (`idleCycle`) and step it each frame. `flapped` is the
- *     arrival's first-move input this frame (CURJOY ≠ 0): for a PLAYER a flap ends the
+ *   • Phase 2 (jt13-9 sim, jt13-12 render, jt13-14 physics-hold) — once `warpIn.done`, open
+ *     the wait-for-first-move idle colour-cycle (`idleCycle`) and step it each frame. `flapped`
+ *     is the arrival's first-move input this frame (CURJOY ≠ 0): for a PLAYER a flap ends the
  *     wait ('moved'), which stops drawList tinting the (now flying) bird — without it the
  *     cycling colour would ghost onto the bird as it takes off. An un-flapping arrival
- *     (enemy AI, or a still player) runs to the PFEET→0 timeout. The idle drives RENDER
- *     only (drawList paints the standing bird in the cycling TREPL colour); it does not
- *     move or pin the entity.
+ *     (enemy AI, or a still player) runs to the PFEET→0 timeout. `advanceWarpIn` itself only
+ *     STEPS the warp-in/idle state — it does not move the entity; the state it maintains is
+ *     what two OTHER layers read: drawList paints the standing bird in the cycling TREPL colour,
+ *     and (jt13-14) frame.ts's `runBehaviour` skips a re-materialising PLAYER's flight step
+ *     while `warpIn`/`idleCycle` is active, pinning it on its pad through the wait.
  * A process with neither passes through unchanged.
  */
 function advanceWarpIn(p: SimProcess, flapped: boolean): SimProcess {
