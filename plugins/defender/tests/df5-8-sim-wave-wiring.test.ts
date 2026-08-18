@@ -8,7 +8,8 @@
 //   1. createSim calls createWaveDirector(sched, getPopulation, spawnWave) and surfaces
 //      the director's `wave` counter on SimState as `wave` (0 before the first tick).
 //   2. getPopulation reads the LIVE lander population — `_enemyBank.landers` filtered by
-//      `.alive`, NOT the raw array length (killLander flags records in place).
+//      `.alive` (a killLander removes the struck record, so the live count drops to 0 and
+//      the director advances; a still-populated field must NOT advance).
 //   3. spawnWave spawns each wave's WVTAB attacker counts (waveParams(wave).counts.landers)
 //      through `_enemyBank.spawnLander(x)`.
 //   4. The x-selection is deterministic — pure core, no clock, no ambient entropy.
@@ -35,7 +36,7 @@ interface Input {
 const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
 
 // The observable subset this suite reads. `alive` is what getPopulation must respect;
-// killLander is how a COLIDE kill (and this test) clears the field WITHOUT splicing.
+// killLander is how a COLIDE kill (and this test) removes a lander to clear the field.
 interface LanderView {
   readonly x: number
   readonly y: number
@@ -79,8 +80,8 @@ async function loadSim(): Promise<SimModule> {
       'src/core/sim.ts exposes no numeric `wave` on SimState — the df5-2 wave director is still ' +
         'UNWIRED. GREEN (Korben) must, inside createSim, call ' +
         'createWaveDirector(sched, getPopulation, spawnWave): getPopulation returns the LIVE lander ' +
-        'count (`_enemyBank.landers` filtered by `.alive`, NOT the array length — killLander flags ' +
-        'records in place); spawnWave spawns `waveParams(wave).counts.landers` landers via ' +
+        'count (`_enemyBank.landers` filtered by `.alive`); spawnWave spawns ' +
+        '`waveParams(wave).counts.landers` landers via ' +
         '`_enemyBank.spawnLander(x)`; and the director\'s `wave` counter is surfaced on state as ' +
         '`wave` (0 on a fresh sim). PURE core — the x-selection reads no clock and mints no entropy.',
     )
@@ -130,15 +131,12 @@ describe('df5-8 sim wave wiring — the running sim mints and drives the df5-2 d
     let s = mod.stepSim(mod.createSim(makeRand(3)), NEUTRAL) // wave 1
     expect(s.wave).toBe(1)
 
-    // Clear the field exactly as a COLIDE kill does: killLander sets alive=false WITHOUT
-    // splicing, so the array stays its full length and only the ALIVE count drops to 0.
-    const spawned = s._enemyBank.landers.length
+    // Clear the field exactly as a COLIDE kill does: killLander removes each struck lander
+    // from the bank, so the live population drops to 0 — which is what getPopulation reads.
+    expect(s._enemyBank.landers.length, 'wave 1 left live landers to clear').toBeGreaterThan(0)
     for (const l of s._enemyBank.landers) s._enemyBank.killLander(l)
-    expect(aliveCount(s), 'every lander is now dead — the field is clear').toBe(0)
-    expect(
-      s._enemyBank.landers.length,
-      'killLander flags dead records in place; the array is not spliced (so length alone is NOT the population)',
-    ).toBe(spawned)
+    expect(aliveCount(s), 'every lander is killed — the field is clear').toBe(0)
+    expect(s._enemyBank.landers.length, 'the killed landers are gone from the bank').toBe(0)
 
     const t = mod.stepSim(s, NEUTRAL) // the director's next dispatch sees population 0
     expect(t.wave, 'a cleared field advances the director to the next wave').toBe(2)
