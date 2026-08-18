@@ -61,7 +61,7 @@ description: |-
   palette.ts:26) stays a deliberate non-goal. Audio (mc8), attract/state machine (mc6),
   high-score/name-entry (mc7) are done and untouched here.
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: mc12-1
@@ -125,7 +125,10 @@ stories:
     title: 'Retire the last magic width/200 divisor in render.ts: the base ready-missile stack marker (dot, render.ts:142) uses the same non-physical /200 the mc12-4 tip fix removed, so it renders an oversized ~10px square at 955px display while looking correct at the 256px unit-test canvas (the same green-vitest/wrong-pixels blind spot). Tie it to the cabinet-pixel unit uH at the intended DRAW MISSILE marker size (W3DSUP.MAC:1221; offsets :1329-1331) after checking ROM ground truth for the marker dimensions, and add a display-resolution size guard mirroring mc12-4. Filed by mc12-4 review (rule-checker #24/#33, no invented magic constants); out of mc12-4 four-finding scope; pre-existing, not a regression.'
     points: 2
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-18'
     type: refactor
+completed: '2026-08-18'
