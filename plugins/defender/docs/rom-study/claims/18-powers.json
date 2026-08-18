@@ -169,5 +169,77 @@
       "line": 3240,
       "verbatim": "\tADDB\t#YMIN"
     }
+  },
+  {
+    "id": "PWR-20",
+    "claim": "Hyperspace stores the in-hyperspace STATUS value $77 into STATUS (STA STATUS, after LDA #$77): the re-entry marker set for the duration of the jump.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3217,
+      "verbatim": "\tSTA\tSTATUS"
+    }
+  },
+  {
+    "id": "PWR-21",
+    "claim": "Hyperspace clears the D accumulator (CLRD) ahead of zeroing the player velocities on re-entry.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3243,
+      "verbatim": "\tCLRD"
+    }
+  },
+  {
+    "id": "PWR-22",
+    "claim": "Hyperspace zeroes the sub-pixel low byte of the 24-bit X velocity (STA PLAXV+2), part of stopping the ship's horizontal motion on re-entry.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3244,
+      "verbatim": "\tSTA\tPLAXV+2"
+    }
+  },
+  {
+    "id": "PWR-23",
+    "claim": "Hyperspace zeroes the top 16 bits of the X velocity accumulator (STD PLAXV): the ship re-enters with no horizontal motion. Modelled as Teleport.vx = 0.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3245,
+      "verbatim": "\tSTD\tPLAXV"
+    }
+  },
+  {
+    "id": "PWR-24",
+    "claim": "Hyperspace ALSO zeroes the Y velocity (STD PLAYV) — the ship re-enters with no vertical motion either. Modelled as Teleport.vy = 0.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3246,
+      "verbatim": "\tSTD\tPLAYV"
+    }
+  },
+  {
+    "id": "PWR-25",
+    "claim": "On hyperspace re-entry (after the appear animation) the ROM reads LSEED for the death roll (LDA LSEED, commented 'DEAD?').",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3275,
+      "verbatim": "\tLDA\tLSEED\tDEAD?"
+    }
+  },
+  {
+    "id": "PWR-26",
+    "claim": "The hyperspace re-entry death threshold is 192 (CMPA #192); an LSEED strictly above it kills the player. This is HYPER_DEATH_THRESHOLD.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3276,
+      "verbatim": "\tCMPA\t#192"
+    }
+  },
+  {
+    "id": "PWR-27",
+    "claim": "An LSEED strictly greater than 192 branches to PLEND (LBHI PLEND, commented 'YAHMAHN') — the player dies on re-entry (PLEND = *PLAYER END, DEFA7.SRC:1328). LBHI is unsigned strictly-higher, so 63/256 (~25%) of re-entries are fatal and exactly 192 survives. Modelled as hyperspaceKilled(rand) = rand() > 192.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3277,
+      "verbatim": "\tLBHI\tPLEND\tYAHMAHN"
+    }
   }
 ]

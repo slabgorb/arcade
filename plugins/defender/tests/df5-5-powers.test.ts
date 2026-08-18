@@ -3,8 +3,9 @@
 // Story df5-5 — RED phase (Tyr One-Handed / TEA). The two emergency powers as a PURE,
 // clock-free core module: plugins/defender/src/core/powers.ts. Smart-bomb (SBOMB,
 // defender/DEFA7.SRC:3175) clears the on-screen enemies via the df4-1 collision seam;
-// hyperspace (HYPER, defender/DEFA7.SRC:3213) teleports the ship to a RANDOM position with
-// re-entry risk. The ROM trigger + timing are ported and cited (ROM-always-wins); ONLY the
+// hyperspace (HYPER, defender/DEFA7.SRC:3213) teleports the ship to a RANDOM position, stops it
+// dead (both velocities zeroed), and rolls the coded re-entry DEATH check (LSEED>192 → PLEND,
+// ~25%). The ROM trigger + timing are ported and cited (ROM-always-wins); ONLY the
 // full-screen strobe PRESENTATION is substituted — the smart bomb's SBMBX0 COM PCRAM
 // whole-page invert (:3199) and the hyperspace screen-clear route through the df4-2
 // effect-policy as freeze/fade/particle (ADR-0005, the ONE standing exception).
@@ -29,22 +30,25 @@
 //   :3199 SBMBX0 COM PCRAM                      — SUBSTITUTED per ADR-0005; the whole-page
 //                                                invert this suite proves the guard catches).
 //   :3209 SBMBX2 JMP SUCIDE                     — SBOMB is a df3 scheduler process.
-// HYPERSPACE (:3213-3242):
+// HYPERSPACE (:3213-3277):
 //   :3213 HYPER LDA STATUS / :3214 BITA #$FD / :3215 LBNE HYPX — NO GO unless (STATUS&$FD)==0.
-//   :3216 LDA #$77 / STA STATUS                 — the in-hyperspace STATUS (re-entry marker).
+//   :3216-3217 LDA #$77 / STA STATUS           — the in-hyperspace STATUS (re-entry marker).
 //   :3219 NAP 15,HYP02                          — scheduler nap, not an rAF.
 //   :3225 LDD SEED … :3229 LSRB / :3230 BCC HYP0 — RANDOM direction off the SEED low bit:
 //   :3231 LDD #$2000 / :3232 LDX #$0300         — carry SET (bit0=1): X=$2000, face RIGHT.
 //   :3234 LDX #-$0300 / :3235 LDD #$7000        — carry CLEAR (bit0=0): X=$7000, face LEFT.
 //   :3238 LDB HSEED / :3239 LSRB / :3240 ADDB #YMIN — RANDOM Y = (HSEED>>1) + YMIN.
-//   (:3242+ CLRD/STA PLAXV) — velocity zeroed: you re-enter still, at a random spot (the risk).
+//   :3243-3246 CLRD/STA PLAXV+2/STD PLAXV/STD PLAYV — BOTH X (PLAXV) AND Y (PLAYV) velocity
+//                                                zeroed; you re-enter STILL (:3242 is STD NPLAXC).
+//   :3275-3277 LDA LSEED / CMPA #192 / LBHI PLEND — the RE-ENTRY DEATH ROLL: LSEED>192 (~25%)
+//                                                → PLEND (*PLAYER END, :1326) — hyperspace kills you.
 //
 // ─── CONTRACT (what GREEN/Dev must build in src/core/powers.ts) ──────────────────────
 //   consts  SMART_BOMB_CLEAR_TYPE_MAX=$02, SMART_BOMB_FLASHES=4, SMART_BOMB_PTYPE,
 //           HYPER_NOGO_MASK=$FD, HYPER_STATUS=$77, HYPER_NAP=15, HYPER_X_RIGHT=$2000,
-//           HYPER_X_LEFT=$7000, HYPER_DIR_MAG=$0300, HYPER_PTYPE
-//   fns     clearsType(otyp) · smartBomb(state) · spawnSmartBomb(sched)
-//           canHyperspace(status) · hyperspace(rand) · spawnHyperspace(sched, rand)
+//           HYPER_X_LEFT=$7000, HYPER_DIR_MAG=$0300, HYPER_DEATH_THRESHOLD=192, HYPER_PTYPE
+//   fns     clearsType(otyp) · smartBomb(state) · spawnSmartBomb(sched) · canHyperspace(status)
+//           hyperspace(rand) · hyperspaceKilled(rand) · spawnHyperspace(sched, rand)
 //   AC-4b   a claims/*.json (18-powers.json) enrolling every constant, byte-verified by
 //           brief-dossier.test.ts; purity.test.ts auto-sweeps powers.ts (no Math.random/clock).
 // AC-citations + AC-purity are NOT re-asserted here — the armed gates (citations.test.ts,
@@ -68,13 +72,14 @@ interface SmartBombResult {
   readonly armed: boolean
   readonly count: number
 }
-/** The teleport HYPER computes: a new player X ($2000/$7000), facing, integer Y, and a
- *  zeroed X velocity (STA PLAXV). */
+/** The teleport HYPER computes: a new player X ($2000/$7000), facing, integer Y, and BOTH
+ *  velocities zeroed (STD PLAXV :3245 / STD PLAYV :3246). */
 interface Teleport {
   readonly x16: number
   readonly facing: Facing
   readonly y: number
   readonly vx: number
+  readonly vy: number
 }
 
 interface PowersModule {
@@ -92,9 +97,11 @@ interface PowersModule {
   HYPER_X_RIGHT: number
   HYPER_X_LEFT: number
   HYPER_DIR_MAG: number
+  HYPER_DEATH_THRESHOLD: number
   HYPER_PTYPE: number
   canHyperspace(status: number): boolean
   hyperspace(rand: () => number): Teleport
+  hyperspaceKilled(rand: () => number): boolean
   spawnHyperspace(sched: Scheduler, rand: () => number): Process
 }
 
@@ -107,7 +114,7 @@ async function loadPowers(): Promise<PowersModule> {
   const spec = ['..', 'src', 'core', 'powers.js'].join('/')
   try {
     const mod = (await import(/* @vite-ignore */ spec)) as Partial<PowersModule>
-    for (const fn of ['clearsType', 'smartBomb', 'spawnSmartBomb', 'canHyperspace', 'hyperspace', 'spawnHyperspace'] as const) {
+    for (const fn of ['clearsType', 'smartBomb', 'spawnSmartBomb', 'canHyperspace', 'hyperspace', 'hyperspaceKilled', 'spawnHyperspace'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
     for (const k of [
@@ -120,6 +127,7 @@ async function loadPowers(): Promise<PowersModule> {
       'HYPER_X_RIGHT',
       'HYPER_X_LEFT',
       'HYPER_DIR_MAG',
+      'HYPER_DEATH_THRESHOLD',
       'HYPER_PTYPE',
     ] as const) {
       if (typeof mod[k] !== 'number') throw new Error(`module has no \`${k}\` constant`)
@@ -231,9 +239,11 @@ describe('df5-5 AC-1/AC-3 — hyperspace: the HYPER gate + random teleport, port
     expect(hyperspace(seq([0, 0])).y).toBe(YMIN)
   })
 
-  it('re-entry risk: the ship re-appears STILL — the X velocity is zeroed (CLRD/STA PLAXV, :3242+)', async () => {
+  it('the ship re-appears STILL — BOTH velocities are zeroed (STD PLAXV :3245 / STD PLAYV :3246)', async () => {
     const { hyperspace } = await loadPowers()
-    expect(hyperspace(seq([1, 200])).vx).toBe(0)
+    const t = hyperspace(seq([1, 200]))
+    expect(t.vx, 'X velocity zeroed (CLRD / STA PLAXV+2 / STD PLAXV, :3243-3245)').toBe(0)
+    expect(t.vy, 'Y velocity zeroed too (STD PLAYV, :3246)').toBe(0)
   })
 
   it('AC-3 bounded: across the FULL byte domain the teleport never leaves the ship invalid', async () => {
@@ -251,6 +261,38 @@ describe('df5-5 AC-1/AC-3 — hyperspace: the HYPER gate + random teleport, port
         expect(t.facing).toBe(t.x16 === HYPER_X_RIGHT ? 'right' : 'left')
       }
     }
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════════════
+// AC3 — the RE-ENTRY DEATH ROLL: the coded "hyperspace can kill you" risk. After the appear
+// animation the ROM rolls LSEED and dies if it is strictly above 192 (LBHI PLEND, :3275-3277).
+// ══════════════════════════════════════════════════════════════════════════════════════
+describe('df5-5 AC-3 — the hyperspace re-entry death roll (LSEED > 192 → PLEND, DEFA7.SRC:3275-3277)', () => {
+  it('HYPER_DEATH_THRESHOLD === 192: the CMPA #192 re-entry death threshold (:3276)', async () => {
+    const { HYPER_DEATH_THRESHOLD } = await loadPowers()
+    expect(HYPER_DEATH_THRESHOLD).toBe(192)
+  })
+
+  it('hyperspaceKilled: an LSEED STRICTLY above 192 kills; 192 and below survive (LBHI is unsigned >, :3277)', async () => {
+    const { hyperspaceKilled } = await loadPowers()
+    expect(hyperspaceKilled(seq([193])), 'LSEED 193 > 192 → PLEND (dead)').toBe(true)
+    expect(hyperspaceKilled(seq([255])), 'LSEED 255 → dead').toBe(true)
+    expect(hyperspaceKilled(seq([192])), 'LSEED == 192 → survives (LBHI, strictly higher)').toBe(false)
+    expect(hyperspaceKilled(seq([191])), 'LSEED 191 → survives').toBe(false)
+    expect(hyperspaceKilled(seq([0])), 'LSEED 0 → survives').toBe(false)
+  })
+
+  it('the roll is fatal for exactly 63/256 of re-entries (LSEED 193..255) — ~25%', async () => {
+    const { hyperspaceKilled } = await loadPowers()
+    let deaths = 0
+    for (let lseed = 0; lseed < 256; lseed++) if (hyperspaceKilled(seq([lseed]))) deaths++
+    expect(deaths, 'the 63 values 193..255 are fatal').toBe(63)
+  })
+
+  it('draws from the injected seeded rng, not Math.random — deterministic per LSEED byte', async () => {
+    const { hyperspaceKilled } = await loadPowers()
+    expect(hyperspaceKilled(seq([200]))).toBe(hyperspaceKilled(seq([200])))
   })
 })
 
@@ -290,15 +332,14 @@ describe('df5-5 AC-2 — the powers present through the df4-2 policy as seizure-
   it('classify("smart-bomb") is a FULL-FRAME-STROBE rendered SAFE — the COM PCRAM invert (:3199) substituted', () => {
     const p = classify('smart-bomb')
     expect(p.class).toBe('full-frame-strobe')
-    expect(['freeze', 'fade', 'particle'], 'a safe variant, never a raster strobe').toContain(p.presentation)
-    expect(p.presentation).not.toBe('raster')
+    // Pinned to the exact safe variant effects.ts commits to — never a raster strobe.
+    expect(p.presentation, 'the smart-bomb COM PCRAM invert → a bounded fade').toBe('fade')
   })
 
   it('classify("hyperspace") is a FULL-FRAME-STROBE rendered SAFE — the screen-clear substituted', () => {
     const p = classify('hyperspace')
     expect(p.class).toBe('full-frame-strobe')
-    expect(['freeze', 'fade', 'particle']).toContain(p.presentation)
-    expect(p.presentation).not.toBe('raster')
+    expect(p.presentation, 'the hyperspace screen-clear → a held freeze across the jump').toBe('freeze')
   })
 
   it('the df4-2 render guard has TEETH on a power path: a planted whole-frame inversion reddens it', () => {
@@ -337,23 +378,25 @@ describe('df5-5 AC-4 — the powers run on the df3 scheduler (NEWP/STYPE), never
     expect(p.alive).toBe(true)
   })
 
-  it('the two powers register DISTINCT scheduler PTYPEs', async () => {
+  it('the smart-bomb and hyperspace processes carry DIFFERENT ptypes from each other', async () => {
+    // NB: ptype is an opaque scheduler tag, NOT globally unique (the fleet reuses tags:
+    // ufo/bomber=5, wave-director/popup=0). This only pins that the TWO powers differ.
     const { SMART_BOMB_PTYPE, HYPER_PTYPE } = await loadPowers()
     expect(SMART_BOMB_PTYPE).not.toBe(HYPER_PTYPE)
   })
 
-  it('a power process advances by the scheduler tick and never multiplies itself (SUCIDE, :3209)', async () => {
+  it('a power process runs on ONE scheduler tick and then SUICIDEs — the run-list returns to empty (:3209)', async () => {
     const { spawnHyperspace } = await loadPowers()
     const sched = createScheduler()
     spawnHyperspace(sched, seq([1, 100]))
-    const before = sched.processes.length
-    sched.stepTick() // cooperative dispatch — the power sleeps or expires, it does not fork
-    expect(sched.processes.length).toBeLessThanOrEqual(before)
+    expect(sched.processes.length).toBe(1)
+    sched.stepTick() // cooperative dispatch — the continuation runs and, not sleeping, SUICIDEs
+    expect(sched.processes.length, 'a one-shot power process is gone after its dispatch, not stuck alive').toBe(0)
   })
 })
 
-describe('df5-5 AC-4 — every powers constant is cited: a claim in the SBOMB/HYPER window (DEFA7.SRC:3173-3242)', () => {
-  it('GREEN enrols a claim citing the smart-bomb / hyperspace region', () => {
+describe('df5-5 AC-4 — every powers constant is cited: claims in the SBOMB/HYPER window (DEFA7.SRC:3173-3277)', () => {
+  it('a claim cites the smart-bomb / hyperspace teleport region', () => {
     const claims = loadClaims()
     // Match on the citation LOCATION, in the powers-SPECIFIC window no existing claim touches
     // (the nearest DEFA7 claims are SHIP-21/22/23 at :3157-3160, verified below the window) —
@@ -361,14 +404,24 @@ describe('df5-5 AC-4 — every powers constant is cited: a claim in the SBOMB/HY
     const powerClaim = claims.find((c) => {
       const s = c.source as { file?: string; line?: unknown }
       if (typeof s.line !== 'number') return false // byte-only citations carry no line
-      return s.file === 'DEFA7.SRC' && s.line >= 3173 && s.line <= 3242
+      return s.file === 'DEFA7.SRC' && s.line >= 3173 && s.line <= 3277
     })
     expect(
       powerClaim,
-      'no powers claim yet — GREEN adds docs/rom-study/claims/18-powers.json enrolling the SBOMB ' +
-        'trigger (DEFA7.SRC:3175), the clear threshold (:3190), the flash count (:3197), the HYPER ' +
-        'gate (:3214), STATUS $77 (:3216), the nap (:3219), the two X columns (:3231,3235) and the ' +
-        'dir magnitude (:3232); brief-dossier.test.ts then byte-verifies each verbatim',
+      'docs/rom-study/claims/18-powers.json must enrol the SBOMB trigger (DEFA7.SRC:3175), the clear ' +
+        'threshold (:3190), the flash count (:3197), the HYPER gate (:3214), STATUS $77 (:3216), the ' +
+        'nap (:3219), the two X columns (:3231,3235), the dir magnitude (:3232) and the velocity/death ' +
+        'tail (:3245-3246,:3276-3277); brief-dossier.test.ts then byte-verifies each verbatim',
     ).toBeDefined()
+  })
+
+  it('the re-entry DEATH ROLL specifically is cited (:3275-3277) — not just the teleport', () => {
+    const claims = loadClaims()
+    const deathClaim = claims.find((c) => {
+      const s = c.source as { file?: string; line?: unknown }
+      if (typeof s.line !== 'number') return false
+      return s.file === 'DEFA7.SRC' && s.line >= 3275 && s.line <= 3277
+    })
+    expect(deathClaim, 'the LSEED>192→PLEND death roll must be enrolled in 18-powers.json').toBeDefined()
   })
 })
