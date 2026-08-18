@@ -62,7 +62,6 @@ describe('the joust core — contract', () => {
       'consumeBumpY',
       'killScore',
       'groundTransition',
-      'groundStep',
     ] as const) {
       expect(typeof j[fn], `${fn} must be a function`).toBe('function')
     }
@@ -134,28 +133,20 @@ describe('AC-2 — facing makes the skid chain reachable (the jt1-6 gap)', () =>
     expect(j.groundTransition('PLYER', -1, 1)).toBe('PLYHR')
   })
 
-  it('a facing-vs-input reversal ENTERS the skid chain and sets plantZ = 2', async () => {
+  // jt13-8 — `groundStep` (the joust.ts JoustEntity→JoustEntity ground frame) was
+  // a dead twin: no production caller, its live counterpart is flight.ts's
+  // `stepGround` on EntityState. The transition itself is pinned above via
+  // `groundTransition`, and the skid → plantZ = 2 (SKID_PLANT_Z) behaviour lives
+  // on `stepGround` (demo-jt2-9.test.ts / ground-release-decel-jt13-1.test.ts).
+  // What was UNIQUE to this file — that a skidding entity (plantZ 2) LOSES a joust —
+  // is kept, now built directly rather than via the retired twin.
+  it('a skidding entity (plantZ 2) flows into a LOSING joust outcome (the lance is lowered)', async () => {
     const j = await loadJoust()
-    const running = ent({ groundState: 'PLYER', facing: 1, plantZ: 0, party: 'enemy', enemyType: 'bounder' })
-    const skidded = j.groundStep(running, { dir: -1, flap: false, flapHeld: false })
-    expect(skidded.groundState, 'reversal reaches the SKIDR state PLYHR').toBe('PLYHR')
-    expect(skidded.plantZ, 'skidding lowers the lance by 2 (SKID_PLANT_Z)').toBe(2)
-  })
-
-  it('a non-reversing step does NOT skid and leaves plantZ at 0', async () => {
-    const j = await loadJoust()
-    const running = ent({ groundState: 'PLYER', facing: 1, plantZ: 0 })
-    const forward = j.groundStep(running, { dir: 1, flap: false, flapHeld: false })
-    expect(forward.groundState).toBe('PLYFR')
-    expect(forward.plantZ, 'running forward keeps plantZ 0').toBe(0)
-  })
-
-  it('skidding demonstrably flows into a LOSING joust outcome (plantZ 2 lowers the lance)', async () => {
-    const j = await loadJoust()
-    // Two enemies is a bounce, so pit a skidding ENEMY against a PLAYER on the
-    // same pixel: the skid (plantZ 2) makes the enemy lower → the player wins.
-    const running = ent({ groundState: 'PLYER', facing: 1, posY: 100 << 8, party: 'enemy', enemyType: 'shadowLord' })
-    const skidded = j.groundStep(running, { dir: -1, flap: false, flapHeld: false })
+    // PLYHR is the SKIDR state a facing-vs-input reversal reaches (pinned by
+    // `groundTransition('PLYER', 1, -1) === 'PLYHR'` above); a skid parks plantZ 2.
+    // Two enemies is a bounce, so pit a skidding ENEMY against a PLAYER on the same
+    // pixel: the skid (plantZ 2) makes the enemy lower → the player wins.
+    const skidded = ent({ groundState: 'PLYHR', plantZ: 2, facing: 1, posY: 100 << 8, party: 'enemy', enemyType: 'shadowLord' })
     const player = ent({ posY: 100 << 8, plantZ: 0, party: 'player' })
     const out = j.resolveJoust(skidded, player)
     expect(out).toMatchObject({ kind: 'kill', winner: 'b', loser: 'a', score: 1500 })
@@ -348,8 +339,9 @@ describe('AC-4 — determinism: a joust replays bit-for-bit', () => {
   it('the same seeded scenario resolves + bounces identically twice', async () => {
     const j = await loadJoust()
     const scenario = (): unknown => {
-      const running = ent({ groundState: 'PLYER', facing: 1, posY: 100 << 8, velY: 8, party: 'enemy', enemyType: 'bounder' })
-      const skidded = j.groundStep(running, { dir: -1, flap: false, flapHeld: false })
+      // jt13-8: the skidding entity (retired `groundStep` used to build it) is now
+      // constructed directly — PLYHR + plantZ 2 is the reversal/skid result.
+      const skidded = ent({ groundState: 'PLYHR', facing: 1, posY: 100 << 8, velY: 8, plantZ: 2, party: 'enemy', enemyType: 'bounder' })
       const player = ent({ posY: 100 << 8, velY: -8, party: 'player' })
       const outcome = j.resolveJoust(skidded, player)
       const bouncedWinner = j.bounceTop(player)
@@ -379,9 +371,10 @@ describe('AC-4 — determinism: a joust replays bit-for-bit', () => {
 // ROUND 2 — HARDENING (Reviewer-driven). The round-1 suite proved the code but
 // left gaps a mutant could slip through: an enemy killing a player (all round-1
 // kills had the player higher, so a "player always wins" mutant survived), the
-// player-victim score contract, narrowPhase's top-alignment SIGN, and the
-// airborne groundStep guard. Each test below was mutation-proven to bite (see the
-// TEA Assessment round-2 evidence table).
+// player-victim score contract, and narrowPhase's top-alignment SIGN. (The round-2
+// airborne-groundStep guard test was retired at jt13-8 with `groundStep` itself.)
+// Each test below was mutation-proven to bite (see the TEA Assessment round-2
+// evidence table).
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('ROUND 2 — the namesake law: an enemy that is HIGHER kills the player', () => {
@@ -458,19 +451,11 @@ describe('ROUND 2 — narrowPhase aligns rows by the correct SIGN (j = a.top + i
   })
 })
 
-describe('ROUND 2 — groundStep is a no-op while airborne (the null-groundState guard)', () => {
-  it('an airborne entity (groundState null) is returned unchanged — deleting the guard would throw', async () => {
-    const j = await loadJoust()
-    const airborne = ent({ groundState: null, plantZ: 0, facing: 1, posX: 50, posY: 120 << 8, velY: -8 })
-    const snapshot = structuredClone(airborne)
-    const after = j.groundStep(airborne, { dir: -1, flap: false, flapHeld: false })
-    // With the guard deleted, groundTransition(null, …) reads GROUND_STATES[null]
-    // and throws — so this call throwing (or mutating) reddens.
-    expect(after, 'airborne groundStep is a no-op').toEqual(snapshot)
-    expect(after.groundState, 'still airborne').toBeNull()
-    expect(after.plantZ, 'no skid applied while airborne').toBe(0)
-  })
-})
+// jt13-8 — the ROUND 2 "groundStep is a no-op while airborne (null-groundState
+// guard)" describe was retired with `groundStep`. The live ground stepper
+// `stepGround` (flight.ts) carries the same `if (!current) return state` guard, and
+// airborne/null-groundState entities are exercised through the flight suite
+// (ground-momentum.test.ts's `airborne({ groundState: null })`).
 
 // ─── ROUND 2 — recommended (cheap) boundary pins ─────────────────────────────
 

@@ -165,41 +165,35 @@ describe('AC-5 the wrapped session is untouched — cabinet delegates, never reb
     expect(cab.game, 'the started game is a fresh createGame(seed)').toEqual(createGame(0xbeef, 2))
   })
 
-  it('stepPlaying delegates ALL stepping to stepGame — the wrapped game stays bit-identical', async () => {
-    const c = await loadCabinet()
-    const input: Record<number, PlayerInput> = { 1: flap(-1), 2: flap(1) }
-    let cab = c.startPlaying(c.createCabinet(SEED), SEED, 2)
-    let raw = createGame(SEED, 2)
-    for (let i = 0; i < 30; i++) {
-      cab = c.stepPlaying(cab, input)
-      raw = stepGame(raw, input)
-      // A divergent second stepping path in the cabinet would drift from raw stepGame.
-      expect(cab.game, `frame ${i}: cabinet wraps stepGame, no second path`).toEqual(raw)
-    }
-  })
+  // jt13-8 — the `stepPlaying delegates to stepGame bit-identical` test was retired
+  // with `stepPlaying`. main.ts steps the playing session with the session's own
+  // `stepGame` inline (there is no wrapper to diverge), pinned by gameover-wiring
+  // /demo-source; stepGame's own determinism is covered by the demo suite.
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-4/AC-6 — stepPlaying re-derives the mode from the settled GOVER each frame.
+// AC-4/AC-6 — the playing mode is re-derived from the settled GOVER each frame.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-6 stepPlaying re-derives mode from the stepped GOVER', () => {
-  it('a running game keeps mode playing; mode always equals modeForGover(game.gover)', async () => {
+// jt13-8 — `stepPlaying` (the cabinet wrapper `mode = modeForGover(stepGame(game).gover)`)
+// was a dead twin: main.ts steps the playing session INLINE, stepping with the
+// session `stepGame` and re-deriving the cabinet mode with `modeForGover`. These
+// AC-6 tests are re-pointed onto that exact live pair — the mode a stepped session
+// dictates IS `modeForGover(stepGame(game).gover)`.
+describe('AC-6 the playing mode is re-derived from the stepped GOVER (stepGame → modeForGover)', () => {
+  it('a running game keeps mode playing; the mode is the pure image of the settled gover', async () => {
     const c = await loadCabinet()
-    const cab0 = c.startPlaying(c.createCabinet(SEED), SEED, 2)
-    const cab1 = c.stepPlaying(cab0, { 1: flap(-1), 2: flap(1) })
+    const stepped = stepGame(createGame(SEED, 2), { 1: flap(-1), 2: flap(1) })
     // Kills "mode is cached and never re-derived" — a lone running frame stays playing.
-    expect(cab1.game.gover, 'the game is still running').toBe(GOVER_RUNNING)
-    expect(cab1.mode, 'still playing while running').toBe('playing')
-    expect(cab1.mode, 'mode is the pure image of the settled gover').toBe(c.modeForGover(cab1.game.gover))
+    expect(stepped.gover, 'the game is still running').toBe(GOVER_RUNNING)
+    expect(c.modeForGover(stepped.gover), 'running → playing').toBe('playing')
   })
 
-  it('when EVERY player is out the stepped cabinet lands in gameover', async () => {
+  it('when EVERY player is out the stepped session lands in gameover', async () => {
     const c = await loadCabinet()
-    const playingDead: CabinetState = { mode: 'playing', game: deadGame(createGame(SEED, 2)) }
-    const stepped = c.stepPlaying(playingDead)
-    // Kills "stepPlaying stays playing forever" / "mode carried forward, never recomputed".
-    expect(stepped.game.gover, 'all out → the wrapped game is OVER').toBe(GOVER_OVER)
-    expect(stepped.mode, 'all out → the cabinet is in gameover').toBe('gameover')
+    const stepped = stepGame(deadGame(createGame(SEED, 2)))
+    // Kills "mode carried forward, never recomputed" — the settled gover drives it.
+    expect(stepped.gover, 'all out → the stepped game is OVER').toBe(GOVER_OVER)
+    expect(c.modeForGover(stepped.gover), 'all out → gameover').toBe('gameover')
   })
 })
 
@@ -275,9 +269,11 @@ describe('AC-3 reachability — all six modes reached by transitions', () => {
     const attract = c.createCabinet(SEED)
     reached.add(attract.mode) // attract
 
-    const title = c.toTitle(attract)
+    // jt13-8 — `toTitle` retired: 'title' is now the BOOT mode main.ts sets inline
+    // (pinned by title-boot-jt11-16-wiring). Constructed directly to keep the walk.
+    const title: CabinetState = { ...attract, mode: 'title' }
     reached.add(title.mode) // title
-    expect(title.mode, 'attract → title').toBe('title')
+    expect(title.mode, 'the boot title mode').toBe('title')
 
     const select = c.toSelect(title)
     reached.add(select.mode) // select
@@ -287,7 +283,10 @@ describe('AC-3 reachability — all six modes reached by transitions', () => {
     reached.add(playing.mode) // playing
     expect(playing.mode, 'select → playing').toBe('playing')
 
-    const gameover = c.stepPlaying({ mode: 'playing', game: deadGame(createGame(SEED, 2)) })
+    // jt13-8 — `stepPlaying` retired: reach 'gameover' through the live pair main.ts
+    // runs inline — modeForGover(stepGame(game).gover) on an all-players-out game.
+    const overGame = stepGame(deadGame(createGame(SEED, 2)))
+    const gameover: CabinetState = { mode: c.modeForGover(overGame.gover), game: overGame }
     reached.add(gameover.mode) // gameover
     expect(gameover.mode, 'all-out playing → gameover').toBe('gameover')
 

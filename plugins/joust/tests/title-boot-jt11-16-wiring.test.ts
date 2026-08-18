@@ -3,9 +3,11 @@
 // Story jt11-16 — RED (Han Solo / TEA). The cabinet boots into the attract self-play
 // demo and never shows the MARQUE/logo title first. The title machinery is complete
 // across all three tiers (core `title.ts`, shell `titleScreen.ts`, the render switch's
-// `renderTitleScreen`) but reachable only from tests: `toTitle` has no production
-// caller and the boot hardwires `mode: 'attract'`. This story wires the present-but-
-// unreachable title MODE so boot shows MARQUE first, dwells, and hands off to attract.
+// `renderTitleScreen`) but reachable only from tests: the cabinet `toTitle` edge had
+// no production caller and the boot hardwired `mode: 'attract'`. This story wires the
+// present-but-unreachable title MODE so boot shows MARQUE first, dwells, and hands off
+// to attract. (jt13-8 then retired the still-uncalled `toTitle` edge itself — boot now
+// sets `mode: 'title'` inline, which is what the AC-D assertions below pin.)
 //
 // ─── A1: WHAT THE MACHINE DOES (ROM research, read for this story) ────────────
 // Joust's attract mode has TWO presentations (rom-study/subsystems.md §6): the MARQUE
@@ -34,8 +36,9 @@
 // main.ts is a SHELL file that touches the canvas/DOM; a node test cannot run its frame
 // loop. This file pins the WIRING as source text (the highscore-entry / select-wiring
 // idiom): comments are stripped before every code assertion, branches are sliced by a
-// marker they own, and each test names the mutant it kills. The pure title transitions
-// (toTitle/toSelect/toAttract) are already pinned in cabinet.test.ts and not re-litigated.
+// marker they own, and each test names the mutant it kills. The pure mode transitions
+// (toSelect/toAttract) are already pinned in cabinet.test.ts and not re-litigated (the
+// title edge is now the inline boot literal, not a `toTitle` call — retired at jt13-8).
 //
 // (No `<file>.ts:<line>` refs in these comments — the comment-line-refs guard bans them,
 // and symbol names outlive line numbers anyway. ROM `.SRC` cites are exempt.)

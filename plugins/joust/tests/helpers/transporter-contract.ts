@@ -180,8 +180,6 @@ export interface TransporterModule {
   takePlayerNumber(q: ServiceQueue): { ticket: number; queue: ServiceQueue }
   /** Enemy draws the next number (NESERV → ticket, NESERV++). */
   takeEnemyNumber(q: ServiceQueue): { ticket: number; queue: ServiceQueue }
-  /** Is it this player's turn? number === LPSERV (JOUSTRV4.SRC:5620). */
-  playerTurn(q: ServiceQueue, ticket: number): boolean
   /**
    * Is it this enemy's turn? number === LESERV AND no player still holds an
    * unserved number (NPSERV == LPSERV) — players first (JOUSTRV4.SRC:5672-5676).
@@ -224,12 +222,6 @@ export interface TransporterModule {
 
   // AC-4 --------------------------------------------------------------------
   /**
-   * The number of enemies a wave row sends in via pads: bounders + hunters +
-   * lords + pterodactyls. The PURSUIT nibble is EXCLUDED — it seeds the budget,
-   * it is not a spawn count (jt2-5's seam).
-   */
-  waveEnemyComplement(row: WaveRow): number
-  /**
    * Assign each of `count` entering enemies a pad, deterministically under
    * `seed`: same (count, seed) → identical sequence, every pad a real PadId,
    * indices 0..count-1. Pure — no ambient entropy (the seed is the only input).
@@ -257,7 +249,6 @@ export async function loadTransporter(): Promise<TransporterModule> {
       'newServiceQueue',
       'takePlayerNumber',
       'takeEnemyNumber',
-      'playerTurn',
       'enemyTurn',
       'servePlayer',
       'serveEnemy',
@@ -265,7 +256,6 @@ export async function loadTransporter(): Promise<TransporterModule> {
       'isControlInput',
       'beginMaterialise',
       'stepMaterialise',
-      'waveEnemyComplement',
       'enterViaPads',
     ] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
@@ -289,8 +279,8 @@ export async function loadTransporter(): Promise<TransporterModule> {
         '$51 and $A3+6), the NPSERV/LPSERV/NESERV/LESERV ticket queue with players ' +
         'served ahead of enemies (JOUSTRV4.SRC:5615-5676), isControlInput + the timed ' +
         'materialisation abort law (JOUSTRV4.SRC:5831-5892,5923-5925), PLAYER1/2_SPAWN ' +
-        '(JOUSTRV4.SRC:1020-1039), and waveEnemyComplement + enterViaPads for the ' +
-        'wave-1 complement (AC-4). Also commit docs/rom-study/claims/transporter.json ' +
+        '(JOUSTRV4.SRC:1020-1039), and enterViaPads for pad entry (AC-4). Also commit ' +
+        'docs/rom-study/claims/transporter.json ' +
         `(JT26-*). (${(e as Error).message})`,
     )
   }

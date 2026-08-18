@@ -104,7 +104,6 @@ describe('AC-1 — createWaveSim assembles wave 1 from the cores', () => {
   it('starts on wave 1 with both players and the transcribed enemy complement', async () => {
     const dmod = await loadSim()
     const trans = await loadTransporter()
-    const wave = await loadWave()
     const demo = dmod.createWaveSim(SEED)
 
     expect(demo.wave, 'the demo opens on wave 1').toBe(1)
@@ -116,16 +115,15 @@ describe('AC-1 — createWaveSim assembles wave 1 from the cores', () => {
       trans.PLAYER2_SPAWN.x,
     ])
 
-    // The enemy complement is the wave-1 row's bounders+hunters+lords+ptero — 3
-    // bounders — via enterViaPads. Tie the count to the transcribed law, never a
-    // bare literal.
-    // jt11-4: the complement is unchanged, but it no longer stands on the pads at
-    // frame 0 — each enemy takes a number and the transporter serves one per frame.
-    // `waveComplement` counts the pads AND the waiting room, which is the wave-row
-    // fact this assertion has always been about.
-    const complement = trans.waveEnemyComplement(wave.waveRowAt(1))
-    expect(complement, 'wave 1 is three bounders').toBe(3)
-    expect(waveComplement(demo), 'three enemies are fielded via the pads').toBe(complement)
+    // The enemy complement is the wave-1 row's three bounders, fielded via
+    // enterViaPads. jt11-4: it no longer stands on the pads at frame 0 — each enemy
+    // takes a number and the transporter serves one per frame; `waveComplement`
+    // counts the pads AND the waiting room, the wave-row fact this has always been
+    // about. jt13-8: the `waveEnemyComplement` row→count helper was a dead twin
+    // (the LIVE complement is `enemyTypesForWave`/`spawnWaveEnemies`, exercised
+    // here as `waveComplement(demo)`); retired, so this pins the live count against
+    // the ROM row (WAVE_TABLE row 1 = $30,$01,0,2 → three bounders).
+    expect(waveComplement(demo), 'wave 1 fields three bounders via the pads').toBe(3)
   })
 
   it('seeds the intelligence budget from wave 1s pursuit nibble (wsmart=1, nsmart=0)', async () => {
@@ -404,11 +402,19 @@ describe('AC-1 — the egg fall loop (STEGG/EGGLPA) with the BMI EGGBCK guard', 
 //        "nearer" — is the law; here we pin the demo consumes it.)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0', () => {
+  // jt13-8 — `sim.hatchEgg` was a dead twin: the composition `willHatch(egg) ?
+  // remountEntryEdge(egg.posX) : null` that the LIVE sim reimplements inline (it
+  // calls egg.ts's `willHatch` and `remountEntryEdge` directly on the wave-egg and
+  // collision-pass hatch paths). Re-pointed onto those live egg-core laws, so the
+  // demo's consumption of the remount rule is pinned against the same functions.
+  const hatch = (egg: Awaited<ReturnType<typeof loadEgg>>, over: Partial<EggState>) => {
+    const e = eggOf({ settled: true, ...over })
+    return egg.willHatch(e) ? egg.remountEntryEdge(e.posX) : null
+  }
+
   it('an egg in the LEFT half hatches a buzzard entering from the RIGHT edge', async () => {
-    const dmod = await loadSim()
     const egg = await loadEgg()
-    const leftX = egg.REMOUNT_HALF_X - 10
-    const entry = dmod.hatchEgg(eggOf({ posX: leftX, settled: true, eggsLeft: 3 }))
+    const entry = hatch(egg, { posX: egg.REMOUNT_HALF_X - 10, eggsLeft: 3 })
     expect(entry, 'a hatchable egg yields a remount').not.toBeNull()
     expect(entry!.posX, 'enters from the RIGHT (farther) edge').toBe(egg.REMOUNT_ENTRY_RIGHT_X)
     expect(entry!.velX, 'flying left').toBeLessThan(0)
@@ -416,18 +422,16 @@ describe('AC-1 — hatch enters from the farther edge, permadeath at eggsLeft 0'
   })
 
   it('an egg in the RIGHT half hatches a buzzard entering from the LEFT edge', async () => {
-    const dmod = await loadSim()
     const egg = await loadEgg()
-    const rightX = egg.REMOUNT_HALF_X + 10
-    const entry = dmod.hatchEgg(eggOf({ posX: rightX, settled: true, eggsLeft: 1 }))
+    const entry = hatch(egg, { posX: egg.REMOUNT_HALF_X + 10, eggsLeft: 1 })
     expect(entry!.posX, 'enters from the LEFT (farther) edge').toBe(egg.REMOUNT_ENTRY_LEFT_X)
     expect(entry!.velX, 'flying right').toBeGreaterThan(0)
     expect(entry!.facing, 'facing right').toBe(1)
   })
 
   it('the 4th egg (eggsLeft 0) is permadeath — nothing hatches', async () => {
-    const dmod = await loadSim()
-    const entry = dmod.hatchEgg(eggOf({ posX: 100, settled: true, eggsLeft: 0 }))
+    const egg = await loadEgg()
+    const entry = hatch(egg, { posX: 100, eggsLeft: 0 })
     expect(entry, 'eggsLeft 0 is the enemys permanent death').toBeNull()
   })
 })

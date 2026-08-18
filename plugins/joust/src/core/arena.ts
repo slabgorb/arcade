@@ -341,12 +341,3 @@ export function lavaLevelForWave(wave: number): number {
   return difficultyLava(wave)
 }
 
-/**
- * TBRIDGE (JOUSTRV4.SRC:954-955, 1934-1936) is a countdown seeded at 3 and
- * decremented once per wave; the bridge burns when it reaches zero and stays
- * gone. The HOOK is this story's scope — what the destruction looks like is
- * jt3's.
- */
-export function bridgeDestroyedOnWave(wave: number): boolean {
-  return wave >= BRIDGE_WAVE
-}

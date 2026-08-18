@@ -30,6 +30,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { loadArena, type Platform } from './helpers/arena-contract.js'
+import { loadArenaState } from './helpers/arena-state-contract.js'
 
 /** 256 sub-pixel units per pixel — the ADDGRX position model. */
 const px = (whole: number, frac = 0): number => (whole << 8) | frac
@@ -415,16 +416,22 @@ describe('the bridge hook (destruction animation belongs to jt3)', () => {
   })
 
   it('fires on wave 3 and STAYS fired after (TBRIDGE is a countdown, not an equality)', async () => {
-    // The HOOK is this story's scope; what the destruction looks like is jt3's.
-    const a = await loadArena()
-    expect(a.bridgeDestroyedOnWave(1)).toBe(false)
-    expect(a.bridgeDestroyedOnWave(2)).toBe(false)
-    expect(a.bridgeDestroyedOnWave(3)).toBe(true)
+    // jt13-8 — the bare `bridgeDestroyedOnWave(wave)` predicate was a dead twin of
+    // the LIVE burn, `applyWaveDestruction(...).bridgeBurned` (arena-state.ts, the
+    // latching TBRIDGE state jt3-2 wired). Re-pointed here onto that live path; the
+    // exhaustive stays-burned latch over later waves lives in arena-destruction.test.ts.
+    // 0x08 is a status byte with an empty cliff high-nibble, so only the bridge moves.
+    const s = await loadArenaState()
+    const burnedOnWave = (wave: number): boolean =>
+      s.applyWaveDestruction(s.initialArenaState(), wave, 0x08).bridgeBurned
+    expect(burnedOnWave(1)).toBe(false)
+    expect(burnedOnWave(2)).toBe(false)
+    expect(burnedOnWave(3)).toBe(true)
     // The wave-4 case closes a confirmed silent-regression channel: the jt1-4
     // review mutated `>=` to `===` and EVERY test still passed. TBRIDGE is
     // decremented per wave and stops at zero (JOUSTRV4.SRC:1934-1936) — once
     // the bridge burns it stays burned, so equality is the wrong shape.
-    expect(a.bridgeDestroyedOnWave(4), 'the bridge does not come back').toBe(true)
+    expect(burnedOnWave(4), 'the bridge does not come back').toBe(true)
   })
 })
 

@@ -88,10 +88,6 @@ export interface CabinetModule {
    */
   modeForGover(gover: number): CabinetMode
 
-  /** attract → title: the attract sub-cycle's title page (a cabinet-tier edge; the
-   *  page ORDER/scheduler is jt10-4). Preserves the wrapped game. Pure. */
-  toTitle(cab: CabinetState): CabinetState
-
   /** attract/title → select: coin-up to the 1P/2P start select (NO coin economy —
    *  CREDITS is a static line, jt10-5). Preserves the wrapped game. Pure. */
   toSelect(cab: CabinetState): CabinetState
@@ -102,15 +98,6 @@ export interface CabinetModule {
    * seeded deterministically. Pure.
    */
   startPlaying(cab: CabinetState, seed: number, playerCount?: number): CabinetState
-
-  /**
-   * Step ONE frame of a playing cabinet: delegate to the session's `stepGame`
-   * (no divergent second stepping path — the wrapped game must stay bit-identical
-   * to a raw stepGame), then RE-DERIVE the mode from the stepped game's settled
-   * GOVER via `modeForGover` — so an all-players-out frame lands in 'gameover'.
-   * Pure — the argument is never mutated.
-   */
-  stepPlaying(cab: CabinetState, inputs?: Record<number, PlayerInput>): CabinetState
 
   /**
    * gameover → the routed next mode: 'highscore' IFF the best player score
@@ -144,10 +131,8 @@ export async function loadCabinet(): Promise<CabinetModule> {
     const fns = [
       'createCabinet',
       'modeForGover',
-      'toTitle',
       'toSelect',
       'startPlaying',
-      'stepPlaying',
       'afterGameOver',
       'toAttract',
     ] as const
@@ -165,8 +150,7 @@ export async function loadCabinet(): Promise<CabinetModule> {
         'playing/gameover/highscore), CabinetState { mode, game } WRAPPING the jt4 GameState, ' +
         '`createCabinet(seed)` (boots mode attract over createGame), `modeForGover(gover)` (the ' +
         'GOVER hinge: $7F→attract, -1→playing, 0→gameover — reuse game.ts GOVER_* constants), the ' +
-        'cabinet-tier edges toTitle/toSelect/startPlaying/toAttract, `stepPlaying` (delegates to ' +
-        'stepGame then re-derives mode from the settled gover — no second stepping path), and ' +
+        'cabinet-tier edges toSelect/startPlaying/toAttract, and ' +
         '`afterGameOver(cab, table)` (→ highscore iff qualifiesForHighScore(table, best score), ' +
         'else → attract — import qualifiesForHighScore from @shared/highscore; @shared is pure in ' +
         `core). Keep cabinet.ts inside the jt1-7 purity boundary. (${(e as Error).message})`,

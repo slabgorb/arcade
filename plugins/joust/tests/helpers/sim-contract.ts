@@ -310,8 +310,8 @@ export interface SimModule {
    *     constants (P1 x=100 facing right on an ostrich, P2 x=200 facing left
    *     on a stork) — passing 1 spawns P1 alone (jt11-1); the bare call keeps
    *     the 2P contract;
-   *   • the wave-1 enemy complement (waveEnemyComplement(waveRowAt(1)) = 3
-   *     bounders) entered via pads (enterViaPads(count, seed)), each an enemy
+   *   • the wave-1 enemy complement (the three bounders of WAVE_TABLE row 1)
+   *     entered via pads (enterViaPads(count, seed)), each an enemy
    *     process whose `period` is the EMYTIM divider for the wave
    *     (emytimForWave(1) = 2);
    *   • the intelligence budget seeded from wave 1's pursuit nibble
@@ -379,14 +379,6 @@ export interface SimModule {
    * skips the award when nothing killed the enemy, which is the lava death.
    */
   lastEggAward(victor: number | null, hits: number): number
-
-  /**
-   * Hatch a SETTLED egg into a remounting buzzard, or null on permadeath. While
-   * `eggsLeft > 0` the buzzard enters from the FARTHER edge (egg.ts's
-   * remountEntryEdge — the ROM correction to "nearer"); at `eggsLeft === 0` the
-   * enemy is permanently dead and nothing hatches. Pure.
-   */
-  hatchEgg(egg: EggState): RemountEntry | null
 
   /**
    * Resolve ONE overlapping pair in the demo's collision pass — the wiring over
@@ -521,7 +513,7 @@ export async function loadSim(): Promise<SimModule> {
   const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
   try {
     const mod = (await import(/* @vite-ignore */ specifier)) as Partial<SimModule>
-    for (const fn of ['createWaveSim', 'stepSim', 'stepEgg', 'hatchEgg', 'resolveContacts'] as const) {
+    for (const fn of ['createWaveSim', 'stepSim', 'stepEgg', 'resolveContacts'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
     return mod as SimModule
@@ -529,7 +521,7 @@ export async function loadSim(): Promise<SimModule> {
     throw new Error(
       'demo wiring not built yet — GREEN (Julia) creates joust/src/core/sim.ts ' +
         'satisfying tests/helpers/sim-contract.ts: createWaveSim/stepSim drive the ' +
-        'scheduler, collision and wave cadence; stepEgg/hatchEgg wire the egg fall + ' +
+        'scheduler, collision and wave cadence; stepEgg wires the egg fall + ' +
         `remount; resolveContacts is the collision-pass layer over resolveJoust. (${(e as Error).message})`,
     )
   }

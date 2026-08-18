@@ -54,7 +54,6 @@ import {
   airCatchBonus,
   EGGS_PER_ENEMY,
   type EggState,
-  type RemountEntry,
 } from './egg.js'
 import {
   broadPhase,
@@ -1708,15 +1707,6 @@ export function stepEgg(egg: EggState, arena: ArenaState = PRISTINE_ARENA): EggS
   // integrating off the bottom of the screen. velY zeroed so it rests, not drifts.
   if (isLavaDeath(nextPosY)) return { ...egg, velY: 0, posY: DEATH_Y << 8, settled: false }
   return { ...egg, velY, posY: nextPosY, settled: false }
-}
-
-/**
- * Hatch a SETTLED egg into a remounting buzzard entering from the FARTHER edge, or
- * null on permadeath (`eggsLeft === 0`). Pure.
- */
-export function hatchEgg(egg: EggState): RemountEntry | null {
-  if (!willHatch(egg)) return null
-  return remountEntryEdge(egg.posX)
 }
 
 // ─── The collision pass (the jt2-3 core, in the loop) ─────────────────────────

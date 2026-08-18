@@ -116,7 +116,8 @@ describe('AC-3 (BLOCKING) main.ts preserves the jt4-5 createGame/stepGame seam',
     // demo-source.test.ts is the PRIMARY guard for this seam; restated here so a seam
     // break during the gameover wiring reddens jt10-6's own suite with a clear message.
     // The context's AC-3 marks this BLOCKING: the gameover transition must NOT route
-    // every frame through a cabinet step (stepPlaying) in a way that erases these calls.
+    // every frame through a cabinet-step wrapper (the retired `stepPlaying`) in a way
+    // that erases these calls — main.ts steps the session with a literal stepGame.
     expect(src, 'main.ts still builds the session with a literal createGame( call').toMatch(/createGame\s*\(/)
     expect(src, 'main.ts still steps the session with a literal stepGame( call').toMatch(/stepGame\s*\(/)
   })

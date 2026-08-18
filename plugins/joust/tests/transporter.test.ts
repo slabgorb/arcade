@@ -143,18 +143,23 @@ describe('the take-a-number ticket queue (AC-2)', () => {
     expect(t.nextServed(queue), 'a waiting player is served next').toBe('player')
   })
 
-  it('players are served in FIFO ticket order (LPSERV), both directions', async () => {
+  it('players are served in FIFO ticket order (LPSERV), one per serve', async () => {
     const t = await loadTransporter()
     const a = t.takePlayerNumber(t.newServiceQueue())
     const b = t.takePlayerNumber(a.queue)
     expect(a.ticket, 'the two players hold distinct numbers').not.toBe(b.ticket)
-    // first player's turn now; second player's is NOT.
-    expect(t.playerTurn(b.queue, a.ticket), 'first drawn → served first').toBe(true)
-    expect(t.playerTurn(b.queue, b.ticket), 'second drawn → must wait').toBe(false)
-    // after serving the first, the second player's turn comes up.
+    // jt13-8: the per-ticket `playerTurn(q, ticket)` predicate (`ticket === LPSERV`)
+    // was a dead twin — the LIVE serve loop decides turns with `nextServed` +
+    // `servePlayer` (the session's CRELP sweep). Re-pointed onto that live pair, so
+    // the FIFO order is pinned against the mechanism the game actually runs. The
+    // number now up IS LPSERV, which `playerTurn` merely compared a ticket against.
+    expect(a.ticket, 'first drawn holds the number now up (LPSERV)').toBe(b.queue.lpserv)
+    expect(t.nextServed(b.queue), 'a player is waiting to be served').toBe('player')
+    // serving the first advances LPSERV, so the SECOND player's number comes up.
     const served = t.servePlayer(b.queue)
-    expect(t.playerTurn(served, b.ticket), 'second player served next').toBe(true)
-    expect(t.playerTurn(served, a.ticket), 'the served number is no longer up').toBe(false)
+    expect(b.ticket, 'after the first is served, the second is now up').toBe(served.lpserv)
+    expect(t.nextServed(served), 'the second player still waits its turn').toBe('player')
+    expect(t.nextServed(t.servePlayer(served)), 'both served → the queue is idle').toBe('idle')
   })
 
   it('an enemy WAITS while any player still holds a number — players first', async () => {
@@ -332,27 +337,14 @@ describe('the P1/P2 spawn constants (AC-1)', () => {
 // AC-4 — a full wave-1 enemy complement enters via pads under seed.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('the wave-1 enemy complement enters via pads deterministically (AC-4)', () => {
-  it("wave 1's complement is 3 (three bounders) from jt2-5's WAVE_TABLE row 1", async () => {
-    const t = await loadTransporter()
-    const wave = await loadWave()
-    // WAVE_TABLE row 1 = $30,$01,0,2 → bounders 3, hunters 0, lords 0, ptero 0.
-    expect(t.waveEnemyComplement(wave.waveRowAt(1))).toBe(3)
-  })
-
-  it('the pursuit nibble is EXCLUDED from the count — it seeds the budget', async () => {
-    const t = await loadTransporter()
-    // pursuers must NOT inflate the complement: a row that is ALL pursuit sends
-    // in nobody; a mixed row counts the four enemy fields and ignores pursuers.
-    expect(
-      t.waveEnemyComplement({ bounders: 0, hunters: 0, lords: 0, pursuers: 15, pterodactyls: 0, status: 0 }),
-      'all pursuit, no enemies',
-    ).toBe(0)
-    expect(
-      t.waveEnemyComplement({ bounders: 2, hunters: 1, lords: 1, pursuers: 9, pterodactyls: 1, status: 0 }),
-      'sum of the four enemy fields, pursuers ignored',
-    ).toBe(5)
-  })
-
+  // jt13-8 — `waveEnemyComplement` (the row→count helper) was a dead twin: no
+  // production caller, and the LIVE pad complement is `enemyTypesForWave` /
+  // `spawnWaveEnemies` (bounders+hunters+lords, pterodactyls handled apart). Its
+  // two formula-only micro-tests are retired with it — the wave-1 count is pinned
+  // against the LIVE `waveComplement` in demo.test.ts / demo-round2.test.ts, and
+  // the count→pads flow is kept below driven by the live wave row. (The dead
+  // formula also counted pterodactyls, which the live path excludes — see the
+  // Delivery Finding.)
   it('every enemy enters on a real pad, once, in order', async () => {
     const t = await loadTransporter()
     const padIds = new Set<PadId>(t.PADS.map((p) => p.id))
@@ -391,10 +383,13 @@ describe('the wave-1 enemy complement enters via pads deterministically (AC-4)',
     expect(shapes.size, 'the seed must influence which pads are used').toBeGreaterThan(1)
   })
 
-  it("the wave-1 count flows through the pad service (AC-4 end to end)", async () => {
+  it('the wave-1 count flows through the pad service (AC-4 end to end)', async () => {
     const t = await loadTransporter()
     const wave = await loadWave()
-    const count = t.waveEnemyComplement(wave.waveRowAt(1))
+    // WAVE_TABLE row 1 = $30,$01,0,2 → three bounders (the whole wave-1 complement).
+    // Driven straight off the live row, not the retired waveEnemyComplement helper.
+    const count = wave.waveRowAt(1).bounders
+    expect(count, 'wave 1 is three bounders').toBe(3)
     expect(t.enterViaPads(count, 7).length, 'three bounders enter via pads').toBe(3)
   })
 })

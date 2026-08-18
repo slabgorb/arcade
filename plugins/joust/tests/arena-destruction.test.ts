@@ -15,7 +15,7 @@
 // testing the wrong architecture.
 //
 // ─── MUTATION-RESISTANCE (the jt1-4 lesson, applied) ─────────────────────────
-// A review once flipped `>=` to `===` in bridgeDestroyedOnWave and every test
+// A review once flipped `>=` to `===` in the wave-3 burn predicate and every test
 // still passed (the bridge came back on wave 4 and nobody noticed). So the pins
 // here assert the ACTUAL mutated geometry — a destroyed cliff's landing goes
 // AIRBORNE, the burned bridge drops an entity into the lava, and burned STAYS
@@ -45,8 +45,8 @@ describe('AC-1 — the bridge burns on wave 3 and stays burned', () => {
     // The wave-numbering trace (documented in the session + open-questions §4):
     // TBRIDGE is seeded 3 and pre-decremented once per wave in IWAVE2 BEFORE the
     // WAVBCD increment, so it hits zero — STBRID burns the bridge — as wave 3
-    // begins. The bridge is present in waves 1-2, gone from wave 3. This matches
-    // arena.bridgeDestroyedOnWave(wave) = wave >= 3.
+    // begins. The bridge is present in waves 1-2, gone from wave 3 — the latching
+    // `applyWaveDestruction(...).bridgeBurned` (state.bridgeBurned || wave >= BRIDGE_WAVE).
     const s = await loadArenaState()
     const at = (wave: number, status: number): ArenaState =>
       s.applyWaveDestruction(s.initialArenaState(), wave, status)

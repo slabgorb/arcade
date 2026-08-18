@@ -115,16 +115,19 @@ const RETIRED: ReadonlyArray<{
   // so they alone in the tier are dead.
   { sym: 'stepPlaying', home: 'core/cabinet.ts', liveTwin: "main.ts's inline stepGame + modeForGover pump" },
   { sym: 'toTitle', home: 'core/cabinet.ts', liveTwin: "main.ts's inline { mode: 'title' } boot" },
-  // sim.ts hatches remounts inline in the frame step (hatchRow / remountEntryEdge).
-  { sym: 'hatchEgg', home: 'core/sim.ts', liveTwin: 'the inline remount hatch in the sim frame step' },
-  // wave.ts's wenemyFor(waveRowAt(w)) is the live complement; the transporter copy
-  // is unhooked.
-  { sym: 'waveEnemyComplement', home: 'core/transporter.ts', liveTwin: 'wenemyFor(waveRowAt(wave))' },
+  // the live sim calls egg.ts's willHatch + remountEntryEdge directly (the wave-egg
+  // and collision-pass hatch); hatchEgg is the unhooked composition of the two.
+  { sym: 'hatchEgg', home: 'core/sim.ts', liveTwin: "egg.ts's willHatch + remountEntryEdge (called inline)" },
+  // the live pad complement is enemyTypesForWave / spawnWaveEnemies (verified during
+  // GREEN — NOT wenemyFor, which computes the hatch-at-a-time nibble); the transporter
+  // row→count copy is unhooked, and counted pterodactyls the live path excludes.
+  { sym: 'waveEnemyComplement', home: 'core/transporter.ts', liveTwin: 'enemyTypesForWave / spawnWaveEnemies count' },
   // the live service loop decides turns via nextServed(q) === 'player'; the
   // per-ticket playerTurn(q, ticket) predicate is never consulted.
   { sym: 'playerTurn', home: 'core/transporter.ts', liveTwin: "nextServed(q) === 'player' in the session serve loop" },
-  // frame.ts walks / skids the grounded bird inline (walkOff + the skid chain).
-  { sym: 'groundStep', home: 'core/joust.ts', liveTwin: "frame.ts's inline walk-off + skid chain" },
+  // flight.ts's stepGround is the live ground stepper (verified during GREEN — NOT
+  // frame.ts); groundStep is the unhooked joust.ts copy of the same skid transition.
+  { sym: 'groundStep', home: 'core/joust.ts', liveTwin: "flight.ts's stepGround (same skid → plantZ transition)" },
   // arena-state.ts burns the bridge with a LATCHING wave >= BRIDGE_WAVE; the bare
   // arena predicate recomputes it from scratch and nothing calls it.
   { sym: 'bridgeDestroyedOnWave', home: 'core/arena.ts', liveTwin: 'applyWaveDestruction(...).bridgeBurned (latching)' },
