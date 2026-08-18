@@ -206,3 +206,8 @@ completed_stories:
     title: "Wave director + escalation: plugins/defender/src/core/waves.ts — port the WVTAB wave-data table (*WAVE DATA defender/BLK71.SRC:673; WVTAB :676; body :676-689 with WAVE TIME :687 and WAVE SIZE :689; pointer FDB WVTAB :89) and the 'new guys every Nth wave' escalation (GTWV00 defender/DEFA7.SRC:1859); wave-clear -> advance to the next wave, attackers spawned via the df3 scheduler (NEWP,STYPE). The game-structure spine that makes df4's enemies attack in escalating waves. Consumes df3 scheduler + the df4 enemy reducers."
     points: 5
     completed: '2026-08-18'
+  - id: jt13-9
+    epic: jt13
+    title: 'Joust transporter wait-for-first-move idle colour-cycle (ROM TREFF phase 2, JOUSTRV4.SRC:5805-5890): after the 30-frame warp-in grow, the full-size bird colour-cycles owner/white/grey (TREPL1/2/3) at an accelerating rate (16-8-4-2-1 naps) until the player flaps or it times out; descoped from jt13-2'
+    points: 3
+    completed: '2026-08-18'
