@@ -201,3 +201,8 @@ completed_stories:
     title: 'Live /millipede/ playtest: confirm a deployed DDT visibly kills train segments with no full-screen strobe (ml12-3 AC3)'
     points: 1
     completed: '2026-08-18'
+  - id: df5-2
+    epic: df5
+    title: "Wave director + escalation: plugins/defender/src/core/waves.ts — port the WVTAB wave-data table (*WAVE DATA defender/BLK71.SRC:673; WVTAB :676; body :676-689 with WAVE TIME :687 and WAVE SIZE :689; pointer FDB WVTAB :89) and the 'new guys every Nth wave' escalation (GTWV00 defender/DEFA7.SRC:1859); wave-clear -> advance to the next wave, attackers spawned via the df3 scheduler (NEWP,STYPE). The game-structure spine that makes df4's enemies attack in escalating waves. Consumes df3 scheduler + the df4 enemy reducers."
+    points: 5
+    completed: '2026-08-18'
