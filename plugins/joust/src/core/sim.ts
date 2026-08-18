@@ -1141,15 +1141,15 @@ function stepTrolls(
         removed.add(troll.id)
       } else if (gs.inLava) {
         // Pulled under (jt13-11). The ROM's ADDLAV JMPs into the SAME ADGFLR
-        // cinematic the non-gripped swim death uses (~:6643), so a gripped drown
-        // is NOT a silent same-frame removal: it SINKS FLOOR+7 -> FLOOR+20 and
-        // sounds SNPLAV/SNELAV, identically to `stepLavaDeath`. Hand the victim to
-        // that same onset — clearing the grip so the post-`stepTrolls` sink filter
-        // (and frame.ts) treat it as a sinking body — and sound its cue once here.
-        // The troll is still consumed (LT2DIE).
-        const sunk = stepLavaDeath({ ...victim, grippedBy: undefined })
-        if (sunk.cue) cues.push(sunk.cue)
-        if (sunk.process) byId.set(victim.id, sunk.process)
+        // cinematic the non-gripped swim death uses (~:6643), so a gripped drown is
+        // NOT a silent same-frame removal: it must SINK FLOOR+7 -> FLOOR+20 and sound
+        // SNPLAV/SNELAV on the SAME cadence as `stepLavaDeath`. Just RELEASE the grip:
+        // the victim's post-grip posY is already >= FLOOR+7 (`gs.inLava`), so the ONE
+        // downstream `stepLavaDeath` pass (the non-gripped filter below) owns the whole
+        // drown — cue + sink — exactly once, identical to the non-gripped death. (Running
+        // the onset HERE would let that same-frame filter re-process the body and spend
+        // one LAVA_SINK_NAP tick early, desyncing the cadence.) The troll is consumed (LT2DIE).
+        victim.grippedBy = undefined
         removed.add(troll.id)
       } else {
         troll.grip = grip
@@ -2565,13 +2565,15 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   // respawns via the transporter; an enemy is gone. The life is booked by stepGame off
   // the player-process removal.
   //
-  // A bird in the lava troll's GRIP (`grippedBy` set) is exempt HERE — it never reaches
-  // this filter. The ROM's ADDLAV (`CLR PVELX` + the break-free window, ~:6609-6642)
-  // JMPs into this SAME ADGFLR cinematic (~:6643), but this port does NOT yet route the
-  // grip-drown through it: `stepTrolls`'s `gs.inLava` branch removes the gripped victim
-  // same-frame with no sink and no SNPLAV/SNELAV cue (pre-jt13-5 behaviour). Extending
-  // the sink+cue to the grip-drown path is filed as a follow-up (jt13-11). Eggs keep
-  // the jt11-18 frame clamp (they never take this path).
+  // A bird STILL in the lava troll's grip (`grippedBy` set) is exempt from the onset
+  // HERE — `stepLavaDeath`'s own guard skips a `grippedBy` process. But the grip-drown
+  // is no longer silent (jt13-11): when the troll pulls the victim under, `stepTrolls`'s
+  // `gs.inLava` branch RELEASES the grip (clears `grippedBy`), so the drowning body
+  // arrives at THIS filter the same frame as an ordinary sinking bird and this ONE
+  // ADGFLR pass owns its cue + sink. The ROM's ADDLAV (`CLR PVELX` + the break-free
+  // window, ~:6609-6642) JMPs into this SAME cinematic (~:6643), so routing the
+  // grip-drown through one pass keeps the gripped and non-gripped cadences identical.
+  // Eggs keep the jt11-18 frame clamp (they never take this path).
   {
     const kept: SimProcess[] = []
     for (const p of processes) {

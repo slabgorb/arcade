@@ -165,14 +165,21 @@ describe('jt13-11 AC1 — a gripped victim pulled under sinks like the swim deat
     const victim = { ...playerAt(PLAYER1_ID, 100, DEATH_Y - 3), grippedBy: trollId } as SimProcess
     let d = await grippedDrownSim([victim, trollGripping(PLAYER1_ID, 98, DEATH_Y - 6)])
 
-    // Non-vacuity: the victim really is in the troll's grip on arrival.
+    // Precondition: the victim really is in the troll's grip on arrival.
     expect(grippedByOf(playerIn(d, PLAYER1_ID)), 'the fixture stages a committed grip').toBe(trollId)
 
     const ys: number[] = []
     let deepestY = DEATH_Y
     let sawMidSink = false
+    let trollGoneOnOnsetFrame = false
     for (let i = 0; i < 200; i++) {
       d = smod.stepSim(d)
+      // The onset frame is the FIRST step — the capped grip carries the victim across
+      // FLOOR+7 at once. The ROM consumes the troll that SAME frame (LT2DIE), so a
+      // regression dropping `removed.add(troll.id)` is caught HERE. (The eventual
+      // trollsIn===0 is NOT a proof it ran: an unrelated LAVVFY orphan-cleanup removes
+      // the troll a frame late anyway once its victim leaves — mutation-verified.)
+      if (i === 0) trollGoneOnOnsetFrame = trollsIn(d).length === 0
       const p = playerIn(d, PLAYER1_ID)
       // Once removed at the end of the sink the body is gone; treat that as "at the
       // floor" so the monotone check still holds across the final removal frame.
@@ -184,9 +191,22 @@ describe('jt13-11 AC1 — a gripped victim pulled under sinks like the swim deat
       }
     }
 
-    // Non-vacuity: with NO flap input the grip cannot break free, so the grip
-    // resolving (the troll consumed, LT2DIE) means the lava death actually ran.
-    expect(trollsIn(d).length, 'the grip resolves to a lava death — the troll is consumed').toBe(0)
+    // Same-frame LT2DIE consumption — kills a mutant that drops the troll removal.
+    expect(trollGoneOnOnsetFrame, 'the troll is consumed the SAME frame the victim drowns (LT2DIE)').toBe(
+      true,
+    )
+
+    // CADENCE — the gripped sink must match the non-gripped ADGFLR cadence EXACTLY (the
+    // ROM JMPs both entries into the same routine). LAVA_SINK_NAP=3, so the body holds
+    // the FLOOR+7 surface for three frames before the first one-pixel drop. Pinning the
+    // exact frames (mirroring lava-death-cinematic-jt13-10.test.ts) catches a regression
+    // that runs stepLavaDeath twice per frame — onset in stepTrolls AND in the downstream
+    // filter — which spends a nap tick early and drops on frame 3 (index 2) not frame 4.
+    expect(ys[0], 'the drown reseats the body to the FLOOR+7 surface on its onset frame').toBe(DEATH_Y)
+    expect(ys[2], 'three frames in, the body is still at the FLOOR+7 surface (LAVA_SINK_NAP=3)').toBe(DEATH_Y)
+    // Twenty frames in, strictly mid-descent — below the surface, not yet at the floor.
+    expect(ys[20], 'twenty frames in, the body is sinking below the surface').toBeGreaterThan(DEATH_Y)
+    expect(ys[20], 'twenty frames in, the body is not yet at the floor').toBeLessThan(SINK_FLOOR)
 
     // The whole point of "visible sink": the body is seen strictly BELOW the surface
     // but not yet at the floor. Kills both a same-frame removal (never seen sinking)
