@@ -139,7 +139,17 @@ export function drawFrame(
   // triangle. A short platform anchors it so a spent-but-alive base still reads as
   // a base; a dead base is grey rubble.
   const bw = Math.max(5, Math.round(width / 32))
-  const dot = Math.max(1, Math.round(width / 200)) // one ready-missile marker
+  // mc12-5: `dot` was `round(width/200)`, the last magic /200 divisor — the sibling of
+  // the mc12-4 tip. Tied to nothing physical, it rendered ~1px at the 256-wide unit
+  // canvas (every vitest saw a legit marker) but a ~10px SQUARE on the real ~955px
+  // display (20px at 2048). Each ready missile in the DRAW MISSILE stack (W3DSUP.MAC:1221)
+  // is plotted dot-by-dot — ONEMIS (W3DSUP.MAC:1293) writes it as eight indexed
+  // `STA NX,OLDPOS` stores, the same store-to-display-list primitive the tip annotates
+  // `OUTPUT DOT` at W3DSUP.MAC:969; the render draws one stylized square per missile.
+  // Pin it to the cabinet-pixel unit `uH` exactly as
+  // mc12-4 pinned the tip: `dot` is the square's half-side (fillRect spans dot*2), so
+  // round(uH/2) keeps each marker ~one cabinet pixel across at every display scale.
+  const dot = Math.max(1, Math.round(uH / 2)) // one ready-missile marker, one cabinet pixel
   BASES.forEach((pos, i) => {
     const { x, y } = project(pos, width, height)
     if (state.bases[i]?.alive ?? true) {

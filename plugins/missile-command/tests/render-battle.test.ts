@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { drawFrame } from '../src/shell/render.js'
 import { createGame, type GameState } from '../src/core/game.js'
+import { BASES } from '../src/core/field.js'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -542,4 +543,110 @@ describe('mc12-4 — the shared missile tip is one flash pixel at display resolu
       ).toBeLessThanOrEqual(cabPx + 1)
     }
   })
+})
+
+// mc12-5 — the ready-missile STACK marker is cabinet-pixel scaled at DISPLAY resolution,
+// not the width/200 square. This is the LAST magic /200 divisor in render.ts, the sibling
+// of the mc12-4 tip: filed by the mc12-4 review (rule-checker #24/#33) as out of that
+// story's four-finding scope.
+//
+// A live base draws its 1-2-3-4 ready-missile stack (DRAW MISSILE, W3DSUP.MAC:1221; stack
+// offsets MISTBV/MISTBH, W3DSUP.MAC:1329-1331) as one small SQUARE per ready missile
+// (render.ts `dot`; drawn as fillRect(cx - dot, cy - dot, dot*2, dot*2)). The shipped
+// size was `dot = round(width/200)` — the SAME non-physical divisor mc12-4 removed from the
+// shared tip. round(256/200)=1 → a legit 2px square at the unit-test canvas, so every
+// vitest passed; but round(955/200)=5 → a 10px square on the owner's ~955px browser canvas
+// (20px at 2048). Like the mc12-4 lollipop, a 256-only test is structurally BLIND to it —
+// 256 is the one width where round(w/200) and a cabinet-pixel size coincide.
+//
+// The fix ties the marker to the cabinet-pixel unit uH = width/LOGICAL_WIDTH (as mc12-4
+// tied the tip), so it stays a small cabinet-pixel-scaled square at every display scale.
+// This guard renders at MULTIPLE display widths (incl. the owner's ~955) and asserts each
+// marker is at most ~2 cabinet pixels wide: it REJECTS the round(width/200) square (which
+// is >= 2.5x the cabinet pixel at every tested width) yet is rounding-safe for a uH-tied
+// marker (~1-2 cabinet pixels). Mirrors the mc12-4 display-resolution guard for the sibling
+// const. NOT 256: there the old and new formulas coincide (both ~1px), the blind spot this
+// describe exists to cover.
+describe('mc12-5 — the ready-missile stack marker is cabinet-pixel scaled at display resolution, not a width/200 square', () => {
+  // The field at createGame defaults (all structures alive, full ammo) so the right
+  // base draws its full ready-missile stack; cursor parked AWAY in the top band.
+  const oneBase = withCursor({ ...createGame(1), phase: 'play' })
+  // The same field with the RIGHT base dead — it then draws only its rubble line (width
+  // bw), no small marker squares. The non-vacuity control for the "markers present" test.
+  const deadBase: GameState = {
+    ...oneBase,
+    bases: oneBase.bases.map((b, i) => (i === 2 ? { ...b, alive: false } : b)),
+  }
+
+  // The RIGHT base column (h=0xf0=240): clear of the CENTRED HUD figures (screen centre
+  // ~h128, which pollutes the middle base) and of the top-left AWAY crosshair (h5, near
+  // the LEFT base) — the nearest city is 32 cabinet units away.
+  const BASE = BASES[2] // { h: 0xf0, v: 0x16 }
+
+  const paintAt = (s: GameState, w: number, h: number): Mark[] => {
+    const { ctx, marks } = recordingCtx()
+    drawFrame(ctx, s, w, h)
+    return marks
+  }
+
+  // The small marker squares near the right base's column: fillRects whose CENTRE
+  // (m.x + m.w/2, since each marker is fillRect(cx - dot, .., dot*2, dot*2) so centre = cx)
+  // sits within a few cabinet units of the base column, and whose width is well under the
+  // launch platform's bw = round(width/32). The `w < bw` cut excludes the platform, the
+  // dead-structure rubble lines and the ground fill (all width >= bw); the column window
+  // excludes the other bases' stacks and every city (nearest is 32 cabinet units away).
+  const stackMarkersAt = (marks: Mark[], w: number): Mark[] => {
+    const baseX = (BASE.h / 0x100) * w
+    const bw = Math.max(5, Math.round(w / 32))
+    const window = (10 / 0x100) * w // widest MISTBH offset is +/-9 cabinet units
+    return marks.filter(
+      (m) =>
+        m.op === 'fillRect' &&
+        m.w !== undefined &&
+        m.w < bw &&
+        Math.abs(m.x + m.w / 2 - baseX) <= window,
+    )
+  }
+
+  // Widths spanning the reported case (955) and larger displays; NOT 256 (see header).
+  const WIDTHS = [512, 955, 1024, 2048]
+
+  it.each(WIDTHS)(
+    'at display width %i the live base draws its ready-missile markers (no missing-stack regression)',
+    (w) => {
+      const h = Math.round((w * 222) / 0x100)
+      expect(
+        stackMarkersAt(paintAt(deadBase, w, h), w).length,
+        `a DEAD base draws no ready-missile markers at W=${w} (only its rubble line)`,
+      ).toBe(0)
+      expect(
+        stackMarkersAt(paintAt(oneBase, w, h), w).length,
+        `a live base must draw its ready-missile stack at W=${w} (DRAW MISSILE, W3DSUP.MAC:1221)`,
+      ).toBeGreaterThanOrEqual(1)
+    },
+  )
+
+  it.each(WIDTHS)(
+    'at display width %i every ready-missile marker is <= ~2 cabinet pixels wide, not the round(width/200) square',
+    (w) => {
+      const h = Math.round((w * 222) / 0x100)
+      const cabPx = w / 0x100
+      const markers = stackMarkersAt(paintAt(oneBase, w, h), w)
+      // Non-vacuity: the stack must be present before its size can bound anything, so an
+      // empty set (Math.max(...[]) === -Infinity) can never satisfy the bound trivially.
+      expect(
+        markers.length,
+        `the ready-missile stack must be present to be measured at W=${w}`,
+      ).toBeGreaterThanOrEqual(1)
+      const maxWidth = Math.max(...markers.map((m) => m.w ?? 0))
+      // "Cabinet-pixel scaled": at most ~2 cabinet pixels across (+1px of round() slack).
+      // Rejects the shipped round(width/200) square (2*round(w/200) is >= 2.5x cabPx at
+      // every tested width) yet passes a uH-tied marker (~1-2 cabPx).
+      expect(
+        maxWidth,
+        `the ready-missile marker must be cabinet-pixel scaled at W=${w} (<= ${(2 * cabPx + 1).toFixed(1)}px); ` +
+          `the shipped round(width/200) square is ${2 * Math.round(w / 200)}px — the last magic /200 divisor (mc12-5)`,
+      ).toBeLessThanOrEqual(2 * cabPx + 1)
+    },
+  )
 })
