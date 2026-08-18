@@ -125,7 +125,8 @@ stories:
     description: "Follow-up to jt13-10. jt13-10 wired the ADGFLR visible sink (FLOOR+7->FLOOR+20) + SNPLAV/SNELAV cue for the NON-gripped lava death (player and enemy) via stepLavaDeath in sim.ts. The lava-troll GRIP-DROWN path is still pre-jt13-5 behaviour: stepTrolls's gs.inLava branch (sim.ts ~:1113) removes the gripped victim the SAME FRAME with no sink and no cue. The ROM's ADDLAV JMPs into the SAME ADGFLR cinematic (~:6643), so a gripped drown should also sink and sound SNPLAV/SNELAV. Route the grip-drown victim through stepLavaDeath (emit the cue + start the sink) so gripped and non-gripped lava deaths are identical. Add a behavioural test driving a gripped victim under and asserting the sink + cue (jt13-10 left this path untested)."
     points: 2
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     type: bug
