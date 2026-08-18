@@ -507,6 +507,23 @@ window.addEventListener('keydown', (e) => {
   if (cabinet.mode === 'highscore') entry = enterInitial(entry, e.key)
 })
 
+// jt13-4 — click-to-enter. The browser cabinet has no physical start buttons, so a
+// pointer press ON the canvas begins a game directly — SINGLE PLAYER only (the attract
+// prompt now reads 'CLICK TO START'). The start is gated to the IDLE/ENTRY screens
+// (attract / title / select) — an ALLOWLIST, not a bare `!== 'playing'`: a click during
+// 'highscore' would abandon an in-flight initials entry (bypassing commitHighScore, the
+// one path that persists a row), and a click during 'gameover' would start before
+// afterGameOver runs (bypassing the high-score qualification). A new mode therefore
+// defaults to NOT starting. The click is a discrete event, so no rising-edge debounce is
+// needed (unlike the held start keys). audio.resume() rides along here too: the click is
+// a user gesture, the same unlock hook keydown uses.
+canvas.addEventListener('pointerdown', () => {
+  audio.resume()
+  if (cabinet.mode === 'attract' || cabinet.mode === 'title' || cabinet.mode === 'select') {
+    enterPlaying(1)
+  }
+})
+
 // jt11-14 — the FROZEN-COUNTDOWN escape hatch. jt11-6's entry timeout is spent by
 // the frame pump, whose catch-up is clamped (MAX_CATCHUP_SECONDS), so a HIDDEN tab
 // freezes the countdown and a CLOSED tab never advances it at all — the one
@@ -582,12 +599,13 @@ const frame = (now: number): void => {
         // jt10-4 — the attract SUB-CYCLE. Step the pure scheduler one video frame; on
         // the demo page PUMP the self-play SESSION (empty inputs — active player AI is
         // the deferred G-block follow-up), restarting a fresh demo when it settles to
-        // game-over so the loop never ends. A start press starts a game DIRECTLY with the
-        // pressed count (jt11-17): the CTA promises "PRESS 1 OR 2 TO START", so thread the
-        // 1-vs-2 choice through selectPlayerCount into enterPlaying rather than re-asking on
-        // a 'select' screen. The shared prevStartHeld gives that press its rising-edge
-        // discipline, so a held key cannot re-seed the game every frame. (The 'select'
-        // coin-up survives for the title start-press — jt11-16 — and is untouched here.)
+        // game-over so the loop never ends. A held start KEY still direct-starts with the
+        // pressed count (jt11-17), mapped through selectPlayerCount — this dormant keyboard
+        // path survives jt13-4, which added click-to-enter as the advertised gesture (the
+        // attract prompt now reads 'CLICK TO START'; the canvas pointerdown above owns it).
+        // The shared prevStartHeld gives the key press its rising-edge discipline, so a held
+        // key cannot re-seed the game every frame. (The 'select' coin-up survives for the
+        // title start-press — jt11-16 — and is untouched here.)
         attract = stepAttract(attract)
         const want = readSelectInput(held)
         const startHeld = want !== null
