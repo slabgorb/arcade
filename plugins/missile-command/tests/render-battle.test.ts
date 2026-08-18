@@ -568,7 +568,7 @@ describe('mc12-4 — the shared missile tip is one flash pixel at display resolu
 // const. NOT 256: there the old and new formulas coincide (both ~1px), the blind spot this
 // describe exists to cover.
 describe('mc12-5 — the ready-missile stack marker is cabinet-pixel scaled at display resolution, not a width/200 square', () => {
-  // The field at createGame defaults (all structures alive, full ammo) so the middle
+  // The field at createGame defaults (all structures alive, full ammo) so the right
   // base draws its full ready-missile stack; cursor parked AWAY in the top band.
   const oneBase = withCursor({ ...createGame(1), phase: 'play' })
   // The same field with the RIGHT base dead — it then draws only its rubble line (width
