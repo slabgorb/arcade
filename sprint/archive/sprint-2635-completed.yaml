@@ -164,3 +164,8 @@ completed_stories:
     title: Shot-kill of a segment scores the ROM head/body split (body 10 / head 100), not a flat SEGMENT_PTS=10
     points: 2
     completed: '2026-08-17'
+  - id: jt13-5
+    epic: jt13
+    title: Landing in lava must have consequences (death), not free swimming
+    points: 3
+    completed: '2026-08-17'
