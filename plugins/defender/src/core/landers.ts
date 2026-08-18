@@ -13,12 +13,19 @@
 //   FLEE             :795  LANDF   — carry up until OY16 <= YMIN+8 (:798) — the transform trigger
 //   *ASTRONAUT PROC  :290  ASTRO   — the humanoid; walks the terrain, ±$20, NAP 2 (:331,354,359)
 //   *KILL KIDNAPPING :903  LKIL1   — a shot carrier WITH a passenger → NEWP AFALL,STYPE (:905,911)
-//   *ASTRONAUT FALL  :927  AFALL   — +8 accel/tick (:928), capped $300 (:930); the ground
-//                                    outcome ALAND (rescue / fall-to-planet) is df5
+//   *ASTRONAUT FALL  :927  AFALL   — +8 accel/tick (:928), capped $300 (:930). The CAUGHT
+//                                    rescue outcome (AKIL1/AFALL2/ALAND0) now ships in df5-4
+//                                    (catchFalling); the UNCAUGHT ground outcome (AFALL0
+//                                    fatal / ALAND survivable, :933-960) is a later df5 unit.
 //
-// SCOPE (design §4/§6): the abduction MECHANIC only. The MUTANT (SCZ) a triggered
-// lander becomes is df4-4 (it consumes `reachedTop`); the AFALL ground outcome and the
-// P250/P500 scoring are df5; lander SHOOTING (LSHOT) is df4-5.
+// df5-4 EXTENDS this file (GREEN — Yoda / Dev): the RESCUE catch `catchFalling` (the df4-1
+// COLIDE seam over the FALLING astros; caught astro re-grounded at the flat terrain base) and
+// the zero-humanoid PANIC `panic` (NEWP TERBLO planet-blow + the en-masse lander freak that
+// feeds df4-4's `transformLander`). See those functions and claims EN-42..EN-46.
+//
+// SCOPE (design §4/§6): the abduction MECHANIC + the df5-4 catch/panic. The MUTANT (SCZ) a
+// triggered lander becomes is df4-4 (it consumes `reachedTop`); the UNCAUGHT AFALL ground
+// outcome and the P250/P500 scoring are still later df5; lander SHOOTING (LSHOT) is df4-5.
 //
 // PURE src/core (tests/purity.test.ts scans this file): enemies are processes on the
 // ONE shared df3 scheduler (the laser.ts precedent) — never their own tick — the spawn
@@ -55,8 +62,10 @@ export const HUMANOID_GROUND_Y = 0xe0
 /** The astronaut collision box for the df5-4 catch — ASTP1 is 2 bytes wide (×2 px/byte = 4)
  *  × 8 tall (objects-data.ts ASTP1, DEFB6.SRC:1913; the object table owns and byte-verifies
  *  these dims, so no per-consumer re-claim — the sim treats LANDER_PICTURE's dims the same).
- *  The catch tests the ship box against it through the df4-1 COLIDE seam. */
-const HUMANOID_BOX: Box = { width: 4, height: 8 }
+ *  The catch tests the ship box against it through the df4-1 COLIDE seam. Exported so the
+ *  df5-4 suite can pin the catch-radius EXTENT directly (a review found a behavioural box
+ *  test can pass for any value if it only exercises the SHIP box). */
+export const HUMANOID_BOX: Box = { width: 4, height: 8 }
 
 // ─── Exact ROM magnitudes (byte-cited; claims EN-10..EN-14) ──────────────────────────
 /** Lander horizontal hunt step toward the target column: the LANDG ±$20 move (DEFB6.SRC:759). */
@@ -234,7 +243,10 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
       // precedent). From rest that is +1 row on the first tick, then accelerating.
       rec.y += rec.vy >> 3
       if (rec.y >= YMAX) {
-        rec.y = YMAX // the ground outcome (ALAND) is df5 — for now it rests at the floor
+        // The UNCAUGHT ground outcome (AFALL0 fatal / ALAND survivable, DEFB6.SRC:933-960) is a
+        // later df5 unit — for now an un-rescued faller rests at the floor. (The CAUGHT rescue
+        // outcome IS shipped: see catchFalling.)
+        rec.y = YMAX
         return
       }
       s.sleep(1, fall)

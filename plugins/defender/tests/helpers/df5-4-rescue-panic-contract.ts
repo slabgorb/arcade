@@ -76,6 +76,11 @@ export interface RescuePanicModule {
    *  and NOT written by ALAND0. Cite BGALT (or reuse terrain.ts BASE_OFFSET) under the
    *  df1-1 gate; a flat-base deposit is a logged Design Deviation from per-column GETALT. */
   readonly HUMANOID_GROUND_Y: number
+  /** The astronaut catch box (ASTP1, 4×8, DEFB6.SRC:1913) — the catch-radius EXTENT the
+   *  df4-1 COLIDE seam tests the ship against. Exported so the suite pins its magnitude
+   *  DIRECTLY: a behavioural box test that only varies the SHIP box can pass for any
+   *  HUMANOID_BOX value (round-1 review F3). */
+  readonly HUMANOID_BOX: { readonly width: number; readonly height: number }
 }
 
 /**

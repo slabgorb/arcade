@@ -153,39 +153,53 @@ describe('df5-4 AC1 — the RESCUE catch (AKIL1 DEFB6.SRC:398; ground = terrain 
     expect(bank.humanoids.find((h) => h.alive)!.state).toBe('falling')
   })
 
-  it('the catch radius is the df4-1 EXCLUSIVE box — an edge-touching ship misses, one unit of overlap catches', () => {
-    // F3 (round-1 review, lang-review #29): pin the catch box EXTENT, not just "same coord catches,
-    // a screen away misses". collide's edges are exclusive (COLIDE box pre-test, collision.ts) — a
-    // ship whose right edge exactly meets the astro's left edge must NOT catch; a re-derived
-    // inclusive overlap (`<=`) would. This is the boundary a hand-rolled AABB gets wrong.
-    const ship = shipAt(0, 0) // 8 wide × 6 tall (see shipAt)
-    const SHIP_W = ship.picture.width
+  it('pins the catch box EXTENT to ASTP1 4×8 directly (a ship-only box test passes for any value)', () => {
+    // F3 (round-1 review, lang-review #29): the catch RADIUS is HUMANOID_BOX. A boundary test that
+    // only moves the SHIP box exercises collide()'s ship-side clause and stays GREEN for ANY
+    // HUMANOID_BOX value (review mutation: {400,800} and {1,1} both passed). Pin the extent
+    // DIRECTLY, exactly like HUMANOID_GROUND_Y — ASTP1 is 2 bytes ×2px = 4 wide × 8 tall (DEFB6.SRC:1913).
+    expect(loadRescuePanic().HUMANOID_BOX).toEqual({ width: 4, height: 8 })
+  })
 
-    // Case A — ship's RIGHT edge exactly meets the astro's LEFT edge (ship.x + width === astro.x):
-    // exclusive box ⇒ no overlap ⇒ no catch.
+  it('the catch radius is the ASTRO box edge — a ship at HUMANOID_BOX.width misses, one unit inside catches', () => {
+    // Build the boundary on the ASTRO's OWN right edge — collide()'s clause `astro.x +
+    // HUMANOID_BOX.width > ship.x`, the one that depends on HUMANOID_BOX (NOT the ship box). The ship
+    // sits to the RIGHT of the falling astro at coincident Y (8×6 PLAPIC) so only this X edge governs.
+    // Offsets are FIXED literals tied to the expected width 4 (NOT read back from HUMANOID_BOX), so a
+    // wrong catch-box width reddens; collide's edges are exclusive (COLIDE box pre-test, collision.ts).
+    const ASTRO_W = 4 // ASTP1 width (DEFB6.SRC:1913) — a fixed expectation, not derived from HUMANOID_BOX
+
+    // Case A — ship's LEFT edge exactly meets the astro's RIGHT edge (ship.x === astro.x + ASTRO_W):
+    // exclusive box ⇒ astro.x + width is NOT > ship.x ⇒ no overlap ⇒ no catch.
     {
       const { sched, bank } = freshBank()
       const at = dropAFallingHumanoid(sched, bank)
-      const edgeTouch = bank.catchFalling({ x: at.x - SHIP_W, y: at.y, picture: ship.picture })
+      const edgeTouch = bank.catchFalling({ x: at.x + ASTRO_W, y: at.y, picture: { width: 8, height: 6 } })
       expect(edgeTouch).toHaveLength(0) // touching edges do NOT collide (open intervals)
       expect(bank.humanoids.find((h) => h.alive)!.state).toBe('falling')
     }
-    // Case B — the same ship nudged ONE unit into overlap (ship.LRX = astro.x + 1): now it catches.
+    // Case B — the ship nudged ONE unit into the astro box (ship.x === astro.x + ASTRO_W - 1): catches.
     {
       const { sched, bank } = freshBank()
       const at = dropAFallingHumanoid(sched, bank)
-      const overlap = bank.catchFalling({ x: at.x - SHIP_W + 1, y: at.y, picture: ship.picture })
-      expect(overlap).toHaveLength(1) // one unit of real overlap ⇒ caught
+      const overlap = bank.catchFalling({ x: at.x + ASTRO_W - 1, y: at.y, picture: { width: 8, height: 6 } })
+      expect(overlap).toHaveLength(1) // one unit of real overlap into the astro box ⇒ caught
     }
   })
 
-  it('rides the df4-1 collision seam (collision.ts), not a re-derived overlap test (AC1)', () => {
-    // AC1 is explicit: "the catch uses df4-1 collision, not a re-derived overlap test." The
-    // structural proof — landers.ts must IMPORT the shipped collision module (the same
-    // source-scan discipline purity.test.ts uses over src/core). A hand-rolled AABB in
-    // landers.ts would pass every behavioural test above yet violate the reuse mandate.
+  it('calls the df4-1 collide() seam INSIDE catchFalling, not a re-derived overlap test (AC1)', () => {
+    // AC1 is explicit: "the catch uses df4-1 collision, not a re-derived overlap test." Prove the
+    // catch CONSUMES collide — anchor to the call site inside catchFalling's own body, not merely the
+    // import line (which a hand-rolled AABB could satisfy with an unused import elsewhere; round-1
+    // review #25). Same source-scan discipline purity.test.ts uses over src/core.
     const landersSrc = readFileSync(fileURLToPath(new URL('../src/core/landers.ts', import.meta.url)), 'utf8')
-    expect(landersSrc).toMatch(/from ['"]\.\/collision\.js['"]/)
+    expect(landersSrc).toMatch(/from ['"]\.\/collision\.js['"]/) // imports the shipped seam...
+    // ...AND catchFalling's OWN body calls collide() over the falling astros (not a re-derived overlap).
+    const start = landersSrc.indexOf('const catchFalling')
+    const end = landersSrc.indexOf('const panic', start)
+    expect(start).toBeGreaterThan(-1)
+    expect(end).toBeGreaterThan(start)
+    expect(landersSrc.slice(start, end)).toMatch(/collide\(/)
   })
 })
 
