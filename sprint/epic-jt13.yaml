@@ -103,8 +103,17 @@ stories:
     description: "Follow-up to jt13-5, which shipped the essential non-gripped lava DEATH (a knight reaching FLOOR+7 is removed and loses a life) but deferred the ROM cinematic. Add, faithful to ADGFLR/ADDLAV (JOUSTRV4.SRC): (1) the ADDLAV break-free window (CMPD #-0180 'BREAK FREE VELOCITY?', ~:6617) so a hard enough upward flap escapes within a limited window, after which lava gravity holds the bird down (today any flap that clears lava depth escapes — the window never closes); (2) the visible SINK — the body descends past FLOOR+7 to FLOOR+20 (:6568) with a pause before respawn, rather than being removed the same frame it touches the lava; (3) the SNPLAV (player) / SNELAV (enemy) lava sound (ADGFLR loads them) — a NEW EVENT_KIND in core/events.ts wired through audio-manifest + audio-dispatch (none exists today; adding it ripples the audio-seam sweeps). Reconcile the visible sink with jt11-18's burned-shore-grab maxY<=DEATH_Y assertions (they will need updating if the player sink is implemented at the frame layer)."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-17'
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: jt13-11
+    title: 'Lava cinematic for the troll grip-drown: route stepTrolls gs.inLava through the ADGFLR sink + SNPLAV/SNELAV cue'
+    description: "Follow-up to jt13-10. jt13-10 wired the ADGFLR visible sink (FLOOR+7->FLOOR+20) + SNPLAV/SNELAV cue for the NON-gripped lava death (player and enemy) via stepLavaDeath in sim.ts. The lava-troll GRIP-DROWN path is still pre-jt13-5 behaviour: stepTrolls's gs.inLava branch (sim.ts ~:1113) removes the gripped victim the SAME FRAME with no sink and no cue. The ROM's ADDLAV JMPs into the SAME ADGFLR cinematic (~:6643), so a gripped drown should also sink and sound SNPLAV/SNELAV. Route the grip-drown victim through stepLavaDeath (emit the cue + start the sink) so gripped and non-gripped lava deaths are identical. Add a behavioural test driving a gripped victim under and asserting the sink + cue (jt13-10 left this path untested)."
+    points: 2
+    priority: p3
+    status: backlog
     repos: arcade
     workflow: tdd
     type: bug
