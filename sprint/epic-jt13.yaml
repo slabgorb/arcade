@@ -124,3 +124,13 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+  - id: jt13-12
+    title: "Wire the TREFF phase-2 idle colour-cycle into the playable game: hold the re-materialising bird stationary on its pad, render the accelerating owner/white/grey (TREPL) tint through drawList/paintWarpIn, and release on the player's flap (or the ~376-nap timeout). jt13-9 shipped the pure IdleCycleState + sim state but nothing draws it and the bird falls during the wait; this makes it visible and correct in-play."
+    description: "Follow-up to jt13-9. jt13-9 built the pure phase-2 idle-cycle state machine (warpin.ts IdleCycleState/startIdleCycle/stepIdleCycle/idleColour) and opened it in advanceWarpIn, but (a) nothing renders it — the colour-cycle is invisible in the running game — and (b) the re-materialising bird spawns airborne:true and falls off its pad during the wait instead of standing on it. Deliver: (1) HOLD a player process stationary on its pad while its idleCycle is active and it has not flapped (skip the flight step in frame.ts stepFrame; the ROM bird stands until first move); (2) thread the player's flap input into advanceWarpIn so a flap ends the idle cycle ('moved') and releases the bird to fly; (3) end an enemy's idle cycle when its AI moves it (no ghost tint on a moving bird); (4) RENDER the cycling colour — drawList emits an idle op carrying idleColour(state), painted via render.ts (resolve 'owner' to the DCONST nibble as paintWarpIn does); (5) respect the photosensitive-safety rule — the 1-nap final cadence must not become a large-area luminance strobe (the silhouette is a small on-pad sprite). Verify VISUALLY in the running game (Playwright headless), not only by unit tests."
+    points: 3
+    priority: p2
+    status: done
+    started: '2026-08-18'
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-18'
