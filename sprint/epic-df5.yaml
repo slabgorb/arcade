@@ -94,7 +94,7 @@ stories:
     description: 'The wave director is a df3 scheduler process; it does not invent its own tick. It reads the WVTAB size/time per wave and escalates attacker count per the ROM (GTWV00 "NEW GUYS EVERY NTH WAVE"). Wave-clear is detected from the enemy population, not a timer. Colour by df2 palette index only; every constant gated.'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
@@ -103,6 +103,7 @@ stories:
       - 'AC2: the "new guys every Nth wave" escalation (GTWV00, defender/DEFA7.SRC:1859) is ported and cited — a test pins that attacker count increases at the ROM-specified wave cadence, by the ROM value, not an invented ramp.'
       - 'AC3: wave-clear -> advance is driven by the ENEMY POPULATION reaching empty (not a wall-clock timer); attackers are spawned via the df3 scheduler (NEWP,STYPE), the wave director owning no rAF/tick of its own.'
       - 'AC4: citations.test.ts covers every wave constant; a mutation to a WVTAB size/time or the escalation cadence reddens a value assertion (not merely a coverage/presence check — the vacuous-guard trap).'
+    completed: '2026-08-18'
     review_verdict: approved
   - id: df5-3
     title: "Scoring, the men counter + the extra man: plugins/defender/src/core/score.ts — per-enemy points, the humanoid P250/P500 score pop-ups (P250 OBI C25P1 defender/DEFB6.SRC:499, P500 OBI C5P1 :506, P5000 JSR SCORE :508; spawned LDX #P250/#P500 :959,962), the BONUS collect process (*BONUS COLLECT PROCESS defender/DEFA7.SRC:1786,1788), the men (lives) counter and the extra-man award. FIRST pin each score VALUE and which event pays it in the dossier, CITED, before naming the reducer (the df4 identity-first law, now applied to values). Consumes df4-1 collision (deaths) + df3 scheduler (pop-ups are processes)."
