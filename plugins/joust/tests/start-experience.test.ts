@@ -155,12 +155,16 @@ describe('AC-1 — createWaveSim/createGame honour the player count', () => {
 // AC-2 — the attract cycle SAYS how to start
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-2 — the attract start prompt', () => {
-  it('attractScreen exports START_PROMPT naming BOTH start keys', async () => {
+  it('attractScreen exports START_PROMPT (its text is now owned by jt13-4)', async () => {
     const mod = (await import('../src/shell/attractScreen.js')) as Record<string, unknown>
-    // Kills the wrong-text mutant: a prompt that does not name the keys
-    // ("GET READY", "START") leaves the player exactly as stuck as today.
+    // jt13-4 SUPERSEDES jt11-1's wording: the browser cabinet has no physical 1/2
+    // buttons, so the prompt now invites a CLICK (click-to-enter, single player) and
+    // the "PRESS 1 OR 2" text is retired. The exact new contract — names a click,
+    // carries no digit-button text, and every glyph lays out — lives in
+    // click-to-enter-jt13-4.test.ts. Here we keep only the still-true invariant: the
+    // symbol is exported and non-empty (layoutStartPrompt below depends on it).
     expect(typeof mod.START_PROMPT, 'START_PROMPT is exported').toBe('string')
-    expect(mod.START_PROMPT as string).toMatch(/PRESS 1 OR 2/)
+    expect((mod.START_PROMPT as string).length, 'the prompt is non-empty').toBeGreaterThan(0)
   })
 
   it('layoutStartPrompt lays every character out — the chosen font must carry digits', async () => {
