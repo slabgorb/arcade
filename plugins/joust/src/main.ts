@@ -17,6 +17,7 @@
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
 import { drawList, type DrawOp } from './core/sim.js'
 import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState, type OverlayReadout } from './core/game.js'
+import { demoInput } from './core/demo-ai.js'
 import {
   startPlaying,
   modeForGover,
@@ -597,9 +598,10 @@ const frame = (now: number): void => {
       }
       if (cabinet.mode === 'attract') {
         // jt10-4 — the attract SUB-CYCLE. Step the pure scheduler one video frame; on
-        // the demo page PUMP the self-play SESSION (empty inputs — active player AI is
-        // the deferred G-block follow-up), restarting a fresh demo when it settles to
-        // game-over so the loop never ends. A held start KEY still direct-starts with the
+        // the demo page PUMP the self-play SESSION, driven by the jt13-13 demo player AI
+        // (demoInput synthesises each frame's inputs so the demo actually plays and clears
+        // waves — it is no longer a passive bird), restarting a fresh demo when it settles
+        // to game-over so the loop never ends. A held start KEY still direct-starts with the
         // pressed count (jt11-17), mapped through selectPlayerCount — this dormant keyboard
         // path survives jt13-4, which added click-to-enter as the advertised gesture (the
         // attract prompt now reads 'CLICK TO START'; the canvas pointerdown above owns it).
@@ -615,7 +617,7 @@ const frame = (now: number): void => {
         }
         prevStartHeld = startHeld
         if (cabinet.mode === 'attract' && attract.page === 'demo') {
-          const game = stepGame(cabinet.game, {})
+          const game = stepGame(cabinet.game, demoInput(cabinet.game))
           cabinet = game.gover === GOVER_OVER ? toAttract(cabinet, SEED) : { mode: 'attract', game }
         }
         return

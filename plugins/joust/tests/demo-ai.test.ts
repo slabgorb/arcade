@@ -1,7 +1,8 @@
 // tests/demo-ai.test.ts
 //
 // Story jt13-13 — RED phase (O'Brien / TEA). The attract "self-play demo" is not
-// self-playing: main.ts:618 steps it with EMPTY inputs — `stepGame(cabinet.game, {})` —
+// self-playing: the attract demo branch in main.ts steps it with EMPTY inputs —
+// `stepGame(cabinet.game, {})` —
 // so the demo bird never flaps, never steers, dies on the first hazard and just
 // re-materialises in place while a landed twin sits untouched. This story adds a
 // DETERMINISTIC demo player AI that drives the demo so it actually plays and CLEARS
@@ -27,23 +28,24 @@
 //
 // The flap EDGE (release→press) is the AI's own concern: the ROM's flap is an edge, and
 // a demo that holds `flapHeld` every frame would machine-gun the wingbeat (the exact bug
-// dumb-wingbeat.test.ts:775 guards for the scripted player). The AI derives the edge from
-// each process's stored `prevFlapHeld` (sim.ts:206) so it stays pure and stateless —
+// the `dumb-wingbeat` machine-gun guard forbids for the scripted player). The AI derives
+// the edge from each process's stored `prevFlapHeld` (SimProcess in sim.ts) so it stays pure —
 // AC-4 proves the emergent property (no two adjacent flap edges) rather than the wiring.
 //
-// The wiring (main.ts:618) stops passing `{}` and passes `demoInput(cabinet.game)`, while
+// The wiring (the attract demo branch in main.ts) stops passing `{}` and passes
+// `demoInput(cabinet.game)`, while
 // KEEPING the literal `stepGame(` seam that demo-source.test.ts / gameover-wiring.test.ts
 // pin (AC-5).
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { createGame, stepGame, type GameState } from '../src/core/game.js'
+import { createGame, stepGame, GOVER_OVER, type GameState } from '../src/core/game.js'
 import type { PlayerInput } from '../src/core/flight.js'
 import { demoInput } from '../src/core/demo-ai.js'
 import { violations } from './helpers/purity-scanner.js'
 
-// The demo seed — main.ts:390 `const SEED = 0x1a2b_3c4d`, the word `createGame` boots the
+// The demo seed — the `SEED` constant in main.ts (`0x1a2b_3c4d`), the word `createGame` boots the
 // attract demo from and `toAttract` re-seeds it with on every restart.
 const SEED = 0x1a2b_3c4d
 
@@ -96,9 +98,6 @@ function runPassive(seed: number, frames: number): GameState {
   for (let f = 0; f < frames; f++) g = stepGame(g, {})
   return g
 }
-
-const livesLost = (g: GameState, startLives: number[]): number[] =>
-  g.players.map((p, i) => startLives[i] - p.lives)
 
 describe('jt13-13 demoInput — the contract (shape & keys)', () => {
   it('returns an input for every live player process id and nothing phantom (AC-1)', () => {
@@ -165,7 +164,7 @@ describe('jt13-13 demoInput — no machine-gun wingbeat (flap edge discipline)',
     // Correct edge discipline (flap = flapHeld && !prevFlapHeld) makes back-to-back flap
     // edges impossible: the second frame's prevFlapHeld would be true. Two adjacent
     // `flap:true`s is therefore proof the AI is holding the edge high every frame — the
-    // machine-gun wingbeat dumb-wingbeat.test.ts:775 forbids for the scripted player.
+    // machine-gun wingbeat the `dumb-wingbeat` guard forbids for the scripted player.
     const { inputs } = runActive(SEED, 2000)
     for (const id of [1, 2]) {
       for (let f = 1; f < inputs.length; f++) {
@@ -189,18 +188,32 @@ describe('jt13-13 demoInput — it actually PLAYS (the deliverable)', () => {
     expect(flaps1, 'player 1 must actually flap over ~20s of demo (passive = 0)').toBeGreaterThan(20)
   })
 
-  it('survives materially better than the passive bird — fewer lives lost by frame 3000 (AC-6)', () => {
-    // Passive player 1 loses its first life at frame 606 and bleeds down to 0 (measured).
-    // An AI that flaps to stay off the lava and away from enemies must do strictly better.
-    const start = createGame(SEED).players.map((p) => p.lives)
-    const active = runActive(SEED, 3000).end
-    const passive = runPassive(SEED, 3000)
-    const activeLost1 = livesLost(active, start)[0]
-    const passiveLost1 = livesLost(passive, start)[0]
+  it('SUSTAINS play after clearing wave 1 — survives the escalating waves, not one lucky clear (AC-6)', () => {
+    // Survival is NOT measured against the passive bird: the passive demo "loses fewer
+    // lives" only because it barely acts (an immortal landed twin, a P1 that just sits on a
+    // ledge — measured: passive P1 loses ~2 lives to enemy jousts by frame 3000, neither
+    // bird ever reaches the lava). Rewarding the active demo for losing FEWER lives than a
+    // near-inert bird would test for timidity — the opposite of "actually plays and clears
+    // waves". The sound survival signal a do-nothing CANNOT fake and a suicidal AI FAILS:
+    // clear wave 1, then keep playing through the harder waves for a sustained stretch.
+    const BUDGET = 20000
+    let g = createGame(SEED)
+    let clearedAt: number | null = null
+    let goverAt: number | null = null
+    for (let f = 1; f <= BUDGET; f++) {
+      g = stepGame(g, demoInput(g))
+      if (clearedAt === null && g.wave >= 2) clearedAt = f
+      if (g.gover === GOVER_OVER) {
+        goverAt = f
+        break
+      }
+    }
+    expect(clearedAt, 'the demo must clear wave 1 to sustain play (a do-nothing bird never gets here)').not.toBeNull()
+    const survivedAfterClear = (goverAt ?? BUDGET) - (clearedAt as number)
     expect(
-      activeLost1,
-      `active player 1 lost ${activeLost1} lives by frame 3000; passive lost ${passiveLost1} — the AI must survive better`,
-    ).toBeLessThan(passiveLost1)
+      survivedAfterClear,
+      `the demo survived only ${survivedAfterClear} frames after clearing wave 1 (cleared@${clearedAt}, gover@${goverAt}) — it must handle the escalating waves, not suicide after one clear`,
+    ).toBeGreaterThanOrEqual(1500)
   })
 
   it('CLEARS wave 1 — reaches wave ≥ 2, which the passive demo never does in 20000 frames (AC-7)', () => {
