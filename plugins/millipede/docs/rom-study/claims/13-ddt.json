@@ -2014,5 +2014,23 @@
       "line": 2171,
       "verbatim": "\tLSR\t\t\t;100 POINTS FOR A HEAD"
     }
+  },
+  {
+    "id": "DD-225",
+    "claim": "A player-SHOT kill of a BODY segment scores the flat BASE the DDT premium triples: SHOOT2 142$ loads LDA I,10 (BODY=10 POINTS), and with no DDT-death flag set (BIT TEMP3+1 / BPL 16$ is taken, so the LDA I,30 override at DD-223 is skipped) the body branch (LDA MOBJC / CMP I,3D / BCS 145$ taken for colour >= 0x3D) awards that byte unchanged — a shot body kill is BCD 10.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2162,
+      "verbatim": "\tLDA I,10\t\t;BODY=10 POINTS"
+    }
+  },
+  {
+    "id": "DD-226",
+    "claim": "A player-SHOT kill of a HEAD segment scores BCD 100: a head (colour < 0x3D, so CMP I,3D / BCS 145$ is NOT taken) falls into the LSR×4 (100 POINTS FOR A HEAD) that shifts the base score byte 0x10 into the hundreds digit (0x10 >> 4 = 1 → 1*100). This is the base the DDT head premium (DD-224, 300) triples; a shot head is 10x a shot body.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 2171,
+      "verbatim": "\tLSR\t\t\t;100 POINTS FOR A HEAD"
+    }
   }
 ]

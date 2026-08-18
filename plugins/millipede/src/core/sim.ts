@@ -68,8 +68,12 @@ const DEATH_HOLD = 0x60
 /** The "GAME OVER" message hold before attract returns (MLSUB.MAC:161-162
  *  "LDA I,80 / STA DELAY" — the ROM reuses DELAY for the end-of-game pause). */
 const GAME_OVER_DELAY = 0x80
-/** Provisional segment score — refined when full scoring lands. */
-const SEGMENT_PTS = 10
+/** Shot-kill scores — the ROM head/body split (SHOOT2 142$, MILLI.MAC:2162-2175).
+ *  A body scores BCD 10 (LDA I,10, DD-225); a head (colour < BODY_COLOR) LSR×4's
+ *  that base byte into the hundreds digit → 100 (DD-226). The DDT-cloud premium
+ *  (30/300, step 8b) is exactly this base tripled. */
+const SEGMENT_BODY_PTS = 10 // MILLI.MAC:2162 "LDA I,10 ;BODY=10 POINTS" (DD-225)
+const SEGMENT_HEAD_PTS = 100 // MILLI.MAC:2171-2175 LSR×4 of 0x10 → 100s digit (DD-226)
 
 const isLive = (s: Segment): boolean => s.color !== VACANT_COLOR
 
@@ -182,7 +186,10 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     if (hit >= 0) {
       const dead = segments[hit]
       segments = segments.filter((_, i) => i !== hit)
-      score += SEGMENT_PTS
+      // Head vs body: a body is colour >= $3D (MILLI.MAC:2167-2170 CMP I,3D / BCS
+      // 145$); a head (0x39) or poisoned head (0x1B) is below it and LSR×4's to the
+      // 100s (:2171-2175). Same split as the DDT-kill path (step 8b), base not tripled.
+      score += dead.color >= BODY_COLOR ? SEGMENT_BODY_PTS : SEGMENT_HEAD_PTS
       // MUSHER — a kill leaves a mushroom at OBSTA0's cell (SHOOT2 142$ :2155-2157
       // JSR OBSTA0/JSR MUSHER). OBSTA0 (MLSUB.MAC:834-839) derives dir from the
       // segment's own MOBJDH sign and OBSTAC adds 8*dir (:860-863 TYA/ASL×3), so the
