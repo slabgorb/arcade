@@ -61,5 +61,77 @@
       "line": 5923,
       "verbatim": "\tLDA\t#$80\t\tENABLE THIS PLAYERS COLISIONS"
     }
+  },
+  {
+    "id": "JT139-01",
+    "claim": "The TREFF phase-2 wait loop seeds PFEET (the colour-cadence speed) to 16*2=32: LDA #16*2 / STA PFEET,U (JOUSTRV4.SRC:5810-5811). IDLE_SPEED_INIT re-derives from it; PTIMUP starts CLR so the first wake halves it to 16.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5810,
+      "verbatim": "\tLDA\t#16*2"
+    }
+  },
+  {
+    "id": "JT139-02",
+    "claim": "PACCX (the colour-step counter) seeds to PFEET>>1=16: LSRA / STA PACCX,U (JOUSTRV4.SRC:5812-5813). IDLE_STEP_INIT re-derives from it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5813,
+      "verbatim": "\tSTA\tPACCX,U"
+    }
+  },
+  {
+    "id": "JT139-03",
+    "claim": "PLANTZ (the colour index into the TREPL table) seeds to 2: LDA #2 / STA PLANTZ,U (JOUSTRV4.SRC:5814-5815). IDLE_COLOUR_INDEX_INIT re-derives from it.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5814,
+      "verbatim": "\tLDA\t#2"
+    }
+  },
+  {
+    "id": "JT139-04",
+    "claim": "The wait loop naps one frame per wake: 20$ PCNAP 1 (JOUSTRV4.SRC:5828).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5828,
+      "verbatim": "20$\tPCNAP\t1"
+    }
+  },
+  {
+    "id": "JT139-05",
+    "claim": "Any joystick input aborts the wait early (\"PLAYER/ENEMY WANTS TO FLAP\"): LDD CURJOY (:5831) / BNE 51$ (JOUSTRV4.SRC:5841) — the first-move branch, stepIdleCycle’s `moved` -> end “moved”.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5841,
+      "verbatim": "\tBNE\t51$\t\tBR=PLAYER/ENEMY WANTS TO FLAP"
+    }
+  },
+  {
+    "id": "JT139-06",
+    "claim": "When the PTIMUP window expires (LDA #75, :5845) the cadence HALVES: LSR PFEET,U (:5847) / BEQ 50$ (:5848) — reaching 0 is the TIME OUT. PFEET walks 32->16->8->4->2->1->0, so IDLE_CADENCE is 16,8,4,2,1.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5847,
+      "verbatim": "\tLSR\tPFEET,U"
+    }
+  },
+  {
+    "id": "JT139-07",
+    "claim": "The colour advances when PACCX expires and reloads PACCX=PFEET: DEC PACCX,U \"CHANGE EFFECT\" (:5862) / INC PLANTZ,U (:5864) / LDA PFEET,U / STA PACCX,U (:5865-5866) — so the colour-change interval is PFEET, accelerating with each halving.",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5862,
+      "verbatim": "\tDEC\tPACCX,U\t\tCHANGE EFFECT"
+    }
+  },
+  {
+    "id": "JT139-08",
+    "claim": "The idle cycle draws from the TREPL colour tables, PLANTZ-indexed (owner/white/grey): TREPL1 (P1) and TREPL2 (P2) share owner,owner,white,owner,owner,grey,owner,owner; TREPL3 (enemy, :5583) is white,white,grey,white,white,grey,white,white (JOUSTRV4.SRC:5581-5583). GRY=$D is \"LITE GREY FOR TRANSPORTER EFFECT\".",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 5581,
+      "verbatim": "TREPL1\tFCB\tPL1*$11,PL1*$11,WHI*$11,PL1*$11,PL1*$11,GRY*$11,PL1*$11,PL1*$11"
+    }
   }
 ]

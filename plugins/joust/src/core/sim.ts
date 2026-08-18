@@ -80,7 +80,15 @@ import {
   type PteroEntity,
 } from './ptero.js'
 import { startDissolve, type DissolveState } from './dissolve.js'
-import { startWarpIn, stepWarpIn, type WarpInState } from './warpin.js'
+import {
+  startWarpIn,
+  stepWarpIn,
+  startIdleCycle,
+  stepIdleCycle,
+  type WarpInState,
+  type IdleCycleState,
+  type IdleOwner,
+} from './warpin.js'
 import { startCrumble, stepCrumble, type CrumbleState, type CrumblePhase } from './crumble.js'
 import {
   trollSpawnable,
@@ -219,6 +227,14 @@ export interface SimProcess {
    * the ROM's 30-frame PFRAME (STAND_FRAMES), not the 120-nap `mat` collision timer.
    */
   warpIn?: WarpInState
+  /**
+   * jt13-9 — the TREFF PHASE 2 idle colour-cycle (`src/core/warpin.ts`), the "wait for
+   * 1st move, or time out" loop the ROM runs AFTER the grow-in (`warpIn.done`) and before
+   * PLYINT. Opened by `advanceWarpIn` the frame `warpIn` finishes and advanced each frame
+   * until it times out (an un-flapping arrival) — accelerating owner/white/grey through the
+   * TREPL palette. Its clock is PFEET/PACCX/PTIMUP, not the 30-frame PFRAME.
+   */
+  idleCycle?: IdleCycleState
   /**
    * jt4-5 — a WAVEGG egg-wave egg (a settled complement egg, not a DEATH3 kill-egg). Set by
    * `spawnWaveEggs`.
@@ -2331,8 +2347,22 @@ function advanceMaterialisation(p: SimProcess): SimProcess {
  * silhouette and the arrival is drawn normally. A process without one passes through.
  */
 function advanceWarpIn(p: SimProcess): SimProcess {
-  if (!p.warpIn || p.warpIn.done) return p
-  return { ...p, warpIn: stepWarpIn(p.warpIn) }
+  // Phase 1 — the 30-frame PFRAME grow-in.
+  if (p.warpIn && !p.warpIn.done) return { ...p, warpIn: stepWarpIn(p.warpIn) }
+
+  // jt13-9 — Phase 2: once the grow-in is done, the ROM runs the wait-for-first-move
+  // idle colour-cycle (:5805-5890) before PLYINT. Open it the frame after the grow-in
+  // finishes, then advance it each frame. The sim's per-process pass carries no input,
+  // so an un-flapping arrival runs to its natural PFEET→0 timeout (enemies always; a
+  // player's flap-abort is a further render-layer wiring, deferred).
+  if (p.warpIn?.done) {
+    if (!p.idleCycle) {
+      const owner: IdleOwner = p.kind === 'player' ? 'player' : 'enemy'
+      return { ...p, idleCycle: startIdleCycle(owner) }
+    }
+    if (p.idleCycle.end === 'active') return { ...p, idleCycle: stepIdleCycle(p.idleCycle, false) }
+  }
+  return p
 }
 
 /**
