@@ -76,13 +76,24 @@ export function decodeAltitudes(block: TerrainBlock): number[] {
  * INTEGER row (negative or ≥ height) is clipped, not an error — the surface simply runs
  * off the frame.
  */
-export function blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number): void {
+export function blitTerrain(
+  fb: Framebuffer,
+  altitudes: readonly number[],
+  colorIndex: number,
+  cameraCol = 0,
+): void {
   if (!Number.isInteger(colorIndex) || colorIndex < 0 || colorIndex > MAX_PALETTE_INDEX) {
     throw new Error(`blitTerrain: colour index ${colorIndex} is not a palette entry 0-${MAX_PALETTE_INDEX}`)
   }
-  const columns = Math.min(altitudes.length, fb.width)
+  // df5-9: scroll the surface under the camera. Each screen column x shows the world column
+  // `x + cameraCol`, wrapped over the surface's own length so the planet is a cylinder (the
+  // camera-relative twin of the entity blits — both shift by cameraCol screen columns).
+  const n = altitudes.length
+  if (n === 0) return
+  const shift = ((cameraCol % n) + n) % n
+  const columns = cameraCol === 0 ? Math.min(n, fb.width) : fb.width
   for (let x = 0; x < columns; x++) {
-    const row = altitudes[x]
+    const row = altitudes[(x + shift) % n]
     if (!Number.isInteger(row)) {
       // NaN/Infinity/fractional are all non-rows: fb.data[non-integer] silently writes
       // nowhere, so fail LOUD rather than drop the column (lang-review #21).
