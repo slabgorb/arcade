@@ -225,8 +225,8 @@ describe('jt5-1 AC4 — the channel map cannot invert the ROM’s priority arbit
     // The comment here used to read "Eleven cues carry nine distinct ROM
     // priorities," which was already wrong when jt5-6 made the manifest 18 and
     // is corrected by jt9-7 the only way a count should be: by DERIVING both
-    // sides below instead of retyping either. Measured today: 18 cues, 13
-    // distinct priorities, 13 channels. The exact-equality form of this — which
+    // sides below instead of retyping either. Measured today: 20 cues, 14
+    // distinct priorities, 14 channels. The exact-equality form of this — which
     // is what catches a map that SPLITS one ROM priority across two channels,
     // something `toBeGreaterThan(1)` cannot see — is
     // `there are exactly as many channels as the ROM has distinct priorities`

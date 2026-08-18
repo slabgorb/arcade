@@ -7,9 +7,9 @@
 // Measured at HEAD, and the two measurements are what make these tests honest
 // rather than decorative:
 //
-//   · all EIGHTEEN entries in CUE_SOURCES are `kind: 'rom'`; `kind: 'invention'`
+//   · all TWENTY entries in CUE_SOURCES are `kind: 'rom'`; `kind: 'invention'`
 //     appears exactly once in the whole module, at the type declaration
-//   · every shipped row is EVEN — 18 defining rows (after the priority byte) and
+//   · every shipped row is EVEN — 20 defining rows (after the priority byte) and
 //     6 continuation rows (two each for SNPTED, SNPCR1 and SNPCR2, the three
 //     multi-row tables), operand counts 2 or 4, ZERO odd
 //
@@ -502,7 +502,7 @@ const WINDOWS_AT_HEAD: Record<SoundName, number> = {
   enemyThud: 31,
 }
 
-describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', () => {
+describe('jt9-5 AC5 — the twenty shipped windows are unchanged, by value', () => {
   it('every cue holds the voice for exactly as many frames as it did before', () => {
     // Key sets BOTH ways first: a per-cue sweep over one side alone goes green
     // when a cue disappears from the other.
@@ -518,7 +518,7 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
   it('EVERY shipped row is even — the new pairing throw cannot fire on the manifest', () => {
     // The precondition that makes defect 1's fix safe, machine-checked rather
     // than asserted in a comment, with an oracle (`operandTokens` above) that
-    // does not call the code under test. Measured at HEAD: 18 defining rows (2
+    // does not call the code under test. Measured at HEAD: 20 defining rows (2
     // or 4 operands after the priority byte) and 6 continuation rows (2 or 4),
     // zero odd — and the 6 is the number my own header comment first got wrong
     // (I wrote 5; the three multi-row tables carry TWO continuation rows each).

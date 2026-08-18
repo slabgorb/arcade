@@ -38,7 +38,7 @@
 //     PRIORITIES`) is DERIVED by the
 //     same shape of filter — `if (source.kind === 'rom')` — and `CueSource` has
 //     an `invention` arm that jt9-5 made first-class with a REQUIRED `frames`
-//     field. "All 18 cues carry a priority" is therefore a fact about today's
+//     field. "All 20 cues carry a priority" is therefore a fact about today's
 //     cue list, not a property the design enforces. `describes what deletion
 //     would cost` below measures where the first invention would land.
 //
@@ -601,20 +601,24 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
 //     eleven cues"). The determiner R4 required was LOAD-BEARING, not a bug;
 //     dropping it (jt9-37's suggested R4 fix) floods false positives.
 //
-// So the guard is TWO complementary checks over the AUDIO SUBSYSTEM's files
-// (the meaningful "widened read-set" — literally all of src+tests+tools would
-// drag in arena scanlines and wave ordinals that also spell "seventeen"):
+// jt9-28 shipped TWO complementary checks over the AUDIO SUBSYSTEM's files (the
+// meaningful "widened read-set" — literally all of src+tests+tools would drag in
+// arena scanlines and wave ordinals that also spell "seventeen"):
 //   Guard B — a TOTALITY "N cues" claim (word or digit), gated by a totality
-//             determiner/possessive, must equal the DERIVED cue count.
-//   Guard A — a ratchet: in the audio subsystem the WORD "seventeen" may appear
-//             ONLY where it means the 17 EVENT KINDS or the "-plus-one"(=18)
-//             idiom; every other occurrence is a stale cue total.
-// Both carry synthetic pos/neg controls (AC8), because a prose guard goes
+//             determiner/possessive, must equal the DERIVED cue count. STILL LIVE
+//             below, and number-agnostic (it reads CUE_COUNT), so it needs no
+//             per-number ratchet.
+//   Guard A — a ratchet forbidding a stale "seventeen" cue total. RETIRED by
+//             jt13-10: it guarded the leftovers of the 17->18 cue transition, and
+//             once this story moved the counts (cues 18->20, event-kinds 17->19)
+//             and corrected the last four "seventeen" sites, no "seventeen"
+//             remained for it to scan — its own non-vacuity then failed by design.
+// Guard B carries synthetic pos/neg controls (AC8), because a prose guard goes
 // vacuous three ways and only a fabricated input proves it fires.
 // ═════════════════════════════════════════════════════════════════════════════
 
 /** The derived joust cue count — the ONE authority every stale prose count
- *  below is measured against. 18 today (jt5-6 split player2Materialise/SNPCR2). */
+ *  below is measured against. 20 today (jt5-6 split player2Materialise/SNPCR2; jt13-10 added SNPLAV/SNELAV). */
 const CUE_COUNT = Object.keys(CUE_SOURCES).length
 
 /** Every file under `dir`, recursively, as absolute paths. */

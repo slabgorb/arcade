@@ -62,7 +62,7 @@
 // AC2's derivation is pinned as an EXPORTED function rather than inferred from
 // the numbers matching, because a hand-transcribed map agrees with itself
 // forever. `framesFor(source)` is called with SYNTHETIC citations below — a
-// derivation that is only ever applied to the eighteen real records could be a
+// derivation that is only ever applied to the twenty real records could be a
 // lookup table wearing a function's clothes.
 //
 // ─── THE ONE HARD CONSTRAINT ON WHERE THIS DATA MAY LIVE ─────────────────────
@@ -576,7 +576,7 @@ describe('jt5-6 AC2 — the window is computed from the cited rows, not transcri
     expect(
       typeof fn,
       'AC2 needs the derivation to be a callable seam — a total that is only ever ' +
-        'applied to the eighteen real records cannot be told from a lookup table',
+        'applied to the twenty real records cannot be told from a lookup table',
     ).toBe('function')
   })
 

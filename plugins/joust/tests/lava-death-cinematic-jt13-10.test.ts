@@ -7,9 +7,10 @@
 // The non-gripped lava death is ADGCEI -> ADGFLR ("DEATH VIA SWIMMING IN THE
 // LAVA", :6508-6570). Once `CMPA #FLOOR+7 / BHS ADGFLR` (:6508-6509) trips, the
 // bird is committed: SNPLAV (player) / SNELAV (enemy) plays (:6534-6538, VSND),
-// the length-clip fires `[DDEAD]` (life lost, :6555-6567), and `ADGDED` SINKS the
-// body one pixel per ~3-frame nap from FLOOR+7 to FLOOR+20 (`INC PPOSY+1 / CMPA
-// #FLOOR+20+1 / BLO ADGLAV`, :6562-6568), then `PCNAP 30` and respawns (:6569).
+// the length-clip fires `[DDEAD]` (life lost, WCLENY<7 :6554-6556 -> JSR [DDEAD,Y]
+// :6564), and `ADGDED` SINKS the body one pixel per ~3-frame nap (PCNAP 3, :6542)
+// from FLOOR+7 to FLOOR+20 (`INC PPOSY+1 / CMPA #FLOOR+20+1 / BLO ADGLAV`, :6566-6569),
+// then `PCNAP 30` (:6570) and respawns.
 //
 // The break-free VELOCITY test `CMPD #-$0180 / BLT ADLFRE` (:6616) lives in
 // ADDLAV, "ADD IN LAVA TROLLS GRAVITY" (PATCH3, :6608-6642) — the routine PADGRA

@@ -333,8 +333,8 @@ export interface LavaSink {
 }
 
 /** ADGFLR sink scalars (JOUSTRV4.SRC). The body descends from the FLOOR+7 kill plane
- *  to FLOOR+20 (:6568), one whole pixel per PCNAP 3 (:6560), then holds PCNAP 30
- *  (:6569) before the process is removed and (for a player) respawned. */
+ *  to FLOOR+20 (`CMPA #FLOOR+20+1`, :6568), one whole pixel per PCNAP 3 (:6542), then
+ *  holds PCNAP 30 (:6570) before the process is removed and (for a player) respawned. */
 const LAVA_SINK_BOTTOM = FLOOR + 20
 const LAVA_SINK_NAP = 3
 const LAVA_SINK_PAUSE = 30
@@ -2489,23 +2489,24 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   processes = trollStep.processes
   const trollEvents = trollStep.events
 
-  // jt13-5 — the non-gripped lava death, ADGFLR "DEATH VIA SWIMMING IN THE LAVA"
-  // (JOUSTRV4.SRC:6523): a player that reaches lava depth (ADGCEI's FLOOR+7 test,
-  // :6508) is DEAD — SNPLAV/SNELAV, WCLENY<7 -> DDEAD, life lost, body sinks to
-  // FLOOR+20. frame.ts pins it at the FLOOR+7 surface (jt11-18's backstop); the
-  // life is booked by stepGame off the player-process REMOVAL, so removing the
-  // rider here is what turns the old free-swim clamp into a real death. A player in
-  // the lava troll's GRIP (`grippedBy` set) is exempt: that troll path runs ADDLAV
-  // (`CLR PVELX` + the break-free window, ~:6609-6642) over a swapped PADGRA and
-  // funnels into this SAME ADGFLR via its JMP (~:6643) — one shared death routed by
-  // a different gravity, not a second mechanism. Enemies and eggs keep the jt11-18
-  // clamp; this story is the player's lava death only.
-  // jt13-10 — the ROM cinematic replaces jt13-5's same-frame removal: a non-gripped
-  // player OR enemy that reaches lava depth SINKS visibly (FLOOR+7 → FLOOR+20) with
-  // its SNPLAV/SNELAV cue, then leaves after a pause (a player respawns; an enemy is
-  // gone). `stepLavaDeath` owns the body while it sinks (frame.ts skips a `lavaSink`
-  // bird). A gripped bird is exempt — the troll's ADDLAV funnels into this same death
-  // via `stepTrolls`. Eggs keep the jt11-18 frame clamp (they never take this path).
+  // jt13-10 — the non-gripped lava death, ADGFLR "DEATH VIA SWIMMING IN THE LAVA"
+  // (JOUSTRV4.SRC:6523): a bird that reaches lava depth (ADGCEI's FLOOR+7 test,
+  // :6508) is DEAD — SNPLAV/SNELAV plays, WCLENY<7 -> DDEAD (life lost), and the body
+  // SINKS visibly from FLOOR+7 to FLOOR+20 before it leaves. jt13-5 shipped only the
+  // essential same-frame removal (frame.ts still pins the surface at FLOOR+7 as
+  // jt11-18's backstop); `stepLavaDeath` here replaces that with the ROM cinematic and
+  // owns the body while it sinks (frame.ts skips a `lavaSink` bird). It covers BOTH a
+  // non-gripped player AND a non-gripped enemy (each sounds its own cue). A player then
+  // respawns via the transporter; an enemy is gone. The life is booked by stepGame off
+  // the player-process removal.
+  //
+  // A bird in the lava troll's GRIP (`grippedBy` set) is exempt HERE — it never reaches
+  // this filter. The ROM's ADDLAV (`CLR PVELX` + the break-free window, ~:6609-6642)
+  // JMPs into this SAME ADGFLR cinematic (~:6643), but this port does NOT yet route the
+  // grip-drown through it: `stepTrolls`'s `gs.inLava` branch removes the gripped victim
+  // same-frame with no sink and no SNPLAV/SNELAV cue (pre-jt13-5 behaviour). Extending
+  // the sink+cue to the grip-drown path is filed as a follow-up (jt13-11). Eggs keep
+  // the jt11-18 frame clamp (they never take this path).
   {
     const kept: SimProcess[] = []
     for (const p of processes) {

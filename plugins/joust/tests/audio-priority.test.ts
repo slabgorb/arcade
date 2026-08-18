@@ -59,8 +59,8 @@
 // seven and a half seconds the machine gives it.
 //
 // ─── CONTRACT Dev implements ─────────────────────────────────────────────────
-//   • createAudioEngine() passes `priorities` (all 18, from CUE_SOURCES) and
-//     `frameDurations` (all 18, the FULL table totals) to the shared engine.
+//   • createAudioEngine() passes `priorities` (all 20, from CUE_SOURCES) and
+//     `frameDurations` (all 20, the FULL table totals) to the shared engine.
 //   • `playEventSounds` advances the clock exactly ONCE per call, BEFORE it plays
 //     any of that frame's cues — the machine decrements STMR in `EXECST`
 //     (SYSTEM.SRC:173-187) at the top of the frame, and only then does game logic
