@@ -138,7 +138,7 @@ stories:
     description: 'Decision B: df5 CITES ADR-0005, it does not re-decide it. df4-2 already built the effect-policy classifier and the no-full-frame-strobe render guard and named these two as its future consumers. Port SBOMB/HYPER trigger+timing, cited; substitute only the strobe PRESENTATION; log a Design Deviation citing ADR-0005; the df4-2 guard must stay green with both powers live. Smart-bomb clears via df4-1 collision; powers are df3 scheduler-driven player actions.'
     points: 3
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
@@ -147,6 +147,7 @@ stories:
       - 'AC2: the smart-bomb and hyperspace PRESENTATION routes through the df4-2 effect-policy as freeze/fade/particle; NEITHER writes a whole-framebuffer inversion — the df4-2 render guard stays GREEN with both effects live (a planted full-frame invert on either path reddens it), and the substitution of the ROM SBMBX0 COM PCRAM strobe (defender/DEFA7.SRC:3199) is logged as a 6-field Design Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md.'
       - 'AC3: hyperspace teleports to a RANDOM position (per *RANDOM HYPER DIRECTION defender/DEFA7.SRC:3228) drawn from the df3/seeded rng seam (not Math.random — purity.test.ts green), with the re-entry risk modelled and cited; a test pins the teleport is bounded to the world and does not leave the ship in an invalid state.'
       - 'AC4: powers are df3 scheduler-driven player actions (no per-power rAF/tick); every new constant has a claims/*.json entry verified byte-for-byte under the df1-1 gate; no un-cited src/core value.'
+    completed: '2026-08-18'
     review_findings: 'Round 2 APPROVED (re-review). Round-1''s 3 blocking + 3 should-fix all resolved in rework dac3460b: (B1) hyperspace re-entry death roll ported+cited+tested — hyperspaceKilled(rand)=rand()>192 (LSEED>192->PLEND :3275-3277, PWR-25/26/27); (B2) velocity citation fixed (:3243-3245, no bare STA PLAXV); (B3) Y-velocity added (Teleport.vy=0, STD PLAYV :3246); PTYPE 6/7->8/9 (collision-free); STATUS :3216-3217; SUICIDE test .toBe(0); classify pins exact fade/freeze. All 4 enabled subagents clean on re-review; 718/718 defender green, tsc clean, 27 PWR claims byte-verified.'
     review_verdict: approved
   - id: df5-6
