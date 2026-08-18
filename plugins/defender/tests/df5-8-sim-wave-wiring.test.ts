@@ -69,12 +69,15 @@ function makeRand(seed: number): () => number {
 }
 
 async function loadSim(): Promise<SimModule> {
-  const mod = (await import(/* @vite-ignore */ SIM_SPECIFIER)) as Partial<SimModule>
-  const missing = (['createSim', 'stepSim'] as const).filter((k) => typeof mod[k] !== 'function')
+  const partial = (await import(/* @vite-ignore */ SIM_SPECIFIER)) as Partial<SimModule>
+  const missing = (['createSim', 'stepSim'] as const).filter((k) => typeof partial[k] !== 'function')
   if (missing.length > 0) {
     throw new Error(`src/core/sim.ts is missing export(s): ${missing.join(', ')}.`)
   }
-  const probe = mod.createSim!(makeRand(0))
+  // Cast the whole module once, AFTER the guard (the df4-3-sim-wiring.test.ts pattern) — no
+  // per-field non-null assertion, so the guard and the deref cannot silently desync.
+  const mod = partial as SimModule
+  const probe = mod.createSim(makeRand(0))
   if (typeof probe.wave !== 'number') {
     throw new Error(
       'src/core/sim.ts exposes no numeric `wave` on SimState — the df5-2 wave director is still ' +
@@ -86,7 +89,7 @@ async function loadSim(): Promise<SimModule> {
         '`wave` (0 on a fresh sim). PURE core — the x-selection reads no clock and mints no entropy.',
     )
   }
-  return mod as SimModule
+  return mod
 }
 
 const aliveCount = (s: SimState): number => s.landers.filter((l) => l.alive).length
