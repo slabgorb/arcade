@@ -246,3 +246,8 @@ completed_stories:
     title: 'Fix world scroll: composeFrame draws the terrain and world-space enemies at absolute positions — camera-offset them so the planet surface scrolls under the ship and enemies stay world-anchored'
     points: 5
     completed: '2026-08-18'
+  - id: jt13-6
+    epic: jt13
+    title: Wave announcements (egg / survival / etc.) never render — wire waveBeats to the shell
+    points: 5
+    completed: '2026-08-18'
