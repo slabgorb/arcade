@@ -35,7 +35,8 @@ stories:
     description: The entry/attract screen shows a 'new mount every' line that is wrong. Either read the actual value from the settings and display it correctly, or remove the line entirely. Confirm what the original joust attract screen (ATT.SRC / MARQUE) actually says before deciding.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     type: bug
