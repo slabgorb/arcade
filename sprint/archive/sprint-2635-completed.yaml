@@ -211,3 +211,8 @@ completed_stories:
     title: 'Joust transporter wait-for-first-move idle colour-cycle (ROM TREFF phase 2, JOUSTRV4.SRC:5805-5890): after the 30-frame warp-in grow, the full-size bird colour-cycles owner/white/grey (TREPL1/2/3) at an accelerating rate (16-8-4-2-1 naps) until the player flaps or it times out; descoped from jt13-2'
     points: 3
     completed: '2026-08-18'
+  - id: df5-8
+    epic: df5
+    title: "Wire the df5-2 wave director into sim.ts: call createWaveDirector(sched, getPopulation, spawnWave) from the running sim so waves actually drive play — getPopulation reads the live enemy population (_enemyBank.landers alive count, sim.ts), spawnWave spawns each wave's WVTAB attacker counts via enemyBank.spawnLander (NEWP,STYPE). Closes the df5-2 injected-dependency seam (waves.ts is pure and unwired today) so df5-7's playtest can show waves escalating on screen. Consumes df5-2 waves.ts + df3 scheduler + df4 landers."
+    points: 3
+    completed: '2026-08-18'
