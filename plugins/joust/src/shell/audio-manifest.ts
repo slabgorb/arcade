@@ -35,6 +35,8 @@
 export type SoundName =
   | 'enemyDeath'
   | 'playerDeath'
+  | 'playerLavaDeath'
+  | 'enemyLavaDeath'
   | 'eggCollected'
   | 'eggHatched'
   | 'pteroArrives'
@@ -56,6 +58,8 @@ export type SoundName =
 export const SOUNDS: Readonly<Record<SoundName, string>> = {
   enemyDeath: 'enemy_death.wav',
   playerDeath: 'player_death.wav',
+  playerLavaDeath: 'player_lava_death.wav',
+  enemyLavaDeath: 'enemy_lava_death.wav',
   eggCollected: 'egg_collected.wav',
   eggHatched: 'egg_hatched.wav',
   pteroArrives: 'ptero_arrives.wav',
@@ -161,6 +165,24 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     source: { file: SRC, line: 8115, verbatim: 'SNPDIE\tFCB\t080,!N$16!.$7F,20\tPLAYER DIES' },
     continuation: [],
     callSite: { file: SRC, line: 4744, verbatim: '\tLDX\t#SNPDIE\t\tPLAYER DIES' },
+  },
+  playerLavaDeath: {
+    kind: 'rom',
+    table: 'SNPLAV',
+    priority: 60,
+    romComment: 'PLAYER IN LAVA',
+    source: { file: SRC, line: 8123, verbatim: 'SNPLAV\tFCB\t060,!N$0D!.$7F,30\tPLAYER IN LAVA' },
+    continuation: [],
+    callSite: { file: SRC, line: 6534, verbatim: '\tLDX\t#SNPLAV' },
+  },
+  enemyLavaDeath: {
+    kind: 'rom',
+    table: 'SNELAV',
+    priority: 40,
+    romComment: 'ENEMY IN LAVA',
+    source: { file: SRC, line: 8105, verbatim: 'SNELAV\tFCB\t040,!N$0D!.$7F,30\tENEMY IN LAVA' },
+    continuation: [],
+    callSite: { file: SRC, line: 6538, verbatim: '\tLDX\t#SNELAV\t\tENEMY IN LAVA' },
   },
   eggCollected: {
     kind: 'rom',

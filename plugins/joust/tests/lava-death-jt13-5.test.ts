@@ -174,13 +174,14 @@ describe('jt13-5 B — sinking in the lava costs exactly one life', () => {
     const burned = await burnedWave1Sim([playerAt(1, PLANK_L, 200, { velY: 0x100 })]) // 1 px/frame down
     let game = { ...base, sim: burned }
 
-    // jt13-10 widened the window from 60 to 90: the visible sink (FLOOR+7 ->
-    // FLOOR+20 over ~3-frame naps, then a ~30-frame pause) DEFERS the process
-    // removal that books the life, so a 60-frame window could miss the single
-    // debit. 90 spans the whole cinematic; respawn on a safe pad (below) still
-    // prevents a re-drown, so "exactly one" holds.
+    // jt13-10 widened the window from 60 to 130: the visible sink (FLOOR+7 ->
+    // FLOOR+20 at one pixel per ~3 frames, then a ~30-frame pause) DEFERS the process
+    // removal that books the life. This knight falls from y=200, so it reaches the
+    // lava ~frame 30 and the whole cinematic completes ~frame 100; 130 spans it with
+    // margin. Respawn on a safe pad (below) still prevents a re-drown, so "exactly
+    // one" holds.
     let maxPlayerY = 200
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 130; i++) {
       game = gmod.stepGame(game)
       const p = playerIn(game.sim, 1)
       if (p?.entity) maxPlayerY = Math.max(maxPlayerY, p.entity.posY >> 8)

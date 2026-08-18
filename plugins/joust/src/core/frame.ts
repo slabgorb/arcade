@@ -391,7 +391,15 @@ function runBehaviour(
   // TROLL owns its fall now (PADGRA → ADDLAV, JOUSTRV4.SRC:1651). `demo.stepTrolls`
   // drives it with `stepGrip` (keeping its flap, replacing its gravity); stepping it
   // here too would double-integrate the fall and spend the flap twice.
-  if ((p as { grippedBy?: number }).grippedBy !== undefined) {
+  //
+  // jt13-10 — a bird SINKING in the lava (ADGFLR, JOUSTRV4.SRC:6523) is likewise off
+  // normal flight: it is dead and `stepSim`'s lava section owns its vertical descent
+  // (FLOOR+7 → FLOOR+20) and its frozen X. Stepping it here would fight that sink and
+  // sound a wing cue from a corpse.
+  if (
+    (p as { grippedBy?: number }).grippedBy !== undefined ||
+    (p as { lavaSink?: unknown }).lavaSink !== undefined
+  ) {
     return { process: p, budget }
   }
   if (p.kind === 'player' && p.entity) {

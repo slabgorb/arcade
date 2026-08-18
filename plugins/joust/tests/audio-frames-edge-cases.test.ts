@@ -466,7 +466,7 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // Reddened by: NOTHING, and correctly — see the battery note in the header.
     const kinds = Object.entries(CUE_SOURCES).map(([name, s]) => `${name}:${s.kind}`)
     expect(kinds.filter((k) => !k.endsWith(':rom'))).toEqual([])
-    expect(kinds.length, 'eighteen cues, all of them ROM-cited').toBe(18)
+    expect(kinds.length, 'twenty cues, all of them ROM-cited').toBe(20)
   })
 })
 
@@ -481,6 +481,9 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
 const WINDOWS_AT_HEAD: Record<SoundName, number> = {
   enemyDeath: 20,
   playerDeath: 20,
+  // jt13-10 — the two lava-death cues (SNPLAV/SNELAV), duration 30 each.
+  playerLavaDeath: 30,
+  enemyLavaDeath: 30,
   eggCollected: 30,
   eggHatched: 30,
   pteroArrives: 60,
@@ -506,7 +509,7 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
     // Reddened by: N16, the mutant that counts every other pair and so moves
     // pteroDeath, playerThud, enemyThud, pteroArrives and enemyMaterialise.
     expect(Object.keys(FRAME_DURATIONS).sort()).toEqual(Object.keys(WINDOWS_AT_HEAD).sort())
-    expect(Object.keys(FRAME_DURATIONS).length, 'eighteen cues').toBe(18)
+    expect(Object.keys(FRAME_DURATIONS).length, 'twenty cues (jt13-10 added SNPLAV/SNELAV)').toBe(20)
     for (const [name, frames] of Object.entries(WINDOWS_AT_HEAD)) {
       expect(FRAME_DURATIONS[name as SoundName], `${name} window`).toBe(frames)
     }
@@ -574,6 +577,6 @@ describe('jt9-5 AC5 — the eighteen shipped windows are unchanged, by value', (
       }
     }
     expect(odd, 'a shipped row that cannot be paired').toEqual([])
-    expect(rows, 'eighteen defining rows plus six continuation rows').toBe(24)
+    expect(rows, 'twenty defining rows plus six continuation rows').toBe(26)
   })
 })

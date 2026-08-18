@@ -281,7 +281,7 @@ async function need<K extends keyof ManifestSurface>(key: K): Promise<ManifestSu
   return value as ManifestSurface[K]
 }
 
-/** Only the `rom` entries, which is all seventeen-plus-one of them today. */
+/** Only the `rom` entries, which is all twenty of them today. */
 async function romSources(): Promise<[string, RomCueSource][]> {
   const sources = await need('CUE_SOURCES')
   return Object.entries(sources).filter((e): e is [string, RomCueSource] => e[1].kind === 'rom')
@@ -906,7 +906,7 @@ describe('jt5-6 AC3 — player 2 sounds SNPCR2, not player 1’s table', () => {
     // kind must play something.
     //
     // GREEN ON ARRIVAL, deliberately — say so rather than let it read as a
-    // failed RED. Today there are 18 cues and 17 kinds and every one is
+    // failed RED. Today there are 20 cues and 19 kinds and every one is
     // reachable, so it passes. It is a guard for the HALF-DONE state this
     // story can land in: the moment `player2Materialise` enters SOUNDS (and
     // the bake starts shipping its .wav) without the dispatch learning to
@@ -971,7 +971,7 @@ describe('jt5-6 AC4 — the new cue is baked, and it is a genuinely different so
     // the token-not-claim trap. SPECS is module-private, so behaviour is also
     // the only honest reach.
     //
-    // GREEN ON ARRIVAL, and say so: today's eighteen cues all have specs, so
+    // GREEN ON ARRIVAL, and say so: today's twenty cues all have specs, so
     // the bake completes. It bites the moment `player2Materialise` enters
     // SOUNDS without a SPECS row — which is the half-done state, and the one
     // that would abort `just deploy-assets` in front of a human rather than in

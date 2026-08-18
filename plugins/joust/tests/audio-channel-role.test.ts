@@ -653,11 +653,10 @@ function audioFiles(): string[] {
           // jt11-4 renamed `core/demo.ts` → `core/sim.ts`. The rename sweep could
           // not see this alternation (it is not the string `'demo.ts'`), so for one
           // commit the selector silently matched neither name and the game's
-          // LARGEST cue-emitting file dropped out of both guards below — while
-          // `SEVENTEEN_OK` kept an entry for cues nothing was checking any more.
+          // LARGEST cue-emitting file dropped out of the guard below.
           // Green tests, less coverage. `AUDIO_SCAN_REQUIRED` now fails loudly on
           // exactly that, because the non-vacuity counts cannot: other files supply
-          // enough claims and "seventeen"s to keep them satisfied.
+          // enough cue-count claims to keep them satisfied.
           /core[/\\](events|sim)\.ts$/.test(f)),
     )
 }
@@ -678,15 +677,6 @@ describe('jt9-28 AC5/AC6 — the read-set selector cannot be silently narrowed',
         `${required} must be inside the audio read-set — a rename or a regex edit dropped it, ` +
           `which weakens both guards below without reddening either`,
       ).toContain(required)
-    }
-  })
-
-  it('every SEVENTEEN_OK allow-list entry names a file that is actually scanned', () => {
-    // An allow-list entry for an UNSCANNED file is the fingerprint of exactly this
-    // failure: permission granted for cues no guard is reading any more.
-    const bases = new Set(audioFiles().map((f) => f.split('/').pop()!))
-    for (const base of Object.keys(SEVENTEEN_OK)) {
-      expect(bases, `SEVENTEEN_OK allows "seventeen" in ${base}, but no scanned file is named that`).toContain(base)
     }
   })
 })
@@ -736,62 +726,13 @@ describe('jt9-28 AC5/AC6 — every TOTALITY cue count in the audio subsystem is 
   })
 })
 
-// The event-kind / idiom uses that legitimately spell "seventeen" in an audio
-// file — keyed by basename AND an anchoring phrase, so a NEW stale "seventeen"
-// elsewhere in the same file is still caught.
-const SEVENTEEN_OK: Record<string, RegExp[]> = {
-  'events.ts': [/seventeen moments/i, /sixteen of the seventeen/i], // 17 EVENT KINDS
-  'sim.ts': [/seventeen cued moments/i], // 17 event-emission moments
-  'audio-transporter-split.test.ts': [/seventeen-plus-one/i], // means 18
-}
-
-/** Flagged "seventeen" windows in one file — every occurrence that is NOT an
- *  allow-listed event-kind / idiom use. */
-function staleSeventeens(base: string, flat: string): string[] {
-  const allow = SEVENTEEN_OK[base] ?? []
-  const bad: string[] = []
-  for (const m of flat.matchAll(/\bseventeen\b/gi)) {
-    const window = flat.slice(Math.max(0, m.index! - 45), m.index! + 45)
-    // A "seventeen" abutting another spelled number-word is a NUMBER_WORDS-style
-    // TABLE entry (…'sixteen', 'seventeen', 'eighteen'…), not prose — the trap
-    // the story flags for :446. "sixteen OF THE seventeen" (event kinds) has
-    // eight chars between, so it is NOT a table and stays with the allow-list.
-    if (/(sixteen|eighteen)['",:\s-]{0,4}seventeen|seventeen['",:\s-]{0,4}(sixteen|eighteen)/i.test(window)) continue
-    if (!allow.some((re) => re.test(window))) bad.push(window.trim())
-  }
-  return bad
-}
-
-describe('jt9-28 AC6 — no stale "seventeen" cue total survives in the audio subsystem', () => {
-  it('every "seventeen" in an audio file is an event-kind or "-plus-one" use, never a cue total', () => {
-    // Guard B (above) checks "N cues"; the ten sites also say "real records",
-    // "stand-ins", "Williams tables", "today" — this ratchet closes those.
-
-    // Synthetic controls (AC8): a fabricated stale total is flagged; the
-    // event-kind idiom is spared.
-    expect(
-      staleSeventeens('foo.ts', flatten('the manifest holds seventeen today')),
-      'a stale cue total must be flagged',
-    ).not.toEqual([])
-    expect(
-      staleSeventeens('sim.ts', flatten('six of the seventeen cued moments')),
-      'the event-emission idiom must be spared',
-    ).toEqual([])
-
-    const offenders: string[] = []
-    let scanned = 0
-    for (const f of audioFiles()) {
-      const flat = flatten(readFileSync(f, 'utf8'))
-      scanned += (flat.match(/\bseventeen\b/gi) ?? []).length
-      offenders.push(...staleSeventeens(f.split('/').pop()!, flat).map((w) => `${label(f)}: …${w}…`))
-    }
-    expect(scanned, 'non-vacuity: the scan saw no "seventeen" at all').toBeGreaterThan(3)
-    expect(
-      offenders,
-      `these read "seventeen" but joust ships ${CUE_COUNT} cues — each must read eighteen`,
-    ).toEqual([])
-  })
-})
+// jt13-10 RETIRED the AC6 "no stale seventeen" ratchet. That guard was a one-time
+// cleanup of the 17->18 cue-count transition's leftovers, and its own non-vacuity
+// (it FAILS when no "seventeen" remains to scan) declared its fate: this story moved
+// the cue count to 20 and the event-kind count to 19, corrected the last four
+// "seventeen" sites (events.ts, sim.ts, audio-transporter-split.test.ts), and so
+// left zero seventeens for it to guard. The dynamic AC5 guard below (every "N cues"
+// total must equal CUE_COUNT) is the ongoing protection and needs no per-number ratchet.
 
 // ─── AC7(a) — R1: the absolute-ban guard, repaired for a tense-less absolute ──
 //
