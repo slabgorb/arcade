@@ -75,3 +75,21 @@ green (the `df4` identity law, applied to values). Score pop-ups run as schedule
 | `*BONUS COLLECT` — wave-complete bonus per surviving human (`LDB PWAV,Y` multiplier, `CMPB #5` cap) | **min(wave,5) × 100** | `defender/DEFA7.SRC:1828`, `defender/DEFA7.SRC:1829` |
 | `REPLAY @10,000` — the extra-man threshold | one extra man every **10,000** points | `defender/ROMC8.SRC:801` |
 | `NSHIP` — starting men (lives) | the game starts with **3** men | `defender/ROMC8.SRC:802` |
+
+## End of game — game over, the hall of fame + the CMOS ledger (df5-6)
+
+The game ends when the current player's ship counter is exhausted: `PLE01` tests the active
+ships (`LDB PLAS,X`) and a 1-player game with none left falls through `BNE PLE02` to
+`PLE2 … GAME OVER`. `df5-3`'s men counter models that ship count, so the port's end-of-game
+condition is `men < 0`. The final score enters the hall of fame through the shared modules
+(`HALLOF`), and the cabinet's coin/credit audit — the `* CMOS RAM ALLOCATION` block — maps onto
+one-origin `localStorage` (the ADR-0004 cross-origin-cookie retirement).
+
+| Symbol | What it is | Where |
+|---|---|---|
+| `PLE2` — out-of-ships → GAME OVER: a 1-player game with no ships left (`BNE PLE02` fails) reaches `PLE2`; the port models it as the men counter falling below zero (`men < 0`) | the end-of-game condition | `defender/DEFA7.SRC:1423` |
+| `HALLOF` — HALL OF FAME ENTRY: the final score → the `@shared` hall of fame (initials + score, consumed not re-implemented) | hall-of-fame entry vector | `defender/AMODE1.SRC:119` |
+| `SLOT1` — left coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:20` |
+| `SLOT2` — center coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:21` |
+| `SLOT3` — right coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:22` |
+| `TOTPDC` — total paid credits (`* CMOS RAM ALLOCATION`) | credit audit → `localStorage` | `defender/ROMF8.SRC:23` |

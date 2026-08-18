@@ -26,7 +26,7 @@
 //   A glossary row + byte-verified claim pinning HALLOF (AMODE1.SRC:119) — the df1-1 gate.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -148,10 +148,14 @@ describe('df5-6 AC2 — @shared is CONSUMED, no bespoke high-score persistence i
     expect(usesFactory, 'the hall-of-fame persistence must use @shared makeHighScoreStorage').toBe(
       true,
     )
-    // …and no file may hand-roll a high-score board straight onto localStorage.
+    // …and no file may hand-roll a high-score board straight onto localStorage. Key on an
+    // actual localStorage ACCESS (member call or the globalThis/window global), never the bare
+    // token — a comment that merely says "no localStorage" is not a violation (lang-review #15).
+    const accessesLocalStorage = (t: string): boolean =>
+      /\blocalStorage\s*\.\s*\w/.test(t) || /\b(globalThis|window)\s*\.\s*localStorage\b/.test(t)
     const handRolled = files.filter(
       (f) =>
-        /localStorage/.test(f.text) &&
+        accessesLocalStorage(f.text) &&
         /high[-\s]?score/i.test(f.text) &&
         !/makeHighScoreStorage/.test(f.text),
     )
