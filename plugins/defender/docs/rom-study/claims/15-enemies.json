@@ -367,5 +367,50 @@
       "line": 418,
       "verbatim": "SWARMR\tFCC\t\"SWARMER/\""
     }
+  },
+  {
+    "id": "EN-42",
+    "claim": "A rescued/landed humanoid is returned to the astronaut ground row $E0: ASTS2 LDA #$E0 (then STA OY16,X) — the HUMANOID_GROUND_Y constant in core/landers.ts (df5-4 rescue re-ground).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1529,
+      "verbatim": "ASTS2\tLDA\t#$E0"
+    }
+  },
+  {
+    "id": "EN-43",
+    "claim": "Clearing an astronaut decrements the live-humanoid count ASTCNT: ASTCLR ... DEC ASTCNT — the zero-transition the df5-4 panic edges on.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 432,
+      "verbatim": "\tDEC\tASTCNT"
+    }
+  },
+  {
+    "id": "EN-44",
+    "claim": "When ASTCNT reaches zero (the last humanoid lost) the planet explodes: the ASTCLR handler fires NEWP TERBLO,STYPE BLOW UP TERRAIN — the df5-4 panic trigger, presented via the df4-2 terrain-blow ADR-0005 policy.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 434,
+      "verbatim": "\tNEWP\tTERBLO,STYPE BLOW UP TERRAIN"
+    }
+  },
+  {
+    "id": "EN-45",
+    "claim": "GTARG returns EQ when no humanoid remains (LDA ASTCNT / BEQ GTX NOBODY LEFT), and a re-targeting lander that gets that EQ FREAKS into a mutant: LBEQ SCZ00 NO, FREAK — the df5-4 en-masse lander->mutant transform on the zero-humanoid panic.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 710,
+      "verbatim": "\tLBEQ\tSCZ00\tNO, FREAK"
+    }
+  },
+  {
+    "id": "EN-46",
+    "claim": "The player catching a FALLING astronaut is the AKIL1 player-collision path (AKIL1 LDU OBJID,X ... branch on 'falling'), which spawns the P500 rescue pop-up — the df5-4 catch mechanic (the P500 VALUE is score.ts/df5-3).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 398,
+      "verbatim": "AKIL1\tLDU\tOBJID,X"
+    }
   }
 ]

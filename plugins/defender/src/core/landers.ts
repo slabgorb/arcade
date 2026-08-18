@@ -32,6 +32,8 @@
 
 import type { Scheduler, Process } from './scheduler.js'
 import { YMIN, YMAX, type Facing } from './world.js'
+import { collide, type Query, type Box, type CollObject } from './collision.js'
+import type { EffectEvent } from './effects.js'
 
 /** LDA #YMIN+2 / STA OY16 (DEFB6.SRC:663-664) — landers appear two rows below the top. */
 export const LANDER_SPAWN_Y = YMIN + 2
@@ -41,6 +43,16 @@ export const LANDER_TOP_Y = YMIN + 8
 export const AFALL_ACCEL = 8
 /** CMPD #$300 (DEFB6.SRC:930) — the AFALL terminal fall-speed cap. */
 export const AFALL_MAX_FALL = 0x300
+/** ASTS2 `LDA #$E0` (DEFA7.SRC:1529, claim EN-42) — the astronaut ground row a humanoid
+ *  returns to when the ship CATCHES it mid-fall (the df5-4 rescue re-ground; the ROM
+ *  re-grounds the caught astro at ALAND0). */
+export const HUMANOID_GROUND_Y = 0xe0
+
+/** The astronaut collision box for the df5-4 catch — ASTP1 is 2 bytes wide (×2 px/byte = 4)
+ *  × 8 tall (objects-data.ts ASTP1, DEFB6.SRC:1913; the object table owns and byte-verifies
+ *  these dims, so no per-consumer re-claim — the sim treats LANDER_PICTURE's dims the same).
+ *  The catch tests the ship box against it through the df4-1 COLIDE seam. */
+const HUMANOID_BOX: Box = { width: 4, height: 8 }
 
 // ─── Exact ROM magnitudes (byte-cited; claims EN-10..EN-14) ──────────────────────────
 /** Lander horizontal hunt step toward the target column: the LANDG ±$20 move (DEFB6.SRC:759). */
@@ -89,6 +101,17 @@ export interface Lander {
   readonly reachedTop: boolean
 }
 
+/** The df5-4 PANIC (AC2/AC3): the signature terror. The frame the last humanoid is lost,
+ *  the planet explodes and every surviving lander freaks into a mutant, en masse. */
+export interface PanicResult {
+  /** Every alive lander, now `reachedTop`-latched — eligible for mutants.ts transformLander
+   *  (the df4-4 SCZ transform, REUSED not re-modelled). */
+  readonly landersFreaked: readonly Lander[]
+  /** The planet explosion — the ROM's TERBLO terrain-blow (NEWP TERBLO,STYPE DEFB6.SRC:434,
+   *  claim EN-44). Routed through the df4-2 ADR-0005 policy (classify → a SAFE variant). */
+  readonly effectEvent: EffectEvent
+}
+
 /** The enemy bank: landers + the humanoids they hunt, all processes on ONE scheduler. */
 export interface EnemyBank {
   readonly landers: readonly Lander[]
@@ -101,6 +124,19 @@ export interface EnemyBank {
   /** Kill a lander (LKIL1, DEFB6.SRC:905). If it was CARRYING, the humanoid is dropped into an
    *  AFALL free-fall (NEWP AFALL,STYPE :911); a lander carrying nobody drops no one. */
   killLander: (lander: Lander) => void
+  /** df5-4 AC1 — the RESCUE. Test the ship box against the FALLING humanoids through the
+   *  df4-1 COLIDE seam (AKIL1 player-vs-astro, DEFB6.SRC:398, claim EN-46); each box-overlap
+   *  catch returns that astro to the terrain ('walking', re-grounded at HUMANOID_GROUND_Y)
+   *  and ends its AFALL. Walking/grabbed astros are NOT catchable. Returns the caught
+   *  humanoids ([] on none, or on a non-finite ship coord). */
+  catchFalling: (ship: Query) => readonly Humanoid[]
+  /** df5-4 AC2 — the PANIC. A ONE-SHOT edge: the frame the live humanoid population first
+   *  reaches zero (ASTCLR DEC ASTCNT→0 → NEWP TERBLO, DEFB6.SRC:432,434) the planet explodes
+   *  and every alive lander freaks (reachedTop ← true; GTARG-EQ → LBEQ SCZ00 :633,710).
+   *  Returns null while any humanoid is alive, if no humanoid was EVER present (no
+   *  transition — the fresh-wave LNDST0 JMP SCZS0 case), or once it has already fired
+   *  (idempotent — NOT per-frame). */
+  panic: () => PanicResult | null
 }
 
 /** The internal mutable humanoid record — `Humanoid` is its read-only face. */
@@ -145,6 +181,11 @@ function approach(from: number, to: number, step: number): number {
 export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank {
   const humanoids: HumanoidRecord[] = []
   const landers: LanderRecord[] = []
+  // The df5-4 panic edges on a TRANSITION, so it needs both: whether a humanoid ever existed
+  // (a 0-count start is the LNDST0 JMP SCZS0 fresh-wave case, not the panic) and whether the
+  // one-shot TERBLO has already fired (the BNE ASTCX guard — once, never per frame).
+  let humanoidEverSpawned = false
+  let panicFired = false
 
   const removeHumanoid = (rec: HumanoidRecord): void => {
     const i = humanoids.indexOf(rec)
@@ -188,14 +229,10 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     return fall
   }
 
-  const spawnHumanoid = (x: number, y: number): Humanoid | null => {
-    // Module boundary (lang-review #21, mirroring laser.ts's fire guard): a non-finite
-    // coord would make the walk/grab arithmetic NaN and never converge — reject it.
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
-
-    const rec: HumanoidRecord = { x, y, facing: 'right', state: 'walking', alive: true, vy: 0, dir: 1 }
-    humanoids.push(rec)
-
+  // ASTRO (DEFB6.SRC:290): a humanoid walks the terrain as a scheduler process. Extracted so a
+  // df5-4 RESCUE can put a CAUGHT astro back on the terrain and walking again (the ROM re-grounds
+  // and resumes it at ALAND0) — the same process shape, re-armed.
+  const armWalk = (rec: HumanoidRecord): void => {
     const step = (_self: Process, s: Scheduler): void => {
       if (!rec.alive || rec.state !== 'walking') return // grabbed/falling: another process owns it
       // Occasionally turn around (ASTRO reads SEED, DEFB6.SRC:311); constant entropy → steady walk.
@@ -205,6 +242,17 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
       s.sleep(2, step) // NAP 2,ASTRO (DEFB6.SRC:359)
     }
     sched.makeProcess(step, HUMANOID_PTYPE)
+  }
+
+  const spawnHumanoid = (x: number, y: number): Humanoid | null => {
+    // Module boundary (lang-review #21, mirroring laser.ts's fire guard): a non-finite
+    // coord would make the walk/grab arithmetic NaN and never converge — reject it.
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null
+
+    humanoidEverSpawned = true // arm the panic edge: the field has now held ≥1 humanoid
+    const rec: HumanoidRecord = { x, y, facing: 'right', state: 'walking', alive: true, vy: 0, dir: 1 }
+    humanoids.push(rec)
+    armWalk(rec)
     return rec
   }
 
@@ -298,6 +346,47 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     removeLander(rec) // its own process SUCIDEs on its next wake (guard at the top)
   }
 
+  // ── df5-4 AC1: the RESCUE catch (AKIL1, DEFB6.SRC:398) — the df4-1 COLIDE seam over the
+  //    FALLING astros; a box-overlap catch re-grounds the astro (ALAND0), walking. ──
+  const catchFalling = (ship: Query): readonly Humanoid[] => {
+    // Module boundary (lang-review #21, the spawn-guard precedent): a non-finite ship pose
+    // catches no one — never feed NaN into the collision box arithmetic.
+    if (!Number.isFinite(ship.x) || !Number.isFinite(ship.y)) return []
+
+    const caught: HumanoidRecord[] = []
+    for (const h of humanoids) {
+      if (!h.alive || h.state !== 'falling') continue // only an astro in AFALL is catchable
+      // Reuse df4-1 collision (a one-object COLIDE list per astro), NOT a re-derived overlap (AC1).
+      const candidate: CollObject = { id: 'astro', x: h.x, y: h.y, picture: HUMANOID_BOX }
+      if (collide(ship, [candidate]) === null) continue
+      // Caught: end the AFALL, return it to the ground row (ALAND0), and set it walking again.
+      h.state = 'walking'
+      h.y = HUMANOID_GROUND_Y
+      h.vy = 0
+      armWalk(h) // its AFALL process SUCIDEs on its next wake (state !== 'falling'); a fresh walk resumes
+      caught.push(h)
+    }
+    return caught
+  }
+
+  // ── df5-4 AC2/AC3: the PANIC — the one-shot zero-humanoid edge (ASTCLR DEC ASTCNT→0,
+  //    DEFB6.SRC:432) that explodes the planet (NEWP TERBLO :434) and freaks every lander. ──
+  const panic = (): PanicResult | null => {
+    if (panicFired) return null // the BNE ASTCX guard: TERBLO fires ONCE, never per frame
+    if (!humanoidEverSpawned) return null // a 0-count START is LNDST0 JMP SCZS0, not the panic
+    if (humanoids.some((h) => h.alive)) return null // a humanoid still lives (a faller can be caught)
+
+    // Every surviving lander FREAKS into a mutant: GTARG returns EQ (LDA ASTCNT / BEQ GTX
+    // NOBODY LEFT :633) so the re-targeting lander LBEQ SCZ00 (:710). The freak latches
+    // reachedTop — the df4-4 transform trigger mutants.ts transformLander CONSUMES (reuse).
+    panicFired = true
+    const survivors = landers.filter((l) => l.alive)
+    for (const l of survivors) l.reachedTop = true
+    // The planet explosion is the ROM's TERBLO terrain-blow (:434), presented by the df4-2
+    // ADR-0005 policy (classify('terrain-blow') → the SAFE particle variant).
+    return { landersFreaked: survivors.slice(), effectEvent: 'terrain-blow' }
+  }
+
   return {
     get landers(): readonly Lander[] {
       return landers.slice()
@@ -308,5 +397,7 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     spawnHumanoid,
     spawnLander,
     killLander,
+    catchFalling,
+    panic,
   }
 }
