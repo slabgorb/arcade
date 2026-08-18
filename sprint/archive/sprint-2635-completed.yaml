@@ -14,6 +14,7 @@ completed_epics:
   - df4
   - mc12
   - ml13
+  - jt13
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -255,4 +256,14 @@ completed_stories:
     epic: jt13
     title: "Retire joust's dead twins (per-symbol: delete behavioral-only, keep claim-pinned)"
     points: 5
+    completed: '2026-08-18'
+  - id: jt13-11
+    epic: jt13
+    title: 'Lava cinematic for the troll grip-drown: route stepTrolls gs.inLava through the ADGFLR sink + SNPLAV/SNELAV cue'
+    points: 2
+    completed: '2026-08-18'
+  - id: jt13-12
+    epic: jt13
+    title: "Wire the TREFF phase-2 idle colour-cycle into the playable game: hold the re-materialising bird stationary on its pad, render the accelerating owner/white/grey (TREPL) tint through drawList/paintWarpIn, and release on the player's flap (or the ~376-nap timeout). jt13-9 shipped the pure IdleCycleState + sim state but nothing draws it and the bird falls during the wait; this makes it visible and correct in-play."
+    points: 3
     completed: '2026-08-18'
