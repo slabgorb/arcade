@@ -406,6 +406,20 @@ function runBehaviour(
   }
   if (p.kind === 'player' && p.entity) {
     const input = inputs?.[p.id] ?? NEUTRAL_INPUT
+    // jt13-14 — the TREFF hold (the physics half of jt13-12). A re-materialising player stands
+    // planted on its pad through the grow-in (`warpIn`) and the wait-for-first-move idle
+    // colour-cycle (`idleCycle`), running NO flight physics, until its FIRST FLAP — the same
+    // CURJOY≠0 'moved' edge `advanceWarpIn` keys on (sim.ts). Skip the flight step while held.
+    // Without it the airborne respawn integrates gravity through the whole ~6.4 s wait and only
+    // stays on its pad by ACCIDENTALLY landing on a platform that sits at the pad Y (the ROM
+    // holds it by the TREFF logic itself, JOUSTRV4.SRC:5726-5890). The warp-in fields live on
+    // `SimProcess`, read here the same cast-based way the grip/lava-sink skip above reads its.
+    const warpIn = (p as { warpIn?: { done: boolean } }).warpIn
+    const idleCycle = (p as { idleCycle?: { end: string } }).idleCycle
+    const heldInWarpIn = warpIn !== undefined && (idleCycle === undefined || idleCycle.end === 'active')
+    if (heldInWarpIn && !input.flap) {
+      return { process: p, budget }
+    }
     // A bare scheduler process may carry no facing → treat as right-facing.
     const facing: -1 | 1 = p.facing ?? 1
     // jt5-3: captured BEFORE the step — the law reads the LEVEL this player

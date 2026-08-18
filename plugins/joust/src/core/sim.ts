@@ -2371,7 +2371,10 @@ function advanceWarpIn(p: SimProcess, flapped: boolean): SimProcess {
   if (p.warpIn && !p.warpIn.done) return { ...p, warpIn: stepWarpIn(p.warpIn) }
   if (!p.warpIn?.done) return p
 
-  // Phase 2 — open the idle colour-cycle the frame after the grow-in finishes.
+  // Phase 2 — open the idle colour-cycle the frame after the grow-in finishes. (jt13-14's TREFF
+  // hold in frame.ts already spans the one-frame seam between `warpIn.done` and this open — it
+  // holds while `warpIn` exists and no terminal idle has replaced it — so the bird never falls
+  // in the gap even though the idle field appears a frame later.)
   if (!p.idleCycle) {
     const owner: IdleOwner = p.kind === 'player' ? 'player' : 'enemy'
     return { ...p, idleCycle: startIdleCycle(owner) }

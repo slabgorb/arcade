@@ -55,9 +55,18 @@ type Idle = { end: 'active' | 'moved' | 'timed-out' }
 const warpOf = (p: SimProcess | undefined): Warp | undefined => p?.warpIn as Warp | undefined
 const idleOf = (p: SimProcess | undefined): Idle | undefined => p?.idleCycle as Idle | undefined
 
-/** In the TREFF wait = the grow-in is unfinished OR the idle colour-cycle is still active. */
-const inWarpInWait = (p: SimProcess | undefined): boolean =>
-  warpOf(p)?.done === false || idleOf(p)?.end === 'active'
+/**
+ * In the TREFF wait = the arrival still carries a `warpIn` and no TERMINAL idle end has replaced
+ * it. This spans the whole wait CONTINUOUSLY: the grow-in, the one-frame seam where `warpIn.done`
+ * has flipped but the idle field has not yet opened (advanceWarpIn opens it the next frame), and
+ * the active idle colour-cycle — right up to the 'moved'/'timed-out' release. Matching the hold's
+ * own predicate is deliberate: it is exactly the window in which the bird must stand on its pad.
+ */
+const inWarpInWait = (p: SimProcess | undefined): boolean => {
+  if (warpOf(p) === undefined) return false
+  const end = idleOf(p)?.end
+  return end === undefined || end === 'active'
+}
 
 /** Fresh seated 2P game (so a knight can die and re-materialise), exactly as jt13-12 drives it. */
 function seatedGame(seed: number): GameState {

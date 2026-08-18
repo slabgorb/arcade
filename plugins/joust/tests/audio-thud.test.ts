@@ -899,7 +899,7 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     expect(thudsOf(eventsOf(fired))).toEqual([ENEMY_THUD])
   })
 
-  it('seed 0x1035, frame 505: a buzzard bumps a knight — a PERSON thud', () => {
+  it('seed 0x10b6, frame 1545: a buzzard bumps a knight — a PERSON thud', () => {
     // The case derived AC3 would have left silent: enemy-vs-player, not
     // player-vs-player. Measured — the frame before emits NOTHING at all, so both
     // streams can be asserted exactly: the thud arrives with the knight's own
@@ -1034,9 +1034,29 @@ describe('jt5-4 — the thuds happen in ordinary play', () => {
     // 1713, where 0x1001 is the lowest of the seeds tied there (0x1006, 0x1034, 0x107a … also
     // tie) — the same "earliest frame, lowest seed" rule every prior move used. The assertion
     // is unchanged: it still pins the SNPTHD (person) path, not SNETHD (enemy).
-    const before = stepGame(advanceTo(0x1001, 1712), inputsAt(1712))
+    //
+    // jt13-14 RE-BASELINE (the TREFF hold went live in frame.ts: a re-materialising
+    // player runs NO flight physics during its warp-in wait — held on its pad airborne,
+    // velY=0, position frozen — until its first flap, instead of falling and landing):
+    // seed 0x1001 frame 1713 -> seed 0x10b6 frame 1545, the SEED had to move — the
+    // empty-solution case again, re-found by SWEEPING, not by relaxing either assertion.
+    // The held respawns perturb every post-death trajectory, so 0x1001's old clean
+    // contact is gone. Re-swept the same [0x1000,0x1120) over 2500 frames by this
+    // test's own precondition (a stream of EXACTLY one `player-thud`, with a silent
+    // frame before): the earliest clean hit is now frame 1545, where 0x10b6 is the
+    // lowest of the seeds tied there (0x10d2, 0x10d6, 0x10f7 also tie) — the same
+    // "earliest frame, lowest seed" rule every prior move used. 1545 % 13 = 11, not a
+    // flap frame, so no knight wing cue rides along. Re-verified enemy-vs-PLAYER from
+    // the process positions rather than assumed: entering frame 1545 the buzzard
+    // `enemy#257` stands at (100,80) and knight `player#2` at (113,80) — the same row,
+    // and 113 is the TR1 pad: the bumped knight is the pad-HELD re-materialised player
+    // itself — while `player#1` is far away at (168,174). The bounce lands on that pair
+    // and nothing else: the buzzard, the earlier process (OSTXTP's REG.U), is pushed
+    // DOWN to y=82 and the knight UP to y=78. The assertion is unchanged: it still
+    // pins the SNPTHD (person) path, not SNETHD (enemy).
+    const before = stepGame(advanceTo(0x10b6, 1544), inputsAt(1544))
     expect(eventsOf(before), 'the frame BEFORE emits nothing at all').toEqual([])
-    const fired = stepGame(advanceTo(0x1001, 1713), inputsAt(1713))
+    const fired = stepGame(advanceTo(0x10b6, 1545), inputsAt(1545))
     expect(eventsOf(fired)).toEqual([PLAYER_THUD])
     expect(eventsOf(fired), 'this is the SNPTHD path, not the SNETHD one').not.toContain(ENEMY_THUD)
   })
