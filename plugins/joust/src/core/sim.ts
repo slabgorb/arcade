@@ -1140,9 +1140,17 @@ function stepTrolls(
         victim.grippedBy = undefined
         removed.add(troll.id)
       } else if (gs.inLava) {
-        // Pulled under: the bird dies with the troll.
+        // Pulled under (jt13-11). The ROM's ADDLAV JMPs into the SAME ADGFLR
+        // cinematic the non-gripped swim death uses (~:6643), so a gripped drown
+        // is NOT a silent same-frame removal: it SINKS FLOOR+7 -> FLOOR+20 and
+        // sounds SNPLAV/SNELAV, identically to `stepLavaDeath`. Hand the victim to
+        // that same onset — clearing the grip so the post-`stepTrolls` sink filter
+        // (and frame.ts) treat it as a sinking body — and sound its cue once here.
+        // The troll is still consumed (LT2DIE).
+        const sunk = stepLavaDeath({ ...victim, grippedBy: undefined })
+        if (sunk.cue) cues.push(sunk.cue)
+        if (sunk.process) byId.set(victim.id, sunk.process)
         removed.add(troll.id)
-        removed.add(victim.id)
       } else {
         troll.grip = grip
         victim.grippedBy = troll.id
