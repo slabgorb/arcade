@@ -174,3 +174,8 @@ completed_stories:
     title: "Entry screen 'new mount every' line: read the setting or remove it"
     points: 2
     completed: '2026-08-17'
+  - id: df5-1
+    epic: df5
+    title: "Scanner core FIRST (RED first, TDD): plugins/defender/src/core/scanner.ts — port the ROM SCNR world->radar projection (*SCANNER defender/AMODE1.SRC:1180, bezel *SCANNER BEZEL :1225, vector JMP SCNR :115, init JSR SCINIT :476), reading the df3 world.ts model; every live object -> a blip (radar position + palette INDEX), with the $10000 horizontal wrap seam correct. Pure and clock-free, tested against SYNTHETIC object lists BEFORE any HUD draws it — the projection every later df5 story and df7's HUD inherit. NOT a re-derived minimap (Decision A). purity.test.ts stays green; every constant gated by a claims/*.json entry."
+    points: 5
+    completed: '2026-08-18'
