@@ -43,9 +43,13 @@ export const LANDER_TOP_Y = YMIN + 8
 export const AFALL_ACCEL = 8
 /** CMPD #$300 (DEFB6.SRC:930) — the AFALL terminal fall-speed cap. */
 export const AFALL_MAX_FALL = 0x300
-/** ASTS2 `LDA #$E0` (DEFA7.SRC:1529, claim EN-42) — the astronaut ground row a humanoid
- *  returns to when the ship CATCHES it mid-fall (the df5-4 rescue re-ground; the ROM
- *  re-grounds the caught astro at ALAND0). */
+/** The terrain-surface base row a rescued humanoid is deposited at: BGALT ROFF
+ *  `LDA #$E0 SET BASE OFFSET` (BLK71.SRC:380, claim EN-42) — the same flat ground `sim.ts`
+ *  spawns humanoids at (terrain.ts `BASE_OFFSET`). This is NOT the `ASTS2` wave-spawn line,
+ *  and `ALAND0` (the ROM's caught-astro resolve, DEFB6.SRC:961) writes no ground row at all —
+ *  the ROM lands the caught astro at its per-column `GETALT` altitude after an `AFALL2`
+ *  ship-tracking descent. df5-4 deposits at the flat base instead (a logged Design Deviation:
+ *  per-column terrain landing + the ride-down descent defer to the world/terrain wiring). */
 export const HUMANOID_GROUND_Y = 0xe0
 
 /** The astronaut collision box for the df5-4 catch — ASTP1 is 2 bytes wide (×2 px/byte = 4)
@@ -150,6 +154,11 @@ interface HumanoidRecord {
   vy: number
   /** Current walk direction (±1), the ASTRO left/right choice. */
   dir: number
+  /** Movement-process GENERATION. Bumped every time a walk/fall process is armed for this
+   *  record; each process captures its generation and SUICIDEs once it is superseded. This is
+   *  the liveness discriminant — NOT `state` — because a rescue can cycle state falling→walking,
+   *  and a stale walk process must not revive when it does (df5-4 review F2). */
+  moveGen: number
 }
 
 type LanderPhase = 'descend' | 'carry' | 'done'
@@ -213,8 +222,12 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
 
   // ── AFALL: a dropped humanoid accelerates downward from rest (+8/tick, capped $300). ──
   const makeFall = (rec: HumanoidRecord) => {
+    rec.moveGen += 1 // supersede any prior movement process for this astro (see moveGen)
+    const gen = rec.moveGen
     const fall = (_self: Process, s: Scheduler): void => {
-      if (!rec.alive || rec.state !== 'falling') return // grounded/rescued (df5) or gone
+      // Superseded (re-armed as walk/fall), grounded/rescued, or gone → SUICIDE. The moveGen
+      // check is what lets a rescue retire THIS process even if a later drop cycles state back.
+      if (!rec.alive || rec.state !== 'falling' || rec.moveGen !== gen) return
       rec.vy = Math.min(rec.vy + AFALL_ACCEL, AFALL_MAX_FALL) // ADDD #8 / CMPD #$300
       // The velocity accumulates in the ROM's 16-bit OYV units (8..768); the DISPLAYED row
       // advances by vy>>3 — the placeholder row-scale of that fixed-point speed (laser STEP
@@ -230,11 +243,18 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
   }
 
   // ASTRO (DEFB6.SRC:290): a humanoid walks the terrain as a scheduler process. Extracted so a
-  // df5-4 RESCUE can put a CAUGHT astro back on the terrain and walking again (the ROM re-grounds
-  // and resumes it at ALAND0) — the same process shape, re-armed.
+  // df5-4 RESCUE can put a CAUGHT astro back on the terrain, walking again — the ROM resumes the
+  // caught astro walking at ALAND0 (DEFB6.SRC:961) after AFALL2 rides it down; ALAND0 does not
+  // write a ground row (df5-4 deposits at the terrain base, see catchFalling). Same process shape,
+  // re-armed. The moveGen bump retires any process this record still holds (a stale walk/fall).
   const armWalk = (rec: HumanoidRecord): void => {
+    rec.moveGen += 1 // supersede any prior movement process for this astro (see moveGen)
+    const gen = rec.moveGen
     const step = (_self: Process, s: Scheduler): void => {
-      if (!rec.alive || rec.state !== 'walking') return // grabbed/falling: another process owns it
+      // Superseded (re-armed) or grabbed/falling/gone → SUICIDE. Checking moveGen — not `state`
+      // alone — is what stops a stale walk process from reviving when a rescue cycles the record
+      // back to 'walking' (df5-4 review F2: the falling→walking path the old guard assumed impossible).
+      if (!rec.alive || rec.state !== 'walking' || rec.moveGen !== gen) return
       // Occasionally turn around (ASTRO reads SEED, DEFB6.SRC:311); constant entropy → steady walk.
       if (rand() < WALK_TURN_THRESHOLD) rec.dir = -rec.dir
       rec.facing = rec.dir > 0 ? 'right' : 'left'
@@ -250,7 +270,7 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     if (!Number.isFinite(x) || !Number.isFinite(y)) return null
 
     humanoidEverSpawned = true // arm the panic edge: the field has now held ≥1 humanoid
-    const rec: HumanoidRecord = { x, y, facing: 'right', state: 'walking', alive: true, vy: 0, dir: 1 }
+    const rec: HumanoidRecord = { x, y, facing: 'right', state: 'walking', alive: true, vy: 0, dir: 1, moveGen: 0 }
     humanoids.push(rec)
     armWalk(rec)
     return rec
@@ -347,7 +367,9 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
   }
 
   // ── df5-4 AC1: the RESCUE catch (AKIL1, DEFB6.SRC:398) — the df4-1 COLIDE seam over the
-  //    FALLING astros; a box-overlap catch re-grounds the astro (ALAND0), walking. ──
+  //    FALLING astros. The ROM catch (AFALL2 :945) rides the astro down with the ship to its
+  //    per-column GETALT altitude (ALAND0 :961, walking); df5-4 deposits at the flat terrain
+  //    base HUMANOID_GROUND_Y instead — the logged Design Deviation. ──
   const catchFalling = (ship: Query): readonly Humanoid[] => {
     // Module boundary (lang-review #21, the spawn-guard precedent): a non-finite ship pose
     // catches no one — never feed NaN into the collision box arithmetic.
@@ -359,11 +381,11 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
       // Reuse df4-1 collision (a one-object COLIDE list per astro), NOT a re-derived overlap (AC1).
       const candidate: CollObject = { id: 'astro', x: h.x, y: h.y, picture: HUMANOID_BOX }
       if (collide(ship, [candidate]) === null) continue
-      // Caught: end the AFALL, return it to the ground row (ALAND0), and set it walking again.
+      // Caught: end the AFALL and deposit it at the terrain base (HUMANOID_GROUND_Y), walking.
       h.state = 'walking'
       h.y = HUMANOID_GROUND_Y
       h.vy = 0
-      armWalk(h) // its AFALL process SUCIDEs on its next wake (state !== 'falling'); a fresh walk resumes
+      armWalk(h) // bumps moveGen → the AFALL process is superseded and SUICIDEs on its next wake
       caught.push(h)
     }
     return caught

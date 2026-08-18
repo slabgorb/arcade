@@ -370,11 +370,11 @@
   },
   {
     "id": "EN-42",
-    "claim": "A rescued/landed humanoid is returned to the astronaut ground row $E0: ASTS2 LDA #$E0 (then STA OY16,X) — the HUMANOID_GROUND_Y constant in core/landers.ts (df5-4 rescue re-ground).",
+    "claim": "The humanoid ground row is the terrain-surface base offset $E0: BGALT sets ROFF = $E0 (LDA #$E0 SET BASE OFFSET) as the base the per-column altitude table walks from — the HUMANOID_GROUND_Y constant in core/landers.ts (= terrain.ts BASE_OFFSET) a rescued astro is deposited at. This is the flat terrain base, NOT the ASTS2 wave-spawn row and NOT written by the ROM's ALAND0 catch-resolve; df5-4 deposits here as a documented simplification of the ROM's per-column GETALT landing.",
     "source": {
-      "file": "DEFA7.SRC",
-      "line": 1529,
-      "verbatim": "ASTS2\tLDA\t#$E0"
+      "file": "BLK71.SRC",
+      "line": 380,
+      "verbatim": "\tLDA\t#$E0\tSET BASE OFFSET"
     }
   },
   {
