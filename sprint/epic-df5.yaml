@@ -78,7 +78,8 @@ stories:
     description: 'Decision A: ROM-always-wins. The scanner is a projection of the df3 world.ts model (BGL camera + $10000 wrap + worldX helper), not a second coordinate system — collision (df4-1) and the scanner read the SAME model (the df4 spec named this). A cleaner "world width / radar width" minimap would silently misplace the wrap seam and the off-camera attackers the player relies on the radar to see (routing != geometry, the df3 lesson). Pure; reads df3 world.ts; colour by df2 palette index only.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
