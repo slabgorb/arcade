@@ -53,7 +53,7 @@
 import { describe, it, expect } from 'vitest'
 import { createScheduler, type Scheduler, type Process } from '../src/core/scheduler.js'
 import { YMIN, wrap16, type Facing } from '../src/core/world.js'
-import { classify, assertNoFullFrameStrobe, type EffectPolicy } from '../src/core/effects.js'
+import { classify, assertNoFullFrameStrobe } from '../src/core/effects.js'
 import { loadClaims } from './audit/dossier-sweep.js'
 
 // ─── The contract this RED pins. Dev implements it in powers.ts (GREEN). ──────────────
@@ -137,11 +137,6 @@ async function loadPowers(): Promise<PowersModule> {
     )
   }
 }
-
-// classify() does not yet know the two df5 events — call it through a widened type so this
-// suite COMPILES; at runtime today it hits effects.ts's assertNever and throws (RED), and
-// GREEN adds 'smart-bomb'/'hyperspace' to EffectEvent + classify.
-const classifyEvent = classify as unknown as (event: string) => EffectPolicy
 
 // A deterministic injected rng: successive bytes 0..255 (the shell's seeded seam, never
 // Math.random — purity.test.ts holds the line). Wraps so a bounds sweep can over-draw.
@@ -293,14 +288,14 @@ describe('df5-5 AC-3 — hyperspace draws from the injected seeded rng seam, det
 // ══════════════════════════════════════════════════════════════════════════════════════
 describe('df5-5 AC-2 — the powers present through the df4-2 policy as seizure-safe variants (ADR-0005)', () => {
   it('classify("smart-bomb") is a FULL-FRAME-STROBE rendered SAFE — the COM PCRAM invert (:3199) substituted', () => {
-    const p = classifyEvent('smart-bomb')
+    const p = classify('smart-bomb')
     expect(p.class).toBe('full-frame-strobe')
     expect(['freeze', 'fade', 'particle'], 'a safe variant, never a raster strobe').toContain(p.presentation)
     expect(p.presentation).not.toBe('raster')
   })
 
   it('classify("hyperspace") is a FULL-FRAME-STROBE rendered SAFE — the screen-clear substituted', () => {
-    const p = classifyEvent('hyperspace')
+    const p = classify('hyperspace')
     expect(p.class).toBe('full-frame-strobe')
     expect(['freeze', 'fade', 'particle']).toContain(p.presentation)
     expect(p.presentation).not.toBe('raster')
