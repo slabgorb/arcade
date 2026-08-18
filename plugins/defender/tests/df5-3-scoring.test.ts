@@ -38,9 +38,9 @@ interface ScoreModule {
   readonly ENEMY_POINTS: Record<EnemyKind, number>
   /** BKIL LDD #$25 — shooting a bomber's laid bomb/mine. */
   readonly BOMB_POINTS: number
-  /** P250 — catching a falling humanoid mid-air. */
-  readonly CATCH_POINTS: number
-  /** P500 — returning a caught humanoid to the ground. */
+  /** P250 — an UNCAUGHT humanoid falls and lands safely on its own. */
+  readonly SAFE_LANDING_POINTS: number
+  /** P500 — the player CATCHES a falling humanoid and/or returns it to the ground. */
   readonly RESCUE_POINTS: number
   /** *BONUS COLLECT — wave-complete bonus per surviving human = min(wave,5) × 100. */
   bonusPerHuman(wave: number): number
@@ -80,16 +80,18 @@ describe('df5-3 AC-2 — score.ts awards the ROM point values on each kill event
     expect(score.ENEMY_POINTS).toEqual(ROM_ENEMY_POINTS)
   })
 
-  it('the bomb, catch and rescue values are 25 / 250 / 500', () => {
+  it('the bomb, safe-landing and rescue values are 25 / 250 / 500', () => {
     expect(score.BOMB_POINTS, 'BKIL LDD #$25').toBe(25)
-    expect(score.CATCH_POINTS, 'P250 caught mid-air').toBe(250)
-    expect(score.RESCUE_POINTS, 'P500 returned to ground').toBe(500)
+    expect(score.SAFE_LANDING_POINTS, 'P250 — uncaught humanoid lands safely').toBe(250)
+    expect(score.RESCUE_POINTS, 'P500 — player catches / returns humanoid').toBe(500)
   })
 
-  it('the catch value (250) and the rescue value (500) are NOT swapped — the ROM pays MORE to land it', () => {
-    // The trap the story names: P250 is the mid-air catch, P500 the return-to-ground.
-    // A swap passes every per-value test above yet is wrong; pin the ordering directly.
-    expect(score.RESCUE_POINTS).toBeGreaterThan(score.CATCH_POINTS)
+  it('the ROM pays MORE for a catch/rescue (P500=500) than for an uncaught safe landing (P250=250)', () => {
+    // The trap the story names, corrected in review: catching a falling humanoid spawns P500
+    // (NEWP P500,STYPE DEFB6.SRC:408) = 500. P250 (250) is the UNCAUGHT humanoid landing safely
+    // on its own (LDX #P250 at ALAND, DEFB6.SRC:959). A swap passes every per-value test above
+    // yet inverts which event pays which; pin the ordering directly.
+    expect(score.RESCUE_POINTS).toBeGreaterThan(score.SAFE_LANDING_POINTS)
   })
 })
 
@@ -129,6 +131,13 @@ describe('df5-3 AC-3 — the men counter, and the extra man tested BY COUNT (not
   it('one award spanning TWO thresholds grants exactly two men — not one, not three', () => {
     const s = score.addPoints({ score: 0, men: 3 }, 25_000) // crosses 10k and 20k
     expect(s.men).toBe(5)
+  })
+
+  it('one award spanning THREE thresholds grants exactly three men (no cap at two)', () => {
+    // Guards against a `Math.min(granted, 2)`-shaped regression: the award must scale with
+    // the count of thresholds crossed, unbounded.
+    const s = score.addPoints({ score: 0, men: 3 }, 35_000) // crosses 10k, 20k, 30k
+    expect(s.men).toBe(6)
   })
 
   it('an award that crosses no threshold grants no man', () => {

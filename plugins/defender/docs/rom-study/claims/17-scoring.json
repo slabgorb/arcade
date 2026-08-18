@@ -4,8 +4,8 @@
     "claim": "The SCORE routine takes D = A:B, A an exponent (0-7) and B a BCD mantissa (0-99), and awards B x 10^A.",
     "source": {
       "file": "DEFA7.SRC",
-      "line": 477,
-      "verbatim": "SCORE\tPSHS\tA,B,X,U,Y"
+      "line": 475,
+      "verbatim": "*A=0-7EXP,B=0-99"
     }
   },
   {
@@ -72,8 +72,8 @@
     }
   },
   {
-    "id": "SC-CATCH",
-    "claim": "Catching a falling humanoid mid-air (P250) loads LDD #$0125 = 25 x 10^1 = 250 points.",
+    "id": "SC-P250-VAL",
+    "claim": "The P250 pop-up (an uncaught humanoid landing safely) loads LDD #$0125 = 25 x 10^1 = 250 points.",
     "source": {
       "file": "DEFB6.SRC",
       "line": 500,
@@ -81,8 +81,17 @@
     }
   },
   {
-    "id": "SC-RESCUE",
-    "claim": "Returning a caught humanoid to the ground (P500) loads LDD #$0150 = 50 x 10^1 = 500 points.",
+    "id": "SC-P250-LAND",
+    "claim": "An uncaught, released humanoid that free-falls and lands safely spawns the P250 (250-point) process (LDX #P250 at ALAND).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 959,
+      "verbatim": "\tLDX\t#P250"
+    }
+  },
+  {
+    "id": "SC-P500-VAL",
+    "claim": "The P500 pop-up (the humanoid catch/rescue) loads LDD #$0150 = 50 x 10^1 = 500 points.",
     "source": {
       "file": "DEFB6.SRC",
       "line": 507,
@@ -90,12 +99,39 @@
     }
   },
   {
+    "id": "SC-P500-CATCH",
+    "claim": "The player catching a falling humanoid spawns the P500 (500-point) process (NEWP P500,STYPE, the AKIL1 player-collision path) - so catching pays 500, not 250.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 408,
+      "verbatim": "\tNEWP\tP500,STYPE"
+    }
+  },
+  {
+    "id": "SC-P500-DEPOSIT",
+    "claim": "A caught humanoid carried down and deposited on the ground spawns the P500 (500-point) process (LDX #P500 at ALAND0).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 962,
+      "verbatim": "\tLDX\t#P500"
+    }
+  },
+  {
     "id": "SC-BONUS",
-    "claim": "The wave-complete bonus multiplier is the wave number (PWAV), capped at 5 and shifted left four (x16) to a BCD tens digit with A=$01, i.e. min(wave,5) x 100 per surviving human.",
+    "claim": "The wave-complete bonus multiplier is the wave number (PWAV), loaded before the cap and shift.",
     "source": {
       "file": "DEFA7.SRC",
       "line": 1828,
       "verbatim": "\tLDB\tPWAV,Y\tMULTIPLIER"
+    }
+  },
+  {
+    "id": "SC-BONUS-CAP",
+    "claim": "The bonus multiplier is clamped: CMPB #5 (with the following LDB #5) caps it at 5, so min(wave,5).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1829,
+      "verbatim": "\tCMPB\t#5"
     }
   },
   {
@@ -123,6 +159,15 @@
       "file": "PHR6.SRC",
       "line": 500,
       "verbatim": "STYPE\tEQU\t0\tSYSTEM PROCESS"
+    }
+  },
+  {
+    "id": "SC-REPLAY-CHECK",
+    "claim": "SCRX loads REPLA (replays available) to test the score against the next extra-man threshold.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 511,
+      "verbatim": "SCRX\tLDD\tREPLA\tREPLAYS AVAILABLE"
     }
   }
 ]

@@ -54,7 +54,7 @@ ship green. The abduction loop (df4-3):
 ## Scoring — score EVENT → ROM point value (df5-3)
 
 Every score is awarded through one SCORE routine: `D = A:B`, where A is an exponent
-(0-7) and B a BCD mantissa (0-99), and the award is `B × 10^A` (`defender/DEFA7.SRC:477`).
+(0-7) and B a BCD mantissa (0-99), and the award is `B × 10^A` (`defender/DEFA7.SRC:475`).
 Each kill or rescue pop-up loads its own `D` before `JSR SCORE`; the `KILP`/`KILO` macro
 inlines it as `FDB $<A><B>`. The point VALUE is pinned here, CITED, before
 `src/core/score.ts` names it — a wrong point value stated in prose would otherwise ship
@@ -70,8 +70,8 @@ green (the `df4` identity law, applied to values). Score pop-ups run as schedule
 | Pod kill (`PRBKIL`, `KILO 0210`) | **1000** (10×10²) | `defender/DEFB6.SRC:118` |
 | Swarmer kill (`LDD #$0115`, `SWHSND`) | **150** (15×10¹) | `defender/DEFB6.SRC:190` |
 | `BKIL` — bomb/mine shot (`LDD #$25`) | **25** (25×10⁰) | `defender/DEFA7.SRC:2700` |
-| `P250` — catch a falling humanoid mid-air (`LDD #$0125`) | **250** (25×10¹) | `defender/DEFB6.SRC:500` |
-| `P500` — return a caught humanoid to the ground (`LDD #$0150`) | **500** (50×10¹) | `defender/DEFB6.SRC:507` |
-| `*BONUS COLLECT` — wave-complete bonus per surviving human | **min(wave,5) × 100** | `defender/DEFA7.SRC:1828` |
+| `P250` — an UNCAUGHT humanoid falls and lands safely on its own (`LDX #P250` at `ALAND`, survivable fall; `LDD #$0125`) | **250** (25×10¹) | `defender/DEFB6.SRC:500`, `defender/DEFB6.SRC:959` |
+| `P500` — the player CATCHES a falling humanoid (`NEWP P500,STYPE`) and/or returns it to the ground (`LDX #P500` at `ALAND0`; `LDD #$0150`) | **500** (50×10¹) | `defender/DEFB6.SRC:507`, `defender/DEFB6.SRC:408`, `defender/DEFB6.SRC:962` |
+| `*BONUS COLLECT` — wave-complete bonus per surviving human (`LDB PWAV,Y` multiplier, `CMPB #5` cap) | **min(wave,5) × 100** | `defender/DEFA7.SRC:1828`, `defender/DEFA7.SRC:1829` |
 | `REPLAY @10,000` — the extra-man threshold | one extra man every **10,000** points | `defender/ROMC8.SRC:801` |
 | `NSHIP` — starting men (lives) | the game starts with **3** men | `defender/ROMC8.SRC:802` |

@@ -73,8 +73,8 @@ const SCORE_EVENTS: readonly ScoreEvent[] = [
   { key: 'Pod kill = 1000 (KILO 0210)', symbol: /\b0210\b/, value: /\b1,?000\b/, file: 'DEFB6.SRC', cites: [118] },
   { key: 'Swarmer kill = 150 (LDD #$0115)', symbol: /\bSWHSND\b|\bSWXP1\b/, value: /\b150\b/, file: 'DEFB6.SRC', cites: [190] },
   { key: 'Bomb/mine = 25 (BKIL LDD #$25)', symbol: /\bBKIL\b/, value: /\b25\b/, file: 'DEFA7.SRC', cites: [2700] },
-  { key: 'Catch mid-air = 250 (P250)', symbol: /\bP250\b/, value: /\b250\b/, file: 'DEFB6.SRC', cites: [499, 500] },
-  { key: 'Return to ground = 500 (P500)', symbol: /\bP500\b/, value: /\b500\b/, file: 'DEFB6.SRC', cites: [506, 507] },
+  { key: 'Uncaught humanoid lands safely = 250 (P250)', symbol: /\bP250\b/, value: /\b250\b/, file: 'DEFB6.SRC', cites: [499, 500] },
+  { key: 'Player catches / returns humanoid = 500 (P500)', symbol: /\bP500\b/, value: /\b500\b/, file: 'DEFB6.SRC', cites: [506, 507] },
   { key: 'Wave bonus per human = min(wave,5)×100 (BONUS COLLECT)', symbol: /BONUS COLLECT/, value: /\b100\b/, file: 'DEFA7.SRC', cites: [1828, 1836] },
   { key: 'Extra man every 10,000 (REPLAY @10,000)', symbol: /\bREPLAY\b/, value: /10,?000/, file: 'ROMC8.SRC', cites: [801] },
   { key: 'Starting men = 3 (NSHIP)', symbol: /\bNSHIP\b/, value: /\b3\b/, file: 'ROMC8.SRC', cites: [802] },
@@ -140,7 +140,7 @@ describe('df5-3 AC-2 — the score-value citations are gate-covered and byte-tru
   // claim at each exact line so `checkClaims` (below) byte-verifies it — a wrong value in a
   // source comment or a drifted :line cannot ship GREEN.
   const CONSTANT_LINES: readonly { file: string; line: number; what: string }[] = [
-    { file: 'DEFA7.SRC', line: 477, what: 'the SCORE encoding A=exp(0-7):B=BCD, award = B×10^A' },
+    { file: 'DEFA7.SRC', line: 475, what: 'the SCORE encoding A=exp(0-7):B=BCD, award = B×10^A' },
     { file: 'DEFB6.SRC', line: 922, what: 'LANDER_POINTS=150 (LKILL KILP 0115)' },
     { file: 'DEFB6.SRC', line: 625, what: 'MUTANT_POINTS=150 (SCZKIL KILP 0115)' },
     { file: 'DEFB6.SRC', line: 82, what: 'BAITER_POINTS=200 (UFOKIL KILP 0120)' },
@@ -148,12 +148,17 @@ describe('df5-3 AC-2 — the score-value citations are gate-covered and byte-tru
     { file: 'DEFB6.SRC', line: 118, what: 'POD_POINTS=1000 (PRBKIL KILO 0210)' },
     { file: 'DEFB6.SRC', line: 190, what: 'SWARMER_POINTS=150 (LDD #$0115)' },
     { file: 'DEFA7.SRC', line: 2700, what: 'BOMB_POINTS=25 (BKIL LDD #$25)' },
-    { file: 'DEFB6.SRC', line: 500, what: 'CATCH_POINTS=250 (P250 LDD #$0125)' },
-    { file: 'DEFB6.SRC', line: 507, what: 'RESCUE_POINTS=500 (P500 LDD #$0150)' },
-    { file: 'DEFA7.SRC', line: 1828, what: 'BONUS multiplier = min(wave,5)×100 (LDB PWAV,Y)' },
+    { file: 'DEFB6.SRC', line: 500, what: 'SAFE_LANDING_POINTS=250 (P250 value LDD #$0125)' },
+    { file: 'DEFB6.SRC', line: 959, what: 'P250 spawn — uncaught humanoid lands safely (LDX #P250 at ALAND)' },
+    { file: 'DEFB6.SRC', line: 507, what: 'RESCUE_POINTS=500 (P500 value LDD #$0150)' },
+    { file: 'DEFB6.SRC', line: 408, what: 'P500 spawn at the player CATCH (NEWP P500,STYPE) — catching pays 500' },
+    { file: 'DEFB6.SRC', line: 962, what: 'P500 spawn at ground deposit (LDX #P500 at ALAND0)' },
+    { file: 'DEFA7.SRC', line: 1828, what: 'BONUS multiplier = wave (LDB PWAV,Y)' },
+    { file: 'DEFA7.SRC', line: 1829, what: 'BONUS multiplier cap at 5 (CMPB #5)' },
     { file: 'ROMC8.SRC', line: 801, what: 'EXTRA_MAN_EVERY=10,000 (REPLAY @10,000)' },
     { file: 'ROMC8.SRC', line: 802, what: 'STARTING_MEN=3 (NSHIP)' },
     { file: 'PHR6.SRC', line: 500, what: 'pop-up process type STYPE=0 (SYSTEM PROCESS)' },
+    { file: 'DEFA7.SRC', line: 511, what: 'the extra-man REPLAY check (SCRX LDD REPLA)' },
   ]
 
   it('pins the byte-verified df5-3 score constants — each load-bearing line has a claim', () => {

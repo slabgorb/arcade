@@ -30,15 +30,25 @@ export const ENEMY_POINTS: Record<EnemyKind, number> = {
 /** Shooting a bomber's laid bomb/mine — BKIL `LDD #$25` → 25×10⁰  DEFA7.SRC:2700. */
 export const BOMB_POINTS = 25
 
-/** Catching a falling humanoid mid-air — P250 `LDD #$0125` → 25×10¹  DEFB6.SRC:500. */
-export const CATCH_POINTS = 250
+/**
+ * An uncaught, released humanoid free-falls and lands SAFELY on the ground at survivable
+ * speed — the ROM spawns P250 at `ALAND` (`LDX #P250` DEFB6.SRC:959), reached from `AFALL`
+ * when the fall is non-fatal (`CMPD #$E0 FATAL? / BLS ALAND`). The player did NOT catch it.
+ * P250 value `LDD #$0125` → 25×10¹  DEFB6.SRC:500.
+ */
+export const SAFE_LANDING_POINTS = 250
 
-/** Returning a caught humanoid to the ground — P500 `LDD #$0150` → 50×10¹  DEFB6.SRC:507. */
+/**
+ * The player CATCHES a falling humanoid — the catch itself spawns P500 (`NEWP P500,STYPE`
+ * DEFB6.SRC:408, the AKIL1 player-collision path) — and returns it to the ground (P500 is
+ * re-spawned at `ALAND0`, `LDX #P500` DEFB6.SRC:962). Catching pays 500, NOT 250.
+ * P500 value `LDD #$0150` → 50×10¹  DEFB6.SRC:507.
+ */
 export const RESCUE_POINTS = 500
 
 /** *BONUS COLLECT (DEFA7.SRC:1786): per-human wave bonus = min(wave,cap) × unit. */
-export const BONUS_PER_WAVE = 100 //  A=$01, B = wave×16 (ASLB×4) → wave × 100  DEFA7.SRC:1828
-export const BONUS_WAVE_CAP = 5 //    `CMPB #5 / LDB #5` clamps the multiplier  DEFA7.SRC:1828
+export const BONUS_PER_WAVE = 100 //  A=$01, B = wave×16 (ASLB×4, DEFA7.SRC:1828 `LDB PWAV,Y`) → wave × 100
+export const BONUS_WAVE_CAP = 5 //    `CMPB #5` clamps the multiplier at 5  DEFA7.SRC:1829
 
 /** Wave-complete bonus for one surviving human: min(wave,5) × 100. */
 export function bonusPerHuman(wave: number): number {
@@ -66,10 +76,11 @@ export function createScore(): ScoreState {
 }
 
 /**
- * Award `points`. The REPLAY check (SCRX DEFA7.SRC:511, RCHK is "score ≥ next level")
- * grants one man for each EXTRA_MAN_EVERY threshold the new total reaches — so a total
- * landing exactly on a multiple grants the man, and a single award spanning two
- * thresholds grants two. By count of thresholds crossed, never a one-shot flag.
+ * Award `points` (caller invariant: `points >= 0` — a Defender score never decreases).
+ * The REPLAY check (`SCRX LDD REPLA` DEFA7.SRC:511, RCHK is "score ≥ next level") grants
+ * one man for each EXTRA_MAN_EVERY threshold the new total reaches — so a total landing
+ * exactly on a multiple grants the man, and a single award spanning N thresholds grants N.
+ * By count of thresholds crossed, never a one-shot flag.
  */
 export function addPoints(state: ScoreState, points: number): ScoreState {
   const score = state.score + points
