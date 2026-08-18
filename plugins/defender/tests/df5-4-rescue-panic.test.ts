@@ -1,25 +1,37 @@
 // tests/df5-4-rescue-panic.test.ts
 //
-// Story df5-4 — RED phase (O'Brien / TEA). Close the df4-3 abduction loop: the RESCUE
-// catch (a falling humanoid caught by the ship, returned to the terrain) and the
+// Story df5-4 — RED phase, rework cycle 1 (O'Brien / TEA). Close the df4-3 abduction loop:
+// the RESCUE catch (a falling humanoid caught by the ship, returned to the surface) and the
 // signature PANIC (all humanoids lost → the planet explodes → every remaining lander
-// becomes a df4-4 mutant, en masse). Re-derived from DEFB6.SRC / DEFA7.SRC:
-//   • catch     — AKIL1 player-vs-falling-astro :398, `NEWP P500,STYPE` :408; the AFALL
-//                 ground test GETALT :933; the astronaut ground row ASTS2 `LDA #$E0`
-//                 DEFA7.SRC:1529.
+// becomes a df4-4 mutant, en masse). Re-derived from DEFB6.SRC / DEFA7.SRC / BLK71.SRC:
+//   • catch     — the ROM catch path is AKIL1 (player-vs-FALLING-astro, DEFB6.SRC:398) →
+//                 AFALL2 (:945): the caught astro TRACKS the ship (OY16←PLAY16, OX16←PLABX)
+//                 and rides down until GETALT (:933-934) reports the terrain, then ALAND0
+//                 (:961) leaves it there, walking (P500 is df5-3). The astro's ground row is
+//                 the TERRAIN-SURFACE base — BGALT `LDA #$E0` ROFF (BLK71.SRC:380, terrain.ts
+//                 BASE_OFFSET) — NOT the ASTS2 wave-spawn row and NOT written by ALAND0.
 //   • panic     — ASTCLR `DEC ASTCNT` :432 → `BNE ASTCX` → `NEWP TERBLO,STYPE BLOW UP
 //                 TERRAIN` :434 (fires ONCE, the BNE guard); the lander freak GTARG
 //                 `LDA ASTCNT / BEQ GTX NOBODY LEFT` :631-633 → `LBEQ SCZ00 NO, FREAK`
 //                 :710 → the SCZ00 transform :828.
 //
+// REWORK (round-1 review, F1/F2): the caught astro is DEPOSITED at the flat terrain base
+// ($E0, BGALT) immediately on catch — a documented SIMPLIFICATION of the ROM's per-column
+// GETALT landing + AFALL2 ship-tracking descent (see the session Design Deviation; GREEN
+// logs it and cites BGALT, not ASTS2/ALAND0). The re-arm must NOT leave a duplicate walk
+// process alive (the determinism test below pins single-process / stable entropy).
+//
 // SCOPE FENCE (encoded here so a later reader sees the boundary in the tests):
-//   IN  — the catch (df4-1 collide reuse, re-ground, FALLING-only), the one-shot panic
-//         edge, the lander→mutant FREAK feeding df4-4's `transformLander` (REUSE, no
-//         re-model), the planet explosion as the df4-2 TERBLO/terrain-blow event routed
-//         through the ADR-0005 SAFE presentation, and the scheduler-process discipline.
+//   IN  — the catch (df4-1 collide reuse, re-ground to the terrain base, FALLING-only), the
+//         one-shot panic edge, the lander→mutant FREAK feeding df4-4's `transformLander`
+//         (REUSE, no re-model), the planet explosion as the df4-2 TERBLO/terrain-blow event
+//         routed through the ADR-0005 SAFE presentation, the scheduler-process discipline,
+//         and single-process determinism across a rescue re-arm.
 //   OUT — the P250/P500 SCORING VALUES (df5-3, score.ts — this story delivers only the
-//         MECHANIC); the HUD/render (df7); the fatal-vs-survivable fall arithmetic
-//         (GETALT altitude math) beyond "caught before ground". None asserted here.
+//         MECHANIC); the HUD/render (df7); PER-COLUMN terrain landing + the AFALL2
+//         ship-tracking descent (deposit-at-base simplification, deferred); the UNCAUGHT
+//         fall ground outcome (AFALL0 fatal / ALAND survivable, DEFB6.SRC:933-960 — a
+//         df5-later unit, so a botched rescue leaving an astro at the floor is a known gap).
 //
 // Every scenario drives the ONE cabinet scheduler (df3 scheduler.ts) — humanoids,
 // falling astros and landers are processes, never their own tick. `rand` is injected.
@@ -90,14 +102,16 @@ function dropAFallingHumanoid(sched: ReturnType<typeof createScheduler>, bank: R
 // ─────────────────────────────────────────────────────────────────────────────────────
 // AC1 — the RESCUE catch: df4-1 collision, FALLING-only, re-ground; not a re-derived overlap
 // ─────────────────────────────────────────────────────────────────────────────────────
-describe('df5-4 AC1 — the RESCUE catch (AKIL1 DEFB6.SRC:398; ground row ASTS2 DEFA7.SRC:1529)', () => {
-  it('exposes the astronaut ground row constant at its byte-verified ROM magnitude', () => {
-    // ASTS2 `LDA #$E0` (DEFA7.SRC:1529) — a rescued humanoid returns to this terrain row.
-    // Pin the EXACT value, not just "> YMIN": a wrong ground row ships GREEN (lang-review #29).
+describe('df5-4 AC1 — the RESCUE catch (AKIL1 DEFB6.SRC:398; ground = terrain base BGALT BLK71.SRC:380)', () => {
+  it('exposes the humanoid ground row at the terrain-surface base $E0 (BGALT), exactly', () => {
+    // The rescued astro returns to the TERRAIN-SURFACE base row — BGALT ROFF `LDA #$E0`
+    // (BLK71.SRC:380 = terrain.ts BASE_OFFSET), the same flat ground sim.ts spawns humanoids
+    // at. NOT the ASTS2 wave-spawn line and NOT written by ALAND0 (GREEN cites BGALT + logs the
+    // flat-base-vs-per-column-GETALT deviation). Pin the EXACT value, not "> YMIN" (lang-review #29).
     expect(loadRescuePanic().HUMANOID_GROUND_Y).toBe(0xe0)
   })
 
-  it('a ship box overlapping a FALLING humanoid catches it and returns it to the terrain', () => {
+  it('a ship box overlapping a FALLING humanoid catches it and returns it to the surface', () => {
     const { sched, bank } = freshBank()
     const at = dropAFallingHumanoid(sched, bank)
 
@@ -108,7 +122,7 @@ describe('df5-4 AC1 — the RESCUE catch (AKIL1 DEFB6.SRC:398; ground row ASTS2 
     expect(h).toBeDefined()
     expect(h!.state).toBe('walking') // AFALL ended — back on the terrain, not falling
     expect(h!.alive).toBe(true) // a catch SAVES it (it is not consumed)
-    expect(h!.y).toBe(loadRescuePanic().HUMANOID_GROUND_Y) // re-grounded at $E0 (ALAND0)
+    expect(h!.y).toBe(loadRescuePanic().HUMANOID_GROUND_Y) // deposited at the terrain base $E0
   })
 
   it('a ship box NOWHERE NEAR the falling humanoid catches nothing and leaves it falling', () => {
@@ -137,6 +151,32 @@ describe('df5-4 AC1 — the RESCUE catch (AKIL1 DEFB6.SRC:398; ground row ASTS2 
     expect(bank.catchFalling(shipAt(Number.NaN, MID_Y))).toHaveLength(0)
     // The falling humanoid survived the bad query intact — still falling, still catchable.
     expect(bank.humanoids.find((h) => h.alive)!.state).toBe('falling')
+  })
+
+  it('the catch radius is the df4-1 EXCLUSIVE box — an edge-touching ship misses, one unit of overlap catches', () => {
+    // F3 (round-1 review, lang-review #29): pin the catch box EXTENT, not just "same coord catches,
+    // a screen away misses". collide's edges are exclusive (COLIDE box pre-test, collision.ts) — a
+    // ship whose right edge exactly meets the astro's left edge must NOT catch; a re-derived
+    // inclusive overlap (`<=`) would. This is the boundary a hand-rolled AABB gets wrong.
+    const ship = shipAt(0, 0) // 8 wide × 6 tall (see shipAt)
+    const SHIP_W = ship.picture.width
+
+    // Case A — ship's RIGHT edge exactly meets the astro's LEFT edge (ship.x + width === astro.x):
+    // exclusive box ⇒ no overlap ⇒ no catch.
+    {
+      const { sched, bank } = freshBank()
+      const at = dropAFallingHumanoid(sched, bank)
+      const edgeTouch = bank.catchFalling({ x: at.x - SHIP_W, y: at.y, picture: ship.picture })
+      expect(edgeTouch).toHaveLength(0) // touching edges do NOT collide (open intervals)
+      expect(bank.humanoids.find((h) => h.alive)!.state).toBe('falling')
+    }
+    // Case B — the same ship nudged ONE unit into overlap (ship.LRX = astro.x + 1): now it catches.
+    {
+      const { sched, bank } = freshBank()
+      const at = dropAFallingHumanoid(sched, bank)
+      const overlap = bank.catchFalling({ x: at.x - SHIP_W + 1, y: at.y, picture: ship.picture })
+      expect(overlap).toHaveLength(1) // one unit of real overlap ⇒ caught
+    }
   })
 
   it('rides the df4-1 collision seam (collision.ts), not a re-derived overlap test (AC1)', () => {
@@ -287,5 +327,26 @@ describe('df5-4 AC4 — the falling/caught astro is a df3 scheduler process, no 
     // (a stale AFALL process still on the run-list would drag it past $E0 toward YMAX).
     for (let t = 0; t < 200; t++) sched.stepTick()
     expect(bank.humanoids.find((h) => h.alive)!.y).toBeLessThanOrEqual(groundY) // never fell again
+  })
+
+  it('a rescue re-arm leaves EXACTLY ONE live movement process — no duplicate walk (determinism)', () => {
+    // F2 (round-1 review, BLOCKING): the walk guard `state !== 'walking'` assumes state only
+    // moves forward; the rescue is the first path that cycles it BACK to 'walking'. If the
+    // ORIGINAL walk process is still asleep when grab→drop→catch happens with no ticks between
+    // (exactly this sequence, and reachable on a fast in-play catch), it REVIVES alongside the
+    // freshly-armed one → two walk processes → doubled rand() draws → entropy consumption that
+    // depends on catch timing, breaking the sim's determinism guarantee. The y-only "stops
+    // falling" test above cannot see it (walking moves x, not y); this one pins the invariant.
+    const { sched, bank } = freshBank()
+    const at = dropAFallingHumanoid(sched, bank) // grab → killLander (drop), NO ticks elapsed
+    bank.catchFalling(shipAt(at.x, at.y)) //         → catch, still NO ticks elapsed
+    expect(bank.humanoids.find((h) => h.alive)!.state).toBe('walking')
+
+    // Let every stale/dead process (the killed lander's, the retired AFALL) wake once and SUICIDE.
+    // A correctly-armed rescue leaves ONE live process (the single walk); a revived stale walk
+    // leaves TWO and never settles.
+    for (let t = 0; t < 20; t++) sched.stepTick()
+    const live = sched.processes.filter((p) => p.alive)
+    expect(live.length).toBe(1)
   })
 })

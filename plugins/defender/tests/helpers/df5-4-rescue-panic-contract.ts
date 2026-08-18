@@ -9,10 +9,12 @@
 // with two new mechanics and CONSUMES three shipped seams unchanged:
 //   • the RESCUE catch (AC1) — a bank method `catchFalling(ship)` that runs the
 //     df4-1 collision seam (collision.ts `collide`) over the FALLING humanoids and
-//     returns each caught one to the terrain. It re-grounds at the ROM astronaut
-//     row (ASTS2 `LDA #$E0`, DEFA7.SRC:1529). The player-collision path it ports is
-//     AKIL1 (DEFB6.SRC:398) → the catch scores P500 (`NEWP P500,STYPE`, :408), which
-//     score.ts already owns; df5-4 delivers only the MECHANIC.
+//     returns each caught one to the terrain. It deposits at the terrain-surface base
+//     row (BGALT ROFF `LDA #$E0`, BLK71.SRC:380 = terrain.ts BASE_OFFSET) — a documented
+//     SIMPLIFICATION of the ROM's per-column GETALT landing + AFALL2 ship-tracking descent
+//     (AKIL1 DEFB6.SRC:398 → AFALL2 :945 → ALAND0 :961; ALAND0 does NOT write $E0). The
+//     catch scores P500 (`NEWP P500,STYPE`, :408), which score.ts (df5-3) already owns;
+//     df5-4 delivers only the MECHANIC.
 //   • the PANIC (AC2/AC3) — a bank method `panic()`, a ONE-SHOT edge: the frame the
 //     LIVE humanoid population first reaches zero (ASTCLR `DEC ASTCNT` DEFB6.SRC:432
 //     → `BNE ASTCX` → `NEWP TERBLO,STYPE BLOW UP TERRAIN` :434) the planet explodes
@@ -69,8 +71,10 @@ export interface RescuePanicBank extends EnemyBank {
  *  widened bank, plus the one new cited constant). */
 export interface RescuePanicModule {
   createEnemyBank: (sched: Scheduler, rand: () => number) => RescuePanicBank
-  /** ASTS2 `LDA #$E0` (DEFA7.SRC:1529) — the astronaut ground row a rescued humanoid
-   *  returns to. A new src/core constant → a claims/*.json entry (the df1-1 gate). */
+  /** The terrain-surface base row a rescued humanoid is deposited at — BGALT ROFF
+   *  `LDA #$E0` (BLK71.SRC:380 = terrain.ts BASE_OFFSET), NOT the ASTS2 wave-spawn line
+   *  and NOT written by ALAND0. Cite BGALT (or reuse terrain.ts BASE_OFFSET) under the
+   *  df1-1 gate; a flat-base deposit is a logged Design Deviation from per-column GETALT. */
   readonly HUMANOID_GROUND_Y: number
 }
 
@@ -91,10 +95,12 @@ export function loadRescuePanic(): RescuePanicModule {
     throw new Error(
       'df5-4 rescue+panic is not built yet — GREEN (Julia) extends plugins/defender/src/core/landers.ts ' +
         "EnemyBank with `catchFalling(ship): readonly Humanoid[]` (running collision.ts `collide` over the " +
-        'FALLING humanoids, re-grounding each catch at HUMANOID_GROUND_Y = $E0, ASTS2 DEFA7.SRC:1529) and ' +
+        'FALLING humanoids, depositing each catch at the terrain base $E0 = BGALT ROFF BLK71.SRC:380 / ' +
+        'terrain.ts BASE_OFFSET — cite BGALT, log the flat-base-vs-GETALT Design Deviation) and ' +
         '`panic(): PanicResult | null` (the one-shot zero-humanoid edge: NEWP TERBLO DEFB6.SRC:434 + the ' +
-        'GTARG→SCZ00 lander freak :710, reusing mutants.ts `transformLander`). Every new constant needs a ' +
-        'claims/*.json entry (the df1-1 gate). See tests/helpers/df5-4-rescue-panic-contract.ts for the shape.',
+        'GTARG→SCZ00 lander freak :710, reusing mutants.ts `transformLander`). The rescue re-arm must not ' +
+        'leave a duplicate walk process alive (generation/handle, not state-as-liveness). See ' +
+        'tests/helpers/df5-4-rescue-panic-contract.ts for the shape.',
     )
   }
   return m as RescuePanicModule
