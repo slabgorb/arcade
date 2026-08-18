@@ -159,3 +159,8 @@ completed_stories:
     title: 'VISUAL playtest — enemies alive, colliding, dying safely: screenshot http://127.0.0.1:5270/defender/ showing enemies materialize (df4-2 appear), a laser killing one via the ACCESSIBILITY-SAFE explosion (ADR-0005, no full-screen strobe), and a lander abducting a humanoid (df4-3) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm enemy colour/orientation and that NO death flashes the full screen BEFORE df5 adds smart-bomb/hyperspace. Carry the df5 accessibility ruling (smart-bomb SBOMB / hyperspace HYPER also freeze/fade) forward as a note.'
     points: 2
     completed: '2026-08-17'
+  - id: ml13-2
+    epic: ml13
+    title: Shot-kill of a segment scores the ROM head/body split (body 10 / head 100), not a flat SEGMENT_PTS=10
+    points: 2
+    completed: '2026-08-17'
