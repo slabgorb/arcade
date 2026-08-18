@@ -159,9 +159,6 @@ export interface ArenaModule {
 
   /** Lava surface Y for a 1-based wave number (SAFRAM). */
   lavaLevelForWave(wave: number): number
-
-  /** Does this wave destroy the bridge? (TBRIDGE hook — animation is jt3's.) */
-  bridgeDestroyedOnWave(wave: number): boolean
 }
 
 export async function loadArena(): Promise<ArenaModule> {

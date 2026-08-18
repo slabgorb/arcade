@@ -20,12 +20,11 @@
 //   • the wave-1 complement entering via pads under seed (AC-4).
 //
 // Types are borrowed from the sibling core modules so the seam stays structural:
-// PlayerInput (flight), Facing (joust), WaveRow (wave) — type-only imports, erased
-// at build, so they cross no runtime boundary.
+// PlayerInput (flight), Facing (joust) — type-only imports, erased at build, so
+// they cross no runtime boundary.
 
 import type { PlayerInput } from './flight.js'
 import type { Facing } from './joust.js'
-import type { WaveRow } from './wave.js'
 import { rngNext } from './rng.js'
 
 // ─── Pads by tier ────────────────────────────────────────────────────────────
@@ -218,11 +217,6 @@ export function takeEnemyNumber(q: ServiceQueue): { ticket: number; queue: Servi
   return { ticket: q.neserv, queue: { ...q, neserv: q.neserv + 1 } }
 }
 
-/** Is it this player's turn? number === LPSERV (CMPB LPSERV, :5620). */
-export function playerTurn(q: ServiceQueue, ticket: number): boolean {
-  return ticket === q.lpserv
-}
-
 /**
  * Is it this enemy's turn? number === LESERV AND no player still holds an
  * unserved number (NPSERV == LPSERV) — players first (JOUSTRV4.SRC:5672-5675).
@@ -292,15 +286,6 @@ export const PLAYER1_SPAWN: PlayerSpawn = { x: 100, facing: 1, mount: 'ostrich' 
 export const PLAYER2_SPAWN: PlayerSpawn = { x: 200, facing: -1, mount: 'stork' }
 
 // ─── AC-4: the wave complement entering via pads ─────────────────────────────
-
-/**
- * The number of enemies a wave row sends in via pads: bounders + hunters + lords
- * + pterodactyls. The PURSUIT nibble is EXCLUDED — it seeds the intelligence
- * budget (jt2-5's seam), it is not a spawn count.
- */
-export function waveEnemyComplement(row: WaveRow): number {
-  return row.bounders + row.hunters + row.lords + row.pterodactyls
-}
 
 // SH3-1 retired the inlined mulberry32 that used to sit here; the seeded draw now
 // comes from `rngNext` (./rng.ts), sourced from @shared/rng. The seed is the only

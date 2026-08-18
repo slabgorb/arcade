@@ -313,13 +313,6 @@ export interface JoustModule {
    * skid chain), `dir === 0` ⇒ `onZero`. Pure.
    */
   groundTransition(groundStateId: string, facing: Facing, dir: -1 | 0 | 1): string
-
-  /**
-   * One ground frame that CAN reach the skid chain: transition by
-   * `groundTransition(entity.facing)`, and set `plantZ = SKID_PLANT_Z` when the
-   * new state is a SKIDR state (else preserve `plantZ`). Pure.
-   */
-  groundStep(entity: JoustEntity, input: PlayerInput): JoustEntity
 }
 
 /**
@@ -348,7 +341,6 @@ export async function loadJoust(): Promise<JoustModule> {
       'consumeBumpY',
       'killScore',
       'groundTransition',
-      'groundStep',
     ] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }

@@ -30,7 +30,6 @@ import {
   type EntityState,
   type EnemyState,
 } from './helpers/sim-contract.js'
-import { loadWave } from './helpers/wave-contract.js'
 import { loadTransporter } from './helpers/transporter-contract.js'
 import { seatWaveInstantly, strippedToPlayers, waveComplement } from './helpers/wave-entry.js'
 
@@ -265,18 +264,16 @@ describe('Round 2 Rail 4 — the wave advances when it is cleared', () => {
 
   it('when the last enemy is gone, the demo advances to wave 2 and the wave-2 complement enters', async () => {
     const dmod = await loadSim()
-    const wave = await loadWave()
-    const trans = await loadTransporter()
 
     let d = cleared(dmod.createWaveSim(SEED))
     for (let i = 0; i < 4 && d.wave === 1; i++) d = dmod.stepSim(d)
 
     expect(d.wave, 'a cleared wave advances — nextWaveBcd(1) = 2').toBe(2)
-    const complement2 = trans.waveEnemyComplement(wave.waveRowAt(2))
-    expect(complement2, 'wave 2 is four bounders').toBe(4)
     // jt11-4: the new wave's complement takes numbers on the advance frame and is
     // served one per frame after it, so count the pads plus the waiting room.
-    expect(waveComplement(d), 'the wave-2 complement enters via pads').toBe(complement2)
+    // jt13-8: `waveEnemyComplement` (dead row→count twin) retired; pin the LIVE
+    // complement (`waveComplement`) against the ROM row — WAVE_TABLE row 2 → four bounders.
+    expect(waveComplement(d), 'the wave-2 complement — four bounders — enters via pads').toBe(4)
   })
 
   it('the wave-2 spawn is a real, deterministic complement under the seed', async () => {

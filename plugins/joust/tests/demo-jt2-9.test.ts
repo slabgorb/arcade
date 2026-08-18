@@ -11,9 +11,10 @@
 //       the POSOFF geometry, added once the ROM draw formula is pinned.)
 //   (2) TURNING/FACING — input NEVER flips facing (runBehaviour steps
 //       stepPlayerEntity(p.entity, input) and never threads p.facing), and the
-//       ground skid chain (joust.ts groundStep/groundTransition — LANDED + TESTED
-//       in jt2-3) has ZERO callers in src/, so it is unreachable from input; the
-//       render draws right-facing frames only. THIS FILE.
+//       facing-aware ground skid chain (joust.ts groundTransition, onMinus → a
+//       SKIDR state — the twin `groundStep` wrapper was retired at jt13-8) is not on
+//       the demo's input path, so a skid is unreachable from input; the render draws
+//       right-facing frames only. THIS FILE.
 //   (3) JOUST-FACING FEEL — the ruling: OSTBO is HEIGHT-ONLY (facing-independent,
 //       ROM-canonical), and facing decides a joust only INDIRECTLY through the
 //       skid (PLANTZ=2). So the fix is (2), NOT an OSTBO law change. THIS FILE.
@@ -147,10 +148,11 @@ describe('jt2-9 item 2a — air: direction input flips facing (PFACE)', () => {
 })
 
 // ─── 2b — GROUND: reversing against your facing REACHES the skid chain ────────
-//   The jt2-3 groundStep/groundTransition (facing-aware, onMinus → a SKIDR state
-//   → plantZ = 2) is landed + tested but has ZERO callers in src/ — the demo steps
-//   the facing-BLIND flight.ts stepGround, whose `input.dir !== 0 ? onPlus : onZero`
-//   can never take onMinus. So a grounded player can never skid from input today.
+//   The jt2-3 groundTransition (facing-aware, onMinus → a SKIDR state → plantZ = 2)
+//   is landed + tested but off the input path — the demo steps the facing-BLIND
+//   flight.ts stepGround, whose `input.dir !== 0 ? onPlus : onZero` can never take
+//   onMinus. So a grounded player can never skid from input today. (The unhooked
+//   joust.ts `groundStep` wrapper over groundTransition was retired at jt13-8.)
 //   Staged over CLIF5 (LNDB5, snapY 210 — "lands at all points", so the player
 //   stays grounded while it turns).
 describe('jt2-9 item 2b — ground: reversing reaches the skid chain (jt2-3, until now unreachable)', () => {

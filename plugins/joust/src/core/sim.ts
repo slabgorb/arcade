@@ -54,7 +54,6 @@ import {
   airCatchBonus,
   EGGS_PER_ENEMY,
   type EggState,
-  type RemountEntry,
 } from './egg.js'
 import {
   broadPhase,
@@ -837,8 +836,15 @@ function enemyProcess(id: number, pad: TransporterPad, period: number, type: Ene
  * jt3-4 makes them their own `kind:'ptero'` processes (see `spawnWavePteros`), so
  * the old 'bounder'-fill placeholder is gone: the ground count is exactly
  * bounders + hunters + lords. Wave 1 is three bounders.
+ *
+ * jt13-8 — EXPORTED (the sole reason it is not file-private): this is the live twin
+ * that superseded the retired `waveEnemyComplement` row→count helper. The pursuit
+ * nibble (`row.pursuers`, the intelligence budget) and `row.pterodactyls` are both
+ * excluded here — a ROM law transporter.test.ts pins against this symbol so a future
+ * edit that starts pushing either into the ground complement is caught by the suite,
+ * not only by a demo fingerprint.
  */
-function enemyTypesForWave(row: WaveRow): EnemyType[] {
+export function enemyTypesForWave(row: WaveRow): EnemyType[] {
   const types: EnemyType[] = []
   for (let i = 0; i < row.bounders; i++) types.push('bounder')
   for (let i = 0; i < row.hunters; i++) types.push('hunter')
@@ -1708,15 +1714,6 @@ export function stepEgg(egg: EggState, arena: ArenaState = PRISTINE_ARENA): EggS
   // integrating off the bottom of the screen. velY zeroed so it rests, not drifts.
   if (isLavaDeath(nextPosY)) return { ...egg, velY: 0, posY: DEATH_Y << 8, settled: false }
   return { ...egg, velY, posY: nextPosY, settled: false }
-}
-
-/**
- * Hatch a SETTLED egg into a remounting buzzard entering from the FARTHER edge, or
- * null on permadeath (`eggsLeft === 0`). Pure.
- */
-export function hatchEgg(egg: EggState): RemountEntry | null {
-  if (!willHatch(egg)) return null
-  return remountEntryEdge(egg.posX)
 }
 
 // ─── The collision pass (the jt2-3 core, in the loop) ─────────────────────────

@@ -18,13 +18,11 @@
 
 import {
   createGame,
-  stepGame,
   GOVER_OVER,
   GOVER_RUNNING,
   GOVER_ATTRACT,
   type GameState,
 } from './game.js'
-import type { PlayerInput } from './flight.js'
 import { qualifiesForHighScore, type HighScoreEntryBase } from '@shared/highscore'
 
 // Re-export game.ts's own GOVER rungs so cabinet consumers read the hinge values
@@ -79,12 +77,6 @@ export function modeForGover(gover: number): CabinetMode {
   throw new Error(`modeForGover: unexpected GOVER value ${gover} (expected the three rungs)`)
 }
 
-/** attract -> title: the attract sub-cycle's title page (the page scheduler is
- *  jt10-4). Preserves the wrapped game. Pure. */
-export function toTitle(cab: CabinetState): CabinetState {
-  return { ...cab, mode: 'title' }
-}
-
 /** attract/title -> select: coin-up to the 1P/2P start select (no coin economy).
  *  Preserves the wrapped game. Pure. */
 export function toSelect(cab: CabinetState): CabinetState {
@@ -98,17 +90,6 @@ export function toSelect(cab: CabinetState): CabinetState {
  */
 export function startPlaying(cab: CabinetState, seed: number, playerCount?: number): CabinetState {
   return { mode: 'playing', game: createGame(seed, playerCount) }
-}
-
-/**
- * Step ONE frame of a playing cabinet: delegate to the session's `stepGame` (no
- * second stepping path — the wrapped game stays bit-identical to a raw stepGame),
- * then RE-DERIVE the mode from the stepped game's settled GOVER — so an
- * all-players-out frame lands in 'gameover'. Pure.
- */
-export function stepPlaying(cab: CabinetState, inputs?: Record<number, PlayerInput>): CabinetState {
-  const game = stepGame(cab.game, inputs)
-  return { mode: modeForGover(game.gover), game }
 }
 
 /**

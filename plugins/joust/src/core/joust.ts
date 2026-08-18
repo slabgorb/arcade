@@ -31,7 +31,7 @@
 // EXCLUDED. Two entities on the SAME whole pixel but different fractions TIE
 // (both bounce — the corrected false-tie trap); PLANTZ=2 (a skid) DOES decide.
 
-import { GROUND_STATES, type PlayerInput } from './flight.js'
+import { GROUND_STATES } from './flight.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -407,20 +407,3 @@ export function groundTransition(groundStateId: string, facing: Facing, dir: -1 
   return state.onMinus
 }
 
-/**
- * One ground frame that CAN reach the skid chain: transition by
- * `groundTransition(entity.facing)`, and set `plantZ = SKID_PLANT_Z` when the
- * new state is a SKIDR state (else preserve `plantZ`). A facing-vs-input
- * reversal enters `onMinus` (a SKIDR state) → `plantZ = 2`, which lowers the
- * lance into a LOSING joust. Pure — the input is untouched.
- */
-export function groundStep(entity: JoustEntity, input: PlayerInput): JoustEntity {
-  if (entity.groundState === null || !GROUND_STATES[entity.groundState]) return entity
-  const nextId = groundTransition(entity.groundState, entity.facing, input.dir)
-  const next = GROUND_STATES[nextId]
-  return {
-    ...entity,
-    groundState: next.id,
-    plantZ: next.call === 'SKIDR' ? SKID_PLANT_Z : entity.plantZ,
-  }
-}
