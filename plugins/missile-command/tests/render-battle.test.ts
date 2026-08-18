@@ -552,7 +552,7 @@ describe('mc12-4 — the shared missile tip is one flash pixel at display resolu
 //
 // A live base draws its 1-2-3-4 ready-missile stack (DRAW MISSILE, W3DSUP.MAC:1221; stack
 // offsets MISTBV/MISTBH, W3DSUP.MAC:1329-1331) as one small SQUARE per ready missile
-// (render.ts:142 `dot`; drawn as fillRect(cx - dot, cy - dot, dot*2, dot*2)). The shipped
+// (render.ts `dot`; drawn as fillRect(cx - dot, cy - dot, dot*2, dot*2)). The shipped
 // size was `dot = round(width/200)` — the SAME non-physical divisor mc12-4 removed from the
 // shared tip. round(256/200)=1 → a legit 2px square at the unit-test canvas, so every
 // vitest passed; but round(955/200)=5 → a 10px square on the owner's ~955px browser canvas
@@ -589,12 +589,12 @@ describe('mc12-5 — the ready-missile stack marker is cabinet-pixel scaled at d
     return marks
   }
 
-  // The small marker squares near the middle base's column: fillRects whose CENTRE
+  // The small marker squares near the right base's column: fillRects whose CENTRE
   // (m.x + m.w/2, since each marker is fillRect(cx - dot, .., dot*2, dot*2) so centre = cx)
   // sits within a few cabinet units of the base column, and whose width is well under the
   // launch platform's bw = round(width/32). The `w < bw` cut excludes the platform, the
   // dead-structure rubble lines and the ground fill (all width >= bw); the column window
-  // excludes the other bases' stacks and every city (nearest is 25 cabinet units away).
+  // excludes the other bases' stacks and every city (nearest is 32 cabinet units away).
   const stackMarkersAt = (marks: Mark[], w: number): Mark[] => {
     const baseX = (BASE.h / 0x100) * w
     const bw = Math.max(5, Math.round(w / 32))
