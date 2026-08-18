@@ -166,6 +166,26 @@ const SPECS = {
       ),
       { decay: 2 },
     ),
+  // SNPLAV "PLAYER IN LAVA" — the knight sinks: a descending gurgle with a
+  // bubbling tail under it (ADGFLR, JOUSTRV4.SRC:6534,8123).
+  playerLavaDeath: (n, rng) =>
+    env(
+      mix(
+        tone(n, { wave: 'sine', f0: 400, f1: 60, gain: 0.4 }),
+        noise(n, rng, { lp: 0.4, gain: 0.22 }),
+      ),
+      { decay: 2 },
+    ),
+  // SNELAV "ENEMY IN LAVA" — the same sink, darker and detuned for the buzzard
+  // (ADGFLR, JOUSTRV4.SRC:6538,8105).
+  enemyLavaDeath: (n, rng) =>
+    env(
+      mix(
+        tone(n, { wave: 'sine', f0: 320, f1: 50, gain: 0.36 }),
+        noise(n, rng, { lp: 0.4, gain: 0.2 }),
+      ),
+      { decay: 2 },
+    ),
   // SNEGG "PLAYER HITS EGG SOUND" — a bright pickup blip.
   eggCollected: (n) => env(tone(n, { wave: 'sine', f0: 620, f1: 1150, gain: 0.5 }), { decay: 4 }),
   // SNEGGH "EGG HATCHING SOUND" — crackle plus an emerging chirp.

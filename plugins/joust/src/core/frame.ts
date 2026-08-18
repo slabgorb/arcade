@@ -313,14 +313,16 @@ function stepPlayerEntity(
       // zeroed so a bird held at the floor is not still accelerating — otherwise
       // the pinned-posY/growing-velY pair eventually int16-wraps in flap/stepFlight.
       //
-      // jt13-5 — this frame-level clamp STAYS jt11-18's on-screen backstop (still
-      // used for the enemy/egg paths and the raw scheduler). The player's actual
-      // lava DEATH — rider removed, life lost — is booked one layer up in sim.ts,
-      // off this same lava depth: ADGFLR, the non-gripped "DEATH VIA SWIMMING IN
-      // THE LAVA" (JOUSTRV4.SRC:6523 — SNPLAV/SNELAV, WCLENY<7 -> DDEAD, sink to
-      // FLOOR+20). The ROM does NOT clear PVELX on that non-gripped path — the
-      // `CLR PVELX` at ADDLAV (~JOUSTRV4.SRC:6611) is the TROLL-GRIP path only
-      // (PADGRA swapped by LT1GRP), and it funnels into the same ADGFLR via JMP.
+      // jt13-5/jt13-10 — this frame-level clamp STAYS jt11-18's on-screen backstop
+      // for the EGG and raw-scheduler paths, and is the momentary FLOOR+7 pin a bird
+      // sits on for the one frame before the sim reacts. The actual lava DEATH —
+      // rider removed, life lost, body sunk to FLOOR+20 with its SNPLAV/SNELAV cue —
+      // is booked one layer up in sim.ts's `stepLavaDeath` for BOTH a non-gripped
+      // player AND a non-gripped enemy (jt13-10 extended jt13-5's player-only sink to
+      // enemies): ADGFLR, the non-gripped "DEATH VIA SWIMMING IN THE LAVA"
+      // (JOUSTRV4.SRC:6523 — SNPLAV/SNELAV, WCLENY<7 -> DDEAD, sink to FLOOR+20). The
+      // ROM does NOT clear PVELX on that non-gripped path — the `CLR PVELX` at ADDLAV
+      // (~JOUSTRV4.SRC:6611) is the TROLL-GRIP path only (PADGRA swapped by LT1GRP).
       // A non-gripped faller simply dies, so nothing horizontal is zeroed here.
       s = { ...s, posY: DEATH_Y << 8, velY: 0 }
     }
@@ -391,7 +393,15 @@ function runBehaviour(
   // TROLL owns its fall now (PADGRA → ADDLAV, JOUSTRV4.SRC:1651). `demo.stepTrolls`
   // drives it with `stepGrip` (keeping its flap, replacing its gravity); stepping it
   // here too would double-integrate the fall and spend the flap twice.
-  if ((p as { grippedBy?: number }).grippedBy !== undefined) {
+  //
+  // jt13-10 — a bird SINKING in the lava (ADGFLR, JOUSTRV4.SRC:6523) is likewise off
+  // normal flight: it is dead and `stepSim`'s lava section owns its vertical descent
+  // (FLOOR+7 → FLOOR+20) and its frozen X. Stepping it here would fight that sink and
+  // sound a wing cue from a corpse.
+  if (
+    (p as { grippedBy?: number }).grippedBy !== undefined ||
+    (p as { lavaSink?: unknown }).lavaSink !== undefined
+  ) {
     return { process: p, budget }
   }
   if (p.kind === 'player' && p.entity) {

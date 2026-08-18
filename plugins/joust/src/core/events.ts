@@ -11,7 +11,7 @@
 // depend on what the shell passed in. `stepGame` rebuilds this list every frame
 // and the shell reads it off the returned state (`GameState.events`).
 //
-// ─── SEVENTEEN MOMENTS, AND WHY EXACTLY THESE ────────────────────────────────
+// ─── NINETEEN MOMENTS, AND WHY EXACTLY THESE ─────────────────────────────────
 // Each kind below is a REAL Williams sound table (JOUSTRV4.SRC:8051-8131, under
 // the format header at :8045-8049) whose moment THIS port can actually reach.
 // The byte-exact citations — table row, priority byte and call site — live in
@@ -75,6 +75,8 @@ export const EVENT_KINDS = [
   'enemy-wing-up', //      a buzzard's wings went up — SNELWU. NEVER a ptero (jt5-10)
   'player-thud', //        a tie involving a person — SNPTHD (priority 020)
   'enemy-thud', //         an enemy-vs-enemy (or ptero-vs-ptero) tie — SNETHD (priority 009)
+  'player-lava-death', //  a knight sank in the lava — SNPLAV (ADGFLR, JOUSTRV4.SRC:6534,8123)
+  'enemy-lava-death', //   a buzzard sank in the lava — SNELAV (ADGFLR, JOUSTRV4.SRC:6538,8105)
 ] as const
 
 /** The discriminant of every event — derived from the tuple, never re-typed. */
@@ -90,7 +92,7 @@ export type PlayerId = 1 | 2
  * dispatch can narrow its default branch to `never` — which is what makes
  * adding a kind without a cue a COMPILE error instead of a silent drop.
  *
- * SIXTEEN of the seventeen carry no payload, and that is still deliberate: a
+ * EIGHTEEN of the nineteen carry no payload, and that is still deliberate: a
  * field nothing reads would be a promise the seam does not keep.
  *
  * `player-materialise` is the exception, since jt5-6. The two knights have

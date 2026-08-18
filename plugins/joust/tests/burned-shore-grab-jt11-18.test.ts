@@ -206,9 +206,13 @@ describe('jt11-18 AC-A1 — the burned-shore bird is seized, or dies in lava —
     expect(trollsIn(d).length, 'exactly one lava troll (LAVNBR), bound to the CLIF5 victim').toBe(1)
     expect(trollsIn(d)[0]?.victimId, 'and it is the CLIF5-nearest bird, not the shore stander').toBe(DECOY_ID)
     // RED on develop: the un-grabbed shore bird walks off and runs off the bottom of
-    // the screen. GREEN: it is bounded by the FLOOR+7 lava death instead.
+    // the screen. GREEN: it is bounded by the lava death instead. jt13-10 turned the
+    // non-gripped PLAYER death into a visible SINK (this shore bird is a player), so
+    // the bound is FLOOR+20 (the ADGFLR sink floor), not DEATH_Y=FLOOR+7. Still far
+    // above off-screen, so the "not dropped" contract holds. (The enemy/egg/frame-
+    // stepper paths below KEEP the FLOOR+7 clamp — only the player death sinks.)
     expect(maxY, 'the un-grabbed shore bird dies in the lava, it is not dropped off-screen').toBeLessThanOrEqual(
-      DEATH_Y,
+      FLOOR + 20,
     )
   })
 })

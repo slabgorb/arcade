@@ -35,6 +35,10 @@ function cueFor(event: GameEvent): SoundName | null {
   switch (event.type) {
     case 'enemy-death':
       return 'enemyDeath'
+    case 'player-lava-death':
+      return 'playerLavaDeath'
+    case 'enemy-lava-death':
+      return 'enemyLavaDeath'
     case 'player-death':
       return 'playerDeath'
     case 'egg-collected':
