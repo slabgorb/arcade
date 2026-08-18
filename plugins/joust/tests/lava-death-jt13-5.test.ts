@@ -130,7 +130,7 @@ async function burnedWave1Sim(extra: SimProcess[]): Promise<SimState> {
 // forever. GREEN: the sim layer removes it — the death routine, not a clamp.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('jt13-5 A — reaching the lava removes the knight (no free swimming)', () => {
-  it('a non-gripped knight at lava depth over a burned column is removed, not left swimming', async () => {
+  it('a non-gripped knight at lava depth over a burned column stays to sink, not left swimming', async () => {
     const smod = await loadSim()
     let d = await burnedWave1Sim([playerAt(1, PLANK_L, DEATH_Y, { velXIndex: 4 })])
 
@@ -138,12 +138,22 @@ describe('jt13-5 A — reaching the lava removes the knight (no free swimming)',
     const before = playerIn(d, 1)
     expect(before?.entity && before.entity.posY >> 8, 'the knight starts at the lava surface').toBe(DEATH_Y)
 
+    // jt13-10 RESCOPED the same-frame removal into a VISIBLE SINK: ADGFLR keeps the
+    // body and sinks it (FLOOR+7 -> FLOOR+20) before respawn, so "no free swim" is
+    // now "present but sinking, not swimming free." The eventual removal and the one
+    // lost life are pinned by jt13-5 B below and by
+    // tests/lava-death-cinematic-jt13-10.test.ts (AC2 sink + AC1 consequence guard).
     for (let i = 0; i < 4; i++) d = smod.stepSim(d)
 
-    // Isolation: no lava troll can exist at wave 1, so removal is the SWIM death.
-    expect(trollsIn(d).length, 'wave 1 has no lava troll — the removal is the swim death').toBe(0)
-    // RED on develop: the knight is still present (clamped, swimming). GREEN: gone.
-    expect(playerIn(d, 1), 'a knight who reaches the lava is removed, not left to swim').toBeUndefined()
+    // Isolation: no lava troll can exist at wave 1, so this is the SWIM death.
+    expect(trollsIn(d).length, 'wave 1 has no lava troll — the death is the swim death').toBe(0)
+    const after = playerIn(d, 1)
+    // RED on develop: removed the same frame -> undefined. GREEN: present, sinking.
+    expect(after, 'the knight stays in the lava to sink, not removed the same frame it arrives').toBeDefined()
+    expect(
+      after?.entity && after.entity.posY >> 8,
+      'and it is at or below the lava surface, sinking — not swimming free above it',
+    ).toBeGreaterThanOrEqual(DEATH_Y)
   })
 })
 
@@ -164,8 +174,13 @@ describe('jt13-5 B — sinking in the lava costs exactly one life', () => {
     const burned = await burnedWave1Sim([playerAt(1, PLANK_L, 200, { velY: 0x100 })]) // 1 px/frame down
     let game = { ...base, sim: burned }
 
+    // jt13-10 widened the window from 60 to 90: the visible sink (FLOOR+7 ->
+    // FLOOR+20 over ~3-frame naps, then a ~30-frame pause) DEFERS the process
+    // removal that books the life, so a 60-frame window could miss the single
+    // debit. 90 spans the whole cinematic; respawn on a safe pad (below) still
+    // prevents a re-drown, so "exactly one" holds.
     let maxPlayerY = 200
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 90; i++) {
       game = gmod.stepGame(game)
       const p = playerIn(game.sim, 1)
       if (p?.entity) maxPlayerY = Math.max(maxPlayerY, p.entity.posY >> 8)
@@ -174,9 +189,10 @@ describe('jt13-5 B — sinking in the lava costs exactly one life', () => {
     // Isolation: no troll ever existed, so the life lost is the swim death.
     expect(trollsIn(game.sim).length, 'wave 1 has no lava troll — the death is isolated').toBe(0)
     // Non-vacuity: the knight descended into lava territory. The guard is FLOOR
-    // (223), NOT DEATH_Y (230), on purpose: the knight is REMOVED the frame it
-    // reaches DEATH_Y, so its deepest OBSERVABLE pixel is DEATH_Y-1 — a >= DEATH_Y
-    // guard would be unsatisfiable under the same-frame removal this story adds.
+    // (223), a conservative lower bound that holds BOTH before jt13-10 (the body
+    // clamped at DEATH_Y and removed same-frame) AND after it (the body sinks
+    // visibly to FLOOR+20, so its deepest observable pixel is FLOOR+20, not
+    // DEATH_Y-1). The exact deepest-pixel contract is pinned in jt13-10 AC2.
     expect(maxPlayerY, 'the knight fell into lava territory — the drop was exercised').toBeGreaterThanOrEqual(
       FLOOR,
     )
