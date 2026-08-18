@@ -231,3 +231,8 @@ completed_stories:
     title: Wire the humanoid ground population into the running sim so landers have prey (the df5-8 analog for humanoids)
     points: 3
     completed: '2026-08-18'
+  - id: jt13-13
+    epic: jt13
+    title: "Give the joust attract-mode self-play demo a real player AI, so the demo bird actually plays (flap/steer/joust) instead of standing dead — and so live respawn-physics changes stop being frozen by the passive-demo fingerprints"
+    points: 5
+    completed: '2026-08-18'
