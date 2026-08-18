@@ -37,11 +37,15 @@ function readMain(): string {
   return readFileSync(mainPath, 'utf8')
 }
 
-/** main.ts with line comments stripped, so a wiring assertion matches CODE, not comment
- *  prose or a string literal (the ?raw-grep trap — lang-review #15). main.ts's block
- *  comments are line-led (// …), so stripping line comments suffices. */
+/** main.ts with BOTH block (`/* … *​/`) and line (`// …`) comments stripped, so a wiring
+ *  assertion matches CODE, not comment prose or a string literal (the ?raw-grep trap —
+ *  lang-review #15). main.ts carries ~15 JSDoc `/** … *​/` blocks, so stripping only line
+ *  comments is NOT enough — a block-comment mention of `addEventListener('pointerdown'`
+ *  would satisfy a bare keyword guard with no real listener present (caught in review by
+ *  the rule-checker's mutation test). Strip block comments first, then line comments. */
 function mainCode(): string {
   return readMain()
+    .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n')
     .map((l) => l.replace(/\/\/.*$/, ''))
     .join('\n')
@@ -164,19 +168,35 @@ describe('AC-3 — the click entry is single-player only', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AC-4 — the click START is GATED so a click during live play cannot re-seed the game
-// (typescript lang-review #14: an event that mutates run state must gate on the state).
+// AC-4 — the click START is GATED to the IDLE/ENTRY screens only (attract / title /
+// select). It must NOT start during 'playing' (re-seeds a live run), 'gameover' (bypasses
+// afterGameOver's high-score qualification) or 'highscore' (abandons an in-flight initials
+// entry, bypassing commitHighScore). typescript lang-review #14: an event that mutates run
+// state must gate on the state — and here the gate must be an ALLOWLIST, not a bare
+// `!== 'playing'` (the under-inclusive form the review's rule-checker mutation-caught).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('AC-4 — the click start is gated against restarting a live game', () => {
-  it('the click handler only starts when the cabinet is NOT already playing', () => {
+describe('AC-4 — the click start is gated to the idle/entry screens', () => {
+  it('the click handler starts only from attract / title / select', () => {
     const body = clickListenerBody(mainCode())
     expect(body, 'an inline pointer/click handler exists').not.toBeNull()
-    // Kills the ungated-restart mutant: a bare `enterPlaying(1)` on every click would
-    // re-seed the game mid-play (a stray click resets the run). The handler must check
-    // the cabinet is not 'playing' before starting. The guard lives INSIDE the handler
-    // body (the file-level `!== 'playing'` in the frame pump must not satisfy this).
-    expect(body!, "the click handler guards on the cabinet not being 'playing'").toMatch(
-      /mode\s*!==\s*'playing'|mode\s*===\s*'attract'|mode\s*===\s*'title'/,
+    // The allowlist: a game may begin from any of the three entry screens.
+    expect(body!, 'the handler starts from attract').toMatch(/mode\s*===\s*'attract'/)
+    expect(body!, 'the handler starts from title').toMatch(/mode\s*===\s*'title'/)
+    expect(body!, 'the handler starts from select').toMatch(/mode\s*===\s*'select'/)
+  })
+
+  it('the click handler never starts during play, game-over, or initials entry', () => {
+    const body = clickListenerBody(mainCode())
+    expect(body, 'an inline pointer/click handler exists').not.toBeNull()
+    // Kills the under-inclusive `!== 'playing'` guard: it also fired during 'highscore'
+    // (losing a qualifying row) and 'gameover' (bypassing qualification). An allowlist of
+    // entry screens never names 'gameover'/'highscore', so their absence proves the click
+    // cannot start from them; the bare not-playing form is likewise forbidden.
+    expect(body!, 'the handler does not start from game-over or initials entry').not.toMatch(
+      /'gameover'|'highscore'/,
+    )
+    expect(body!, 'the guard is an allowlist, not a bare not-playing check').not.toMatch(
+      /!==\s*'playing'/,
     )
   })
 })

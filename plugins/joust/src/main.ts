@@ -509,13 +509,19 @@ window.addEventListener('keydown', (e) => {
 
 // jt13-4 — click-to-enter. The browser cabinet has no physical start buttons, so a
 // pointer press ON the canvas begins a game directly — SINGLE PLAYER only (the attract
-// prompt now reads 'CLICK TO START'). Guarded on the cabinet not already 'playing', so
-// a stray click mid-game cannot re-seed the run; the click is a discrete event, so no
-// rising-edge debounce is needed (unlike the held start keys). audio.resume() rides
-// along here too: the click is a user gesture, the same unlock hook keydown uses.
+// prompt now reads 'CLICK TO START'). The start is gated to the IDLE/ENTRY screens
+// (attract / title / select) — an ALLOWLIST, not a bare `!== 'playing'`: a click during
+// 'highscore' would abandon an in-flight initials entry (bypassing commitHighScore, the
+// one path that persists a row), and a click during 'gameover' would start before
+// afterGameOver runs (bypassing the high-score qualification). A new mode therefore
+// defaults to NOT starting. The click is a discrete event, so no rising-edge debounce is
+// needed (unlike the held start keys). audio.resume() rides along here too: the click is
+// a user gesture, the same unlock hook keydown uses.
 canvas.addEventListener('pointerdown', () => {
   audio.resume()
-  if (cabinet.mode !== 'playing') enterPlaying(1)
+  if (cabinet.mode === 'attract' || cabinet.mode === 'title' || cabinet.mode === 'select') {
+    enterPlaying(1)
+  }
 })
 
 // jt11-14 — the FROZEN-COUNTDOWN escape hatch. jt11-6's entry timeout is spent by
