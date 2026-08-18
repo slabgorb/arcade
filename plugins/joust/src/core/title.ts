@@ -27,6 +27,18 @@ export const TITLE_EXTRA_MOUNT = 'EXTRA MOUNT EVERY '
 /** MSW18 $F8 — MESSEQU.SRC:157. Verbatim; leading comma. */
 export const TITLE_POINTS_SUFFIX = ',000 POINTS'
 
+/**
+ * The BCD replay level printed between MSW17 and MSW18: `OUTBCD` displays the
+ * THOUSANDS of replay points (ATT.SRC:78, "DISPLAY THOUSANDS OF REPLAY POINTS").
+ * The ROM's `REPLAY` CMOS byte already holds those thousands (BCD 20); this port
+ * stores the replay interval in whole points (REPLAY_INTERVAL = 20,000), so the
+ * displayed number is the interval divided by 1000 — 20,000 → 20 → "20,000 POINTS".
+ * Pure: the shell reads the setting and lays this number out.
+ */
+export function extraMountThousands(replayInterval: number): number {
+  return Math.floor(replayInterval / 1000)
+}
+
 // ─── THE JOUST WORDMARK — a VECTOR line-drawing (LIST, ATT.SRC:423-531) ───────
 // Transcribed byte-for-byte from the LIST table as decoded by the GO interpreter
 // (ATT.SRC:85-118) and drawn by LINE (ATT.SRC:340). Each letter is a group of

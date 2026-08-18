@@ -134,43 +134,33 @@ describe('AC-2/AC-4 the replay level is derived from the setting', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AC-1/AC-3 layoutTitleScreen lays the replay level out', () => {
   it('exposes a replayLevel LaidOutText in FONT57', () => {
-    const screen = layoutTitleScreen(GREEN) as Record<string, unknown>
-    const rl = screen.replayLevel as LaidOutText | undefined
+    const rl: LaidOutText = layoutTitleScreen(GREEN).replayLevel
     expect(rl, 'layoutTitleScreen must expose a replayLevel line (the BCD thousands)').toBeDefined()
-    expect(rl!.height, 'replayLevel is FONT57 (cell height 7)').toBe(FONT57.cellHeight)
+    expect(rl.height, 'replayLevel is FONT57 (cell height 7)').toBe(FONT57.cellHeight)
   })
 
   it('renders the default thousands "20" — two FONT57 digit glyphs, right width', () => {
-    const screen = layoutTitleScreen(GREEN) as Record<string, unknown>
-    const rl = screen.replayLevel as LaidOutText | undefined
-    expect(rl, 'replayLevel must exist').toBeDefined()
+    const rl: LaidOutText = layoutTitleScreen(GREEN).replayLevel
     // "20" is two glyphs, advanced by the fixed FONT57 cell.
-    expect(rl!.ops.length, '"20" is two digit glyphs').toBe(2)
-    expect(rl!.width, 'two digits × FONT57 cell width').toBe(2 * FONT57.cellWidth)
-    expect(rl!.ops[0].glyph, "first digit glyph is FONT57 '2'").toBe(FONT57.glyphFor('2'))
-    expect(rl!.ops[1].glyph, "second digit glyph is FONT57 '0'").toBe(FONT57.glyphFor('0'))
+    expect(rl.ops.length, '"20" is two digit glyphs').toBe(2)
+    expect(rl.width, 'two digits × FONT57 cell width').toBe(2 * FONT57.cellWidth)
+    expect(rl.ops[0].glyph, "first digit glyph is FONT57 '2'").toBe(FONT57.glyphFor('2'))
+    expect(rl.ops[1].glyph, "second digit glyph is FONT57 '0'").toBe(FONT57.glyphFor('0'))
   })
 
   it("threads the caller's colour onto the replay level (not hard-wired)", () => {
-    const g = layoutTitleScreen(GREEN) as Record<string, unknown>
-    const a = layoutTitleScreen(AMBER) as Record<string, unknown>
-    const rlG = g.replayLevel as LaidOutText | undefined
-    const rlA = a.replayLevel as LaidOutText | undefined
-    expect(rlG, 'replayLevel must exist').toBeDefined()
-    expect(rlA, 'replayLevel must exist').toBeDefined()
-    expect(rlG!.colour, 'replayLevel carries GREEN').toEqual(GREEN)
-    expect(rlA!.colour, 'replayLevel carries AMBER').toEqual(AMBER)
-    expect(rlA!.colour, 'the colour is threaded, not hard-wired').not.toEqual(rlG!.colour)
+    const rlG: LaidOutText = layoutTitleScreen(GREEN).replayLevel
+    const rlA: LaidOutText = layoutTitleScreen(AMBER).replayLevel
+    expect(rlG.colour, 'replayLevel carries GREEN').toEqual(GREEN)
+    expect(rlA.colour, 'replayLevel carries AMBER').toEqual(AMBER)
+    expect(rlA.colour, 'the colour is threaded, not hard-wired').not.toEqual(rlG.colour)
   })
 
   it('all three parts of the line are non-empty — none is omitted (AC-3)', () => {
-    const screen = layoutTitleScreen(GREEN) as Record<string, unknown>
-    const extra = screen.extraMount as LaidOutText | undefined
-    const rl = screen.replayLevel as LaidOutText | undefined
-    const pts = screen.pointsSuffix as LaidOutText | undefined
-    expect(extra?.ops.length, 'the "EXTRA MOUNT EVERY " prefix renders').toBeGreaterThan(0)
-    expect(rl?.ops.length, 'the numeric replay level renders').toBeGreaterThan(0)
-    expect(pts?.ops.length, 'the ",000 POINTS" suffix renders').toBeGreaterThan(0)
+    const screen = layoutTitleScreen(GREEN)
+    expect(screen.extraMount.ops.length, 'the "EXTRA MOUNT EVERY " prefix renders').toBeGreaterThan(0)
+    expect(screen.replayLevel.ops.length, 'the numeric replay level renders').toBeGreaterThan(0)
+    expect(screen.pointsSuffix.ops.length, 'the ",000 POINTS" suffix renders').toBeGreaterThan(0)
   })
 })
 
