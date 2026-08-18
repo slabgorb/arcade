@@ -3,7 +3,7 @@ type: epic
 title: Joust gameplay & entry-screen bug fixes
 description: "Bugs found during joust gameplay: (1) a landed ostrich with a centered joystick keeps its stored horizontal velocity, so it runs in place and launches at full speed instead of zeroing velocity on landing with no input; (2) players and enemies should spawn with a visible 'warp-in' animation, which appears to have never been implemented (not an intentional accessibility removal); (3) the entry screen shows a wrong 'new mount every' line that should read the actual setting or be removed; (4) nothing prompts the '1' button — replace with click-to-enter, single player only."
 priority: p1
-status: ready
+status: done
 repos: arcade
 stories:
   - id: jt13-1
@@ -125,10 +125,11 @@ stories:
     description: "Follow-up to jt13-10. jt13-10 wired the ADGFLR visible sink (FLOOR+7->FLOOR+20) + SNPLAV/SNELAV cue for the NON-gripped lava death (player and enemy) via stepLavaDeath in sim.ts. The lava-troll GRIP-DROWN path is still pre-jt13-5 behaviour: stepTrolls's gs.inLava branch (sim.ts ~:1113) removes the gripped victim the SAME FRAME with no sink and no cue. The ROM's ADDLAV JMPs into the SAME ADGFLR cinematic (~:6643), so a gripped drown should also sink and sound SNPLAV/SNELAV. Route the grip-drown victim through stepLavaDeath (emit the cue + start the sink) so gripped and non-gripped lava deaths are identical. Add a behavioural test driving a gripped victim under and asserting the sink + cue (jt13-10 left this path untested)."
     points: 2
     priority: p3
-    status: in_progress
+    status: done
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-18'
     type: bug
   - id: jt13-12
     title: "Wire the TREFF phase-2 idle colour-cycle into the playable game: hold the re-materialising bird stationary on its pad, render the accelerating owner/white/grey (TREPL) tint through drawList/paintWarpIn, and release on the player's flap (or the ~376-nap timeout). jt13-9 shipped the pure IdleCycleState + sim state but nothing draws it and the bird falls during the wait; this makes it visible and correct in-play."
@@ -163,3 +164,4 @@ stories:
     depends_on: jt13-13
     completed: '2026-08-18'
     type: bug
+completed: '2026-08-18'
