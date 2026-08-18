@@ -53,10 +53,11 @@ stories:
     description: "Right now the player can dive into the lava and swim around freely, with no death and no life lost. ROM ground truth (JOUSTRV4.SRC, routine ADGFLR 'DEATH VIA SWIMMING IN THE LAVA'): lava is a SINK-AND-DIE sequence, NOT instant death on touch. (1) On reaching the lava surface PPOSY>=FLOOR+7 (:6508-6509 CMPA #FLOOR+7 / BHS ADGFLR), horizontal velocity is cleared (CLR PVELX :6610 'PLAYER IS NOT GOING ANYWHERE') so no sideways swim, and the lava sound plays (SNPLAV player / SNELAV enemy). (2) A brief break-free window (:6614 CMPD #- 'BREAK FREE VELOCITY?') lets a hard enough upward flap escape; otherwise lava gravity keeps pulling down. (3) Death fires once the sprite is floor-clipped below full length (WCLENY<7, :6555) — rider removed, [DDEAD] death routine, life lost. (4) Body sinks (INC PPOSY) to FLOOR+20 (:6568), pause, respawn. Our bug: isLavaDeath (frame.ts:292) was repurposed by jt11-18 to only CLAMP the bird at DEATH_Y with velY=0 as an on-screen backstop — it never clears PVELX, never calls a death routine, never removes a life. Reconcile with the existing lava-troll grab (troll grab is a separate death path; ADGFLR even kills the troll tasks when the rider sinks, :6624-6640)."
     points: 3
     priority: p1
-    status: in_review
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
     type: bug
     review_findings: "APPROVED round 2. Round-1 HIGH (ROM mis-citation: CLR PVELX is ADDLAV/troll-grip, not the general ADGFLR non-gripped death) RESOLVED — Dev dropped the non-ROM velX-clear and corrected the attribution; re-verified vs JOUSTRV4.SRC by two specialists. Descoped fidelity tail filed as jt13-10; jt13-7 stale note corrected. Non-blocking residuals routed: tilde line-refs off-by-one (jt13-10 can tidy), a documented defensive grippedBy clause, a 6px-loose test guard. Suite 3746/3746, orchestrator 505/0, lint clean."
     review_verdict: approved
