@@ -609,8 +609,16 @@ describe('AC5 — the jt2 replay pins move, and the bound is stated', () => {
     // empty third (SELARE safety) instead of the fixed mid-screen spawn — so its frozen
     // frame-400 fingerprint moves from the old (200,32768) spawn to TR1 (113, 20480=80<<8).
     // Same rest state (zero velocity, held), new pad-anchored position.
+    // jt13-14 RE-BASELINE (the TREFF hold): a re-materialising player now runs NO
+    // flight physics during its warp-in wait — it is HELD on its pad AIRBORNE
+    // (velY=0, position frozen) until its first flap, instead of falling under
+    // gravity and landing. player#2 never flaps (its input is IDLE), so at frame
+    // 400 it is still held: same TR1 position and zero velocity, but the airborne
+    // flag flips 0 -> 1 — `player#2:113,20480,0,0,0,1,0` -> `player#2:113,20480,0,0,0,1,1`.
+    // A state-flag correction on the held knight, not a trajectory change: player#1
+    // and enemy#257 are bit-identical through it.
     expect(rowFor('player#2:'), 'player#2 re-materialises on the TR1 pad and rests there').toBe(
-      'player#2:113,20480,0,0,0,1,0',
+      'player#2:113,20480,0,0,0,1,1',
     )
     expect(
       rowFor('enemy#257:'),
@@ -740,9 +748,25 @@ describe('AC6 — the dumb wing cue', () => {
       //   0xbeef  down 277 -> 304, playerDown 154 -> 153, playerUp 152 -> 153
       //   0x2468  down 256 -> 342, playerDown 154, playerUp 153 -> 154
       //   0xface  down 206 -> 172, playerDown 154, playerUp 154
-      0xbeef: { down: 304, playerDown: 153, playerUp: 153 },
-      0x2468: { down: 342, playerDown: 154, playerUp: 154 },
-      0xface: { down: 172, playerDown: 154, playerUp: 154 },
+      // jt13-14 RE-BASELINE (the TREFF hold went live in frame.ts: a re-materialising
+      // PLAYER now runs NO flight physics during its warp-in wait — held on its pad
+      // airborne, velY=0, position frozen — until its first flap, instead of falling
+      // under gravity and landing). Every post-death knight trajectory therefore
+      // restarts from the pad instead of from a fallen landing, perturbing the seeded
+      // replay's trajectories AND knight-death timing, so both the enemy census and
+      // the knight cue counts move. The enemy counts move in BOTH directions — the
+      // signature of a trajectory perturbation, not a population change — and stay
+      // well above the >50 floor. The knight counts FALL by a few on every seed for a
+      // mechanism-level reason: a held knight runs no physics, so the scripted %13
+      // flap frames that land inside a hold window emit no wing cue at all. The
+      // `rng` cursor is UNMOVED through this change (audio-events.test.ts AC3): the
+      // hold is a physics skip and draws no randomness.
+      //   0xbeef  down 304 -> 301, playerDown 153 -> 148, playerUp 153 -> 148
+      //   0x2468  down 342 -> 295, playerDown 154 -> 151, playerUp 154 -> 151
+      //   0xface  down 172 -> 179, playerDown 154 -> 148, playerUp 154 -> 148
+      0xbeef: { down: 301, playerDown: 148, playerUp: 148 },
+      0x2468: { down: 295, playerDown: 151, playerUp: 151 },
+      0xface: { down: 179, playerDown: 148, playerUp: 148 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)

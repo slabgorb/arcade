@@ -551,7 +551,7 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     expect(kindsOf(after)).toContain('player-materialise')
   })
 
-  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0xface, frame 5041)', () => {
+  it('a wave advance emits enemy-materialise, once per arriving buzzard (seed 0x1002, frame 5884)', () => {
     // jt11-4 RESHAPE (body, not baseline): this test used to assert the whole
     // complement materialises on the ADVANCE frame, which is exactly what the story
     // moved. The advance still happens and the same four buzzards still arrive —
@@ -643,8 +643,17 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // then served over the WCREATE walk-in below, comfortably inside the 320-frame window.
     // (jt12-3 rework: the orphan-fix + ptero/troll SELARE census nudged this from 5525 to 6179.)
     // Seed, script, assertions unchanged.
-    const before = advanceTo(0x1002, 6179)
-    const advanceFrame = stepGame(before, inputsAt(6179))
+    // jt13-14 RE-BASELINE (the TREFF hold went live in frame.ts: a re-materialising
+    // player runs NO flight physics during its warp-in wait — held on its pad airborne,
+    // velY=0, position frozen — until its first flap, instead of falling and landing):
+    // 6179 -> 5884. The held respawns perturb both knights' post-death re-entries, so
+    // 0x1002's wave 1 now clears SOONER; re-swept 9000 frames for this test's own
+    // precondition — frame 5884 (wave 1 -> 2) is the only advance, and the four
+    // buzzards are then served at 5945 / 6006 / 6067 / 6128, the 61-frame WCREATE
+    // walk-in, comfortably inside the 320-frame window below, one cue each and none
+    // on the advance frame itself. Seed, script, assertions unchanged.
+    const before = advanceTo(0x1002, 5884)
+    const advanceFrame = stepGame(before, inputsAt(5884))
     expect(advanceFrame.wave, 'precondition: the wave really advances on this frame').not.toBe(before.wave)
     // jt11-4 — nothing materialises on the advance frame itself: the complement has
     // only just taken its numbers and owes the transporter its PCNAP 1
@@ -668,13 +677,13 @@ describe('jt5-1 AC2 — the moments are emitted in ORDINARY PLAY, not only in fi
     // The window must span WCREATE's whole `PCNAP 61`-per-bird walk-in
     // (JOUSTRV4.SRC:2191): a four-buzzard complement is not fully in until ~frame 244.
     for (let i = 0; i < 320; i++) {
-      g = stepGame(g, inputsAt(6180 + i))
+      g = stepGame(g, inputsAt(5885 + i))
       const fresh = enemyIds(g).filter((id) => !seen.has(id))
       for (const id of fresh) seen.add(id)
       const cued = kindsOf(g).filter((k) => k === 'enemy-materialise').length
       expect(
         cued,
-        `frame ${6180 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
+        `frame ${5885 + i}: exactly one enemy-materialise per buzzard served THAT frame`,
       ).toBe(fresh.length)
       totalArrived += fresh.length
       totalCues += cued
@@ -988,12 +997,24 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // no randomness, the law this group pins. Play moved: the repositioned re-entries let both
     // knights keep a life longer (lives 2/4 -> 3/3) and bank more (scores 150/1050 -> 850/1100),
     // and enemy#256 is no longer in the frame-2400 arena.
+    //
+    // jt13-14 RE-BASELINE (the TREFF hold went live in frame.ts: a re-materialising
+    // player runs NO flight physics during its warp-in wait — held on its pad
+    // airborne, velY=0, position frozen — until its first flap, instead of falling
+    // and landing). TWELFTH consecutive re-baseline with the headline unmoved: `rng`
+    // is STILL 2_006_456_271 and `wave` still 1 — a physics SKIP draws no randomness,
+    // the law this group pins. Play moved: every post-death re-entry restarts its
+    // trajectory from the pad instead of from a fallen landing, so the kill ledger
+    // redistributes (scores 850/1100 -> 100/2100, lives 3/3 unmoved) and the
+    // frame-2400 arena holds two eggs (egg#4325634, egg#65792) where enemy#4260098
+    // used to fly (procs 'enemy#4260098,player#2,enemy#4260097,player#1' ->
+    // 'player#2,enemy#4260097,player#1,egg#4325634,egg#65792').
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'enemy#4260098,player#2,enemy#4260097,player#1',
-      scores: [850, 1100],
+      procs: 'player#2,enemy#4260097,player#1,egg#4325634,egg#65792',
+      scores: [100, 2100],
       lives: [3, 3],
     })
   })
