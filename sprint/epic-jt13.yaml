@@ -150,7 +150,7 @@ stories:
     description: "Follow-up to jt13-12, BLOCKED BY jt13-13. jt13-9 built the pure TREFF phase-2 idle-cycle state (warpin.ts), and jt13-12 rendered the accelerating owner/white/grey (TREPL) tint into the playable game via drawList/paintWarpIn — but jt13-12 was descoped to RENDER-ONLY. The re-materialising bird still spawns airborne and FALLS off its pad during the idle wait; only the colour cycles. The ROM control-gates the bird to STAND on its pad until the player's first move (JOUSTRV4.SRC TREFF phase 2, ~:5805-5890, the 'wait for 1st move' gate). Deliver the physics half: (1) while a player process has an active `idleCycle` and has not yet flapped, SKIP its flight/gravity step (stepFrame in frame.ts) so it holds stationary on the pad — advanceWarpIn already threads the flap into the cycle (sim.ts:2371,:2510) and ends it on 'moved', so releasing the hold is the same edge; (2) end the hold + idle cycle when an ENEMY's AI moves it (no frozen or ghost-tinted moving bird); (3) respect the photosensitive-safety rule — the small on-pad silhouette at the 1-nap final cadence must not become a large-area luminance strobe (see memory: pacman-epilepsy-no-flash). WHY BLOCKED: holding the respawn bird changes respawn physics, which the passive attract demo's fingerprints freeze (a held demo bird can't clear waves) — jt13-13 gives the demo a player AI first so those fingerprints survive an active-demo re-baseline. Verify VISUALLY (Playwright headless): click-to-start, take no input; on respawn the bird should STAND on its pad and colour-cycle for the ~6.4s wait rather than dropping."
     points: 3
     priority: p2
-    status: in_progress
+    status: in_review
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
