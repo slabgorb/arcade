@@ -251,3 +251,8 @@ completed_stories:
     title: Wave announcements (egg / survival / etc.) never render — wire waveBeats to the shell
     points: 5
     completed: '2026-08-18'
+  - id: jt13-8
+    epic: jt13
+    title: "Retire joust's dead twins (per-symbol: delete behavioral-only, keep claim-pinned)"
+    points: 5
+    completed: '2026-08-18'
