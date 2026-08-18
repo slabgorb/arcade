@@ -80,10 +80,11 @@ stories:
     description: "Being grabbed by the lava troll plays no sound. ROM: LT1GRP loads SNTROL ('MAKE THE SOUND OF THE LAVA TROLL / GRIPPING THE PLAYER', JOUSTRV4.SRC:1646-1647) and JSR VSND; SNTROL is defined at :8097 'CAPTURED BY LAVA TROLL SOUND'. jt9-11 wired troll.beginGrip (sim.ts:1034) but no 'troll-grab'/SNTROL entry was added to EVENT_KINDS (core/events.ts) and no cue to audio-manifest, so the grab is silent. Add a troll-grab event kind emitted at beginGrip, map it to a SNTROL cue in audio-dispatch + audio-manifest, and play it. Also fix the stale comment at events.ts:44-49 claiming troll.beginGrip has 'zero production callers' — it now has one (sim.ts:1034). Note: the PLAYER/ENEMY-IN-LAVA sounds SNPLAV/SNELAV (:8123/:8105, played by ADGFLR) were DEFERRED from jt13-5 (which shipped the lava death/removal only) and are filed as jt13-10, not here."
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-18'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-18'
     type: bug
   - id: jt13-8
     title: "Retire joust's dead twins (per-symbol: delete behavioral-only, keep claim-pinned)"
