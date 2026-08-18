@@ -221,3 +221,8 @@ completed_stories:
     title: Lava-troll grab is silent — add the SNTROL 'captured' cue
     points: 3
     completed: '2026-08-18'
+  - id: df5-3
+    epic: df5
+    title: "Scoring, the men counter + the extra man: plugins/defender/src/core/score.ts — per-enemy points, the humanoid P250/P500 score pop-ups (P250 OBI C25P1 defender/DEFB6.SRC:499, P500 OBI C5P1 :506, P5000 JSR SCORE :508; spawned LDX #P250/#P500 :959,962), the BONUS collect process (*BONUS COLLECT PROCESS defender/DEFA7.SRC:1786,1788), the men (lives) counter and the extra-man award. FIRST pin each score VALUE and which event pays it in the dossier, CITED, before naming the reducer (the df4 identity-first law, now applied to values). Consumes df4-1 collision (deaths) + df3 scheduler (pop-ups are processes)."
+    points: 3
+    completed: '2026-08-18'
