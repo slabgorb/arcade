@@ -223,7 +223,10 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
 
   for (const laser of state.lasers) {
     if (!laser.alive) continue
-    drawLaserStreak(fb, screenCol(laser.x), state.ship.y, laser.facing)
+    // Lasers are ON-SCREEN quantities (laser.x = shipX_onscreen + offset, laser.ts) — like the
+    // ship, they do NOT scroll with the camera, so their column is `laser.x >> 8`, NOT camera-
+    // offset (df5-9-R3). Collision agrees: hitTestLasers projects landers to on-screen space.
+    drawLaserStreak(fb, laser.x >> 8, state.ship.y, laser.facing)
   }
 
   // df4-6: the materialize/explosion effects, painted on top (a fresh sim has none, so

@@ -25,8 +25,9 @@
 
 import { describe, it, expect } from 'vitest'
 import { createHash } from 'node:crypto'
-import { createSim, type SimState } from '../src/core/sim.js'
+import { createSim, stepSim, spawnLander, spawnHumanoid, type SimState, type Input } from '../src/core/sim.js'
 import { composeFrame } from '../src/core/scene.js'
+import { wrap16 } from '../src/core/world.js'
 import type { Framebuffer } from '../src/core/framebuffer.js'
 
 const W = 292
@@ -142,5 +143,85 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
       digest(composeFrame(noEntities(0x1000), W, H)),
       'the world must actually scroll between the two cameras (else nothing was camera-offset)',
     ).not.toBe(digest(composeFrame(noEntities(0x0000), W, H)))
+  })
+
+  // df5-9-R3: lasers are ON-SCREEN quantities (laser.x = ship's onscreen X + offset), NOT
+  // world-space — so, like the ship, they must NOT scroll with the camera. A laser at a fixed
+  // laser.x renders at the SAME column whichever way the camera looks; a world entity does not.
+  it('lasers do NOT scroll with the camera (they are on-screen, not world-space)', () => {
+    const withLaser = (camera: number): SimState => ({
+      ...base,
+      camera,
+      humanoids: [],
+      landers: [],
+      lasers: [{ x: 0x2600, facing: 'right', alive: true }],
+      effects: [],
+    })
+    const laserCol = (camera: number): number => {
+      const cols = diffCols(composeFrame(withLaser(camera), W, H), composeFrame(noEntities(camera), W, H))
+      return cols.length ? cols[0] : -1
+    }
+    expect(laserCol(0x0000), 'the laser must be drawn at camera 0').toBeGreaterThanOrEqual(0)
+    expect(
+      laserCol(0x4000),
+      'the laser moved when the camera panned — it is being camera-offset like a world entity, but laser.x is ' +
+        'on-screen (ship-relative), so it must render at the same column regardless of camera (df5-9-R3)',
+    ).toBe(laserCol(0x0000))
+    // Contrast: a world entity at the same fixed coord DOES move (guards against a no-op that freezes all).
+    expect(humanoidCol(0x2600, 0x4000)).not.toBe(humanoidCol(0x2600, 0x0000))
+  })
+
+  // df5-9-R4: once the world scrolls, COLIDE must agree with the RENDER — you must be able to shoot
+  // the enemy you SEE. The discriminator is coordinate-space, not a fragile staging: raw-world collision
+  // (the pre-R4 code) only ever kills a lander whose WORLD column lands in the ship beam's on-screen
+  // reach [~32, 152], and such a lander DRAWS at `worldcol − cameraCol`, i.e. no further right than
+  // `152 − cameraCol` on screen. So a kill DRAWN beyond that — high in the beam band — is impossible
+  // under raw collision and can ONLY come from on-screen-consistent collision (the R4 fix). We settle a
+  // stable nonzero camera, hold fire, and require exactly such a kill (the deterministic wave field
+  // supplies landers drawn across the beam). At camera 0 this test is vacuously satisfiable, so the
+  // nonzero-camera assertion above it is load-bearing.
+  it('you can shoot the enemy you SEE at a scrolled camera (COLIDE agrees with the camera-offset render)', () => {
+    const THRUST: Input = { thrust: true, reverse: false, up: false, down: false, fire: false }
+    const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
+    const FIRE: Input = { thrust: false, reverse: false, up: false, down: false, fire: true }
+    // Settle a stable, nonzero camera: thrust briefly, then coast until the ship-leads slide stops.
+    let s = createSim(makeRand(7))
+    for (let i = 0; i < 80; i++) s = stepSim(s, THRUST)
+    for (let i = 0; i < 600; i++) s = stepSim(s, NEUTRAL)
+    const camera = s.camera
+    expect(camera, 'the camera must have scrolled to a nonzero column for this test to mean anything').not.toBe(0)
+
+    const cameraCol = camera >> 8
+    const BEAM_REACH = 152 // the laser's on-screen death edge column (RIGHT_EDGE 0x9800 >> 8, laser.ts)
+    const rawMaxDrawn = BEAM_REACH - cameraCol // a pre-R4 (raw-world) kill can draw no further right than this
+    const drawnCol = (worldX: number): number => wrap16(worldX - camera) >> 8
+
+    // Plant a lander DRAWN in the ship's firing lane (screen col 100), with a lure humanoid on the beam
+    // row far enough that it lingers there under fire instead of grabbing (the df5-10-R1 technique) — but
+    // NEARER than any auto-seeded ground humanoid, so it targets the lure. Its WORLD column is a whole
+    // camera to the right (col ~159), OUTSIDE the beam's raw reach — so only on-screen-consistent collision
+    // can ever hit it.
+    const DRAWN_START = 100
+    s = spawnHumanoid(s, wrap16(camera + (DRAWN_START << 8) + 2400), 120) // lure on the beam row
+    s = spawnLander(s, wrap16(camera + (DRAWN_START << 8)))
+
+    let onscreenOnlyKill = false
+    for (let i = 0; i < 4000 && !onscreenOnlyKill; i++) {
+      s = stepSim(s, FIRE)
+      onscreenOnlyKill = s.effects.some(
+        (e) =>
+          e.kind === 'explode' &&
+          drawnCol(e.x) > rawMaxDrawn + 5 && // safely beyond anything raw-world collision could hit
+          drawnCol(e.x) <= BEAM_REACH &&
+          Math.abs(e.y - 120) <= 30, // near the ship's beam row, not a top-of-screen carry kill
+      )
+    }
+    expect(
+      onscreenOnlyKill,
+      `a lander DRAWN in the far beam band (screen col ${rawMaxDrawn + 5}..${BEAM_REACH}, beyond any raw-world ` +
+        'collision reach) was never killed at a scrolled camera — COLIDE is still testing the raw world ' +
+        'position, not the on-screen position the player sees (df5-9-R4: you cannot shoot what you see once ' +
+        'the world scrolls)',
+    ).toBe(true)
   })
 })
