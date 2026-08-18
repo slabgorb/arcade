@@ -184,3 +184,8 @@ completed_stories:
     title: Replace 'press 1' prompt with click-to-enter, single player
     points: 2
     completed: '2026-08-18'
+  - id: jt13-10
+    epic: jt13
+    title: 'Lava death cinematic: ADDLAV break-free window, sink to FLOOR+20, and the SNPLAV/SNELAV cue'
+    points: 3
+    completed: '2026-08-18'
