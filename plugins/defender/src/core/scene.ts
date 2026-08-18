@@ -31,7 +31,7 @@ import { writeText } from './charset.js'
 import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeAltitudes, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
-import { wrap16 } from './world.js'
+import { wrap16, WORLD_COLS } from './world.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
 
@@ -200,7 +200,11 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
   const screenCol = (worldX: number): number => wrap16(worldX - camera) >> 8
 
   const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
-  blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> 8)
+  // df5-9-R1: tile the surface at the WORLD cylinder period (WORLD_COLS = 0x10000>>8), the SAME
+  // period the camera (BGL>>8) cycles at — so the planet scrolls seamlessly and does not snap
+  // when BGL wraps. (Reconciling the decoded surface's length with the world width is a separate
+  // Architect question; here we only need the seamless period.)
+  blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> 8, WORLD_COLS)
 
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
 

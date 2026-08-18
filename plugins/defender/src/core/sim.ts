@@ -235,9 +235,10 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   // COLIDE (DEFA7.SRC:2775-2787): each live player laser box vs the enemy list. A box
   // overlap kills the struck lander (LKIL1) and starts a LOCALIZED explosion (EXST) at it.
-  // The lasers/landers are the freshly-travelled snapshots; both are read in SCREEN space
-  // (column = world-x >> 8, the render convention), so the laser you SEE hits the lander
-  // you SEE. Advance the effects first, then spawn this tick's explosions fresh.
+  // The lasers/landers are the freshly-travelled snapshots; COLIDE hit-tests both in RAW world
+  // space (column = world-x >> 8, camera-independent), so it is unaffected by the df5-9 camera
+  // scroll. The render (scene.ts) offsets lasers and landers by the SAME camera, so a hit still
+  // lines up with what you SEE. Advance the effects first, then spawn this tick's explosions fresh.
   state._effectBank.step()
   hitTestLasers(state, shipRow)
 
