@@ -94,7 +94,8 @@ stories:
     description: 'The wave director is a df3 scheduler process; it does not invent its own tick. It reads the WVTAB size/time per wave and escalates attacker count per the ROM (GTWV00 "NEW GUYS EVERY NTH WAVE"). Wave-clear is detected from the enemy population, not a timer. Colour by df2 palette index only; every constant gated.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
