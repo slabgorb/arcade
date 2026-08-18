@@ -97,7 +97,8 @@ stories:
     title: 'Joust transporter wait-for-first-move idle colour-cycle (ROM TREFF phase 2, JOUSTRV4.SRC:5805-5890): after the 30-frame warp-in grow, the full-size bird colour-cycles owner/white/grey (TREPL1/2/3) at an accelerating rate (16-8-4-2-1 naps) until the player flaps or it times out; descoped from jt13-2'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
   - id: jt13-10
