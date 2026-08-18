@@ -372,6 +372,16 @@ function withLavaEntity(p: SimProcess, e: EntityState, sink: LavaSink): SimProce
   return { ...p, lavaSink: sink }
 }
 
+/** Write a grabbed bird's flight state back onto its kind-specific slot, in place on
+ *  the `byId` working copy. A PLAYER carries it on `entity`, an ENEMY on `enemy.entity`
+ *  (jt9-42: the lava troll grips either — LNDB7, JOUSTRV4.SRC:6764). For an enemy this
+ *  reassigns `enemy` to a fresh record rather than mutating the shared `enemy.entity`,
+ *  which the shallow `byId` copy still aliases from the source process. */
+function setBirdEntity(victim: SimProcess, e: EntityState): void {
+  if (victim.kind === 'enemy' && victim.enemy) victim.enemy = { ...victim.enemy, entity: e }
+  else victim.entity = e
+}
+
 /**
  * One frame of the non-gripped lava death (ADGFLR "DEATH VIA SWIMMING IN THE LAVA",
  * JOUSTRV4.SRC:6523-6569) for a player or enemy. Returns the process to keep (its
@@ -1120,8 +1130,12 @@ function stepTrolls(
     const troll = byId.get(src.id)
     if (!troll || troll.victimId === undefined || !troll.entity) continue
     const victim = byId.get(troll.victimId)
-    if (!victim || !victim.entity) {
-      // LAVVFY: the target no longer exists — the troll gives up (LAVATF).
+    const vEnt = victim && lavaEntityOf(victim)
+    if (!victim || !vEnt) {
+      // LAVVFY: the target no longer exists (or is not a grabbable bird) — the troll
+      // gives up (LAVATF). `lavaEntityOf` resolves the flight state for a PLAYER or an
+      // ENEMY victim (jt9-42, LNDB7 :6764 grips either), so an enemy no longer trips
+      // this give-up — the grab/grip/drown then run identically for both kinds.
       removed.add(troll.id)
       continue
     }
@@ -1130,10 +1144,10 @@ function stepTrolls(
       // ADDLAV: escalate the pull, then fold it into the victim's fall.
       const grip = escalateGrip(troll.grip)
       const input = inputs?.[victim.id] ?? NEUTRAL_INPUT
-      let vent = victim.entity
+      let vent = vEnt
       if (input.flap) vent = flap(vent, input)
       const gs = stepGrip(vent.velY, vent.posY, grip, !input.flapHeld)
-      victim.entity = { ...vent, velY: gs.velY, posY: gs.posY, timeUp: tickTimeUp(vent.timeUp) }
+      setBirdEntity(victim, { ...vent, velY: gs.velY, posY: gs.posY, timeUp: tickTimeUp(vent.timeUp) })
       if (gs.escaped) {
         // ADLFRE: broke free — 50 points to the victim, and the grip releases.
         events.push({ ...escapeScoreEvent(), player: victim.id })
@@ -1159,7 +1173,7 @@ function stepTrolls(
     }
 
     // LT1HT: rising. Track the victim's X throughout (STD PPOSX,U).
-    const handX = victim.entity.posX + TROLL_X_OFFSET
+    const handX = vEnt.posX + TROLL_X_OFFSET
     const animPhase = troll.entity.animPhase ?? 0
     if (animPhase < TROLL_EXTENDED_FRAME / TROLL_FRAME_STEP) {
       // Phase 1 — extend the grab frame on the LAVTIM cadence.
@@ -1173,7 +1187,7 @@ function stepTrolls(
       }
     } else {
       // Phase 2 — close the Y gap 1px/frame toward victim pixelY + 3, then GRAB.
-      const target = (victim.entity.posY >> 8) + TROLL_GRIP_Y_OFFSET
+      const target = (vEnt.posY >> 8) + TROLL_GRIP_Y_OFFSET
       const handY = troll.entity.posY >> 8
       if (handY === target) {
         // LT1GRP: the hand closes on the victim. The machine sounds SNTROL here
