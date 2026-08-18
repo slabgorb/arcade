@@ -58,8 +58,8 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
-    review_findings: "R1 REJECT: HIGH ROM mis-citation — CLR PVELX is ADDLAV (troll-grip), not the general ADGFLR non-gripped lava death; correct frame.ts/sim.ts/test comments and decide keep/drop the non-ROM velX-clear. MEDIUM: file follow-up for deferred sink/window/sound and fix jt13-7 stale 'covered under jt13-5' note. MEDIUM: AC1 needs a below-DEATH_Y scope control + velXFrac assert; AC3 assert toBe(NSHIP-1)."
-    review_verdict: rejected
+    review_findings: "APPROVED round 2. Round-1 HIGH (ROM mis-citation: CLR PVELX is ADDLAV/troll-grip, not the general ADGFLR non-gripped death) RESOLVED — Dev dropped the non-ROM velX-clear and corrected the attribution; re-verified vs JOUSTRV4.SRC by two specialists. Descoped fidelity tail filed as jt13-10; jt13-7 stale note corrected. Non-blocking residuals routed: tilde line-refs off-by-one (jt13-10 can tidy), a documented defensive grippedBy clause, a 6px-loose test guard. Suite 3746/3746, orchestrator 505/0, lint clean."
+    review_verdict: approved
   - id: jt13-6
     title: Wave announcements (egg / survival / etc.) never render — wire waveBeats to the shell
     description: "Egg and survival rounds (and all wave types) do not announce themselves on screen. Core HAS the seam: wave.ts waveBeats() returns ROM WAVMSG labels per resolved type (INTRO1/2, COOP1/2, SURV1, GLAD1/2/3, EGG1, PTER1), but (a) they are converted to {kind:'beat',message} events in ONLY ONE place — sim.ts:1519, the wave-1 demo seed — the real wave-advance path emits no beats; and (b) nothing in src/shell or main.ts consumes 'beat' events, so nothing paints them, and there is no label->display-text map (SURV1 -> on-screen phrase). Wire the message beats: emit beats on real wave advances, add the label->text mapping from the ROM WAVMSG strings, and render them on the shell with the ROM timing (~1s beats, SHELL owns durations per wave.ts:352-353 #180/6,#90/6 JOUSTRV4.SRC:2045,2601)."
