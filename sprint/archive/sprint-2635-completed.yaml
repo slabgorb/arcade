@@ -169,3 +169,8 @@ completed_stories:
     title: Landing in lava must have consequences (death), not free swimming
     points: 3
     completed: '2026-08-17'
+  - id: jt13-3
+    epic: jt13
+    title: "Entry screen 'new mount every' line: read the setting or remove it"
+    points: 2
+    completed: '2026-08-17'
