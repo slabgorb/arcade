@@ -21,8 +21,8 @@
 // byte against the vendored source with an INDEPENDENT reader that refuses any
 // mismatch, and records an encoding discriminant per block so NEITHER is a 'raster'
 // the blit path would try to nibble-decode (streams-are-not-rasters — the joust
-// COMCL5/ASH lesson, carried into df2 as guardrail 2). The static planet-surface
-// RENDER and the BGALT altitude decode live in tests/terrain-blit.test.ts.
+// COMCL5/ASH lesson, carried into df2 as guardrail 2). The planet-surface RENDER and
+// the decodeScrollSurface altitude decode live in tests/terrain-blit.test.ts.
 //
 // ─── RED / GREEN SPLIT ────────────────────────────────────────────────────────
 // TEA (this file + tests/terrain-blit.test.ts) authors the failing suite. It reuses
@@ -37,7 +37,7 @@
 //      list of terrain-block records (name/encoding/bytes/source), exactly {TDATA,
 //      MTERR}.
 //   3. plugins/defender/src/core/terrain.ts — re-exports TERRAIN plus the pure
-//      decodeAltitudes + blitTerrain (contract pinned in terrain-blit.test.ts). Held
+//      decodeScrollSurface + blitTerrain (contract pinned in terrain-blit.test.ts). Held
 //      to src/core purity (tests/purity.test.ts).
 //
 // ─── WHY THIS IS RED, AND WHY THE READER'S TEETH ARE GREEN ────────────────────

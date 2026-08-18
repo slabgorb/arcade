@@ -14,7 +14,7 @@
 // PLAYER EXPLOSION data — only two labels are terrain DATA, both plain FCB byte runs:
 //   • TDATA — "TERRAIN DATA TABLE" (BLK71.SRC:507). TLEN ($100) = 256 bytes, a packed
 //     BIT-STREAM height profile consumed bit-serially by the BG* routines. Emitted
-//     with encoding 'bitstream' — decodeAltitudes walks it; it is never nibble-rastered.
+//     with encoding 'bitstream' — decodeScrollSurface walks it; it is never nibble-rastered.
 //   • MTERR — "MINI TERRAIN" (BLK71.SRC:527). 384 bytes, the scanner mini-map terrain
 //     (alt,x,x triples). Emitted with encoding 'stream' — INERT here (the scanner is df5).
 // Neither is a 'raster' (streams-are-not-rasters — df2 guardrail 2).
@@ -86,7 +86,7 @@ const blk71 = linesOf(BLK71)
 const terrain = [
   {
     name: 'TDATA',
-    encoding: 'bitstream', // a packed bit-per-step height profile — decodeAltitudes walks it
+    encoding: 'bitstream', // a packed bit-per-step height profile — decodeScrollSurface walks it
     bytes: byteRun(blk71, 'TDATA'),
     source: { file: BLK71, label: 'TDATA', line: lineOf(blk71, 'TDATA') },
   },
@@ -119,7 +119,7 @@ const body = `// src/core/terrain-data.ts
 // no import.
 
 /** Block encoding discriminant. Neither kind is a nibble raster: 'bitstream' is the
- *  TDATA height profile decodeAltitudes walks; 'stream' is the MTERR scanner data. */
+ *  TDATA height profile decodeScrollSurface walks; 'stream' is the MTERR scanner data. */
 export type TerrainEncoding = 'bitstream' | 'stream'
 
 /** One transcribed BLK71 terrain block: a flat byte run from the vendored source. */

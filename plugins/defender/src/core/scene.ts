@@ -29,7 +29,7 @@
 import { createFramebuffer, clear, type Framebuffer } from './framebuffer.js'
 import { writeText } from './charset.js'
 import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
-import { blitTerrain, decodeAltitudes, TERRAIN } from './terrain.js'
+import { blitTerrain, decodeScrollSurface, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
 import { wrap16, WORLD_COLS } from './world.js'
 import type { PlacedEffect } from './effects.js'
@@ -55,7 +55,7 @@ const SAMPLE_OBJECT = 'PLAPIC'
 const OBJECT_X = 138
 const OBJECT_Y = 96
 
-/** The terrain height profile: TDATA, the BLK71 bitstream decodeAltitudes walks. */
+/** The terrain height profile: TDATA, the BLK71 bitstream decodeScrollSurface walks. */
 const TERRAIN_BLOCK = 'TDATA'
 
 /** Look a transcribed record up by its ROM label, failing LOUD if the generated data
@@ -80,8 +80,11 @@ export function composeStaticFrame(width: number, height: number): Framebuffer {
   writeText(fb, TITLE, TITLE_X, TITLE_Y, TEXT_COLOUR)
   blitObject(fb, require_(OBJECTS, SAMPLE_OBJECT, 'object'), OBJECT_X, OBJECT_Y)
 
-  const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
-  blitTerrain(fb, surface, TERRAIN_COLOUR)
+  // The title still shows the SAME planet the live game does — one decode (decodeScrollSurface),
+  // drawn at camera 0. An explicit WORLD_COLS period fills the full width (cylinder tiling), so
+  // the strip spans the whole raster instead of stopping at column 256.
+  const surface = decodeScrollSurface(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
+  blitTerrain(fb, surface, TERRAIN_COLOUR, 0, WORLD_COLS)
 
   return fb
 }
@@ -199,11 +202,12 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
   const camera = state.camera
   const screenCol = (worldX: number): number => wrap16(worldX - camera) >> 8
 
-  const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
-  // df5-9-R1: tile the surface at the WORLD cylinder period (WORLD_COLS = 0x10000>>8), the SAME
-  // period the camera (BGL>>8) cycles at — so the planet scrolls seamlessly and does not snap
-  // when BGL wraps. (Reconciling the decoded surface's length with the world width is a separate
-  // Architect question; here we only need the seamless period.)
+  // df5-11: decode the surface the way the ROM's scroll does (decodeScrollSurface — the 2048-column
+  // ±1 walk over TDATA, sampled to WORLD_COLS), so one lap shows the whole planet once, not the
+  // quarter-slice the write-only BGALT table gave. Tile at the WORLD cylinder period
+  // (WORLD_COLS = 0x10000>>8), the SAME period the camera (BGL>>8) cycles at, so the planet scrolls
+  // seamlessly and does not snap when BGL wraps (df5-9-R1). See ADR-0006.
+  const surface = decodeScrollSurface(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
   blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> 8, WORLD_COLS)
 
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)

@@ -1,66 +1,78 @@
 // src/core/terrain.ts
 //
-// Story df2-5 (GREEN, Yoda) — the terrain render seam. The generated terrain data
+// Story df2-5 (render seam) + df5-11 (corrected decode). The generated terrain data
 // (terrain-data.ts, transcribed from defender/BLK71.SRC by scripts/transcribe-terrain.mjs)
-// plus a PURE `decodeAltitudes` that turns TDATA's bit-stream into a height profile
-// and a PURE `blitTerrain` that stamps a STATIC planet surface into the core
-// framebuffer as palette INDICES. Data lands INERT — a static still only; no scroll,
-// no scheduler, no animation (those are df3/df4/df5).
+// plus a PURE `decodeScrollSurface` that turns TDATA's bit-stream into the SCROLLED height
+// profile and a PURE `blitTerrain` that stamps the planet surface into the core framebuffer
+// as palette INDICES. composeFrame (df5-9) scrolls it under the camera; composeStaticFrame
+// draws it at camera 0.
 //
 // PURE src/core: no shell import, no canvas, no RGBA, no clock, no entropy — the
 // purity sweep (tests/purity.test.ts) scans this file. Core hands the shell indices;
 // the shell (render.ts) decodes an index to colour.
 //
-// ─── THE ALTITUDE DECODE (BGALT, defender/BLK71.SRC:374-399) ───────────────────
-// BGALT builds the terrain altitude table from TDATA's packed bit-stream: base
-// offset ROFF = $E0 (:380), then a ±1 walk — a SET bit steps UP (DEC ROFF, :387), a
-// CLEAR bit steps DOWN (INC ROFF, :389) — storing one altitude per TWO bits until the
-// table holds 4*TLEN entries (:397). This is the STATIC base+step decode. BGALT's own
-// next-bit routine is RFONR1 (:435), which advances FORWARD through TDATA and wraps
-// forward (TDATA+TLEN → TDATA); the MSB-first walk here approximates it. The exact
-// bidirectional SCROLL order — LFONR1's backward-wrapping scan (:481-506) plus the
-// flavor tables — is df3's scroll seam, not this static still (see the session's
-// TEA/Dev deviations). The bytes are the ROM's; the surface is derived, never invented.
+// ─── THE ALTITUDE DECODE (the SCROLL walk, defender/BLK71.SRC) ─────────────────
+// The scroll generators ADDR01/ADDL01 (:307,236) walk TDATA via RFONR1/LFONR1 (:435,487),
+// consuming ONE bit per world column from base $E0: a SET bit steps UP, a CLEAR bit steps
+// DOWN. That is 2048 columns over TDATA's 2048 bits = the whole $10000 world at $20/column,
+// sampled to WORLD_COLS for the port's $100/pixel lap. This is NOT BGALT/ALTTBL (:372): that
+// table is filled but NEVER read in the ROM — decoding it (as the original df2-5 code did)
+// rendered a quarter of the planet at half resolution. See
+// docs/adr/0006-defender-terrain-world-coordinate-reconciliation.md. Bytes are the ROM's;
+// the surface is derived, never invented.
 
 import type { Framebuffer } from './framebuffer.js'
 import { TERRAIN, type TerrainBlockData } from './terrain-data.js'
+import { WORLD_COLS } from './world.js'
 
 export { TERRAIN }
 export type TerrainBlock = TerrainBlockData
 
-/** BGALT base offset ROFF (LDA #$E0, defender/BLK71.SRC:380; STA ROFF :381) — the
- *  surface starts near the bottom of the 240-row screen. */
+/** BGINIT base offset (LDA #$E0, defender/BLK71.SRC:107) — the surface starts near the
+ *  bottom of the 240-row screen. Both the scroll (LOFF/ROFF) and BGALT (ROFF) start here. */
 const BASE_OFFSET = 0xe0
-/** BGALT stores one altitude per TWO bit-steps (loop body ALTT1..ALTT5, defender/BLK71.SRC:383-396). */
-const BITS_PER_ENTRY = 2
 /** The framebuffer holds 4-bit palette indices; a colour is one of 16 CRAM entries. */
 const MAX_PALETTE_INDEX = 15
 
 /**
- * Decode a 'bitstream' terrain block (TDATA) into an altitude profile — one screen
- * row per column, following BGALT. Bits are consumed MSB-first; each entry is two ±1
- * steps from the running offset (base $E0), so consecutive altitudes differ by at
- * most 2. Returns 4 entries per source byte (8 bits ÷ 2 bits/entry). Pure and
- * deterministic. Refuses a non-'bitstream' block LOUD — MTERR is the scanner
- * triple-stream, not a height profile, and walking it as bits would fabricate a surface.
+ * Decode the SCROLLING planet surface from a 'bitstream' terrain block (TDATA) the way
+ * the ROM's scroll actually generates it — NOT the write-only BGALT/ALTTBL table.
+ *
+ * The scroll generators ADDR01/ADDL01 (defender/BLK71.SRC:307,236) walk TDATA via
+ * RFONR1/LFONR1 (:435,:487), which consume exactly ONE bit per world column: a SET bit
+ * steps the offset UP (toward row 0), a CLEAR bit steps it DOWN, from base $E0. That is
+ * a ±1 walk over all `bytes.length*8` bits of TDATA — 2048 columns = the whole $10000
+ * world at $20/column (1 pixel = $20; BGINIT's screen span ADDD #$2610 over 304px, and
+ * ANDB #$E0's $20 pixel granularity). BGALT (:372) instead stores one entry per TWO bits
+ * into ALTTBL, which nothing ever reads (referenced only at :70/:382/:397) — decoding it
+ * rendered only a quarter of the planet at half resolution (see
+ * docs/adr/0006-defender-terrain-world-coordinate-reconciliation.md).
+ *
+ * The 2048-column walk is sampled down to `worldCols` columns at stride
+ * `fullLen/worldCols` — the port's coherent $100/pixel ($10000>>8 = 256) zoom-out, i.e.
+ * the terrain height at each $100 boundary — so one camera lap shows the whole planet
+ * once. Pure/deterministic, MSB-first (matching RFONR1's ASLA). Refuses a non-'bitstream'
+ * block, and a `worldCols` that does not divide the bit count, LOUD.
  */
-export function decodeAltitudes(block: TerrainBlock): number[] {
+export function decodeScrollSurface(block: TerrainBlock, worldCols: number = WORLD_COLS): number[] {
   if (block.encoding !== 'bitstream') {
-    throw new Error(`decodeAltitudes refuses a non-bitstream block: ${block.name} (encoding ${block.encoding})`)
+    throw new Error(`decodeScrollSurface refuses a non-bitstream block: ${block.name} (encoding ${block.encoding})`)
   }
-  const entries = (block.bytes.length * 8) / BITS_PER_ENTRY
-  const altitudes: number[] = []
-  let offset = BASE_OFFSET
-  let bitIndex = 0
+  const fullLen = block.bytes.length * 8 // one column per bit — the scroll's rate (RFONR1)
+  if (!Number.isInteger(worldCols) || worldCols <= 0 || fullLen % worldCols !== 0) {
+    throw new Error(`decodeScrollSurface: ${fullLen} columns do not divide evenly into worldCols ${worldCols}`)
+  }
+  const stride = fullLen / worldCols
   const bitAt = (i: number): number => (block.bytes[i >> 3] >> (7 - (i & 7))) & 1 // MSB-first
-  for (let e = 0; e < entries; e++) {
-    altitudes.push(offset)
-    for (let s = 0; s < BITS_PER_ENTRY; s++) {
-      // SET bit → UP (toward row 0); CLEAR bit → DOWN. ROFF is a byte (6809 STA ROFF).
-      offset = (bitAt(bitIndex++) ? offset - 1 : offset + 1) & 0xff
-    }
+  const surface: number[] = []
+  let offset = BASE_OFFSET
+  for (let j = 0; j < fullLen; j++) {
+    // Sample the height at each $100 boundary (every `stride` columns), then take the
+    // next ±1 step. push-then-step: surface[0] = the base $E0 (0 steps walked).
+    if (j % stride === 0) surface.push(offset)
+    offset = (bitAt(j) ? offset - 1 : offset + 1) & 0xff // SET → UP, CLEAR → DOWN (ROFF is a byte)
   }
-  return altitudes
+  return surface
 }
 
 /**
@@ -81,7 +93,7 @@ export function blitTerrain(
   altitudes: readonly number[],
   colorIndex: number,
   cameraCol = 0,
-  period = altitudes.length,
+  period?: number,
 ): void {
   if (!Number.isInteger(colorIndex) || colorIndex < 0 || colorIndex > MAX_PALETTE_INDEX) {
     throw new Error(`blitTerrain: colour index ${colorIndex} is not a palette entry 0-${MAX_PALETTE_INDEX}`)
@@ -90,14 +102,15 @@ export function blitTerrain(
   // df5-9: scroll the surface under the camera. Each screen column x shows the world column
   // `x + cameraCol`, wrapped over the CYLINDER `period` (the world column count) so the planet
   // tiles at the same period the camera cycles at — otherwise the surface snaps once per lap
-  // (see df5-9-R1). `period` defaults to `altitudes.length`, so the static callers (the title
-  // still, the terrain-blit unit tests) that omit it keep the exact legacy paint.
-  const p = period > 0 ? Math.trunc(period) : altitudes.length
+  // (see df5-9-R1). A caller that passes an explicit `period` opts into CYLINDER tiling and
+  // fills the full framebuffer width (the title still and the live scroll both do). A caller
+  // that omits it (the synthetic terrain-blit unit tests) keeps the legacy "paint
+  // min(len, width) columns, no wrap" contract — the distinction is the presence of `period`,
+  // not `period === length` (which now coincides with WORLD_COLS and can't discriminate).
+  const cylinder = period !== undefined
+  const p = cylinder && period! > 0 ? Math.trunc(period!) : altitudes.length
   const shift = ((cameraCol % p) + p) % p
-  // When the caller supplies neither a camera pan nor an explicit period, preserve the legacy
-  // "paint min(len, width) columns" contract; a scrolling/cylinder caller fills the full width.
-  const legacy = cameraCol === 0 && period === altitudes.length
-  const columns = legacy ? Math.min(altitudes.length, fb.width) : fb.width
+  const columns = cylinder ? fb.width : Math.min(altitudes.length, fb.width)
   for (let x = 0; x < columns; x++) {
     const row = altitudes[(x + shift) % p]
     if (!Number.isInteger(row)) {

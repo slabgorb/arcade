@@ -13,7 +13,7 @@
 // no import.
 
 /** Block encoding discriminant. Neither kind is a nibble raster: 'bitstream' is the
- *  TDATA height profile decodeAltitudes walks; 'stream' is the MTERR scanner data. */
+ *  TDATA height profile decodeScrollSurface walks; 'stream' is the MTERR scanner data. */
 export type TerrainEncoding = 'bitstream' | 'stream'
 
 /** One transcribed BLK71 terrain block: a flat byte run from the vendored source. */

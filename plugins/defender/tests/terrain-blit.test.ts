@@ -1,36 +1,32 @@
 // tests/terrain-blit.test.ts
 //
-// Story df2-5 — RED phase (Han Solo / TEA). THE STATIC PLANET SURFACE: a pure
-// `decodeAltitudes` that turns TDATA's packed bit-stream into a terrain height
-// profile, and a pure `blitTerrain` that paints that surface across the framebuffer
-// bottom — so the planet proves out INERT (pixels on screen, no scroll, no scheduler;
-// the scrolling world is df3).
+// Story df2-5 (render seam) + df5-11 (corrected decode). THE PLANET SURFACE: a pure
+// `decodeScrollSurface` that turns TDATA's packed bit-stream into the SCROLLED terrain
+// height profile (the ROM's scroll walk, not the write-only BGALT table — see ADR-0006),
+// and a pure `blitTerrain` that paints that surface across the framebuffer bottom.
 //
-// ─── WHAT GREEN SHIPS (plugins/defender/src/core/terrain.ts, pure) ────────────
-//   decodeAltitudes(block: TerrainBlock): number[]
-//     — TDATA → an altitude (screen-row) profile, following BGALT (defender/BLK71.SRC
-//       :372-398): base offset $E0 (ROFF), then a ±1 random walk driven by the bit
-//       stream (bit set → DEC ROFF = UP, bit clear → INC ROFF = DOWN), storing one
-//       entry per TWO bits for 4*TLEN = 1024 entries. Refuses a non-bit-stream block.
-//   blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number): void
-//     — for each column x, lights the surface pixel at row = altitudes[x] AS the
-//       supplied palette index, CLIPPED to the framebuffer. Pure: mutates fb, no
-//       canvas/RGBA/clock. Colours are never invented — the caller's index is the
-//       colour (as blitGlyph takes a caller colour), so `colorIndex` must be a real
-//       palette index 0-15 and the position must be finite.
+// ─── WHAT SHIPS (plugins/defender/src/core/terrain.ts, pure) ──────────────────
+//   decodeScrollSurface(block: TerrainBlock, worldCols = WORLD_COLS): number[]
+//     — TDATA → the SCROLLED altitude (screen-row) profile the ROM actually renders:
+//       the scroll walk (ADDR01/ADDL01 via RFONR1/LFONR1, defender/BLK71.SRC:307,236,
+//       435,487) — base offset $E0, a ±1 random walk driven ONE bit per column (bit set
+//       → UP, bit clear → DOWN) over all 2048 bits of TDATA (= the whole $10000 world at
+//       $20/column), then sampled to `worldCols` at stride fullLen/worldCols. This is
+//       NOT BGALT/ALTTBL (:372) — that table is write-only in the ROM (df5-11 / ADR-0006).
+//       Refuses a non-bit-stream block, and a worldCols that doesn't divide 2048.
+//   blitTerrain(fb, altitudes, colorIndex, cameraCol?, period?): void
+//     — for each column x, lights the surface pixel at row = altitudes[(x+cameraCol) %
+//       period] AS the supplied palette index, CLIPPED to the framebuffer. An explicit
+//       `period` opts into CYLINDER tiling (fills the full width, wraps at period); omit
+//       it for the legacy "paint min(len,width), no wrap" synthetic path. Pure: mutates
+//       fb, no canvas/RGBA/clock. Colours are never invented — `colorIndex` must be a
+//       real palette index 0-15 and the position must be finite.
 //
-// ─── SCOPE: THE STRUCTURAL DECODE, NOT THE EXACT SCROLL SILHOUETTE ────────────
-// BGALT's *base + step* rule is certain and df3-independent (base $E0; each stored
-// entry advances by two ±1 steps, so |Δ| ≤ 2; 4 entries per TDATA byte). This suite
-// pins THAT. It deliberately does NOT pin the exact per-column silhouette: the exact
-// bidirectional scroll order is LFONR1 (defender/BLK71.SRC:481-506) — it reads TDATA
-// backwards from TDATA+TLEN, wraps at TLEN and rotates through RTCNT — which is the
-// SCROLLING world, explicitly df3 ("No scroll — the scrolling world is df3"). (BGALT's
-// own next-bit routine is the FORWARD RFONR1 at :435, which the decode approximates.)
-// Pinning a golden altitude array here would pull df3's
-// scroll machinery into a static-still story and risk a guessed spec. The exact
-// silhouette is settled by df2-6's visual playtest and df3's scroll seam. (Logged as
-// a Design Deviation in the session file.)
+// ─── SCOPE: THE ±1 WALK, NOT A GOLDEN SILHOUETTE ──────────────────────────────
+// The scroll's *base + step* rule is certain (base $E0; the native walk moves exactly
+// ±1 per column — RFONR1 is one bit per column; the 256-col default is that decimated
+// 8:1). This suite pins THAT and the stride relationship. It deliberately does NOT pin a
+// golden altitude array — the exact silhouette is confirmed by the df5-11 visual playtest.
 //
 // ─── WHY THE ASSERTIONS USE SYNTHETIC PROFILES ────────────────────────────────
 // blitTerrain is a pure paint over an altitude array — nothing terrain-specific — so
@@ -57,8 +53,8 @@ interface TerrainBlock {
 }
 interface TerrainModule {
   TERRAIN: readonly TerrainBlock[]
-  decodeAltitudes(block: TerrainBlock): number[]
-  blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number): void
+  decodeScrollSurface(block: TerrainBlock, worldCols?: number): number[]
+  blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number, cameraCol?: number, period?: number): void
 }
 
 async function loadTerrain(): Promise<TerrainModule> {
@@ -67,7 +63,7 @@ async function loadTerrain(): Promise<TerrainModule> {
     return (await import(/* @vite-ignore */ spec)) as unknown as TerrainModule
   } catch (e) {
     const why = e instanceof Error ? e.message : String(e)
-    throw new Error(`src/core/terrain.ts not built yet (GREEN ships decodeAltitudes + blitTerrain): ${why}`)
+    throw new Error(`src/core/terrain.ts not built yet (ships decodeScrollSurface + blitTerrain): ${why}`)
   }
 }
 
@@ -77,9 +73,13 @@ const tdataBlock = (m: TerrainModule) => {
   return b
 }
 
-/** BGALT's base offset ROFF (LDA #$E0, defender/BLK71.SRC:380; STA ROFF :381) — the
- *  surface starts near the bottom of the 240-row screen. */
+/** BGINIT's base offset (LDA #$E0, defender/BLK71.SRC:107) — the surface starts near the
+ *  bottom of the 240-row screen. */
 const BASE_OFFSET = 0xe0 // 224
+/** WORLD_COLS = 0x10000 >> 8 — the port's camera-lap width (defender/src/core/world.ts). */
+const WORLD_COLS = 0x10000 >> 8 // 256
+/** TDATA is TLEN ($100) bytes → 2048 bits = 2048 scroll columns (1 bit/column, RFONR1). */
+const FULL_COLS = 256 * 8 // 2048
 
 // ─── small observers over a framebuffer (background index 0 = untouched) ──────
 interface Cell {
@@ -96,42 +96,56 @@ function litCells(fb: Framebuffer): Cell[] {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// decodeAltitudes — the BGALT height walk (structural fidelity, not the silhouette)
+// decodeScrollSurface — the ROM's SCROLL walk (the terrain the cabinet actually
+// renders), NOT the write-only BGALT/ALTTBL table. See docs/adr/0006-*.md.
 // ══════════════════════════════════════════════════════════════════════════════
-describe('decodeAltitudes — TDATA → terrain height profile (AC: terrain decode)', () => {
+describe('decodeScrollSurface — TDATA → the scrolled planet surface (df5-11 / ADR-0006)', () => {
   it('starts at the ROM base offset $E0 (224) — the surface sits near the screen bottom', async () => {
     const m = await loadTerrain()
-    const alt = m.decodeAltitudes(tdataBlock(m))
+    const alt = m.decodeScrollSurface(tdataBlock(m))
     expect(alt[0]).toBe(BASE_OFFSET)
   })
 
-  it('produces 4*TLEN = 1024 entries — four altitudes per TDATA byte (BGALT fills ALTTBL, :397)', async () => {
+  it('defaults to WORLD_COLS (256) columns — the port camera-lap, the whole world once per lap', async () => {
     const m = await loadTerrain()
-    const block = tdataBlock(m)
-    const alt = m.decodeAltitudes(block)
-    // 8 bits/byte ÷ 2 bits/stored-entry = 4 entries/byte. Derived from the source, not
-    // from the module, so a truncated decode reddens.
-    expect(alt.length).toBe(4 * block.bytes.length)
-    expect(alt.length).toBe(1024)
+    const alt = m.decodeScrollSurface(tdataBlock(m))
+    expect(alt.length).toBe(WORLD_COLS)
+    expect(alt.length).toBe(256)
   })
 
-  it('every altitude is an integer 0-255 (ROFF is a single byte)', async () => {
+  it('samples the full 2048-column ±1 scroll walk — worldCols honoured, stride = fullLen/worldCols', async () => {
     const m = await loadTerrain()
-    const alt = m.decodeAltitudes(tdataBlock(m))
+    // The scroll (RFONR1) consumes 1 bit per column → bytes*8 = 2048 native columns. Asking for
+    // the full resolution returns one entry per bit; the 256-column default is that decimated 8:1.
+    const full = m.decodeScrollSurface(tdataBlock(m), FULL_COLS)
+    expect(full.length).toBe(FULL_COLS)
+    expect(full.length).toBe(2048)
+    const decimated = m.decodeScrollSurface(tdataBlock(m), WORLD_COLS)
+    // The 256-col surface is the full walk at stride 8 (surface[k] === full[k*8]).
+    const stride = FULL_COLS / WORLD_COLS
+    expect(decimated.every((v, k) => v === full[k * stride])).toBe(true)
+  })
+
+  it('every altitude is an integer 0-255 (the offset is a single byte)', async () => {
+    const m = await loadTerrain()
+    const alt = m.decodeScrollSurface(tdataBlock(m))
     const bad = alt.filter((v) => !Number.isInteger(v) || v < 0 || v > 255)
     expect(bad).toEqual([])
   })
 
-  it('never jumps more than ±2 between columns — two unit steps per entry (BGALT DEC/INC ROFF)', async () => {
+  it('the RAW walk moves at most ±1 between adjacent columns (RFONR1 is one ±1 step per bit)', async () => {
     const m = await loadTerrain()
-    const alt = m.decodeAltitudes(tdataBlock(m))
-    const wild = alt.map((v, i) => (i === 0 ? 0 : v - alt[i - 1])).filter((d) => Math.abs(d) > 2)
-    expect(wild, 'a jump greater than two rows is not a ±1 bit-walk').toEqual([])
+    const full = m.decodeScrollSurface(tdataBlock(m), FULL_COLS)
+    // Each native column is exactly one ±1 step (mod-256 wrap allowed at the byte boundary).
+    const wild = full
+      .map((v, i) => (i === 0 ? 0 : ((v - full[i - 1] + 128) & 0xff) - 128))
+      .filter((d) => Math.abs(d) > 1)
+    expect(wild, 'a native scroll column that jumps more than one row is not a ±1 bit-walk').toEqual([])
   })
 
   it('is not flat — the real terrain varies up AND down (TDATA carries mixed bits)', async () => {
     const m = await loadTerrain()
-    const alt = m.decodeAltitudes(tdataBlock(m))
+    const alt = m.decodeScrollSurface(tdataBlock(m))
     const deltas = new Set(alt.map((v, i) => (i === 0 ? 0 : v - alt[i - 1])))
     expect([...deltas].some((d) => d > 0), 'the profile must rise somewhere').toBe(true)
     expect([...deltas].some((d) => d < 0), 'the profile must fall somewhere').toBe(true)
@@ -140,14 +154,22 @@ describe('decodeAltitudes — TDATA → terrain height profile (AC: terrain deco
   it('is deterministic — same block, same profile (a pure decode)', async () => {
     const m = await loadTerrain()
     const block = tdataBlock(m)
-    expect(m.decodeAltitudes(block)).toEqual(m.decodeAltitudes(block))
+    expect(m.decodeScrollSurface(block)).toEqual(m.decodeScrollSurface(block))
+  })
+
+  it('refuses a worldCols that does not divide the 2048-bit column count LOUD', async () => {
+    const m = await loadTerrain()
+    // 2048 / 100 is not integral — a stride that dropped or doubled columns would misalign the
+    // planet against the camera, so it must throw rather than silently truncate.
+    expect(() => m.decodeScrollSurface(tdataBlock(m), 100)).toThrow()
+    expect(() => m.decodeScrollSurface(tdataBlock(m), 0)).toThrow()
   })
 
   it('refuses a non-bit-stream block — MTERR is the scanner triple-stream, not the planet surface', async () => {
     const m = await loadTerrain()
     const mterr = m.TERRAIN.find((r) => r.name === 'MTERR')
     expect(mterr, 'MTERR must be present to refuse').toBeDefined()
-    expect(() => m.decodeAltitudes(mterr!)).toThrow()
+    expect(() => m.decodeScrollSurface(mterr!)).toThrow()
   })
 })
 
@@ -181,10 +203,10 @@ describe('blitTerrain — the static planet surface (AC: static surface across t
 
   it('paints the REAL decoded planet surface — some pixels, all the given index, all in bounds', async () => {
     const m = await loadTerrain()
-    const alt = m.decodeAltitudes(tdataBlock(m))
+    const alt = m.decodeScrollSurface(tdataBlock(m))
     const fb = createFramebuffer(292, 240) // the visible raster (williams.cpp:1601)
     clear(fb, 0)
-    m.blitTerrain(fb, alt, 3)
+    m.blitTerrain(fb, alt, 3, 0, WORLD_COLS) // cylinder tiling, camera 0 — as the title still draws it
     const lit = litCells(fb)
     expect(lit.length, 'the transcribed terrain must land a visible surface').toBeGreaterThan(0)
     const alien = [...new Set(lit.filter((c) => c.v !== 3).map((c) => c.v))]
