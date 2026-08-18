@@ -1,0 +1,128 @@
+[
+  {
+    "id": "SC-ENC",
+    "claim": "The SCORE routine takes D = A:B, A an exponent (0-7) and B a BCD mantissa (0-99), and awards B x 10^A.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 477,
+      "verbatim": "SCORE\tPSHS\tA,B,X,U,Y"
+    }
+  },
+  {
+    "id": "SC-LANDER",
+    "claim": "Killing a Lander (LKILL) awards KILP 0115 = 15 x 10^1 = 150 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 922,
+      "verbatim": "\tKILP\t0115,LHSND"
+    }
+  },
+  {
+    "id": "SC-MUTANT",
+    "claim": "Killing a Mutant (SCZKIL, the schizoid) awards KILP 0115 = 15 x 10^1 = 150 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 625,
+      "verbatim": "\tKILP\t0115,SCHSND"
+    }
+  },
+  {
+    "id": "SC-BAITER",
+    "claim": "Killing a Baiter (UFOKIL) awards KILP 0120 = 20 x 10^1 = 200 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 82,
+      "verbatim": "\tKILP\t0120,UFHSND"
+    }
+  },
+  {
+    "id": "SC-BOMBER",
+    "claim": "Killing a Bomber (TIEKIL) awards KILO 0125 = 25 x 10^1 = 250 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1120,
+      "verbatim": "TIEKIL\tKILO\t0125,TIHSND"
+    }
+  },
+  {
+    "id": "SC-POD",
+    "claim": "Killing a Pod (PRBKIL, the probe) awards KILO 0210 = 10 x 10^2 = 1000 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 118,
+      "verbatim": "PRBKIL\tKILO\t0210,PRHSND"
+    }
+  },
+  {
+    "id": "SC-SWARMER",
+    "claim": "Killing a Swarmer loads LDD #$0115 = 15 x 10^1 = 150 points before JSR SCORE.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 190,
+      "verbatim": "\tLDD\t#$0115"
+    }
+  },
+  {
+    "id": "SC-BOMB",
+    "claim": "Shooting a bomb/mine (BKIL) loads LDD #$25 = 25 x 10^0 = 25 points.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 2700,
+      "verbatim": "BKIL\tLDD\t#$25"
+    }
+  },
+  {
+    "id": "SC-CATCH",
+    "claim": "Catching a falling humanoid mid-air (P250) loads LDD #$0125 = 25 x 10^1 = 250 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 500,
+      "verbatim": "\tLDD\t#$0125"
+    }
+  },
+  {
+    "id": "SC-RESCUE",
+    "claim": "Returning a caught humanoid to the ground (P500) loads LDD #$0150 = 50 x 10^1 = 500 points.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 507,
+      "verbatim": "\tLDD\t#$0150"
+    }
+  },
+  {
+    "id": "SC-BONUS",
+    "claim": "The wave-complete bonus multiplier is the wave number (PWAV), capped at 5 and shifted left four (x16) to a BCD tens digit with A=$01, i.e. min(wave,5) x 100 per surviving human.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1828,
+      "verbatim": "\tLDB\tPWAV,Y\tMULTIPLIER"
+    }
+  },
+  {
+    "id": "SC-REPLAY",
+    "claim": "The factory default REPLAY (extra man) level is $01,$00 = one extra man every 10,000 points.",
+    "source": {
+      "file": "ROMC8.SRC",
+      "line": 801,
+      "verbatim": "\tFCB\t$01,$00\tREPLAY @10,000"
+    }
+  },
+  {
+    "id": "SC-NSHIP",
+    "claim": "The factory default number of ships (men) is NSHIP = $03 = 3.",
+    "source": {
+      "file": "ROMC8.SRC",
+      "line": 802,
+      "verbatim": "\tFCB\t$03\tNSHIP"
+    }
+  },
+  {
+    "id": "SC-STYPE",
+    "claim": "A pop-up/score process runs as STYPE = 0, the SYSTEM PROCESS type.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 500,
+      "verbatim": "STYPE\tEQU\t0\tSYSTEM PROCESS"
+    }
+  }
+]

@@ -50,3 +50,28 @@ ship green. The abduction loop (df4-3):
 | `TIE` / `*TIE PROCESS` | the **Bomber** — the formation flyer (Williams' internal "TIE"): it cruises in and LAYS BOMBS (mines) as it flies. The TIE→Bomber identity is SOURCED, not assumed — the TIE process drops a bomb on a 1/8 gate (`DEFB6.SRC:1115` `BSR BOMBST`, BOMBST being the bomb it lays, not an enemy) and `MESS0.SRC:341` `BOMBER FCC "BOMBER/"` is the arcade-marketing string. This corrects the story's AC1 guess (START BOMB→Bomber): the TIE is the Bomber, the bomb is its ammo | `defender/DEFB6.SRC:1023`, `defender/DEFB6.SRC:1115`, `defender/MESS0.SRC:341` |
 | `PRBST` / `*PROBE START` | the **Pod** — the drifting blob (Williams' internal "PROBE"): shoot it and it BURSTS INTO SWARMERS. The PROBE→Pod identity is SOURCED, not assumed — PRBKIL releases up to six mini-swarmers on death (`DEFB6.SRC:122` `JSR MMSW`, count `DEFB6.SRC:119` `LDA #6`) and `MESS0.SRC:399` `POD FCC " POD/"` is the arcade-marketing string (the 1000-pt Pod). This corrects the story's AC1 guess (PROBE→Probe, not even an arcade name) | `defender/DEFB6.SRC:85`, `defender/DEFB6.SRC:122`, `defender/DEFB6.SRC:119`, `defender/MESS0.SRC:399` |
 | `MSWM` / `*MAKE A MINI SWARMER` | the **Swarmer** — the fast pursuer (Williams' internal "MSWM" mini-swarmer) a Pod bursts into when shot: it seeks the player in X and fires swarm bombs at it. The MSWM→Swarmer identity is SOURCED, not assumed — `MESS0.SRC:418` `SWARMR FCC "SWARMER/"` is the arcade-marketing string. This corrects the story's AC1 guess (MSWM→Pod): the Pod is the Probe process, the swarmer is what it releases | `defender/DEFB6.SRC:141`, `defender/MESS0.SRC:418` |
+
+## Scoring — score EVENT → ROM point value (df5-3)
+
+Every score is awarded through one SCORE routine: `D = A:B`, where A is an exponent
+(0-7) and B a BCD mantissa (0-99), and the award is `B × 10^A` (`defender/DEFA7.SRC:477`).
+Each kill or rescue pop-up loads its own `D` before `JSR SCORE`; the `KILP`/`KILO` macro
+inlines it as `FDB $<A><B>`. The point VALUE is pinned here, CITED, before
+`src/core/score.ts` names it — a wrong point value stated in prose would otherwise ship
+green (the `df4` identity law, applied to values). Score pop-ups run as scheduler
+`STYPE`(=0) system processes (`defender/PHR6.SRC:500`), not per-pop-up ticks.
+
+| Score event | Point value | Where |
+|---|---|---|
+| `LKILL` — Lander kill (`KILP 0115`) | **150** (15×10¹) | `defender/DEFB6.SRC:922` |
+| `SCZKIL` — Mutant kill (`KILP 0115`) | **150** (15×10¹) | `defender/DEFB6.SRC:625` |
+| `UFOKIL` — Baiter kill (`KILP 0120`) | **200** (20×10¹) | `defender/DEFB6.SRC:82` |
+| `TIEKIL` — Bomber kill (`KILO 0125`) | **250** (25×10¹) | `defender/DEFB6.SRC:1120` |
+| Pod kill (`PRBKIL`, `KILO 0210`) | **1000** (10×10²) | `defender/DEFB6.SRC:118` |
+| Swarmer kill (`LDD #$0115`, `SWHSND`) | **150** (15×10¹) | `defender/DEFB6.SRC:190` |
+| `BKIL` — bomb/mine shot (`LDD #$25`) | **25** (25×10⁰) | `defender/DEFA7.SRC:2700` |
+| `P250` — catch a falling humanoid mid-air (`LDD #$0125`) | **250** (25×10¹) | `defender/DEFB6.SRC:500` |
+| `P500` — return a caught humanoid to the ground (`LDD #$0150`) | **500** (50×10¹) | `defender/DEFB6.SRC:507` |
+| `*BONUS COLLECT` — wave-complete bonus per surviving human | **min(wave,5) × 100** | `defender/DEFA7.SRC:1828` |
+| `REPLAY @10,000` — the extra-man threshold | one extra man every **10,000** points | `defender/ROMC8.SRC:801` |
+| `NSHIP` — starting men (lives) | the game starts with **3** men | `defender/ROMC8.SRC:802` |
