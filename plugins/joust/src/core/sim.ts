@@ -350,7 +350,8 @@ function lavaEntityOf(p: SimProcess): EntityState | undefined {
 /** Re-seat a lava-death body (and its sink state) onto the right kind-specific slot. */
 function withLavaEntity(p: SimProcess, e: EntityState, sink: LavaSink): SimProcess {
   if (p.kind === 'player') return { ...p, entity: e, lavaSink: sink }
-  return { ...p, enemy: { ...p.enemy!, entity: e }, lavaSink: sink }
+  if (p.kind === 'enemy' && p.enemy) return { ...p, enemy: { ...p.enemy, entity: e }, lavaSink: sink }
+  return { ...p, lavaSink: sink }
 }
 
 /**

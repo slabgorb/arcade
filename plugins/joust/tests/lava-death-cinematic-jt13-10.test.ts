@@ -108,6 +108,14 @@ function enemyAt(id: number, posX: number, entity: EntityState, over: Partial<Si
 const trollsIn = (d: SimState): SimProcess[] => d.sim.processes.filter((p) => p.kind === 'troll')
 const playerIn = (d: SimState, id: number): SimProcess | undefined =>
   d.sim.processes.find((p) => p.kind === 'player' && p.id === id)
+const enemyIn = (d: SimState, id: number): SimProcess | undefined =>
+  d.sim.processes.find((p) => p.kind === 'enemy' && p.id === id)
+
+/** A lava-death body carries a `lavaSink` once committed (sim.ts). The sim-contract
+ *  process type does not surface it, so read it through a narrow widening — exactly
+ *  as this file widens GameState to read `events`. */
+const isSinking = (p: SimProcess | undefined): boolean =>
+  (p as { lavaSink?: unknown } | undefined)?.lavaSink !== undefined
 
 /** A wave-1 sim (troll-free — `trollSpawnable` gates the troll to wave >= 4) with
  *  the bridge burned by hand, carrying exactly the given cast. A keep-alive island
@@ -175,6 +183,25 @@ describe('jt13-10 AC1 (guard) — break-free is a grip-only window that closes',
       'a non-gripped bird carrying the break-free velocity still dies — no velocity window',
     ).toBe(NSHIP - 1)
   })
+
+  it('DD-1: a hard upward flap yields no TRANSIENT reprieve — the sink is committed at once', async () => {
+    // The life-count test above only sees the FINAL tally, so a mutant that let the
+    // bird fly for ~45 frames and THEN die (a transient velocity window) would still
+    // lose exactly one life and slip past it. This pins the COMMIT instead: a
+    // non-gripped bird below the surface, carrying a flap TWICE the grip's break-free
+    // threshold (upward), is bound to the ADGFLR sink the very first frame and stays
+    // bound — the velocity buys it nothing, not even one frame.
+    const smod = await loadSim()
+    const t = await loadTroll()
+    let d = await burnedWave1Sim([playerAt(1, PLANK_L, DEATH_Y + 6, { velY: t.BREAK_FREE_VY * 2 })])
+
+    d = smod.stepSim(d)
+    expect(isSinking(playerIn(d, 1)), 'the sink is committed the first frame — no velocity reprieve').toBe(true)
+
+    d = smod.stepSim(d)
+    expect(isSinking(playerIn(d, 1)), 'and it stays committed — the flap never frees it a frame later').toBe(true)
+    expect(trollsIn(d).length, 'wave 1 has no lava troll — this is the non-gripped death').toBe(0)
+  })
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -190,15 +217,50 @@ describe('jt13-10 AC2 — reaching the lava is a visible sink, not a same-frame 
     const smod = await loadSim()
     let d = await burnedWave1Sim([playerAt(1, PLANK_L, DEATH_Y, { velXIndex: 4 })])
 
-    expect(playerIn(d, 1)?.entity && (playerIn(d, 1)!.entity!.posY >> 8), 'starts at the lava surface').toBe(
-      DEATH_Y,
-    )
+    const start = playerIn(d, 1)
+    expect(start?.entity && (start.entity.posY >> 8), 'starts at the lava surface').toBe(DEATH_Y)
 
     d = smod.stepSim(d)
 
     expect(trollsIn(d).length, 'wave 1 has no lava troll — this is the swim death').toBe(0)
     // RED on develop: removed same frame -> undefined. GREEN: present, sinking.
     expect(playerIn(d, 1), 'the knight is still present the frame after reaching the lava (it sinks)').toBeDefined()
+  })
+
+  it('the sink is GRADUAL — on the surface early, mid-descent later, FLOOR+20 only at the end', async () => {
+    const smod = await loadSim()
+    let d = await burnedWave1Sim([playerAt(1, PLANK_L, DEATH_Y, { velXIndex: 4 })])
+
+    const ys: number[] = []
+    let reachedFloorAt = -1
+    for (let i = 0; i < 90; i++) {
+      d = smod.stepSim(d)
+      const p = playerIn(d, 1)
+      // Once removed the body is gone; treat that as "at the floor" so the monotone
+      // check below still holds across the removal frame at the end of the sink.
+      const y = p?.entity ? p.entity.posY >> 8 : SINK_FLOOR
+      ys.push(y)
+      if (reachedFloorAt < 0 && y >= SINK_FLOOR) reachedFloorAt = i
+    }
+
+    expect(trollsIn(d).length, 'no troll — the non-gripped ADGFLR cinematic').toBe(0)
+
+    // Frame 2: still on the FLOOR+7 row. LAVA_SINK_NAP=3, so the first one-pixel drop
+    // is frame 3. A mutant that jumps straight to FLOOR+20 on the onset frame — the
+    // whole point of "visible sink" — is dead here, where the old `deepestY` check
+    // (below) would wave it through.
+    expect(ys[2], 'three frames in, the body is still at the FLOOR+7 surface').toBe(DEATH_Y)
+    // Frame 20: strictly mid-descent. Kills BOTH a teleport (already at FLOOR+20) and
+    // a never-sink surface clamp (still at FLOOR+7 — the RED-on-develop behaviour).
+    expect(ys[20], 'twenty frames in, the body is sinking — below the surface').toBeGreaterThan(DEATH_Y)
+    expect(ys[20], 'twenty frames in, the body is sinking — not yet at the floor').toBeLessThan(SINK_FLOOR)
+    // It reaches the floor — but only after a visible descent, never on the onset frame.
+    expect(reachedFloorAt, 'the body reaches FLOOR+20 only after a gradual descent').toBeGreaterThanOrEqual(20)
+
+    // The descent is monotone — the body never bobs back up while sinking.
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i], 'the sink never reverses').toBeGreaterThanOrEqual(ys[i - 1])
+    }
   })
 
   it('the body sinks all the way down to FLOOR+20 before it leaves', async () => {
@@ -248,6 +310,48 @@ describe('jt13-10 AC3 — the lava death sounds SNPLAV/SNELAV, a new cue', () =>
     // RED on develop: only the generic 'player-death' (SNPDIE) ever appears — the
     // lava cue does not exist. GREEN: the lava-specific cue fires (SNPLAV).
     expect(kinds, 'the lava death is heard as its own SNPLAV cue, not silence').toContain('player-lava-death')
+    // ...and it fires EXACTLY once — at ADGFLR onset, not re-triggered on every one
+    // of the ~40 sink frames (a corpse does not re-sound). Guards a per-frame re-emit.
+    expect(
+      kinds.filter((k) => k === 'player-lava-death').length,
+      'the lava cue fires once for the whole sink, not every frame',
+    ).toBe(1)
+  })
+
+  it('a non-gripped ENEMY lava death sinks to FLOOR+20 and sounds SNELAV', async () => {
+    const gmod = await loadGameExtra()
+    const base = gmod.createGame(SEED, 1)
+    // Below the surface (DEATH_Y+6), like the player fixtures: an enemy placed AT the
+    // surface flaps clear before the lava check, but from below the boundr climb
+    // cannot escape FLOOR+7 in one frame, so the swim death commits. Proof this test
+    // is needed — disabling the enemy branch of sim.ts `lavaEntityOf` leaves the rest
+    // of the suite green; only this exercises SNELAV and the enemy sink.
+    const burned = await burnedWave1Sim([enemyAt(0x202, PLANK_L, entityAt(PLANK_L, DEATH_Y + 6))])
+    let game = { ...base, sim: burned }
+
+    const eventsOf = (g: unknown): readonly { readonly type: string }[] =>
+      (g as { events?: readonly { readonly type: string }[] }).events ?? []
+    const kinds: string[] = []
+    let deepestY = DEATH_Y
+    let sawEnemy = false
+    for (let i = 0; i < 90; i++) {
+      game = gmod.stepGame(game)
+      for (const e of eventsOf(game)) kinds.push(e.type)
+      const en = enemyIn(game.sim, 0x202)
+      if (en?.enemy) {
+        sawEnemy = true
+        deepestY = Math.max(deepestY, en.enemy.entity.posY >> 8)
+      }
+    }
+
+    expect(trollsIn(game.sim).length, 'no troll — the non-gripped enemy swim death').toBe(0)
+    expect(sawEnemy, 'the enemy stays present to sink — not removed the same frame').toBe(true)
+    expect(deepestY, 'the enemy body sinks to FLOOR+20, like the player').toBeGreaterThanOrEqual(SINK_FLOOR)
+    expect(kinds, 'the enemy lava death sounds its own SNELAV cue').toContain('enemy-lava-death')
+    expect(
+      kinds.filter((k) => k === 'enemy-lava-death').length,
+      'and the enemy lava cue also fires exactly once',
+    ).toBe(1)
   })
 
   it('the audio manifest wires both SNPLAV (player) and SNELAV (enemy)', () => {
