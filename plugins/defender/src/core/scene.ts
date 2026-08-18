@@ -31,6 +31,7 @@ import { writeText } from './charset.js'
 import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeAltitudes, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
+import { wrap16, WORLD_COLS } from './world.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
 
@@ -155,9 +156,10 @@ function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: nu
   }
 }
 
-/** Blit one in-flight effect: its picture (rastered normally) plus the expanding spark. */
-function drawEffect(fb: Framebuffer, e: PlacedEffect): void {
-  const col = e.x >> 8 // world-x → screen column (the laser/lander convention)
+/** Blit one in-flight effect: its picture (rastered normally) plus the expanding spark.
+ *  `camera` (BGL) camera-offsets the world-x, so the effect scrolls with its enemy. */
+function drawEffect(fb: Framebuffer, e: PlacedEffect, camera: number): void {
+  const col = wrap16(e.x - camera) >> 8 // world-x → camera-relative screen column (df5-9)
   blitObject(fb, e.picture, col, e.y)
   const cx = col + e.picture.width // sprite centre-x (the cell is width×2 pixels wide)
   const cy = e.y + (e.picture.height >> 1)
@@ -189,33 +191,48 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
 
   drawStars(fb, state.stars, STAR_COUNT)
 
+  // df5-9: the camera (BGL, world-X of the screen's left edge) scrolls the world under the
+  // ship. The planet surface and every world-space entity are camera-offset — the on-screen
+  // column of a world-x is `wrap16(worldX - camera) >> 8` (worldX = onscreen + BGL, world.ts),
+  // honouring the $10000 cylinder wrap. Stars are already pre-scrolled in sim.ts (stepStars),
+  // and the SHIP stays at its fixed display column (only the world moves beneath it).
+  const camera = state.camera
+  const screenCol = (worldX: number): number => wrap16(worldX - camera) >> 8
+
   const surface = decodeAltitudes(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
-  blitTerrain(fb, surface, TERRAIN_COLOUR)
+  // df5-9-R1: tile the surface at the WORLD cylinder period (WORLD_COLS = 0x10000>>8), the SAME
+  // period the camera (BGL>>8) cycles at — so the planet scrolls seamlessly and does not snap
+  // when BGL wraps. (Reconciling the decoded surface's length with the world width is a separate
+  // Architect question; here we only need the seamless period.)
+  blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> 8, WORLD_COLS)
 
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
 
-  // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1).
-  // Screen column = world-x >> 8 (the laser convention); the row is already display-space.
+  // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1),
+  // camera-offset (df5-9); the row is already display-space.
   const landerPic = require_(OBJECTS, LANDER_OBJECT, 'object')
   for (const lander of state.landers ?? []) {
     if (!lander.alive) continue
-    blitObject(fb, landerPic, lander.x >> 8, lander.y)
+    blitObject(fb, landerPic, screenCol(lander.x), lander.y)
   }
   const humanoidPic = require_(OBJECTS, HUMANOID_OBJECT, 'object')
   for (const humanoid of state.humanoids ?? []) {
     if (!humanoid.alive) continue
-    blitObject(fb, humanoidPic, humanoid.x >> 8, humanoid.y)
+    blitObject(fb, humanoidPic, screenCol(humanoid.x), humanoid.y)
   }
 
   for (const laser of state.lasers) {
     if (!laser.alive) continue
+    // Lasers are ON-SCREEN quantities (laser.x = shipX_onscreen + offset, laser.ts) — like the
+    // ship, they do NOT scroll with the camera, so their column is `laser.x >> 8`, NOT camera-
+    // offset (df5-9-R3). Collision agrees: hitTestLasers projects landers to on-screen space.
     drawLaserStreak(fb, laser.x >> 8, state.ship.y, laser.facing)
   }
 
   // df4-6: the materialize/explosion effects, painted on top (a fresh sim has none, so
   // every pre-df4-6 frame is unchanged). `?? []` tolerates a hand-built pre-df4-6 state.
   for (const effect of state.effects ?? []) {
-    drawEffect(fb, effect)
+    drawEffect(fb, effect, camera)
   }
 
   return fb

@@ -75,6 +75,12 @@ export function wrap16(x: number): number {
   return x & 0xffff
 }
 
+/** The world cylinder measured in SCREEN COLUMNS: a world-x's on-screen column is `x >> 8`
+ *  (the high byte), so the $10000 cylinder is exactly `0x10000 >> 8 = 256` columns around.
+ *  The camera (BGL >> 8) and every world-space blit share this period — the terrain must tile
+ *  at it too, or the surface snaps once per lap when BGL wraps (df5-9). */
+export const WORLD_COLS = 0x10000 >> 8
+
 /** PLABX — absolute world X is derived, not stored: onscreen + BGL, wrapped. */
 export function worldX(onscreenX: number, bgl: number): number {
   return wrap16(onscreenX + bgl)

@@ -257,7 +257,7 @@ export function assertNoFullFrameStrobe(
 // shell composer (scene.ts) reads the `effects` view and blits each by palette INDEX only.
 
 /** One in-flight effect: its lifecycle (`size`/`done`, the ROM's RSIZE), where it plays
- *  (world-x `x` — column is `x >> 8` — and display row `y`), and the INERT picture it
+ *  (world-x `x` — camera-offset to its on-screen column at render, scene.ts — and display row `y`), and the INERT picture it
  *  animates (referenced from OBJECTS, never copied). The read-only face the sim exposes. */
 export interface PlacedEffect {
   readonly kind: EffectKind

@@ -29,7 +29,7 @@ import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.
 import { laserVsObject, type CollObject } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
-import { slide, type Facing } from './world.js'
+import { slide, wrap16, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
 
 /** Two 4-bit pixels per raster byte — a picture is `width×2` pixels wide (objects.ts). */
@@ -235,11 +235,14 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   // COLIDE (DEFA7.SRC:2775-2787): each live player laser box vs the enemy list. A box
   // overlap kills the struck lander (LKIL1) and starts a LOCALIZED explosion (EXST) at it.
-  // The lasers/landers are the freshly-travelled snapshots; both are read in SCREEN space
-  // (column = world-x >> 8, the render convention), so the laser you SEE hits the lander
-  // you SEE. Advance the effects first, then spawn this tick's explosions fresh.
+  // COLIDE runs in ON-SCREEN space, matching what the player sees (df5-9-R4). The laser is an
+  // onscreen quantity (laser.x = shipX_onscreen + offset, laser.ts), so it needs no camera term;
+  // the landers are WORLD-space, so hitTestLasers offsets them by THIS frame's camera (camera.bgl,
+  // the same value composeFrame renders them with) — `wrap16(lander.x − camera) >> 8` — so a laser
+  // hits the lander you SEE, not one a camera-width away. Advance the effects first, then spawn
+  // this tick's explosions fresh.
   state._effectBank.step()
-  hitTestLasers(state, shipRow)
+  hitTestLasers(state, shipRow, camera.bgl)
 
   return {
     ship: { x: camera.plax16 >> 8, y: shipRow, facing: rev.facing },
@@ -265,15 +268,17 @@ export function stepSim(state: SimState, input: Input): SimState {
 /** Run the df4-1 laser-vs-lander COLIDE seam for one tick: every live laser is tested
  *  against the live landers; a box overlap kills that lander and spawns its explosion. The
  *  landers are captured up front so removing one mid-loop can't shift the list under us. */
-function hitTestLasers(state: SimState, shipRow: number): void {
+function hitTestLasers(state: SimState, shipRow: number, camera: number): void {
   const liveLanders = state._enemyBank.landers.filter((l) => l.alive)
   if (liveLanders.length === 0) return
 
   const landerBox = { width: LANDER_PICTURE.width * PIXELS_PER_BYTE, height: LANDER_PICTURE.height }
   // Index the objects so a Hit names WHICH lander to kill (COLIDE returns the struck object).
+  // Each lander is projected to its ON-SCREEN column `wrap16(l.x − camera) >> 8` — the exact
+  // position composeFrame draws it at — so collision agrees with the render (df5-9-R4).
   const objects: readonly CollObject[] = liveLanders.map((l, i) => ({
     id: String(i),
-    x: l.x >> 8,
+    x: wrap16(l.x - camera) >> 8,
     y: l.y,
     picture: landerBox,
   }))

@@ -76,13 +76,30 @@ export function decodeAltitudes(block: TerrainBlock): number[] {
  * INTEGER row (negative or ≥ height) is clipped, not an error — the surface simply runs
  * off the frame.
  */
-export function blitTerrain(fb: Framebuffer, altitudes: readonly number[], colorIndex: number): void {
+export function blitTerrain(
+  fb: Framebuffer,
+  altitudes: readonly number[],
+  colorIndex: number,
+  cameraCol = 0,
+  period = altitudes.length,
+): void {
   if (!Number.isInteger(colorIndex) || colorIndex < 0 || colorIndex > MAX_PALETTE_INDEX) {
     throw new Error(`blitTerrain: colour index ${colorIndex} is not a palette entry 0-${MAX_PALETTE_INDEX}`)
   }
-  const columns = Math.min(altitudes.length, fb.width)
+  if (altitudes.length === 0) return
+  // df5-9: scroll the surface under the camera. Each screen column x shows the world column
+  // `x + cameraCol`, wrapped over the CYLINDER `period` (the world column count) so the planet
+  // tiles at the same period the camera cycles at — otherwise the surface snaps once per lap
+  // (see df5-9-R1). `period` defaults to `altitudes.length`, so the static callers (the title
+  // still, the terrain-blit unit tests) that omit it keep the exact legacy paint.
+  const p = period > 0 ? Math.trunc(period) : altitudes.length
+  const shift = ((cameraCol % p) + p) % p
+  // When the caller supplies neither a camera pan nor an explicit period, preserve the legacy
+  // "paint min(len, width) columns" contract; a scrolling/cylinder caller fills the full width.
+  const legacy = cameraCol === 0 && period === altitudes.length
+  const columns = legacy ? Math.min(altitudes.length, fb.width) : fb.width
   for (let x = 0; x < columns; x++) {
-    const row = altitudes[x]
+    const row = altitudes[(x + shift) % p]
     if (!Number.isInteger(row)) {
       // NaN/Infinity/fractional are all non-rows: fb.data[non-integer] silently writes
       // nowhere, so fail LOUD rather than drop the column (lang-review #21).
