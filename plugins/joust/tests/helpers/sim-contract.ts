@@ -526,3 +526,46 @@ export async function loadSim(): Promise<SimModule> {
     )
   }
 }
+
+/** A decoded WAVTBL row (the wave-contract `WaveRow` shape) — mirrored structurally so
+ *  this narrow loader needs no cross-import into the wave contract. */
+interface WaveRowShape {
+  bounders: number
+  hunters: number
+  lords: number
+  pursuers: number
+  pterodactyls: number
+  status: number
+}
+
+/**
+ * jt13-8 — the narrow loader for `enemyTypesForWave`, the LIVE row→ground-complement
+ * builder that superseded the retired `waveEnemyComplement`. Kept SEPARATE from
+ * `loadSim` on the `loadWaveBcd` discipline: this is a one-symbol seam, and widening
+ * the main sim surface for it would couple every sim suite to an export they do not
+ * use. `enemyTypesForWave(row)` pushes bounders, then hunters, then shadow lords and
+ * NOTHING else — the pursuit nibble and pterodactyls never inflate the ground count —
+ * so it is exactly where the retired twin's pursuit/pterodactyl-exclusion coverage
+ * re-points.
+ */
+export async function loadEnemyComplement(): Promise<{
+  enemyTypesForWave(row: WaveRowShape): readonly string[]
+}> {
+  const specifier = ['..', '..', 'src', 'core', 'sim.js'].join('/')
+  try {
+    const mod = (await import(/* @vite-ignore */ specifier)) as {
+      enemyTypesForWave?: (row: WaveRowShape) => readonly string[]
+    }
+    if (typeof mod.enemyTypesForWave !== 'function') {
+      throw new Error('module has no `enemyTypesForWave` export')
+    }
+    return { enemyTypesForWave: mod.enemyTypesForWave }
+  } catch (e) {
+    throw new Error(
+      'the live enemy-complement builder is not exported — GREEN (Julia) exports ' +
+        '`enemyTypesForWave` from joust/src/core/sim.ts so the retired ' +
+        "`waveEnemyComplement`'s pursuit/pterodactyl-exclusion coverage re-points onto " +
+        `the live spawn-list builder. (${(e as Error).message})`,
+    )
+  }
+}

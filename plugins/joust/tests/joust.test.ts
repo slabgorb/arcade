@@ -135,18 +135,20 @@ describe('AC-2 — facing makes the skid chain reachable (the jt1-6 gap)', () =>
 
   // jt13-8 — `groundStep` (the joust.ts JoustEntity→JoustEntity ground frame) was
   // a dead twin: no production caller, its live counterpart is flight.ts's
-  // `stepGround` on EntityState. The transition itself is pinned above via
-  // `groundTransition`, and the skid → plantZ = 2 (SKID_PLANT_Z) behaviour lives
-  // on `stepGround` (demo-jt2-9.test.ts / ground-release-decel-jt13-1.test.ts).
-  // What was UNIQUE to this file — that a skidding entity (plantZ 2) LOSES a joust —
-  // is kept, now built directly rather than via the retired twin.
-  it('a skidding entity (plantZ 2) flows into a LOSING joust outcome (the lance is lowered)', async () => {
+  // `stepGround` on EntityState. The skid CHAIN — a facing-vs-input reversal reaching
+  // PLYHR and parking plantZ = 2 (SKID_PLANT_Z) — is covered on the live `stepGround`
+  // (demo-jt2-9.test.ts / ground-release-decel-jt13-1.test.ts), and its transition on
+  // `groundTransition` above. This test does NOT exercise that chain: it is a plain
+  // `resolveJoust` UNIT test over a pre-built plantZ-2 entity, keeping the one law
+  // unique to this file — that the parked skid height (plantZ 2) loses a joust, which
+  // `resolveJoust` decides from plantZ alone (it never reads groundState).
+  it('resolveJoust: a pre-built plantZ-2 entity LOSES on the same pixel (the skid height sits lower)', async () => {
     const j = await loadJoust()
-    // PLYHR is the SKIDR state a facing-vs-input reversal reaches (pinned by
-    // `groundTransition('PLYER', 1, -1) === 'PLYHR'` above); a skid parks plantZ 2.
-    // Two enemies is a bounce, so pit a skidding ENEMY against a PLAYER on the same
-    // pixel: the skid (plantZ 2) makes the enemy lower → the player wins.
-    const skidded = ent({ groundState: 'PLYHR', plantZ: 2, facing: 1, posY: 100 << 8, party: 'enemy', enemyType: 'shadowLord' })
+    // `resolveJoust` compares posY + plantZ only, so build the loser directly with
+    // plantZ 2 (the height a skid parks at) — no groundState needed. Two enemies is a
+    // bounce, so pit the plantZ-2 ENEMY against a PLAYER on the same pixel: the +2 skid
+    // height makes the enemy lower → the player wins (shadowLord = 1500).
+    const skidded = ent({ plantZ: 2, facing: 1, posY: 100 << 8, party: 'enemy', enemyType: 'shadowLord' })
     const player = ent({ posY: 100 << 8, plantZ: 0, party: 'player' })
     const out = j.resolveJoust(skidded, player)
     expect(out).toMatchObject({ kind: 'kill', winner: 'b', loser: 'a', score: 1500 })

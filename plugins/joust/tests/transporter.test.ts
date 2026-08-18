@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { loadTransporter, type PlayerInput, type PadId } from './helpers/transporter-contract.js'
 import { loadWave } from './helpers/wave-contract.js'
+import { loadEnemyComplement } from './helpers/sim-contract.js'
 
 // The neutral glide — the ONLY non-control input (all zero/false).
 const NEUTRAL: PlayerInput = { dir: 0, flap: false, flapHeld: false }
@@ -340,11 +341,12 @@ describe('the wave-1 enemy complement enters via pads deterministically (AC-4)',
   // jt13-8 — `waveEnemyComplement` (the row→count helper) was a dead twin: no
   // production caller, and the LIVE pad complement is `enemyTypesForWave` /
   // `spawnWaveEnemies` (bounders+hunters+lords, pterodactyls handled apart). Its
-  // two formula-only micro-tests are retired with it — the wave-1 count is pinned
-  // against the LIVE `waveComplement` in demo.test.ts / demo-round2.test.ts, and
-  // the count→pads flow is kept below driven by the live wave row. (The dead
-  // formula also counted pterodactyls, which the live path excludes — see the
-  // Delivery Finding.)
+  // wave-1 count is pinned against the LIVE `waveComplement` in demo.test.ts /
+  // demo-round2.test.ts, and the count→pads flow is kept below driven by the live
+  // wave row. The one law the dead twin uniquely guarded — that the pursuit nibble
+  // and pterodactyls never inflate the ground complement (the dead formula wrongly
+  // summed pterodactyls in) — is RE-POINTED onto the live `enemyTypesForWave` in the
+  // exclusion test at the end of this block, not dropped.
   it('every enemy enters on a real pad, once, in order', async () => {
     const t = await loadTransporter()
     const padIds = new Set<PadId>(t.PADS.map((p) => p.id))
@@ -391,5 +393,42 @@ describe('the wave-1 enemy complement enters via pads deterministically (AC-4)',
     const count = wave.waveRowAt(1).bounders
     expect(count, 'wave 1 is three bounders').toBe(3)
     expect(t.enterViaPads(count, 7).length, 'three bounders enter via pads').toBe(3)
+  })
+
+  it('the pursuit nibble and pterodactyls never inflate the ground complement (the retired waveEnemyComplement law, re-pointed onto the live enemyTypesForWave)', async () => {
+    const wave = await loadWave()
+    const { enemyTypesForWave } = await loadEnemyComplement()
+    // Two ROM rows that carry BOTH a pursuit budget AND pterodactyls (JOUSTRV4.SRC:
+    // 2439-2545): row 18 = { hunters:5, lords:1, pursuers:15, pterodactyls:2 } and
+    // row 8 = { hunters:6, pursuers:1, pterodactyls:1 }. The live spawn-list builder
+    // counts the GROUND enemies only — bounders + hunters + lords — so neither the
+    // pursuit nibble (the WSMART intelligence budget, JOUSTRV4.SRC:2076-2077) nor the
+    // pterodactyls (their own kind:'ptero' processes, spawnWavePteros) reach it. The
+    // retired `waveEnemyComplement` wrongly summed pterodactyls in (it read 8 on
+    // row 18); this pins that the live path does NOT — the exact exclusion the two
+    // dropped formula micro-tests used to guard, now on the live symbol.
+    for (const w of [18, 8]) {
+      const row = wave.waveRowAt(w)
+      // Non-vacuity: the row must actually carry the things being excluded.
+      expect(row.pursuers, `wave ${w} carries a pursuit budget`).toBeGreaterThan(0)
+      expect(row.pterodactyls, `wave ${w} carries pterodactyls`).toBeGreaterThan(0)
+
+      const ground = enemyTypesForWave(row).length
+      expect(ground, `wave ${w}: ground complement is bounders + hunters + lords`).toBe(
+        row.bounders + row.hunters + row.lords,
+      )
+      expect(ground, `wave ${w}: the pursuit nibble is NOT added`).not.toBe(
+        row.bounders + row.hunters + row.lords + row.pursuers,
+      )
+      expect(ground, `wave ${w}: the pterodactyls are NOT added`).not.toBe(
+        row.bounders + row.hunters + row.lords + row.pterodactyls,
+      )
+    }
+    // The concrete witness the reviewer named: wave 18 fields six ground enemies —
+    // not the retired formula's eight (which double-counted its two pterodactyls).
+    expect(
+      enemyTypesForWave(wave.waveRowAt(18)).length,
+      'wave 18 = six ground enemies, not the dead formula’s eight',
+    ).toBe(6)
   })
 })

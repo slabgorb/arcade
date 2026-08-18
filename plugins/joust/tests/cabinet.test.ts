@@ -270,10 +270,11 @@ describe('AC-3 reachability — all six modes reached by transitions', () => {
     reached.add(attract.mode) // attract
 
     // jt13-8 — `toTitle` retired: 'title' is now the BOOT mode main.ts sets inline
-    // (pinned by title-boot-jt11-16-wiring). Constructed directly to keep the walk.
+    // (pinned by title-boot-jt11-16-wiring). Constructed directly to keep the walk;
+    // no self-check on the literal — the all-six-modes assertion below is what pins
+    // that 'title' was reached.
     const title: CabinetState = { ...attract, mode: 'title' }
     reached.add(title.mode) // title
-    expect(title.mode, 'the boot title mode').toBe('title')
 
     const select = c.toSelect(title)
     reached.add(select.mode) // select
