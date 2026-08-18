@@ -7,11 +7,11 @@
 // Measured at HEAD, and the two measurements are what make these tests honest
 // rather than decorative:
 //
-//   · all TWENTY entries in CUE_SOURCES are `kind: 'rom'`; `kind: 'invention'`
+//   · every entry in CUE_SOURCES is `kind: 'rom'`; `kind: 'invention'`
 //     appears exactly once in the whole module, at the type declaration
-//   · every shipped row is EVEN — 20 defining rows (after the priority byte) and
-//     6 continuation rows (two each for SNPTED, SNPCR1 and SNPCR2, the three
-//     multi-row tables), operand counts 2 or 4, ZERO odd
+//   · every shipped row is EVEN — each defining row (after the priority byte) and
+//     each continuation row (two each for SNPTED, SNPCR1 and SNPCR2, the three
+//     multi-row tables) has operand count 2 or 4, ZERO odd
 //
 // So neither defect fires in production, and neither can be reached by running
 // the shipped data through anything. Each test below therefore builds its own
@@ -465,6 +465,9 @@ describe('jt9-5 AC3 — an invented cue declares its window; it is not derived a
     // to read the paragraphs above rather than discovering them by surprise.
     // Reddened by: NOTHING, and correctly — see the battery note in the header.
     const kinds = Object.entries(CUE_SOURCES).map(([name, s]) => `${name}:${s.kind}`)
+    // Non-vacuity floor: the sweep must have visited cues, or filter-to-[] is
+    // trivially true over nothing. `> 0`, never a hard count — a new cue is fine.
+    expect(kinds.length, 'CUE_SOURCES sweep visited no cues').toBeGreaterThan(0)
     expect(kinds.filter((k) => !k.endsWith(':rom'))).toEqual([])
   })
 })

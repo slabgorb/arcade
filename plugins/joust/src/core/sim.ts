@@ -1934,7 +1934,7 @@ function collisionPass(processes: readonly SimProcess[]): {
   const spawned: SimProcess[] = []
   const events: SimEvent[] = []
   // jt5-1/jt5-4 — cues are emitted where the outcome is DECIDED, never
-  // reconstructed from a process diff (six of the nineteen cued moments).
+  // reconstructed from a process diff (some of the cued moments).
   const cues: GameEvent[] = []
   // jt5-4 — a bounce's resolved velY/posY, keyed by process id. `resolveContacts`
   // computes the outcome from a JoustEntity snapshot; this map is what carries

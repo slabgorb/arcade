@@ -108,7 +108,7 @@ export const CHANNELS: Readonly<Record<SoundName, string>> = {
   playerWingDown: 'prio-10',
   playerWingUp: 'prio-10',
   playerThud: 'prio-20',
-  trollGrab: 'prio-50', // jt13-7 — SNTROL, priority 50 (its own channel)
+  trollGrab: 'prio-50', // jt13-7 — SNTROL, priority 50 (shares prio-50 with waveBounty)
   enemyDeath: 'prio-40',
   enemyMaterialise: 'prio-40',
   enemyLavaDeath: 'prio-40',

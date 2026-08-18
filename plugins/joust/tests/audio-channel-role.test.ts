@@ -38,7 +38,7 @@
 //     PRIORITIES`) is DERIVED by the
 //     same shape of filter — `if (source.kind === 'rom')` — and `CueSource` has
 //     an `invention` arm that jt9-5 made first-class with a REQUIRED `frames`
-//     field. "All 20 cues carry a priority" is therefore a fact about today's
+//     field. "Every cue carries a priority" is therefore a fact about today's
 //     cue list, not a property the design enforces. `describes what deletion
 //     would cost` below measures where the first invention would land.
 //

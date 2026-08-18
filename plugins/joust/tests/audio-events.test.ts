@@ -262,14 +262,13 @@ describe('jt5-1 AC2 — core/events.ts declares the event channel', () => {
     // a reachable moment now and stepTrolls emits 'troll-grab'. The (now empty) list
     // is kept because tests/audio-flap.test.ts and tests/audio-thud.test.ts read it
     // as source text to prove no wired name is ever re-listed as unreachable.
+    // Kept as an inert declaration ONLY so tests/audio-flap.test.ts and
+    // tests/audio-thud.test.ts can regex it as source text (they assert nothing
+    // wired is ever re-listed here). It is empty and NOT iterated in this file —
+    // the live assertion is the inverse below.
     const deferred = [] as string[]
+    void deferred
     const kinds = await eventKinds()
-    for (const kind of deferred) {
-      expect(
-        kinds,
-        `'${kind}' is deferred — it has no reachable moment in the sim, so declaring it ships an unfirable cue`,
-      ).not.toContain(kind)
-    }
     // The canary is now the inverse: the last deferral is WIRED, not missing.
     expect(kinds, "jt13-7 wires 'troll-grab' (SNTROL) — it must be in EVENT_KINDS").toContain('troll-grab')
   })
