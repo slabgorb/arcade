@@ -241,3 +241,8 @@ completed_stories:
     title: "Hold the re-materialising bird stationary on its pad during the TREFF phase-2 idle wait (ROM 'wait for 1st move'), instead of letting it fall under gravity — the deferred physics half of jt13-12, which shipped the tint only"
     points: 3
     completed: '2026-08-18'
+  - id: df5-9
+    epic: df5
+    title: 'Fix world scroll: composeFrame draws the terrain and world-space enemies at absolute positions — camera-offset them so the planet surface scrolls under the ship and enemies stay world-anchored'
+    points: 5
+    completed: '2026-08-18'
