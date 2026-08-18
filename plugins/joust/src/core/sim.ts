@@ -1094,12 +1094,15 @@ function stepTrolls(
   processes: readonly SimProcess[],
   wave: number,
   inputs?: Record<number, PlayerInput>,
-): { processes: SimProcess[]; events: SimEvent[] } {
-  if (!processes.some((p) => p.kind === 'troll')) return { processes: [...processes], events: [] }
+): { processes: SimProcess[]; events: SimEvent[]; cues: GameEvent[] } {
+  if (!processes.some((p) => p.kind === 'troll')) return { processes: [...processes], events: [], cues: [] }
 
   const lavtim = Math.max(1, waveValue('LAVTIM', wave))
   const lavgra = waveValue('LAVGRA', wave)
   const events: SimEvent[] = []
+  // jt13-7 — the grab's SNTROL cue (LT1GRP). A GameEvent, not a score `event`:
+  // it rides the sim's cue stream up into GameState.events, where the shell plays it.
+  const cues: GameEvent[] = []
   const byId = new Map<number, SimProcess>(processes.map((p) => [p.id, { ...p }]))
   const removed = new Set<number>()
 
@@ -1156,7 +1159,12 @@ function stepTrolls(
       const target = (victim.entity.posY >> 8) + TROLL_GRIP_Y_OFFSET
       const handY = troll.entity.posY >> 8
       if (handY === target) {
+        // LT1GRP: the hand closes on the victim. The machine sounds SNTROL here
+        // (LDX #SNTROL / JSR VSND, JOUSTRV4.SRC:1646) the same instant it repoints
+        // gravity. Cue it ONCE, at the grab onset — every later grip frame re-enters
+        // the `troll.grip` branch above, never this one, so it never re-sounds.
         troll.grip = beginGrip(lavgra)
+        cues.push({ type: 'troll-grab' })
         troll.entity = { ...troll.entity, posX: handX }
         victim.grippedBy = troll.id
       } else {
@@ -1168,14 +1176,14 @@ function stepTrolls(
 
   if (removed.size === 0 && events.length === 0) {
     // Fast path: nothing moved a process in/out — still return the updated copies.
-    return { processes: processes.map((p) => byId.get(p.id) ?? p), events }
+    return { processes: processes.map((p) => byId.get(p.id) ?? p), events, cues }
   }
   const out: SimProcess[] = []
   for (const p of processes) {
     if (removed.has(p.id)) continue
     out.push(byId.get(p.id) ?? p)
   }
-  return { processes: out, events }
+  return { processes: out, events, cues }
 }
 
 /**
@@ -1926,7 +1934,7 @@ function collisionPass(processes: readonly SimProcess[]): {
   const spawned: SimProcess[] = []
   const events: SimEvent[] = []
   // jt5-1/jt5-4 — cues are emitted where the outcome is DECIDED, never
-  // reconstructed from a process diff (six of the nineteen cued moments).
+  // reconstructed from a process diff (some of the cued moments).
   const cues: GameEvent[] = []
   // jt5-4 — a bounce's resolved velY/posY, keyed by process id. `resolveContacts`
   // computes the outcome from a JoustEntity snapshot; this map is what carries
@@ -2522,6 +2530,7 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   const trollStep = stepTrolls(processes, waveOrdinal, inputs)
   processes = trollStep.processes
   const trollEvents = trollStep.events
+  cues.push(...trollStep.cues) // jt13-7 — the SNTROL grab cue joins this frame's stream
 
   // jt13-10 — the non-gripped lava death, ADGFLR "DEATH VIA SWIMMING IN THE LAVA"
   // (JOUSTRV4.SRC:6523): a bird that reaches lava depth (ADGCEI's FLOOR+7 test,

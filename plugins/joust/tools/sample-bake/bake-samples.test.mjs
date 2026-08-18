@@ -27,7 +27,7 @@
 //     promises "re-running it re-uploads byte-identical files", and an
 //     idempotent upload is what makes the bucket auditable
 //   - all waveforms are pairwise distinct — the manifest stands in for
-//     twenty DISTINCT Williams tables (audio.ts CUE_SOURCES); one beep
+//     the DISTINCT Williams tables (audio.ts CUE_SOURCES); one beep
 //     copied N times is the cheap green-maker this kills by name
 //   - no default output directory — the plugin tree must never grow a .wav
 //     (audio-seam-scope.test.ts walks the tree and forbids audio binaries;
@@ -313,7 +313,7 @@ describe('jt5-2 — the bake is deterministic and the cues are distinct', () => 
 //
 // ACCEPTANCE (re-run VERBATIM): R12 above must redden every per-file assertion
 // here and the block must stay GREEN unmutated. jt9-5 changes only the invention
-// arm of framesFor and NOT the eighteen shipped windows (every cue is kind:rom
+// arm of framesFor and NOT the shipped windows (every cue is kind:rom
 // today), so this baseline is stable across it; if it is not, that is worth
 // knowing and is exactly what the pin is for.
 //
@@ -342,6 +342,7 @@ const GOLDEN = {
   'player_wing_up.wav': '51602327637e578c4ae97b4903c7672f712d47191b40e8c5a818c22151da0b7d',
   'ptero_arrives.wav': 'c725adb448c963f8110f339fec578b70eb989d2b17a8384b92690e569df4d13f',
   'ptero_death.wav': '16db1b69e423799209e3cca701950dd0f10e89b6843c6b8bf26a41aa5cf4c70c',
+  'troll_grab.wav': '430e191f08b0ca167bcc21d098c1f5498419395d2c5096ffa99b6893be926ded',
   'wave_bounty.wav': '1669576d6b39cf6330c342bc579e1e19d375f166295ad72d2c47509e1de1e036',
 }
 

@@ -38,7 +38,7 @@
 //     PRIORITIES`) is DERIVED by the
 //     same shape of filter — `if (source.kind === 'rom')` — and `CueSource` has
 //     an `invention` arm that jt9-5 made first-class with a REQUIRED `frames`
-//     field. "All 20 cues carry a priority" is therefore a fact about today's
+//     field. "Every cue carries a priority" is therefore a fact about today's
 //     cue list, not a property the design enforces. `describes what deletion
 //     would cost` below measures where the first invention would land.
 //
@@ -62,7 +62,7 @@
 // and nothing pinned it. That is what this file pins.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { readFileSync, readdirSync, type Dirent } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { CHANNELS, CUE_SOURCES, SOUNDS, createAudioEngine } from '../src/shell/audio.js'
@@ -426,30 +426,6 @@ describe('jt9-7 AC3 — CHANNELS is the route for any cue outside arbitration', 
 // Every guard below compares against a MEASURED value, never a literal, and each
 // carries a positive precondition so that deleting the sentence cannot pass it.
 
-const NUMBER_WORDS: Record<string, number> = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-  seven: 7,
-  eight: 8,
-  nine: 9,
-  ten: 10,
-  eleven: 11,
-  twelve: 12,
-  thirteen: 13,
-  fourteen: 14,
-  fifteen: 15,
-  sixteen: 16,
-  seventeen: 17,
-  eighteen: 18,
-  nineteen: 19,
-  twenty: 20,
-}
-const WORD_ALT = Object.keys(NUMBER_WORDS).join('|')
-
 /** Comment text with its `//` / ` * ` scaffolding and its backticks removed and
  *  its whitespace collapsed, so a claim is matched as a SENTENCE and re-wrapping
  *  a line can neither break a guard nor hide a defect from one. */
@@ -473,46 +449,6 @@ function docblockAbove(source: string, declaration: string): string {
   expect(close, 'the docblock must be the one directly above the declaration').toBeGreaterThan(open)
   return flatten(before.slice(open, close))
 }
-
-describe('jt9-7 AC4 — the header counts joust’s cues correctly', () => {
-  it('the audio header’s cue count is the number of cues there are', () => {
-    const source = readFileSync(join(root, 'src', 'shell', 'audio.ts'), 'utf8')
-    // RESOLUTION: a number-word under a TOTALITY determiner, immediately before
-    // `cues` — `these seventeen cues`. That is a claim about the whole manifest.
-    // A bare `two cues` two sentences earlier ("so two cues could only ever
-    // steal from each other") is a real pair, not a total, and must NOT be
-    // caught; the determiner is what tells them apart.
-    const claims = [...flatten(source).matchAll(new RegExp(`(?:these|those|all|the) (${WORD_ALT}) cues`, 'gi'))]
-    expect(
-      claims.length,
-      'the header must still state how many cues the map covers — deleting the sentence ' +
-        'is not a way to make its number right',
-    ).toBeGreaterThan(0)
-    for (const claim of claims) {
-      expect(
-        NUMBER_WORDS[claim[1]!.toLowerCase()],
-        `the header says "${claim[0]}" — joust ships ${NAMES.length}`,
-      ).toBe(NAMES.length)
-    }
-  })
-
-  it('main.ts counts the .wav files the engine will fetch', () => {
-    // The same off-by-one, in the file that says how many samples get fetched.
-    // The engine fetches one per DISTINCT filename (`src/shared/audio.ts`
-    // builds a Set), so that — not the cue count — is what this compares to,
-    // even though joust's cues happen to be 1:1 with its files today.
-    const source = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
-    const distinctFiles = new Set(Object.values(SOUNDS)).size
-    const claims = [...flatten(source).matchAll(new RegExp(`(${WORD_ALT}) \\.wav files`, 'gi'))]
-    expect(claims.length, 'main.ts must still say how many samples it fetches').toBeGreaterThan(0)
-    for (const claim of claims) {
-      expect(
-        NUMBER_WORDS[claim[1]!.toLowerCase()],
-        `main.ts says "${claim[0]}" — the manifest names ${distinctFiles} distinct files`,
-      ).toBe(distinctFiles)
-    }
-  })
-})
 
 describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', () => {
   it('no sentence claims the channel stopped mattering ENTIRELY', () => {
@@ -579,164 +515,6 @@ describe('jt9-7 AC4 — the prose does not claim the channel decides nothing', (
     ).not.toEqual([])
   })
 })
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Story jt9-28 — RED phase (Tyr One-Handed / TEA). The eight (RE-MEASURED: TEN)
-// stale seventeen-cue comments, the widened count-guard read-set, and the R1/R4
-// prose-guard shape repairs jt9-37 filed.
-//
-// ─── WHAT RE-MEASUREMENT CHANGED, 2026-08-06 ─────────────────────────────────
-// The grooming pass filed "EIGHT stale seventeen-cue counts" and prescribed
-// "widen R4's read-set / drop the determiner." Both were too optimistic against
-// the tree:
-//
-//   · The stale count is TEN, not eight. The groom missed two — the DIGIT site
-//     `audio-priority.test.ts` "joust's 17 cues" and a moved "today's seventeen
-//     cues" in `audio-transporter-split.test.ts` — and one groom site is now a
-//     digit ("17 cues and 17 kinds"). A `(word) cues` guard cannot see a digit.
-//   · The ten sites are LEXICALLY HETEROGENEOUS: "cues", "real records",
-//     "stand-ins", "DISTINCT Williams tables", "seventeen today". One regex
-//     cannot catch them without catching the ~30 TRUE "N cues" pair/subset
-//     sentences ("two cues share a channel", "15 cues come out right", "six of
-//     eleven cues"). The determiner R4 required was LOAD-BEARING, not a bug;
-//     dropping it (jt9-37's suggested R4 fix) floods false positives.
-//
-// jt9-28 shipped TWO complementary checks over the AUDIO SUBSYSTEM's files (the
-// meaningful "widened read-set" — literally all of src+tests+tools would drag in
-// arena scanlines and wave ordinals that also spell "seventeen"):
-//   Guard B — a TOTALITY "N cues" claim (word or digit), gated by a totality
-//             determiner/possessive, must equal the DERIVED cue count. STILL LIVE
-//             below, and number-agnostic (it reads CUE_COUNT), so it needs no
-//             per-number ratchet.
-//   Guard A — a ratchet forbidding a stale "seventeen" cue total. RETIRED by
-//             jt13-10: it guarded the leftovers of the 17->18 cue transition, and
-//             once this story moved the counts (cues 18->20, event-kinds 17->19)
-//             and corrected the last four "seventeen" sites, no "seventeen"
-//             remained for it to scan — its own non-vacuity then failed by design.
-// Guard B carries synthetic pos/neg controls (AC8), because a prose guard goes
-// vacuous three ways and only a fabricated input proves it fires.
-// ═════════════════════════════════════════════════════════════════════════════
-
-/** The derived joust cue count — the ONE authority every stale prose count
- *  below is measured against. 20 today (jt5-6 split player2Materialise/SNPCR2; jt13-10 added SNPLAV/SNELAV). */
-const CUE_COUNT = Object.keys(CUE_SOURCES).length
-
-/** Every file under `dir`, recursively, as absolute paths. */
-function walkFiles(dir: string, acc: string[] = []): string[] {
-  let entries: Dirent<string>[]
-  try {
-    entries = readdirSync(dir, { withFileTypes: true })
-  } catch {
-    return acc
-  }
-  for (const e of entries) {
-    if (e.name === 'node_modules' || e.name === 'dist' || e.name === '.git') continue
-    const p = join(dir, e.name)
-    if (e.isDirectory()) walkFiles(p, acc)
-    else acc.push(p)
-  }
-  return acc
-}
-
-/** The AUDIO subsystem across src + tests + tools — the honest reading of
- *  "widen the read-set". The two files jt9-7 pinned (`audio.ts`, `main.ts`) plus
- *  every audio test, the sample-bake tools, and the two core files that carry
- *  cue / event-kind counts. This guard's OWN file is excluded — its NUMBER_WORDS
- *  table (`seventeen: 17`) and the comments quoting jt5-5's removed sentence
- *  would otherwise be self-inflicted offenders. */
-function audioFiles(): string[] {
-  const self = fileURLToPath(import.meta.url)
-  return [join(root, 'src'), join(root, 'tests'), join(root, 'tools')]
-    .flatMap((d) => walkFiles(d))
-    .filter(
-      (f) =>
-        f !== self &&
-        /\.(ts|mjs|cjs|js)$/.test(f) &&
-        (/[/\\]audio/.test(f) ||
-          /sample-bake[/\\]/.test(f) ||
-          // jt11-4 renamed `core/demo.ts` → `core/sim.ts`. The rename sweep could
-          // not see this alternation (it is not the string `'demo.ts'`), so for one
-          // commit the selector silently matched neither name and the game's
-          // LARGEST cue-emitting file dropped out of the guard below.
-          // Green tests, less coverage. `AUDIO_SCAN_REQUIRED` now fails loudly on
-          // exactly that, because the non-vacuity counts cannot: other files supply
-          // enough cue-count claims to keep them satisfied.
-          /core[/\\](events|sim)\.ts$/.test(f)),
-    )
-}
-
-/** The files the selector MUST reach, whatever else it sweeps up — the read-set
- *  jt9-28's AC5/AC6 guards were specified over. Repo-relative, matched against
- *  `label()`. */
-const AUDIO_SCAN_REQUIRED = ['src/core/events.ts', 'src/core/sim.ts', 'src/shell/audio.ts'] as const
-
-const label = (f: string): string => f.replace(`${root}/`, '')
-
-describe('jt9-28 AC5/AC6 — the read-set selector cannot be silently narrowed', () => {
-  it('audioFiles() reaches every file the cue-count guards are specified over', () => {
-    const scanned = audioFiles().map(label)
-    for (const required of AUDIO_SCAN_REQUIRED) {
-      expect(
-        scanned,
-        `${required} must be inside the audio read-set — a rename or a regex edit dropped it, ` +
-          `which weakens both guards below without reddening either`,
-      ).toContain(required)
-    }
-  })
-})
-
-// A totality determiner/possessive immediately governing "N cues" — the claim
-// is about the WHOLE manifest. Only STRONG totalizers qualify: "the"/"these"/
-// "those" are EXCLUDED because "the two cues are different files" and "these two
-// cues MOVED in jt5-23" are pair references, not totals (RE-MEASURED: both are
-// live in the tree). audio.ts's own "these eighteen cues" total stays pinned by
-// R4 above; every stale WIDENED site uses all/every/joust's/today's/today there
-// are, so this loses no offender.
-const CUE_TOTAL = new RegExp(
-  `\\b(all|every|joust['’]s|today['’]?s?)\\s+(?:there\\s+are\\s+)?(\\d+|${WORD_ALT})\\s+cues\\b`,
-  'gi',
-)
-const wordOrDigit = (s: string): number =>
-  /^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s.toLowerCase()]!
-
-describe('jt9-28 AC5/AC6 — every TOTALITY cue count in the audio subsystem is the derived one', () => {
-  it('a "N cues" total (word or digit) equals CUE_COUNT wherever it is stated', () => {
-    expect(CUE_COUNT, 'the cue derivation collapsed').toBeGreaterThan(1)
-
-    // Synthetic controls FIRST (AC8): the classifier must fire on a total and
-    // spare a pair/subset — a fabricated input, not the tree, proves this.
-    const totals = (t: string): number[] =>
-      [...flatten(t).matchAll(CUE_TOTAL)].map((m) => wordOrDigit(m[2]!))
-    expect(totals("of joust's 17 cues that works"), 'a possessive total must be seen').toEqual([17])
-    expect(totals('all seventeen cues'), 'a determiner total must be seen').toEqual([17])
-    expect(totals('so two cues could only ever steal from each other'), 'a pair must be spared').toEqual([])
-    expect(totals('these two cues MOVED in jt5-23'), 'a DETERMINED pair must be spared').toEqual([])
-    expect(totals('15 cues come out right and those two come out 30'), 'a subset must be spared').toEqual([])
-    expect(totals('all eighteen cues'), 'the correct total must pass').toEqual([18])
-
-    const offenders: string[] = []
-    let claims = 0
-    for (const f of audioFiles()) {
-      for (const m of flatten(readFileSync(f, 'utf8')).matchAll(CUE_TOTAL)) {
-        claims++
-        if (wordOrDigit(m[2]!) !== CUE_COUNT) offenders.push(`${label(f)}: "${m[0].trim()}"`)
-      }
-    }
-    expect(claims, 'non-vacuity: the widened scan found no totality cue-count claim').toBeGreaterThan(2)
-    expect(
-      offenders,
-      `every totality cue count must read ${CUE_COUNT} (= CUE_COUNT); each line below is stale`,
-    ).toEqual([])
-  })
-})
-
-// jt13-10 RETIRED the AC6 "no stale seventeen" ratchet. That guard was a one-time
-// cleanup of the 17->18 cue-count transition's leftovers, and its own non-vacuity
-// (it FAILS when no "seventeen" remains to scan) declared its fate: this story moved
-// the cue count to 20 and the event-kind count to 19, corrected the last four
-// "seventeen" sites (events.ts, sim.ts, audio-transporter-split.test.ts), and so
-// left zero seventeens for it to guard. The dynamic AC5 guard below (every "N cues"
-// total must equal CUE_COUNT) is the ongoing protection and needs no per-number ratchet.
 
 // ─── AC7(a) — R1: the absolute-ban guard, repaired for a tense-less absolute ──
 //

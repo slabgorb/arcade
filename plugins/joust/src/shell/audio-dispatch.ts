@@ -83,6 +83,8 @@ function cueFor(event: GameEvent): SoundName | null {
       return 'playerThud'
     case 'enemy-thud':
       return 'enemyThud'
+    case 'troll-grab':
+      return 'trollGrab'
     default: {
       // Exhaustiveness guard: every kind is handled above, so `event` narrows to
       // `never` here and a new kind without a case is a COMPILE error. At

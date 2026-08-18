@@ -49,7 +49,7 @@
 // priority-40 enemy death and a priority-80 player death sat on different
 // channels and simply both played. The engine now arbitrates across channels, so
 // while that arbitrated window holds the voice, the fence settles nothing beyond
-// what the priority already decided for these twenty cues; the map is kept
+// what the priority already decided for these cues; the map is kept
 // because the shared engine still routes every sound by channel, because a
 // channel per priority remains the honest description of which cues share a
 // voice, and because once the window is released a shared channel decides again
@@ -108,6 +108,7 @@ export const CHANNELS: Readonly<Record<SoundName, string>> = {
   playerWingDown: 'prio-10',
   playerWingUp: 'prio-10',
   playerThud: 'prio-20',
+  trollGrab: 'prio-50', // jt13-7 — SNTROL, priority 50 (shares prio-50 with waveBounty)
   enemyDeath: 'prio-40',
   enemyMaterialise: 'prio-40',
   enemyLavaDeath: 'prio-40',

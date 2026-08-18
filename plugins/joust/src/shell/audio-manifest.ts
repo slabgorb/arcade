@@ -53,6 +53,7 @@ export type SoundName =
   | 'enemyWingUp'
   | 'playerThud'
   | 'enemyThud'
+  | 'trollGrab'
 
 /** Cue -> filename. One `.wav` per cue: one distinct Williams table each. */
 export const SOUNDS: Readonly<Record<SoundName, string>> = {
@@ -76,6 +77,7 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
   enemyWingUp: 'enemy_wing_up.wav',
   playerThud: 'player_thud.wav',
   enemyThud: 'enemy_thud.wav',
+  trollGrab: 'troll_grab.wav',
 }
 
 // ─── Provenance ──────────────────────────────────────────────────────────────
@@ -505,6 +507,19 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     },
     continuation: [],
     callSite: { file: SRC, line: 5019, verbatim: 'OSTHT2\tLDX\t#SNETHD\t\tENEMIES COLIDE' },
+  },
+  trollGrab: {
+    kind: 'rom',
+    table: 'SNTROL',
+    priority: 50,
+    romComment: 'CAPTURED BY LAVA TROLL SOUND',
+    source: {
+      file: SRC,
+      line: 8097,
+      verbatim: 'SNTROL\tFCB\t050,!N$09!.$7F,30\tCAPTURED BY LAVA TROLL SOUND',
+    },
+    continuation: [],
+    callSite: { file: SRC, line: 1646, verbatim: 'LT1GRP\tLDX\t#SNTROL\t\tMAKE THE SOUND OF THE LAVA TROLL' },
   },
 }
 

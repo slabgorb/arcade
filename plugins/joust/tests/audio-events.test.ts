@@ -201,10 +201,11 @@ const countOf = (g: GameState, kind: string): number =>
 //     person (:5010, ":8124 AT LEAST 1 PERSON THUD'ED"). The deferred guard
 //     below no longer names the thud family, and tests/audio-thud.test.ts is
 //     what pins it.
-//   • the LAVA TROLL grab (SNTROL, LT1GRP :1646-1647) — `troll.beginGrip` has
-//     zero production callers too, and `ROW_DISPOSITION.LAVGRA` in difficulty.ts
-//     already says so by name, owner `uf1-10`/`uf1-11`. (Named, not line-cited —
-//     uf1-9 rewrote that table and the entry moved.)
+//   • the LAVA TROLL grab (SNTROL, LT1GRP :1646-1647) — WIRED by jt13-7. jt5-1
+//     deferred it because `troll.beginGrip` had no production caller; jt9-11 gave
+//     it one (stepTrolls' grip commit, and demo.stepTrolls), so the grab is a
+//     reachable moment now, `stepTrolls` emits `troll-grab`, and audio maps it to
+//     SNTROL. This was the LAST deferral: the guard below is now empty.
 const EXPECTED_KINDS: readonly string[] = [
   'enemy-death',
   'player-death',
@@ -256,19 +257,20 @@ describe('jt5-1 AC2 — core/events.ts declares the event channel', () => {
     // same — SNPTHD 020 and SNETHD 009 are two sounds, and a single collapsed
     // kind cannot be arbitrated; tests/audio-thud.test.ts pins that.)
     //
-    // What remains is uf1-10/uf1-11's alone (the lava troll's grab). The list is
-    // guarded in turn by tests/audio-flap.test.ts and tests/audio-thud.test.ts,
-    // which read this array as source text and fail if a wired name comes back
-    // OR if 'troll-grab' leaves.
-    const deferred = ['troll-grab']
+    // NOTHING remains deferred. jt13-7 wired the last one — the lava-troll grab
+    // (SNTROL): troll.beginGrip gained production callers in jt9-11, so the grab is
+    // a reachable moment now and stepTrolls emits 'troll-grab'. The (now empty) list
+    // is kept because tests/audio-flap.test.ts and tests/audio-thud.test.ts read it
+    // as source text to prove no wired name is ever re-listed as unreachable.
+    // Kept as an inert declaration ONLY so tests/audio-flap.test.ts and
+    // tests/audio-thud.test.ts can regex it as source text (they assert nothing
+    // wired is ever re-listed here). It is empty and NOT iterated in this file —
+    // the live assertion is the inverse below.
+    const deferred = [] as string[]
+    void deferred
     const kinds = await eventKinds()
-    for (const kind of deferred) {
-      expect(
-        kinds,
-        `'${kind}' is deferred (see this file's header and the session's Delivery Findings) — ` +
-          'it has no reachable moment in the sim today, so declaring it ships an unfirable cue',
-      ).not.toContain(kind)
-    }
+    // The canary is now the inverse: the last deferral is WIRED, not missing.
+    expect(kinds, "jt13-7 wires 'troll-grab' (SNTROL) — it must be in EVENT_KINDS").toContain('troll-grab')
   })
 })
 

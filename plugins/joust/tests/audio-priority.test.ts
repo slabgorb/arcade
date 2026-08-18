@@ -10,8 +10,8 @@
 // much harder to read off the ROM than the story assumed.
 //
 // ─── THE DURATION TRAP: A CUE'S TABLE IS NOT ALWAYS ITS CITED LINE ───────────
-// The story asks for frame durations "parsed from ROM verbatim strings". For 15
-// of joust's 20 cues that works, because their whole table is one `FCB` row. For
+// The story asks for frame durations "parsed from ROM verbatim strings". For most
+// of joust's cues that works, because their whole table is one `FCB` row. For
 // THREE of them it is wrong, and quietly so — the row parses cleanly and yields a
 // number that is simply not the table's length.
 //
@@ -119,6 +119,8 @@ const ROM: Record<SoundName, { priority: number; frames: number; lines: string }
   // jt13-10 — the lava death cues (ADGFLR). Single-row tables, duration 30.
   playerLavaDeath: { priority: 60, frames: 30, lines: '8123' },
   enemyLavaDeath: { priority: 40, frames: 30, lines: '8105' },
+  // jt13-7 — the lava-troll grab (SNTROL, LT1GRP). Single-row table, duration 30.
+  trollGrab: { priority: 50, frames: 30, lines: '8097' },
   eggCollected: { priority: 45, frames: 30, lines: '8098' },
   eggHatched: { priority: 45, frames: 30, lines: '8099' },
   pteroArrives: { priority: 65, frames: 60, lines: '8094' },
@@ -190,7 +192,7 @@ const NAMES = Object.keys(ROM) as SoundName[]
 // ── AC3: the numbers reach the engine ─────────────────────────────────────────
 
 describe('jt5-5 joust — every cue passes its ROM priority to the engine (AC3)', () => {
-  it('declares a priority for all twenty cues', async () => {
+  it('declares a priority for every cue', async () => {
     const m = await captureManifest()
     const missing = NAMES.filter((n) => m.priorities?.[n] === undefined)
     expect(missing, `cues with no priority passed to the engine: ${missing.join(', ')}`).toEqual([])
@@ -231,7 +233,7 @@ describe('jt5-5 joust — every cue passes its ROM priority to the engine (AC3)'
 })
 
 describe('jt5-5 joust — every cue passes its FULL-TABLE frame window (AC3)', () => {
-  it('declares a frame duration for all twenty cues', async () => {
+  it('declares a frame duration for every cue', async () => {
     const m = await captureManifest()
     const missing = NAMES.filter((n) => m.frameDurations?.[n] === undefined)
     expect(missing, `cues with no frame window: ${missing.join(', ')}`).toEqual([])
