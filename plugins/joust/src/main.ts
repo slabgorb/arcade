@@ -15,7 +15,10 @@
 // reads a clock.
 
 import { ENTITY_RECORDS, PALETTES, COMCL5, expandComcl5 } from './core/pictures.js'
-import { drawList, type DrawOp } from './core/sim.js'
+import { drawList, type DrawOp, type SimEvent } from './core/sim.js'
+import { type Beat } from './core/wave.js'
+import { layoutText } from './shell/fontRender.js'
+import { announcementAt } from './shell/waveAnnounce.js'
 import { createGame, stepGame, overlayReadout, GOVER_OVER, type GameState, type OverlayReadout } from './core/game.js'
 import { demoInput } from './core/demo-ai.js'
 import {
@@ -259,6 +262,13 @@ function renderHighscoreScreen(): void {
 const GAMEOVER_COLOUR_INDEX = 5
 const GAMEOVER_BANNER_Y = 108
 
+// jt13-6 — the wave-announcement colour (a transcribed COLOR index, as the other
+// overlays use — not an invented literal, so the denylist scan stays clean) and its
+// Y (a placeholder tuned by a human smoke test / reference capture). The ROM lays the
+// WAVMSG phrases high on the screen (JOUSTRV4.SRC:2416-2432).
+const WAVE_ANNOUNCE_COLOUR_INDEX = 5
+const WAVE_ANNOUNCE_Y = 72
+
 /**
  * The game-over overlay: the single 'THY GAME IS OVER' banner (FONT57), centred
  * horizontally on the backbuffer. Text + font come from `layoutGameOverScreen`; the
@@ -438,6 +448,14 @@ let prevStartHeld = false
 const GAMEOVER_HOLD_FRAMES = 88
 let gameoverHoldFrames = 0
 
+// jt13-6 — the on-screen WAVMSG announcement clock. `announceBeats` is the current
+// wave's beat run (captured when fresh `beat` SimEvents arrive), `announceFrames`
+// counts video frames since it began, and `prevSimEvents` is the per-frame diff seam
+// (game.ts uses the same `new Set(sim.events)` idiom to drain fresh score events).
+let announceBeats: readonly Beat[] = []
+let announceFrames = 0
+let prevSimEvents: ReadonlySet<SimEvent> = new Set()
+
 // jt11-16 — the MARQUE (title) dwell budget, spent in the frame pump (the shell owns
 // the clock). Counts up to MARQUE_DWELL_FRAMES, then the title hands off to attract —
 // the ROM's marque→VSIM rhythm (ATT.SRC:121). Boot-only in this story; the title is
@@ -451,6 +469,11 @@ function enterPlaying(count: 1 | 2): void {
   prevFlap1 = false
   prevFlap2 = false
   gameoverHoldFrames = 0
+  // jt13-6 — fresh announcement clock. Empty `prevSimEvents` so wave 1's SEEDED
+  // intro beats read as fresh on the first pumped frame and announce too.
+  announceBeats = []
+  announceFrames = 0
+  prevSimEvents = new Set()
 }
 
 /**
@@ -661,6 +684,20 @@ const frame = (now: number): void => {
       // The core emitted this frame's moments as DATA; the shell turns them into
       // cues. Inside the pump, so a catch-up frame's moments are not dropped.
       playEventSounds(audio, cabinet.game.events)
+      // jt13-6 — the on-screen counterpart to playEventSounds: consume this frame's
+      // fresh `beat` SimEvents (the wave's WAVMSG announcement) and (re)start the
+      // announcement clock. Beats live in the sim's cumulative log, so diff against
+      // last frame exactly as game.ts drains fresh score events.
+      const freshBeats = cabinet.game.sim.events.filter(
+        (e): e is Extract<SimEvent, { kind: 'beat' }> => e.kind === 'beat' && !prevSimEvents.has(e),
+      )
+      prevSimEvents = new Set(cabinet.game.sim.events)
+      if (freshBeats.length > 0) {
+        announceBeats = freshBeats.map((e) => ({ message: e.message }))
+        announceFrames = 0
+      } else {
+        announceFrames += 1
+      }
       prevFlap1 = in1.flapHeld
       prevFlap2 = in2.flapHeld
     })
@@ -674,6 +711,15 @@ const frame = (now: number): void => {
     // the island's painted rows, exactly as the jt11-1 prompt does.
     paintSim(cabinet.game)
     drawHud(overlayReadout(cabinet.game))
+    // jt13-6 — the current WAVMSG announcement over the live game, centred (FONT57,
+    // the banner font the game-over/select overlays use). Colour index and Y are
+    // shell placeholders tuned by a human smoke test, like the game-over banner; the
+    // ROM lays the phrases around $2D7D-$387D (JOUSTRV4.SRC:2416-2432).
+    const shown = announcementAt(announceBeats, announceFrames)
+    if (shown) {
+      const laid = layoutText('FONT57', shown.text, colours[WAVE_ANNOUNCE_COLOUR_INDEX])
+      paintText(laid, Math.round((LOGICAL_WIDTH - laid.width) / 2), WAVE_ANNOUNCE_Y)
+    }
   } else if (cabinet.mode === 'attract') {
     // jt10-4 — the attract cycle: the self-play sim on the demo page, or a warning
     // banner. No HUD — attract, reached after the title dwell (jt11-16), is the

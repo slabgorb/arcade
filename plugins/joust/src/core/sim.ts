@@ -2512,6 +2512,10 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   const collided = collisionPass(materialised)
 
   let wave = state.wave
+  // jt13-6 — the WAVMSG beats the wave-advance below emits, if it fires this frame.
+  // createWaveSim seeds wave 1's beats; the REAL advance did not, so every wave after
+  // the first announced nothing. Collected here, merged into `events` at the return.
+  const waveAdvanceEvents: SimEvent[] = []
   // jt9-59 — the PTERWV pending-arrivals schedule, carried across the frame and ticked
   // below (reset to the new wave's schedule on an advance). Default-empty for a demo
   // that predates the field or a non-ptero wave.
@@ -2781,6 +2785,20 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
     processes = processes.map((p) =>
       p.kind === 'player' && p.eggHits !== undefined ? { ...p, eggHits: 0 } : p,
     )
+    // jt13-6 — the wave's WAVMSG announcement beats (WINTRO/WCOOP/WSURV/…, the
+    // WJSRTB routine each type runs, JOUSTRV4.SRC:2595-2738). Resolve the type
+    // through the DEGRADE law with the players who actually cleared the wave —
+    // a co-op wave with a player out becomes survival (WCOOP → WAVSUR), so a solo
+    // game announces SURVIVAL WAVE, not TEAM WAVE. `processes` here holds only the
+    // cleared-wave knights (the complement is spliced in below), so it is the live
+    // roster to read. 'nop' emits none, so a degraded gladiator adds nothing.
+    const playersAlive = {
+      p1: processes.some((p) => p.kind === 'player' && p.id === PLAYER1_ID),
+      p2: processes.some((p) => p.kind === 'player' && p.id === PLAYER2_ID),
+    }
+    for (const b of waveBeats(dispatchWaveType(waveRowAt(wave).status, playersAlive))) {
+      waveAdvanceEvents.push({ kind: 'beat', message: b.message })
+    }
     // The wave EVENT: burn the bridge on wave 3 and reflect this wave's cliff
     // destruction into the mutable arena (jt3-2) — latching bridge, reflecting cliffs.
     // Applied BEFORE the troll gate so the spawn reads THIS wave's burned bridge.
@@ -2995,7 +3013,9 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   }
   // Cap the log to its most recent entries — the append-only history would
   // otherwise grow unbounded (nothing drains it until the jt4 score display).
-  const events = [...state.events, ...collided.events, ...trollEvents].slice(-EVENT_LOG_CAP)
+  const events = [...state.events, ...collided.events, ...trollEvents, ...waveAdvanceEvents].slice(
+    -EVENT_LOG_CAP,
+  )
   return { sim, wave, events, cues, arena, baiterClock, pendingPteros, pendingEnemies, serviceQueue, trollArmed, crumbles }
 }
 
