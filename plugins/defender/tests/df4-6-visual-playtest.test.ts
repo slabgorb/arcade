@@ -286,16 +286,23 @@ describe('df4-6 — the COLIDE seam runs in stepSim: a laser kills a descending 
     // If an authentic geometry needs a different staging, GREEN adjusts the scenario;
     // it may NOT satisfy this by leaving collision unwired.
     const sim = await loadSim()
-    // STAGING (within the license above): the ship dwells at its start row and holds fire, so
-    // its laser stream is a steady beam along SHIP_ROW. The humanoid sits AT that beam row but
-    // FAR to the right, so the lander descends to the humanoid's altitude yet can never close
-    // the X-gap to grab it — it lingers in the beam, hunting, where an authentic laser box
-    // (df4-1 laserVsObject) overlaps and kills it. SHIP_ROW mirrors sim.ts INITIAL_Y; the
-    // lander spawns in the near firing-lane the beam sweeps first. Deterministic under the seed.
+    // STAGING (within the license above): the ship dwells at its start row and holds fire, so its
+    // laser stream is a steady rightward beam along SHIP_ROW. A humanoid sits AT that beam row,
+    // to the right of the lander but NEARER to it than any of df5-10's auto-seeded ground
+    // humanoids — the lander spawns in a low-density GAP between two seeded columns (col 38 sits
+    // ~2560 world-units from this target vs ~3175 to the nearest seeded humanoid), so nearestTarget
+    // picks THIS humanoid deterministically, independent of the seeded spread. The lander descends
+    // to the beam row and hunts sideways along it toward the target — lingering in the beam — where
+    // an authentic laser box (df4-1 laserVsObject) overlaps and kills it (verified: killed ~tick 120,
+    // still hunting, before it can close the grab gap). Placing the target on the beam row (not
+    // below it) is what keeps the lander AT SHIP_ROW; a same-column target below the beam would be
+    // grabbed and carried up out of laser reach instead. SHIP_ROW mirrors sim.ts INITIAL_Y; the
+    // lander is in the near firing-lane the beam sweeps first (col 38, just right of the ship's
+    // col 32). Deterministic under the seed.
     const SHIP_ROW = 120
     let s = sim.createSim(makeRand(7))
-    s = sim.spawnHumanoid(s, 200 << 8, SHIP_ROW) // far to the right, at the beam row
-    s = sim.spawnLander(s, 50 << 8) // near the ship's firing lane
+    s = sim.spawnHumanoid(s, 48 << 8, SHIP_ROW) // beam row, just right of the lander → its nearest target
+    s = sim.spawnLander(s, 38 << 8) // near the ship's firing lane, in a low-density gap between seeded columns
     const before = s.landers.length
     expect(before, 'precondition: one lander is airborne').toBeGreaterThan(0)
 
