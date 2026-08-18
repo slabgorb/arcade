@@ -1,0 +1,245 @@
+[
+  {
+    "id": "PWR-1",
+    "claim": "SMART BOMB is the SBOMB routine; its first act is to load the SBFLG 'in progress' latch (LDA SBFLG) — a second press while it is set bails, so one press fires one bomb.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3175,
+      "verbatim": "SBOMB\tLDA\tSBFLG"
+    }
+  },
+  {
+    "id": "PWR-2",
+    "claim": "The smart-bomb stock is the per-player count PSBC,X (LDA PSBC,X); the following BEQ bails when it is zero, so a bomb only fires when one is held.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3178,
+      "verbatim": "\tLDA\tPSBC,X"
+    }
+  },
+  {
+    "id": "PWR-3",
+    "claim": "An empty smart-bomb stock branches out of SBOMB (BEQ SBMBX2 → JMP SUCIDE): no fire, no spend.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3179,
+      "verbatim": "\tBEQ\tSBMBX2"
+    }
+  },
+  {
+    "id": "PWR-4",
+    "claim": "On fire the smart bomb arms its in-progress latch: INC SBFLG. Modelled as SmartBombResult.armed=true on a fire.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3180,
+      "verbatim": "\tINC\tSBFLG"
+    }
+  },
+  {
+    "id": "PWR-5",
+    "claim": "On fire the smart bomb spends exactly one bomb from the player's stock: DEC PSBC,X. Modelled as count-1 on a fire.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3181,
+      "verbatim": "\tDEC\tPSBC,X"
+    }
+  },
+  {
+    "id": "PWR-6",
+    "claim": "The smart-bomb clear gate tests each on-screen object's type against $02 (CMPA #$02); this is SMART_BOMB_CLEAR_TYPE_MAX.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3190,
+      "verbatim": "\tCMPA\t#$02"
+    }
+  },
+  {
+    "id": "PWR-7",
+    "claim": "Objects with OTYP at or above $02 are SPARED by the smart bomb (BHS SBMB2 skips them); objects below $02 are cleared via their collision vector [OCVECT,X]. clearsType(otyp) = otyp < $02.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3191,
+      "verbatim": "\tBHS\tSBMB2"
+    }
+  },
+  {
+    "id": "PWR-8",
+    "claim": "The smart-bomb screen flash count is 4 (LDA #4 SCREEN FLASHES/2); SMART_BOMB_FLASHES. The TIMING is ported and cited; the strobe PRESENTATION is substituted per ADR-0005.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3197,
+      "verbatim": "\tLDA\t#4\tSCREEN FLASHES/2"
+    }
+  },
+  {
+    "id": "PWR-9",
+    "claim": "The smart-bomb flash is a whole-page colour-RAM inversion: SBMBX0 COM PCRAM. This full-screen strobe is the ADR-0005 exception — it is SUBSTITUTED by the df4-2 effect-policy (freeze/fade/particle), never ported as an inversion.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3199,
+      "verbatim": "SBMBX0\tCOM\tPCRAM"
+    }
+  },
+  {
+    "id": "PWR-10",
+    "claim": "Hyperspace is refused unless STATUS masked by $FD is zero (BITA #$FD, followed by LBNE HYPX 'NO GO'); HYPER_NOGO_MASK. canHyperspace(status) = (status & $FD) == 0.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3214,
+      "verbatim": "\tBITA\t#$FD"
+    }
+  },
+  {
+    "id": "PWR-11",
+    "claim": "On entry hyperspace sets STATUS to $77 (LDA #$77 / STA STATUS); HYPER_STATUS, the in-hyperspace / re-entry marker.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3216,
+      "verbatim": "\tLDA\t#$77"
+    }
+  },
+  {
+    "id": "PWR-12",
+    "claim": "Hyperspace naps 15 scheduler ticks before the jump (NAP 15,HYP02); HYPER_NAP. It is a df3 scheduler process, not a per-power rAF.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3219,
+      "verbatim": "\tNAP\t15,HYP02"
+    }
+  },
+  {
+    "id": "PWR-13",
+    "claim": "The random hyperspace DIRECTION is the SEED low bit shifted into carry (LSRB); the following BCC selects the branch. A random draw off the seeded rng, not Math.random.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3229,
+      "verbatim": "\tLSRB"
+    }
+  },
+  {
+    "id": "PWR-14",
+    "claim": "Carry clear (SEED low bit 0) branches to HYP0 (BCC HYP0): the LEFT teleport (X=$7000, dir -$0300). Carry set falls through to the RIGHT teleport.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3230,
+      "verbatim": "\tBCC\tHYP0"
+    }
+  },
+  {
+    "id": "PWR-15",
+    "claim": "The RIGHT hyperspace teleport sets the player X to $2000 (LDD #$2000); HYPER_X_RIGHT.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3231,
+      "verbatim": "\tLDD\t#$2000"
+    }
+  },
+  {
+    "id": "PWR-16",
+    "claim": "The RIGHT hyperspace teleport faces the ship right at magnitude $0300 (LDX #$0300); HYPER_DIR_MAG. The LEFT branch uses its negation -$0300.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3232,
+      "verbatim": "\tLDX\t#$0300"
+    }
+  },
+  {
+    "id": "PWR-17",
+    "claim": "The LEFT hyperspace teleport (HYP0) faces the ship left at -$0300 (LDX #-$0300); the negation of HYPER_DIR_MAG.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3234,
+      "verbatim": "HYP0\tLDX\t#-$0300"
+    }
+  },
+  {
+    "id": "PWR-18",
+    "claim": "The LEFT hyperspace teleport sets the player X to $7000 (LDD #$7000); HYPER_X_LEFT.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3235,
+      "verbatim": "\tLDD\t#$7000"
+    }
+  },
+  {
+    "id": "PWR-19",
+    "claim": "The random hyperspace Y is the HSEED byte halved plus YMIN (ADDB #YMIN, after LDB HSEED / LSRB): y = (HSEED >> 1) + YMIN, landing the ship in the player band.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3240,
+      "verbatim": "\tADDB\t#YMIN"
+    }
+  },
+  {
+    "id": "PWR-20",
+    "claim": "Hyperspace stores the in-hyperspace STATUS value $77 into STATUS (STA STATUS, after LDA #$77): the re-entry marker set for the duration of the jump.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3217,
+      "verbatim": "\tSTA\tSTATUS"
+    }
+  },
+  {
+    "id": "PWR-21",
+    "claim": "Hyperspace clears the D accumulator (CLRD) ahead of zeroing the player velocities on re-entry.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3243,
+      "verbatim": "\tCLRD"
+    }
+  },
+  {
+    "id": "PWR-22",
+    "claim": "Hyperspace zeroes the sub-pixel low byte of the 24-bit X velocity (STA PLAXV+2), part of stopping the ship's horizontal motion on re-entry.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3244,
+      "verbatim": "\tSTA\tPLAXV+2"
+    }
+  },
+  {
+    "id": "PWR-23",
+    "claim": "Hyperspace zeroes the top 16 bits of the X velocity accumulator (STD PLAXV): the ship re-enters with no horizontal motion. Modelled as Teleport.vx = 0.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3245,
+      "verbatim": "\tSTD\tPLAXV"
+    }
+  },
+  {
+    "id": "PWR-24",
+    "claim": "Hyperspace ALSO zeroes the Y velocity (STD PLAYV) — the ship re-enters with no vertical motion either. Modelled as Teleport.vy = 0.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3246,
+      "verbatim": "\tSTD\tPLAYV"
+    }
+  },
+  {
+    "id": "PWR-25",
+    "claim": "On hyperspace re-entry (after the appear animation) the ROM reads LSEED for the death roll (LDA LSEED, commented 'DEAD?').",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3275,
+      "verbatim": "\tLDA\tLSEED\tDEAD?"
+    }
+  },
+  {
+    "id": "PWR-26",
+    "claim": "The hyperspace re-entry death threshold is 192 (CMPA #192); an LSEED strictly above it kills the player. This is HYPER_DEATH_THRESHOLD.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3276,
+      "verbatim": "\tCMPA\t#192"
+    }
+  },
+  {
+    "id": "PWR-27",
+    "claim": "An LSEED strictly greater than 192 branches to PLEND (LBHI PLEND, commented 'YAHMAHN') — the player dies on re-entry (PLEND = *PLAYER END, DEFA7.SRC:1328). LBHI is unsigned strictly-higher, so 63/256 (~25%) of re-entries are fatal and exactly 192 survives. Modelled as hyperspaceKilled(rand) = rand() > 192.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3277,
+      "verbatim": "\tLBHI\tPLEND\tYAHMAHN"
+    }
+  }
+]

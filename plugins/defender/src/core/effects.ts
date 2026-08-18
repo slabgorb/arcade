@@ -94,10 +94,11 @@ export interface EffectState {
 
 // ─── Effect policy types (ADR-0005) ─────────────────────────────────────────────────
 
-/** The three effect events df4-2 classifies. `enemy-explode` rasters normally;
- *  `player-death` and `terrain-blow` (TERBLO) are the full-frame strobes ADR-0005
- *  substitutes. (Smart bomb / hyperspace are df5, consuming this same policy.) */
-export type EffectEvent = 'enemy-explode' | 'player-death' | 'terrain-blow'
+/** The effect events the policy classifies. `enemy-explode` rasters normally; the rest are
+ *  the full-frame strobes ADR-0005 substitutes: `player-death` and `terrain-blow` (TERBLO,
+ *  df4-2), plus the two df5-5 emergency powers — `smart-bomb` (the SBMBX0 COM PCRAM whole-page
+ *  invert, DEFA7.SRC:3199) and `hyperspace` (the screen-clear). df5 CITES this same policy. */
+export type EffectEvent = 'enemy-explode' | 'player-death' | 'terrain-blow' | 'smart-bomb' | 'hyperspace'
 
 /** LOCALIZED effects raster normally; FULL-FRAME-STROBE effects render as a safe variant. */
 export type EffectClass = 'localized' | 'full-frame-strobe'
@@ -173,6 +174,12 @@ export function classify(event: EffectEvent): EffectPolicy {
       return { class: 'full-frame-strobe', presentation: 'fade' }
     case 'terrain-blow':
       return { class: 'full-frame-strobe', presentation: 'particle' }
+    case 'smart-bomb':
+      // df5-5: the SBMBX0 COM PCRAM whole-page invert (DEFA7.SRC:3199) → a bounded fade.
+      return { class: 'full-frame-strobe', presentation: 'fade' }
+    case 'hyperspace':
+      // df5-5: the HYPER screen-clear (DEFA7.SRC:3218) → a held freeze across the jump.
+      return { class: 'full-frame-strobe', presentation: 'freeze' }
     default:
       return assertNever(event)
   }
