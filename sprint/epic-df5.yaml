@@ -138,7 +138,8 @@ stories:
     description: 'Decision B: df5 CITES ADR-0005, it does not re-decide it. df4-2 already built the effect-policy classifier and the no-full-frame-strobe render guard and named these two as its future consumers. Port SBOMB/HYPER trigger+timing, cited; substitute only the strobe PRESENTATION; log a Design Deviation citing ADR-0005; the df4-2 guard must stay green with both powers live. Smart-bomb clears via df4-1 collision; powers are df3 scheduler-driven player actions.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
