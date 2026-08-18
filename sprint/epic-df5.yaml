@@ -186,7 +186,8 @@ stories:
     description: "Found live on defender-v0.0.5 during playtest: the planet surface (terrain) is frozen while the starfield scrolls, and thrust/reverse do not visibly traverse the world. Root cause: plugins/defender/src/core/scene.ts composeFrame NEVER reads state.camera. blitTerrain(fb, altitudes, colorIndex) blits the decoded TERRAIN_BLOCK at fixed columns [0..width) with no offset (terrain.ts), and landers/humanoids are blitted at their absolute world column (lander.x >> 8) — only stars scroll, because their positions are pre-advanced by the camera delta in sim.ts (stepStars). Fix: thread state.camera (BGL) into composeFrame and camera-offset BOTH the planet surface and the world-space enemy blits, honouring the $10000 horizontal world-wrap seam (world.ts wrap16), so the world scrolls under the ship and reverse+thrust fly you both ways. reverse is already bound (KeyA/ArrowLeft, shell/input.ts) and flips facing in the core — the 'can't fly the other way' symptom is this same non-scrolling world, not an input bug. NOT a df5-8 regression (that only wired the wave director). Blocks df5-7's visual playtest (needs a scrolling world with off-camera attackers). purity.test.ts must stay green (camera is already in state; the offset stays pure)."
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     type: bug
