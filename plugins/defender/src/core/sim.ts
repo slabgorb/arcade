@@ -48,6 +48,16 @@ const LANDER_PICTURE: ObjectImage = (() => {
  *  (DEFA7.SRC:2775-2787). Width in PIXELS — the collision seam works in screen space. */
 const LASER_BOX = { width: 8, height: 1 } as const
 
+/** The initial ground population — PTARG := 10 astronauts, planted at game start / player
+ *  restore (PLRES→ASTST, DEFA7.SRC:1548; the wave-restore reseeds the SAME count,
+ *  LDA #10 / STA PTARG, :1862-1863). They are the landers' prey (the df4-3 abduction loop). */
+const GROUND_HUMANOID_COUNT = 10
+
+/** The astronaut ground row — ASTST plants each at OY16 = $E0 (LDA #$E0 / STA OY16,X,
+ *  DEFA7.SRC:1529-1530): the terrain-surface base offset ROFF ($E0, terrain.ts BASE_OFFSET),
+ *  near the bottom of the 240-row screen. */
+const GROUND_HUMANOID_Y = 0xe0
+
 /** The pure per-tick input snapshot the shell feeds the ship (shell owns the PIA read). */
 export interface Input {
   readonly thrust: boolean
@@ -135,6 +145,17 @@ export function createSim(rand: () => number): SimState {
       for (let i = 0; i < n; i++) enemyBank.spawnLander(Math.floor((i / n) * 0x10000))
     },
   )
+  // df5-10: seed the ground humanoid population at game start — the humanoid analog of the
+  // df5-8 lander wiring above. The ROM plants PTARG(=10) astronauts on player-restore (ASTST);
+  // we spread them DETERMINISTICALLY across the 16-bit world cylinder (the same (i/n)*$10000
+  // even spread the wave uses for landers), at the ROM's astronaut ground row ($E0). Without
+  // this the field is empty, every lander's nearestTarget() is null, and each just descends to
+  // YMAX and idles (landers.ts:242-243) — a wave never clears. PURE: spawnHumanoid reads no
+  // `rand` at spawn, so initStars(rand) below sees the same entropy and same-seed sims stay
+  // byte-identical.
+  for (let i = 0; i < GROUND_HUMANOID_COUNT; i++) {
+    enemyBank.spawnHumanoid(Math.floor((i / GROUND_HUMANOID_COUNT) * 0x10000), GROUND_HUMANOID_Y)
+  }
   const facing: Facing = 'right'
   return {
     ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },

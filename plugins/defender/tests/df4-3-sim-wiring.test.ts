@@ -6,12 +6,17 @@
 // something real to screenshot. Enemies are painted by df2 palette INDEX only.
 //
 // Seam (a GREEN decision, kept deliberately surgical so the df3-6 live-sim suite is
-// undisturbed): createSim STILL starts with no enemies — `landers` and `humanoids`
-// are empty arrays on a fresh sim, so every existing composeFrame test paints the
-// same frame it did before. df4-3 adds two explicit spawn entries, `spawnLander(state,
+// undisturbed): at df4-3, createSim started with no enemies — `landers` and `humanoids`
+// were empty arrays on a fresh sim. df4-3 adds two explicit spawn entries, `spawnLander(state,
 // x)` and `spawnHumanoid(state, x, y)`, that return a new SimState with the enemy
 // present in its view arrays (a df5 wave spawner, or df4-6, calls these). The views
 // refresh from the shared enemy bank exactly as `lasers` refreshes from the laser bank.
+//
+// df5-10 UPDATE: createSim now SEEDS the ground humanoid population at game start (the
+// df5-8 lander-wiring analog), so a fresh sim's `humanoids` is no longer empty — landers
+// have prey. `landers` is still empty at createSim (the df5-8 wave director spawns them on
+// the first tick, not at construction). The spawn-entry tests below now assert the DELTA a
+// spawn adds, not an absolute count, so they survive the seeded population.
 //
 // Loader pattern mirrors df3-6-live-sim.test.ts: variable module specifiers keep
 // `tsc --noEmit` from binding the observable-subset SimState to the concrete one, and
@@ -86,25 +91,34 @@ function makeRand(seed: number): () => number {
 const digest = (fb: Framebuffer): string => createHash('sha256').update(fb.data).digest('hex').slice(0, 16)
 
 describe('df4-3 sim wiring — the abduction loop is carried by the sim', () => {
-  it('a fresh sim exposes empty landers/humanoids view arrays (df3 live-sim undisturbed)', async () => {
+  it('a fresh sim seeds the ground humanoid population; landers stay empty until a wave spawns (df3 live-sim undisturbed)', async () => {
     const { createSim } = await loadSim()
     const s = createSim(makeRand(1))
     expect(Array.isArray(s.landers), 'SimState carries a `landers` view array').toBe(true)
     expect(Array.isArray(s.humanoids), 'SimState carries a `humanoids` view array').toBe(true)
-    expect(s.landers.length, 'a fresh sim has no landers yet (spawning is explicit)').toBe(0)
-    expect(s.humanoids.length, 'a fresh sim has no humanoids yet').toBe(0)
+    expect(s.landers.length, 'a fresh sim has no landers yet — the df5-8 wave director spawns them on the first tick').toBe(0)
+    expect(
+      s.humanoids.length,
+      'df5-10 seeds the ground humanoid population at game start (PTARG astronauts), so landers have prey',
+    ).toBeGreaterThan(0)
   })
 
-  it('spawnHumanoid / spawnLander place enemies into the sim views', async () => {
+  it('spawnHumanoid / spawnLander add enemies to the sim views', async () => {
     const { createSim, spawnLander, spawnHumanoid } = await loadSim()
     let s = createSim(makeRand(2))
+    // df5-10 pre-seeds the ground population, so assert the DELTA a spawn adds, not an absolute.
+    const humanoids0 = s.humanoids.length
+    const landers0 = s.landers.length
     s = spawnHumanoid(s, 1000, YMIN + 120)
     s = spawnLander(s, 1000)
-    expect(s.humanoids.length, 'the spawned humanoid is in the view').toBe(1)
-    expect(s.landers.length, 'the spawned lander is in the view').toBe(1)
-    // The lander appears at the top band (LANDER_SPAWN_Y = YMIN+2 = 44); assert it is
+    expect(s.humanoids.length, 'the spawned humanoid is added to the view').toBe(humanoids0 + 1)
+    expect(s.landers.length, 'the spawned lander is added to the view').toBe(landers0 + 1)
+    // The lander appears at the top band (LANDER_SPAWN_Y = YMIN+2 = 44); assert one is
     // near the top, not buried in the terrain (the render would otherwise place it wrong).
-    expect(s.landers[0]?.y, 'a fresh lander is at the top of the play-field').toBeLessThan(YMIN + 20)
+    expect(
+      s.landers.some((l) => l.y < YMIN + 20),
+      'the fresh lander is at the top of the play-field',
+    ).toBe(true)
   })
 })
 
