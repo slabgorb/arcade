@@ -19,10 +19,11 @@ stories:
     title: Shot-kill of a segment scores the ROM head/body split (body 10 / head 100), not a flat SEGMENT_PTS=10
     points: 2
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-17'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-17'
     type: bug
   - id: ml13-3
     title: 'Live /millipede/ playtest: confirm a deployed DDT visibly kills train segments with no full-screen strobe (ml12-3 AC3)'
