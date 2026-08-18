@@ -78,7 +78,8 @@ stories:
     description: 'Decision A: ROM-always-wins. The scanner is a projection of the df3 world.ts model (BGL camera + $10000 wrap + worldX helper), not a second coordinate system — collision (df4-1) and the scanner read the SAME model (the df4 spec named this). A cleaner "world width / radar width" minimap would silently misplace the wrap seam and the off-camera attackers the player relies on the radar to see (routing != geometry, the df3 lesson). Pure; reads df3 world.ts; colour by df2 palette index only.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-17'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -86,6 +87,7 @@ stories:
       - 'AC2: the projection is tested against SYNTHETIC object lists with the $10000 horizontal wrap seam pinned by COORDINATES (an object just past the wrap plots on the correct side of the radar strip), not just a boolean — an object off the visible camera still appears on the scanner at the right radar position.'
       - 'AC3: every scanner constant introduced (radar strip dimensions/scale, the wrap modulus, bezel geometry per defender/AMODE1.SRC:1225) has a claims/*.json entry verifying byte-for-byte against reference/original-source/defender/ under the df1-1 gate; no un-cited src/core constant; blip colour is a df2 palette INDEX, never a hex literal.'
       - 'AC4: the model is the ROM SCNR projection reading world.ts, NOT a re-derived minimap — a test names the world-model projection (worldX/$10000 wrap) so a swap to a naive width-ratio mapping that moves the wrap seam or the off-camera blips would redden (Decision A).'
+    review_verdict: approved
   - id: df5-2
     title: "Wave director + escalation: plugins/defender/src/core/waves.ts — port the WVTAB wave-data table (*WAVE DATA defender/BLK71.SRC:673; WVTAB :676; body :676-689 with WAVE TIME :687 and WAVE SIZE :689; pointer FDB WVTAB :89) and the 'new guys every Nth wave' escalation (GTWV00 defender/DEFA7.SRC:1859); wave-clear -> advance to the next wave, attackers spawned via the df3 scheduler (NEWP,STYPE). The game-structure spine that makes df4's enemies attack in escalating waves. Consumes df3 scheduler + the df4 enemy reducers."
     description: 'The wave director is a df3 scheduler process; it does not invent its own tick. It reads the WVTAB size/time per wave and escalates attacker count per the ROM (GTWV00 "NEW GUYS EVERY NTH WAVE"). Wave-clear is detected from the enemy population, not a timer. Colour by df2 palette index only; every constant gated.'
