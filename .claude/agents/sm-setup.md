@@ -3,6 +3,10 @@ name: sm-setup
 description: SM setup subagent - combines research and story setup modes
 tools: Bash, Read, Edit, Write
 model: haiku
+hooks:
+  PreToolUse:
+    - command: pf hooks schema-validation
+      matcher: Write
 ---
 
 <arguments>
@@ -102,8 +106,16 @@ the first place.
 </critical>
 
 ```bash
+# pf.* modules live in the pf CLI's OWN venv (uv-tool install), NOT the project
+# .venv - derive the interpreter from the launcher shebang, never activate .venv.
+PF_PY="$(sed -n '1s/^#!//p' "$(command -v pf)")"
+
 # Detect whether the project has Jira configured.
-JIRA_ENABLED=$(python3 -c "from pf.jira.client import is_jira_enabled; print('1' if is_jira_enabled() else '0')")
+JIRA_ENABLED=$("${PF_PY:?PF_PY not set - could not resolve the pf launcher interpreter}" <<'PYEOF'
+from pf.jira.client import is_jira_enabled
+print('1' if is_jira_enabled() else '0')
+PYEOF
+)
 
 # Treat empty/null JIRA_KEY as no-jira-story.
 case "{JIRA_KEY}" in
@@ -206,6 +218,8 @@ workflow: "{WORKFLOW}"
 - **Jira Key:** {JIRA_KEY}
 - **Workflow:** {WORKFLOW}
 - **Stack Parent:** {DEPENDS_ON or "none"}
+- **Branch:** (created in Step 5)
+- **PR:** (none yet — recorded when the PR is created)
 
 ## Workflow Tracking
 **Workflow:** {WORKFLOW}
@@ -268,7 +282,11 @@ First check whether the target repo even uses a feature-branch workflow, then
 # interpolated into the Python source string, to avoid code injection via a
 # crafted repo name (CWE-78). The heredoc body is single-quoted so the shell
 # performs no expansion inside it.
-STRATEGIES=$(python3 - "{REPOS}" <<'PYEOF'
+#
+# pf.* modules live in the pf CLI's OWN venv (uv-tool install), NOT the project
+# .venv - derive the interpreter from the launcher shebang, never activate .venv.
+PF_PY="$(sed -n '1s/^#!//p' "$(command -v pf)")"
+STRATEGIES=$("${PF_PY:?PF_PY not set - could not resolve the pf launcher interpreter}" - "{REPOS}" <<'PYEOF'
 import sys
 from pf.git.repos import get_repo_config
 rc = get_repo_config(sys.argv[1])
@@ -290,6 +308,16 @@ Do NOT run `git checkout -b`. Record the decision in the session file instead:
 **Branch Strategy:** trunk-based (branching skipped — work happens on the default branch)
 ```
 
+Leave the Story Details `**Branch:**` field as a fully parenthesized note:
+
+```markdown
+- **Branch:** (trunk-based — work happens on the default branch)
+```
+
+Parenthesized values are how `pf sprint story finish` reads "no branch";
+a bare word like `none` would be probed against GitHub as a literal branch
+name (story 155-33).
+
 The single source of truth for this decision is
 `pf.git.repos.should_create_branch(rc)` (returns `False` for trunk-based).
 
@@ -300,6 +328,18 @@ git checkout -b feat/{STORY_ID}-{SLUG}
 ```
 
 Record: `**Branch Strategy:** gitflow (feat/{STORY_ID}-{SLUG})`
+
+Then update the session's Story Details `**Branch:**` field to the real
+branch name, as plain text — no backticks, no quotes:
+
+```markdown
+- **Branch:** feat/{STORY_ID}-{SLUG}
+```
+
+Do not proceed to Step 6 until the `**Branch:**` field holds the branch name.
+`pf sprint story finish` reads this exact field to resolve the PR to merge;
+a missing, backticked, or placeholder value makes finish silently skip the
+merge and mark the story done while the PR stays open (story 155-33).
 
 **Stacked repos (`pr_strategy: stacked`):**
 
@@ -325,6 +365,42 @@ Add stack metadata to session file:
 **Stack Parent:** {DEPENDS_ON} ({PARENT_BRANCH})
 ```
 Or if stack root: `**Stack Parent:** none (stack root)`
+
+Stacked repos create a branch too — update the Story Details `**Branch:**`
+field the same way as the gitflow arm (plain text, no backticks):
+
+```markdown
+- **Branch:** feat/{STORY_ID}-{SLUG}
+```
+
+**Multi-repo stories: record a PR per repo.**
+
+The single `**PR:**` field can only describe ONE repository — a PR number names
+a different pull request in every repo — so `pf sprint story finish` honors it
+only when the story resolves to exactly one repo (since 162-6). When the story's
+`repos:` field names more than one repo, write one **per-repo PR line** instead,
+keyed by the repo's `repos.yaml` name:
+
+```markdown
+## Story Details
+- **Branch:** feat/{STORY_ID}-{SLUG}
+- **PR api:** #227
+- **PR ui:** #88
+```
+
+The key is `PR <repo-name>` — the `repos.yaml` name verbatim, hyphens included
+(`- **PR my-repo:** #227` is a valid field line); no parentheses or other
+punctuation (`**PR (api):**` is not a parseable field line). Finish does not read these lines yet: for a multi-repo
+story it resolves each repo's PR itself, in that repo, from the shared branch.
+They are the record an operator needs when a multi-repo finish half-lands (it
+reports which repos already merged), so keep them accurate and never invent a
+number. Full syntax: `schemas/session-schema.md`.
+
+**`repos:` is per story, never inherited from the epic.** Finish reads the
+story's own `repos:` field; an epic-level value is not inherited (162-33). Write
+`repos:` onto every story that touches a non-root repo — a story with no
+`repos:` degrades to the project root, and a mistyped name is dropped silently,
+leaving that repo unverified.
 
 <workflow-type-detection>
 ## Step 6: Determine Workflow Type

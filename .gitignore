@@ -81,3 +81,4 @@ out/audio/
 /*.png
 /cfg/
 /nvram/
+# Statusline runtime state (current model, etc.)

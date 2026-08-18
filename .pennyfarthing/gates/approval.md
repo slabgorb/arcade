@@ -6,6 +6,26 @@ AND that all specialist subagents were dispatched, received, assessed,
 and their results documented with clear decisions. This gate runs after
 the Reviewer agent's review phase to confirm the code has been formally
 approved or rejected before proceeding.
+
+**These checks apply to a REJECTION as much as to an approval.** `resolve-gate`
+resolves a non-APPROVED verdict to the `approval_rework` gate type, and
+`complete-phase` runs the subagent-completion, specialist-tag and
+heading-ambiguity checks on any transition out of an approval-FAMILY gate. A
+rejection costs a full Dev cycle, so it needs the same evidence an approval does
+— enforcing them only on the approve path meant diligence was required exactly
+where the reviewer agreed with the code (story 162-47). The one exception is the
+cycle-tag freshness check below, which stays approval-only: its subject is the
+staleness of results being used to APPROVE, and demanding a tag on the way out to
+rework would ask the reviewer to attest freshness for the cycle it is rejecting.
+
+**Every unmet requirement is reported in ONE error**, not one per attempt.
+
+**A rework round needs its own verdict.** Each round the workflow dispatches
+increments `**Round-Trip Count:**`, and each ruling the reviewer makes appends a
+NEW section under the EXACT `## Reviewer Assessment` heading — so the sections
+must lead the counter. Re-resolving the gate on a verdict already routed to
+rework blocks, because acting on it twice would advance the phase twice
+(observed live in the 162-49 run).
 </purpose>
 
 <pass>
@@ -133,7 +153,37 @@ Search the session file for a `## Subagent Results` section containing:
 1. **A table with 9 rows** — one for each specialist subagent
 2. **Every row shows `Yes` in the Received column** (or explicit error/timeout notation)
 3. **Every row has a Decision** — `confirmed N, dismissed N, deferred N` or `N/A` for clean results
-4. **An `All received: Yes` line** after the table
+4. **An `All received: Yes` line** after the table. **The line alone is not evidence.**
+   `complete-phase` parses the table into per-specialist ROWS and checks each enabled
+   specialist has exactly ONE row whose declared cells are filled (not blank, not the
+   template's `-`) and internally consistent (`clean` cannot carry a finding count; a
+   finding count cannot carry an `N/A` decision; `N/A` in Status or Findings on a row
+   that RETURNED). **The declared-cell rule is header-conditional:** with the documented
+   header (a `Specialist` and a `Received` column) a row truncated before a declared
+   column counts as blank; with no header, or renamed columns, nothing is declared and
+   the gate reads only the cells each row has — so there the forgery cost is set by ROW
+   count, not column count. That is the accepted trade: demanding columns a table never
+   declared would reject the legitimate three- and four-column sessions in the wild
+   without costing a forger a keystroke. A summary line above a missing, duplicated,
+   placeholder, truncated or self-contradicting row FAILS — a specialist's name
+   mentioned in prose is not a row.
+   **Exception, so honesty is expressible:** when EVERY row records a non-return
+   (the all-timed-out round), `All received: No` is accepted and `Yes` is refused
+   (story 162-85)
+5. **On a rework session** (one carrying `**Round-Trip Count:** N` — or, on a legacy hand-written
+   session with no such line, `**Rework Cycle:** N`), a `**Cycle: N**` tag matching that count —
+   proof the evidence is from the CURRENT cycle. Either a full re-run of the enabled subagents
+   OR targeted re-verification of each previously recorded finding satisfies it; targeted
+   re-probes of characterized findings are stronger evidence than a fresh generalist sweep, so
+   name which method you used alongside the tag. The tag is a standalone line at
+   column 0; prose ending in `Cycle: N`, a table cell, and any quoted example (code fence,
+   4-space-indented block, backtick span, HTML comment) are not tags. EVERY tag in the section
+   must match the current cycle. The current section is the LAST one introduced by the exact
+   heading `## Subagent Results`, and it runs to the next `##` — subsections belong to it, because
+   the reviewer template files content under `### …` headings. The cycle tag is read from the
+   section's PREAMBLE only (the part before its first `###`), so a tag under a `### …` subsection
+   does not count even though that subsection is part of the section. A suffixed heading
+   (`## Subagent Results (Cycle 2)`) after the last exact one is ambiguous and fails.
 
 **Required subagents (9):**
 - `reviewer-preflight`

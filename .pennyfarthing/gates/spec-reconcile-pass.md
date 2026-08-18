@@ -21,13 +21,16 @@ Used by: spec-reconcile phase (after review, before SM finish) in TDD workflow.
 Run the Python validation function to check for the reconcile section:
 
 ```bash
-python3 -c "
-from pf.gates.spec_reconcile import validate_spec_reconcile
+# pf.* modules live in the pf CLI's OWN venv (uv-tool install), NOT the project
+# .venv - derive the interpreter from the launcher shebang, never activate .venv.
+PF_PY="$(sed -n '1s/^#!//p' "$(command -v pf)")"
+"${PF_PY:?PF_PY not set - could not resolve the pf launcher interpreter}" - "${SESSION_FILE}" <<'PYEOF'
 import json, sys
-result = validate_spec_reconcile('${SESSION_FILE}')
+from pf.gates.spec_reconcile import validate_spec_reconcile
+result = validate_spec_reconcile(sys.argv[1])
 print(json.dumps(result, indent=2))
 sys.exit(0 if result['success'] else 1)
-"
+PYEOF
 ```
 
 If all checks pass, return:
