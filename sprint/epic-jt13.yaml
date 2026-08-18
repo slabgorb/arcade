@@ -134,3 +134,22 @@ stories:
     repos: arcade
     workflow: tdd
     completed: '2026-08-18'
+  - id: jt13-13
+    title: "Give the joust attract-mode self-play demo a real player AI, so the demo bird actually plays (flap/steer/joust) instead of standing dead — and so live respawn-physics changes stop being frozen by the passive-demo fingerprints"
+    description: "ENABLER for jt13-14. The attract 'self-play demo' isn't self-playing: main.ts:618 steps it with EMPTY inputs — `stepGame(cabinet.game, {})` — so the demo bird never flaps, never steers, dies on the first hazard and just re-materialises in place. main.ts even calls it the 'self-play demo' (comments :279-280,:330,:394) but no code drives the player. Two problems this causes: (1) the lobby demo looks broken (a dead bird, not a game); (2) the demo fingerprint tests (audio-events.test.ts, the audio-thud and dumb-wingbeat seeds) are pinned to the EXACT proc/score/lives/wave-advance frame sequence a PASSIVE player produces, which is why any change to respawn or flight physics cascades into them and why several seeds 'never advance waves' — a held or grounded respawn bird can't clear a wave when nobody flaps it (see memory: joust-attract-demo-is-passive-no-ai). Deliver a minimal deterministic demo player AI: feed `stepGame` a synthesised input each frame (flap toward survival / height, steer toward eggs or away from lava, joust from above) so the demo actually progresses and clears waves. It MUST be pure + seeded (no Date/Math.random) so the demo stays replay-deterministic and the fingerprint tests can be RE-BASELINED onto the new active-demo trajectory rather than deleted (preserve the coverage — re-sweep procs/scores/lives + wave-advance frames; rng staying constant is the tell it's an intended reshape, not a logic drift). Keep the `stepGame(` literal seam the demo-source / gameover-wiring tests pin (main.ts:384,:656-657). Verify VISUALLY (Playwright headless): the attract demo should be seen playing, not dying in place."
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: feature
+  - id: jt13-14
+    title: "Hold the re-materialising bird stationary on its pad during the TREFF phase-2 idle wait (ROM 'wait for 1st move'), instead of letting it fall under gravity — the deferred physics half of jt13-12, which shipped the tint only"
+    description: "Follow-up to jt13-12, BLOCKED BY jt13-13. jt13-9 built the pure TREFF phase-2 idle-cycle state (warpin.ts), and jt13-12 rendered the accelerating owner/white/grey (TREPL) tint into the playable game via drawList/paintWarpIn — but jt13-12 was descoped to RENDER-ONLY. The re-materialising bird still spawns airborne and FALLS off its pad during the idle wait; only the colour cycles. The ROM control-gates the bird to STAND on its pad until the player's first move (JOUSTRV4.SRC TREFF phase 2, ~:5805-5890, the 'wait for 1st move' gate). Deliver the physics half: (1) while a player process has an active `idleCycle` and has not yet flapped, SKIP its flight/gravity step (stepFrame in frame.ts) so it holds stationary on the pad — advanceWarpIn already threads the flap into the cycle (sim.ts:2369,:2505) and ends it on 'moved', so releasing the hold is the same edge; (2) end the hold + idle cycle when an ENEMY's AI moves it (no frozen or ghost-tinted moving bird); (3) respect the photosensitive-safety rule — the small on-pad silhouette at the 1-nap final cadence must not become a large-area luminance strobe (see memory: pacman-epilepsy-no-flash). WHY BLOCKED: holding the respawn bird changes respawn physics, which the passive attract demo's fingerprints freeze (a held demo bird can't clear waves) — jt13-13 gives the demo a player AI first so those fingerprints survive an active-demo re-baseline. Verify VISUALLY (Playwright headless): click-to-start, take no input; on respawn the bird should STAND on its pad and colour-cycle for the ~6.4s wait rather than dropping."
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+    depends_on: jt13-13
