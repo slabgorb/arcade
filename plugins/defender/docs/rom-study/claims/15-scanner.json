@@ -1,0 +1,65 @@
+[
+  {
+    "id": "SCAN-LEFT",
+    "claim": "SCNR computes the scanner-left world-X XTEMP = BGL − ($8000 − 150*32) = BGL − $6D40; every blip is measured from it.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1198,
+      "verbatim": "\tSUBD\t#$8000-(150*32)"
+    }
+  },
+  {
+    "id": "SCAN-SUBD",
+    "claim": "The blip loop subtracts XTEMP from the object's world X with a 16-bit SUBD, so the projection is modular in the $10000 world cylinder — that modular subtract IS the radar wrap seam.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1261,
+      "verbatim": "\tSUBD\tXTEMP\tSUBTRACT SCANNER LEFT"
+    }
+  },
+  {
+    "id": "SCAN-OX16",
+    "claim": "SCNR reads the object's ABSOLUTE 16-bit world X (OX16) — not an on-screen coordinate — so off-camera attackers still project onto the radar.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1260,
+      "verbatim": "SCNR10\tLDD\tOX16,X\tFIND OFFSET"
+    }
+  },
+  {
+    "id": "SCAN-XSHIFT",
+    "claim": "The camera-relative position's high byte is shifted right twice (LSRA×2), compressing the 16-bit difference to a 6-bit radar column: (D>>8)>>2 = D>>10.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1262,
+      "verbatim": "SCNR2\tLSRA\t\tSHIFT DOWN TO 6 BITS"
+    }
+  },
+  {
+    "id": "SCAN-COLS",
+    "claim": "The scanner strip is 64 columns wide: the terrain-erase loop terminates at (SCANER!>8)+64.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1223,
+      "verbatim": "\tCMPA\t#(SCANER!>8)+64"
+    }
+  },
+  {
+    "id": "SCAN-YSHIFT",
+    "claim": "The object's Y is shifted right three times (LSRB×3) to the radar row: y >> 3.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1265,
+      "verbatim": "\tLSRB"
+    }
+  },
+  {
+    "id": "SCAN-OBJCOL",
+    "claim": "A blip carries the object's colour word OBJCOL — a palette index — stored verbatim into the scanner, never a fresh colour.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1270,
+      "verbatim": "\tLDD\tOBJCOL,X STORE BLIP"
+    }
+  }
+]
