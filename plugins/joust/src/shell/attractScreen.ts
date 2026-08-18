@@ -35,13 +35,14 @@ export function layoutAttractBanner(page: BannerPage, colour: Rgba): AttractBann
 }
 
 /**
- * jt11-1 — the start prompt every attract page carries. A PRESENTATION string,
- * not a ROM transcription: the 1982 cabinet had physical 1P/2P start buttons
- * (MSPLY1/MSPLY2 label the SELECT screen), while the browser cabinet starts on
- * the Digit1/Digit2 keys — so the attract cycle must NAME them or a player is
- * stuck watching the demo. FONT57 carries the digits (MESSAGE.SRC glyphs).
+ * jt13-4 — the start prompt every attract page carries. A PRESENTATION string,
+ * not a ROM transcription: the 1982 cabinet had physical 1P/2P start buttons, but
+ * the browser cabinet has none, so the old 'PRESS 1 OR 2 TO START' (jt11-1) told a
+ * new player to press a button that does not exist. It is replaced by click-to-enter:
+ * a click starts a single-player game directly (main.ts), so the prompt names the
+ * gesture the player actually has. FONT57 carries every letter (MESSAGE.SRC glyphs).
  */
-export const START_PROMPT = 'PRESS 1 OR 2 TO START'
+export const START_PROMPT = 'CLICK TO START'
 
 /** Lay the start prompt out in `colour` — FONT57, origin-relative, caller centres. */
 export function layoutStartPrompt(colour: Rgba): LaidOutText {
