@@ -338,3 +338,8 @@ completed_stories:
     title: "The samples — synthesise one .wav per SOUNDS entry (informed by MAME's Williams sound-board model, williams.cpp:1540, and the machine-local defend.snd = video_sound_rom_1.ic12, williams.cpp:2002 — the battlezone/jt5 synthesis route, since NO sound-board source is vendored, roadmap sec 2), upload via `just deploy-assets` (extend the recipe to bake defender), and PROVE a live 200 for every manifest URL. DERIVE the cue list from SOUNDS in plugins/defender/src/shell/audio.ts AT THE TIME THIS RUNS — do NOT hardcode a count (the jt5-2 lesson). Flip the README/status line off 'silent'. THE ACCEPTANCE TEST IS THE CURL, NOT THE VITEST (Decision B)."
     points: 3
     completed: '2026-08-19'
+  - id: df7-4
+    epic: df7
+    title: "Hall-of-fame wiring + name entry: wire df5-6's pure board (core/highscore.ts) + one-origin localStorage (shell/highscore.ts) through @shared/name-entry into the game-over -> name-entry -> hall-of-fame -> attract flow, and RENDER the hall-of-fame display. Consumes @shared/name-entry + @shared/highscore (CONSUMED, not re-built — Decision C). Cite HALLOF defender/AMODE1.SRC:119, HOFIN initials display :244, HOFUD up/down stick handler :325, add-score :270."
+    points: 3
+    completed: '2026-08-19'
