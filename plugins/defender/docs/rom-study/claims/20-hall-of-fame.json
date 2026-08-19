@@ -1,0 +1,22 @@
+[
+  {
+    "id": "HOF-HOFIN",
+    "claim": "HOFIN is the HALL OF FAME INITIALS DISPLAY routine (*HALL OF FAME INITIALS DISPLAY :242): it (re)draws the 3-character in-progress initials BUFFER while it is being entered — the df7-4 'ENTER INITIALS <buffer>' line maps to it. The persisted multi-row score/initials TABLE above it is df7-4's own un-ported layout, not HOFIN.",
+    "source": { "file": "AMODE1.SRC", "line": 244, "verbatim": "HOFIN\tLDX\t#$46AC\tTOP LEFT OF INITIALS" }
+  },
+  {
+    "id": "HOF-HOFUL",
+    "claim": "HOFUL underlines the initials being entered (JSR HOFUL 'UNDERLINE INITIALS') — the df7-4 name-entry render draws the underline beneath the in-progress buffer.",
+    "source": { "file": "AMODE1.SRC", "line": 185, "verbatim": "\tJSR\tHOFUL\tUNDERLINE INITIALS" }
+  },
+  {
+    "id": "HOF-HOFUD",
+    "claim": "HOFUD is the HALL OF FAME UP DOWN STICK HANDLER (*HALL OF FAME UP DOWN STICK HANDLER :323): the up/down stick CYCLES the currently-selected initial's LETTER (ADDA INIDIR, A-Z wrapping, then redraw) — it does NOT advance the cursor/slot index (INITN), which the separate FIRE-switch handler advances. Mapped in df7-4 onto the @shared/name-entry letter-append keyboard input (the fleet keyboard ruling, not the trackball stick).",
+    "source": { "file": "AMODE1.SRC", "line": 325, "verbatim": "HOFUD\tCLR\tINIDIR\tZERO INITIALS DIRECTION" }
+  },
+  {
+    "id": "HOF-HOFAS",
+    "claim": "HOFAS adds the score and initials to the list (*HALL OF FAME - ADD SCORE AND INITIALS :270) — the df7-4 commit maps onto @shared insertHighScore (CONSUMED, not re-implemented).",
+    "source": { "file": "AMODE1.SRC", "line": 273, "verbatim": "HOFAS\tSTU\tXTEMP$\tSAVE TOP OF LIST ADDRESS" }
+  }
+]

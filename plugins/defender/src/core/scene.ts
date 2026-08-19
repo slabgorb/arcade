@@ -35,6 +35,7 @@ import { wrap16, WORLD_COLS } from './world.js'
 import { projectScanner, SCANNER_COLUMNS, type ScannerObject } from './scanner.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
+import type { DefenderHighScore } from './highscore.js'
 
 /** Background palette index — the cleared surface (SPACE $00, palette entry 0). */
 const BACKGROUND = 0
@@ -252,8 +253,8 @@ function drawHud(fb: Framebuffer, state: SimState): void {
 }
 
 /** Draw the df5-6 GAME OVER / final-score screen (men<0): the play field is replaced by the
- *  end screen. The persisted hall-of-fame table + interactive initials entry are the shell's;
- *  this pure screen shows GAME OVER and the final score from SimState alone. */
+ *  end screen. Shown for the 3-arg composeFrame (no hall-of-fame payload); df7-4's hall-of-fame
+ *  screen (drawHallOfFame) replaces it when the shell passes the board. */
 function drawGameOverScreen(fb: Framebuffer, state: SimState): void {
   const midY = (fb.height >> 1) - 8
   const overX = Math.max(0, (fb.width >> 1) - GAME_OVER_TEXT.length * 4)
@@ -261,20 +262,98 @@ function drawGameOverScreen(fb: Framebuffer, state: SimState): void {
   writeText(fb, String(state.score ?? 0), overX, midY + 12, TEXT_COLOUR)
 }
 
+// ─── df7-4: the HALL OF FAME display + initials entry (AMODE1.SRC) ───────────────────
+// The df5-6 board finally drawn (Decision C — @shared CONSUMED, rendered here in core, the
+// defender draw-in-core rule; shell/render.ts is a bare blitter). The ROM's block-1
+// hall-of-fame: *HALL OF FAME INITIALS DISPLAY / HOFIN (AMODE1.SRC:242,244), the underline
+// *JSR HOFUL (:185), the up/down stick handler *HOFUD (:323,325), and *ADD SCORE AND INITIALS
+// / HOFAS (:270,273). We render the persisted table (initials + score) and, while a qualifying
+// score is entering initials, the in-progress buffer with a HOFUL underline. Text is a df2
+// charset glyph at a palette INDEX (WHITE 9) on the cleared background — a sparse overlay, never
+// a full-frame fill (ADR-0005 / Decision B). Layout is ours; the ROM screen addresses are not ported.
+
+/** Hall-of-fame screen title, centred across the top. */
+const HALL_OF_FAME_TITLE = 'HALL OF FAME'
+const HOF_TITLE_Y = 16
+/** First board row, and the per-row step (glyphs are 8 rows tall). */
+const HOF_FIRST_ROW_Y = 36
+const HOF_ROW_STEP = 12
+/** How many board rows fit above the entry line — the @shared board is at most MAX_HIGH_SCORES. */
+const HOF_MAX_ROWS = 10
+/** Cap the DRAWN length of a board row's initials. The board is loaded from one-origin
+ *  localStorage, which any script on the origin (or a devtools edit) can write; @shared's
+ *  isHighScoreRow validates the TYPE but not the LENGTH of `name`. writeText draws glyph-by-glyph
+ *  every frame, so an unbounded name would be a per-frame render DoS (Reviewer F3). Real initials
+ *  are 3 chars (INITIALS_LENGTH); a small cap keeps a poisoned board's cost bounded regardless.
+ *  Exported so the render test can pin the truncation contract without a timing probe. */
+export const HOF_MAX_NAME_CHARS = 8
+/** The initials-entry prompt drawn under the board while an entry is open. */
+const HOF_ENTRY_PROMPT = 'ENTER INITIALS '
+
+/** Centre `text` horizontally (≈8px per glyph, the drawGameOverScreen convention) and write it. */
+function writeCentered(fb: Framebuffer, text: string, y: number, colour: number): void {
+  writeText(fb, text, Math.max(0, (fb.width >> 1) - text.length * 4), y, colour)
+}
+
+/** The df7-4 hall-of-fame screen: the title, the df5-6 board (initials + score) and, if a
+ *  qualifying score is entering initials, the in-progress buffer underlined (HOFUL). Pure —
+ *  a function of the board + entry only, so the frame is deterministic and reads no clock. */
+function drawHallOfFame(
+  fb: Framebuffer,
+  board: readonly DefenderHighScore[],
+  nameEntry: { readonly buffer: string; readonly score: number } | null,
+): void {
+  writeCentered(fb, HALL_OF_FAME_TITLE, HOF_TITLE_Y, TEXT_COLOUR)
+
+  let y = HOF_FIRST_ROW_Y
+  for (const row of board.slice(0, HOF_MAX_ROWS)) {
+    // Bound the drawn name length — a poisoned localStorage board can carry an arbitrarily long
+    // `name` that isHighScoreRow does not cap (Reviewer F3). `String(...)` also tolerates a
+    // non-string name defensively. The score is a validated finite number, whose string is short.
+    const name = String(row.name).slice(0, HOF_MAX_NAME_CHARS)
+    writeCentered(fb, `${name} ${row.score}`, y, TEXT_COLOUR)
+    y += HOF_ROW_STEP
+  }
+
+  if (nameEntry) {
+    const entryY = y + HOF_ROW_STEP
+    const line = HOF_ENTRY_PROMPT + nameEntry.buffer
+    const x = Math.max(0, (fb.width >> 1) - line.length * 4)
+    writeCentered(fb, line, entryY, TEXT_COLOUR)
+    // HOFUL — underline the initials being entered: a bounded index-9 rail under the buffer glyphs.
+    const initialsX = x + HOF_ENTRY_PROMPT.length * 8
+    const underlineY = entryY + 8
+    for (let i = 0; i < nameEntry.buffer.length * 8; i++) {
+      const px = initialsX + i
+      if (px < 0 || px >= fb.width || underlineY < 0 || underlineY >= fb.height) continue
+      fb.data[underlineY * fb.width + px] = TEXT_COLOUR
+    }
+  }
+}
+
 /**
  * Compose the live frame from the current sim state into a fresh `width × height` index
  * surface: clear, scroll-composite the starfield, lay the planet surface, blit the ship
  * at its display column/row, streak any lasers in flight, and overlay the df5-7 scanner
- * strip + score/men HUD. When the game is over (df5-6), the end screen replaces the frame.
- * Pure and deterministic — same state in, same indices out. Returns palette INDICES.
+ * strip + score/men HUD. When the game is over (df5-6), the end screen replaces the frame —
+ * the df7-4 HALL OF FAME screen when the shell passes the board + initials entry (`hof`),
+ * otherwise the plain GAME OVER / final-score screen. Pure and deterministic — same inputs,
+ * same indices out. Returns palette INDICES.
  */
-export function composeFrame(state: SimState, width: number, height: number): Framebuffer {
+export function composeFrame(
+  state: SimState,
+  width: number,
+  height: number,
+  hof?: { board: readonly DefenderHighScore[]; nameEntry: { readonly buffer: string; readonly score: number } | null },
+): Framebuffer {
   const fb = createFramebuffer(width, height)
   clear(fb, BACKGROUND)
 
-  // df5-6: game over replaces the play field with the GAME OVER / final-score screen.
+  // df5-6 / df7-4: game over replaces the play field. With a hall-of-fame payload the HOFIN
+  // display + initials entry take the screen (Decision C); without it, df5-6's GAME OVER screen.
   if (state.gameOver ?? false) {
-    drawGameOverScreen(fb, state)
+    if (hof) drawHallOfFame(fb, hof.board, hof.nameEntry)
+    else drawGameOverScreen(fb, state)
     return fb
   }
 
