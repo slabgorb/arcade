@@ -1,5 +1,16 @@
 # Story pm6-2 Context
 
+> ⚠ **CORRECTION (TEA / Atia, pm6-2 RED) — the title's "ripped Blinky" is refuted by
+> the ROM.** In ACT 1 the chased-back ghost is the **blue FRIGHTENED** Blinky (image
+> `#1c`, `pacman.asm:1a70`/`:1aa1`), NOT a ripped one. The **ripped/torn** Blinky
+> (`#32`/`#33`, `pacman.asm:162d`, gated on the ACT-2 sub-state var `4e07`) is pm6-3's
+> act-2 scene — and the epic already assigns "ripped-ghost / nail" to act 2, so the ROM
+> and the epic agree; only this title conflated them. **Dev: anchor act 1 to the
+> blue-frightened Blinky, never a ripped sprite.** Full evidence + all verified cites are
+> in the session's Design Deviations (`.session/pm6-2-session.md`). The ACs below are
+> otherwise good and are copied verbatim — AC2's own wording is "big-Pac-chase," which
+> the ROM satisfies.
+
 ## Title
 Cutscene player + ACT 1 (Blinky chase): a deterministic scripted-actor animation player in plugins/pac-man/src/core, and the first coffee-break cutscene — Blinky chases Pac across the screen, then a big Pac turns and chases a ripped Blinky back. Consumes pm3 baked sprites (CONSUMED, no new bake). RED-anchor the actor paths/timing against the quarry (Decision C). Runs during the pm6-1 intermission phase; gentle animation, NO strobe (Decision B).
 
