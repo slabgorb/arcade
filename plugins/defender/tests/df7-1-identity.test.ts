@@ -19,8 +19,10 @@
 //   ST1    *ONE PLAYER START                       DEFA7.SRC:1098 (header) / :1100 (LDA STATUS)
 //   ST2    *TWO PLAYER START                       DEFA7.SRC:1110 (header) / :1112 (LDA STATUS)
 //   HALLOF *HALL OF FAME ENTRY (block-1 attract)   AMODE1.SRC:117 (*ENTRY) / :119 (JSR GNCIDE)
-//   HALDIS attract-mode display                    AMODE1.SRC:375
-//   GAMEOV GAME OVER                               ROMF8.SRC:337
+//   HALDIS attract / HOF display                   AMODE1.SRC:377 (HALDIS CLR HSRFLG; the
+//          story's ":375" is the *HALL OF FAME DISPLAY section header 2 lines above the label)
+//   GAMEOV GAME OVER                               ROMF8.SRC:339 (GAMEOV ORCC #$90; the
+//          story's ":337" is the "* GAME OVER-" comment header 2 lines above the label)
 // The play->death/game-over edge itself consumes df5-6's already-claimed
 // PLE2/GAME OVER (DEFA7.SRC:1423, EG-GAMEOVER) — pinned in df5-6-identity, not re-pinned here.
 
@@ -64,18 +66,18 @@ const MAPPINGS: readonly CitedMapping[] = [
     claimLines: [119, 117],
   },
   {
-    key: 'AC3 attract-mode display (HALDIS)',
+    key: 'AC3 attract / HOF display (HALDIS)',
     symbol: /\bHALDIS\b/,
     file: 'AMODE1.SRC',
-    cites: [375],
-    claimLines: [375],
+    cites: [377],
+    claimLines: [377],
   },
   {
     key: 'AC3 game over (GAMEOV)',
     symbol: /\bGAMEOV\b/,
     file: 'ROMF8.SRC',
-    cites: [337],
-    claimLines: [337],
+    cites: [339],
+    claimLines: [339],
   },
 ]
 
