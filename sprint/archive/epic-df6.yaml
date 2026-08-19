@@ -98,7 +98,7 @@ description: |-
   emulating the M6808 sound board (synthesis only, roadmap sec 2); hardening/mutation
   batteries (df8+).
 priority: p2
-status: active
+status: done
 repos: arcade
 stories:
   - id: df6-1
@@ -154,7 +154,6 @@ stories:
     points: 2
     priority: p2
     status: done
-    completed: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -162,3 +161,5 @@ stories:
       - 'AC2: the THRUST loop is confirmed to start on thrust-held and stop on release (df6-2), and the SMART-BOMB cue is confirmed to PLAY while its visual remains the ADR-0005 freeze/fade (Decision D — audio is not muted by the photosensitivity exception); a note confirms no cue 404''d during the session.'
       - 'AC3: any missing/wrong cue is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme; the session records which cues were heard and which (if any) were absent.'
       - 'AC4: the df7 hand-forward note is recorded — the two attract musics (TODAYS SOUND $FE "PHANTOM" defender/AMODE1.SRC:148; HIGH SCORE $FD "TOCCATA" :152) and any hall-of-fame/attract cue wire in df7 with the attract phase machine (Decision A), citations preserved.'
+    completed: '2026-08-19'
+completed: '2026-08-19'

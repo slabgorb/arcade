@@ -74,7 +74,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 6,
     listed: true,
     showcase: true,
-    version: '1.0.4',
+    version: '1.0.5',
   },
   {
     id: 'red-baron',
@@ -107,7 +107,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 9,
     listed: true,
     showcase: true,
-    version: '1.0.6',
+    version: '1.0.7',
   },
   {
     id: 'millipede',
@@ -118,7 +118,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 10,
     listed: true,
     showcase: true,
-    version: '0.0.6',
+    version: '0.0.7',
   },
   {
     id: 'defender',
@@ -129,7 +129,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 11,
     listed: true,
     showcase: true,
-    version: '0.0.6',
+    version: '0.0.7',
   },
 ]
 

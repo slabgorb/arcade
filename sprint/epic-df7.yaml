@@ -186,6 +186,10 @@ stories:
     description: 'df5-7 (scene.ts:186-192) and df7-5 both explicitly deferred the scanner PLAYER BLIP to df7. Unlike world attackers (df5-1 projectScanner / the SCNR object loop), the player sits at a fixed screen position, so its radar column comes from PLAXC directly — the ROMs separate *PLAYER BLIP OUTPUT path (AMODE1.SRC:1242-1257): PLAXC>>4 column, Y>>3 row, the $9099 marker (palette index 9, WHITE) at PLAYER BASE $4B00+SCANH. Draw it in the pure core composeFrame by palette INDEX only, inside the df7-5 bezel; ADR-0005 no full-frame strobe; purity.test.ts stays green. Cite AMODE1.SRC:1242-1257 under the df1-1 gate.'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-19'
+    review_findings: "2 documentation findings (both non-blocking severity, but rejected to correct a false claim I introduced): F1 [MED] scanner.ts:27 — edited comment falsely says MTERR is 're-derived to our centred strip elsewhere'; MTERR is data-only (terrain-data.ts), drawn nowhere. F2 [LOW] df7-5-hud-scanner.test.ts:13,22 — stale 'scene.ts header records player-blip as still df7's' after this diff changed that header. Implementation/tests/citations/purity/safety all verified correct."
+    review_verdict: approved

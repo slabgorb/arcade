@@ -24,9 +24,12 @@
 // The 64-wide strip is CMPA #(SCANER!>8)+64 (:1223). Each constant re-opens under the
 // df1-1 citation gate: docs/rom-study/claims/15-scanner.json.
 //
-// The screen-address base (SCANER-1, column-major addressing), the bezel (:1225-1233),
-// the player blip (:1242-1257) and the mini-terrain line (MTERR) are the SHELL's df7/HUD
-// concern — this pure core returns radar-space {x, y, colour} only.
+// The screen-address base (SCANER-1, column-major addressing) is re-derived to our centred strip
+// (the shared originX centring in scene.ts); this pure core returns radar-space {x, y, colour}
+// only. The mini-terrain line (MTERR) is transcribed as data (terrain-data.ts) but is not yet
+// drawn anywhere — still deferred df7 work. The bezel (:1225-1233, df7-5) and the player blip
+// (:1242-1257, df7-8) are composed in pure core/scene.ts (composeFrame) — the defender
+// draw-in-core rule — NOT the shell.
 
 import { wrap16 } from './world.js'
 
