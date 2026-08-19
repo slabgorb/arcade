@@ -67,8 +67,8 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
-import { isIntermissionLevel, INTERMISSION_LEVELS, INTERMISSION_MUSIC } from './intermission'
-import { createAct1Cutscene, stepCutscene, type CutsceneState } from './cutscene'
+import { isIntermissionLevel, INTERMISSION_MUSIC } from './intermission'
+import { createCutsceneForLevel, stepCutscene, type CutsceneState } from './cutscene'
 import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
@@ -123,13 +123,13 @@ export const DYING_HOLD_FRAMES = 120
 export const LEVEL_CLEAR_HOLD_FRAMES = 120
 
 /** pm6-1: how long the between-rounds coffee-break INTERMISSION holds before the
- *  next round's READY, in frames. Since pm6-2, act-1 coffee breaks end on the
- *  cutscene's COMPLETION (a position, pacman.asm:218f) and BYPASS this constant;
- *  it survives ONLY as the outright hold for coffee-break rounds with no scripted
- *  cutscene yet (act 2/3, pm6-3) — the either/or in the `intermission` handler
- *  never consults it while a cutscene runs, so it is NOT a backup floor alongside
- *  one. Static hold, NO flash — Decision B, the same freeze-not-strobe rule as
- *  LEVEL_CLEAR_HOLD_FRAMES.
+ *  next round's READY, in frames. Since pm6-3 EVERY coffee-break round runs a
+ *  scripted cutscene (act 1/2/3), each ending on its own COMPLETION (a position —
+ *  e.g. act 1 pacman.asm:218f) and BYPASSING this constant; it now survives ONLY as
+ *  the defensive release for a forced-null cutscene (exercised by pm6-2's
+ *  no-cutscene test) — the either/or in the `intermission` handler never consults it
+ *  while a cutscene runs, so it is NOT a backup floor alongside one. Static hold, NO
+ *  flash — Decision B, the same freeze-not-strobe rule as LEVEL_CLEAR_HOLD_FRAMES.
  *  Honest-uncited cadence, same policy as LEVEL_CLEAR_HOLD_FRAMES. ~5s @ 60Hz. */
 export const INTERMISSION_HOLD_FRAMES = 300
 
@@ -264,10 +264,12 @@ export interface GameState {
    *  mutually exclusive phases). Reset to 0 on entry to each; counts up while
    *  frozen and releases (respawn / advanceLevel / next-round, then `ready`) once
    *  it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES. For `intermission`
-   *  (pm6-2) the release is CONDITIONAL: with a scripted cutscene active it ends on
-   *  `state.cutscene.done` (a position, not a frame count) and this counter is not
-   *  the gate; INTERMISSION_HOLD_FRAMES is the release only for cutscene-less
-   *  coffee-break rounds. Meaningless (and untouched) outside those phases. */
+   *  (pm6-2/pm6-3) the release is CONDITIONAL: every coffee-break round now runs a
+   *  scripted cutscene (act 1/2/3), so the break ends on `state.cutscene.done` (a
+   *  position, not a frame count) and this counter is not the gate;
+   *  INTERMISSION_HOLD_FRAMES remains only the defensive release for a forced-null
+   *  cutscene (exercised by pm6-2's no-cutscene test). Meaningless (and untouched)
+   *  outside those phases. */
   freezeFrames: number
   /** pm4-10: frames elapsed in the current GAME OVER hold. Reset to 0 on entry to
    *  `game-over`; counts up ONLY while the name-entry screen is null or confirmed
@@ -277,11 +279,11 @@ export interface GameState {
   gameOverFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
-  /** pm6-2: the scripted-actor cutscene playing over the current `intermission`
-   *  phase, or `null` when no coffee break is on screen. Created on entry to the
-   *  act-1 coffee-break round, stepped each frame while `intermission`, and cleared
-   *  when the break ends. Only act 1 exists today; act 2/3 (pm6-3) leave it null
-   *  and fall back to the frame-count hold. */
+  /** pm6-2/pm6-3: the scripted-actor cutscene playing over the current
+   *  `intermission` phase, or `null` when no coffee break is on screen. Created by
+   *  `createCutsceneForLevel` on entry to a coffee-break round — act 1 after round 2,
+   *  act 2 after round 5, act 3 after 9/13/17 — stepped each frame while
+   *  `intermission`, and cleared when the break ends on the cutscene's completion. */
   cutscene: CutsceneState | null
   events: GameEvent[]
 }
@@ -632,12 +634,13 @@ export function stepGame(state: GameState, input: GameInput): void {
     const intermissionDue = isIntermissionLevel(state.level)
     state.phase = advancePhase('level-clear', { clearExpired, intermissionDue })
     if (state.phase === 'intermission') {
-      // pm6-2: the first coffee-break round (INTERMISSION_LEVELS[0] — round 2)
-      // plays ACT 1. `state.level` is still the CLEARED round here (advanceLevel
-      // below advances it), so gate on it BEFORE the advance. Act 2/3 (pm6-3) are
-      // not built yet — those rounds leave `cutscene` null and fall back to the
-      // pm6-1 frame-count hold.
-      if (state.level === INTERMISSION_LEVELS[0]) state.cutscene = createAct1Cutscene(state.seed)
+      // pm6-2/pm6-3: build the coffee-break's scripted cutscene for this round —
+      // act 1 after round 2, act 2 after round 5, act 3 after 9/13/17
+      // (createCutsceneForLevel maps the cadence). `state.level` is still the
+      // CLEARED round here (advanceLevel below advances it), so select on it BEFORE
+      // the advance. A non-mapped round returns null and falls back to the pm6-1
+      // frame-count hold.
+      state.cutscene = createCutsceneForLevel(state.level, state.seed)
       advanceLevel(state)
       state.freezeFrames = 0
       state.events.push({ type: 'intermission-started', music: INTERMISSION_MUSIC })
@@ -648,16 +651,15 @@ export function stepGame(state: GameState, input: GameInput): void {
     return
   }
   if (state.phase === 'intermission') {
-    // pm6-1/pm6-2: the between-rounds coffee break. A STATIC hold (Decision B —
-    // freeze, NO flash, exactly like level-clear). When a scripted cutscene is
-    // playing (pm6-2, act 1) the break ends on the cutscene's COMPLETION (a
-    // position, pacman.asm:218f), not a frame count; with no cutscene (act 2/3,
-    // pm6-3) it falls back to the pm6-1 INTERMISSION_HOLD_FRAMES hold. This is an
-    // either/or on purpose, NOT a disjunction: the act-1 cutscene runs longer
-    // (~521 frames) than INTERMISSION_HOLD_FRAMES (300), so `|| freezeFrames >= 300`
-    // would truncate it. A cutscene owns its own termination and is guarded by its
-    // own termination test (cutscene.test.ts) — pm6-3 must keep that invariant (a
-    // generous safety cap belongs there, sized above the longest act, if wanted).
+    // pm6-1/pm6-2/pm6-3: the between-rounds coffee break. A STATIC hold (Decision B —
+    // freeze, NO flash, exactly like level-clear). Every coffee-break round now runs
+    // a scripted cutscene (act 1/2/3), so the break ends on the cutscene's COMPLETION
+    // (a position, e.g. act 1 pacman.asm:218f), not a frame count; the
+    // INTERMISSION_HOLD_FRAMES fallback fires only for a forced-null cutscene (the
+    // pm6-2 no-cutscene test). This is an either/or on purpose, NOT a disjunction: a
+    // cutscene runs longer than INTERMISSION_HOLD_FRAMES (300), so `|| freezeFrames >=
+    // 300` would truncate it. A cutscene owns its own termination and is guarded by
+    // its own termination test (cutscene-act2-act3.test.ts / cutscene.test.ts).
     // The next round's board is already loaded (advanceLevel ran on entry), so on
     // expiry the machine hands off to that round's READY.
     state.freezeFrames += 1

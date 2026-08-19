@@ -105,7 +105,9 @@ stories:
     description: 'The remaining two scenes on the pm6-2 framework — same file surface (the cutscene player), distinct scripted animations. Act 2 is the ripped-sheet "nail" scene; act 3 is the worm/tearing scene. RED-anchored to the source + dossier; reuses pm3 sprites. Completes the three-cutscene set the specs deferred.'
     points: 3
     priority: p3
-    status: backlog
+    status: in_progress
+    assigned_to: Keith Avery
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:

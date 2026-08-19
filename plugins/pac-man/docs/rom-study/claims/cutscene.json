@@ -166,5 +166,89 @@
       "line": 3772,
       "verbatim": "1aa1  dd36021c  ld      (ix+#02),#1c"
     }
+  },
+  {
+    "id": "CUTSCENE-ACT2-DRIVER",
+    "symbol": "CUTSCENE_ACT2_DRIVER",
+    "value": 8606,
+    "meaning": "Act-2 (ripped-ghost / nail) coffee-break driver entry: dispatches on the act-2 sub-state byte #4e07. Sibling of the act-1 driver #2108 and the act-3 driver #2297.",
+    "addr": "219e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4711,
+      "verbatim": "219e  3a074e    ld      a,(#4e07)"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT2-PAC-SNAG-THRESHOLD",
+    "symbol": "CUTSCENE_ACT2_PAC_SNAG_THRESHOLD",
+    "value": 44,
+    "meaning": "Act 2's single POSITION gate: the nail snags Blinky's sheet when Pac's tile byte #4d3a == #2c. `sub #2c` on the tile byte (#21e1 reads #4d3a, #21e4 tests it). The sheet then RIPS (sprite #32 then #33, #162d). Cited to the compare #21e4, not the load, so a drift in the #2c operand reddens.",
+    "addr": "21e4",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4743,
+      "verbatim": "21e4  d62c      sub     #2c"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT2-RIPPED-SHEET-GATE",
+    "symbol": "CUTSCENE_ACT2_RIPPED_SHEET_GATE",
+    "value": 5677,
+    "meaning": "The ripped-sheet sprite routine reads the act-2 sub-state #4e07 (#162d `ld a,(#4e07)`) and, once past the snag, draws the torn sheet — sprite image #32 (#1642 `ld (ix+#02),#32`) then #33 (#164d). This is act 2's ripped ghost (the #4e07 gate), distinct from act 1's blue frightened sprite (#1c, #1aa1). The sprite tiles are CONSUMED from pm3's baked atlas; core carries only the `ripped` flag.",
+    "addr": "162d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3223,
+      "verbatim": "162d  3a074e    ld      a,(#4e07)"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT3-DRIVER",
+    "symbol": "CUTSCENE_ACT3_DRIVER",
+    "value": 8855,
+    "meaning": "Act-3 (worm / tearing-ghost) coffee-break driver entry: dispatches on the act-3 sub-state byte #4e08. Sibling of the act-1 driver #2108 and the act-2 driver #219e.",
+    "addr": "2297",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4821,
+      "verbatim": "2297  3a084e    ld      a,(#4e08)"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT3-PAC-THRESHOLD",
+    "symbol": "CUTSCENE_ACT3_PAC_THRESHOLD",
+    "value": 37,
+    "meaning": "Act 3, gate 0: Pac runs in until his tile byte #4d3a == #25. `sub #25` (#22a7 reads #4d3a, #22aa tests it). Cited to the compare #22aa, not the load.",
+    "addr": "22aa",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4830,
+      "verbatim": "22aa  d625      sub     #25"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT3-WORM-THRESHOLD-A",
+    "symbol": "CUTSCENE_ACT3_WORM_THRESHOLD_A",
+    "value": 45,
+    "meaning": "Act 3, gate 1: the tattered ghost crawls worm-like until its tile byte #4d32 == #2d. `sub #2d` (#22dd reads #4d32, #22e0 tests it).",
+    "addr": "22e0",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4857,
+      "verbatim": "22e0  d62d      sub     #2d"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT3-WORM-THRESHOLD-B",
+    "symbol": "CUTSCENE_ACT3_WORM_THRESHOLD_B",
+    "value": 30,
+    "meaning": "Act 3, gate 2: the worm crawls back until its tile byte #4d32 == #1e (a reversed vector, like act 1's return leg — the ±1 step sign is the port's honest-uncited representation). `sub #1e` (#22f5 reads #4d32, #22f8 tests it).",
+    "addr": "22f8",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4866,
+      "verbatim": "22f8  d61e      sub     #1e"
+    }
   }
 ]

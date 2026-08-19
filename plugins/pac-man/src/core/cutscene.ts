@@ -67,6 +67,8 @@
 //     inferred, not a directly-cited ROM mechanism. Motion is one tile-unit per
 //     step: never a jump.
 
+import { INTERMISSION_LEVELS } from './intermission'
+
 /** Pac's cutscene start tile (the high byte of `#1f32`, `pacman.asm:266b`). */
 export const ACT1_PAC_START_COL = 0x1f
 /** Blinky's cutscene start tile (the high byte of `#1e32`, `pacman.asm:261e`). */
@@ -123,6 +125,25 @@ const MOUTH_IMAGE_COUNT = 4
  *  the asm), so this is a gentle gated hold, not a fabricated frame literal. */
 const FREEZE_BEAT_FRAMES = 30
 
+// ─── pm6-3: ACT 2 + ACT 3 position thresholds (RED-anchored, Decision C) ──────
+//   Each is the `sub #NN` operand a sibling cutscene driver tests against a tile
+//   byte (#4d3a = Pac, #4d32 = the ghost/worm). Cited to the value byte itself, not
+//   the adjacent load — a claims/cutscene.json entry re-opens each verbatim and
+//   citations.test.ts fails on drift.
+
+/** Act 2's single position gate: the nail snags Blinky when Pac's tile #4d3a == #2c.
+ *  `pacman.asm:21e4  d62c  sub #2c` (act-2 driver #219e, state #4e07). */
+export const ACT2_PAC_SNAG_COL = 0x2c
+/** Act 3, gate 0: Pac runs in until #4d3a == #25. `pacman.asm:22aa  d625  sub #25`
+ *  (act-3 driver #2297, state #4e08). */
+export const ACT3_PAC_COL = 0x25
+/** Act 3, gate 1: the worm crawls out until the ghost tile #4d32 == #2d.
+ *  `pacman.asm:22e0  d62d  sub #2d`. */
+export const ACT3_WORM_COL_A = 0x2d
+/** Act 3, gate 2: the worm crawls back until #4d32 == #1e (a reversed vector).
+ *  `pacman.asm:22f8  d61e  sub #1e`. */
+export const ACT3_WORM_COL_B = 0x1e
+
 /** One cutscene actor. `col` is the ROM tile byte (`4d3a`/`4d32`), 0..255, wrapping.
  *  `step` is the movement-vector sign (+1 forward / -1 after the sub-state-2
  *  reversal) — NOT a screen direction, and honest-uncited: it is this port's
@@ -134,6 +155,13 @@ export interface CutsceneActor {
   step: 1 | -1
   frame: number
   frightened: boolean
+  /** pm6-3: the torn-sheet state. Act 2's nail RIPS Blinky's sheet (sprite #32
+   *  then #33, `pacman.asm:162d`, gated on the act-2 var #4e07); act 3's worm is
+   *  the tattered ghost. A one-way latch — never toggles back off (Decision B: no
+   *  flicker). Act 1 never rips (its chased-back ghost is the blue frightened
+   *  sprite, `pacman.asm:1aa1`). The shell picks the pm3 ripped/worm sprite off
+   *  this flag; core carries no sprite tile number. */
+  ripped: boolean
   /** Total mover-steps this actor has taken — drives the mouth phase. */
   moved: number
 }
@@ -142,6 +170,10 @@ export interface CutsceneActor {
  *  — NO full-field flash/strobe signal: the only animation is small-area per-actor
  *  sprite frames and gliding position. */
 export interface CutsceneState {
+  /** pm6-3: which coffee-break act this is — 1 (Blinky-chase), 2 (ripped-ghost /
+   *  nail) or 3 (worm). Picks the sub-state script `stepCutscene` drives, and tells
+   *  the shell which scene to render. */
+  act: 1 | 2 | 3
   substate: number
   frame: number
   pac: CutsceneActor
@@ -152,26 +184,59 @@ export interface CutsceneState {
   beatFrames: number
 }
 
-/** Per-sub-state script: which actors the mover advances, and the tile-threshold
- *  that ends the sub-state (sub-state 3 is a timed beat with no position gate). */
+/** Per-sub-state script: which actors the mover advances, the tile-threshold that
+ *  ends the sub-state (a timed beat has `hold` and no position gate), and the
+ *  ON-ENTER effects the ROM fires on the boundary INTO this sub-state (frighten,
+ *  reverse the vectors, arm big-Pac, rip the sheet). Encoding the boundary effects
+ *  as data lets one `stepCutscene`/`advance` drive all three acts. */
 interface SubstateSpec {
   moves: readonly ('pac' | 'blinky')[]
   gate?: { actor: 'pac' | 'blinky'; col: number }
   hold?: number
+  onEnter?: { frighten?: boolean; reverse?: boolean; bigPac?: boolean; rip?: boolean }
 }
 
 const ACT1_SCRIPT: readonly SubstateSpec[] = [
   { moves: ['pac'], gate: { actor: 'pac', col: ACT1_THRESHOLDS.s0 } }, // 0: Pac walks in, Blinky frozen
   { moves: ['pac', 'blinky'], gate: { actor: 'pac', col: ACT1_THRESHOLDS.s1 } }, // 1: the chase, both move
   { moves: ['blinky'], gate: { actor: 'blinky', col: ACT1_THRESHOLDS.s2 } }, // 2: Blinky alone → frighten+reverse
-  { moves: [], hold: FREEZE_BEAT_FRAMES }, // 3: the freeze beat
+  { moves: [], hold: FREEZE_BEAT_FRAMES, onEnter: { frighten: true, reverse: true } }, // 3: the freeze beat (frighten + reverse, pacman.asm:1a70/05ae)
   { moves: ['blinky'], gate: { actor: 'blinky', col: ACT1_THRESHOLDS.s4 } }, // 4: frightened Blinky flees
-  { moves: ['pac', 'blinky'], gate: { actor: 'blinky', col: ACT1_THRESHOLDS.s5 } }, // 5: big-Pac chases
+  { moves: ['pac', 'blinky'], gate: { actor: 'blinky', col: ACT1_THRESHOLDS.s5 }, onEnter: { bigPac: true } }, // 5: big-Pac chases (sub #05 gate, pacman.asm:15e9)
   { moves: ['pac'], gate: { actor: 'pac', col: ACT1_THRESHOLDS.s6 } }, // 6: big-Pac closes → done
 ]
 
+/** Act 2 (ripped-ghost / "nail"): Pac and Blinky run in; at Pac's snag column
+ *  0x2c the nail catches Blinky's sheet and it RIPS, then a gentle tear-hold. The
+ *  ROM's only POSITION gate here is Pac #4d3a == #2c (`pacman.asm:21e4`); the
+ *  sheet-tear sprite sequence (#32/#33) runs off the #4d01 object counter, whose
+ *  tick→frame factor is not in the asm — so the tear-hold is honest-uncited (like
+ *  FREEZE_BEAT_FRAMES), never a fabricated frame literal. */
+const ACT2_SCRIPT: readonly SubstateSpec[] = [
+  { moves: ['pac', 'blinky'], gate: { actor: 'pac', col: ACT2_PAC_SNAG_COL } }, // 0: run in to the nail
+  { moves: ['pac'], hold: FREEZE_BEAT_FRAMES, onEnter: { rip: true } }, // 1: the sheet tears; Pac walks on → done
+]
+
+/** Act 3 (worm / tearing-ghost): Pac runs in (to 0x25); then the tattered ghost
+ *  crawls out worm-like to worm column 0x2d and back to 0x1e. Both worm gates are
+ *  on the ghost tile #4d32 — `sub #2d` (`pacman.asm:22e0`) then `sub #1e`
+ *  (`pacman.asm:22f8`); the 0x2d→0x1e return is a reversal like act 1's return leg
+ *  (the ±1 step SIGN is the port's honest-uncited representation, no byte-claim). */
+const ACT3_SCRIPT: readonly SubstateSpec[] = [
+  { moves: ['pac', 'blinky'], gate: { actor: 'pac', col: ACT3_PAC_COL } }, // 0: run in
+  { moves: ['blinky'], gate: { actor: 'blinky', col: ACT3_WORM_COL_A } }, // 1: the worm crawls out
+  { moves: ['blinky'], gate: { actor: 'blinky', col: ACT3_WORM_COL_B }, onEnter: { reverse: true } }, // 2: the worm crawls back → done
+]
+
+/** The per-act scripts `stepCutscene`/`advance` dispatch on via `state.act`. */
+const ACT_SCRIPTS: Record<1 | 2 | 3, readonly SubstateSpec[]> = {
+  1: ACT1_SCRIPT,
+  2: ACT2_SCRIPT,
+  3: ACT3_SCRIPT,
+}
+
 function actor(col: number): CutsceneActor {
-  return { col, step: 1, frame: 0, frightened: false, moved: 0 }
+  return { col, step: 1, frame: 0, frightened: false, ripped: false, moved: 0 }
 }
 
 /** Build the act-1 opening tableau: Pac ahead of a chasing Blinky, both moving
@@ -179,6 +244,7 @@ function actor(col: number): CutsceneActor {
  *  with the rest of core — act 1 is a fixed scripted scene with no entropy. */
 export function createAct1Cutscene(_seed: number): CutsceneState {
   return {
+    act: 1,
     substate: 0,
     frame: 0,
     pac: actor(ACT1_PAC_START_COL),
@@ -189,25 +255,93 @@ export function createAct1Cutscene(_seed: number): CutsceneState {
   }
 }
 
-/** Advance out of the current sub-state's gate. Fires the sub-state-2 boundary
- *  effects (frighten Blinky, reverse both actors — `pacman.asm:1a70` + `05ae`),
- *  arms big-Pac from sub-state 5 (the `sub #05` gate, `pacman.asm:15e9`), and ends the scene when the
- *  final sub-state 6 gate is reached (Pac at 0x3d, `pacman.asm:218f`). */
+/** Build act 2 (ripped-ghost / "nail"): the same opening tableau as act 1 (the
+ *  shared actor-init #260f seeds every break identically — Pac 0x1f, Blinky 0x1e),
+ *  running act 2's two-beat snag-and-tear script. Fixed scripted scene, no entropy. */
+export function createAct2Cutscene(_seed: number): CutsceneState {
+  return {
+    act: 2,
+    substate: 0,
+    frame: 0,
+    pac: actor(ACT1_PAC_START_COL),
+    blinky: actor(ACT1_BLINKY_START_COL),
+    bigPacActive: false,
+    done: false,
+    beatFrames: 0,
+  }
+}
+
+/** Build act 3 (worm / tearing-ghost): the shared opening tableau, but the ghost
+ *  enters ALREADY tattered (`ripped`) — it is the torn sheet from act 2, now
+ *  crawling worm-like. Runs act 3's run-in / crawl-out / crawl-back script. */
+export function createAct3Cutscene(_seed: number): CutsceneState {
+  const s: CutsceneState = {
+    act: 3,
+    substate: 0,
+    frame: 0,
+    pac: actor(ACT1_PAC_START_COL),
+    blinky: actor(ACT1_BLINKY_START_COL),
+    bigPacActive: false,
+    done: false,
+    beatFrames: 0,
+  }
+  s.blinky.ripped = true
+  return s
+}
+
+/** Which coffee-break ACT plays after clearing `level` (1-based), or null if that
+ *  round shows no break. The documented Pac-Man Dossier cadence: act 1 after round
+ *  2, act 2 after round 5, act 3 after rounds 9/13/17 — gated on INTERMISSION_LEVELS
+ *  (itself honest-uncited on the ROM level byte #4e13, see intermission.ts). */
+export function cutsceneActForLevel(level: number): 1 | 2 | 3 | null {
+  if (level === INTERMISSION_LEVELS[0]) return 1
+  if (level === INTERMISSION_LEVELS[1]) return 2
+  if (INTERMISSION_LEVELS.slice(2).includes(level)) return 3
+  return null
+}
+
+/** The selector the game machine calls on entering `intermission`: build the act
+ *  whose cadence `level` matches, or null for a non-coffee-break round. */
+export function createCutsceneForLevel(level: number, seed: number): CutsceneState | null {
+  switch (cutsceneActForLevel(level)) {
+    case 1:
+      return createAct1Cutscene(seed)
+    case 2:
+      return createAct2Cutscene(seed)
+    case 3:
+      return createAct3Cutscene(seed)
+    default:
+      return null
+  }
+}
+
+/** Advance out of the current sub-state's gate into the next, applying that
+ *  sub-state's ON-ENTER effects (frighten / reverse / bigPac / rip) as declared in
+ *  its `SubstateSpec`, and marking the scene `done` once the act's final gate
+ *  (`ACT_SCRIPTS[s.act].length - 1`) is reached — sub-state 6 for act 1, 1 for act
+ *  2, 2 for act 3. Act-specific ROM citations (the frighten+reverse `1a70`/`05ae`,
+ *  the big-Pac `15e9`, the act-1 end `218f`, the act-2 snag `21e4`, the act-3 gates
+ *  `22aa`/`22e0`/`22f8`) live on each act's script/threshold comment, not here. */
 function advance(s: CutsceneState): void {
-  if (s.substate >= ACT1_SUBSTATE_COUNT - 1) {
-    s.done = true // sub-state 6 gate reached: stay at 6, mark done
+  const script = ACT_SCRIPTS[s.act]
+  if (s.substate >= script.length - 1) {
+    s.done = true // final gate reached: stay put, mark done
     return
   }
-  const from = s.substate
   s.substate += 1
   s.beatFrames = 0
-  if (from === 2) {
-    // the return leg: frighten Blinky (blue #1c) and reverse both actors' vectors
-    s.blinky.frightened = true
+  // Apply the ON-ENTER effects the ROM fires on the boundary INTO this sub-state.
+  // Act 1's sub-state-3 frighten+reverse (pacman.asm:1a70/05ae) and sub-state-5
+  // big-Pac (pacman.asm:15e9), act 2's sheet-rip, act 3's crawl-back reversal — all
+  // one data-driven path.
+  const spec = script[s.substate]
+  if (spec.onEnter?.frighten) s.blinky.frightened = true
+  if (spec.onEnter?.reverse) {
     s.pac.step = s.pac.step === 1 ? -1 : 1
     s.blinky.step = s.blinky.step === 1 ? -1 : 1
   }
-  s.bigPacActive = s.substate >= BIG_PAC_FIRST_SUBSTATE
+  if (spec.onEnter?.bigPac) s.bigPacActive = true
+  if (spec.onEnter?.rip) s.blinky.ripped = true
 }
 
 /** Which mouth image (0..MOUTH_IMAGE_COUNT-1) an actor shows after `moved` units
@@ -234,7 +368,7 @@ function updateFrames(s: CutsceneState): void {
  *  after each step — matching the ROM's per-mover threshold test. */
 export function stepCutscene(s: CutsceneState): void {
   if (s.done) return
-  const spec = ACT1_SCRIPT[s.substate]
+  const spec = ACT_SCRIPTS[s.act][s.substate]
   if (spec.hold != null) {
     // the freeze beat: no motion, hold then advance
     s.beatFrames += 1
