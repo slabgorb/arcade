@@ -110,8 +110,11 @@ export const GHOST_WIGGLE_PERIOD_FRAMES = 8
  *  STRUCTURAL: 7 is the table LENGTH, not a byte literal — honest-uncited. */
 export const ACT1_SUBSTATE_COUNT = 7
 
-/** Both mouth cadences draw 4 images per cycle (Pac's #2a/#2c/#2e/#30 at the 2/4/6
- *  thresholds; big-Pac's 4 `d`-bands at 4/8/c). Only the cycle LENGTH differs. */
+/** Both mouth cadences split their cycle into 4 threshold-bands. The Pac branch
+ *  renders those bands as sprites #2e/#2c/#2e/#30 at the 2/4/6 thresholds
+ *  (`pacman.asm:16ac/16a7/169e/1695` — 3 distinct images, #2e reused for two bands);
+ *  big-Pac's branch picks 4 `d`-offset bands at 4/8/c (`pacman.asm:15f1..1601`).
+ *  Only the cycle LENGTH differs. */
 const MOUTH_IMAGE_COUNT = 4
 
 /** How long the sub-state-3 freeze beat holds, in frames. The ROM waits 5 class-1

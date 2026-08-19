@@ -263,8 +263,11 @@ export interface GameState {
    *  `level-clear` or `intermission` — never more than one at a time, they are
    *  mutually exclusive phases). Reset to 0 on entry to each; counts up while
    *  frozen and releases (respawn / advanceLevel / next-round, then `ready`) once
-   *  it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES / INTERMISSION_HOLD_FRAMES.
-   *  Meaningless (and untouched) outside those phases. */
+   *  it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES. For `intermission`
+   *  (pm6-2) the release is CONDITIONAL: with a scripted cutscene active it ends on
+   *  `state.cutscene.done` (a position, not a frame count) and this counter is not
+   *  the gate; INTERMISSION_HOLD_FRAMES is the release only for cutscene-less
+   *  coffee-break rounds. Meaningless (and untouched) outside those phases. */
   freezeFrames: number
   /** pm4-10: frames elapsed in the current GAME OVER hold. Reset to 0 on entry to
    *  `game-over`; counts up ONLY while the name-entry screen is null or confirmed
