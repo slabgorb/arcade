@@ -55,8 +55,15 @@ describe('df3-6 AC1/AC3 — main.ts steps the sim and paints the DYNAMIC compose
     expect(code, 'main.ts must drive stepSim() — the once-per-tick advance').toMatch(/\bstepSim\s*\(/)
   })
 
-  it('seeds the sim via createSim()', () => {
-    expect(code, 'main.ts must build initial state with createSim()').toMatch(/\bcreateSim\s*\(/)
+  it('seeds the initial state via the df7-2 start seam (bootSession), not a bare createSim()', () => {
+    // df3-6 seeded a bare running sim with `createSim()` at boot. df7-2 retired that: main.ts
+    // now boots into the df7-1 attract phase via `bootSession()` (core/start.ts), and the
+    // createSim reseed lives BEHIND that seam — main.ts calls createSim nowhere. The
+    // "no bare createSim(" load-bearing negative is pinned by df7-2-main-wiring.test.ts;
+    // here we keep the positive: main.ts still builds its initial state, now via bootSession.
+    expect(code, 'main.ts must build initial state via bootSession() (the df7-2 start seam)').toMatch(
+      /\bbootSession\s*\(/,
+    )
   })
 
   it('paints composeFrame() — not the static title still', () => {
