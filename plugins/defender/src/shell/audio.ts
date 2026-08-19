@@ -17,10 +17,13 @@
 //
 // ─── THE .wav FILES LIVE IN THE BUCKET, NEVER IN THIS REPO ───────────────────────
 // The manifest is a promise about an R2 key prefix, not about this repo. df6-1
-// ships the seam SILENT: `SOUNDS` names one file per cue, but no `.wav` is baked or
-// committed this story (Defender stays quiet, and a green suite here proves the
-// WIRING, not the audio — `@shared/audio` degrades silently on a 404). A later df
-// story bakes the samples and deploys them, the way jt5-2 followed jt5-1 for joust.
+// shipped the seam silent; df6-3 kept that promise: `SOUNDS` names one file per
+// cue, and one synthesised `.wav` per cue is now baked (tools/sample-bake/
+// bake-samples.mjs) and live at `defender/sfx/` in the assets bucket, uploaded by
+// `just deploy-assets`. No `.wav` is committed to this repo — a green suite here
+// still proves only the WIRING (`@shared/audio` degrades silently on a 404), so
+// the sound's real proof is the live-200 curl in df6-3's session, the way jt5-2
+// followed jt5-1 for joust.
 //
 // ─── ONE SOUND VOICE, ARBITRATED BY A PRIORITY BYTE — and why it is a FENCE here ──
 // Defender is a Williams machine, so — like joust — it has ONE sound voice
@@ -47,82 +50,25 @@ import {
   type AudioEngine as SharedAudioEngine,
 } from '@shared/audio'
 
-/**
- * Every cue Defender can sound — one per gameplay moment the integrated sim
- * resolves (see core/events.ts). A 1:1 mirror of `GameEventKind` in camelCase:
- * every df6-1 cue is a payload-free one-shot mapping to exactly one SOUND TABLE
- * entry, so the sound name and the event kind are the same idea in two casings and
- * `audio-dispatch.ts` maps one to the other by hand (a closed switch, never a
- * string transform — a typo must be a compile error, not a silent miss).
- */
-export type SoundName =
-  | 'laserFire'
-  | 'landerHit'
-  | 'mutantHit'
-  | 'baiterHit'
-  | 'podHit'
-  | 'bomberHit'
-  | 'swarmerHit'
-  | 'landerShoot'
-  | 'mutantShoot'
-  | 'baiterShoot'
-  | 'swarmerShoot'
-  | 'landerPickup'
-  | 'enemyAppear'
-  | 'smartBomb'
-  | 'playerDeath'
-  | 'extraMan'
-  | 'waveStart'
-  | 'astroCatch'
-  | 'astroLand'
-  | 'astroHit'
-  | 'astroScream'
-  // df6-2 — the two STATEFUL LOOP cues (sounded via startLoop/stopLoop, not play).
-  | 'thrust' //     the held thrust loop (THFLG side-path; no SOUND-TABLE row)
-  | 'landerSuck' // the abduction repeat (LSKSND, sounded as a held loop — see CUE_SOURCES)
+// `SoundName` and `SOUNDS` live in `./audio-manifest.ts` since df6-3 — extracted
+// there DEPENDENCY-FREE so the sample bake can reach them under plain node (the
+// `@shared/audio` import below dies there). Imported for local use (CHANNELS,
+// CUE_SOURCES and createAudioEngine below key off them) AND re-exported, so every
+// consumer still imports them from `audio.ts` and the bake's `SOUNDS === audio.ts's
+// SOUNDS` identity holds (one module instance, not a transcription).
+import { SOUNDS, type SoundName } from './audio-manifest.js'
+export { SOUNDS }
+export type { SoundName }
 
 /**
  * Defender's prefix on the shared assets host — the fleet convention (joust's is
  * `.../joust/sfx/`). The bucket behind this hostname is named plain `arcade`, and
- * only `just deploy-assets` ever writes to it. CI never touches it, and neither
- * does this story: no sample is baked here, so every fetch 404s and degrades to
- * silence until a later df story deploys the files.
+ * only `just deploy-assets` ever writes to it. CI never touches it: df6-3 baked and
+ * uploaded one `.wav` per cue here by hand, and the live 200s are curled into that
+ * story's session as the acceptance.
  */
 export const DEFAULT_BASE_URL = 'https://arcade-assets.slabgorb.com/defender/sfx/'
 
-/**
- * Logical name -> filename (the per-cabinet NUMBERS). One file per cue, named for
- * its ROM sound-table symbol so the bucket key and the assembler line agree. No
- * `.wav` is committed to this repo — these are promises about the R2 prefix that a
- * later df story fulfils.
- */
-export const SOUNDS: Readonly<Record<SoundName, string>> = {
-  laserFire: 'lassnd.wav',
-  landerHit: 'lhsnd.wav',
-  mutantHit: 'schsnd.wav',
-  baiterHit: 'ufhsnd.wav',
-  podHit: 'prhsnd.wav',
-  bomberHit: 'tihsnd.wav',
-  swarmerHit: 'swhsnd.wav',
-  landerShoot: 'lshsnd.wav',
-  mutantShoot: 'sshsnd.wav',
-  baiterShoot: 'ushsnd.wav',
-  swarmerShoot: 'swssnd.wav',
-  landerPickup: 'lpksnd.wav',
-  enemyAppear: 'apsnd.wav',
-  smartBomb: 'sbsnd.wav',
-  playerDeath: 'pdsnd.wav',
-  extraMan: 'rpsnd.wav',
-  waveStart: 'st1snd.wav',
-  astroCatch: 'acsnd.wav',
-  astroLand: 'alsnd.wav',
-  astroHit: 'ahsnd.wav',
-  astroScream: 'ascsnd.wav',
-  // df6-2 loop cues. `thrust` has no ROM sound-table symbol (it is the THFLG $16/$0F
-  // side-path), so its file is named for the effect; `landerSuck` keeps the LSKSND symbol.
-  thrust: 'thrust.wav',
-  landerSuck: 'lsksnd.wav',
-}
 
 /**
  * Cue -> logical channel, named for the SNDPRI byte that decides it (Decision E).

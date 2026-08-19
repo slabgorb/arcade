@@ -277,7 +277,7 @@ deploy-assets:
     set -euo pipefail
     staging="$(mktemp -d)"
     trap 'rm -rf "$staging"' EXIT
-    mkdir -p "$staging/star-wars/music" "$staging/star-wars/sfx" "$staging/joust/sfx" "$staging/centipede/sfx"
+    mkdir -p "$staging/star-wars/music" "$staging/star-wars/sfx" "$staging/joust/sfx" "$staging/centipede/sfx" "$staging/defender/sfx"
     echo "==> baking star-wars music"
     node {{root}}/plugins/star-wars/tools/music-bake/bake-music.mjs "$staging/star-wars/music"
     echo "==> baking star-wars sfx"
@@ -286,11 +286,14 @@ deploy-assets:
     node {{root}}/plugins/joust/tools/sample-bake/bake-samples.mjs "$staging/joust/sfx"
     echo "==> baking centipede sfx"
     node {{root}}/plugins/centipede/tools/pokey-bake/bake-sfx.mjs "$staging/centipede/sfx"
-    echo "==> uploading -> {{assets_bucket}}/{star-wars,joust,centipede}/  (served at arcade-assets.slabgorb.com)"
+    echo "==> baking defender sfx"
+    node {{root}}/plugins/defender/tools/sample-bake/bake-samples.mjs "$staging/defender/sfx"
+    echo "==> uploading -> {{assets_bucket}}/{star-wars,joust,centipede,defender}/  (served at arcade-assets.slabgorb.com)"
     node {{root}}/scripts/deploy-r2.mjs "$staging" {{assets_bucket}}
     echo "Done. Verify: curl -sI https://arcade-assets.slabgorb.com/star-wars/music/space_theme.wav"
     echo "             curl -sI https://arcade-assets.slabgorb.com/joust/sfx/enemy_death.wav"
     echo "             curl -sI https://arcade-assets.slabgorb.com/centipede/sfx/shot_fire.wav"
+    echo "             curl -sI https://arcade-assets.slabgorb.com/defender/sfx/lassnd.wav"
 
 # Prove every game's URL actually answers — not just the ones the lobby
 # showcases today. The loop below iterates the whole fleet regardless of a

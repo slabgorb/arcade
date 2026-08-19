@@ -14,7 +14,9 @@
 //
 // Story df6-1 (GREEN) — the audio seam. The core emits gameplay cues as DATA on the
 // stepped sim (`sim.cues`); this shell drains them into the shared WebAudio engine each
-// PLAY tick (shell/audio-dispatch.ts). Ships SILENT — no samples in the bucket yet.
+// PLAY tick (shell/audio-dispatch.ts). Story df6-3 (GREEN) baked one synthesised sample
+// per cue and deployed them to `defender/sfx/` in the assets bucket, so the seam now
+// SOUNDS — a fetch resolves to real audio (proven by the live-200 curl in df6-3).
 //
 // Story df7-3 (GREEN) — the self-playing attract demo. The sim is now stepped in BOTH play
 // (driven by the human keyboard) AND attract (driven by the pure auto-player core/attract.ts
@@ -46,9 +48,9 @@ const held = installHeldKeys(window, {
 // df6-1 — the audio seam. The engine is inert until a user gesture unlocks the context
 // (browsers refuse an AudioContext before one) and inert forever where WebAudio is absent,
 // so `resume()` on the first keydown/pointerdown is the cheap, correct hook: only the first
-// call does work. The `.wav` files it would fetch are NOT in this repo and nothing has put
-// them in the bucket yet — df6-1 ships the seam and Defender stays quiet, because a failed
-// fetch degrades silently by design.
+// call does work. The `.wav` files it fetches are NOT in this repo — df6-3 baked and
+// deployed them to `defender/sfx/` in the assets bucket, so a fetch resolves to real audio;
+// a failed fetch still degrades silently by design (that is why the acceptance is a curl).
 const audio = createAudioEngine()
 window.addEventListener('keydown', () => audio.resume())
 canvas.addEventListener('pointerdown', () => audio.resume())
