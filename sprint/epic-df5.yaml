@@ -155,7 +155,8 @@ stories:
     description: 'Decision C: the end of the game is pure-first here, phase-wired in df7 (the pm4/mc6 split). df5-6 delivers the pure lives<0 -> game-over condition and the hall-of-fame + localStorage data flow; df7 wires it into the attract->play->death->game-over phase machine and renders the screens. The hall of fame is @shared (highscore + name-entry), NOT new persistence code — df5-6 maps Defender''s score format onto them. The CMOS ledger -> localStorage ties to the ADR-0004 cross-origin-cookie retirement this monorepo already made (one origin, shared localStorage).'
     points: 3
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-18'
     repos: arcade
     workflow: tdd
     acceptance_criteria:

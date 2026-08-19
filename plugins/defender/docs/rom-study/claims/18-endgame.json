@@ -1,0 +1,38 @@
+[
+  {
+    "id": "EG-GAMEOVER",
+    "claim": "A 1-player game with no ships left falls through to PLE2 — GAME OVER; the port models it as the men counter falling below zero.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1423,
+      "verbatim": "PLE2\tLDU\t#GO\tGAME OVER"
+    }
+  },
+  {
+    "id": "EG-CMOS-SLOT2",
+    "claim": "The CMOS ledger allocates SLOT2 — the center coin total (4 bytes).",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 21,
+      "verbatim": "SLOT2\tRMB\t4\tCENTER COIN TOTAL"
+    }
+  },
+  {
+    "id": "EG-CMOS-SLOT3",
+    "claim": "The CMOS ledger allocates SLOT3 — the right coin total (4 bytes).",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 22,
+      "verbatim": "SLOT3\tRMB\t4\tRIGHT COIN TOTAL"
+    }
+  },
+  {
+    "id": "EG-CMOS-TOTPDC",
+    "claim": "The CMOS ledger allocates TOTPDC — the total paid credits (4 bytes).",
+    "source": {
+      "file": "ROMF8.SRC",
+      "line": 23,
+      "verbatim": "TOTPDC\tRMB\t4\tTOTAL PAID CREDITS"
+    }
+  }
+]
