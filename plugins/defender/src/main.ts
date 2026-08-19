@@ -32,7 +32,7 @@ import { LOGICAL_WIDTH, LOGICAL_HEIGHT, render } from './shell/render.js'
 import { stepSim } from './core/sim.js'
 import { composeFrame } from './core/scene.js'
 import { mapInput, startPressed } from './shell/input.js'
-import { bootSession, advanceStart, stepSessionInitials, confirmSessionInitials } from './core/start.js'
+import { bootSession, advanceStart, stepSessionInitials, confirmSessionInitials, abortNameEntry } from './core/start.js'
 import { attractInput, hasPlayerInput } from './core/attract.js'
 import type { PhaseSignals } from './core/phase.js'
 import { createAudioEngine } from './shell/audio.js'
@@ -75,6 +75,13 @@ let session = bootSession(rand, highScoreStorage.load())
 const GAME_OVER_DWELL_FRAMES = 4 * 60
 let gameOverDwell = 0
 
+// df7-4b: how long the initials entry stays open before it is ABANDONED. A qualifying game-over
+// opens the entry (start.ts) and the core gate holds game-over open until it closes, so without a
+// window a player who walks away mid-initials would wedge the cabinet forever (the abandoned-entry
+// hang filed at df7-4). ~10s at 60 Hz; a shell cadence, like GAME_OVER_DWELL_FRAMES.
+const NAME_ENTRY_TIMEOUT_FRAMES = 10 * 60
+let entryDwell = 0
+
 // df7-4: the HALL OF FAME initials entry. While an entry is open (a qualifying game-over), route
 // discrete keydowns to the @shared name-entry stepper: Enter commits the initials to the board and
 // PERSISTS it through the shared seam; every letter advances the buffer. Gated on session.nameEntry
@@ -106,9 +113,26 @@ const loop = createLoop(
     const signals: PhaseSignals = {
       startRequested: startPressed(held) || hasPlayerInput(mapInput(held)),
       setupComplete: true,
+      // df7-4b: fire the play->game-over edge (df7-1) when the sim reaches men<0. `sim.gameOver`
+      // is df5-6's isGameOver (CONSUMED); pairing playerDied WITH gameOver routes straight to
+      // game-over (never the survivable death beat), so no `setup` respawn reseed is involved and
+      // the start-vs-respawn discriminant the death-beat story owns is not needed here. This is
+      // what makes the hall-of-fame name-entry flow reachable by actually playing.
+      playerDied: session.sim.gameOver,
+      gameOver: session.sim.gameOver,
       overTimeout: gameOverDwell >= GAME_OVER_DWELL_FRAMES,
     }
     session = advanceStart(session, signals, rand)
+    // df7-4b: the entry-abandon window. A qualifying game-over opened the initials entry above;
+    // if the player never confirms, count frames and ABORT (drop the score, ladder unchanged —
+    // the missile-command precedent) so the cabinet cannot wedge on the entry screen. While the
+    // entry is open the game-over dwell is frozen, so this is the only clock that closes it.
+    if (session.nameEntry !== null) {
+      entryDwell += 1
+      if (entryDwell >= NAME_ENTRY_TIMEOUT_FRAMES) session = abortNameEntry(session)
+    } else {
+      entryDwell = 0
+    }
     // Step the real sim per phase: play is driven by the human keyboard; attract is driven
     // by df7-3's pure auto-player (the SAME stepSim — no forked demo path), so the attract
     // screen shows actual gameplay. setup holds its single get-ready frame.
