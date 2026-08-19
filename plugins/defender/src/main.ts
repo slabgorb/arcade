@@ -8,10 +8,16 @@
 // boots a bare running sim: it boots into df7-1's ATTRACT phase via the pure start seam
 // (core/start.ts), and a start/coin press advances attract -> setup -> play, RESEEDING a
 // fresh game (df5-8 wave-1 attackers, df5-10 ground humanoids, men=STARTING_MEN=3) at the
-// setup->play edge. The sim is stepped ONLY in play — the attract screen never advances a
-// game (the self-playing attract demo is df7-3). SHELL only: it owns the canvas, the
-// keyboard, the entropy closure and the setup cadence, and hands the pure core nothing but
-// signals + an Input snapshot; the purity boundary lives in src/core/.
+// setup->play edge. SHELL only: it owns the canvas, the keyboard, the entropy closure and
+// the setup cadence, and hands the pure core nothing but signals + an Input snapshot; the
+// purity boundary lives in src/core/.
+//
+// Story df7-3 (GREEN) — the self-playing attract demo. The sim is now stepped in BOTH play
+// (driven by the human keyboard) AND attract (driven by the pure auto-player core/attract.ts
+// attractInput, through the SAME stepSim — no forked demo path), so the attract screen shows
+// actual gameplay. And attract now exits to setup on ANY player key (hasPlayerInput of the
+// human snapshot), not only the start/coin button. setup/pause/death/game-over still hold
+// their frame — only play and attract advance a sim.
 
 import { mountCanvas } from '@shared/host-helpers'
 import { createLoop } from '@shared/loop'

@@ -28,8 +28,15 @@ const ALIGN_BAND = 6
  *  the firing line", a touch wider than ALIGN_BAND so the demo shoots as it settles in. */
 const FIRE_BAND = 10
 /** Drop a smart-bomb once this many live landers crowd the field — the "swarmed" trigger,
- *  gated by a camera-derived parity below so the demo bombs occasionally, never every tick. */
+ *  gated by the camera-derived duty cycle below so the demo bombs occasionally, never every tick. */
 const SWARM = 4
+/** The smart-bomb duty cycle, read off the low byte of the scrolling camera. SMART_BOMB_MASK
+ *  isolates that byte (0..255); the bomb fires only while it is below SMART_BOMB_WINDOW, so
+ *  SMART_BOMB_WINDOW / 256 (8/256 ≈ 3%) of frames qualify while swarmed — often enough to show
+ *  the bomb, rare enough not to trivialise the field. Both are AI tuning knobs (the joust
+ *  demo-ai.ts precedent), NOT cited ROM constants. */
+const SMART_BOMB_MASK = 0xff
+const SMART_BOMB_WINDOW = 0x08
 
 /** The nearest live lander by vertical distance to the ship row, or null if the field is
  *  clear. A stable scan (first-wins on a tie) keeps the choice a deterministic function of
@@ -69,7 +76,7 @@ export function attractInput(sim: SimState): Input {
   // rather than every tick a crowd persists — the demo shows the bomb without trivialising
   // the field. `camera` advances as the ship patrols, so this is a deterministic cadence.
   const liveCount = sim.landers.reduce((n, l) => n + (l.alive ? 1 : 0), 0)
-  const smartBomb = liveCount >= SWARM && (sim.camera & 0xff) < 0x08
+  const smartBomb = liveCount >= SWARM && (sim.camera & SMART_BOMB_MASK) < SMART_BOMB_WINDOW
 
   // Patrol forward every frame: the world scrolls and the demo is never static.
   return { thrust: true, reverse: false, up, down, fire, smartBomb }
