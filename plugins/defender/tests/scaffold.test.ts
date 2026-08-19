@@ -62,7 +62,7 @@ describe('scaffold — package.json is a private defender package', () => {
 })
 
 describe('scaffold — plugin.ts declares the meta the registry is generated from', () => {
-  it('pins id/title/year/order/listed and stays OUT of the showcase (black canvas)', () => {
+  it('pins id/title/year/order/listed and NOW opts into the showcase (df7-7 earned the flip)', () => {
     const src = read('plugin.ts')
     expect(src).toMatch(/id:\s*'defender'/)
     expect(src).toMatch(/title:\s*'DEFENDER'/)
@@ -71,10 +71,10 @@ describe('scaffold — plugin.ts declares the meta the registry is generated fro
     expect(src).toMatch(/year:\s*1980/)
     expect(src).toMatch(/order:\s*11\b/)
     expect(src).toMatch(/listed:\s*true/)
-    // The ml1-5 rule: a black-canvas scaffold may not claim a carousel slot — only a
-    // live self-playing demo may opt in (tests/showcase-liveness.test.mjs). df7
-    // grows the attract demo and earns the flip.
-    expect(src).toMatch(/showcase:\s*false/)
+    // The ml1-5 rule: a carousel slot is earned by a live self-playing demo
+    // (tests/showcase-liveness.test.mjs). df7 grew that demo (df7-3 attract) and the
+    // played lifecycle (df7-1..df7-5), so df7-7 flips defender into the rotation.
+    expect(src).toMatch(/showcase:\s*true/)
     expect(src).toMatch(/version,/)
   })
 })

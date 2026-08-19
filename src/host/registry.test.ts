@@ -193,6 +193,9 @@ describe('the generated registry', () => {
     // millipede says so in ml7-3: it grew a seeded self-playing attract demo (a marching
     // train over a live mushroom field, plugins/millipede/src/core/attract.ts,
     // tests/attract-demo.test.ts) plus the ROM HUD, so its manifest flips showcase:true.
+    // defender joins last (df7-7): df7-3 grew its self-playing attract demo and
+    // df7-1..df7-5 the played lifecycle, so its manifest flips showcase:true. It is the
+    // final entry in the GAMES roster, so it appends after millipede here.
     expect(GAMES.filter((g) => g.showcase).map((g) => g.id)).toEqual([
       'tempest',
       'asteroids',
@@ -202,6 +205,7 @@ describe('the generated registry', () => {
       'missile-command',
       'pac-man',
       'millipede',
+      'defender',
     ])
   })
 

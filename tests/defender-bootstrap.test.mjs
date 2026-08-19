@@ -155,13 +155,16 @@ test('defender order 11 does not collide with an existing game', () => {
   assert.deepEqual(at11, ['defender'], `order 11 must belong to defender alone, got: ${at11.join(', ')}`);
 });
 
-test('defender is NOT a showcase game (a black-canvas scaffold may not claim a carousel slot)', () => {
+test('defender IS a showcase game (df7 landed the self-playing attract demo — df7-7 earned the flip)', () => {
   // The ml1-5 rule: showcase:true is earned by a live self-playing attract demo
-  // (tests/showcase-liveness.test.mjs), which arrives with df7 — not before.
+  // (tests/showcase-liveness.test.mjs), which arrives with df7 — and it has: df7-3
+  // grew the attract auto-player and df7-1..df7-5 the played lifecycle, so df7-7
+  // flips defender into the lobby-showcase rotation (Decision E). This guard was the
+  // lock-step tripwire that reddened on the flip; it now pins the new invariant.
   const reg = read('src/host/registry.ts');
   const entry = registryEntry(reg);
   assert.notEqual(entry, null, 'registry must hold a defender entry');
-  assert.doesNotMatch(entry, /showcase:\s*true/, 'showcase stays false until df7 lands attract self-play');
+  assert.match(entry, /showcase:\s*true/, 'df7 landed attract self-play — defender must be showcase:true');
 });
 
 // ── The four-file plugin shape exists ────────────────────────────────────────
