@@ -7,15 +7,17 @@
 //
 // df5-7 already pinned the scanner PROJECTION geometry in claims/15-scanner.json (the
 // 64-column strip width, AMODE1.SRC:1223 `CMPA #(SCANER!>8)+64`, and the X/Y shifts).
-// What df7-5 ADDS is the BEZEL — the radar strip's frame — which df5-7 explicitly left
-// to df7 (scene.ts:186-192). The story cites "*SCANNER BEZEL defender/AMODE1.SRC:1225",
-// the banner over the MTX routine (:1226-1233) that writes the bezel bytes into the
-// SCANH scanner screen addresses. That anchor must be byte-pinned before the bezel is
-// drawn to a real ROM address.
+// What df7-5 ADDS is the BEZEL — the radar strip's frame. The story POINTS at the banner
+// "*SCANNER BEZEL defender/AMODE1.SRC:1225", but that banner carries no bytes; the OPERATIVE
+// bezel instruction is the MTX routine :1226-1233, which loads $9090 (:1227 `LDD #$9090`) —
+// palette index 9 in its high nibble, the source of BEZEL_COLOUR=9 — and stores it into the
+// SCANH scanner addresses. The claim must pin the OPERATIVE line so the df1-1 gate byte-checks
+// the value the code uses (the df7-2-identity precedent cites operative instructions, not
+// banners).
 //
-// This file reads ONLY the claims (loadClaims/coveredBy from the dossier-sweep helper),
-// so it is INDEPENDENTLY red now — the :1225 bezel claim is absent (only :1223 exists).
-// GREEN adds a claims/15-scanner.json entry pinning AMODE1.SRC:1225.
+// This file reads ONLY the claims (loadClaims/coveredBy from the dossier-sweep helper), so it
+// is INDEPENDENTLY red before GREEN — the operative bezel claim is absent (only :1223 exists).
+// GREEN adds a claims/15-scanner.json SCAN-BEZEL entry pinning AMODE1.SRC:1227.
 
 import { describe, it, expect } from 'vitest'
 import { loadClaims, coveredBy, type ProseCitation } from './audit/dossier-sweep'
