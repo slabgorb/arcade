@@ -277,3 +277,8 @@ completed_stories:
     title: "Smart-bomb + hyperspace (the two emergency powers, both CITING ADR-0005): plugins/defender/src/core/powers.ts — smart-bomb (*SMART BOMB SBOMB defender/DEFA7.SRC:3173,3175; clears on-screen enemies) and hyperspace (*HYPERSPACE HYPER :3211,3213; *RANDOM HYPER DIRECTION :3228; teleport with re-entry risk). Port the ROM trigger + timing and route the PRESENTATION through the existing df4-2 effect-policy — freeze/fade/particle, NOT the ROM's SBMBX0 COM PCRAM whole-page invert (:3199). The df4-2 guard stays GREEN. Consumes df4-1 collision (smart-bomb clear) + df4-2 effects/policy."
     points: 3
     completed: '2026-08-18'
+  - id: df5-6
+    epic: df5
+    title: "End-of-game core (PURE-first; phase-wired in df7): plugins/defender/src/core/ — the men<0 -> game-over reducer reading the df5-3 men counter; final score -> hall of fame via @shared/highscore + @shared/name-entry (HALLOF *HALL OF FAME ENTRY defender/AMODE1.SRC:117,119; initials display :242; add-score :270 — CONSUMED, not re-implemented); the CMOS coin/credit ledger (* CMOS RAM ALLOCATION SLOT1/2/3/TOTPDC defender/ROMF8.SRC:16-38) mapped to one-origin localStorage. Ships the reducer + persistence, NOT the attract loop (df7 wires it). Consumes df5-3 (men counter) + @shared."
+    points: 3
+    completed: '2026-08-18'
