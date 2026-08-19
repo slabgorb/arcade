@@ -62,6 +62,8 @@ import {
   BIG_PAC_MOUTH_CYCLE_PX,
   GHOST_WIGGLE_PERIOD_FRAMES,
   ACT1_SUBSTATE_COUNT,
+  CUTSCENE_CORRIDOR_LEFT_COL,
+  CUTSCENE_CORRIDOR_RIGHT_COL,
   type CutsceneState,
 } from '../../src/core/cutscene'
 import { createGameState, stepGame, type GameState } from '../../src/core/game'
@@ -250,6 +252,51 @@ describe('pm6-2 AC2: act 1 plays the ROM sub-state arc', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// pm6-5 round-3 — the faithful traversal coordinate `x` is UNWRAPPED. `col` is the
+// ROM's 8-bit tile byte and WRAPS mod 256; `x` advances with it every mover-step but
+// must NEVER fold mod 256, so the shell can map it to a continuous screen position and
+// the actors traverse instead of teleporting (round 1) or freezing (round 2). This is
+// the CENTRAL behavior round 3 introduced; without this test, reintroducing the round-1
+// wrap bug (`x = (x + step) & 0xff`) passes the whole suite silently.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('pm6-5: the traversal coordinate x is UNWRAPPED (does not fold mod 256 like col)', () => {
+  it('x continues monotonically through every col wrap, and escapes the 0..255 byte range', () => {
+    const s = createAct1Cutscene(1)
+    let prevCol = s.pac.col
+    let prevX = s.pac.x
+    let colWraps = 0
+    let xWrappedAtAColWrap = false
+    let xEscapedByteRange = false
+    for (let f = 0; f < MAX_FRAMES && !s.done; f++) {
+      stepCutscene(s)
+      const dCol = s.pac.col - prevCol
+      const dX = s.pac.x - prevX
+      // A col wrap is a single-frame jump larger than half the 256-ring (the 8-bit byte
+      // folding 0xff->0x00 or 0x00->0xff). At such a frame, `x` must move only its normal
+      // small step (<= the 2x mover count) — a wrapped `x` would jump ~254 in lockstep.
+      if (Math.abs(dCol) > 128) {
+        colWraps++
+        if (Math.abs(dX) > CUTSCENE_STEPS_PER_FRAME) xWrappedAtAColWrap = true
+      }
+      if (s.pac.x < 0 || s.pac.x > 255) xEscapedByteRange = true
+      prevCol = s.pac.col
+      prevX = s.pac.x
+    }
+    // Non-vacuity: the act must actually cross a col-wrap boundary, or the property below
+    // is untested (act 1's ~250-step sub-states wrap the 8-bit counter several times).
+    expect(colWraps, 'precondition: act 1 wraps the 8-bit col byte at least once').toBeGreaterThan(0)
+    expect(
+      xWrappedAtAColWrap,
+      'x jumped ~a full ring at a col-wrap frame — it is folding mod 256 like col (the round-1 teleport regression)',
+    ).toBe(false)
+    expect(
+      xEscapedByteRange,
+      'x never left 0..255 — it is bounded like the 8-bit col byte, so it is NOT the unwrapped traversal coordinate',
+    ).toBe(true)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AC3 — every cutscene constant carries an exact value (a mutation reddens THIS)
 // AND a citations.test.ts claim (RED until GREEN adds claims/cutscene.json). The
 // byte-check in tests/audit/citations.test.ts independently re-opens each claim's
@@ -280,6 +327,15 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
     expect(ACT1_SUBSTATE_COUNT).toBe(7) // 7-word table, pacman.asm:210c (structural length)
   })
 
+  it('the on-screen tile band edges are the exact cited `ld b,#NN` operands (pm6-5 traversal anchor)', () => {
+    // The shared sprite-mover #1806 draws an actor only while its tile is in [#21, #3b)
+    // (pacman.asm:1852 — the two `ld b` compares). pm6-5 maps the actor's unwrapped `x`
+    // onto this band. LITERALS here so a drift in either operand reddens THIS assertion.
+    expect(CUTSCENE_CORRIDOR_LEFT_COL).toBe(0x21) // pacman.asm:1856 `ld b,#21`
+    expect(CUTSCENE_CORRIDOR_RIGHT_COL).toBe(0x3b) // pacman.asm:185c `ld b,#3b`
+    expect(CUTSCENE_CORRIDOR_LEFT_COL, 'the band is a non-empty on-screen run').toBeLessThan(CUTSCENE_CORRIDOR_RIGHT_COL)
+  })
+
   it('a citations.test.ts CLAIM anchors every cited cutscene constant to the ROM (Decision C)', () => {
     // Each address below is a `sub #NN` / `ld hl,#NNNN` / gate line decoded and
     // re-checked against the raw bytes. GREEN adds claims/cutscene.json covering
@@ -300,6 +356,8 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
       '15ef', // big-Pac mouth cadence (16-cycle, and #0f)
       '0e27', // ghost leg wiggle period (cmp 8)
       '1aa1', // return-Blinky = blue frightened (#1c)
+      '1856', // on-screen tile band left edge 0x21 (pm6-5 traversal anchor)
+      '185c', // on-screen tile band right edge 0x3b
     ]
     const addrs = new Set(loadClaims().map((c) => String(c.addr).toLowerCase()))
     const missing = REQUIRED_ADDRS.filter((a) => !addrs.has(a))

@@ -92,6 +92,25 @@ export const ACT1_THRESHOLDS = {
  *  per-step DISTANCE is likewise not a ROM constant. */
 export const CUTSCENE_STEPS_PER_FRAME = 2
 
+// ─── pm6-5: the on-screen SPRITE-TRAVERSAL band (the tile↔screen anchor) ─────────
+//   `col` is the ROM's 8-bit tile byte (#4d3a/#4d32); it WRAPS mod 256, so it is NOT
+//   a renderable screen coordinate (a single forward step-sign folds a wider-than-
+//   screen traverse back onto the 0..255 ring — the round-1 "teleport"). The shared
+//   sprite-mover #1806 bounds the ON-SCREEN tile range with a two-sided compare
+//   before it draws the actor normally (`pacman.asm:1852`): the tile is loaded, then
+//   `sub #21; jr c` (below the band → off the LEFT, handled at #1864) and
+//   `sub #3b; jr nc` (at/above the band → off the RIGHT), and only #21 <= tile < #3b
+//   falls through to the on-screen path `jp #18ab`. Those two operands ARE the
+//   cabinet's on-screen tile band — the anchor the shell maps each actor's UNWRAPPED
+//   position (`CutsceneActor.x`) onto, so the actors traverse the frame authentically
+//   instead of folding onto the ring.
+/** The mover's on-screen tile band, LEFT edge: a tile below this has walked off the
+ *  left of the frame. `pacman.asm:1856 ld b,#21` (the #1806 band compare). */
+export const CUTSCENE_CORRIDOR_LEFT_COL = 0x21
+/** The mover's on-screen tile band, RIGHT edge (exclusive): a tile at/above this has
+ *  walked off the right of the frame. `pacman.asm:185c ld b,#3b`. */
+export const CUTSCENE_CORRIDOR_RIGHT_COL = 0x3b
+
 /** big-Pac is on screen from sub-state 5 onward — the `sub #05` gate at
  *  `pacman.asm:15e9` (`15e6` loads the sub-state byte `4e06`). */
 export const BIG_PAC_FIRST_SUBSTATE = 5
@@ -152,6 +171,14 @@ export const ACT3_WORM_COL_B = 0x1e
  *  animation phase the shell renders. `frightened` marks the blue frightened sprite. */
 export interface CutsceneActor {
   col: number
+  /** The actor's UNWRAPPED tile position — the ROM tile byte de-wrapped. `x` advances
+   *  by `step` on every mover-step in lock-step with `col`, but is NEVER folded mod
+   *  256: while `col` (the 8-bit #4d3a/#4d32 byte) wraps, `x` accumulates the true
+   *  traversal, so it is monotonic within a leg and reverses once with `step`. This is
+   *  the renderable SCREEN coordinate `col` could not provide — the shell maps it to a
+   *  screen pixel against the cited on-screen band (CUTSCENE_CORRIDOR_LEFT/RIGHT_COL),
+   *  and the actors traverse the frame (round-1 teleport / round-2 static both retired). */
+  x: number
   step: 1 | -1
   frame: number
   frightened: boolean
@@ -236,7 +263,8 @@ const ACT_SCRIPTS: Record<1 | 2 | 3, readonly SubstateSpec[]> = {
 }
 
 function actor(col: number): CutsceneActor {
-  return { col, step: 1, frame: 0, frightened: false, ripped: false, moved: 0 }
+  // `x` opens equal to the start tile (unwrapped == col until the first byte wrap).
+  return { col, x: col, step: 1, frame: 0, frightened: false, ripped: false, moved: 0 }
 }
 
 /** Build the act-1 opening tableau: Pac ahead of a chasing Blinky, both moving
@@ -378,6 +406,7 @@ export function stepCutscene(s: CutsceneState): void {
       for (const who of spec.moves) {
         const a = s[who]
         a.col = (a.col + a.step + 256) & 0xff
+        a.x += a.step // the UNWRAPPED traversal coordinate — advances with col, never folds mod 256
         a.moved += 1
       }
       if (spec.gate && s[spec.gate.actor].col === spec.gate.col) {

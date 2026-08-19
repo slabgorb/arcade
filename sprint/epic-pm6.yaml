@@ -134,10 +134,12 @@ stories:
     description: 'The eyes for pm6, mirroring the other games'' playtests. Confirm a cutscene plays between levels and obeys the accessibility ruling (no strobe). An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control. Uses the Playwright harness (claude-in-chrome not connected). NOTE: the level-256 kill-screen half of this playtest is dropped — pm6-4 was canceled (not reproducing authentic bugs), so there is no kill screen to screenshot.'
     points: 2
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
       - 'AC1: a screenshot at http://127.0.0.1:5270/pac-man/ (DIFFERING from a nonsense control path — the canonical-serve lesson) captures an intermission cutscene playing between levels (pm6-2/pm6-3); the actors/sprites read correctly against the ROM cutscene.'
       - 'AC2: any discrepancy (wrong actor, wrong cadence) is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.'
       - 'AC3: the epic is content-complete for Pac-Man — a note records that pm6 closes the last deferred authentic content it will ship (the intermissions), that the level-256 kill screen (pm6-4) is a permanent descope (not reproducing authentic bugs), and that any remaining work is reviewer-driven hardening.'
+    review_verdict: rejected

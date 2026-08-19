@@ -1,11 +1,7 @@
 # Story pm6-5 Context
 
-> ⚠ **DO NOT REGENERATE THIS FILE.** The Technical Approach, Scope, Dependencies and
-> Design Notes are Architect-enriched from the pm6 epic plan. `pf context create`
-> refills Technical Approach/Scope with placeholder text and would overwrite them.
-
 ## Title
-VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermission cutscene playing (pm6-2/pm6-3) between levels and the level-256 kill screen's corrupted right half (pm6-4), each DIFFERING from a nonsense control path (the canonical-serve lesson), with NO strobing anywhere (Decision B). Confirm the cutscenes read correctly against the ROM and the kill screen is static, not flashing.
+VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermission cutscene playing (pm6-2/pm6-3) between levels, DIFFERING from a nonsense control path (the canonical-serve lesson), with NO strobing anywhere (Decision B). Confirm the cutscenes read correctly against the ROM. (Kill-screen scope dropped — pm6-4 canceled 2026-08-19.)
 
 ## Metadata
 - **Story ID:** pm6-5
@@ -17,47 +13,20 @@ VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermissi
 - **Epic:** Pac-Man intermissions + kill screen (pm6): the three between-level coffee-break cutscenes (Blinky-chase, ripped-ghost, worm) and the authentic level-256 kill screen — deferred in the pm1/pm3 specs, never materialized after pm4 was retargeted to the cabinet lifecycle
 
 ## Problem
-The eyes for pm6, mirroring the other games' playtests. Confirm a cutscene plays between levels and the kill screen renders its authentic corruption — and that BOTH obey the accessibility ruling (no strobe). An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control. Uses the Playwright harness (claude-in-chrome not connected).
+The eyes for pm6, mirroring the other games' playtests. Confirm a cutscene plays between levels and obeys the accessibility ruling (no strobe). An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control. Uses the Playwright harness (claude-in-chrome not connected). NOTE: the level-256 kill-screen half of this playtest is dropped — pm6-4 was canceled (not reproducing authentic bugs), so there is no kill screen to screenshot.
 
 ## Technical Approach
-The eyes for pm6 — confirm both deliverables read correctly and obey the accessibility
-ruling.
-
-- **Drive via Playwright** (claude-in-chrome is not connected — the controller drives
-  Playwright MCP headless; the standing memory note). Serve with `just serve` and confirm
-  `/pac-man/` **DIFFERS** from a nonsense control (the canonical-serve lesson — an all-200
-  sweep proves nothing).
-- **Capture the cutscenes.** Screenshot an intermission playing between levels (pm6-2/pm6-3);
-  the actors/sprites read correctly against the ROM cutscene.
-- **Capture the kill screen.** Screenshot the level-256 corrupted right half (pm6-4) rendering
-  as a **static** garbled tilemap; confirm **no strobing/flashing** (Decision B).
-- **File discrepancies by file surface** (the jt9 habit), not merged by theme. Record that
-  pm6 closes the last deferred authentic Pac-Man content.
+_Approach hints to be refined by TEA/Dev. The story title above defines the
+intended behavior._
 
 ## Scope
-- **In scope:** the cutscene + kill-screen screenshots (DIFFER-from-control), the no-strobe
-  confirmation, filing discrepancies by file surface, the content-complete note.
-- **Out of scope:** any core/shell code change (pm6-1..pm6-4 own the code — this is the eyes
-  pass); fixing a discrepancy found (file it, don't fix here).
+- In scope: the behavior described by the story title.
+- Out of scope: unrelated changes.
 
 ## Acceptance Criteria
 - AC1: a screenshot at http://127.0.0.1:5270/pac-man/ (DIFFERING from a nonsense control path — the canonical-serve lesson) captures an intermission cutscene playing between levels (pm6-2/pm6-3); the actors/sprites read correctly against the ROM cutscene.
-- AC2: a screenshot captures the level-256 kill screen's corrupted right half (pm6-4) rendering as a STATIC garbled tilemap; a note confirms NO strobing/flashing appears (Decision B).
-- AC3: any discrepancy (wrong actor, wrong cadence, corruption reads wrong) is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.
-- AC4: the epic is content-complete for Pac-Man — a note records that pm6 closes the last deferred authentic content (intermissions + kill screen) and that any remaining work is reviewer-driven hardening.
-
-## Dependencies
-- **pm6-2 + pm6-3** — the cutscenes the playtest captures.
-- **pm6-4** — the kill screen the playtest captures.
-- **The Playwright harness** — claude-in-chrome not connected (standing memory note).
-- **Blocks:** nothing; pm6 is content-complete after this — remaining work is reviewer-driven
-  hardening.
-
-## Design Notes
-- **Decision B confirmation:** the playtest's job is partly to *prove* nothing strobes — the
-  kill screen is static, the cutscenes gentle.
-- Canonical-serve DIFFER-from-control + the 5270-pin gotcha bind; file discrepancies by file
-  surface (jt9).
+- AC2: any discrepancy (wrong actor, wrong cadence) is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.
+- AC3: the epic is content-complete for Pac-Man — a note records that pm6 closes the last deferred authentic content it will ship (the intermissions), that the level-256 kill screen (pm6-4) is a permanent descope (not reproducing authentic bugs), and that any remaining work is reviewer-driven hardening.
 
 ---
 _Generated by `pf context create story pm6-5` from the sprint YAML._

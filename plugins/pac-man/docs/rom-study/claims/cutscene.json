@@ -168,6 +168,30 @@
     }
   },
   {
+    "id": "CUTSCENE-CORRIDOR-LEFT-COL",
+    "symbol": "CUTSCENE_CORRIDOR_LEFT_COL",
+    "value": 33,
+    "meaning": "The shared sprite-mover #1806 draws an actor on-screen only while its tile byte is in the band [#21, #3b). #1852 loads the tile, #1856 `sub #21` (the #1856 `ld b,#21` immediate is the band LEFT edge) and `jr c,#1864` sends a tile below #21 to the off-screen-left handler. The value 33 is the #1856 immediate byte itself, so a drift in the #21 operand reddens. This is the tile→screen anchor pm6-5 maps the actor's unwrapped `x` onto (the render centres this band on the frame).",
+    "addr": "1856",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3515,
+      "verbatim": "1856  0621      ld      b,#21"
+    }
+  },
+  {
+    "id": "CUTSCENE-CORRIDOR-RIGHT-COL",
+    "symbol": "CUTSCENE_CORRIDOR_RIGHT_COL",
+    "value": 59,
+    "meaning": "The right (exclusive) edge of the mover's on-screen tile band: #185c `sub #3b` (the #185c `ld b,#3b` immediate) and `jr nc,#1864` send a tile at/above #3b to the off-screen-right handler, so #21 <= tile < #3b falls through to the on-screen path #18ab. The value 59 is the #185c immediate byte itself; a drift in the #3b operand reddens. Paired with the #1856 left edge, this bounds the 26-tile on-screen corridor the pm6-5 traverse is centred on.",
+    "addr": "185c",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3519,
+      "verbatim": "185c  063b      ld      b,#3b"
+    }
+  },
+  {
     "id": "CUTSCENE-ACT2-DRIVER",
     "symbol": "CUTSCENE_ACT2_DRIVER",
     "value": 8606,
