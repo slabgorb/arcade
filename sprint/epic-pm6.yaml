@@ -73,7 +73,8 @@ stories:
     description: 'Decision A: the intermission is a phase off the pm4 machine, not a forked path. This story adds the phase and the level-gated trigger that fires the pm2 #02 music after the cited levels, PURE-first — the scripted animations (pm6-2/pm6-3) layer on after. Reuses the pm2 sound voice; every cadence/level constant cited.'
     points: 3
     priority: p3
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -81,6 +82,7 @@ stories:
       - "AC2: the intermission requests the pm2 looping intermission music (#02) — CONSUMED, not re-implemented; the trigger is cited to the ROM (pacman.asm:1613 'ld a,#02', :1615-1616 'ld (#4ecc),a / ld (#4edc),a', :1616 'ld a,(#4e13)') and the pm2 dossier (claims/sound.json #02) with a citations.test.ts claim."
       - 'AC3: the level cadence constant(s) are RED-anchored to the ROM (pacman.asm:1616-1617 level-byte compare), cited, not invented (Decision C); no un-cited src/core constant; a mutation to the cadence reddens a value assertion.'
       - 'AC4: the phase + trigger are pure (no animation, no clock, no DOM); the intermission returns to ready/playing for the next level when it ends; a test pins the intermission -> next-level transition closes the loop.'
+    completed: '2026-08-19'
   - id: pm6-2
     title: "Cutscene player + ACT 1 (Blinky chase): a deterministic scripted-actor animation player in plugins/pac-man/src/core, and the first coffee-break cutscene — Blinky chases Pac across the screen, then a big Pac turns and chases a ripped Blinky back. Consumes pm3 baked sprites (CONSUMED, no new bake). RED-anchor the actor paths/timing against the quarry (Decision C). Runs during the pm6-1 intermission phase; gentle animation, NO strobe (Decision B)."
     description: 'The cutscene framework + the iconic act-1 scene. A pure, seeded, clock-free scripted-actor player drives sprite positions/frames over the intermission; act 1 is Blinky chasing Pac left-to-right, then big-Pac chasing Blinky right-to-left. The animation timing/paths are RED-anchored to the vendored source + dossier before the reducer is named (Decision C). Reuses pm3 sprites. Gentle motion, no strobe.'
