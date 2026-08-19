@@ -26,6 +26,8 @@ import { createLaserBank, type LaserBank, type Laser } from './laser.js'
 import { createEnemyBank, type EnemyBank, type Lander, type Humanoid } from './landers.js'
 import { createWaveDirector, type WaveDirector } from './waves.js'
 import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.js'
+import { createScore, addPoints, loseMan, ENEMY_POINTS, type ScoreState } from './score.js'
+import { isGameOver } from './endgame.js'
 import { laserVsObject, type CollObject } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
@@ -65,6 +67,13 @@ export interface Input {
   readonly up: boolean
   readonly down: boolean
   readonly fire: boolean
+  /** df5-7: the smart-bomb key (SBOMB, DEFA7.SRC:3175) — one tick clears the on-screen
+   *  attackers (see smartBombClear). The clear is ADR-0005 safe by CONSTRUCTION: it writes
+   *  no framebuffer, so the only on-screen change is the attackers vanishing — bounded and
+   *  non-strobing, never the ROM COM PCRAM whole-page invert. (The df4-2 `classify`/effect
+   *  policy is NOT on this runtime path today — see smartBombClear.) The shell (input.ts
+   *  mapInput) samples the key; a fresh/idle snapshot leaves it false. */
+  readonly smartBomb: boolean
 }
 
 /** The ship's observable on-screen pose: `x`/`y` are the display COLUMN/ROW (high bytes
@@ -97,6 +106,15 @@ export interface SimState {
   /** df5-8: the current wave number (GETWV). Refreshed each tick from the wave director;
    *  0 on a fresh sim, 1 after the first cleared-field tick spawns wave 1. */
   readonly wave: number
+  /** df5-7: the running score (df5-3 ScoreState.score), refreshed each tick like `wave` —
+   *  0 on a fresh sim, raised (addPoints) when the df4-1 COLIDE seam OR the df5-5 smart-bomb
+   *  clear kills an enemy. */
+  readonly score: number
+  /** df5-7: the men (lives) counter (df5-3 ScoreState.men) — STARTING_MEN (3) on a fresh
+   *  sim, decremented by killShip (loseMan), raised by the extra-man award (addPoints). */
+  readonly men: number
+  /** df5-7: game over once the men counter falls below zero (df5-6 isGameOver). false fresh. */
+  readonly gameOver: boolean
   /** PLAXV — the 24-bit horizontal velocity accumulator (ship.ts). */
   readonly _plaxv24: number
   /** REV facing + debounce latch (ship.ts). */
@@ -115,6 +133,9 @@ export interface SimState {
    *  counter. It is a df3 scheduler PROCESS (registered on `_sched` at construction), so
    *  the scheduler — not this handle — keeps it dispatching; the handle is read-only. */
   readonly _waveDirector: WaveDirector
+  /** df5-7: the df5-3 score/men state, carried by value across ticks (a pure reducer, not a
+   *  bank) — `score`/`men`/`gameOver` above are its public projection. */
+  readonly _score: ScoreState
 }
 
 /** The ship's initial pose: onscreen column $20 (the facing-right base, world.ts), mid-strip. */
@@ -156,6 +177,8 @@ export function createSim(rand: () => number): SimState {
   for (let i = 0; i < GROUND_HUMANOID_COUNT; i++) {
     enemyBank.spawnHumanoid(Math.floor((i / GROUND_HUMANOID_COUNT) * 0x10000), GROUND_HUMANOID_Y)
   }
+  // df5-7: a fresh df5-3 score/men state — score 0, men STARTING_MEN (3), not yet over.
+  const score = createScore()
   const facing: Facing = 'right'
   return {
     ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },
@@ -166,6 +189,9 @@ export function createSim(rand: () => number): SimState {
     humanoids: enemyBank.humanoids,
     effects: effectBank.effects,
     wave: waveDirector.wave,
+    score: score.score,
+    men: score.men,
+    gameOver: isGameOver(score),
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
@@ -175,7 +201,17 @@ export function createSim(rand: () => number): SimState {
     _enemyBank: enemyBank,
     _effectBank: effectBank,
     _waveDirector: waveDirector,
+    _score: score,
   }
+}
+
+/** Ship death (df5-3 loseMan): decrement the men counter and re-derive game-over (df5-6
+ *  isGameOver — men < 0). The public death seam the death wiring uses AND the visual
+ *  playtest drives deterministically (the df4-6 spawnExplosion precedent). Returns a new
+ *  SimState with `men`/`gameOver` refreshed. */
+export function killShip(state: SimState): SimState {
+  const _score = loseMan(state._score)
+  return { ...state, _score, score: _score.score, men: _score.men, gameOver: isGameOver(_score) }
 }
 
 /** Snapshot-refresh helper: a new SimState reflecting the current enemy/effect-bank views,
@@ -242,7 +278,12 @@ export function stepSim(state: SimState, input: Input): SimState {
   // hits the lander you SEE, not one a camera-width away. Advance the effects first, then spawn
   // this tick's explosions fresh.
   state._effectBank.step()
-  hitTestLasers(state, shipRow, camera.bgl)
+  // df5-7: a df4-1 laser kill (and a df5-5 smart-bomb clear) award df5-3 points. The wave
+  // director already ran this tick (sched.stepTick above, before the clear), so clearing the
+  // field does not respawn the next wave until the following tick.
+  const killPoints = hitTestLasers(state, shipRow, camera.bgl)
+  const bombPoints = input.smartBomb ? smartBombClear(state) : 0
+  const score = addPoints(state._score, killPoints + bombPoints)
 
   return {
     ship: { x: camera.plax16 >> 8, y: shipRow, facing: rev.facing },
@@ -253,6 +294,9 @@ export function stepSim(state: SimState, input: Input): SimState {
     humanoids: state._enemyBank.humanoids,
     effects: state._effectBank.effects,
     wave: state._waveDirector.wave,
+    score: score.score,
+    men: score.men,
+    gameOver: isGameOver(score),
     _plaxv24: plaxv24,
     _rev: rev,
     _vy: vy,
@@ -262,15 +306,39 @@ export function stepSim(state: SimState, input: Input): SimState {
     _enemyBank: state._enemyBank,
     _effectBank: state._effectBank,
     _waveDirector: state._waveDirector,
+    _score: score,
   }
+}
+
+/** df5-7 / df5-5 (SBOMB, DEFA7.SRC:3175): clear the on-screen attackers. Kills EVERY live
+ *  lander — the enemy bank's only inhabitant today; `killLander` removes each from the view
+ *  and, per LKIL1, drops any carried humanoid into a free-fall. Returns the points awarded so
+ *  stepSim folds them into the df5-3 score.
+ *
+ *  ADR-0005 safety holds by CONSTRUCTION, not by a rendered presentation: this writes no
+ *  framebuffer, so the only on-screen change is the attackers disappearing — spatially
+ *  bounded and non-strobing, never the ROM COM PCRAM whole-page invert. NOTE: neither
+ *  powers.ts `clearsType` (OTYP < 2) nor the df4-2 `classify('smart-bomb')` fade presentation
+ *  is invoked yet — when a non-lander attacker type is wired, gate the clear with `clearsType`;
+ *  when a richer on-screen presentation is wanted, route it through the effect policy so the
+ *  fade is real (and keep the assertNoFullFrameStrobe guard green). */
+function smartBombClear(state: SimState): number {
+  const live = state._enemyBank.landers.filter((l) => l.alive)
+  let points = 0
+  for (const lander of live) {
+    state._enemyBank.killLander(lander)
+    points += ENEMY_POINTS.lander
+  }
+  return points
 }
 
 /** Run the df4-1 laser-vs-lander COLIDE seam for one tick: every live laser is tested
  *  against the live landers; a box overlap kills that lander and spawns its explosion. The
- *  landers are captured up front so removing one mid-loop can't shift the list under us. */
-function hitTestLasers(state: SimState, shipRow: number, camera: number): void {
+ *  landers are captured up front so removing one mid-loop can't shift the list under us.
+ *  Returns the df5-3 points the kills earned (ENEMY_POINTS.lander each), for stepSim to score. */
+function hitTestLasers(state: SimState, shipRow: number, camera: number): number {
   const liveLanders = state._enemyBank.landers.filter((l) => l.alive)
-  if (liveLanders.length === 0) return
+  if (liveLanders.length === 0) return 0
 
   const landerBox = { width: LANDER_PICTURE.width * PIXELS_PER_BYTE, height: LANDER_PICTURE.height }
   // Index the objects so a Hit names WHICH lander to kill (COLIDE returns the struck object).
@@ -283,6 +351,7 @@ function hitTestLasers(state: SimState, shipRow: number, camera: number): void {
     picture: landerBox,
   }))
 
+  let points = 0
   for (const laser of state._laserBank.lasers) {
     if (!laser.alive) continue
     const query = { x: laser.x >> 8, y: shipRow, picture: LASER_BOX }
@@ -292,5 +361,7 @@ function hitTestLasers(state: SimState, shipRow: number, camera: number): void {
     if (!lander || !lander.alive) continue
     state._enemyBank.killLander(lander) // LKIL1 (DEFB6.SRC:905)
     state._effectBank.spawnExplode(lander.x, lander.y, LANDER_PICTURE) // EXST (SAMEXAP7)
+    points += ENEMY_POINTS.lander // df5-3: the lander's value (per-enemy points)
   }
+  return points
 }

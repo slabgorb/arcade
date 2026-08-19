@@ -24,7 +24,7 @@ import { YMIN, YMAX } from '../src/core/world.js'
 
 // NEUTRAL input: the ship does nothing, so the only movers are the wave director's landers
 // and the ground humanoids on the scheduler.
-const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
+const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false, smartBomb: false }
 
 /** Deterministic byte source (LCG) — the df3-6/df4-3/df5-8 shape; no ambient entropy. */
 function makeRand(seed: number): () => number {

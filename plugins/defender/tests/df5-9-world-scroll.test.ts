@@ -181,9 +181,9 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
   // supplies landers drawn across the beam). At camera 0 this test is vacuously satisfiable, so the
   // nonzero-camera assertion above it is load-bearing.
   it('you can shoot the enemy you SEE at a scrolled camera (COLIDE agrees with the camera-offset render)', () => {
-    const THRUST: Input = { thrust: true, reverse: false, up: false, down: false, fire: false }
-    const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
-    const FIRE: Input = { thrust: false, reverse: false, up: false, down: false, fire: true }
+    const THRUST: Input = { thrust: true, reverse: false, up: false, down: false, fire: false, smartBomb: false }
+    const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false, smartBomb: false }
+    const FIRE: Input = { thrust: false, reverse: false, up: false, down: false, fire: true, smartBomb: false }
     // Settle a stable, nonzero camera: thrust briefly, then coast until the ship-leads slide stops.
     let s = createSim(makeRand(7))
     for (let i = 0; i < 80; i++) s = stepSim(s, THRUST)
