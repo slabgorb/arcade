@@ -303,3 +303,8 @@ completed_stories:
     title: "Intermission PHASE + level-gated trigger (PURE-first): add an 'intermission' state to the pm4 GamePhase union (plugins/pac-man/src/core/game.ts:184) hung off the level-clear transition (events.ts:78 'level-cleared'), gated on the level byte per the ROM cadence, requesting the pm2 looping intermission music (#02). Cite the ROM trigger (pacman.asm:1613 'ld a,#02', :1616 'ld a,(#4e13)') + pm2 claims/sound.json #02. No animation yet — the phase + trigger only (the pm4/mc6 pure-first split). purity.test.ts green."
     points: 3
     completed: '2026-08-19'
+  - id: df7-2
+    epic: df7
+    title: "Setup->play start-of-game wiring: a start/coin action advances attract|game-over -> setup -> play, RESEEDING the sim (createSim with the df5-10 humanoid ground population, the df5-8 wave-1 WVTAB spawn, men=STARTING_MEN=3 per df5-3). Wire the df7-1 phase machine into plugins/defender/src/main.ts so the shell actually starts a game. Cite ST1 *ONE PLAYER START defender/DEFA7.SRC:1100 (credit check :1103). Consumes df7-1 + df3 sim.ts + df5-8/df5-10."
+    points: 3
+    completed: '2026-08-19'

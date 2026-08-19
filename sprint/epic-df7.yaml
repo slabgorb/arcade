@@ -98,7 +98,7 @@ stories:
     description: 'The mc6-2 analog: the start-of-game transition. A coin/start input advances the phase to setup then play and reseeds a fresh game — humanoids on the ground (df5-10), wave 1 spawned (df5-8), men=3 (df5-3 STARTING_MEN, NSHIP ROMC8.SRC:802). This is where main.ts stops booting straight into a bare sim and instead boots into attract and starts on input. Purity of the reseed logic preserved; the wiring is shell.'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
@@ -107,6 +107,7 @@ stories:
       - 'AC2: plugins/defender/src/main.ts boots into the df7-1 attract phase (not a bare running sim) and starts play only on the start/coin input; the ST1 credit/start path is cited (*ONE PLAYER START defender/DEFA7.SRC:1100, credit :1103) with claims/*.json under the df1-1 gate.'
       - 'AC3: the reseed is deterministic under a seed (df3 seeded RNG) — the same seed yields the same fresh game; purity.test.ts stays green (the reseed logic is pure; only the input binding is shell).'
       - 'AC4: no full-frame strobe on the setup->play transition (Decision B, ADR-0005) — the df4-2 render guard stays green; any transition flash is the safe freeze/fade.'
+    completed: '2026-08-19'
     review_findings: "APPROVED round 2. Round-1's two MEDIUM test-file findings (byte-wrong ROM citation comment; weak 'play' assertion) both verified fixed against source. Production code (start.ts/main.ts/input.ts) clean; 838/838 green, lint clean, purity + citation gates green."
     review_verdict: approved
   - id: df7-3
