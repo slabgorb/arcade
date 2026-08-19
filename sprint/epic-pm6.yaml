@@ -88,7 +88,8 @@ stories:
     description: 'The cutscene framework + the iconic act-1 scene. A pure, seeded, clock-free scripted-actor player drives sprite positions/frames over the intermission; act 1 is Blinky chasing Pac left-to-right, then big-Pac chasing Blinky right-to-left. The animation timing/paths are RED-anchored to the vendored source + dossier before the reducer is named (Decision C). Reuses pm3 sprites. Gentle motion, no strobe.'
     points: 5
     priority: p3
-    status: backlog
+    status: in_review
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -96,6 +97,8 @@ stories:
       - 'AC2: act 1 (Blinky-chase then big-Pac-chase) plays with the actor paths/timing RED-anchored to the vendored source (plugins/pac-man/reference/source/pacman.asm) + the dossier and cited (Decision C — not fabricated); the sprites are pm3 baked graphics (CONSUMED, no new bake).'
       - 'AC3: every cutscene constant (durations, positions, frame cadence) carries a citations.test.ts claim; no un-cited src/core value; a mutation to a path/timing constant reddens an animation assertion (not a coverage check).'
       - 'AC4: the cutscene is a gentle animation with NO >3 Hz large-area luminance strobe (Decision B, the standing Pac-Man accessibility ruling); it renders via pm3 palette/tiles.'
+    review_findings: "APPROVED after 3 rework rounds: all citation-anchor defects (H1-R2 168f, H1-R3 15e9) proven exhausted by mutation; H1-R4 (#2a fabrication) and M4 (freezeFrames doc) corrected in-place (commit 368ea4b7) once the rework loop hit max_attempts. Zero findings remain; pac-man 459/459, lint clean, citations 54/54."
+    review_verdict: approved
   - id: pm6-3
     title: "ACT 2 (ripped-ghost / 'nail') + ACT 3 (worm / tearing-ghost): the second and third coffee-break cutscenes, layered on the pm6-2 scripted-actor player. Act 2: Blinky snags on a nail and his sheet tears; act 3: the tattered ghost / worm scene. Consumes the pm6-2 player + pm3 sprites. RED-anchor paths/timing (Decision C); gentle animation, NO strobe (Decision B)."
     description: 'The remaining two scenes on the pm6-2 framework — same file surface (the cutscene player), distinct scripted animations. Act 2 is the ripped-sheet "nail" scene; act 3 is the worm/tearing scene. RED-anchored to the source + dossier; reuses pm3 sprites. Completes the three-cutscene set the specs deferred.'

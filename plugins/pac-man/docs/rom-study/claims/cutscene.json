@@ -1,0 +1,170 @@
+[
+  {
+    "id": "CUTSCENE-ACT1-DRIVER",
+    "symbol": "CUTSCENE_ACT1_DRIVER",
+    "value": 8456,
+    "meaning": "Act-1 coffee-break driver entry: dispatches on the cutscene sub-state byte #4e06 via the 7-word table at #210c (sub-states 0..6). The whole act-1 scene is this position-threshold machine, not a frame-counted animation.",
+    "addr": "2108",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4640,
+      "verbatim": "2108  3a064e    ld      a,(#4e06)"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S0-PAC-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S0_PAC_THRESHOLD",
+    "value": 33,
+    "meaning": "Sub-state 0 ends when Pac's tile byte #4d3a == #21 (Pac walks in from the start tile while Blinky is frozen). `sub #21` on the tile byte.",
+    "addr": "211d",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4651,
+      "verbatim": "211d  d621      sub     #21"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S1-PAC-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S1_PAC_THRESHOLD",
+    "value": 30,
+    "meaning": "Sub-state 1 (the chase, both actors moving) ends when Pac's tile byte #4d3a == #1e. `sub #1e`. NOTE: this bare comparison shows no wrap/reset; THIS PORT closes the 0x21->0x1e gap via the 8-bit counter wrap (keeping one forward step-sign), an inference of the port's, not a mechanism this cite demonstrates.",
+    "addr": "2143",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4669,
+      "verbatim": "2143  d61e      sub     #1e"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S2-BLINKY-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S2_BLINKY_THRESHOLD",
+    "value": 30,
+    "meaning": "Sub-state 2 (Blinky alone) ends when Blinky's tile byte #4d32 == #1e; on that edge the ROM frightens all ghosts (#1a70) and reverses the actors (#05ae, `4d3c = 4d30 ^ 2`). `sub #1e`.",
+    "addr": "214e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4673,
+      "verbatim": "214e  d61e      sub     #1e"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S4-BLINKY-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S4_BLINKY_THRESHOLD",
+    "value": 47,
+    "meaning": "Sub-state 4 (the frightened Blinky fleeing, reversed vector) ends when Blinky's tile byte #4d32 == #2f. `sub #2f`.",
+    "addr": "2173",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4689,
+      "verbatim": "2173  d62f      sub     #2f"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S5-BLINKY-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S5_BLINKY_THRESHOLD",
+    "value": 61,
+    "meaning": "Sub-state 5 (big-Pac chasing, both moving) ends when Blinky's tile byte #4d32 == #3d. `sub #3d`.",
+    "addr": "217e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4693,
+      "verbatim": "217e  d63d      sub     #3d"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-S6-PAC-THRESHOLD",
+    "symbol": "CUTSCENE_ACT1_S6_PAC_THRESHOLD",
+    "value": 61,
+    "meaning": "Sub-state 6 (big-Pac closing) ends \u2014 and the whole scene ends \u2014 when Pac's tile byte #4d3a == #3d. `sub #3d`.",
+    "addr": "218f",
+    "source": {
+      "file": "pacman.asm",
+      "line": 4699,
+      "verbatim": "218f  d63d      sub     #3d"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-PAC-START-TILE",
+    "symbol": "CUTSCENE_ACT1_PAC_START_TILE",
+    "value": 31,
+    "meaning": "Act-1 actor-layout routine #260f seeds Pac's tile pair #4d39/#4d3a with the word #1f32 -> the high (tile) byte #4d3a = #1f, Pac's cutscene start column.",
+    "addr": "266b",
+    "source": {
+      "file": "pacman.asm",
+      "line": 5312,
+      "verbatim": "266b  21321f    ld      hl,#1f32"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-BLINKY-START-TILE",
+    "symbol": "CUTSCENE_ACT1_BLINKY_START_TILE",
+    "value": 30,
+    "meaning": "Act-1 actor-layout routine #260f seeds the ghost tile pairs (#4d31/#4d33/#4d35/#4d37) with the word #1e32 -> the high (tile) byte = #1e, Blinky's cutscene start column, one tile behind Pac.",
+    "addr": "261e",
+    "source": {
+      "file": "pacman.asm",
+      "line": 5285,
+      "verbatim": "261e  21321e    ld      hl,#1e32"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-BIGPAC-GATE",
+    "symbol": "CUTSCENE_ACT1_BIGPAC_GATE",
+    "value": 5,
+    "meaning": "big-Pac sprite routine #15e6 reads the cutscene sub-state #4e06 (#15e6 `ld a,(#4e06)`) and gates on `sub #05; ret c` (#15e9/#15eb): the value 5 is the #15e9 immediate byte itself, so the big-Pac (four 16x16 sprites, colour #16) is drawn ONLY when the sub-state >= 5 \u2014 i.e. from the return leg onward. Cited to the compare instruction #15e9, not the load #15e6, so a drift in the #05 operand reddens (the H1-R2/168f discipline).",
+    "addr": "15e9",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3190,
+      "verbatim": "15e9  d605      sub     #05"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-PAC-MOUTH-CADENCE",
+    "symbol": "CUTSCENE_ACT1_PAC_MOUTH_CADENCE",
+    "value": 8,
+    "meaning": "Pac's normal mouth animation reads the sprite pixel low byte #4d09 (#168c) and masks `and #07` (#168f): 4 mouth images across an 8-pixel cycle (a new image every 2px, thresholds 2/4/6 at #1691..#16a7). The 8-length is the mask #07 + 1 — cited to the mask instruction itself (#168f), the same anchor as the sibling big-Pac #15ef `and #0f` claim.",
+    "addr": "168f",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3280,
+      "verbatim": "168f  e607      and     #07"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-BIGPAC-MOUTH-CADENCE",
+    "symbol": "CUTSCENE_ACT1_BIGPAC_MOUTH_CADENCE",
+    "value": 16,
+    "meaning": "big-Pac's mouth reads the same sprite pixel low byte #4d09 (#15ec) and masks `and #0f` (#15ef): the SAME 4 images across a 16-value cycle (thresholds 4/8/c at #15f1..#1601) — half the cadence rate of Pac's `and #07` 8-cycle. The 16-length is the mask #0f + 1.",
+    "addr": "15ef",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3194,
+      "verbatim": "15ef  e60f      and     #0f"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-GHOST-WIGGLE-PERIOD",
+    "symbol": "CUTSCENE_ACT1_GHOST_WIGGLE_PERIOD",
+    "value": 8,
+    "meaning": "The ghost leg-wiggle counter #4dc4 is incremented each frame (#0e26), compared to 8 (#0e27 `ld a,#08`, #0e29 `cp (hl)`) and reset to 0 on match (#0e2b `ld (hl),#00`) — an 8-frame toggle period. The value 8 is the #0e27 immediate byte.",
+    "addr": "0e27",
+    "source": {
+      "file": "pacman.asm",
+      "line": 2042,
+      "verbatim": "0e27  3e08      ld      a,#08"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-BLINKY-FRIGHTENED",
+    "symbol": "CUTSCENE_ACT1_BLINKY_FRIGHTENED",
+    "value": 28,
+    "meaning": "The return-leg Blinky is the BLUE FRIGHTENED sprite: the frighten-all routine #1a70 sets the ghost sprite image to #1c (`ld (ix+#02),#1c`) with colour #11. This is act 1's chased-back ghost \u2014 NOT the ripped sheet (#32/#33, #162d, act 2).",
+    "addr": "1aa1",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3772,
+      "verbatim": "1aa1  dd36021c  ld      (ix+#02),#1c"
+    }
+  }
+]
