@@ -105,11 +105,13 @@ describe('df5-6 AC4 — a Design note records what is deferred to df7 (Decisions
       'src/core/endgame.ts must exist and carry the (narrowed) Decision C note (AC4)',
     ).toBe(true)
     const src = readFileSync(ENDGAME_SRC, 'utf8')
-    // Anchor to the Decision-C paragraph itself (Decision C … up to Decision D), so a stray
-    // "HUD"/"df5-7"/"df7" token elsewhere in the file cannot satisfy the guard (lang-review #15/#25).
-    const cStart = src.indexOf('Decision C')
+    // Anchor to the Decision-C paragraph's own UNIQUE declaration ("Decision C (NARROWED …"),
+    // NOT the bare "Decision C" substring — which also appears in the intro (endgame.ts:2) and
+    // in the "DEFERRED TO df7 (Decision C & D …)" divider (endgame.ts:12), whose stray "df7"
+    // would otherwise satisfy the /df7/ check regardless of the paragraph body (lang-review #15/#25).
+    const cStart = src.indexOf('Decision C (NARROWED')
     const cEnd = src.indexOf('Decision D')
-    expect(cStart, 'the note must contain a Decision C paragraph').toBeGreaterThanOrEqual(0)
+    expect(cStart, 'the note must contain the narrowed Decision C paragraph ("Decision C (NARROWED …")').toBeGreaterThanOrEqual(0)
     expect(cEnd, 'the note must contain a Decision D paragraph after Decision C').toBeGreaterThan(cStart)
     const decisionC = src.slice(cStart, cEnd)
     expect(decisionC, 'within Decision C, df7 must be named as owner of the deferred phase-machine wiring').toMatch(
