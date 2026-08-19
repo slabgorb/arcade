@@ -315,10 +315,13 @@ export function createCutsceneForLevel(level: number, seed: number): CutsceneSta
   }
 }
 
-/** Advance out of the current sub-state's gate. Fires the sub-state-2 boundary
- *  effects (frighten Blinky, reverse both actors — `pacman.asm:1a70` + `05ae`),
- *  arms big-Pac from sub-state 5 (the `sub #05` gate, `pacman.asm:15e9`), and ends the scene when the
- *  final sub-state 6 gate is reached (Pac at 0x3d, `pacman.asm:218f`). */
+/** Advance out of the current sub-state's gate into the next, applying that
+ *  sub-state's ON-ENTER effects (frighten / reverse / bigPac / rip) as declared in
+ *  its `SubstateSpec`, and marking the scene `done` once the act's final gate
+ *  (`ACT_SCRIPTS[s.act].length - 1`) is reached — sub-state 6 for act 1, 1 for act
+ *  2, 2 for act 3. Act-specific ROM citations (the frighten+reverse `1a70`/`05ae`,
+ *  the big-Pac `15e9`, the act-1 end `218f`, the act-2 snag `21e4`, the act-3 gates
+ *  `22aa`/`22e0`/`22f8`) live on each act's script/threshold comment, not here. */
 function advance(s: CutsceneState): void {
   const script = ACT_SCRIPTS[s.act]
   if (s.substate >= script.length - 1) {

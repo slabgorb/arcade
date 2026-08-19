@@ -219,6 +219,38 @@ describe('pm6-3 AC2: the arcs play the ROM sub-state machines (positions cited)'
     expect(tileDelta(rippedAtCol as number, ACT2_PAC_SNAG_COL)).toBeLessThanOrEqual(CUTSCENE_STEPS_PER_FRAME)
   })
 
+  it('act 3 fires each transition AT its cited gate column (drift-green guard: script wiring must match the constant)', () => {
+    // The act-2 "rips at col" test above wires ACT2_PAC_SNAG_COL to observed
+    // behaviour; act 3 needs the same, else its three thresholds are only
+    // value-pinned and ACT3_SCRIPT could be wired to unrelated columns with the
+    // suite still green (the AC3 drift-green gap). Observe the actual column at each
+    // sub-state transition and assert it equals the CITED constant — so hard-coding
+    // a wrong column into ACT3_SCRIPT (while leaving the exported constant) reddens.
+    const state = createAct3Cutscene(1)
+    let frames = 0
+    let pacColAt01: number | null = null
+    let wormColAt12: number | null = null
+    while (!state.done && frames < MAX_FRAMES) {
+      const prev = state.substate
+      stepCutscene(state)
+      if (prev === 0 && state.substate === 1) pacColAt01 = state.pac.col
+      if (prev === 1 && state.substate === 2) wormColAt12 = state.blinky.col
+      frames++
+    }
+    expect(pacColAt01, 'sub-state 0→1 fires when Pac reaches the cited run-in column 0x25').not.toBeNull()
+    expect(tileDelta(pacColAt01 as number, ACT3_PAC_COL), 's0→s1 is at ACT3_PAC_COL').toBeLessThanOrEqual(
+      CUTSCENE_STEPS_PER_FRAME,
+    )
+    expect(wormColAt12, 'sub-state 1→2 fires when the worm reaches the cited column 0x2d').not.toBeNull()
+    expect(tileDelta(wormColAt12 as number, ACT3_WORM_COL_A), 's1→s2 is at ACT3_WORM_COL_A').toBeLessThanOrEqual(
+      CUTSCENE_STEPS_PER_FRAME,
+    )
+    expect(state.done, 'the scene terminates').toBe(true)
+    expect(tileDelta(state.blinky.col, ACT3_WORM_COL_B), 'the worm ends at the cited column 0x1e').toBeLessThanOrEqual(
+      CUTSCENE_STEPS_PER_FRAME,
+    )
+  })
+
   it('act 2 is the ripped scene, NOT the blue-frightened one (that is act 1 — the ROM refutes the title conflation)', () => {
     // pm6-2 recorded the ROM correction: act 1's chased-back ghost is the BLUE
     // frightened sprite (#1c, #1aa1); the RIPPED sheet (#32/#33, #162d, gated on the
@@ -231,10 +263,14 @@ describe('pm6-3 AC2: the arcs play the ROM sub-state machines (positions cited)'
     expect(act1.every((f) => !f.blinkyRipped), 'act 1 never rips — it frightens (blue #1c)').toBe(true)
   })
 
-  it('the ripped-ghost and worm sprites are CONSUMED from pm3’s baked atlas — pm6-3 bakes nothing new', () => {
-    // The torn sheet is sprite tiles #32 then #33 (pacman.asm:1642/#164d); pm3 baked
-    // all 64 sprites into SPRITES. "CONSUMED, no new bake" (AC2) means those indices
-    // already exist and decode — pm6-3 references them, it does not add sprite data.
+  it('PRECONDITION: the ripped/worm sprite tiles a later shell story (pm6-5) will draw already exist in pm3’s atlas', () => {
+    // NOT a behavioural test of pm6-3 (nothing in this story's diff reads SPRITES or
+    // wires blinky.ripped to a sprite — the cutscene RENDER is pm6-5's scope; core
+    // only carries the `ripped` flag). This is a narrow non-regression guard that
+    // AC2's "CONSUMED, no new bake" holds: the torn sheet is sprite tiles #32 then #33
+    // (pacman.asm:1642/#164d), and pm3 baked all 64 sprites into SPRITES, so those
+    // indices already exist and decode — pm6-3 (and pm6-5) reference them, adding no
+    // sprite data. Reddens if pm3's atlas ever loses those tiles.
     expect(SPRITES.length, 'pm3 baked the full 64-sprite ROM').toBeGreaterThanOrEqual(0x34)
     for (const idx of [0x32, 0x33]) {
       expect(SPRITES[idx], `ripped-sheet sprite #${idx.toString(16)} is a baked pm3 tile`).toBeInstanceOf(Uint8Array)
