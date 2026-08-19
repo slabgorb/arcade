@@ -296,7 +296,7 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
       '266b', // Pac start col 0x1f
       '261e', // Blinky start col 0x1e
       '15e6', // big-Pac gate (4e06 >= 5)
-      '168c', // Pac mouth cadence (8-cycle, and #07)
+      '168f', // Pac mouth cadence (8-cycle, and #07)
       '15ef', // big-Pac mouth cadence (16-cycle, and #0f)
       '0e27', // ghost leg wiggle period (cmp 8)
       '1aa1', // return-Blinky = blue frightened (#1c)
@@ -439,5 +439,32 @@ describe('pm6-2 integration: the act-1 cutscene plays inside the intermission ph
       if (state.level > 3 && state.phase === 'ready') break
       frames++
     }
+  })
+
+  it('a coffee-break round with no scripted cutscene (act 2/3, pm6-3) HOLDS on the frame-count fallback, then advances', () => {
+    // Only round 2 (INTERMISSION_LEVELS[0]) plays act 1; the other coffee-break
+    // rounds (5/9/13/17 — act 2/3, pm6-3) enter intermission with cutscene=null and
+    // end on the INTERMISSION_HOLD_FRAMES frame-count fallback. Drive the
+    // intermission handler DIRECTLY (the playing→level-clear→intermission path is
+    // covered by the round-2 test above): forcing the phase keeps this focused on
+    // the fallback arm and off the pre-existing level-5+ Elroy2 speed defect that
+    // full gameplay would trip (speedPattern rejects the ROM's 105% Cruise-Elroy-2 —
+    // see Delivery Findings, out of pm6-2 scope). Mutating the fallback to a bare
+    // `true` (expire after one frame) makes the hold vanish, so `heldPastFirstFrame`
+    // never latches and this reddens. Decoupled from the exact 300 (honest-uncited).
+    const state = createGameState(3)
+    forcePhase(state, 'intermission')
+    state.cutscene = null
+    state.freezeFrames = 0
+    let frames = 0
+    let heldPastFirstFrame = false
+    while (state.phase === 'intermission' && frames < DOT_COUNT_CAP) {
+      stepGame(state, { dir: 'none' })
+      if (state.phase === 'intermission' && state.freezeFrames > 1) heldPastFirstFrame = true
+      frames++
+    }
+    expect(state.cutscene, 'a no-cutscene coffee break never spawns one').toBeNull()
+    expect(heldPastFirstFrame, 'the no-cutscene intermission held on the frame-count fallback').toBe(true)
+    expect(state.phase, 'and the machine settles back into the next round').toBe('ready')
   })
 })

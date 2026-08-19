@@ -125,9 +125,11 @@ export const LEVEL_CLEAR_HOLD_FRAMES = 120
 /** pm6-1: how long the between-rounds coffee-break INTERMISSION holds before the
  *  next round's READY, in frames. Since pm6-2, act-1 coffee breaks end on the
  *  cutscene's COMPLETION (a position, pacman.asm:218f) and BYPASS this constant;
- *  it survives as the FALLBACK for coffee-break rounds with no scripted cutscene
- *  yet (act 2/3, pm6-3) and as the belt-and-braces timeout floor. Static hold, NO
- *  flash — Decision B, the same freeze-not-strobe rule as LEVEL_CLEAR_HOLD_FRAMES.
+ *  it survives ONLY as the outright hold for coffee-break rounds with no scripted
+ *  cutscene yet (act 2/3, pm6-3) — the either/or in the `intermission` handler
+ *  never consults it while a cutscene runs, so it is NOT a backup floor alongside
+ *  one. Static hold, NO flash — Decision B, the same freeze-not-strobe rule as
+ *  LEVEL_CLEAR_HOLD_FRAMES.
  *  Honest-uncited cadence, same policy as LEVEL_CLEAR_HOLD_FRAMES. ~5s @ 60Hz. */
 export const INTERMISSION_HOLD_FRAMES = 300
 

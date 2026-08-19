@@ -123,12 +123,12 @@
     "id": "CUTSCENE-ACT1-PAC-MOUTH-CADENCE",
     "symbol": "CUTSCENE_ACT1_PAC_MOUTH_CADENCE",
     "value": 8,
-    "meaning": "Pac's normal mouth animation reads the sprite pixel low byte #4d09 and masks `and #07` (#168f): 4 mouth images across an 8-pixel cycle (a new image every 2px, thresholds 2/4/6 at #1691..#16a7).",
-    "addr": "168c",
+    "meaning": "Pac's normal mouth animation reads the sprite pixel low byte #4d09 (#168c) and masks `and #07` (#168f): 4 mouth images across an 8-pixel cycle (a new image every 2px, thresholds 2/4/6 at #1691..#16a7). The 8-length is the mask #07 + 1 — cited to the mask instruction itself (#168f), the same anchor as the sibling big-Pac #15ef `and #0f` claim.",
+    "addr": "168f",
     "source": {
       "file": "pacman.asm",
-      "line": 3279,
-      "verbatim": "168c  3a094d    ld      a,(#4d09)"
+      "line": 3280,
+      "verbatim": "168f  e607      and     #07"
     }
   },
   {

@@ -27,7 +27,7 @@
 //     Pac start tile 0x1f             pacman.asm:266b  `ld hl,#1f32`
 //     Blinky start tile 0x1e          pacman.asm:261e  `ld hl,#1e32`
 //     2x mover (steps/frame)          pacman.asm:2186  `call #1806` (x2 — a count)
-//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` / reversal 05a5 `4d3c = 4d30 ^ 2`
+//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` / reversal 05ae `4d3c = 4d30 ^ 2` (port's ±1 sign — honest-uncited, no byte-claim)
 //     frighten (return Blinky = blue) pacman.asm:1a70 / :1aa1 `ld (ix+#02),#1c`
 //     big-Pac from sub-state >= 5     pacman.asm:15e6  `ld a,(#4e06)` / `sub #05`
 //     Pac mouth cadence (8px cycle)   pacman.asm:168f  `and #07`  (4-image cycle)
@@ -49,9 +49,12 @@
 //     of the 2x cite); the per-step distance is NOT a ROM constant.
 //   • SCREEN DIRECTION. The ROM works in a rotated frame and this repo declines
 //     to invent the rotated→screen transform (glossary.md). So an actor carries a
-//     movement-vector SIGN `step` (+1 fwd / -1 reversed — cited), never an
-//     invented screen 'left'/'right'. The "across then back" arc IS the +1 -> -1
-//     reversal the ROM performs at the sub-state-2 boundary.
+//     movement-vector SIGN `step` (+1 fwd / -1 reversed), never an invented screen
+//     'left'/'right'. The "across then back" arc IS the +1 -> -1 reversal the ROM
+//     performs at the sub-state-2 boundary (the direction-flip at `pacman.asm:05ae`
+//     `4d3c = 4d30 ^ 2`). Like the structural counts, the ±1 SIGN is this port's
+//     representation of that flip — traced to the ROM, but NOT carried by its own
+//     byte-claim (no `3303`/`05ae` entry in claims/cutscene.json); honest-uncited.
 //   • STRUCTURAL COUNTS. CUTSCENE_STEPS_PER_FRAME (2) is the NUMBER of `call #1806`
 //     the driver makes per frame, and ACT1_SUBSTATE_COUNT (7) is the LENGTH of the
 //     dispatch table at `210c` — both are structure, not byte literals, so neither
@@ -117,8 +120,10 @@ const MOUTH_IMAGE_COUNT = 4
 const FREEZE_BEAT_FRAMES = 30
 
 /** One cutscene actor. `col` is the ROM tile byte (`4d3a`/`4d32`), 0..255, wrapping.
- *  `step` is the cited movement-vector sign (+1 forward / -1 after the sub-state-2
- *  reversal) — NOT a screen direction (see the header). `frame` is the sprite
+ *  `step` is the movement-vector sign (+1 forward / -1 after the sub-state-2
+ *  reversal) — NOT a screen direction, and honest-uncited: it is this port's
+ *  representation of the ROM's direction-flip, not a byte-claimed value (see the
+ *  header's SCREEN DIRECTION note). `frame` is the sprite
  *  animation phase the shell renders. `frightened` marks the blue frightened sprite. */
 export interface CutsceneActor {
   col: number
