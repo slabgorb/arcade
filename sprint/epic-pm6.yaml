@@ -118,10 +118,10 @@ stories:
     completed: '2026-08-19'
   - id: pm6-4
     title: "The level-256 kill screen: the authentic right-half tile/glyph CORRUPTION when the internal level counter rolls past a byte. Model it pure in core (the level byte, pacman.asm:6075 'ld a,(#4e13)'; behaviour docs/rom-study/glossary.md:392) and render the garbled right half. Retire the level.ts:63/:140 'out of scope' stubs. ACCESSIBILITY: render the corruption STATIC/faithful, NOT strobing (Decision B — accessibility outranks ROM fidelity)."
-    description: "The famous split-screen kill screen: at level 256 the level counter rolls and the right half of the maze renders as corrupted glyphs (the game becomes unplayable — the authentic bug). Model the roll + the corrupted-tile region purely, render it via pm3 tiles, and retire the two level.ts stubs that flag it out-of-scope (plugins/pac-man/src/core/level.ts:63, :140). Decision B: the corruption is a STATIC garbled tilemap, never a strobe."
+    description: "CANCELED 2026-08-19 (user directive): not reproducing authentic bugs — the level-256 kill-screen corruption is a faithful reproduction of the original's crash, and we're deliberately not building it. The level.ts:63/:140 'out of scope' stubs stand. ORIGINAL: The famous split-screen kill screen: at level 256 the level counter rolls and the right half of the maze renders as corrupted glyphs (the game becomes unplayable — the authentic bug). Model the roll + the corrupted-tile region purely, render it via pm3 tiles, and retire the two level.ts stubs that flag it out-of-scope (plugins/pac-man/src/core/level.ts:63, :140). Decision B: the corruption is a STATIC garbled tilemap, never a strobe."
     points: 3
     priority: p3
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -130,8 +130,8 @@ stories:
       - 'AC3: ACCESSIBILITY (Decision B, the standing Pac-Man ruling): the kill screen has NO >3 Hz large-area luminance strobe — it is static; if the authentic behaviour would flicker, the safe static variant renders and the substitution is logged as a Design Deviation citing the accessibility ruling.'
       - 'AC4: the plugins/pac-man/src/core/level.ts:63 and :140 "out of scope, epic pm1''s DEFERRED list" stubs are retired (the deferral is now implemented); no un-cited src/core value remains.'
   - id: pm6-5
-    title: "VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermission cutscene playing (pm6-2/pm6-3) between levels and the level-256 kill screen's corrupted right half (pm6-4), each DIFFERING from a nonsense control path (the canonical-serve lesson), with NO strobing anywhere (Decision B). Confirm the cutscenes read correctly against the ROM and the kill screen is static, not flashing."
-    description: 'The eyes for pm6, mirroring the other games'' playtests. Confirm a cutscene plays between levels and the kill screen renders its authentic corruption — and that BOTH obey the accessibility ruling (no strobe). An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control. Uses the Playwright harness (claude-in-chrome not connected).'
+    title: "VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermission cutscene playing (pm6-2/pm6-3) between levels, DIFFERING from a nonsense control path (the canonical-serve lesson), with NO strobing anywhere (Decision B). Confirm the cutscenes read correctly against the ROM. (Kill-screen scope dropped — pm6-4 canceled 2026-08-19.)"
+    description: 'The eyes for pm6, mirroring the other games'' playtests. Confirm a cutscene plays between levels and obeys the accessibility ruling (no strobe). An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control. Uses the Playwright harness (claude-in-chrome not connected). NOTE: the level-256 kill-screen half of this playtest is dropped — pm6-4 was canceled (not reproducing authentic bugs), so there is no kill screen to screenshot.'
     points: 2
     priority: p3
     status: backlog
@@ -139,6 +139,5 @@ stories:
     workflow: tdd
     acceptance_criteria:
       - 'AC1: a screenshot at http://127.0.0.1:5270/pac-man/ (DIFFERING from a nonsense control path — the canonical-serve lesson) captures an intermission cutscene playing between levels (pm6-2/pm6-3); the actors/sprites read correctly against the ROM cutscene.'
-      - 'AC2: a screenshot captures the level-256 kill screen''s corrupted right half (pm6-4) rendering as a STATIC garbled tilemap; a note confirms NO strobing/flashing appears (Decision B).'
-      - 'AC3: any discrepancy (wrong actor, wrong cadence, corruption reads wrong) is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.'
-      - 'AC4: the epic is content-complete for Pac-Man — a note records that pm6 closes the last deferred authentic content (intermissions + kill screen) and that any remaining work is reviewer-driven hardening.'
+      - 'AC2: any discrepancy (wrong actor, wrong cadence) is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.'
+      - 'AC3: the epic is content-complete for Pac-Man — a note records that pm6 closes the last deferred authentic content it will ship (the intermissions), that the level-256 kill screen (pm6-4) is a permanent descope (not reproducing authentic bugs), and that any remaining work is reviewer-driven hardening.'
