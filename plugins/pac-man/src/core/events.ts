@@ -79,6 +79,15 @@ export interface LevelClearedEvent {
   readonly level: number
 }
 
+/** pm6-1 — a between-rounds coffee-break intermission just started; the shell
+ *  audio plays the requested looping music. `music` is the pm2 sound number
+ *  (`INTERMISSION_MUSIC` = #02, the looping intermission music the ROM requests
+ *  at `pacman.asm:1613` `ld a,#02`). CONSUMED, not re-implemented. */
+export interface IntermissionStartedEvent {
+  readonly type: 'intermission-started'
+  readonly music: number
+}
+
 /** Lives reached 0. Terminal for this round. */
 export interface GameOverEvent {
   readonly type: 'game-over'
@@ -94,4 +103,5 @@ export type GameEvent =
   | PacDiedEvent
   | ExtraLifeEvent
   | LevelClearedEvent
+  | IntermissionStartedEvent
   | GameOverEvent

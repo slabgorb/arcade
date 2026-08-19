@@ -67,6 +67,7 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
+import { isIntermissionLevel, INTERMISSION_MUSIC } from './intermission'
 import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
@@ -119,6 +120,15 @@ export const DYING_HOLD_FRAMES = 120
  *  maze loads. Honest-uncited cadence, same policy/reason as DYING_HOLD_FRAMES.
  *  ~2s @ 60Hz. */
 export const LEVEL_CLEAR_HOLD_FRAMES = 120
+
+/** pm6-1: how long the between-rounds coffee-break INTERMISSION holds before the
+ *  next round's READY, in frames. A placeholder window here — pm6-1 is the PHASE +
+ *  trigger only, so the break is a static hold (accessibility: NO flash — Decision
+ *  B, the same freeze-not-strobe rule as LEVEL_CLEAR_HOLD_FRAMES); pm6-2/pm6-3 lay
+ *  the scripted actor animations over this window and pin the real, RED-anchored
+ *  duration. Honest-uncited cadence, same policy as LEVEL_CLEAR_HOLD_FRAMES. ~5s @
+ *  60Hz. */
+export const INTERMISSION_HOLD_FRAMES = 300
 
 /** pm4-10: how long GAME OVER holds on screen before the cabinet times out back
  *  to attract, in frames — closing the MAINLINE loop (attract -> ready -> play ->
@@ -181,7 +191,14 @@ export type PacHighScoreTable = HighScoreTable<typeof HIGH_SCORE_DOMAIN>
 // flipped the start and wired the start-input reseed; pm4-8 made attract self-play;
 // pm4-9 paints the attract screen), and pm4-7 wired the `dying`/`level-clear`
 // freeze. pm4-5 widened the type and provided the machine.
-export type GamePhase = 'attract' | 'ready' | 'playing' | 'dying' | 'level-clear' | 'game-over'
+export type GamePhase =
+  | 'attract'
+  | 'ready'
+  | 'playing'
+  | 'dying'
+  | 'level-clear'
+  | 'intermission'
+  | 'game-over'
 
 export interface FruitState {
   readonly fruit: LevelFruit
@@ -239,11 +256,12 @@ export interface GameState {
    *  and releases the sim once it reaches `READY_HOLD_FRAMES`. Meaningless (and
    *  untouched) outside `ready`. */
   readyFrames: number
-  /** pm4-7: frames elapsed in the current freeze pause (`dying` or `level-clear`,
-   *  never both — they are mutually exclusive phases). Reset to 0 on entry to
-   *  either; counts up while frozen and releases (respawn / advanceLevel, then
-   *  `ready`) once it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES.
-   *  Meaningless (and untouched) outside those two phases. */
+  /** pm4-7/pm6-1: frames elapsed in the current freeze pause (`dying`,
+   *  `level-clear` or `intermission` — never more than one at a time, they are
+   *  mutually exclusive phases). Reset to 0 on entry to each; counts up while
+   *  frozen and releases (respawn / advanceLevel / next-round, then `ready`) once
+   *  it reaches DYING_HOLD_FRAMES / LEVEL_CLEAR_HOLD_FRAMES / INTERMISSION_HOLD_FRAMES.
+   *  Meaningless (and untouched) outside those phases. */
   freezeFrames: number
   /** pm4-10: frames elapsed in the current GAME OVER hold. Reset to 0 on entry to
    *  `game-over`; counts up ONLY while the name-entry screen is null or confirmed
@@ -587,10 +605,39 @@ export function stepGame(state: GameState, input: GameInput): void {
     // LEVEL_CLEAR_HOLD_FRAMES — the accessibility-critical "freeze, NO flash"
     // (pm4-1 deleted the full-screen strobe; this must not bring it back) — then
     // run the DEFERRED advanceLevel and hand off to READY on the next level.
+    //
+    // pm6-1 (Decision A): a coffee-break round diverts to `intermission` instead
+    // of straight to `ready`. `intermissionDue` reads the COMPLETED round —
+    // `state.level` is still the cleared level here (advanceLevel is deferred),
+    // so it must be sampled BEFORE the advance below (else a round-2 clear would
+    // check round 3). On the divert we advance the board now (the next round
+    // loads behind the break) and request the pm2 looping intermission music
+    // (#02, CONSUMED — the shell audio plays it off the event).
     state.freezeFrames += 1
-    state.phase = advancePhase('level-clear', { clearExpired: state.freezeFrames >= LEVEL_CLEAR_HOLD_FRAMES })
-    if (state.phase === 'ready') {
+    const clearExpired = state.freezeFrames >= LEVEL_CLEAR_HOLD_FRAMES
+    const intermissionDue = isIntermissionLevel(state.level)
+    state.phase = advancePhase('level-clear', { clearExpired, intermissionDue })
+    if (state.phase === 'intermission') {
       advanceLevel(state)
+      state.freezeFrames = 0
+      state.events.push({ type: 'intermission-started', music: INTERMISSION_MUSIC })
+    } else if (state.phase === 'ready') {
+      advanceLevel(state)
+      state.readyFrames = 0
+    }
+    return
+  }
+  if (state.phase === 'intermission') {
+    // pm6-1: the between-rounds coffee break. A STATIC hold (Decision B — freeze,
+    // NO flash, exactly like level-clear) for INTERMISSION_HOLD_FRAMES; the next
+    // round's board is already loaded (advanceLevel ran on entry), so on expiry
+    // the machine simply hands off to that round's READY. pm6-2/pm6-3 lay the
+    // scripted actor animations over this window.
+    state.freezeFrames += 1
+    state.phase = advancePhase('intermission', {
+      intermissionExpired: state.freezeFrames >= INTERMISSION_HOLD_FRAMES,
+    })
+    if (state.phase === 'ready') {
       state.readyFrames = 0
     }
     return

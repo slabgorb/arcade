@@ -1300,6 +1300,18 @@
     }
   },
   {
+    "id": "SND-INTERMISSION-TRIGGER",
+    "symbol": "SND_INTERMISSION_TRIGGER",
+    "value": "#02",
+    "meaning": "Intermission (coffee-break) trigger: the ROM writes sound number #02 into the voice-1/voice-2 note-stream request bytes #4ecc/#4edc (`0a33 ld a,#02` -> `0a35 ld (#4ecc),a` / `0a38 ld (#4edc),a`) and reads the level byte #4e13 (`0a3b ld a,(#4e13)`) to select the scene. Request bit1 selects note-stream 1 of each voice-def table = the LOOPING intermission music (see SND-V1-DEF-TABLE / SND-V2-DEF-TABLE word1, streams #3bf3/#3c95, whose loop opcode #f0 makes them repeat). Consumed by pm6-1 as INTERMISSION_MUSIC.",
+    "addr": "0a33",
+    "source": {
+      "file": "pacman.asm",
+      "line": 1613,
+      "verbatim": "0a33  3e02      ld      a,#02"
+    }
+  },
+  {
     "id": "SND-CMD-DISPATCH",
     "symbol": "SND_CMD_DISPATCH_TABLE",
     "value": "55 2f 65 2f 77 2f 89 2f 9b 2f",
