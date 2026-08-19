@@ -86,5 +86,7 @@ export function attractInput(sim: SimState): Input {
  *  exits to setup". main.ts samples the HUMAN keyboard through this (never attractInput, or
  *  the demo's own inputs would exit it on frame 1). */
 export function hasPlayerInput(input: Input): boolean {
-  return input.thrust || input.reverse || input.up || input.down || input.fire || input.smartBomb
+  // `smartBomb` is OPTIONAL on Input (smartBomb?: boolean), so it must be coalesced or the
+  // `||` chain is `boolean | undefined` — the shipped-but-tsc-red state df7-3 left on develop.
+  return input.thrust || input.reverse || input.up || input.down || input.fire || (input.smartBomb ?? false)
 }
