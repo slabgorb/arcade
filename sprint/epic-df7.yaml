@@ -115,7 +115,7 @@ stories:
     description: 'The mc6-4 / pm4 self-play analog. During attract the phase machine runs the REAL df3 sim driven by a pure seeded auto-player (the joust jt13 demoInput lesson: drive the real sim, do not fork a demo path) so the attract screen shows actual gameplay. Any input exits attract to setup. Pure, seeded, clock-free. Colour by df2 palette index.'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
@@ -124,6 +124,7 @@ stories:
       - 'AC2: ANY player input during attract transitions attract->setup (df7-1); a test pins that the first real input exits the demo.'
       - 'AC3: the attract display is cited to the ROM (HALDIS defender/AMODE1.SRC:375, HALL13 :230) with claims/*.json under the df1-1 gate; no un-cited constant; colour by df2 palette index only.'
       - 'AC4: the attract demo obeys ADR-0005 (Decision B) — no full-frame strobe; the df4-2 guard stays green with the demo (including its smart-bomb visuals) live.'
+    completed: '2026-08-19'
   - id: df7-4
     title: "Hall-of-fame wiring + name entry: wire df5-6's pure board (core/highscore.ts) + one-origin localStorage (shell/highscore.ts) through @shared/name-entry into the game-over -> name-entry -> hall-of-fame -> attract flow, and RENDER the hall-of-fame display. Consumes @shared/name-entry + @shared/highscore (CONSUMED, not re-built — Decision C). Cite HALLOF defender/AMODE1.SRC:119, HOFIN initials display :244, HOFUD up/down stick handler :325, add-score :270."
     description: 'Decision C: the hall of fame is @shared, consumed. df5-6 shipped the pure board + persistence; df7-4 wires the name-entry flow (@shared/name-entry — the same asteroids/missile-command/pac-man shape) so a qualifying game-over score reaches the board, and renders the hall-of-fame display screen (HOFIN :244). No bespoke high-score UI, no new persistence. The ROM stick-driven initial entry (HOFUD :325) maps to @shared/name-entry input.'

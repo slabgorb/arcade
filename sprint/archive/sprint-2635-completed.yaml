@@ -308,3 +308,8 @@ completed_stories:
     title: "Setup->play start-of-game wiring: a start/coin action advances attract|game-over -> setup -> play, RESEEDING the sim (createSim with the df5-10 humanoid ground population, the df5-8 wave-1 WVTAB spawn, men=STARTING_MEN=3 per df5-3). Wire the df7-1 phase machine into plugins/defender/src/main.ts so the shell actually starts a game. Cite ST1 *ONE PLAYER START defender/DEFA7.SRC:1100 (credit check :1103). Consumes df7-1 + df3 sim.ts + df5-8/df5-10."
     points: 3
     completed: '2026-08-19'
+  - id: df7-3
+    epic: df7
+    title: "Self-playing attract demo: a deterministic seeded auto-player drives the ship (thrust/fire/reverse) during phase attract so the field plays itself; ANY player input -> setup (start a real game). Pure attract driver in plugins/defender/src/core (seeded RNG, no clock — the mc6-4 analog). Cite the ROM attract display HALDIS defender/AMODE1.SRC:375 (reached HALL13 :230). Consumes df7-1 phase machine + df3 sim.ts (drives the real sim, no separate demo path)."
+    points: 3
+    completed: '2026-08-19'
