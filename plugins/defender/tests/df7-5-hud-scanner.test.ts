@@ -53,26 +53,21 @@ function makeRand(seed: number): () => number {
 const digest = (fb: Framebuffer): string => createHash('sha256').update(fb.data).digest('hex').slice(0, 16)
 
 /**
- * The longest horizontal run of a SINGLE non-background palette index within the top
- * `rows` of the frame. A radar bezel frames the 64-column strip, so its horizontal rule
- * is a contiguous run of at least SCANNER_COLUMNS cells; sparse stars and the few HUD
- * glyphs never span that width, so this cleanly separates "a bezel is drawn" from "the
- * top band merely has stars + score text".
+ * The longest contiguous VERTICAL run of non-background cells in column `x`, within the top
+ * `rows`. The ROM scanner bezel (*SCANNER BEZEL, MTX $9090/$0909 at SCANH+$4C01/$5301,
+ * AMODE1.SRC:1225) marks the strip's ENDS with index-9 brackets — a vertical rail, NOT a
+ * horizontal bar. Sparse stars are isolated single pixels, so a run ≥ 3 at a strip-end column
+ * is the bezel rail, not a star.
  */
-function longestTopBandRun(fb: Framebuffer, rows: number): number {
+function verticalRun(fb: Framebuffer, x: number, rows: number): number {
   let best = 0
+  let run = 0
   for (let y = 0; y < rows && y < fb.height; y++) {
-    let run = 0
-    let prev = -1
-    for (let x = 0; x < fb.width; x++) {
-      const px = fb.data[y * fb.width + x]
-      if (px !== BACKGROUND && px === prev) {
-        run++
-      } else {
-        run = px !== BACKGROUND ? 1 : 0
-      }
-      prev = px
+    if (fb.data[y * fb.width + x] !== BACKGROUND) {
+      run++
       if (run > best) best = run
+    } else {
+      run = 0
     }
   }
   return best
@@ -101,17 +96,24 @@ describe('df7-5 AC2 — the wave number reaches the HUD', () => {
 
 // ─── AC1 — the scanner BEZEL frames the radar strip, attacker-independent ──────────────
 describe('df7-5 AC1 — the scanner bezel is drawn (AMODE1.SRC:1225)', () => {
-  it('a play state with NO live attacker still draws the radar-strip bezel frame', () => {
-    // df5-7's drawScanner early-returns when no attacker is live, so today the top band
-    // holds only sparse stars and the corner HUD glyphs — neither spans the 64-column
-    // strip. The bezel (*SCANNER BEZEL AMODE1.SRC:1225, framing the :1223 64-col strip)
-    // is drawn REGARDLESS of attackers, so its horizontal rule is a run of ≥ SCANNER_COLUMNS
-    // same-index cells in the top band. RED today (no bezel); GREEN draws the frame.
+  it('the bezel frames the 64-column strip at BOTH ends, drawn even with no attacker (AMODE1.SRC:1225)', () => {
+    // The ROM *SCANNER BEZEL (MTX $9090/$0909 at SCANH+$4C01 / +$5301, AMODE1.SRC:1225-1233)
+    // marks the strip's two ENDS with index-9 brackets — NOT a full-width bar. df5-7's
+    // drawScanner early-returns with no attacker, so today the strip is unframed (RED); GREEN
+    // draws the end rails unconditionally. A bezel rail is a contiguous vertical run; stars are
+    // isolated single pixels, so run ≥ 3 at a strip end is the bezel. ±1 tolerates the rail
+    // sitting on the strip's edge column or just outside it, so this pins the framing behaviour
+    // (both ends of the centred 64-column strip) without dictating the exact rail column.
     const fb = composeFrame(unpopulatedPlayState(3), LOGICAL_WIDTH, LOGICAL_HEIGHT)
-    expect(
-      longestTopBandRun(fb, SCANNER_BAND_ROWS),
-      'no radar bezel is drawn — with no attacker live the top band has no run spanning the 64-column strip',
-    ).toBeGreaterThanOrEqual(SCANNER_COLUMNS)
+    const originX = (LOGICAL_WIDTH - SCANNER_COLUMNS) >> 1
+    const railNear = (xc: number): number =>
+      Math.max(
+        verticalRun(fb, xc - 1, SCANNER_BAND_ROWS),
+        verticalRun(fb, xc, SCANNER_BAND_ROWS),
+        verticalRun(fb, xc + 1, SCANNER_BAND_ROWS),
+      )
+    expect(railNear(originX), 'no LEFT bezel rail frames the radar strip').toBeGreaterThanOrEqual(3)
+    expect(railNear(originX + SCANNER_COLUMNS - 1), 'no RIGHT bezel rail frames the radar strip').toBeGreaterThanOrEqual(3)
   })
 
   it('the bezel is drawn by palette INDEX only — every top-band cell stays 0..15, no invented colour', () => {

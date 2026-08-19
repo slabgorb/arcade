@@ -193,15 +193,43 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
 
 /** The radar strip's top row on the frame (blip row = SCANNER_ORIGIN_Y + objY>>3). */
 const SCANNER_ORIGIN_Y = 2
-/** Score HUD top-left; men sit one glyph-row below it (glyphs are 8 rows tall, charset.ts). */
+/** Score HUD top-left; men sit one glyph-row below it, wave one below that (glyphs 8 tall). */
 const HUD_X = 2
 const HUD_SCORE_Y = 2
 const HUD_MEN_Y = 12
+/** df7-5: the current wave number, a glyph-row below men. */
+const HUD_WAVE_Y = 22
 /** GAME OVER screen text (df5-6). */
 const GAME_OVER_TEXT = 'GAME OVER'
 
+/**
+ * df7-5: the scanner BEZEL — WHITE (palette 9) end-bracket rails framing the 64-column strip.
+ * The ROM's *SCANNER BEZEL (MTX, AMODE1.SRC:1225-1233 — claims/15-scanner.json SCAN-BEZEL)
+ * writes $9090/$0909 (index-9 marks) at the strip's two ENDS (SCANH+$4C01 / +$5301); it is a
+ * pair of end-brackets, NOT a full-width bar. Re-derived to our strip geometry — df5-7 centred
+ * the strip, and (like df5-7) we frame that strip rather than copy the Williams bitmap
+ * addresses. Drawn every frame, attacker-independent, so the radar reads as a framed
+ * instrument even when empty. Colour is a palette INDEX (9, $9090's high nibble), never invented.
+ */
+const BEZEL_COLOUR = 9
+/** The bezel rails span the strip's blip band (objY>>3 ≈ 0..30, below the top origin). */
+const SCANNER_BEZEL_HEIGHT = 32
+
+function drawScannerBezel(fb: Framebuffer): void {
+  const originX = (fb.width - SCANNER_COLUMNS) >> 1 // the SAME centred strip drawScanner plots into
+  const leftX = originX
+  const rightX = originX + SCANNER_COLUMNS - 1
+  for (let r = 0; r <= SCANNER_BEZEL_HEIGHT; r++) {
+    const y = SCANNER_ORIGIN_Y + r
+    if (y >= fb.height) break
+    fb.data[y * fb.width + leftX] = BEZEL_COLOUR
+    fb.data[y * fb.width + rightX] = BEZEL_COLOUR
+  }
+}
+
 /** Draw the df5-1 scanner strip: project every live attacker (lander) to its radar blip and
- *  plot it in the top band by palette INDEX. Nothing is drawn when no attacker is live. */
+ *  plot it in the top band by palette INDEX. Nothing is drawn when no attacker is live (the
+ *  bezel — drawScannerBezel — frames the empty strip). */
 function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): void {
   const objects: ScannerObject[] = (state.landers ?? [])
     .filter((l) => l.alive)
@@ -216,10 +244,11 @@ function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): 
   }
 }
 
-/** Draw the df5-3 score/men HUD across the top-left, by palette INDEX (WHITE). */
+/** Draw the df5-3 score/men HUD + df5-2 wave number down the top-left, by palette INDEX (WHITE). */
 function drawHud(fb: Framebuffer, state: SimState): void {
   writeText(fb, String(state.score ?? 0), HUD_X, HUD_SCORE_Y, TEXT_COLOUR)
   writeText(fb, String(state.men ?? 0), HUD_X, HUD_MEN_Y, TEXT_COLOUR)
+  writeText(fb, String(state.wave ?? 0), HUD_X, HUD_WAVE_Y, TEXT_COLOUR) // df7-5: the current wave
 }
 
 /** Draw the df5-6 GAME OVER / final-score screen (men<0): the play field is replaced by the
@@ -296,8 +325,10 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
     drawEffect(fb, effect, camera)
   }
 
-  // df5-7: overlay the scanner radar strip (live attackers by radar column, coloured from the
-  // lander sprite's own palette index) and the score/men HUD, painted on top of the play field.
+  // df5-7 + df7-5: overlay the scanner radar strip — its bezel frame (df7-5, drawn even when
+  // empty), then the live-attacker blips (coloured from the lander sprite's own palette index) —
+  // and the score/men/wave HUD, painted on top of the play field.
+  drawScannerBezel(fb)
   drawScanner(fb, state, spriteColour(landerPic))
   drawHud(fb, state)
 
