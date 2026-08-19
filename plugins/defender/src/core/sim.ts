@@ -182,6 +182,12 @@ interface SimRuntime {
   respawnGrace: number
   prevSmartBomb: boolean
   prevHyperspace: boolean
+  /** df6-2 — the previous-frame level of the two STATEFUL cues, so their loop edges
+   *  (start on off->on, stop on on->off) are detected from state, not a module `let`.
+   *  `prevThrust` is last tick's thrust button; `prevSucking` is whether ANY lander was
+   *  carrying a humanoid upward (the single aggregate suck voice). */
+  prevThrust: boolean
+  prevSucking: boolean
   shots: ShotRecord[]
   cues: GameEvent[]
   /** Landers seen carrying (so lander-pickup fires once per abduction). */
@@ -262,6 +268,8 @@ export function createSim(rand: () => number): SimState {
     respawnGrace: 0,
     prevSmartBomb: false,
     prevHyperspace: false,
+    prevThrust: false,
+    prevSucking: false,
     shots: [],
     cues: [],
     carrying: new WeakSet<object>(),
@@ -457,6 +465,13 @@ export function stepSim(state: SimState, input: Input): SimState {
   let shipFacing = rev.facing
   let shipRow = vy.y16 >> 8
 
+  // df6-2 — the THRUST held-loop edge (THFLG side-path, DEFA7.SRC:737-751). SNDSEQ keys
+  // the sound on the TRANSITION of the thrust bit: off->on turns it ON ($16), on->off OFF
+  // ($0F); a HELD button re-hits nothing. The shell routes these through startLoop/stopLoop.
+  if (input.thrust && !rt.prevThrust) rt.cues.push({ type: 'thrust-start' })
+  else if (!input.thrust && rt.prevThrust) rt.cues.push({ type: 'thrust-stop' })
+  rt.prevThrust = input.thrust
+
   const stars = stepStars(state.stars, camera.bgl, camera.bglx, STAR_COUNT)
 
   let died = false
@@ -560,6 +575,24 @@ export function stepSim(state: SimState, input: Input): SimState {
     // Enemy fire that lands on a walking humanoid → astro-hit; and the safe-landing outcome.
     resolveHumanoidOutcomes(state, camera.bgl, award)
   }
+
+  // df6-2 — the LANDER-SUCK loop edge, read AFTER every enemy state change this tick (the
+  // scheduler's carries, the smart-bomb clear, and the laser kills above), so a carry that
+  // ended any of those ways is seen. One aggregate voice (LSKSND): the loop rings while ANY
+  // lander is carrying a humanoid upward (grabbed, not yet at the top) and stops when the
+  // LAST such carry ends — reached the top, was dropped on the carrier's death, or lost its
+  // passenger. Sounded as a held loop across the ascent (the logged df6-2 design deviation).
+  //
+  // `!l.reachedTop` is DEFENSE-IN-DEPTH, not a reachable branch: perTickWiring transforms a
+  // reachedTop lander into a mutant and `killLander`s it the SAME tick (sim.ts perTickWiring,
+  // even on the panic path), so by here `l.alive` is already false for it. The clause keeps
+  // the predicate expressing the right CONCEPT — "carrying a humanoid UPWARD" excludes one
+  // that already delivered it — independent of that kill-ordering, so a future change to when
+  // the transform runs cannot silently turn a delivered abduction back into a sounding loop.
+  const sucking = state._enemyBank.landers.some((l) => l.alive && l.carrying && !l.reachedTop)
+  if (sucking && !rt.prevSucking) rt.cues.push({ type: 'lander-suck-start' })
+  else if (!sucking && rt.prevSucking) rt.cues.push({ type: 'lander-suck-stop' })
+  rt.prevSucking = sucking
 
   return withBanks({
     ...state,

@@ -52,18 +52,24 @@ const matches = (verbatim: string, real: string | undefined): boolean =>
   real !== undefined && verbatim.replace(/\s+$/, '') === real.replace(/\s+$/, '')
 
 describe('df6-1 AC2 — the manifest is TOTAL over SoundName', () => {
-  it('names 21 cues, each with a .wav filename', () => {
-    expect(NAMES.length).toBe(21)
+  it('names a cue per SoundName, each with a .wav filename', () => {
+    // Totality over SoundName is the Record type's compile guarantee; here just prove the
+    // manifest is non-empty and every value is a .wav (a literal count would be a brittle
+    // guard that reddens on every legitimate cue addition — df6-2 added two loop cues).
+    expect(NAMES.length, 'the manifest is empty').toBeGreaterThan(0)
     for (const n of NAMES) {
       expect(typeof SOUNDS[n]).toBe('string')
       expect(SOUNDS[n].endsWith('.wav'), `${n} → ${SOUNDS[n]} is not a .wav`).toBe(true)
     }
   })
 
-  it('every cue is routed to a prio-<n> channel', () => {
+  it('every cue is routed to a non-empty channel (the prio-<n> fence is checked below)', () => {
+    // df6-2's loop cues include one with no SNDPRI (thrust), so the prio-<n> spelling is
+    // asserted only for the ROM table cues in the fence test below; here every cue just
+    // needs SOME channel.
     for (const n of NAMES) {
       expect(typeof CHANNELS[n], `${n} has no channel`).toBe('string')
-      expect(CHANNELS[n], `${n}'s channel is not prio-<n>`).toMatch(/^prio-\d+$/)
+      expect(CHANNELS[n].length, `${n}'s channel is empty`).toBeGreaterThan(0)
     }
   })
 
@@ -77,10 +83,12 @@ describe('df6-1 AC2 — the manifest is TOTAL over SoundName', () => {
 })
 
 describe('df6-1 AC2 — every cue is CITED, none invention-pending', () => {
-  it('no cue is an invention — all 21 are real SOUND TABLE rows', () => {
+  it('no cue is an invention — each is a ROM table row (or the df6-2 THFLG flag cue)', () => {
+    // df6-2's `thrust` is a `flag` cue (ROM-cited to THFLG, no SOUND-TABLE row), so the
+    // invariant is "nothing fabricated" — kind is never 'invention' — not "everything rom".
     for (const n of NAMES) {
       const src: CueSource = CUE_SOURCES[n]
-      expect(src.kind, `${n} is invention-pending, not a cited ROM cue`).toBe('rom')
+      expect(src.kind, `${n} is invention-pending, not a cited ROM cue`).not.toBe('invention')
     }
   })
 
