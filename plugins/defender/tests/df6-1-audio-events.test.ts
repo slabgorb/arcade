@@ -169,10 +169,13 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // Frozen from the shipped sim: if the integrated cue order/content changes, this
     // reddens and the change must be re-baselined deliberately (the df3-6 digest idiom).
     // RE-BASELINED for df6-2: this script thrusts on every even tick, so the new thrust
-    // held-loop emits a start/stop edge on nearly every tick — the stream is now 289 cues.
-    // The re-baseline is the deliberate acknowledgement of that intended change.
+    // held-loop emits a start/stop edge on nearly every tick.
+    // RE-BASELINED for pt1-18: the visible-window cull changes which enemies COLLIDE over a
+    // scrolling run (off-window enemies are no longer hittable / hazardous), so the integrated
+    // hit/scream cue stream shifts (289 -> 300 cues). Deliberate acknowledgement of that intended
+    // change — the per-cue emission tests (df6-1-audio-emission) still pass, so the stream is healthy.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      'b3d6af7fc6d795fc',
+      'c4573f3245c8ba85',
     )
   })
 })

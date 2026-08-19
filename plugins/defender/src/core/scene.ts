@@ -31,7 +31,7 @@ import { writeText } from './charset.js'
 import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeScrollSurface, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
-import { wrap16, WORLD_COLS } from './world.js'
+import { WORLD_COLS, projectWorldX, projectOnscreenX, shipWorldX } from './world.js'
 import { projectScanner, SCANNER_COLUMNS, type ScannerObject } from './scanner.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
@@ -59,6 +59,12 @@ const OBJECT_Y = 96
 
 /** The terrain height profile: TDATA, the BLK71 bitstream decodeScrollSurface walks. */
 const TERRAIN_BLOCK = 'TDATA'
+/** pt1-18: the live-scroll terrain resolution — TDATA's native 2048-column ±1 walk (fullLen =
+ *  256 bytes × 8). At this resolution one screen pixel spans one surface column ≈ 32 world-X
+ *  (camera >> 5), matching the object window's ~32.9 world-X/pixel so the ground and the attackers
+ *  scroll together. (The static title still keeps the coarse WORLD_COLS sampling.) */
+const TERRAIN_SCROLL_COLS = 2048
+const TERRAIN_SCROLL_SHIFT = 5 // 0x10000 / 2048 = 32 world-X per surface column → camera >> 5
 
 /** Look a transcribed record up by its ROM label, failing LOUD if the generated data
  *  no longer carries it — a silently-missing piece would paint a partial still. */
@@ -164,7 +170,8 @@ function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: nu
 /** Blit one in-flight effect: its picture (rastered normally) plus the expanding spark.
  *  `camera` (BGL) camera-offsets the world-x, so the effect scrolls with its enemy. */
 function drawEffect(fb: Framebuffer, e: PlacedEffect, camera: number): void {
-  const col = wrap16(e.x - camera) >> 8 // world-x → camera-relative screen column (df5-9)
+  const col = projectWorldX(e.x, camera) // world-x → visible-window pixel (pt1-18), null if off-window
+  if (col === null) return // an effect on an off-camera enemy is culled with it (scanner has no effects)
   blitObject(fb, e.picture, col, e.y)
   const cx = col + e.picture.width // sprite centre-x (the cell is width×2 pixels wide)
   const cy = e.y + (e.picture.height >> 1)
@@ -262,7 +269,7 @@ function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): 
 const PLAYER_BLIP_COLOUR = 9 // $9099's high nibble — WHITE (AMODE1.SRC:1253), the same index-9 as the bezel
 const PLAYER_BLIP_HEIGHT = 3 // a short tick — a marker, not the 32-row bezel rail
 function drawPlayerBlip(fb: Framebuffer, state: SimState): void {
-  const playerWorldX = wrap16(state.camera + (state.ship.x << 8)) // PLAXC analog: the ship's world-x
+  const playerWorldX = shipWorldX(state._plax16, state.camera) // PLAXC analog: the ship's world-x (pt1-18)
   const object: ScannerObject = { worldX: playerWorldX, y: state.ship.y, colour: PLAYER_BLIP_COLOUR }
   const [blip] = projectScanner([object], state.camera)
   const originX = (fb.width - SCANNER_COLUMNS) >> 1 // the SAME centred strip drawScanner/bezel plot into
@@ -389,43 +396,49 @@ export function composeFrame(
 
   drawStars(fb, state.stars, STAR_COUNT)
 
-  // df5-9: the camera (BGL, world-X of the screen's left edge) scrolls the world under the
-  // ship. The planet surface and every world-space entity are camera-offset — the on-screen
-  // column of a world-x is `wrap16(worldX - camera) >> 8` (worldX = onscreen + BGL, world.ts),
-  // honouring the $10000 cylinder wrap. Stars are already pre-scrolled in sim.ts (stepStars),
-  // and the SHIP stays at its fixed display column (only the world moves beneath it).
+  // df5-9 + pt1-18: the camera (BGL, world-X of the screen's left edge) scrolls the world under
+  // the ship. Every world-space entity is projected through the VISIBLE WINDOW (world.ts
+  // projectWorldX): the 150*64 slice of the $10000 cylinder the ROM actually draws (DEFA7.SRC:
+  // 2527-2530), mapped across the raster — an entity outside the window is `null` and CULLED from
+  // the main view (it still blips on the scanner, which reads the absolute OX16). Stars are
+  // pre-scrolled in sim.ts (stepStars); the SHIP stays at its fixed display column (state.ship.x
+  // is already the framebuffer pixel — projectOnscreenX — so only the world moves beneath it).
   const camera = state.camera
-  const screenCol = (worldX: number): number => wrap16(worldX - camera) >> 8
 
-  // df5-11: decode the surface the way the ROM's scroll does (decodeScrollSurface — the 2048-column
-  // ±1 walk over TDATA, sampled to WORLD_COLS), so one lap shows the whole planet once, not the
-  // quarter-slice the write-only BGALT table gave. Tile at the WORLD cylinder period
-  // (WORLD_COLS = 0x10000>>8), the SAME period the camera (BGL>>8) cycles at, so the planet scrolls
-  // seamlessly and does not snap when BGL wraps (df5-9-R1). See ADR-0006.
-  const surface = decodeScrollSurface(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'))
-  blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> 8, WORLD_COLS)
+  // df5-11 + pt1-18: decode the surface at its native 2048-column resolution (the ROM's ±1 walk
+  // over TDATA) and scroll it at the window's zoom — one screen pixel is ~32 world-X (camera>>5),
+  // so the planet scrolls with the world entities (projectWorldX ≈ off/32.9) instead of 7.8×
+  // slower as it did at the old >>8 scale. Tile at the 2048-column cylinder period so it does not
+  // snap when the camera wraps (df5-9-R1). See ADR-0006.
+  const surface = decodeScrollSurface(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'), TERRAIN_SCROLL_COLS)
+  blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> TERRAIN_SCROLL_SHIFT, TERRAIN_SCROLL_COLS)
 
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
 
-  // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1),
-  // camera-offset (df5-9); the row is already display-space.
+  // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1), projected
+  // through the visible window (pt1-18); an off-window entity is culled here and seen only on radar.
   const landerPic = require_(OBJECTS, LANDER_OBJECT, 'object')
   for (const lander of state.landers ?? []) {
     if (!lander.alive) continue
-    blitObject(fb, landerPic, screenCol(lander.x), lander.y)
+    const col = projectWorldX(lander.x, camera)
+    if (col === null) continue
+    blitObject(fb, landerPic, col, lander.y)
   }
   const humanoidPic = require_(OBJECTS, HUMANOID_OBJECT, 'object')
   for (const humanoid of state.humanoids ?? []) {
     if (!humanoid.alive) continue
-    blitObject(fb, humanoidPic, screenCol(humanoid.x), humanoid.y)
+    const col = projectWorldX(humanoid.x, camera)
+    if (col === null) continue
+    blitObject(fb, humanoidPic, col, humanoid.y)
   }
 
   for (const laser of state.lasers) {
     if (!laser.alive) continue
     // Lasers are ON-SCREEN quantities (laser.x = shipX_onscreen + offset, laser.ts) — like the
-    // ship, they do NOT scroll with the camera, so their column is `laser.x >> 8`, NOT camera-
-    // offset (df5-9-R3). Collision agrees: hitTestLasers projects landers to on-screen space.
-    drawLaserStreak(fb, laser.x >> 8, state.ship.y, laser.facing)
+    // ship, they do NOT scroll with the camera, so they project through projectOnscreenX (pt1-18:
+    // the same pixel.8→window mapping the ship uses), NOT the world projection. Collision agrees:
+    // hitTestLasers projects the laser the same way.
+    drawLaserStreak(fb, projectOnscreenX(laser.x), state.ship.y, laser.facing)
   }
 
   // df4-6: the materialize/explosion effects, painted on top (a fresh sim has none, so

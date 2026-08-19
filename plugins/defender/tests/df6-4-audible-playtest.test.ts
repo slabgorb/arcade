@@ -122,7 +122,7 @@ function playtest(seed: number, ticks: number, input: (i: number) => Input, setu
  *  fireWall shape, narrowed to landers. `spawnLander` takes only x (the bank fixes the
  *  spawn row), so this is one lander per column; the swept laser strikes them over the run. */
 function landerWall(r: Rig): void {
-  for (let col = 40; col <= 150; col += 5) r._enemyBank.spawnLander(col << 8)
+  for (let col = 10; col <= 36; col += 2) r._enemyBank.spawnLander(col << 8) // pt1-18: on-screen firing band (col<<8 < 9600 window)
 }
 
 // ─── 1. The whole df6 loop reaches the ENGINE — laser / hit / explosion (AC1) ─────────

@@ -230,7 +230,7 @@ describe('df4-6 — a killed enemy EXPLODES safely (df4-2 EXPLODE / ADR-0005)', 
   it('spawnExplosion enqueues an EXPLODE effect that composeFrame renders', async () => {
     const sim = await loadSim()
     const { composeFrame } = await loadDynamicScene()
-    const s = sim.spawnExplosion(sim.createSim(makeRand(4)), 120 << 8, 120)
+    const s = sim.spawnExplosion(sim.createSim(makeRand(4)), 20 << 8, 120) // pt1-18: on-screen (offset 20<<8=5120 < 9600 window)
     expect(s.effects.some((e) => e.kind === 'explode'), 'spawnExplosion must enqueue an EXST explode effect').toBe(true)
     const withExplosion: SimState = s
     const withoutEffects: SimState = { ...s, effects: [] }
@@ -248,7 +248,7 @@ describe('df4-6 — a killed enemy EXPLODES safely (df4-2 EXPLODE / ADR-0005)', 
     // most of it. A full-screen strobe would trip both.
     const sim = await loadSim()
     const { composeFrame } = await loadDynamicScene()
-    const s = sim.spawnExplosion(sim.createSim(makeRand(5)), 120 << 8, 120)
+    const s = sim.spawnExplosion(sim.createSim(makeRand(5)), 20 << 8, 120) // pt1-18: on-screen (offset 20<<8=5120 < 9600 window)
     const base = composeFrame({ ...s, effects: [] }, LOGICAL_WIDTH, LOGICAL_HEIGHT)
     const boom = composeFrame(s, LOGICAL_WIDTH, LOGICAL_HEIGHT)
 

@@ -266,15 +266,16 @@ describe('df3-6 ship-leads offset — pin the COORDINATES, not just the directio
     // exact settled pixel, which df3-2's world.test.ts already owns.
     const right = await run(11, 200, withInput({ thrust: true }))
     const left = await run(11, 200, withInput({ thrust: true, reverse: true }))
-    // Pin the COORDINATE, not just the side (routing != geometry). Measured settled
-    // columns for seed 11 / 200 ticks: right = 55 (base 0x20 + a velocity column), left =
-    // 89 (base 0x70 side). The bands are tight enough to KILL the 24->16 seam mutation:
-    // feeding slide the full `plaxv24` instead of `plaxv24 >> 8` settles right=32 / left=112,
-    // both of which the old coarse `< 0x50` / `>= 0x50` split let through (Reviewer r1).
-    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~55`).toBeGreaterThanOrEqual(48)
-    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~55`).toBeLessThanOrEqual(64)
-    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~89`).toBeGreaterThanOrEqual(80)
-    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~89`).toBeLessThanOrEqual(96)
+    // Pin the COORDINATE, not just the side (routing != geometry). ship.x is now the framebuffer
+    // PIXEL (pt1-18 projectOnscreenX = (plax16>>2)*292/9600 ≈ the old plax16>>8 column × 1.947).
+    // Measured settled pixels for seed 11 / 200 ticks: right = 107 (base 0x20 + a velocity column),
+    // left = 173 (base 0x70 side). The bands still KILL the 24->16 seam mutation: feeding slide the
+    // full `plaxv24` instead of `plaxv24 >> 8` settles right=32col/left=112col => 62px / 218px,
+    // both OUTSIDE these bands.
+    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~107`).toBeGreaterThanOrEqual(96)
+    expect(right.ship.x, `facing-right lead column; saw ${right.ship.x}, expected ~107`).toBeLessThanOrEqual(120)
+    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~173`).toBeGreaterThanOrEqual(160)
+    expect(left.ship.x, `facing-left lead column; saw ${left.ship.x}, expected ~173`).toBeLessThanOrEqual(186)
     expect(left.ship.x, 'the facing-left lead column must sit RIGHT of the facing-right one').toBeGreaterThan(
       right.ship.x,
     )

@@ -41,7 +41,7 @@ import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.
 import { laserVsObject, bombVsPlayer, shipVsObject, type CollObject, type Query, type Box } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
-import { slide, wrap16, type Facing } from './world.js'
+import { slide, wrap16, projectWorldX, projectOnscreenX, shipWorldX, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
 import {
   createScore,
@@ -258,7 +258,7 @@ export function createSim(rand: () => number): SimState {
 
   const rt: SimRuntime = {
     rand,
-    player: { x: wrap16(INITIAL_PLAX16), y: INITIAL_Y },
+    player: { x: shipWorldX(INITIAL_PLAX16, 0), y: INITIAL_Y },
     score: createScore(),
     smartBombs: STARTING_SMART_BOMBS,
     smartBombArmed: false,
@@ -357,7 +357,7 @@ export function createSim(rand: () => number): SimState {
 
   const facing: Facing = 'right'
   return withBanks({
-    ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },
+    ship: { x: projectOnscreenX(INITIAL_PLAX16), y: INITIAL_Y, facing },
     camera: 0,
     stars: initStars(rand),
     lasers: laserBank.lasers,
@@ -532,7 +532,7 @@ export function stepSim(state: SimState, input: Input): SimState {
   }
 
   // 8. Update the enemy-aim pose (WORLD space) and dispatch every process.
-  rt.player = { x: wrap16(camera.bgl + plax16), y: shipRow }
+  rt.player = { x: shipWorldX(plax16, camera.bgl), y: shipRow }
   state._sched.stepTick()
 
   // 9. Per-tick sim wiring.
@@ -560,7 +560,7 @@ export function stepSim(state: SimState, input: Input): SimState {
   const graced = rt.respawnGrace > 0
   if (rt.respawnGrace > 0) rt.respawnGrace -= 1
 
-  const shipScreen: Query = { x: plax16 >> 8, y: shipRow, picture: SHIP_BOX }
+  const shipScreen: Query = { x: projectOnscreenX(plax16), y: shipRow, picture: SHIP_BOX }
   if (!rt.gameOver) {
     // Enemy shots + bombs + bodies vs the ship → player death (unless just-respawned).
     if (!graced && (bombVsPlayer(shipScreen, hazardObjects(state, camera.bgl)) || shipVsObject(shipScreen, enemyObjects(state, camera.bgl)))) {
@@ -596,7 +596,7 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   return withBanks({
     ...state,
-    ship: { x: plax16 >> 8, y: shipRow, facing: shipFacing },
+    ship: { x: projectOnscreenX(plax16), y: shipRow, facing: shipFacing },
     camera: camera.bgl,
     stars,
     _plaxv24: plaxv24,
@@ -620,8 +620,10 @@ function signedWrap16(d: number): number {
   return m >= 0x8000 ? m - 0x10000 : m
 }
 
-/** Project a WORLD column to its on-screen column (the exact composeFrame/COLIDE mapping). */
-const toScreenCol = (worldX: number, camera: number): number => wrap16(Math.round(worldX) - camera) >> 8
+/** Project a WORLD-X to its on-screen pixel (the exact composeFrame/COLIDE mapping, pt1-18), or
+ *  `null` when it is OUTSIDE the visible window — an off-camera object is neither drawn nor
+ *  collidable (it can only be hit once it scrolls on screen; the scanner still shows it). */
+const toScreenCol = (worldX: number, camera: number): number | null => projectWorldX(worldX, camera)
 
 // ─── Per-tick sim wiring: transforms, pickups, panic, baiters, lander fire, shot travel ──
 function perTickWiring(state: SimState, appear: (x: number, y: number, p: ObjectImage) => void): void {
@@ -693,10 +695,14 @@ function hazardObjects(state: SimState, camera: number): readonly CollObject[] {
   const objs: CollObject[] = []
   let id = 0
   for (const s of state._rt.shots) {
-    objs.push({ id: String(id++), x: toScreenCol(s.x, camera), y: Math.round(s.y), picture: SHOT_BOX })
+    const sx = toScreenCol(s.x, camera)
+    if (sx === null) continue // off-window: cannot strike the ship this tick (pt1-18)
+    objs.push({ id: String(id++), x: sx, y: Math.round(s.y), picture: SHOT_BOX })
   }
   for (const b of state._bomberBank.bombs) {
-    objs.push({ id: String(id++), x: toScreenCol(b.x, camera), y: b.y, picture: box(BOMB_PICTURE) })
+    const bx = toScreenCol(b.x, camera)
+    if (bx === null) continue
+    objs.push({ id: String(id++), x: bx, y: b.y, picture: box(BOMB_PICTURE) })
   }
   return objs
 }
@@ -706,7 +712,12 @@ function enemyObjects(state: SimState, camera: number): readonly CollObject[] {
   const objs: CollObject[] = []
   let id = 0
   const add = (recs: readonly { x: number; y: number; alive: boolean }[], picture: ObjectImage): void => {
-    for (const r of recs) if (r.alive) objs.push({ id: String(id++), x: toScreenCol(r.x, camera), y: r.y, picture: box(picture) })
+    for (const r of recs) {
+      if (!r.alive) continue
+      const rx = toScreenCol(r.x, camera)
+      if (rx === null) continue // off-window enemy: not collidable until it scrolls on screen (pt1-18)
+      objs.push({ id: String(id++), x: rx, y: r.y, picture: box(picture) })
+    }
   }
   add(state._enemyBank.landers, LANDER_PICTURE)
   add(state._mutantBank.mutants, MUTANT_PICTURE)
@@ -736,8 +747,10 @@ function hitTestLasers(state: SimState, shipRow: number, camera: number, award: 
     // Rebuilt per laser so a kill removes the victim from the next laser's list.
     const targets: Target[] = []
     const at = (rec: { x: number; y: number }, picture: ObjectImage, hit: () => void): void => {
+      const rx = toScreenCol(rec.x, camera)
+      if (rx === null) return // off-window enemy: not hittable until it scrolls on screen (pt1-18)
       targets.push({
-        obj: { id: String(targets.length), x: toScreenCol(rec.x, camera), y: rec.y, picture: box(picture) },
+        obj: { id: String(targets.length), x: rx, y: rec.y, picture: box(picture) },
         hit,
       })
     }
@@ -799,7 +812,7 @@ function hitTestLasers(state: SimState, shipRow: number, camera: number, award: 
     }
 
     if (targets.length === 0) return // nothing left to hit this tick
-    const query: Query = { x: laser.x >> 8, y: shipRow, picture: LASER_BOX }
+    const query: Query = { x: projectOnscreenX(laser.x), y: shipRow, picture: LASER_BOX }
     const struck = laserVsObject(query, targets.map((t) => t.obj))
     if (struck) targets[Number(struck.object.id)].hit()
   }
@@ -818,16 +831,21 @@ function resolveHumanoidOutcomes(state: SimState, camera: number, award: (p: num
     }
   }
 
-  // astro-hit: an aimed shot / bomb that overlaps a walking humanoid kills it (AHSND).
+  // astro-hit: an aimed shot / bomb that overlaps a walking humanoid kills it (AHSND). This is a
+  // WORLD-space interaction — a lander shoots the humanoids it is abducting anywhere on the
+  // cylinder, on-camera or not (that is what the scanner is for) — so it must NOT use the visible-
+  // window cull (pt1-18). Project both prey and hazards by the plain camera-relative column
+  // (wrap16(worldX-camera)>>8, the pre-pt1-18 mapping with no window clip), so the geometry is
+  // identical regardless of where the camera is looking.
   const prey = state._enemyBank.humanoids.filter((h) => h.alive && h.state === 'walking')
   if (prey.length === 0) return
-  const preyObjs: CollObject[] = prey.map((h, i) => ({
-    id: String(i),
-    x: toScreenCol(h.x, camera),
-    y: h.y,
-    picture: box(HUMANOID_PICTURE),
-  }))
-  for (const hz of hazardObjects(state, camera)) {
+  const worldCol = (x: number): number => wrap16(Math.round(x) - camera) >> 8
+  const preyObjs: CollObject[] = prey.map((h, i) => ({ id: String(i), x: worldCol(h.x), y: h.y, picture: box(HUMANOID_PICTURE) }))
+  const hazards: CollObject[] = []
+  let hid = 0
+  for (const s of state._rt.shots) hazards.push({ id: String(hid++), x: worldCol(s.x), y: Math.round(s.y), picture: SHOT_BOX })
+  for (const b of state._bomberBank.bombs) hazards.push({ id: String(hid++), x: worldCol(b.x), y: b.y, picture: box(BOMB_PICTURE) })
+  for (const hz of hazards) {
     const struck = laserVsObject({ x: hz.x, y: hz.y, picture: hz.picture }, preyObjs)
     if (!struck) continue
     const victim = prey[Number(struck.object.id)]

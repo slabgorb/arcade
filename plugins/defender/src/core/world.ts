@@ -86,6 +86,66 @@ export function worldX(onscreenX: number, bgl: number): number {
   return wrap16(onscreenX + bgl)
 }
 
+// ─── pt1-18: the VISIBLE WINDOW (the main view is a slice of the cylinder, not all of it) ──
+//
+// The ROM draws only a 150-unit-wide window and scrolls the ~6.8-screen world through it. The
+// object on-screen test is DEFA7.SRC:2527-2530, in the object-processing loop:
+//     *CHECK ON SCREEN
+//         LDD  OX16,X      ; object's absolute world X
+//         SUBD BGL         ; screen-relative = worldX - camera (16-bit, wraps $10000)
+//         CMPD #150*64     ; = 9600 = $2580
+//         BHS  OPLP        ; OFF SCREEN -> skip the draw
+//     (then ASLB/ROLA ×2 => D<<2, whose high byte is the pixel column: (worldX-camera)>>6)
+// So an object is ON SCREEN iff (worldX - camera) & 0xffff < 150*64, and the world spans
+// 0x10000 / (150*64) ≈ 6.83 of these windows. Before pt1-18 the port projected at >>8 with no
+// cull, mapping the WHOLE 256-column world onto one screen (every attacker always visible).
+
+/** The visible window width in world-X units — CMPD #150*64 (DEFA7.SRC:2529). On-screen iff
+ *  (worldX − camera) & 0xffff < this; the cylinder (0x10000) is ~6.8 of these wide. */
+export const VISIBLE_WINDOW_X = 150 * 64 // 9600 = $2580
+
+/** The on-screen raster width, in framebuffer pixels, the visible window maps across. This is a
+ *  board fact the SHELL owns (render.ts LOGICAL_WIDTH); the sim's collision must agree with the
+ *  render on it, so the core carries it too — pinned equal to LOGICAL_WIDTH by a test so the two
+ *  cannot drift. The ROM's own visible raster is 292 (williams.cpp set_visarea). */
+export const SCREEN_WIDTH = 292
+
+/** Map a camera-relative world offset (0..VISIBLE_WINDOW_X) to its framebuffer pixel column. The
+ *  9600-unit window is stretched linearly across the full SCREEN_WIDTH. */
+function windowPixel(offset: number): number {
+  return Math.floor((offset * SCREEN_WIDTH) / VISIBLE_WINDOW_X)
+}
+
+/** Project an absolute world-X to its framebuffer pixel under `camera`, or `null` if it lies
+ *  OUTSIDE the visible window (off-camera — it is then drawn only on the scanner, which reads the
+ *  absolute OX16). This is the one on-screen projection the render AND the collision share, so an
+ *  attacker is drawn exactly where it can be hit. (DEFA7.SRC:2527-2530.) */
+export function projectWorldX(worldXAbs: number, camera: number): number | null {
+  const offset = wrap16(Math.round(worldXAbs) - camera)
+  if (offset >= VISIBLE_WINDOW_X) return null // BHS OPLP — OFF SCREEN
+  return windowPixel(offset)
+}
+
+/** An ONSCREEN quantity (the ship, a laser) carries its screen position as PLAX16 — a pixel.8
+ *  fixed-point (its high byte is the legacy 256-wide column). The world object coordinate OX16 is
+ *  pixel.6, so an onscreen quantity's world OFFSET from the camera is `PLAX16 >> 2` (8→6 frac
+ *  bits). Onscreen quantities do NOT scroll with the camera — this offset IS their screen slot. */
+export function onscreenWorldOffset(onscreenX: number): number {
+  return wrap16(Math.round(onscreenX)) >> 2
+}
+
+/** Project an ONSCREEN quantity (ship / laser, PLAX16-format) to its framebuffer pixel. */
+export function projectOnscreenX(onscreenX: number): number {
+  return windowPixel(onscreenWorldOffset(onscreenX))
+}
+
+/** The ship's absolute world-X (for the scanner blip and the rescue catch): camera + the ship's
+ *  onscreen offset, reconciling PLAX16 (pixel.8) to the OX16 (pixel.6) world. Before pt1-18 this
+ *  was `camera + PLAX16`, mixing the two fixed-point formats (sim.ts). */
+export function shipWorldX(onscreenX: number, camera: number): number {
+  return wrap16(camera + onscreenWorldOffset(onscreenX))
+}
+
 /**
  * PLAY1 velocity→column mapping (defender/DEFA7.SRC:2373-2396): the ship's target screen
  * column. Returns the 16-bit PCX pair (column in the high byte, fraction low).
