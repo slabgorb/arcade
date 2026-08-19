@@ -172,7 +172,8 @@ stories:
     description: 'The eyes for df5, mirroring df4-6. An all-200 sweep proves nothing (the SPA fallback answers 200 to everything) — assert the defender path DIFFERS from a nonsense control. Confirm the ADR-0005 discipline visually: a smart-bomb clears the screen as a freeze/fade, never a full-frame strobe. Colour by df2 palette index only.'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
