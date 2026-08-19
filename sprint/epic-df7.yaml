@@ -98,7 +98,8 @@ stories:
     description: 'The mc6-2 analog: the start-of-game transition. A coin/start input advances the phase to setup then play and reseeds a fresh game — humanoids on the ground (df5-10), wave 1 spawned (df5-8), men=3 (df5-3 STARTING_MEN, NSHIP ROMC8.SRC:802). This is where main.ts stops booting straight into a bare sim and instead boots into attract and starts on input. Purity of the reseed logic preserved; the wiring is shell.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
