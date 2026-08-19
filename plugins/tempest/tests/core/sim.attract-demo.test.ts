@@ -32,7 +32,7 @@ import { describe, it, expect } from 'vitest'
 import * as Sim from '../../src/core/sim'
 import { GameState, initialState, Enemy, EnemyBullet } from '../../src/core/state'
 import { Input } from '../../src/core/input'
-import { tubeForLevel, currentLane } from '../../src/core/geometry'
+import { tubeForLevel } from '../../src/core/geometry'
 import { MAX_BULLETS, PLAYER_RIM_DEPTH, START_LIVES, levelParams } from '../../src/core/rules'
 
 const stepGame = Sim.stepGame
@@ -44,7 +44,6 @@ const demoInput = (s: GameState): Input =>
 const NEUTRAL: Input = { spin: 0, fire: false, zap: false, start: false }
 const DT = 1 / 60
 
-const neutral = (s: GameState): GameState => stepGame(s, NEUTRAL, DT)
 const mode = (s: GameState): string => (s as unknown as { mode: string }).mode
 
 // A board state for exercising the pure `demoInput` AI. Level 1 is the closed
@@ -177,106 +176,36 @@ describe('demoInput — pure and deterministic', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Group B — the demo wired into stepGame's attract case (AC: pipeline, seeding,
-// exit-to-title, determinism)
+// Group B — the demo wired into stepGame's attract case.
+//
+// RE-NEGOTIATED by pt1-5 (2026-08-19). Story 10-3 seeded the demo on the FIRST idle
+// step, so this group stepped one neutral frame and asserted the demo was already
+// running. pt1-5 introduces the ROM's three-page attract rotation (ladder → logo →
+// demo, ALEXEC.MAC:428-470): the demo now seeds only when the rotation reaches the
+// DEMO page, not on the first idle step. The header of this file still describes the
+// demo's INTENT correctly; only the ENTRY point moved.
+//
+// The full integration contract under the new page model — seeds 1 life / level 1..8
+// on the demo page, the demo visibly plays (spawns + fires) only while demoActive,
+// determinism across a multi-page run, spinner-exits-to-title, and demo-death →
+// title — now lives in tests/core/pt1-5.attract-cycle.test.ts, which drives the
+// scheduler to the demo page first. The old single-step Group B assertions are NOT
+// duplicated here; they encoded the retired "seeds on first idle step" model and
+// would assert a contract the ROM does not have (checklist #24: a retired model must
+// not be left describing itself). Group A above (the pure demoInput brain) is
+// unaffected by the page model and stays.
 // ---------------------------------------------------------------------------
 
-describe('attract demo — seeds a 1-life game on a random level 1..8', () => {
-  // AC: demo seeds 1 life and a random level from 1-8 (RANDOM AND 7), and it runs
-  // INSIDE attract (mode stays 'attract', it does not flip to 'playing').
-  it('first idle step seeds lives=1, level in 1..8, and stays in attract', () => {
-    const s = neutral(initialState(7))
-    expect(mode(s)).toBe('attract')
-    expect(s.lives).toBe(1)
-    expect(s.level).toBeGreaterThanOrEqual(1)
-    expect(s.level).toBeLessThanOrEqual(8)
-  })
-
-  // AC: deterministic via GameState RNG — same seed → same chosen level, and the
-  // RNG was actually consumed to pick it (state advanced from boot).
-  it('is deterministic and RNG-driven (same seed → same level; rng advanced)', () => {
-    const a = neutral(initialState(12345))
-    const b = neutral(initialState(12345))
-    expect(a.level).toBe(b.level)
-    expect(a.rng).toEqual(b.rng)
-    expect(a.rng).not.toEqual(initialState(12345).rng) // a draw happened
-  })
-})
-
-describe('attract demo — runs the normal playing pipeline via synthetic input', () => {
-  // AC: attract runs the normal playing pipeline driven by synthetic input. Over a
-  // run, the demo must SPAWN enemies (only the playing pipeline spawns) and the AI
-  // must ACT (fire at least once) — proving synthetic input drives the sim.
-  it('spawns enemies and fires over an idle run, all within attract', () => {
-    let s = initialState(2024)
-    let sawEnemy = false
-    let fired = false
-    for (let i = 0; i < 1800; i++) {
-      s = neutral(s)
-      expect(mode(s)).toBe('attract') // the demo never leaks into a real 'playing' game
-      if (s.enemies.length > 0) sawEnemy = true
-      if (s.events.some((e) => e.type === 'fire')) fired = true
-    }
-    expect(sawEnemy).toBe(true)
-    expect(fired).toBe(true)
-  })
-
-  // AC: fully deterministic — identical seed + identical idle input stream yields
-  // an identical final state.
-  it('is deterministic across a long idle run (same seed → identical state)', () => {
-    let a = initialState(99)
-    let b = initialState(99)
-    for (let i = 0; i < 600; i++) {
-      a = neutral(a)
-      b = neutral(b)
-    }
-    expect(a).toEqual(b)
-  })
-})
-
-describe('attract demo — exits to the title on input or death', () => {
-  // AC: any real input returns to the title — a non-start input (spinner) must NOT
-  // run the demo pipeline that frame (no shot fired) and must stay on attract.
-  it('a real spinner input interrupts the demo without firing, staying in attract', () => {
-    const running = neutral(initialState(5)) // demo now active
-    const out = stepGame(running, { ...NEUTRAL, spin: 5 }, DT)
-    expect(mode(out)).toBe('attract')
-    expect(out.events.some((e) => e.type === 'fire')).toBe(false)
-  })
-
-  // AC: the start-to-play path is intact — start still enters the level select.
-  it('start still enters select (start-to-play path unchanged)', () => {
+describe('attract demo — the start-to-play path is untouched by the demo', () => {
+  // AC: start still enters the level select regardless of the attract page model.
+  it('start enters select from attract (start-to-play path unchanged)', () => {
     const out = stepGame(initialState(5), { ...NEUTRAL, start: true }, DT)
     expect(mode(out)).toBe('select')
     expect(out.select.selectedLevel).toBe(1)
   })
-
-  // AC: a demo death returns to the title (NOT a real game-over). Force a death:
-  // park an enemy bolt at the rim on the player's lane and fill the bullet array
-  // so the demo's anticipatory shot cannot destroy the incoming bolt. The bolt
-  // grabs the (1-life) Claw → the demo must convert that into a return to attract.
-  it('converts a demo death into a return to the attract title (not gameover)', () => {
-    const s = neutral(initialState(31)) // active, 1-life demo
-    expect(s.lives).toBe(1)
-    const pl = currentLane(s.tube, s.player.lane)
-    const farLane = (pl + 8) % s.tube.laneCount
-    s.player.alive = true
-    s.lives = 1
-    s.enemies = []
-    s.enemyBullets = [{ lane: pl, depth: 1 }] // bolt at the rim on the player's lane
-    // Saturate the bullet cap so the demo cannot shoot down the bolt this frame.
-    s.bullets = Array.from({ length: MAX_BULLETS }, () => ({ lane: farLane, depth: 0.5 }))
-
-    const out = stepGame(s, NEUTRAL, DT)
-    // The death actually happened...
-    expect(out.events.some((e) => e.type === 'player-death')).toBe(true)
-    // ...and it routed back to the attract title rather than surfacing 'gameover'.
-    expect(mode(out)).toBe('attract')
-    expect(mode(out)).not.toBe('gameover')
-  })
 })
 
-// Sanity: constants the suite leans on are what we expect (guards against silent
+// Sanity: constants the demo suite leans on are what we expect (guards against silent
 // drift that would make the threats/lives assertions vacuous).
 describe('attract demo — constant sanity', () => {
   it('rim/bullet/lives constants are in the expected range', () => {
