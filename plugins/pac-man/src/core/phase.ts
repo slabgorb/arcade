@@ -30,6 +30,7 @@ export const PHASES: readonly GamePhase[] = [
   'playing',
   'dying',
   'level-clear',
+  'intermission',
   'game-over',
 ] as const
 
@@ -52,6 +53,12 @@ export interface PhaseSignals {
   readonly clearExpired?: boolean
   /** game-over: the attract-return timeout has elapsed (pm4-10 owns the constant). */
   readonly overExpired?: boolean
+  /** level-clear: the just-cleared round shows a coffee break (pm6-1 owns the
+   *  cadence). Consulted ONLY on the clearExpired edge — decides intermission
+   *  vs. straight-to-ready. */
+  readonly intermissionDue?: boolean
+  /** intermission: the coffee-break hold has elapsed (pm6-1 owns the window). */
+  readonly intermissionExpired?: boolean
   /** playing: Pac-Man was caught this frame. */
   readonly pacDied?: boolean
   /** playing: the last dot was eaten this frame. */
@@ -81,7 +88,14 @@ export function advancePhase(phase: GamePhase, signals: PhaseSignals): GamePhase
     case 'dying':
       return signals.deathExpired ? 'ready' : 'dying'
     case 'level-clear':
-      return signals.clearExpired ? 'ready' : 'level-clear'
+      // pm6-1: the clear freeze holds until it expires; on that edge a coffee-break
+      // round (Decision A) diverts to `intermission`, everything else to `ready`.
+      if (!signals.clearExpired) return 'level-clear'
+      return signals.intermissionDue ? 'intermission' : 'ready'
+    case 'intermission':
+      // pm6-1: the coffee break holds until its window ends, then hands off to the
+      // READY of the next round (the loop closes — game.ts already advanced it).
+      return signals.intermissionExpired ? 'ready' : 'intermission'
     case 'game-over':
       return signals.overExpired ? 'attract' : 'game-over'
   }
