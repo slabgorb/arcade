@@ -15,6 +15,7 @@ completed_epics:
   - mc12
   - ml13
   - jt13
+  - df5
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -286,4 +287,9 @@ completed_stories:
     epic: df5
     title: "Humanoid rescue + the planet-explodes-to-mutant-space panic: plugins/defender/src/core/ — close the df4-3 abduction loop. The RESCUE: catch a falling humanoid (AFALL *ASTRONAUT FALL defender/DEFB6.SRC:925,927; ground test GETALT :933; ASTKIL :399) and return it to the ground. The PANIC (Defender's signature terror): all humanoids lost -> the planet explodes -> every remaining lander becomes a df4-4 mutant (SCZ) en masse. Consumes df4-3 (abduction/AFALL) + df4-4 (the SCZ transform)."
     points: 5
+    completed: '2026-08-19'
+  - id: df5-7
+    epic: df5
+    title: "VISUAL playtest — a whole game loop on screen: screenshot http://127.0.0.1:5270/defender/ showing the SCANNER populated with off-camera attackers (df5-1), waves visibly escalating (df5-2), the score/men HUD (df5-3), a smart-bomb firing as an ACCESSIBILITY-SAFE freeze/fade (df5-5, ADR-0005 — NO full-screen strobe), and a hall-of-fame entry (df5-6) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scanner blip positions/colour and that NO effect flashes the full screen. Carry the df7 note (2P handoff + the attract/phase machine) forward."
+    points: 2
     completed: '2026-08-19'
