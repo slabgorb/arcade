@@ -120,3 +120,14 @@ export function confirmSessionInitials(session: Session): Session {
     nameEntry: null,
   }
 }
+
+/** Abandon an open initials entry WITHOUT committing (the board is untouched) and close it —
+ *  the shell drives this when the entry-input window elapses with no confirm, so a player who
+ *  walks away mid-initials cannot wedge the cabinet on the entry screen forever. Closing the
+ *  entry clears the gate so the game-over dwell can time out to attract. The missile-command
+ *  `abortNameEntry` precedent: a timed-out qualifying score is dropped, ladder unchanged. A
+ *  no-op when no entry is open. */
+export function abortNameEntry(session: Session): Session {
+  if (session.nameEntry === null) return session
+  return { ...session, nameEntry: null }
+}
