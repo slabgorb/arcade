@@ -43,7 +43,16 @@ export function bootSession(rand: () => number): Session {
  *  (CONSUMED, never re-decided here), and crossing the `setup -> play` edge RESEEDS a
  *  fresh game via `createSim(rand)` — the df5-8/df5-10/df5-3 seed (wave-1 attackers,
  *  ground humanoids, men=STARTING_MEN). Every other edge carries the current sim through
- *  untouched, so `rand` is drawn only on the reseed. */
+ *  untouched, so `rand` is drawn only on the reseed.
+ *
+ *  SCOPE — the `setup -> play` reseed is unconditional ON PURPOSE for df7-2, because the
+ *  ONLY way to reach `setup` today is `attract -> setup` (a start-of-game): `main.ts`
+ *  never supplies `playerDied`, so df7-1's death beat is unreachable and `death -> setup`
+ *  (the RESPAWN edge phase.ts documents) never fires. When a later story wires
+ *  `playerDied`, `setup` will also be entered on a respawn, where a full `createSim` would
+ *  WRONGLY wipe score/wave/men — that story must give `Session`/`PhaseSignals` a
+ *  start-vs-respawn discriminant and gate the reseed on it. (Recorded as a df7-2 Delivery
+ *  Finding for the respawn story.) */
 export function advanceStart(session: Session, signals: PhaseSignals, rand: () => number): Session {
   const phase = advancePhase(session.phase, signals)
   const reseed = session.phase === 'setup' && phase === 'play'
