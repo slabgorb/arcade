@@ -81,7 +81,7 @@ stories:
     description: 'Decision A: pure-first. The phase machine is a pure transition function in core — no clock, no rAF, seeded — mirroring mc6-1 (state.ts) and pm4''s GamePhase. It consumes df5-6''s men<0 game-over reducer as the play->death edge; game-over is not re-decided here. Wave/attract/setup are gated by the phase, driven by the shell. Every phase constant (timeouts, the mainline order) gated by a claims/*.json entry.'
     points: 5
     priority: p2
-    status: in_review
+    status: done
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
@@ -90,6 +90,7 @@ stories:
       - 'AC2: the play->death/game-over edge CONSUMES df5-6 isGameOver (men<0, endgame.ts, cited defender/DEFA7.SRC:1423) — it does not re-implement or re-decide game-over; a test pins that the machine enters game-over exactly when the men counter falls below zero and not otherwise.'
       - 'AC3: the mainline phase order and every timeout/cadence constant is cited to the ROM (ST1 *ONE PLAYER START defender/DEFA7.SRC:1100, ST2 :1112, HALLOF defender/AMODE1.SRC:119, HALDIS attract :375, GAMEOV defender/ROMF8.SRC:337) with a claims/*.json entry byte-verified under the df1-1 gate; no un-cited src/core constant.'
       - 'AC4: the phase machine owns no rAF/tick (the shell drives it, phases gate the df3 sim); a mutation to the transition table (e.g. skipping death, or attract not returning from game-over) reddens a transition assertion (not a coverage check).'
+    completed: '2026-08-19'
     review_findings: 'Round 1 REJECTED on one LOW/DOC finding — a stale ROM citation at df7-1-phase.test.ts:32 (cited AMODE1.SRC:375 / ROMF8.SRC:337, the section-header comments, not the 377/339 labels). FIXED in round 2 (commit d4a8e200), byte-verified. Round 2 APPROVED, no other findings.'
     review_verdict: approved
   - id: df7-2
