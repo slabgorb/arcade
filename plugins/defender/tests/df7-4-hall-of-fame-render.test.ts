@@ -90,12 +90,18 @@ describe('df7-4 AC2 — the hall-of-fame table is rendered from the df5-6 board 
     expect(digest(typed), 'the initials being entered are not drawn — the player sees no cursor/letters as they type').not.toBe(digest(empty))
   })
 
-  it('the 3-arg call is unchanged — df5-6 GAME OVER frame is preserved for callers that pass no board', () => {
-    // Back-compat: growing composeFrame must not disturb df3-6/df7-5's existing 3-arg calls.
-    // This is green now AND must stay green (a regression guard), so it is a genuine pin, not
-    // a RED driver.
-    const state = gameOverState(6, 12_345)
-    expect(digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT))).toBe(digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT)))
+  it('the 3-arg call still renders the df5-6 GAME OVER / final-score screen (reads state.score, not a constant)', () => {
+    // Back-compat with teeth: growing composeFrame must not disturb df3-6/df7-5's 3-arg calls.
+    // A same-args self-comparison would only prove determinism (a tautology for a pure fn); instead
+    // pin BEHAVIOUR — the 3-arg game-over branch (drawGameOverScreen) writes state.score, so two
+    // different final scores must produce different frames. This reddens if the 3-arg path
+    // regressed to a constant or to the score-independent HOF screen (mutation-tested).
+    const lowScore = composeFrame(gameOverState(6, 12_345), LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    const highScore = composeFrame(gameOverState(6, 99_999), LOGICAL_WIDTH, LOGICAL_HEIGHT)
+    expect(
+      digest(lowScore),
+      'the 3-arg game-over frame no longer varies with the final score — the df5-6 GAME OVER screen regressed',
+    ).not.toBe(digest(highScore))
   })
 })
 

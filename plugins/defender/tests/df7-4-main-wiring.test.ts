@@ -41,17 +41,17 @@ describe('df7-4 main-wiring — the shell loads and seeds the hall-of-fame board
       /makeDefenderHighScoreStorage\s*\(/.test(code),
       'main.ts never builds the df5-6 hall-of-fame storage — the board is never loaded/persisted',
     ).toBe(true)
-    expect(
-      /\.load\s*\(/.test(code),
-      'the storage seam is built but never .load()ed — the saved board is not read at boot',
-    ).toBe(true)
   })
 
-  it('the loaded board is seeded onto the Session (bootSession is called with the board, not bare)', () => {
-    // bootSession(rand, board) — the second argument carries the loaded board into the pure core.
+  it('the LOADED board is seeded onto the Session — bootSession(_, storage.load()), the value tied into the call', () => {
+    // Anchor the whole CALL CHAIN, not two independently-satisfiable shapes: the SECOND argument
+    // to bootSession must be a `.load()` result. A bare `.load(` + a `bootSession(x, y)` shape
+    // check would both stay green even if the loaded board were computed and discarded and
+    // bootSession seeded an empty literal (mutation-tested — that regression is exactly what this
+    // must catch). Requiring `.load()` to flow INTO bootSession's board slot closes it.
     expect(
-      /bootSession\s*\(\s*[\w.]+\s*,\s*[\w.$]+/.test(code),
-      'bootSession is still called with one argument — the loaded board never reaches the core Session',
+      /bootSession\s*\(\s*[\w.]+\s*,\s*[\w.]+\.load\s*\(\s*\)\s*\)/.test(code),
+      'the value from the storage .load() is not passed into bootSession — the saved board is loaded and then discarded, never seeded onto the Session',
     ).toBe(true)
   })
 })
@@ -68,12 +68,15 @@ describe('df7-4 main-wiring — the shell drives the initials entry and saves on
     ).toBe(true)
   })
 
-  it('the name-entry keydown path is gated on an OPEN entry (session.nameEntry), not always-on', () => {
+  it('the name-entry keydown path is GATED on an open entry — `if (session.nameEntry === null) return`', () => {
     // The initials keys must only be consumed while an entry is open — otherwise Enter/letters
-    // are swallowed during normal play. Anchor on the gate reading session.nameEntry.
+    // are swallowed during normal play. Anchor on the GUARD SHAPE, not a bare `nameEntry` token:
+    // `nameEntry` also appears in the composeFrame render call, so a token match stays green even
+    // if the keydown guard were deleted (mutation-tested). The `=== null) return` early-return is
+    // the gate itself; the dwell counter's `=== null) gameOverDwell` does not match it.
     expect(
-      /\bnameEntry\b/.test(code),
-      "main.ts never reads session.nameEntry — the initials keydown path is ungated (it would eat play keys)",
+      /if\s*\(\s*session\.nameEntry\s*===\s*null\s*\)\s*return/.test(code),
+      'the initials keydown handler is not gated on an open entry (no `if (session.nameEntry === null) return`) — it would consume play/attract keys',
     ).toBe(true)
   })
 
@@ -89,12 +92,15 @@ describe('df7-4 main-wiring — the shell drives the initials entry and saves on
 describe('df7-4 main-wiring — the render is fed the board + initials so the HOFIN display draws', () => {
   it('composeFrame is called with the hall-of-fame payload (board + nameEntry), not sim alone', () => {
     // Today: composeFrame(session.sim, LOGICAL_WIDTH, LOGICAL_HEIGHT). df7-4 threads the 4th
-    // arg carrying board + nameEntry so scene.ts can draw the HOF screen. Anchor on a
-    // composeFrame call whose arguments mention BOTH board and nameEntry.
+    // arg carrying board + nameEntry so scene.ts can draw the HOF screen. Anchor on the SINGLE
+    // composeFrame CALL: `composeFrame(session.sim, … board … nameEntry …)`, bounded by the call's
+    // own closing paren (`[^)]*`, and main.ts has no inner parens in this call). A `[^;]*` bound is
+    // vacuous here — main.ts is written without semicolons, so it would span to end-of-file and
+    // any later mention of both tokens would false-green a regression to the bare 3-arg call
+    // (mutation-tested). Tying both tokens to the same `composeFrame(session.sim, …)` call closes it.
     expect(
-      /composeFrame\s*\([^;]*\bboard\b[^;]*\bnameEntry\b/s.test(code) ||
-        /composeFrame\s*\([^;]*\bnameEntry\b[^;]*\bboard\b/s.test(code),
-      'composeFrame is still fed session.sim alone — the board and in-progress initials never reach the renderer, so the HOFIN display cannot draw',
+      /composeFrame\s*\(\s*session\.sim\b[^)]*\bboard\b[^)]*\bnameEntry\b[^)]*\)/s.test(code),
+      'composeFrame is fed session.sim alone (or the board/initials sit outside its call) — the HOFIN display cannot draw',
     ).toBe(true)
   })
 })
