@@ -73,7 +73,7 @@ description: |-
   game-over (df5-6 owns it, consumed); the cocktail screen-flip (documented-not-ported,
   Decision D); hardening/mutation batteries (df8+, reviewer-driven).
 priority: p2
-status: backlog
+status: done
 repos: arcade
 stories:
   - id: df7-1
@@ -173,7 +173,8 @@ stories:
     description: 'The eyes for the whole cabinet, mirroring df5-7/df4-6 but across the LIFECYCLE (df5-7 showed the gameplay loop; df7-7 shows attract/game-over/hall-of-fame screens). Register the lobby showcase tile (Decision E, the existing showcase seam — no new lobby infra). Confirm ADR-0005 visually across every phase: no attract/death/game-over transition flashes the full screen. An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control.'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -181,6 +182,8 @@ stories:
       - 'AC2: a screenshot sequence at http://127.0.0.1:5270/defender/ (each DIFFERING from a nonsense control path — the canonical-serve lesson) captures: the attract demo playing (df7-3), a started game with the HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name-entry screen (df7-4).'
       - 'AC3: NO full-frame strobe appears in ANY phase or transition (Decision B, ADR-0005) — a note confirms the df4-2 no-full-frame-strobe guard held across the whole lifecycle; any discrepancy is filed by FILE SURFACE (the jt9 habit).'
       - 'AC4: the df8+ hand-forward note is recorded — the epic is content-complete; hardening/mutation batteries (reviewer-driven, grouped by file surface) are the remaining defender work.'
+    completed: '2026-08-19'
+    review_verdict: approved
   - id: df7-8
     title: 'Scanner player-blip render: draw the player radar marker (ROM *PLAYER BLIP OUTPUT, defender/AMODE1.SRC:1242-1257) — the last un-drawn scanner element df5-7 and df7-5 both left to df7'
     description: 'df5-7 (scene.ts:186-192) and df7-5 both explicitly deferred the scanner PLAYER BLIP to df7. Unlike world attackers (df5-1 projectScanner / the SCNR object loop), the player sits at a fixed screen position, so its radar column comes from PLAXC directly — the ROMs separate *PLAYER BLIP OUTPUT path (AMODE1.SRC:1242-1257): PLAXC>>4 column, Y>>3 row, the $9099 marker (palette index 9, WHITE) at PLAYER BASE $4B00+SCANH. Draw it in the pure core composeFrame by palette INDEX only, inside the df7-5 bezel; ADR-0005 no full-frame strobe; purity.test.ts stays green. Cite AMODE1.SRC:1242-1257 under the df1-1 gate.'
@@ -193,3 +196,4 @@ stories:
     completed: '2026-08-19'
     review_findings: "2 documentation findings (both non-blocking severity, but rejected to correct a false claim I introduced): F1 [MED] scanner.ts:27 — edited comment falsely says MTERR is 're-derived to our centred strip elsewhere'; MTERR is data-only (terrain-data.ts), drawn nowhere. F2 [LOW] df7-5-hud-scanner.test.ts:13,22 — stale 'scene.ts header records player-blip as still df7's' after this diff changed that header. Implementation/tests/citations/purity/safety all verified correct."
     review_verdict: approved
+completed: '2026-08-19'
