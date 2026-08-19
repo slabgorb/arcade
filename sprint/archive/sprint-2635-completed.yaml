@@ -17,6 +17,7 @@ completed_epics:
   - jt13
   - df5
   - df6
+  - df7
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -357,5 +358,15 @@ completed_stories:
   - id: df6-4
     epic: df6
     title: "AUDIBLE playtest — a whole game loop that SOUNDS right: at http://127.0.0.1:5270/defender/ (DIFFER-from-nonsense-control per the canonical-serve lesson) confirm the laser/hit/explosion cues fire on their moments, the THRUST loops while held and stops on release (df6-2), the smart-bomb PLAYS while its VISUAL stays the ADR-0005 freeze/fade (Decision D — audio is not muted), and NO cue is silently missing (the manifest .wav fetches return 200 in the network log, not a silent-degrade 404). Carry the df7 hand-forward note (the two attract musics PHANTOM/TOCCATA + the hall-of-fame/attract cues, Decision A)."
+    points: 2
+    completed: '2026-08-19'
+  - id: df7-7
+    epic: df7
+    title: "Lobby showcase opt-in + the FULL-LIFECYCLE visual playtest: register Defender in the lobby-showcase attract rotation (the ml7/mc showcase seam, Decision E), and screenshot the whole lifecycle at http://127.0.0.1:5270/defender/ — attract demo playing (df7-3), a started game with HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name entry (df7-4) — each DIFFERING from a nonsense control (the canonical-serve lesson), with NO full-frame strobe anywhere (Decision B). Carry df8+ (hardening) forward."
+    points: 2
+    completed: '2026-08-19'
+  - id: df7-6
+    epic: df7
+    title: "2P alternating handoff (df5 Decision D lands here): the death->next-player transition for a two-player game (ST2 *TWO PLAYER START defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; player-switch P1SW/P2SW :1179). Each player keeps their own men/score/world; on death the phase machine hands off to the other player until both are out. The COCKTAIL screen-flip is DOCUMENTED-NOT-PORTED (desktop-only, upright — Decision D). Consumes df7-1 phase machine + df5-3 score/men."
     points: 2
     completed: '2026-08-19'
