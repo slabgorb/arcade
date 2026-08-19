@@ -67,8 +67,8 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
-import { isIntermissionLevel, INTERMISSION_LEVELS, INTERMISSION_MUSIC } from './intermission'
-import { createAct1Cutscene, stepCutscene, type CutsceneState } from './cutscene'
+import { isIntermissionLevel, INTERMISSION_MUSIC } from './intermission'
+import { createCutsceneForLevel, stepCutscene, type CutsceneState } from './cutscene'
 import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
@@ -632,12 +632,13 @@ export function stepGame(state: GameState, input: GameInput): void {
     const intermissionDue = isIntermissionLevel(state.level)
     state.phase = advancePhase('level-clear', { clearExpired, intermissionDue })
     if (state.phase === 'intermission') {
-      // pm6-2: the first coffee-break round (INTERMISSION_LEVELS[0] — round 2)
-      // plays ACT 1. `state.level` is still the CLEARED round here (advanceLevel
-      // below advances it), so gate on it BEFORE the advance. Act 2/3 (pm6-3) are
-      // not built yet — those rounds leave `cutscene` null and fall back to the
-      // pm6-1 frame-count hold.
-      if (state.level === INTERMISSION_LEVELS[0]) state.cutscene = createAct1Cutscene(state.seed)
+      // pm6-2/pm6-3: build the coffee-break's scripted cutscene for this round —
+      // act 1 after round 2, act 2 after round 5, act 3 after 9/13/17
+      // (createCutsceneForLevel maps the cadence). `state.level` is still the
+      // CLEARED round here (advanceLevel below advances it), so select on it BEFORE
+      // the advance. A non-mapped round returns null and falls back to the pm6-1
+      // frame-count hold.
+      state.cutscene = createCutsceneForLevel(state.level, state.seed)
       advanceLevel(state)
       state.freezeFrames = 0
       state.events.push({ type: 'intermission-started', music: INTERMISSION_MUSIC })
