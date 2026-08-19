@@ -64,11 +64,11 @@
   },
   {
     "id": "SCAN-BEZEL",
-    "claim": "The scanner BEZEL marks the radar strip's two ends: MTX writes $9090/$0909 (palette index 9, WHITE) at SCANH+$4C01 and SCANH+$5301 — end-bracket marks framing the 64-column strip, not a full-width bar. df7-5 draws this frame each play frame, attacker-independent.",
+    "claim": "The scanner bezel mark is the byte $9090 — palette index 9 (WHITE) in its high nibble — that the MTX bezel routine (*SCANNER BEZEL, :1225-1233) stores into the SCANH scanner addresses to frame the radar strip's ends. df7-5's BEZEL_COLOUR=9 is this nibble; the frame is a pair of end-brackets, not a full-width bar.",
     "source": {
       "file": "AMODE1.SRC",
-      "line": 1225,
-      "verbatim": "*SCANNER BEZEL"
+      "line": 1227,
+      "verbatim": "\tLDD\t#$9090"
     }
   }
 ]

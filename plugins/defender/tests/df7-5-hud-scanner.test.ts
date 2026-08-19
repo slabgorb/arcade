@@ -8,8 +8,9 @@
 // df7-5's description says "the scanner is projected in core (df5-1) but drawn NOWHERE
 // today" and its AC1 says the scanner is "drawn nowhere today". That is STALE: df5-7
 // already wired `drawScanner` (live-attacker blips, coloured by palette INDEX) and
-// `drawHud` (score + men) into core/scene.ts `composeFrame`, and df5-7's own comment
-// (scene.ts:186-192) explicitly LEFT to df7 "the scanner SCREEN-ADDRESS/bezel/player-blip".
+// `drawHud` (score + men) into core/scene.ts `composeFrame`, and df5-7 explicitly LEFT the
+// scanner bezel + player-blip to df7 (see the session Delivery Findings). df7-5 now ships the
+// bezel; scene.ts's header records the player-blip (:1242-1257) as still df7's.
 // So the genuine, un-built df7-5 delta is:
 //   • AC1 — the scanner BEZEL: the radar strip's frame, drawn REGARDLESS of attackers
 //           (*SCANNER BEZEL defender/AMODE1.SRC:1225, the 64-col strip :1223 already

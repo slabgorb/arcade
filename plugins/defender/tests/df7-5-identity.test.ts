@@ -43,13 +43,16 @@ describe('df7-5 AC3 — the scanner bezel is cited under the df1-1 claims gate',
     ).toBe(true)
   })
 
-  it('the *SCANNER BEZEL banner (AMODE1.SRC:1225) is claimed — the bezel df7-5 draws', () => {
-    // The story cites "*SCANNER BEZEL defender/AMODE1.SRC:1225" (the MTX bezel routine
-    // :1226-1233 writes $9090/$0909 into the SCANH addresses). df7-5 draws that frame, so
-    // its ROM anchor must be byte-pinned. RED today — 15-scanner.json stops at :1223.
+  it('the bezel byte (LDD #$9090, AMODE1.SRC:1227) is claimed — the operative bezel mark df7-5 draws', () => {
+    // The story points at "*SCANNER BEZEL defender/AMODE1.SRC:1225", but that banner carries
+    // no bytes; the OPERATIVE bezel instruction is the MTX routine :1226-1233, which loads
+    // $9090 (:1227) — palette index 9 in its high nibble, the source of BEZEL_COLOUR=9 — and
+    // stores it into the SCANH addresses. Pin the operative line so the df1-1 gate byte-checks
+    // the value the code uses (the df7-2-identity precedent cites operative instructions, not
+    // banners). RED before GREEN — 15-scanner.json's SCAN-BEZEL now targets :1227.
     expect(
-      coveredBy(claims, amode1(1225)),
-      'add a claims/15-scanner.json entry pinning AMODE1.SRC:1225 (*SCANNER BEZEL — the radar-strip frame df7-5 draws)',
+      coveredBy(claims, amode1(1227)),
+      'claims/15-scanner.json SCAN-BEZEL must pin AMODE1.SRC:1227 (LDD #$9090 — the operative bezel mark, index 9)',
     ).toBe(true)
   })
 })
