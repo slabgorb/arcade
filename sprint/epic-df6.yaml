@@ -153,7 +153,8 @@ stories:
     description: 'The ears for df6, mirroring df5-7/df4-6''s eyes. Audio can''t be "seen" in a screenshot, so the playtest reads the NETWORK log (Playwright): every SOUNDS .wav fetch returns 200 when its event fires — proving the seam is live and not silent-degrading on a 404 (Decision B''s runtime counterpart). Confirm the thrust loop starts/stops with the key, and that the smart-bomb''s audio plays even though its visual is the accessibility-safe variant (Decision D). An all-200 path sweep proves nothing (SPA fallback) — DIFFER from a nonsense control.'
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    completed: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
