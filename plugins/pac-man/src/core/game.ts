@@ -67,7 +67,8 @@ import {
 } from './mode'
 import { levelRow, FRUIT_SPAWN_DOTS, FRIGHTENED_GHOST_SPEED_PCT, type LevelFruit } from './level'
 import { advancePhase } from './phase'
-import { isIntermissionLevel, INTERMISSION_MUSIC } from './intermission'
+import { isIntermissionLevel, INTERMISSION_LEVELS, INTERMISSION_MUSIC } from './intermission'
+import { createAct1Cutscene, stepCutscene, type CutsceneState } from './cutscene'
 import { autoPlayDir } from './attract'
 import type { GameEvent } from './events'
 import { qualifiesForHighScore, insertHighScore, type HighScoreTable } from '@shared/highscore'
@@ -271,6 +272,12 @@ export interface GameState {
   gameOverFrames: number
   highScoreTable: PacHighScoreTable
   nameEntry: NameEntryState | null
+  /** pm6-2: the scripted-actor cutscene playing over the current `intermission`
+   *  phase, or `null` when no coffee break is on screen. Created on entry to the
+   *  act-1 coffee-break round, stepped each frame while `intermission`, and cleared
+   *  when the break ends. Only act 1 exists today; act 2/3 (pm6-3) leave it null
+   *  and fall back to the frame-count hold. */
+  cutscene: CutsceneState | null
   events: GameEvent[]
 }
 
@@ -406,6 +413,7 @@ export function createGameState(seed: number, highScoreTable: PacHighScoreTable 
     gameOverFrames: 0,
     highScoreTable,
     nameEntry: null,
+    cutscene: null,
     events: [],
   }
 }
@@ -619,6 +627,12 @@ export function stepGame(state: GameState, input: GameInput): void {
     const intermissionDue = isIntermissionLevel(state.level)
     state.phase = advancePhase('level-clear', { clearExpired, intermissionDue })
     if (state.phase === 'intermission') {
+      // pm6-2: the first coffee-break round (INTERMISSION_LEVELS[0] — round 2)
+      // plays ACT 1. `state.level` is still the CLEARED round here (advanceLevel
+      // below advances it), so gate on it BEFORE the advance. Act 2/3 (pm6-3) are
+      // not built yet — those rounds leave `cutscene` null and fall back to the
+      // pm6-1 frame-count hold.
+      if (state.level === INTERMISSION_LEVELS[0]) state.cutscene = createAct1Cutscene(state.seed)
       advanceLevel(state)
       state.freezeFrames = 0
       state.events.push({ type: 'intermission-started', music: INTERMISSION_MUSIC })
@@ -629,17 +643,22 @@ export function stepGame(state: GameState, input: GameInput): void {
     return
   }
   if (state.phase === 'intermission') {
-    // pm6-1: the between-rounds coffee break. A STATIC hold (Decision B — freeze,
-    // NO flash, exactly like level-clear) for INTERMISSION_HOLD_FRAMES; the next
+    // pm6-1/pm6-2: the between-rounds coffee break. A STATIC hold (Decision B —
+    // freeze, NO flash, exactly like level-clear). When a scripted cutscene is
+    // playing (pm6-2, act 1) the break ends on the cutscene's COMPLETION (a
+    // position, pacman.asm:218f), not a frame count; with no cutscene (act 2/3,
+    // pm6-3) it falls back to the pm6-1 INTERMISSION_HOLD_FRAMES hold. The next
     // round's board is already loaded (advanceLevel ran on entry), so on expiry
-    // the machine simply hands off to that round's READY. pm6-2/pm6-3 lay the
-    // scripted actor animations over this window.
+    // the machine hands off to that round's READY.
     state.freezeFrames += 1
-    state.phase = advancePhase('intermission', {
-      intermissionExpired: state.freezeFrames >= INTERMISSION_HOLD_FRAMES,
-    })
+    if (state.cutscene && !state.cutscene.done) stepCutscene(state.cutscene)
+    const intermissionExpired = state.cutscene
+      ? state.cutscene.done
+      : state.freezeFrames >= INTERMISSION_HOLD_FRAMES
+    state.phase = advancePhase('intermission', { intermissionExpired })
     if (state.phase === 'ready') {
       state.readyFrames = 0
+      state.cutscene = null
     }
     return
   }

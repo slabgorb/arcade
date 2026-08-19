@@ -73,13 +73,17 @@ import { loadClaims } from '../audit/dossier-sweep'
 // frames — 4000 is "it never terminates" territory, not a real bound.
 const MAX_FRAMES = 4000
 
-/** One observed frame of the cutscene — the fields the ACs constrain. */
+/** One observed frame of the cutscene — the fields the ACs constrain.
+ *  `pacStep`/`blinkyStep` are the CITED movement-vector sign (+1 forward, -1 after
+ *  the sub-state-2 reversal), NOT an invented screen 'left'/'right': the ROM works
+ *  in a rotated frame and this repo declines to synthesise the screen transform
+ *  (glossary.md; Decision C). The "across then back" arc IS the +1 → -1 reversal. */
 interface Sample {
   substate: number
   pacCol: number
   blinkyCol: number
-  pacDir: string
-  blinkyDir: string
+  pacStep: number
+  blinkyStep: number
   bigPacActive: boolean
   blinkyFrightened: boolean
   pacFrame: number
@@ -92,14 +96,21 @@ function sample(s: CutsceneState): Sample {
     substate: s.substate,
     pacCol: s.pac.col,
     blinkyCol: s.blinky.col,
-    pacDir: s.pac.dir,
-    blinkyDir: s.blinky.dir,
+    pacStep: s.pac.step,
+    blinkyStep: s.blinky.step,
     bigPacActive: s.bigPacActive,
     blinkyFrightened: s.blinky.frightened,
     pacFrame: s.pac.frame,
     blinkyFrame: s.blinky.frame,
     done: s.done,
   }
+}
+
+/** Wrap-aware tile distance between two ROM tile bytes (0..255). The counter is
+ *  the ROM's 8-bit `4d3a`/`4d32`, so `0xff → 0x00` is a ONE-unit step, not a jump. */
+function tileDelta(a: number, b: number): number {
+  const d = Math.abs(a - b) & 0xff
+  return Math.min(d, 256 - d)
 }
 
 /** Drive a cutscene to completion, returning every frame's Sample (including
@@ -127,8 +138,8 @@ describe('pm6-2 AC1: the cutscene player is pure, seeded and deterministic', () 
     expect(s.substate, 'act 1 opens in sub-state 0').toBe(0)
     expect(s.pac.col, 'Pac enters at the cited start column 0x1f').toBe(ACT1_PAC_START_COL)
     expect(s.blinky.col, 'Blinky enters one tile behind at 0x1e').toBe(ACT1_BLINKY_START_COL)
-    expect(s.pac.dir, 'the chase runs left-to-right').toBe('right')
-    expect(s.blinky.dir, 'Blinky chases in the same direction').toBe('right')
+    expect(s.pac.step, 'both actors set off in the forward (+1) vector').toBe(1)
+    expect(s.blinky.step, 'Blinky gives chase in the same forward vector').toBe(1)
     expect(s.blinky.col, 'Blinky trails Pac at the open').toBeLessThan(s.pac.col)
     expect(s.bigPacActive, 'no big-Pac at the open').toBe(false)
     expect(s.blinky.frightened, 'Blinky is not yet frightened at the open').toBe(false)
@@ -183,23 +194,23 @@ describe('pm6-2 AC2: act 1 plays the ROM sub-state arc', () => {
     expect(state.substate, 'crossing 0x21 advances the machine').toBeGreaterThan(0)
   })
 
-  it('Blinky chases Pac RIGHTWARD through the first leg (both dirs right, Blinky trailing)', () => {
+  it('Blinky chases Pac in the FORWARD vector through the first leg (both step +1, Blinky trailing)', () => {
     const trace = runToDone(1)
     const chase = trace.filter((f) => f.substate <= 1)
     expect(chase.length).toBeGreaterThan(0)
     for (const f of chase) {
-      expect(f.pacDir, 'Pac flees right in the first leg').toBe('right')
-      expect(f.blinkyDir, 'Blinky chases right in the first leg').toBe('right')
+      expect(f.pacStep, 'Pac flees in the forward vector in the first leg').toBe(1)
+      expect(f.blinkyStep, 'Blinky chases in the forward vector in the first leg').toBe(1)
     }
   })
 
-  it('the RETURN leg is big-Pac chasing a BLUE-FRIGHTENED Blinky leftward (NOT a ripped Blinky)', () => {
+  it('the RETURN leg is big-Pac chasing a BLUE-FRIGHTENED Blinky (reversed vector, NOT a ripped Blinky)', () => {
     const trace = runToDone(1)
     const ret = trace.filter((f) => f.bigPacActive)
     expect(ret.length, 'the big-Pac chase actually plays').toBeGreaterThan(0)
     for (const f of ret) {
-      expect(f.pacDir, 'big-Pac chases leftward on the return').toBe('left')
-      expect(f.blinkyDir, 'Blinky flees leftward on the return').toBe('left')
+      expect(f.pacStep, 'big-Pac chases in the reversed vector on the return').toBe(-1)
+      expect(f.blinkyStep, 'Blinky flees in the reversed vector on the return').toBe(-1)
       expect(
         f.blinkyFrightened,
         'the chased-back Blinky is the blue frightened sprite (pacman.asm:1aa1 #1c), never the act-2 ripped sheet',
@@ -309,19 +320,20 @@ describe('pm6-2 AC4: the cutscene is gentle — no large-area luminance strobe',
     }
   })
 
-  it('actor motion is smooth — a column never jumps more than one tile per frame', () => {
+  it('actor motion is smooth — a column never jumps more than the 2x step per frame', () => {
     // Large-area luminance change comes from teleport/flash, not from a sprite
-    // gliding one tile at a time. Pin that neither actor ever leaps.
+    // gliding a tile at a time. Pin (wrap-aware, since the tile byte is 8-bit)
+    // that neither actor moves more than CUTSCENE_STEPS_PER_FRAME tiles in a frame.
     const trace = runToDone(1)
     for (let i = 1; i < trace.length; i++) {
       expect(
-        Math.abs(trace[i].pacCol - trace[i - 1].pacCol),
-        `Pac glides (<=1 tile/frame) at frame ${i}`,
-      ).toBeLessThanOrEqual(1)
+        tileDelta(trace[i].pacCol, trace[i - 1].pacCol),
+        `Pac glides (<=${CUTSCENE_STEPS_PER_FRAME} tiles/frame) at frame ${i}`,
+      ).toBeLessThanOrEqual(CUTSCENE_STEPS_PER_FRAME)
       expect(
-        Math.abs(trace[i].blinkyCol - trace[i - 1].blinkyCol),
-        `Blinky glides (<=1 tile/frame) at frame ${i}`,
-      ).toBeLessThanOrEqual(1)
+        tileDelta(trace[i].blinkyCol, trace[i - 1].blinkyCol),
+        `Blinky glides (<=${CUTSCENE_STEPS_PER_FRAME} tiles/frame) at frame ${i}`,
+      ).toBeLessThanOrEqual(CUTSCENE_STEPS_PER_FRAME)
     }
   })
 
