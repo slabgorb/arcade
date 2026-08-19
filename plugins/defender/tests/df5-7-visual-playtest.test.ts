@@ -11,10 +11,10 @@
 //      not just a higher `wave` counter (df5-8 locked the counter and left the on-screen
 //      proof to "the story df5-7 exists to show").
 //   3. the score / men HUD (df5-3) renders, and killing an enemy RAISES the on-screen score.
-//   4. a SMART BOMB (df5-5) fires as the ACCESSIBILITY-SAFE clear — a freeze/fade that clears
-//      the on-screen enemies and NEVER strobes the whole screen (ADR-0005, the ONE exception
-//      to ROM-always-wins — the owner has photosensitive epilepsy).
-//   5. the game ends (men < 0) and the GAME-OVER / hall-of-fame SCREEN (df5-6) renders.
+//   4. a SMART BOMB (df5-5) fires as the ACCESSIBILITY-SAFE clear — the on-screen attackers
+//      vanish (a bounded change) and NO effect strobes the whole screen (ADR-0005, the ONE
+//      exception to ROM-always-wins — the owner has photosensitive epilepsy).
+//   5. the game ends (men < 0) and a bare GAME OVER / final-score SCREEN (df5-6) renders.
 //   6. the populated df5 frame DIFFERS from a nonsense control (empty frame + static title
 //      still) — the render-layer canonical-serve lesson; and every composed cell stays a
 //      valid 4-bit palette index.
@@ -23,12 +23,12 @@
 // df5-6's endgame.ts carried "Decision C": the HUD render AND the game-over screen render
 // were deferred to df7 alongside the phase machine. Under this story the OWNER ruled the
 // whole loop must actually RENDER now — so df5-7 pulls the HUD render, the scanner strip
-// render and the game-over/hall-of-fame SCREEN render into composeFrame. Decision C is
+// render and a BARE GAME OVER / final-score screen render into composeFrame. Decision C is
 // NARROWED accordingly: only the attract->play->death->game-over phase-MACHINE wiring and
 // the 2P alternating handoff (Decision D) remain df7's. df5-6-game-over.test.ts's deferral
 // assertion is updated in lock-step (this same RED commit). The persisted hall-of-fame
 // TABLE + interactive initials entry stay the SHELL's (input+storage); the pure core here
-// renders the GAME OVER / final-score screen from SimState alone.
+// renders only the GAME OVER + final-score screen from SimState — NOT the hall-of-fame table.
 //
 // ─── WHY THIS IS RED ─────────────────────────────────────────────────────────────────
 // scanner.ts / score.ts / powers.ts / endgame.ts are built, pure and green IN ISOLATION,
@@ -339,8 +339,8 @@ describe('df5-7 — a smart bomb clears the screen SAFELY (df5-5 / ADR-0005)', (
   })
 })
 
-// ─── 5. GAME OVER — men<0 renders the game-over / hall-of-fame screen (df5-6) ──────────
-describe('df5-7 — the game ends and the game-over/hall-of-fame screen renders (df5-6)', () => {
+// ─── 5. GAME OVER — men<0 renders the bare GAME OVER / final-score screen (df5-6) ─────
+describe('df5-7 — the game ends and the bare GAME OVER / final-score screen renders (df5-6)', () => {
   it('killShip drives men below zero and sets gameOver (df5-3 loseMan → df5-6 isGameOver)', async () => {
     const sim = await loadSim()
     let s = sim.createSim(makeRand(37))
@@ -365,7 +365,7 @@ describe('df5-7 — the game ends and the game-over/hall-of-fame screen renders 
     const overFrame = composeFrame(s, LOGICAL_WIDTH, LOGICAL_HEIGHT)
     expect(
       digest(overFrame),
-      'the game-over/hall-of-fame screen is not rendered — the over frame is byte-identical to the play frame',
+      'the GAME OVER / final-score screen is not rendered — the over frame is byte-identical to the play frame',
     ).not.toBe(digest(playFrame))
   })
 })

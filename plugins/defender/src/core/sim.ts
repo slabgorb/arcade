@@ -68,9 +68,11 @@ export interface Input {
   readonly down: boolean
   readonly fire: boolean
   /** df5-7: the smart-bomb key (SBOMB, DEFA7.SRC:3175) — one tick clears the on-screen
-   *  attackers. Its PRESENTATION is the ADR-0005 SAFE variant (classify('smart-bomb'),
-   *  effects.ts) — NEVER the ROM COM PCRAM whole-page invert. The shell (input.ts mapInput)
-   *  samples the key; a fresh/idle snapshot leaves it false. */
+   *  attackers (see smartBombClear). The clear is ADR-0005 safe by CONSTRUCTION: it writes
+   *  no framebuffer, so the only on-screen change is the attackers vanishing — bounded and
+   *  non-strobing, never the ROM COM PCRAM whole-page invert. (The df4-2 `classify`/effect
+   *  policy is NOT on this runtime path today — see smartBombClear.) The shell (input.ts
+   *  mapInput) samples the key; a fresh/idle snapshot leaves it false. */
   readonly smartBomb: boolean
 }
 
@@ -105,7 +107,8 @@ export interface SimState {
    *  0 on a fresh sim, 1 after the first cleared-field tick spawns wave 1. */
   readonly wave: number
   /** df5-7: the running score (df5-3 ScoreState.score), refreshed each tick like `wave` —
-   *  0 on a fresh sim, raised when the df4-1 COLIDE seam kills an enemy (addPoints). */
+   *  0 on a fresh sim, raised (addPoints) when the df4-1 COLIDE seam OR the df5-5 smart-bomb
+   *  clear kills an enemy. */
   readonly score: number
   /** df5-7: the men (lives) counter (df5-3 ScoreState.men) — STARTING_MEN (3) on a fresh
    *  sim, decremented by killShip (loseMan), raised by the extra-man award (addPoints). */
@@ -307,12 +310,18 @@ export function stepSim(state: SimState, input: Input): SimState {
   }
 }
 
-/** df5-7 / df5-5 (SBOMB, DEFA7.SRC:3175): clear the on-screen attackers — every live lander
- *  (clearsType: the ROM smart bomb clears OTYP < 2). killLander removes each from the view
+/** df5-7 / df5-5 (SBOMB, DEFA7.SRC:3175): clear the on-screen attackers. Kills EVERY live
+ *  lander — the enemy bank's only inhabitant today; `killLander` removes each from the view
  *  and, per LKIL1, drops any carried humanoid into a free-fall. Returns the points awarded so
- *  stepSim folds them into the df5-3 score. The PRESENTATION is the ADR-0005 SAFE variant
- *  (classify('smart-bomb') → 'fade'): the clear itself repaints only where the attackers were —
- *  a bounded, NON-strobing change (never the ROM COM PCRAM whole-page invert). */
+ *  stepSim folds them into the df5-3 score.
+ *
+ *  ADR-0005 safety holds by CONSTRUCTION, not by a rendered presentation: this writes no
+ *  framebuffer, so the only on-screen change is the attackers disappearing — spatially
+ *  bounded and non-strobing, never the ROM COM PCRAM whole-page invert. NOTE: neither
+ *  powers.ts `clearsType` (OTYP < 2) nor the df4-2 `classify('smart-bomb')` fade presentation
+ *  is invoked yet — when a non-lander attacker type is wired, gate the clear with `clearsType`;
+ *  when a richer on-screen presentation is wanted, route it through the effect policy so the
+ *  fade is real (and keep the assertNoFullFrameStrobe guard green). */
 function smartBombClear(state: SimState): number {
   const live = state._enemyBank.landers.filter((l) => l.alive)
   let points = 0

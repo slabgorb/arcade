@@ -27,7 +27,7 @@ intended behavior._
 - AC1: a screenshot of http://127.0.0.1:5270/defender/ shows the scanner populated with at least one OFF-CAMERA attacker (df5-1), an escalated wave (df5-2) and the score/men HUD (df5-3); the defender path is confirmed to DIFFER from a nonsense control path (not merely return 200 — the canonical-serve lesson).
 - AC2: a smart-bomb (df5-5) is captured firing as the ACCESSIBILITY-SAFE freeze/fade variant — NO full-screen strobe — and the hall-of-fame entry (df5-6) renders; a note confirms the df4-2 no-full-frame-strobe guard held throughout.
 - AC3: scanner blip position and colour (df2 palette index) and enemy orientation are confirmed correct against the design; any discrepancy is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.
-- AC4: the df7 hand-forward note (2P alternating handoff per Decision D; the attract->play->death->game-over phase machine + HUD render per Decision C) is recorded in the session file for the next epic.
+- AC4: the df7 hand-forward note is recorded in the session file for the next epic. Decision C is NARROWED by df5-7: the HUD render and a bare GAME OVER / final-score screen render HERE (composeFrame from SimState). Still df7's: the attract->play->death->game-over phase MACHINE, the persisted hall-of-fame TABLE + interactive initials entry (Decision D's 2P alternating handoff included).
 
 ## Carry-Forward Notes
 
