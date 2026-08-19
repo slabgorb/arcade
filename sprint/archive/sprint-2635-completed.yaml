@@ -370,3 +370,8 @@ completed_stories:
     title: "2P alternating handoff (df5 Decision D lands here): the death->next-player transition for a two-player game (ST2 *TWO PLAYER START defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; player-switch P1SW/P2SW :1179). Each player keeps their own men/score/world; on death the phase machine hands off to the other player until both are out. The COCKTAIL screen-flip is DOCUMENTED-NOT-PORTED (desktop-only, upright — Decision D). Consumes df7-1 phase machine + df5-3 score/men."
     points: 2
     completed: '2026-08-19'
+  - id: pm6-5
+    epic: pm6
+    title: "VISUAL playtest: screenshot http://127.0.0.1:5270/pac-man/ showing an intermission cutscene playing (pm6-2/pm6-3) between levels, DIFFERING from a nonsense control path (the canonical-serve lesson), with NO strobing anywhere (Decision B). Confirm the cutscenes read correctly against the ROM. (Kill-screen scope dropped — pm6-4 canceled 2026-08-19.)"
+    points: 2
+    completed: '2026-08-19'
