@@ -115,7 +115,8 @@ stories:
     description: 'The mc6-4 / pm4 self-play analog. During attract the phase machine runs the REAL df3 sim driven by a pure seeded auto-player (the joust jt13 demoInput lesson: drive the real sim, do not fork a demo path) so the attract screen shows actual gameplay. Any input exits attract to setup. Pure, seeded, clock-free. Colour by df2 palette index.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
