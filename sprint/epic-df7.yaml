@@ -160,7 +160,7 @@ stories:
     description: 'df5 Decision D deferred 2P alternating handoff to df7 as phase-machine territory. Two players alternate on death, each with their own men/score/world snapshot; the machine cycles P1->P2->P1 until both reach game-over. The ROM cocktail screen-flip (P1SW/P2SW drive it) is documented in the design spec but NOT ported — the arcade is desktop-only/upright. Single-player (df7-1..df7-5) is unaffected; 2P is an additive path.'
     points: 2
     priority: p2
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
     acceptance_criteria:
