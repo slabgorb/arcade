@@ -57,6 +57,8 @@ import {
 } from '../../src/core/cutscene'
 import { LOGICAL_W, LOGICAL_H } from '../../src/shell/layout'
 
+const SPRITE_PX = 16 // pacman.5f's native sprite size (render.ts) — big-Pac tiles a 32x32
+
 // ─── The recording fake ctx (mirrors overlays.test.ts / attract-screen.test.ts) ──────
 interface RecordedCall {
   method: 'putImageData' | 'drawImage' | 'fillText' | 'fillRect'
@@ -68,6 +70,10 @@ interface RecordedCall {
    *  same-SIZE sprites apart (a frightened vs a normal ghost blit at the same
    *  spot), which x/y/w/h alone cannot. */
   sig?: number
+  /** The raw RGBA of a putImageData sprite — kept so a fidelity test can assert an
+   *  actual COLOUR reached the frame (a wrong colour-code keeps the sprite index, so
+   *  `sig` alone would still differ from a plain body — see the frightened test). */
+  data?: Uint8ClampedArray
   text?: string
   fillStyle?: string
 }
@@ -97,7 +103,7 @@ function fakeCtx(): CanvasRenderingContext2D & FakeCtx {
       calls.push({ method: 'fillRect', x, y, w, h, fillStyle: String(ctx.fillStyle) }),
     fillText: (text: string, x: number, y: number) => calls.push({ method: 'fillText', x, y, text }),
     putImageData: (img: { width: number; height: number; data: Uint8ClampedArray }, dx: number, dy: number) =>
-      calls.push({ method: 'putImageData', x: dx, y: dy, w: img.width, h: img.height, sig: hashPixels(img.data) }),
+      calls.push({ method: 'putImageData', x: dx, y: dy, w: img.width, h: img.height, sig: hashPixels(img.data), data: img.data }),
     // Sprites may be blitted from an offscreen canvas via drawImage — record both so
     // the contract is not coupled to one blit primitive. The 9-arg form is the common
     // one; capture the destination x/y/w/h (last four args) when present.
@@ -143,6 +149,42 @@ function blitSignature(ctx: ReturnType<typeof fakeCtx>): string {
     .sort()
     .join('|')
 }
+
+/** The pixel bounding box of every sprite blit — max extent minus min origin, per axis.
+ *  Lets a test assert the on-screen FOOTPRINT (a big-Pac must cover a bigger area than a
+ *  small one), which `blitSignature`'s "just differs" comparison never checks. */
+function blitFootprint(ctx: ReturnType<typeof fakeCtx>): { w: number; h: number } {
+  const blits = spriteBlits(ctx)
+  if (blits.length === 0) return { w: 0, h: 0 }
+  const minX = Math.min(...blits.map((c) => c.x))
+  const minY = Math.min(...blits.map((c) => c.y))
+  const maxX = Math.max(...blits.map((c) => c.x + (c.w ?? 0)))
+  const maxY = Math.max(...blits.map((c) => c.y + (c.h ?? 0)))
+  return { w: maxX - minX, h: maxY - minY }
+}
+
+/** How many opaque pixels of exactly (r,g,b) appear across every putImageData sprite in
+ *  `ctx`. Proves a specific COLOUR reached the frame in QUANTITY (a frightened body is
+ *  mostly blue; a plain red Blinky has only a few blue eye-pupils) — which a
+ *  sprite-index-driven hash comparison cannot, since a wrong colour keeps the index. */
+function countColor(ctx: ReturnType<typeof fakeCtx>, r: number, g: number, b: number): number {
+  let n = 0
+  for (const c of ctx.calls) {
+    if (c.method !== 'putImageData' || !c.data) continue
+    const d = c.data
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] !== 0 && d[i] === r && d[i + 1] === g && d[i + 2] === b) n++
+    }
+  }
+  return n
+}
+
+// The hardware colours the cutscene ghost sprites resolve to (render.ts colour codes →
+// HARDWARE_PALETTE): a FRIGHTENED body is blue, a plain Blinky body is red. Asserting the
+// blue reaches the frame (and the plain body carries none) verifies the COLOUR, not just
+// that the sprite differs. Sourced from render.ts's own anchored colour-code comments.
+const FRIGHTENED_BLUE: readonly [number, number, number] = [33, 33, 255] // colourLookup(9,1) = HARDWARE_PALETTE[11]
+const BLINKY_RED: readonly [number, number, number] = [255, 0, 0] // colourLookup(1,3) = HARDWARE_PALETTE[1]
 
 /** fillRect calls covering (at least) the whole 224×288 logical buffer — a full-screen
  *  fill, exactly the level-clear strobe pm4-1 removed. Copied from overlays.test.ts. */
@@ -216,64 +258,89 @@ describe('pm6-5 — the intermission cutscene reaches the live frame (pm6-2/pm6-
     ).toBe(0)
   })
 
-  it('the actor sprites track their columns — the picture MOVES as the core steps the scene', () => {
-    // Fresh act-1 tableau vs the same scene stepped forward: the actors have walked, so
-    // their on-screen positions must differ. A static tableau (drawn once, ignoring the
-    // live `col`) would keep the same positions — an intermission that does not animate.
-    const fresh = createAct1Cutscene(1)
-    const walked = createAct1Cutscene(1)
-    for (let i = 0; i < 12; i++) stepCutscene(walked)
-    expect(walked.pac.col, 'precondition: stepping moved Pac off its start column').not.toBe(fresh.pac.col)
-
-    const before = drawFrame(intermissionGame(fresh))
-    const after = drawFrame(intermissionGame(walked))
-    expect(spriteBlits(before).length, 'precondition: the fresh scene drew actors').toBeGreaterThan(0)
+  it('the picture MOVES as the core steps the scene — the layout is not static', () => {
+    // Pac is anchored centre-screen and Blinky is placed by the signed col-gap the core
+    // models; as act 1's script changes that gap (chase, reversal, the solo-actor exits)
+    // Blinky's on-screen position must change. Collect the blit layout across the WHOLE act
+    // and require more than one distinct arrangement — a static tableau that ignored the
+    // live cols would yield exactly one, an intermission that never animates.
+    const s = createAct1Cutscene(1)
+    const layouts = new Set<string>()
+    for (let f = 0; f < 4000 && !s.done; f++) {
+      layouts.add(blitPositions(drawFrame(intermissionGame(s))))
+      stepCutscene(s)
+    }
+    expect(s.done, 'precondition: act 1 reached its final gate within the frame budget').toBe(true)
     expect(
-      blitPositions(after),
-      'the actor sprites did not move when the core stepped the scene — positions are not derived from the live actor columns',
-    ).not.toBe(blitPositions(before))
+      layouts.size,
+      'the cutscene never changed its on-screen layout across the whole act — the actors are not positioned from the live core state',
+    ).toBeGreaterThan(1)
   })
 })
 
 // ─── 2. The actors READ CORRECTLY against the ROM (AC1) ───────────────────────────────
 describe('pm6-5 — the cutscene actors read correctly against the ROM (AC1)', () => {
   it('big-Pac (act 1 sub-state 5) blits a LARGER Pac than the small chase Pac', () => {
-    // ROM act 1: a giant Pac-Man chases the fleeing Blinky (pacman.asm:15e9 arms big-Pac).
-    // The frame must actually show a bigger Pac — else the act reads wrong.
+    // ROM act 1: a giant Pac-Man chases the fleeing Blinky (pacman.asm:15e9 arms big-Pac,
+    // four 16x16 sprites tiling a 32x32). The frame must actually show a BIGGER Pac — a
+    // "just renders differently" check would pass even if the four quads stacked at one
+    // spot, so assert the on-screen FOOTPRINT grows. Pac/Blinky share the cutscene row, so
+    // the scene HEIGHT is the sprite height: 16px small, 32px for the big-Pac.
     const small = createAct1Cutscene(1)
     const big = createAct1Cutscene(1)
     big.bigPacActive = true
     const smallCtx = drawFrame(intermissionGame(small))
     const bigCtx = drawFrame(intermissionGame(big))
-    expect(spriteBlits(bigCtx).length, 'precondition: big-Pac scene drew actors').toBeGreaterThan(0)
+    expect(spriteBlits(smallCtx).length, 'precondition: the small scene drew actors').toBeGreaterThan(0)
+    const smallFp = blitFootprint(smallCtx)
+    const bigFp = blitFootprint(bigCtx)
+    expect(bigFp.h, 'big-Pac is not 32px tall — the four quads are not tiled into a 32x32 (they may be stacked)').toBeGreaterThanOrEqual(2 * SPRITE_PX)
     expect(
-      blitSignature(bigCtx),
-      'big-Pac renders identically to small Pac — the giant chaser does not read as bigger on screen',
-    ).not.toBe(blitSignature(smallCtx))
+      bigFp.h,
+      'the big-Pac scene is no taller than the small one — the giant chaser does not read as bigger on screen',
+    ).toBeGreaterThan(smallFp.h)
   })
 
-  it('a FRIGHTENED Blinky blits a different sprite than an ordinary Blinky (the blue flee)', () => {
-    // ROM act 1: Blinky turns blue and flees (pacman.asm:1a70). The blue frightened
-    // sprite must reach the frame, distinct from the plain ghost.
+  it('a FRIGHTENED Blinky renders BLUE (the blue flee), an ordinary Blinky does not', () => {
+    // ROM act 1: Blinky turns blue and flees (pacman.asm:1a70, image #1c / colour #11).
+    // Assert the actual COLOUR, not just "a different sprite" — a wrong colour-code keeps
+    // the frightened sprite index, so a sig-only diff would still pass. The blue must reach
+    // the frame, and the plain (red) Blinky must carry none of it (the colour is gated).
     const plain = createAct1Cutscene(1)
     const scared = createAct1Cutscene(1)
     scared.blinky.frightened = true
+    const scaredCtx = drawFrame(intermissionGame(scared))
+    const plainCtx = drawFrame(intermissionGame(plain))
+    expect(spriteBlits(plainCtx).length, 'precondition: the plain scene drew actors').toBeGreaterThan(0)
+    // The plain Blinky is red-bodied with a few blue eye-pupils; the frightened Blinky is a
+    // blue BODY — so it carries markedly MORE blue than the plain one. A wrong colour-code
+    // (drawing the frightened sprite red) would collapse its blue count to the plain's.
+    const scaredBlue = countColor(scaredCtx, ...FRIGHTENED_BLUE)
+    const plainBlue = countColor(plainCtx, ...FRIGHTENED_BLUE)
+    expect(scaredBlue, 'the frightened Blinky is not substantially blue — the blue flee body did not reach the frame').toBeGreaterThan(20)
     expect(
-      blitSignature(drawFrame(intermissionGame(scared))),
-      'a frightened Blinky renders identically to a normal Blinky — the blue flee does not reach the frame',
-    ).not.toBe(blitSignature(drawFrame(intermissionGame(plain))))
+      scaredBlue,
+      'the frightened Blinky is not markedly bluer than the plain (red) Blinky — the flee colour is not gated on the frightened flag',
+    ).toBeGreaterThan(plainBlue * 3)
+    expect(
+      countColor(plainCtx, ...BLINKY_RED),
+      'precondition: the plain Blinky renders in its red body colour',
+    ).toBeGreaterThan(0)
   })
 
   it('a RIPPED Blinky (act 2 tear / act 3 worm) blits a different sprite than an intact ghost', () => {
-    // ROM act 2 nails Blinky's sheet (sprite #32/#33, pacman.asm:162d); act 3's worm is
-    // that torn ghost. The torn/worm sprite must read distinctly from the intact ghost.
+    // ROM act 2 nails Blinky's sheet (sprite #32/#33, pacman.asm:1642/164d); act 3's worm
+    // is that torn ghost. The torn/worm sprite must read distinctly from the intact ghost.
     const intact = createAct2Cutscene(1) // act 2 opens intact, then rips
     const torn = createAct2Cutscene(1)
     torn.blinky.ripped = true
+    const intactCtx = drawFrame(intermissionGame(intact))
+    const tornCtx = drawFrame(intermissionGame(torn))
+    expect(spriteBlits(intactCtx).length, 'precondition: the intact scene drew actors').toBeGreaterThan(0)
     expect(
-      blitSignature(drawFrame(intermissionGame(torn))),
+      blitSignature(tornCtx),
       'a ripped Blinky renders identically to an intact ghost — the torn sheet / worm does not read on screen',
-    ).not.toBe(blitSignature(drawFrame(intermissionGame(intact))))
+    ).not.toBe(blitSignature(intactCtx))
   })
 
   it('each act (1/2/3) renders — every coffee break the cadence schedules reaches the frame', () => {
@@ -335,9 +402,11 @@ describe('pm6-5 — act 3 opens as the worm (pm6-3)', () => {
     expect(worm.blinky.ripped, 'precondition: act 3 opens with a ripped ghost').toBe(true)
     const intact = createAct3Cutscene(1)
     intact.blinky.ripped = false
+    const intactCtx = drawFrame(intermissionGame(intact))
+    expect(spriteBlits(intactCtx).length, 'precondition: the intact scene drew actors').toBeGreaterThan(0)
     expect(
       blitSignature(drawFrame(intermissionGame(worm))),
       "act 3's opening worm renders identically to an intact ghost — the tattered ghost does not read on screen",
-    ).not.toBe(blitSignature(drawFrame(intermissionGame(intact))))
+    ).not.toBe(blitSignature(intactCtx))
   })
 })

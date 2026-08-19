@@ -418,12 +418,24 @@ export function drawFruit(ctx: CanvasRenderingContext2D, tileX: number, tileY: n
 
 // ─── pm6-5: the intermission coffee-break cutscene (pm6-2/pm6-3) ─────────────────────
 // Renders the scripted actors modelled in core/cutscene.ts onto the CLEARED intermission
-// field (main.ts blanks the maze while `phase === 'intermission'`). Every sprite is the
+// field (main.ts blanks the maze while `phase === 'intermission'`). Every SPRITE is the
 // ROM's own — SPRITES' index IS the ROM image number (the frightened body #1c == 28
-// already proves it, render.ts above). Only the on-screen POSITION is authored: the ROM
-// cites the tile-column GATES, not a pixel row, so the actors run along a fixed cutscene
-// row and take their X from `col`. ACCESSIBILITY (Decision B — the standing Pac-Man
-// ruling): small 16x16 (or 32x32 big-Pac) sprite blits only, never a full-screen fill.
+// already proves it, render.ts above), and every sprite/colour constant below is
+// byte-cited to pacman.asm.
+//
+// POSITION is authored, and deliberately RELATIVE, because core does not carry a
+// renderable screen coordinate. `CutsceneActor.col` is the ROM's wrapping GATE-counter
+// (#4d3a/#4d32): it advances ~2/frame and sweeps the whole 0..255 byte, and the two
+// actors' counters diverge up to half the ring (±128) as each solo-actor sub-state
+// "exits" one of them (measured: act 1 wraps an absolute col→X map 26× — a blur). So a
+// direct col→pixel map is NOT faithful. What core DOES model correctly is the SIGNED gap
+// between the two counters — the chase spacing (approach, reversal, big-Pac catch-up).
+// We therefore anchor Pac centre-screen and place Blinky by that gap; when the gap opens
+// past the screen the trailing actor simply clips off-frame (an "exit"), never wrapping.
+// FAITHFUL screen TRAVERSAL would need core to model the ROM sprite-mover (#1806)
+// coordinate — filed as a pm6-5 Delivery Finding, out of this shell story's scope.
+// ACCESSIBILITY (Decision B — the standing Pac-Man ruling): small 16x16 (or 32x32
+// big-Pac) sprite blits only, never a full-screen fill.
 
 const BIG_PAC_COLOR_CODE = 0x16 // pacman.asm:161e `ld d,#16` — big-Pac's four sprites share colour #16
 const RIPPED_COLOR_CODE = 0x1d // pacman.asm:1646 `ld (ix+#03),#1d` — the torn sheet's colour
@@ -435,20 +447,25 @@ const BIG_PAC_BASE_BY_MOUTH: readonly number[] = [0x14, 0x10, 0x14, 0x18]
 /** The fixed screen row the coffee break runs along — lower-middle, clear of the HUD
  *  bands (rows 0-2 / 34-35). Presentation only, not a ROM pixel claim. */
 const CUTSCENE_ROW_Y = 20 * TILE_PX
+/** Pac's fixed screen anchor (centre column). Blinky is placed relative to it — see the
+ *  block comment above on why absolute col→X is not renderable from core. */
+const CUTSCENE_PAC_ANCHOR_X = 14 * TILE_PX
 
-/** An actor's screen X from its tile `col` (a full-byte 0..255 wrapping counter), folded
- *  across the field width so it always lands on screen. */
-function cutsceneActorX(col: number): number {
-  return (((col % MAZE.cols) + MAZE.cols) % MAZE.cols) * TILE_PX
+/** Signed shortest distance, in tiles, on the 0..255 `col` ring (both actor counters wrap
+ *  mod 256). Positive = `toCol` is ahead of `fromCol`. */
+function cutsceneGap(fromCol: number, toCol: number): number {
+  const m = (((toCol - fromCol) % 256) + 256) % 256
+  return m >= 128 ? m - 256 : m
 }
 
-/** The cutscene Pac: the four-sprite big-Pac when `big`, else the small chomping Pac.
- *  `actor.frame` is the core's mouth image (0..3, cutscene.ts `mouthImage`). */
-function drawCutscenePac(ctx: CanvasRenderingContext2D, actor: CutsceneActor, big: boolean): void {
-  const x = cutsceneActorX(actor.col)
+/** The cutscene Pac at screen X `x`: the four-sprite big-Pac when `big`, else the small
+ *  chomping Pac. `actor.frame` is the core's mouth image (0..3, cutscene.ts `mouthImage`).
+ *  Facing is fixed (`PAC_FRAMES.left`) — a presentation simplification, not derived from
+ *  `actor.step`'s sign (which reverses mid-act). */
+function drawCutscenePac(ctx: CanvasRenderingContext2D, actor: CutsceneActor, big: boolean, x: number): void {
   if (big) {
     const base = BIG_PAC_BASE_BY_MOUTH[actor.frame % BIG_PAC_BASE_BY_MOUTH.length]
-    // Four 16x16 quadrants tiling a 32x32, centred on the actor's tile.
+    // Four 16x16 quadrants tiling a 32x32, centred on the anchor tile.
     const ox = x + TILE_PX / 2 - SPRITE_PX
     const oy = CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX
     const quads: readonly (readonly [number, number])[] = [
@@ -462,36 +479,40 @@ function drawCutscenePac(ctx: CanvasRenderingContext2D, actor: CutsceneActor, bi
     }
     return
   }
-  const frames = PAC_FRAMES.left // the break runs leftward; mouth picked by the core frame
+  const frames = PAC_FRAMES.left
   const frame = frames[actor.frame % frames.length]
   const img = spriteImageData(ctx, frame.spriteIndex, PACMAN_COLOR_CODE, { flipX: frame.flipX, flipY: frame.flipY })
   ctx.putImageData(img, x + TILE_PX / 2 - SPRITE_PX / 2, CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX / 2)
 }
 
-/** The cutscene Blinky: the torn-sheet / worm sprite when `ripped`, the blue frightened
- *  sprite when `frightened`, else the plain red ghost body. `frame` toggles the two leg
- *  frames (small-area wiggle, Decision B). */
-function drawCutsceneBlinky(ctx: CanvasRenderingContext2D, actor: CutsceneActor): void {
-  const x = cutsceneActorX(actor.col) + TILE_PX / 2 - SPRITE_PX / 2
-  const y = CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX / 2
+/** The cutscene Blinky at screen X `x`: the torn-sheet / worm sprite when `ripped`, the
+ *  blue frightened sprite when `frightened`, else the plain red ghost body. `frame`
+ *  toggles the two leg frames (small-area wiggle, Decision B). */
+function drawCutsceneBlinky(ctx: CanvasRenderingContext2D, actor: CutsceneActor, x: number): void {
+  const px = x + TILE_PX / 2 - SPRITE_PX / 2
+  const py = CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX / 2
   const leg = actor.frame % 2
   if (actor.ripped) {
-    ctx.putImageData(spriteImageData(ctx, RIPPED_SPRITE_FRAMES[leg], RIPPED_COLOR_CODE), x, y)
+    ctx.putImageData(spriteImageData(ctx, RIPPED_SPRITE_FRAMES[leg], RIPPED_COLOR_CODE), px, py)
     return
   }
   if (actor.frightened) {
-    ctx.putImageData(spriteImageData(ctx, FRIGHTENED_BODY_FRAMES[leg], FRIGHTENED_COLOR_CODE), x, y)
+    ctx.putImageData(spriteImageData(ctx, FRIGHTENED_BODY_FRAMES[leg], FRIGHTENED_COLOR_CODE), px, py)
     return
   }
   const [frameA, frameB] = GHOST_BODY_FRAMES.left
-  ctx.putImageData(spriteImageData(ctx, leg === 0 ? frameA : frameB, GHOST_COLOR_CODE.blinky), x, y)
+  ctx.putImageData(spriteImageData(ctx, leg === 0 ? frameA : frameB, GHOST_COLOR_CODE.blinky), px, py)
 }
 
-/** Render one frame of the coffee-break cutscene. Blinky first, Pac on top (Pac leads the
- *  chase). Called by `overlays.draw` while `phase === 'intermission'` with a live scene. */
+/** Render one frame of the coffee-break cutscene. Pac is anchored centre-screen; Blinky
+ *  is placed by the signed tile gap between the two counters (the chase spacing core
+ *  models). Blinky first, Pac on top (Pac leads the chase). Called by `overlays.draw`
+ *  while `phase === 'intermission'` with a live scene. */
 export function drawCutscene(ctx: CanvasRenderingContext2D, cutscene: CutsceneState): void {
-  drawCutsceneBlinky(ctx, cutscene.blinky)
-  drawCutscenePac(ctx, cutscene.pac, cutscene.bigPacActive)
+  const pacX = CUTSCENE_PAC_ANCHOR_X
+  const blinkyX = pacX + cutsceneGap(cutscene.pac.col, cutscene.blinky.col) * TILE_PX
+  drawCutsceneBlinky(ctx, cutscene.blinky, blinkyX)
+  drawCutscenePac(ctx, cutscene.pac, cutscene.bigPacActive, pacX)
 }
 
 /** A ghost-chain score popup ("200"/"400"/"800"/"1600") — a real 16x16

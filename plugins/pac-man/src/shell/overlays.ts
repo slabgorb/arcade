@@ -150,7 +150,9 @@ export function createOverlays(): Overlays {
 
     // pm4-9: while the pm4-8 demo plays itself in attract, paint the cabinet's
     // attract screen on top of it (never READY! — that belongs to the pre-play
-    // 'ready' phase). Everywhere else keep the pm3-7/pm4-6 banner behaviour.
+    // 'ready' phase). Everywhere else EXCEPT the pm6-5 intermission cutscene below
+    // (a second carve-out that draws the coffee break, or nothing), keep the
+    // pm3-7/pm4-6 banner behaviour.
     if (game.phase === 'attract') {
       drawAttractScreen(ctx)
     } else if (game.phase === 'intermission') {
