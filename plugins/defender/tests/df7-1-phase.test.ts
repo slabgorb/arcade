@@ -28,8 +28,8 @@
 // ─── THE MAINLINE, CITED (all lines from tool output; AC3 pins them as claims) ────
 // The ROM mainline dispatches the STATUS-word states: ST1 *ONE PLAYER START
 // (DEFA7.SRC:1098/1100) and ST2 *TWO PLAYER START (:1110/1112); block-1 attract/hall
-// entry is HALLOF (AMODE1.SRC:117/119) with the HALDIS attract-mode display
-// (AMODE1.SRC:375); GAME OVER is GAMEOV (ROMF8.SRC:337). Those citations are
+// entry is HALLOF (AMODE1.SRC:117/119) with the HALDIS attract/HOF display
+// (AMODE1.SRC:377); GAME OVER is GAMEOV (ROMF8.SRC:339). Those citations are
 // byte-verified as claims/*.json entries by df7-1-identity.test.ts (the df1-1 gate).
 //
 // Every test asserts a concrete next-phase; the loop test pins the whole documented
