@@ -4,6 +4,7 @@ import { type Rng, createRng } from '@shared/rng'
 import { START_LIVES, spawnForLevel, PULSE_SON_INIT, pultimForLevel } from './rules'
 import type { HighScoreTable } from '@shared/highscore'
 import type { GameEvent } from './events'
+import { type AttractState, createAttract } from './attract-scheduler'
 
 export type Mode = 'attract' | 'select' | 'playing' | 'dying' | 'gameover' | 'warp' | 'highscore'
 
@@ -232,6 +233,7 @@ export interface GameState {
   events: GameEvent[]                // gameplay events emitted this frame (5-1); cleared each step
   prevFire: boolean                  // last frame's input.fire — lets menu confirms edge-trigger (6-2)
   demoActive: boolean                // the self-play attract demo is currently running (Story 10-3)
+  attract: AttractState              // the attract page rotation (ladder → logo → demo), pt1-5
   // QFRAME — the ROM's free-running frame counter, of which we port the one
   // consumer we have: nymph rotation happens on every OTHER frame (`LDA QFRAME /
   // AND I,1`, MOVNYM ALWELG.MAC:1149-1151). It is GLOBAL parity, not per-nymph:
@@ -276,7 +278,8 @@ export function initialState(seed: number): GameState {
     highScoreTable: [],
     events: [],
     prevFire: false,
-    demoActive: false, // the attract screen boots as a static title; the demo seeds on first idle step
+    demoActive: false, // no demo until the rotation reaches the demo page (pt1-5)
+    attract: createAttract(), // boots on the high-score ladder page (PAGE_ORDER[0])
     qframe: 0,
     rng,
     // Derive a distinct seed so the fire stream is decorrelated from movement.

@@ -1038,7 +1038,13 @@ export function render(
   // Framing screens own the whole frame: draw them and SUPPRESS the (now stale)
   // playing scene entirely. This is the 4-2 F1 fix — on boot/attract and after
   // gameover→attract the renderer used to leak a ghost tube + frozen enemies.
-  if (s.mode === 'attract' || s.mode === 'select' || s.mode === 'highscore') {
+  //
+  // pt1-5: the attract screen is the ONE exception — when the demo is running
+  // (`s.demoActive`, the attract rotation's demo page), the scene is NOT stale, it
+  // is the play example, so fall through to the phosphor scene path below. The
+  // ghost-tube suppression still governs the ladder/logo attract pages, select and
+  // highscore, whose boards ARE stale.
+  if ((s.mode === 'attract' && !s.demoActive) || s.mode === 'select' || s.mode === 'highscore') {
     drawFrame(ctx, s, W, H, color)
     drawScanlines(ctx, W, H)
     ctx.shadowBlur = 0

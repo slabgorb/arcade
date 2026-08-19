@@ -1,5 +1,6 @@
 // src/core/sim.ts
 import { GameState, Enemy, EnemyKind, Nymph, Tanker, TankerCargo } from './state'
+import { createAttract, stepAttract } from './attract-scheduler'
 import { Input } from './input'
 import { Tube, wrapLane, currentLane, tubeForLevel, warpEyeDest } from './geometry'
 import {
@@ -1125,20 +1126,32 @@ export function stepGame(state: GameState, input: Input, dt: number): GameState 
   const mode = s.mode
   switch (mode) {
     case 'attract':
-      // The attract screen plays itself when idle (Story 10-3). `start` begins a
-      // real game (→ select); any other real input returns to the title; otherwise
-      // the demo seeds (once) and runs the normal playing pipeline on synthetic
-      // input. A demo death (mode leaves 'attract') also returns to the title.
+      // The attract screen rotates three pages while idle (pt1-5): the high-score
+      // ladder, the logo wordmark, and the self-play DEMO (Story 10-3). `start`
+      // begins a real game (→ select); any other real input rewinds the rotation to
+      // its opening page and stops the demo. Otherwise the page scheduler advances
+      // one frame: on the DEMO page the demo seeds (once) and runs the normal
+      // playing pipeline on synthetic input — a demo death (mode leaves 'attract')
+      // returns to the title, to re-seed on the next demo-page frame; on any OTHER
+      // page the demo is stopped, so demoActive is true IFF the demo page is showing
+      // a live demo (checklist #27 — the ladder/logo pages never run it, #14 — the
+      // edge is cleared whether the rotation moves off the page or the demo dies).
       if (input.start) {
         s.mode = 'select'
         s.select = { selectedLevel: 1 }
         s.demoActive = false
       } else if (hasRealInput(input)) {
         resetDemoToTitle(s)
+        s.attract = createAttract() // rewind the rotation to the opening page
       } else {
-        if (!s.demoActive) seedDemo(s)
-        stepPlaying(state, s, demoInput(s), dt)
-        if (s.mode !== 'attract') resetDemoToTitle(s) // demo died/cleared → title
+        s.attract = stepAttract(s.attract)
+        if (s.attract.page === 'demo') {
+          if (!s.demoActive) seedDemo(s)
+          stepPlaying(state, s, demoInput(s), dt)
+          if (s.mode !== 'attract') resetDemoToTitle(s) // demo died/cleared → title
+        } else if (s.demoActive) {
+          resetDemoToTitle(s) // rotation left the demo page → stop the demo
+        }
       }
       break
     case 'select':
