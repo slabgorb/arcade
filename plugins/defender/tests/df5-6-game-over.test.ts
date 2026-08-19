@@ -94,20 +94,28 @@ describe('df5-6 AC1 — the PURE lives<0 → game-over reducer, reading the df5-
 })
 
 describe('df5-6 AC4 — a Design note records what is deferred to df7 (Decisions C & D)', () => {
-  it('the endgame module records the phase-machine + HUD deferral to df7 (Decision C)', () => {
+  it('the endgame module records the NARROWED Decision C: the phase-machine WIRING defers to df7, but the HUD + game-over SCREEN render landed in df5-7', () => {
+    // df5-7 (the visual-playtest capstone) pulled the HUD render, the scanner strip and the
+    // game-over/hall-of-fame SCREEN render into composeFrame (owner ruling: the whole loop
+    // must actually render). Decision C is NARROWED — only the attract→play→death→game-over
+    // phase-MACHINE wiring (and Decision D's 2P handoff) remain df7's. The note must reflect
+    // that split so a reader does not still think the HUD is df7's.
     expect(
       existsSync(ENDGAME_SRC),
-      'src/core/endgame.ts must exist and carry the df7-deferral note (AC4)',
+      'src/core/endgame.ts must exist and carry the (narrowed) Decision C note (AC4)',
     ).toBe(true)
     const src = readFileSync(ENDGAME_SRC, 'utf8')
-    expect(src, 'the endgame module must name df7 as the owner of the deferred wiring').toMatch(
+    expect(src, 'the note must still name df7 as the owner of the deferred phase-machine wiring').toMatch(
       /df7/,
     )
-    // Decision C: the attract→play→death→game-over WIRING and the HUD render defer to df7.
     expect(
-      /attract|phase machine|phase-machine/i.test(src) && /HUD/i.test(src),
-      'the note must record that the attract/phase-machine WIRING and the HUD render defer to df7 ' +
-        '(Decision C) — a reader must not think df5-6 forgot the attract loop',
+      /attract|phase machine|phase-machine/i.test(src),
+      'the note must record that the attract/phase-machine WIRING still defers to df7',
+    ).toBe(true)
+    expect(
+      /df5-7/.test(src) && /HUD/i.test(src),
+      'df5-7 pulled the HUD + game-over SCREEN render out of df7 (Decision C narrowed) — the note must ' +
+        'name df5-7 as the render owner so a reader does not think the HUD render is still df7’s',
     ).toBe(true)
   })
 
