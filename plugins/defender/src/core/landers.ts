@@ -137,6 +137,11 @@ export interface EnemyBank {
   /** Kill a lander (LKIL1, DEFB6.SRC:905). If it was CARRYING, the humanoid is dropped into an
    *  AFALL free-fall (NEWP AFALL,STYPE :911); a lander carrying nobody drops no one. */
   killLander: (lander: Lander) => void
+  /** df6-1 — a walking/falling humanoid destroyed by hostile fire (ASTRO shot, AHSND
+   *  DEFB6.SRC:396). Removes the record; a grabbed humanoid (riding a captor) is left to its
+   *  captor. Idempotent: a stale/absent handle is a no-op. Additive to the df4-3 abduction
+   *  mechanic — the sim's enemy-fire-vs-humanoid collision calls it (the integrated AHSND site). */
+  killHumanoid: (humanoid: Humanoid) => void
   /** df5-4 AC1 — the RESCUE. Test the ship box against the FALLING humanoids through the
    *  df4-1 COLIDE seam (AKIL1 player-vs-astro, DEFB6.SRC:398, claim EN-46); each box-overlap
    *  catch returns that astro to the terrain ('walking', re-grounded at HUMANOID_GROUND_Y)
@@ -378,6 +383,16 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     removeLander(rec) // its own process SUCIDEs on its next wake (guard at the top)
   }
 
+  const killHumanoid = (humanoid: Humanoid): void => {
+    // df6-1 — the ASTRO death by hostile fire (AHSND, DEFB6.SRC:396). Only a humanoid that
+    // is on its own (walking or falling) can be shot; a GRABBED one is riding its captor and
+    // is that abduction's to resolve. Idempotent, identity-matched like killLander.
+    const rec = humanoids.find((h) => h === humanoid)
+    if (!rec || !rec.alive || rec.state === 'grabbed') return
+    rec.alive = false
+    removeHumanoid(rec) // its walk/fall process SUICIDEs on next wake (the moveGen/alive guard)
+  }
+
   // ── df5-4 AC1: the RESCUE catch (AKIL1, DEFB6.SRC:398) — the df4-1 COLIDE seam over the
   //    FALLING astros. The ROM catch (AFALL2 :945) rides the astro down with the ship to its
   //    per-column GETALT altitude (ALAND0 :961, walking); df5-4 deposits at the flat terrain
@@ -431,6 +446,7 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     spawnHumanoid,
     spawnLander,
     killLander,
+    killHumanoid,
     catchFalling,
     panic,
   }

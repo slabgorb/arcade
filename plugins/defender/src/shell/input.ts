@@ -20,6 +20,10 @@ const BINDINGS: Readonly<Record<keyof Input, readonly string[]>> = {
   up: ['KeyW', 'ArrowUp'],
   down: ['KeyS', 'ArrowDown'],
   fire: ['Space', 'Enter'],
+  // df6-1: the two emergency-power buttons. Smart bomb on B, hyperspace on H/Shift
+  // (edges debounced in the core, like `reverse`).
+  smartBomb: ['KeyB'],
+  hyperspace: ['KeyH', 'ShiftLeft', 'ShiftRight'],
 }
 
 /** Map the held-key set to the pure per-tick Input snapshot. */
@@ -31,5 +35,7 @@ export function mapInput(held: KeyMembership): Input {
     up: anyHeld(BINDINGS.up),
     down: anyHeld(BINDINGS.down),
     fire: anyHeld(BINDINGS.fire),
+    smartBomb: anyHeld(BINDINGS.smartBomb),
+    hyperspace: anyHeld(BINDINGS.hyperspace),
   }
 }

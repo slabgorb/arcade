@@ -16,6 +16,8 @@ import { LOGICAL_WIDTH, LOGICAL_HEIGHT, render } from './shell/render.js'
 import { createSim, stepSim } from './core/sim.js'
 import { composeFrame } from './core/scene.js'
 import { mapInput } from './shell/input.js'
+import { createAudioEngine } from './shell/audio.js'
+import { playEventSounds } from './shell/audio-dispatch.js'
 
 const { canvas, ctx } = mountCanvas(document)
 
@@ -24,12 +26,26 @@ const held = installHeldKeys(window, {
   preventDefaultFor: new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']),
 })
 
+// df6-1 — the audio seam. The engine is inert until a user gesture unlocks the
+// context (browsers refuse an AudioContext before one) and inert forever where
+// WebAudio is absent, so `resume()` on the first keydown/pointerdown is the cheap,
+// correct hook: only the first call does work. The `.wav` files it would fetch are
+// NOT in this repo and nothing has put them in the bucket yet — df6-1 ships the seam
+// and Defender stays quiet, because a failed fetch degrades silently by design.
+const audio = createAudioEngine()
+window.addEventListener('keydown', () => audio.resume())
+canvas.addEventListener('pointerdown', () => audio.resume())
+
 // Entropy is the shell's to own (STINIT's RAND is injected into the pure core).
 let sim = createSim(() => (Math.random() * 256) | 0)
 
 const loop = createLoop(
   () => {
     sim = stepSim(sim, mapInput(held))
+    // The core emitted this tick's moments as DATA on `sim.cues`; the shell turns
+    // them into sound. Inside the fixed-timestep update (createLoop owns the pump),
+    // so a catch-up tick's cues are not dropped.
+    playEventSounds(audio, sim.cues)
   },
   () => {
     canvas.width = canvas.clientWidth

@@ -69,6 +69,7 @@ const EXPECTED_OWNERS = [
   'asteroids',
   'battlezone',
   'centipede',
+  'defender',
   'joust',
   'millipede',
   'missile-command',
