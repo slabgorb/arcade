@@ -61,5 +61,14 @@
       "line": 1270,
       "verbatim": "\tLDD\tOBJCOL,X STORE BLIP"
     }
+  },
+  {
+    "id": "SCAN-BEZEL",
+    "claim": "The scanner bezel mark is the byte $9090 — palette index 9 (WHITE) in its high nibble — that the MTX bezel routine (*SCANNER BEZEL, :1225-1233) stores into the SCANH scanner addresses to frame the radar strip's ends. df7-5's BEZEL_COLOUR=9 is this nibble; the frame is a pair of end-brackets, not a full-width bar.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1227,
+      "verbatim": "\tLDD\t#$9090"
+    }
   }
 ]

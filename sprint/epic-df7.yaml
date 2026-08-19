@@ -143,7 +143,8 @@ stories:
     description: 'df5-1 built the scanner as a pure projection (blip list + palette index) and explicitly left the DRAW to df7''s HUD; today nothing paints it. df7-5 draws the scanner strip (bezel per AMODE1.SRC:1225) plus the score/men/wave HUD figures, reading df5-1 (scanner blips) and df5-3 (score/men) — the shell paints, the core still owns no shell state. This is the df5-1 consumer the projection was built for.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
