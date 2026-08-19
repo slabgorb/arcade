@@ -186,6 +186,7 @@ stories:
     description: 'df5-7 (scene.ts:186-192) and df7-5 both explicitly deferred the scanner PLAYER BLIP to df7. Unlike world attackers (df5-1 projectScanner / the SCNR object loop), the player sits at a fixed screen position, so its radar column comes from PLAXC directly — the ROMs separate *PLAYER BLIP OUTPUT path (AMODE1.SRC:1242-1257): PLAXC>>4 column, Y>>3 row, the $9099 marker (palette index 9, WHITE) at PLAYER BASE $4B00+SCANH. Draw it in the pure core composeFrame by palette INDEX only, inside the df7-5 bezel; ADR-0005 no full-frame strobe; purity.test.ts stays green. Cite AMODE1.SRC:1242-1257 under the df1-1 gate.'
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
