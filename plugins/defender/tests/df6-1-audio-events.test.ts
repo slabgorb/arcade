@@ -166,7 +166,7 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // Frozen from the shipped sim: if the integrated cue order/content changes, this
     // reddens and the change must be re-baselined deliberately (the df3-6 digest idiom).
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      '2a128f1423468d03',
+      'cbb7f493cd8d4b40',
     )
   })
 })

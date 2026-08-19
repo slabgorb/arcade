@@ -32,6 +32,7 @@ import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeScrollSurface, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
 import { wrap16, WORLD_COLS } from './world.js'
+import { projectScanner, SCANNER_COLUMNS, type ScannerObject } from './scanner.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
 
@@ -182,15 +183,71 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
   }
 }
 
+// ─── df5-7: the SCANNER radar strip + score/men HUD + game-over screen ───────────────
+// The scanner (df5-1 projectScanner) is a compressed radar band across the TOP: every live
+// ATTACKER (lander) a blip at its radar column, coloured by palette INDEX (OBJCOL). The
+// score/men HUD (df5-3) writes down the top-left. When the game is over (df5-6 men<0) a
+// GAME OVER / final-score screen replaces the frame. Decision C (narrowed for df5-7): this
+// draws the play-field radar, the HUD and the end screen; the scanner SCREEN-ADDRESS/bezel/
+// player-blip and the attract→play→death→game-over phase MACHINE remain df7's.
+
+/** The radar strip's top row on the frame (blip row = SCANNER_ORIGIN_Y + objY>>3). */
+const SCANNER_ORIGIN_Y = 2
+/** Score HUD top-left; men sit one glyph-row below it (glyphs are 8 rows tall, charset.ts). */
+const HUD_X = 2
+const HUD_SCORE_Y = 2
+const HUD_MEN_Y = 12
+/** GAME OVER screen text (df5-6). */
+const GAME_OVER_TEXT = 'GAME OVER'
+
+/** Draw the df5-1 scanner strip: project every live attacker (lander) to its radar blip and
+ *  plot it in the top band by palette INDEX. Nothing is drawn when no attacker is live. */
+function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): void {
+  const objects: ScannerObject[] = (state.landers ?? [])
+    .filter((l) => l.alive)
+    .map((l) => ({ worldX: l.x, y: l.y, colour: attackerColour }))
+  if (objects.length === 0) return
+  const originX = (fb.width - SCANNER_COLUMNS) >> 1 // centre the 64-column strip
+  for (const blip of projectScanner(objects, state.camera)) {
+    const x = originX + blip.x
+    const y = SCANNER_ORIGIN_Y + blip.y
+    if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
+    fb.data[y * fb.width + x] = blip.colour
+  }
+}
+
+/** Draw the df5-3 score/men HUD across the top-left, by palette INDEX (WHITE). */
+function drawHud(fb: Framebuffer, state: SimState): void {
+  writeText(fb, String(state.score ?? 0), HUD_X, HUD_SCORE_Y, TEXT_COLOUR)
+  writeText(fb, String(state.men ?? 0), HUD_X, HUD_MEN_Y, TEXT_COLOUR)
+}
+
+/** Draw the df5-6 GAME OVER / final-score screen (men<0): the play field is replaced by the
+ *  end screen. The persisted hall-of-fame table + interactive initials entry are the shell's;
+ *  this pure screen shows GAME OVER and the final score from SimState alone. */
+function drawGameOverScreen(fb: Framebuffer, state: SimState): void {
+  const midY = (fb.height >> 1) - 8
+  const overX = Math.max(0, (fb.width >> 1) - GAME_OVER_TEXT.length * 4)
+  writeText(fb, GAME_OVER_TEXT, overX, midY, TEXT_COLOUR)
+  writeText(fb, String(state.score ?? 0), overX, midY + 12, TEXT_COLOUR)
+}
+
 /**
  * Compose the live frame from the current sim state into a fresh `width × height` index
  * surface: clear, scroll-composite the starfield, lay the planet surface, blit the ship
- * at its display column/row, and streak any lasers in flight. Pure and deterministic —
- * same state in, same indices out. Returns the framebuffer of palette INDICES.
+ * at its display column/row, streak any lasers in flight, and overlay the df5-7 scanner
+ * strip + score/men HUD. When the game is over (df5-6), the end screen replaces the frame.
+ * Pure and deterministic — same state in, same indices out. Returns palette INDICES.
  */
 export function composeFrame(state: SimState, width: number, height: number): Framebuffer {
   const fb = createFramebuffer(width, height)
   clear(fb, BACKGROUND)
+
+  // df5-6: game over replaces the play field with the GAME OVER / final-score screen.
+  if (state.gameOver ?? false) {
+    drawGameOverScreen(fb, state)
+    return fb
+  }
 
   drawStars(fb, state.stars, STAR_COUNT)
 
@@ -238,6 +295,11 @@ export function composeFrame(state: SimState, width: number, height: number): Fr
   for (const effect of state.effects ?? []) {
     drawEffect(fb, effect, camera)
   }
+
+  // df5-7: overlay the scanner radar strip (live attackers by radar column, coloured from the
+  // lander sprite's own palette index) and the score/men HUD, painted on top of the play field.
+  drawScanner(fb, state, spriteColour(landerPic))
+  drawHud(fb, state)
 
   return fb
 }

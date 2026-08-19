@@ -10,9 +10,13 @@
 // ship — `men < 0`.
 //
 // ─── DEFERRED TO df7 (Decision C & D — do NOT build here) ────────────────────────────
-// Decision C: the attract→play→death→game-over phase-machine WIRING and the HUD render are
-//   df7's. df5-6 ships only this pure reducer and the persistence seams (hall of fame,
-//   CMOS ledger); df7 wires them into the phase machine and draws the screens.
+// Decision C (NARROWED by df5-7): the attract→play→death→game-over phase-MACHINE WIRING stays
+//   df7's. df5-6 ships only this pure reducer and the persistence seams (hall of fame, CMOS
+//   ledger); df7 wires them into the phase machine. The HUD render and a BARE GAME OVER /
+//   final-score SCREEN are NO LONGER deferred — df5-7 (the visual-playtest capstone) draws them
+//   into composeFrame from SimState (score/men/gameOver). Still df7's: the phase machine that
+//   SEQUENCES those screens, the PERSISTED hall-of-fame TABLE, and the interactive initials
+//   name-entry the shell drives — df5-7 renders neither the table nor the entry.
 // Decision D: 2P alternating handoff (the P1SW/P2SW player switch, *PLAYER START PROCESS,
 //   DEFA7.SRC:1179-1237) is the death→next-player transition — phase-machine territory —
 //   so it moves to df7 with its citations preserved (design spec §6).

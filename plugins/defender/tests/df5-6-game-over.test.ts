@@ -94,20 +94,37 @@ describe('df5-6 AC1 — the PURE lives<0 → game-over reducer, reading the df5-
 })
 
 describe('df5-6 AC4 — a Design note records what is deferred to df7 (Decisions C & D)', () => {
-  it('the endgame module records the phase-machine + HUD deferral to df7 (Decision C)', () => {
+  it('the endgame module records the NARROWED Decision C IN CONTEXT: within the Decision-C paragraph, phase-machine WIRING defers to df7 while df5-7 owns the HUD + bare game-over screen render', () => {
+    // df5-7 (the visual-playtest capstone) pulled the HUD render, the scanner strip and a bare
+    // GAME OVER / final-score screen into composeFrame (owner ruling: the whole loop must
+    // actually render). Decision C is NARROWED — only the attract→play→death→game-over
+    // phase-MACHINE wiring (and Decision D's 2P handoff) remain df7's. The note must reflect
+    // that split so a reader does not still think the HUD is df7's.
     expect(
       existsSync(ENDGAME_SRC),
-      'src/core/endgame.ts must exist and carry the df7-deferral note (AC4)',
+      'src/core/endgame.ts must exist and carry the (narrowed) Decision C note (AC4)',
     ).toBe(true)
     const src = readFileSync(ENDGAME_SRC, 'utf8')
-    expect(src, 'the endgame module must name df7 as the owner of the deferred wiring').toMatch(
+    // Anchor to the Decision-C paragraph's own UNIQUE declaration ("Decision C (NARROWED …"),
+    // NOT the bare "Decision C" substring — which also appears in the intro (endgame.ts:2) and
+    // in the "DEFERRED TO df7 (Decision C & D …)" divider (endgame.ts:12), whose stray "df7"
+    // would otherwise satisfy the /df7/ check regardless of the paragraph body (lang-review #15/#25).
+    const cStart = src.indexOf('Decision C (NARROWED')
+    const cEnd = src.indexOf('Decision D')
+    expect(cStart, 'the note must contain the narrowed Decision C paragraph ("Decision C (NARROWED …")').toBeGreaterThanOrEqual(0)
+    expect(cEnd, 'the note must contain a Decision D paragraph after Decision C').toBeGreaterThan(cStart)
+    const decisionC = src.slice(cStart, cEnd)
+    expect(decisionC, 'within Decision C, df7 must be named as owner of the deferred phase-machine wiring').toMatch(
       /df7/,
     )
-    // Decision C: the attract→play→death→game-over WIRING and the HUD render defer to df7.
     expect(
-      /attract|phase machine|phase-machine/i.test(src) && /HUD/i.test(src),
-      'the note must record that the attract/phase-machine WIRING and the HUD render defer to df7 ' +
-        '(Decision C) — a reader must not think df5-6 forgot the attract loop',
+      /attract|phase machine|phase-machine/i.test(decisionC),
+      'within Decision C, the attract/phase-machine WIRING must still defer to df7',
+    ).toBe(true)
+    expect(
+      /df5-7/.test(decisionC) && /HUD/i.test(decisionC),
+      'within Decision C, df5-7 must be named as the owner of the HUD (and bare game-over screen) render — ' +
+        'so a reader does not think the HUD render is still df7’s',
     ).toBe(true)
   })
 

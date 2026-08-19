@@ -15,6 +15,7 @@ completed_epics:
   - mc12
   - ml13
   - jt13
+  - df5
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -282,3 +283,23 @@ completed_stories:
     title: "End-of-game core (PURE-first; phase-wired in df7): plugins/defender/src/core/ — the men<0 -> game-over reducer reading the df5-3 men counter; final score -> hall of fame via @shared/highscore + @shared/name-entry (HALLOF *HALL OF FAME ENTRY defender/AMODE1.SRC:117,119; initials display :242; add-score :270 — CONSUMED, not re-implemented); the CMOS coin/credit ledger (* CMOS RAM ALLOCATION SLOT1/2/3/TOTPDC defender/ROMF8.SRC:16-38) mapped to one-origin localStorage. Ships the reducer + persistence, NOT the attract loop (df7 wires it). Consumes df5-3 (men counter) + @shared."
     points: 3
     completed: '2026-08-18'
+  - id: df5-4
+    epic: df5
+    title: "Humanoid rescue + the planet-explodes-to-mutant-space panic: plugins/defender/src/core/ — close the df4-3 abduction loop. The RESCUE: catch a falling humanoid (AFALL *ASTRONAUT FALL defender/DEFB6.SRC:925,927; ground test GETALT :933; ASTKIL :399) and return it to the ground. The PANIC (Defender's signature terror): all humanoids lost -> the planet explodes -> every remaining lander becomes a df4-4 mutant (SCZ) en masse. Consumes df4-3 (abduction/AFALL) + df4-4 (the SCZ transform)."
+    points: 5
+    completed: '2026-08-19'
+  - id: df5-7
+    epic: df5
+    title: "VISUAL playtest — a whole game loop on screen: screenshot http://127.0.0.1:5270/defender/ showing the SCANNER populated with off-camera attackers (df5-1), waves visibly escalating (df5-2), the score/men HUD (df5-3), a smart-bomb firing as an ACCESSIBILITY-SAFE freeze/fade (df5-5, ADR-0005 — NO full-screen strobe), and a hall-of-fame entry (df5-6) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scanner blip positions/colour and that NO effect flashes the full screen. Carry the df7 note (2P handoff + the attract/phase machine) forward."
+    points: 2
+    completed: '2026-08-19'
+  - id: df7-1
+    epic: df7
+    title: "Phase machine core (PURE-first, the pm4/mc6 model): plugins/defender/src/core/phase.ts — a Phase union attract|setup|play|death|game-over (plus pause) and a pure MAINLINE dispatch (attract->setup->play->[pause]->death->game-over->attract), seeded and clock-free. CONSUMES df5-6 isGameOver(men<0, defender/DEFA7.SRC:1423) as the play->death/game-over edge (does NOT re-decide it). Cite the ROM mainline STATUS states (ST1 *ONE PLAYER START :1100, ST2 *TWO PLAYER START :1112) and the block-1 attract/hall entry (HALLOF defender/AMODE1.SRC:119; HALDIS attract :375). purity.test.ts green; the transition fn tested BEFORE the shell wires it (Decision A). The spine every other df7 story hangs off."
+    points: 5
+    completed: '2026-08-19'
+  - id: pm6-1
+    epic: pm6
+    title: "Intermission PHASE + level-gated trigger (PURE-first): add an 'intermission' state to the pm4 GamePhase union (plugins/pac-man/src/core/game.ts:184) hung off the level-clear transition (events.ts:78 'level-cleared'), gated on the level byte per the ROM cadence, requesting the pm2 looping intermission music (#02). Cite the ROM trigger (pacman.asm:1613 'ld a,#02', :1616 'ld a,(#4e13)') + pm2 claims/sound.json #02. No animation yet — the phase + trigger only (the pm4/mc6 pure-first split). purity.test.ts green."
+    points: 3
+    completed: '2026-08-19'

@@ -30,13 +30,23 @@ import { describe, it, expect } from 'vitest'
 import type { GamePhase } from '../../src/core/game'
 import { advancePhase, PHASES, type PhaseSignals } from '../../src/core/phase'
 
-// The six cabinet phases the design's state diagram names. Declared as
-// `GamePhase[]` so this line fails to type-check (npm run lint) until the union
-// is extended — the type-extension half of the story, enforced by tsc.
-const EXPECTED_PHASES: GamePhase[] = ['attract', 'ready', 'playing', 'dying', 'level-clear', 'game-over']
+// The cabinet phases the design's state diagram names. Declared as `GamePhase[]`
+// so this line fails to type-check (npm run lint) until the union is extended —
+// the type-extension half of the story, enforced by tsc. pm6-1 adds the seventh
+// member, `intermission` (the between-rounds coffee break — Decision A, a phase
+// off this machine, not a forked path).
+const EXPECTED_PHASES: GamePhase[] = [
+  'attract',
+  'ready',
+  'playing',
+  'dying',
+  'level-clear',
+  'intermission',
+  'game-over',
+]
 
-describe('pm4-5: GamePhase carries the six cabinet phases', () => {
-  it('PHASES lists exactly attract/ready/playing/dying/level-clear/game-over', () => {
+describe('pm4-5/pm6-1: GamePhase carries the cabinet phases', () => {
+  it('PHASES lists exactly attract/ready/playing/dying/level-clear/intermission/game-over', () => {
     expect([...PHASES].sort()).toEqual([...EXPECTED_PHASES].sort())
   })
 })

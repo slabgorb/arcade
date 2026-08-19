@@ -89,6 +89,10 @@ one-origin `localStorage` (the ADR-0004 cross-origin-cookie retirement).
 |---|---|---|
 | `PLE2` — out-of-ships → GAME OVER: a 1-player game with no ships left (`BNE PLE02` fails) reaches `PLE2`; the port models it as the men counter falling below zero (`men < 0`) | the end-of-game condition | `defender/DEFA7.SRC:1423` |
 | `HALLOF` — HALL OF FAME ENTRY: the final score → the `@shared` hall of fame (initials + score, consumed not re-implemented) | hall-of-fame entry vector | `defender/AMODE1.SRC:119` |
+| `ST1` — one-player start: a STATUS-word mainline state (`*ONE PLAYER START`) — the df7 phase machine's attract→setup start edge | mainline start state | `defender/DEFA7.SRC:1100` |
+| `ST2` — two-player start: a STATUS-word mainline state (`*TWO PLAYER START`) — the 2P alternating start (df7 Decision D) | mainline start state | `defender/DEFA7.SRC:1112` |
+| `HALDIS` — attract / hall-of-fame display: the attract-mode screen the cabinet returns to (reached by `HALL13 JMP HALDIS` "ATTRACT MODE NOW", `defender/AMODE1.SRC:230`) — the df7 game-over→attract loop close | attract-mode display | `defender/AMODE1.SRC:377` |
+| `GAMEOV` — GAME OVER: the end-of-game screen the play→game-over edge routes to (df5-6 `isGameOver` men<0, consumed not re-decided) | game-over screen | `defender/ROMF8.SRC:339` |
 | `SLOT1` — left coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:20` |
 | `SLOT2` — center coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:21` |
 | `SLOT3` — right coin total (`* CMOS RAM ALLOCATION`) | coin audit → `localStorage` | `defender/ROMF8.SRC:22` |

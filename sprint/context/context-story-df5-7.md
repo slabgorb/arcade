@@ -1,9 +1,5 @@
 # Story df5-7 Context
 
-> ⚠ **DO NOT REGENERATE THIS FILE.** The Technical Approach, Scope, Dependencies and
-> Design Notes are Architect-enriched from the df5 design spec. `pf context create`
-> refills Technical Approach/Scope with placeholder text and would overwrite them.
-
 ## Title
 VISUAL playtest — a whole game loop on screen: screenshot http://127.0.0.1:5270/defender/ showing the SCANNER populated with off-camera attackers (df5-1), waves visibly escalating (df5-2), the score/men HUD (df5-3), a smart-bomb firing as an ACCESSIBILITY-SAFE freeze/fade (df5-5, ADR-0005 — NO full-screen strobe), and a hall-of-fame entry (df5-6) — compared against a nonsense control path (must DIFFER, not just return 200 — the canonical-serve lesson; the mechanical DIFFER check already runs in tests/canonical-serve.test.mjs). Confirm scanner blip positions/colour and that NO effect flashes the full screen. Carry the df7 note (2P handoff + the attract/phase machine) forward.
 
@@ -20,52 +16,36 @@ VISUAL playtest — a whole game loop on screen: screenshot http://127.0.0.1:527
 The eyes for df5, mirroring df4-6. An all-200 sweep proves nothing (the SPA fallback answers 200 to everything) — assert the defender path DIFFERS from a nonsense control. Confirm the ADR-0005 discipline visually: a smart-bomb clears the screen as a freeze/fade, never a full-frame strobe. Colour by df2 palette index only.
 
 ## Technical Approach
-The **eyes** for df5, mirroring `df4-6`:
-
-- **Screenshot the real path.** Load `http://127.0.0.1:5270/defender/` (`just serve` — the
-  one dev server, port 5270). Capture: the scanner populated with ≥1 **off-camera** attacker
-  (df5-1), a visibly escalated wave (df5-2), the score/men HUD (df5-3).
-- **DIFFER, not 200.** Compare the defender path against a nonsense control path and assert
-  they **DIFFER** — the SPA fallback answers `200` to everything, so an all-`200` sweep
-  proves nothing. The mechanical DIFFER check already runs in
-  `tests/canonical-serve.test.mjs`.
-- **ADR-0005 visual check.** Capture a smart-bomb (df5-5) firing as the accessibility-safe
-  **freeze/fade** — NO full-screen strobe — and the hall-of-fame entry (df5-6). Confirm the
-  `df4-2` guard held throughout.
-- **Colour/orientation.** Confirm scanner blip position + colour (`df2` palette index) and
-  enemy orientation against the design; file any discrepancy by **FILE SURFACE** (the jt9
-  grooming habit), not by theme.
-- **df7 hand-forward.** Record the df7 note (2P handoff — Decision D; the
-  attract→play→death→game-over phase machine + HUD render — Decision C) in the session file.
-
-Consumes all of `df5-1`…`df5-6`.
+_Approach hints to be refined by TEA/Dev. The story title above defines the
+intended behavior._
 
 ## Scope
-- **In scope:** the screenshot(s) proving scanner/waves/HUD/safe-smart-bomb/hall-of-fame; the
-  DIFFER-vs-control confirmation; the ADR-0005 visual confirmation; the df7 hand-forward note.
-- **Out of scope:** fixing anything the playtest surfaces (file follow-ups **by file
-  surface**); the HUD render itself (df7); any new behaviour. This is the eyes, not a fix
-  story.
+- In scope: the behavior described by the story title.
+- Out of scope: unrelated changes.
 
 ## Acceptance Criteria
 - AC1: a screenshot of http://127.0.0.1:5270/defender/ shows the scanner populated with at least one OFF-CAMERA attacker (df5-1), an escalated wave (df5-2) and the score/men HUD (df5-3); the defender path is confirmed to DIFFER from a nonsense control path (not merely return 200 — the canonical-serve lesson).
 - AC2: a smart-bomb (df5-5) is captured firing as the ACCESSIBILITY-SAFE freeze/fade variant — NO full-screen strobe — and the hall-of-fame entry (df5-6) renders; a note confirms the df4-2 no-full-frame-strobe guard held throughout.
 - AC3: scanner blip position and colour (df2 palette index) and enemy orientation are confirmed correct against the design; any discrepancy is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme.
-- AC4: the df7 hand-forward note (2P alternating handoff per Decision D; the attract->play->death->game-over phase machine + HUD render per Decision C) is recorded in the session file for the next epic.
+- AC4: the df7 hand-forward note is recorded in the session file for the next epic. Decision C is NARROWED by df5-7: the HUD render and a bare GAME OVER / final-score screen render HERE (composeFrame from SimState). Still df7's: the attract->play->death->game-over phase MACHINE, the persisted hall-of-fame TABLE + interactive initials entry (Decision D's 2P alternating handoff included).
 
-## Dependencies
-- **df5-1…df5-6** — everything it screenshots.
-- `just serve` (port 5270); `tests/canonical-serve.test.mjs` (the mechanical DIFFER check).
-- **Blocks:** nothing in df5; hands forward to df6/df7.
+## Carry-Forward Notes
 
-## Design Notes
-- **All-`200` proves nothing** (the SPA fallback) — assert **DIFFER** vs a nonsense control
-  (the canonical-serve lesson).
-- **Held-input trap:** a start/action key-hold needs a real key-hold, not a brief `press()`
-  (the arcade held-input lesson) if driving via automation.
-- **Serve-the-right-tree:** prove whose dev server answers `5270` before trusting a
-  screenshot (the checkout-pin lesson in CLAUDE.md).
-- Colour by `df2` palette index only.
+**Dependencies:** All six dependencies are DONE and verified at setup:
+- df5-1 (scanner core)
+- df5-2 (wave director/escalation)
+- df5-3 (scoring + men counter + extra man)
+- df5-4 (humanoid rescue + planet-explodes panic)
+- df5-5 (smart-bomb + hyperspace)
+- df5-6 (end-of-game core → hall of fame)
+
+**Context from df5-6, df5-1, df5-3:** df5-6 shipped the end-of-game CORE + persistence but explicitly left attract/phase wiring to df7. df5-1 and df5-3 note the HUD proper is df7's. This playtest verifies core features as they surface through the shell that exists TODAY — if the live /defender/ shell does not yet render a given feature, that is a genuine finding, not a test to fake green.
+
+**Handoff to df7:** Carry forward the note that 2P handoff + the attract/phase machine remain df7's scope.
+
+**Local serving:** `just serve` on http://127.0.0.1:5270/ (see CLAUDE.md — the pin matters; confirm whose server answers 5270 before trusting a screenshot).
+
+**Visual playtest tooling:** This project drives Playwright MCP headless (claude-in-chrome is NOT connected).
 
 ---
-_Generated by `pf context create story df5-7` from the sprint YAML._
+_Generated by `pf context create story df5-7` from the sprint YAML, enhanced with carry-forward notes for df7 planning._

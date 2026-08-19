@@ -1,0 +1,65 @@
+# Story df7-7 Context
+
+> ⚠ **DO NOT REGENERATE THIS FILE.** The Technical Approach, Scope, Dependencies and
+> Design Notes are Architect-enriched from the df7 epic plan. `pf context create`
+> refills Technical Approach/Scope with placeholder text and would overwrite them.
+
+## Title
+Lobby showcase opt-in + the FULL-LIFECYCLE visual playtest: register Defender in the lobby-showcase attract rotation (the ml7/mc showcase seam, Decision E), and screenshot the whole lifecycle at http://127.0.0.1:5270/defender/ — attract demo playing (df7-3), a started game with HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name entry (df7-4) — each DIFFERING from a nonsense control (the canonical-serve lesson), with NO full-frame strobe anywhere (Decision B). Carry df8+ (hardening) forward.
+
+## Metadata
+- **Story ID:** df7-7
+- **Type:** story
+- **Points:** 2
+- **Priority:** p2
+- **Workflow:** tdd
+- **Repo:** arcade
+- **Epic:** Defender phase machine + attract + wiring + HUD + showcase (df7, phase 6-7): turn df1-df6's pure cores into a played-start-to-finish cabinet — the attract->setup->play->death->game-over phase machine (pure-first, pm4/mc6 model), the self-playing attract demo, the hall-of-fame name-entry flow, the HUD + scanner render, 2P alternating handoff, lobby showcase, and the full-lifecycle visual playtest
+
+## Problem
+The eyes for the whole cabinet, mirroring df5-7/df4-6 but across the LIFECYCLE (df5-7 showed the gameplay loop; df7-7 shows attract/game-over/hall-of-fame screens). Register the lobby showcase tile (Decision E, the existing showcase seam — no new lobby infra). Confirm ADR-0005 visually across every phase: no attract/death/game-over transition flashes the full screen. An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control.
+
+## Technical Approach
+The eyes for the whole cabinet, across the **lifecycle** (df5-7 showed the gameplay loop;
+this shows the attract/game-over/hall-of-fame screens).
+
+- **Lobby showcase opt-in (Decision E).** Register Defender in the lobby-showcase attract
+  rotation via the **existing** showcase seam (the ml7/mc pattern) — no new lobby infra.
+- **Full-lifecycle playtest.** Drive the game via the Playwright harness (claude-in-chrome
+  is not connected — the controller drives Playwright MCP headless on its own port; the
+  standing memory note). Serve with `just serve` and confirm `/defender/` **DIFFERS** from a
+  nonsense control (the canonical-serve lesson — an all-200 sweep proves nothing). Capture:
+  the attract demo playing (df7-3); a started game with HUD + populated scanner
+  (df7-2/df7-5); a death; game-over; the hall-of-fame name-entry (df7-4).
+- **ADR-0005 confirmation.** No full-frame strobe in ANY phase or transition (Decision B) —
+  confirm the df4-2 guard held across the lifecycle. File any discrepancy by **file surface**
+  (the jt9 habit).
+- **Hand forward.** Record that the epic is content-complete; df8+ hardening is next.
+
+## Scope
+- **In scope:** the lobby showcase registration (existing seam), the lifecycle screenshot
+  sequence (DIFFER-from-control), the no-strobe confirmation, the df8+ hand-forward note.
+- **Out of scope:** any core/shell code change (df7-1..df7-6 own the code — this is the
+  eyes pass); new lobby infrastructure; fixing a discrepancy found (file it, don't fix here).
+
+## Acceptance Criteria
+- AC1: Defender is registered in the lobby-showcase attract rotation via the existing showcase seam (Decision E — no new lobby infrastructure); a test/screenshot confirms the tile appears.
+- AC2: a screenshot sequence at http://127.0.0.1:5270/defender/ (each DIFFERING from a nonsense control path — the canonical-serve lesson) captures: the attract demo playing (df7-3), a started game with the HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name-entry screen (df7-4).
+- AC3: NO full-frame strobe appears in ANY phase or transition (Decision B, ADR-0005) — a note confirms the df4-2 no-full-frame-strobe guard held across the whole lifecycle; any discrepancy is filed by FILE SURFACE (the jt9 habit).
+- AC4: the df8+ hand-forward note is recorded — the epic is content-complete; hardening/mutation batteries (reviewer-driven, grouped by file surface) are the remaining defender work.
+
+## Dependencies
+- **df7-2..df7-6** — the wired lifecycle this playtest exercises (attract, start, HUD/
+  scanner, hall of fame, optionally 2P).
+- **The lobby showcase seam** — the existing ml7/mc pattern (Decision E).
+- **The Playwright harness** — claude-in-chrome not connected (standing memory note).
+- **Blocks:** nothing in df7; hands forward to **df8+** (reviewer-driven hardening).
+
+## Design Notes
+- The lifecycle playtest complements df5-7 (gameplay loop) — this covers the attract/game-
+  over/hall-of-fame screens.
+- **Decision B across the whole lifecycle:** confirm NO full-frame strobe in any phase; the
+  canonical-serve DIFFER-from-control rule and the 5270-pin gotcha both bind.
+
+---
+_Generated by `pf context create story df7-7` from the sprint YAML._

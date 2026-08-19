@@ -116,6 +116,12 @@ const BAITER_MAX = 2
 /** The player's starting smart-bomb stock (PSBC init — not transcribed into core; the
  *  df6-1 integration seeds it). */
 const STARTING_SMART_BOMBS = 3
+/** Post-death respawn grace, in frames. On a non-fatal death the ship reappears at its
+ *  start position and is briefly invulnerable, so the hazard that killed it cannot re-kill
+ *  on the very next tick — without this the resting ship death-loops to game-over in a few
+ *  frames. A df6-1 integration placeholder standing in for the ROM's NEWSHP respawn
+ *  sequence (PLADIE → new ship), whose exact timing/animation is a later df story. */
+const RESPAWN_GRACE = 60
 
 /** The pure per-tick input snapshot the shell feeds the ship (shell owns the PIA read).
  *  df6-1 adds the two emergency-power buttons (edge-debounced in-core, like `reverse`). */
@@ -172,6 +178,8 @@ interface SimRuntime {
   smartBombFlash: number
   gameOver: boolean
   baiterTimer: number
+  /** Frames of post-death respawn invulnerability remaining (RESPAWN_GRACE on a death). */
+  respawnGrace: number
   prevSmartBomb: boolean
   prevHyperspace: boolean
   shots: ShotRecord[]
@@ -251,6 +259,7 @@ export function createSim(rand: () => number): SimState {
     smartBombFlash: 0,
     gameOver: false,
     baiterTimer: BAITER_SPAWN_PERIOD,
+    respawnGrace: 0,
     prevSmartBomb: false,
     prevHyperspace: false,
     shots: [],
@@ -422,6 +431,18 @@ export function spawnExplosion(state: SimState, x: number, y: number): SimState 
   return withBanks(state)
 }
 
+/** Ship death (df5-3 loseMan): decrement the men counter and re-derive game-over (df5-6
+ *  isGameOver — men < 0). The public death seam the df5-7 visual playtest drives
+ *  deterministically (the df4-6 spawnExplosion precedent); df6-1 keeps it exported and
+ *  re-points it at the integrated runtime's score ledger (`_rt.score`, not the pre-df6-1
+ *  `_score`). The in-tick death path (killPlayer, which also sounds PDSND) is separate. */
+export function killShip(state: SimState): SimState {
+  const rt = state._rt
+  rt.score = loseMan(rt.score)
+  if (isGameOver(rt.score)) rt.gameOver = true
+  return withBanks(state)
+}
+
 /** Advance the sim one 60 Hz tick under `input`. */
 export function stepSim(state: SimState, input: Input): SimState {
   const rt = state._rt
@@ -445,7 +466,15 @@ export function stepSim(state: SimState, input: Input): SimState {
     rt.score = loseMan(rt.score)
     rt.cues.push({ type: 'player-death' }) // PDSND
     rt.shots.length = 0 // the field's shots clear with the ship
-    if (isGameOver(rt.score)) rt.gameOver = true
+    if (isGameOver(rt.score)) {
+      rt.gameOver = true
+      return
+    }
+    // Brief post-death invulnerability, so the hazard that killed us cannot re-kill on the
+    // very next tick (without this a hazard overlapping the resting ship death-loops to
+    // game-over in a few frames). A df6-1 placeholder for the ROM's PLADIE→new-ship blink;
+    // the ship keeps its pose (no teleport) so ship-movement invariants are unaffected.
+    rt.respawnGrace = RESPAWN_GRACE
   }
   const award = (points: number): void => {
     const before = rt.score.men
@@ -461,16 +490,11 @@ export function stepSim(state: SimState, input: Input): SimState {
   rt.prevSmartBomb = wantSmart
   rt.prevHyperspace = wantHyper
 
-  if (smartEdge && !rt.gameOver) {
-    const res = smartBomb({ armed: rt.smartBombArmed, count: rt.smartBombs })
-    if (res.fired) {
-      rt.smartBombs = res.count
-      rt.smartBombArmed = true
-      rt.smartBombFlash = SMART_BOMB_FLASHES
-      rt.cues.push({ type: 'smart-bomb' }) // SBSND — the ONE cue; the cleared enemies are silent
-      clearAllEnemies(state, award)
-    }
-  }
+  // The smart-bomb CLEAR itself runs AFTER the dispatch (below), not here: clearing the
+  // field before the wave director dispatches would let it see population 0 and respawn a
+  // fresh wave on the SAME tick — a full field would blink and reappear. Deferring the
+  // clear to just after stepTick makes it behave exactly like a laser kill (the director
+  // sees the cleared field on the NEXT tick), so the cleared frame is actually observable.
   if (rt.smartBombArmed && --rt.smartBombFlash <= 0) rt.smartBombArmed = false
 
   if (hyperEdge && !rt.gameOver && canHyperspace(0)) {
@@ -499,14 +523,32 @@ export function stepSim(state: SimState, input: Input): SimState {
   // 9. Per-tick sim wiring.
   perTickWiring(state, appearAndCue(state))
 
+  // Smart bomb fires HERE (after the wave director dispatched in stepTick) so the cleared
+  // field is not instantly respawned this tick — see the note at the edge detection above.
+  if (smartEdge && !rt.gameOver) {
+    const res = smartBomb({ armed: rt.smartBombArmed, count: rt.smartBombs })
+    if (res.fired) {
+      rt.smartBombs = res.count
+      rt.smartBombArmed = true
+      rt.smartBombFlash = SMART_BOMB_FLASHES
+      rt.cues.push({ type: 'smart-bomb' }) // SBSND — the ONE cue; the cleared enemies are silent
+      clearAllEnemies(state, award)
+    }
+  }
+
   // 10. Collision. Advance effects first, then this tick's outcomes.
   state._effectBank.step()
   hitTestLasers(state, shipRow, camera.bgl, award)
 
+  // Post-death respawn invulnerability: while it holds, the ship cannot die again (the
+  // hazard that killed it gets time to move off), then it counts down.
+  const graced = rt.respawnGrace > 0
+  if (rt.respawnGrace > 0) rt.respawnGrace -= 1
+
   const shipScreen: Query = { x: plax16 >> 8, y: shipRow, picture: SHIP_BOX }
   if (!rt.gameOver) {
-    // Enemy shots + bombs + bodies vs the ship → player death.
-    if (bombVsPlayer(shipScreen, hazardObjects(state, camera.bgl)) || shipVsObject(shipScreen, enemyObjects(state, camera.bgl))) {
+    // Enemy shots + bombs + bodies vs the ship → player death (unless just-respawned).
+    if (!graced && (bombVsPlayer(shipScreen, hazardObjects(state, camera.bgl)) || shipVsObject(shipScreen, enemyObjects(state, camera.bgl)))) {
       killPlayer()
     }
     // The rescue catch (WORLD space — catchFalling tests the ship pose against the fallers).

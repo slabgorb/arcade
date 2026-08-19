@@ -1,0 +1,27 @@
+[
+  {
+    "id": "PH-ST1",
+    "claim": "The mainline one-player start state ST1 loads the STATUS word — the df7 phase machine's attract->setup start edge (ST1 *ONE PLAYER START).",
+    "source": { "file": "DEFA7.SRC", "line": 1100, "verbatim": "ST1\tLDA\tSTATUS" }
+  },
+  {
+    "id": "PH-ST2",
+    "claim": "The mainline two-player start state ST2 loads the STATUS word — the 2P alternating start (df7 Decision D; ST2 *TWO PLAYER START).",
+    "source": { "file": "DEFA7.SRC", "line": 1112, "verbatim": "ST2\tLDA\tSTATUS" }
+  },
+  {
+    "id": "PH-HALDIS",
+    "claim": "HALDIS is the attract / hall-of-fame display routine the cabinet returns to (reached by HALL13 JMP HALDIS 'ATTRACT MODE NOW', AMODE1.SRC:230) — the df7 game-over->attract loop close.",
+    "source": { "file": "AMODE1.SRC", "line": 377, "verbatim": "HALDIS\tCLR\tHSRFLG\tCLEAR HIGH SCORE RESET FLAG" }
+  },
+  {
+    "id": "PH-GAMEOV",
+    "claim": "GAMEOV is the GAME OVER routine the play->game-over edge routes to (the df5-6 isGameOver men<0 condition, consumed not re-decided).",
+    "source": { "file": "ROMF8.SRC", "line": 339, "verbatim": "GAMEOV\tORCC\t#$90\tSET TO COMPR/NOT AUTO CYCLE" }
+  },
+  {
+    "id": "PH-HALL13",
+    "claim": "HALL13 jumps to HALDIS to (re)enter attract mode — proof that HALDIS is the attract-mode display, the cabinet's game-over->attract return.",
+    "source": { "file": "AMODE1.SRC", "line": 230, "verbatim": "HALL13\tJMP\tHALDIS\tATTRACT MODE NOW" }
+  }
+]

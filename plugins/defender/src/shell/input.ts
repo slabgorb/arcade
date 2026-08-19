@@ -20,10 +20,11 @@ const BINDINGS: Readonly<Record<keyof Input, readonly string[]>> = {
   up: ['KeyW', 'ArrowUp'],
   down: ['KeyS', 'ArrowDown'],
   fire: ['Space', 'Enter'],
-  // df6-1: the two emergency-power buttons. Smart bomb on B, hyperspace on H/Shift
-  // (edges debounced in the core, like `reverse`).
-  smartBomb: ['KeyB'],
-  hyperspace: ['KeyH', 'ShiftLeft', 'ShiftRight'],
+  // df5-7: the smart-bomb key (SBOMB) — a dedicated button, distinct from fire.
+  smartBomb: ['KeyB', 'ShiftLeft'],
+  // df6-1: hyperspace (HYPER) — the second emergency power, edge-debounced in the core
+  // (like `reverse`). ShiftRight, not ShiftLeft, so it does not collide with smart bomb.
+  hyperspace: ['KeyH', 'ShiftRight'],
 }
 
 /** Map the held-key set to the pure per-tick Input snapshot. */

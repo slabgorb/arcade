@@ -1,0 +1,173 @@
+id: df7
+type: epic
+title: 'Defender phase machine + attract + wiring + HUD + showcase (df7, phase 6-7): turn df1-df6''s pure cores into a played-start-to-finish cabinet — the attract->setup->play->death->game-over phase machine (pure-first, pm4/mc6 model), the self-playing attract demo, the hall-of-fame name-entry flow, the HUD + scanner render, 2P alternating handoff, lobby showcase, and the full-lifecycle visual playtest'
+description: |-
+  Seventh and FINAL content Defender epic — phase 6-7 of the framebuffer-raster cabinet
+  build (docs/playbooks/next-sprite-game.md; roadmap
+  docs/superpowers/specs/2026-08-13-defender-cabinet-roadmap-and-df1-design.md sec 4 df7,
+  approx 18 pts). df1-df6 built every PURE core — world/ship/scheduler (df3), the menagerie
+  + collision + effects (df4), waves/scoring/scanner/rescue/powers + the men<0 game-over
+  reducer + the hall-of-fame board (df5), and sound (df6) — but nothing WIRES them into a
+  lifecycle: there is no attract mode, no start-of-game, the men<0 game-over
+  (endgame.ts isGameOver, defender/DEFA7.SRC:1423) is computed but never acted on, the
+  hall-of-fame board persists but no name-entry flow reaches it, the df5-1 scanner
+  projection is drawn NOWHERE, and there is no HUD. df7 is the WIRING that makes Defender
+  a cabinet you can play attract-to-game-over-to-hall-of-fame.
+  This is the pm4/mc6 "pure first, wired after" model (the missile-command mc6 attract +
+  state-machine epic and the pac-man pm4 cabinet lifecycle are the direct siblings):
+  the phase machine is a PURE, seeded, clock-free transition function in src/core FIRST,
+  THEN wired to the shell. df5 Decision C ruled the end-of-game pure-first here and
+  phase-wired in df7; df5 Decision D deferred 2P alternating handoff to df7. Both land now.
+  GROUND TRUTH, CITED: the ROM's block-1 attract/hall-of-fame is AMODE1.SRC (HALLOF
+  *HALL OF FAME ENTRY defender/AMODE1.SRC:117,119; HOFIN initials display :244; HOFUL
+  underline :185; HOFUD up/down stick handler :323,325; HALDIS attract-mode display :375,
+  reached HALL13 :230; add-score/initials :270). The mainline phase transitions are the
+  STATUS-word states with ST1 *ONE PLAYER START defender/DEFA7.SRC:1098,1100 and ST2
+  *TWO PLAYER START :1110,1112; the PLAYER START PROCESS :1206 and the P1SW/P2SW player-
+  switch :1179 are the 2P handoff. GAME OVER is ROMF8.SRC (GAMEOV :337; VGAMOV "GAME OVER"
+  string :351), and the coin/credit ledger df5-6 already mapped (CREDIT $A037 defender/
+  ROMF8.SRC:12; the df5-6 CMOS SLOT/TOTPDC persistence).
+  DECISION A (RULED, pure-first/wired-after — the pm4/mc6 model): the phase machine is a
+  PURE transition function in src/core (a Phase union attract|setup|play|death|game-over,
+  plus pause, and a MAINLINE dispatch attract->setup->play->[pause]->death->game-over->
+  attract), seeded and clock-free (purity.test.ts green), tested BEFORE the shell wires it.
+  It CONSUMES df5-6's isGameOver(men<0) as the play->death/game-over edge — it does not
+  re-decide game-over. The shell then drives it; no per-phase rAF.
+  DECISION B (RULED, ADR-0005 everywhere): NO full-framebuffer strobe in ANY attract,
+  death, game-over or transition presentation (the standing df4 photosensitivity ruling,
+  docs/adr/0005-photosensitivity-accessibility-exception.md); transitions route through the
+  df4-2 effect-policy (freeze/fade/particle) and the df4-2 render guard stays GREEN with
+  the whole lifecycle live. Accessibility OUTRANKS ROM fidelity.
+  DECISION C (RULED, hall of fame is @shared, CONSUMED): df5-6 shipped the pure board
+  (core/highscore.ts) + the one-origin localStorage seam (shell/highscore.ts) via
+  @shared/highscore. df7 wires the NAME-ENTRY flow (@shared/name-entry) into
+  game-over->name-entry->hall-of-fame->attract and RENDERS the hall-of-fame display
+  (HOFIN :244). It reuses the shared modules — no bespoke high-score UI, no new persistence.
+  DECISION D (RULED, 2P alternating handoff lands here — df5 Decision D): the death->next-
+  player transition (ST2 defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; P1SW/P2SW
+  :1179) is phase-machine territory built here. The COCKTAIL screen-flip it drives is
+  DOCUMENTED-NOT-PORTED (the arcade is desktop-only, upright — the df5 ruling); df7 ships
+  the alternating single-screen handoff, not the flip.
+  DECISION E (RULED, showcase opt-in): df7 registers the lobby-showcase tile (the ml7/mc
+  showcase pattern) so Defender appears in the lobby's attract rotation, opt-in and cited to
+  the existing lobby showcase seam — no new lobby infrastructure.
+  Reuse-first: df3 scheduler.ts + world.ts + sim.ts (the phase machine gates the running
+  sim; attract is a seeded driver over it), df4-2 effects.ts + the ADR-0005 policy
+  (transition presentation), df5-1 scanner.ts (the HUD draws its blips — CONSUMED, finally
+  painted), df5-3 score.ts (the HUD reads score/men), df5-6 endgame.ts + highscore.ts
+  (the game-over edge + the hall of fame), df6 events.ts (attract/transition cues),
+  @shared/name-entry + @shared/highscore + @shared/pause + @shared/font (all CONSUMED).
+  No new @shared extraction (the phase machine, attract driver and HUD are Defender game
+  structure with no second consumer). No new enemy, no new picture.
+  Every constant re-opens under the df1-1 gate: no src/core value without a claims/*.json
+  entry citing defender/<FILE>.SRC:<line>; line numbers from tool output only (RASM radix).
+  Design + full story rationale to be written at kickoff:
+  docs/superpowers/specs/2026-08-XX-defender-df7-lifecycle-design.md (mirror the mc6/pm4
+  lifecycle specs and the df5 spec).
+  Traps carried in: pure-first (the phase machine is core, seeded, clock-free — the pm4/mc6
+  split); ADR-0005 binds every transition (no full-frame strobe — guard stays green); the
+  hall of fame + name entry are @shared CONSUMED not re-built; the 2P cocktail flip is
+  documented-not-ported; the scanner is df5-1's projection finally drawn, not re-derived;
+  colour by df2 palette index only; line numbers from tool output only; RASM radix.
+  OUT OF SCOPE: any NEW enemy/picture/sound (df1-df6 shipped the content); re-deciding
+  game-over (df5-6 owns it, consumed); the cocktail screen-flip (documented-not-ported,
+  Decision D); hardening/mutation batteries (df8+, reviewer-driven).
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: df7-1
+    title: "Phase machine core (PURE-first, the pm4/mc6 model): plugins/defender/src/core/phase.ts — a Phase union attract|setup|play|death|game-over (plus pause) and a pure MAINLINE dispatch (attract->setup->play->[pause]->death->game-over->attract), seeded and clock-free. CONSUMES df5-6 isGameOver(men<0, defender/DEFA7.SRC:1423) as the play->death/game-over edge (does NOT re-decide it). Cite the ROM mainline STATUS states (ST1 *ONE PLAYER START :1100, ST2 *TWO PLAYER START :1112) and the block-1 attract/hall entry (HALLOF defender/AMODE1.SRC:119; HALDIS attract :375). purity.test.ts green; the transition fn tested BEFORE the shell wires it (Decision A). The spine every other df7 story hangs off."
+    description: 'Decision A: pure-first. The phase machine is a pure transition function in core — no clock, no rAF, seeded — mirroring mc6-1 (state.ts) and pm4''s GamePhase. It consumes df5-6''s men<0 game-over reducer as the play->death edge; game-over is not re-decided here. Wave/attract/setup are gated by the phase, driven by the shell. Every phase constant (timeouts, the mainline order) gated by a claims/*.json entry.'
+    points: 5
+    priority: p2
+    status: done
+    started: '2026-08-19'
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/src/core/phase.ts defines a Phase union (attract|setup|play|pause|death|game-over) and a PURE, seeded, clock-free MAINLINE transition function (attract->setup->play->[pause]->death->game-over->attract); purity.test.ts stays green and the transition fn is tested against synthetic states BEFORE any shell wiring (Decision A, the pm4/mc6 pure-first split).'
+      - 'AC2: the play->death/game-over edge CONSUMES df5-6 isGameOver (men<0, endgame.ts, cited defender/DEFA7.SRC:1423) — it does not re-implement or re-decide game-over; a test pins that the machine enters game-over exactly when the men counter falls below zero and not otherwise.'
+      - 'AC3: the mainline phase order and every timeout/cadence constant is cited to the ROM (ST1 *ONE PLAYER START defender/DEFA7.SRC:1100, ST2 :1112, HALLOF defender/AMODE1.SRC:119, HALDIS attract :375, GAMEOV defender/ROMF8.SRC:337) with a claims/*.json entry byte-verified under the df1-1 gate; no un-cited src/core constant.'
+      - 'AC4: the phase machine owns no rAF/tick (the shell drives it, phases gate the df3 sim); a mutation to the transition table (e.g. skipping death, or attract not returning from game-over) reddens a transition assertion (not a coverage check).'
+    completed: '2026-08-19'
+    review_findings: 'Round 1 REJECTED on one LOW/DOC finding — a stale ROM citation at df7-1-phase.test.ts:32 (cited AMODE1.SRC:375 / ROMF8.SRC:337, the section-header comments, not the 377/339 labels). FIXED in round 2 (commit d4a8e200), byte-verified. Round 2 APPROVED, no other findings.'
+    review_verdict: approved
+  - id: df7-2
+    title: "Setup->play start-of-game wiring: a start/coin action advances attract|game-over -> setup -> play, RESEEDING the sim (createSim with the df5-10 humanoid ground population, the df5-8 wave-1 WVTAB spawn, men=STARTING_MEN=3 per df5-3). Wire the df7-1 phase machine into plugins/defender/src/main.ts so the shell actually starts a game. Cite ST1 *ONE PLAYER START defender/DEFA7.SRC:1100 (credit check :1103). Consumes df7-1 + df3 sim.ts + df5-8/df5-10."
+    description: 'The mc6-2 analog: the start-of-game transition. A coin/start input advances the phase to setup then play and reseeds a fresh game — humanoids on the ground (df5-10), wave 1 spawned (df5-8), men=3 (df5-3 STARTING_MEN, NSHIP ROMC8.SRC:802). This is where main.ts stops booting straight into a bare sim and instead boots into attract and starts on input. Purity of the reseed logic preserved; the wiring is shell.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: a start/coin action advances attract|game-over -> setup -> play and reseeds a fresh game via createSim — the df5-10 humanoid ground population placed, the df5-8 wave-1 WVTAB attackers spawned, men=STARTING_MEN (3, df5-3, cited); a test pins the fresh-game invariants at the setup->play edge.'
+      - 'AC2: plugins/defender/src/main.ts boots into the df7-1 attract phase (not a bare running sim) and starts play only on the start/coin input; the ST1 credit/start path is cited (*ONE PLAYER START defender/DEFA7.SRC:1100, credit :1103) with claims/*.json under the df1-1 gate.'
+      - 'AC3: the reseed is deterministic under a seed (df3 seeded RNG) — the same seed yields the same fresh game; purity.test.ts stays green (the reseed logic is pure; only the input binding is shell).'
+      - 'AC4: no full-frame strobe on the setup->play transition (Decision B, ADR-0005) — the df4-2 render guard stays green; any transition flash is the safe freeze/fade.'
+  - id: df7-3
+    title: "Self-playing attract demo: a deterministic seeded auto-player drives the ship (thrust/fire/reverse) during phase attract so the field plays itself; ANY player input -> setup (start a real game). Pure attract driver in plugins/defender/src/core (seeded RNG, no clock — the mc6-4 analog). Cite the ROM attract display HALDIS defender/AMODE1.SRC:375 (reached HALL13 :230). Consumes df7-1 phase machine + df3 sim.ts (drives the real sim, no separate demo path)."
+    description: 'The mc6-4 / pm4 self-play analog. During attract the phase machine runs the REAL df3 sim driven by a pure seeded auto-player (the joust jt13 demoInput lesson: drive the real sim, do not fork a demo path) so the attract screen shows actual gameplay. Any input exits attract to setup. Pure, seeded, clock-free. Colour by df2 palette index.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: a PURE, seeded, clock-free attract driver in src/core produces ship inputs (thrust/reverse/fire/smart-bomb) that drive the REAL df3 sim during phase attract (not a forked demo path — the jt13 lesson); purity.test.ts stays green and the same seed replays the same attract bit-for-bit.'
+      - 'AC2: ANY player input during attract transitions attract->setup (df7-1); a test pins that the first real input exits the demo.'
+      - 'AC3: the attract display is cited to the ROM (HALDIS defender/AMODE1.SRC:375, HALL13 :230) with claims/*.json under the df1-1 gate; no un-cited constant; colour by df2 palette index only.'
+      - 'AC4: the attract demo obeys ADR-0005 (Decision B) — no full-frame strobe; the df4-2 guard stays green with the demo (including its smart-bomb visuals) live.'
+  - id: df7-4
+    title: "Hall-of-fame wiring + name entry: wire df5-6's pure board (core/highscore.ts) + one-origin localStorage (shell/highscore.ts) through @shared/name-entry into the game-over -> name-entry -> hall-of-fame -> attract flow, and RENDER the hall-of-fame display. Consumes @shared/name-entry + @shared/highscore (CONSUMED, not re-built — Decision C). Cite HALLOF defender/AMODE1.SRC:119, HOFIN initials display :244, HOFUD up/down stick handler :325, add-score :270."
+    description: 'Decision C: the hall of fame is @shared, consumed. df5-6 shipped the pure board + persistence; df7-4 wires the name-entry flow (@shared/name-entry — the same asteroids/missile-command/pac-man shape) so a qualifying game-over score reaches the board, and renders the hall-of-fame display screen (HOFIN :244). No bespoke high-score UI, no new persistence. The ROM stick-driven initial entry (HOFUD :325) maps to @shared/name-entry input.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: on game-over, a qualifying score enters the name-entry flow via @shared/name-entry (CONSUMED — no bespoke entry UI) and is committed to df5-6''s hall-of-fame board (@shared/highscore, one-origin localStorage); a test asserts the flow game-over -> name-entry -> board -> attract and that no new persistence code is introduced.'
+      - 'AC2: the hall-of-fame DISPLAY is rendered in the shell (HOFIN initials display, defender/AMODE1.SRC:244; add-score/initials :270) reading the df5-6 board; the ROM entry/underline/stick citations (HALLOF :119, HOFUL :185, HOFUD :325) carry claims/*.json entries under the df1-1 gate.'
+      - 'AC3: a non-qualifying game-over skips name-entry and returns to attract (the mainline loop closes); a test pins both the qualifying and non-qualifying paths.'
+      - 'AC4: no full-frame strobe in the hall-of-fame/name-entry presentation (Decision B); colour by df2 palette index only; the df4-2 guard stays green.'
+  - id: df7-5
+    title: "HUD + scanner render: draw the score, the men (lives) indicator and the wave number, and PAINT the df5-1 scanner projection (its blip list) into the shell — the scanner is projected in core (df5-1) but drawn NOWHERE today. Consumes df5-1 scanner.ts (the blip list, finally painted) + df5-3 score.ts (score/men) + df2 palette/charset. Cite the ROM scanner bezel (*SCANNER BEZEL defender/AMODE1.SRC:1225) and the HUD layout. Colour by df2 palette INDEX only."
+    description: 'df5-1 built the scanner as a pure projection (blip list + palette index) and explicitly left the DRAW to df7''s HUD; today nothing paints it. df7-5 draws the scanner strip (bezel per AMODE1.SRC:1225) plus the score/men/wave HUD figures, reading df5-1 (scanner blips) and df5-3 (score/men) — the shell paints, the core still owns no shell state. This is the df5-1 consumer the projection was built for.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: the shell renders the df5-1 scanner blip list into the radar strip (bezel geometry per *SCANNER BEZEL defender/AMODE1.SRC:1225, cited, claims/*.json under the df1-1 gate) — the scanner, drawn nowhere today, now shows off-camera attackers at their radar positions; blip colour is a df2 palette INDEX, never a hex literal.'
+      - 'AC2: the HUD renders the score, the men (lives) indicator and the current wave number, reading df5-3 score.ts (score/men) — the shell paints figures via df2 charset/palette; the core owns no HUD state.'
+      - 'AC3: every HUD/scanner-bezel constant is cited under the df1-1 gate; no un-cited value; purity.test.ts stays green (the render is shell, the projection stays pure df5-1).'
+      - 'AC4: no full-frame strobe (Decision B); the HUD/scanner draw is stable across frames (no per-frame flicker) and reads correctly against a synthetic populated scanner (an off-camera blip is visible at the right position).'
+  - id: df7-6
+    title: "2P alternating handoff (df5 Decision D lands here): the death->next-player transition for a two-player game (ST2 *TWO PLAYER START defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; player-switch P1SW/P2SW :1179). Each player keeps their own men/score/world; on death the phase machine hands off to the other player until both are out. The COCKTAIL screen-flip is DOCUMENTED-NOT-PORTED (desktop-only, upright — Decision D). Consumes df7-1 phase machine + df5-3 score/men."
+    description: 'df5 Decision D deferred 2P alternating handoff to df7 as phase-machine territory. Two players alternate on death, each with their own men/score/world snapshot; the machine cycles P1->P2->P1 until both reach game-over. The ROM cocktail screen-flip (P1SW/P2SW drive it) is documented in the design spec but NOT ported — the arcade is desktop-only/upright. Single-player (df7-1..df7-5) is unaffected; 2P is an additive path.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: a two-player game alternates on death — each player keeps their own men/score/world, and the df7-1 phase machine cycles P1->P2 on each death until both are out, then game-over; a test pins the alternation and the independent per-player men/score.'
+      - 'AC2: the transition is cited to the ROM (ST2 *TWO PLAYER START defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; P1SW/P2SW :1179) with claims/*.json under the df1-1 gate.'
+      - 'AC3: the COCKTAIL screen-flip is DOCUMENTED-NOT-PORTED (Decision D) — a design note records the P1SW/P2SW flip citations and states the arcade is desktop-only/upright so the flip is intentionally omitted; no flip code ships.'
+      - 'AC4: single-player play (df7-1..df7-5) is unchanged by the 2P path (a test pins the 1P mainline still holds); purity.test.ts stays green.'
+  - id: df7-7
+    title: "Lobby showcase opt-in + the FULL-LIFECYCLE visual playtest: register Defender in the lobby-showcase attract rotation (the ml7/mc showcase seam, Decision E), and screenshot the whole lifecycle at http://127.0.0.1:5270/defender/ — attract demo playing (df7-3), a started game with HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name entry (df7-4) — each DIFFERING from a nonsense control (the canonical-serve lesson), with NO full-frame strobe anywhere (Decision B). Carry df8+ (hardening) forward."
+    description: 'The eyes for the whole cabinet, mirroring df5-7/df4-6 but across the LIFECYCLE (df5-7 showed the gameplay loop; df7-7 shows attract/game-over/hall-of-fame screens). Register the lobby showcase tile (Decision E, the existing showcase seam — no new lobby infra). Confirm ADR-0005 visually across every phase: no attract/death/game-over transition flashes the full screen. An all-200 sweep proves nothing (SPA fallback) — DIFFER from a control.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: Defender is registered in the lobby-showcase attract rotation via the existing showcase seam (Decision E — no new lobby infrastructure); a test/screenshot confirms the tile appears.'
+      - 'AC2: a screenshot sequence at http://127.0.0.1:5270/defender/ (each DIFFERING from a nonsense control path — the canonical-serve lesson) captures: the attract demo playing (df7-3), a started game with the HUD + populated scanner (df7-2/df7-5), a death, game-over, and the hall-of-fame name-entry screen (df7-4).'
+      - 'AC3: NO full-frame strobe appears in ANY phase or transition (Decision B, ADR-0005) — a note confirms the df4-2 no-full-frame-strobe guard held across the whole lifecycle; any discrepancy is filed by FILE SURFACE (the jt9 habit).'
+      - 'AC4: the df8+ hand-forward note is recorded — the epic is content-complete; hardening/mutation batteries (reviewer-driven, grouped by file surface) are the remaining defender work.'
