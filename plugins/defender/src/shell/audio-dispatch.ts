@@ -11,69 +11,84 @@
 // a kind to `core/events.ts` without a case here and this stops compiling — a new
 // moment cannot ship silently.
 //
-// Defender's cues are ALL one-shots, and that is a fact about the machine, not a
-// simplification: every SOUND TABLE entry (DEFA7.SRC:665-691) is a priority byte
-// followed by bounded (REPCNT, SNDTMR, SND#) triples terminated by REPCNT=0 (the
-// format header at :660). A table runs for its own duration and stops itself; there
-// is no ring-until-told-otherwise voice among the df6-1 cues, so `startLoop`/
-// `stopLoop` would be an invention. The two stateful repeat cues the machine does
-// have — thrust (held-loop) and LSKSND (lander suck) — are df6-2, not here.
+// Most of Defender's cues are one-shots, and that is a fact about the machine: every
+// SOUND TABLE entry (DEFA7.SRC:665-691) is a priority byte followed by bounded (REPCNT,
+// SNDTMR, SND#) triples terminated by REPCNT=0 (the format header at :660) — a table runs
+// for its own duration and stops itself. df6-2 adds the two cues that DON'T: the thrust
+// held-loop (THFLG $16/$0F) and the lander-suck repeat (LSKSND, sounded as a held loop
+// across the abduction ascent). Those ring until told otherwise, so this dispatch is now a
+// ROUTER: a one-shot kind → `play`, a `-start` edge → `startLoop`, a `-stop` → `stopLoop`.
 import type { GameEvent } from '../core/events.js'
 import type { AudioEngine, SoundName } from './audio.js'
 
-/** Just the slice of the engine this dispatch needs — Defender never loops (df6-1). */
-type SoundPlayer = Pick<AudioEngine, 'play'>
+/** Just the slice of the engine this dispatch needs — one-shots plus the df6-2 loop seam. */
+type SoundPlayer = Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
+
+/** What a moment does to the engine: play a one-shot, or start/stop a held loop. */
+type Cue =
+  | { readonly verb: 'play'; readonly name: SoundName }
+  | { readonly verb: 'startLoop'; readonly name: SoundName }
+  | { readonly verb: 'stopLoop'; readonly name: SoundName }
 
 /**
- * The cue each moment sounds. Module-private: `playEventSounds` is the only seam the
- * shell uses, and an exported second entry point would be a second thing to keep in
- * step with the union for no caller's benefit. Every df6-1 cue is a payload-free
- * one-shot, so this is a plain kind -> name map with no branching on payload.
+ * The action each moment sounds. Module-private: `playEventSounds` is the only seam the
+ * shell uses, and an exported second entry point would be a second thing to keep in step
+ * with the union for no caller's benefit. The 21 one-shots map to a `play`; the four df6-2
+ * loop EDGES map to a `startLoop`/`stopLoop` on the cue's own channel.
  */
-function cueFor(event: GameEvent): SoundName | null {
+function cueFor(event: GameEvent): Cue | null {
   switch (event.type) {
     case 'laser-fire':
-      return 'laserFire'
+      return { verb: 'play', name: 'laserFire' }
     case 'lander-hit':
-      return 'landerHit'
+      return { verb: 'play', name: 'landerHit' }
     case 'mutant-hit':
-      return 'mutantHit'
+      return { verb: 'play', name: 'mutantHit' }
     case 'baiter-hit':
-      return 'baiterHit'
+      return { verb: 'play', name: 'baiterHit' }
     case 'pod-hit':
-      return 'podHit'
+      return { verb: 'play', name: 'podHit' }
     case 'bomber-hit':
-      return 'bomberHit'
+      return { verb: 'play', name: 'bomberHit' }
     case 'swarmer-hit':
-      return 'swarmerHit'
+      return { verb: 'play', name: 'swarmerHit' }
     case 'lander-shoot':
-      return 'landerShoot'
+      return { verb: 'play', name: 'landerShoot' }
     case 'mutant-shoot':
-      return 'mutantShoot'
+      return { verb: 'play', name: 'mutantShoot' }
     case 'baiter-shoot':
-      return 'baiterShoot'
+      return { verb: 'play', name: 'baiterShoot' }
     case 'swarmer-shoot':
-      return 'swarmerShoot'
+      return { verb: 'play', name: 'swarmerShoot' }
     case 'lander-pickup':
-      return 'landerPickup'
+      return { verb: 'play', name: 'landerPickup' }
     case 'enemy-appear':
-      return 'enemyAppear'
+      return { verb: 'play', name: 'enemyAppear' }
     case 'smart-bomb':
-      return 'smartBomb'
+      return { verb: 'play', name: 'smartBomb' }
     case 'player-death':
-      return 'playerDeath'
+      return { verb: 'play', name: 'playerDeath' }
     case 'extra-man':
-      return 'extraMan'
+      return { verb: 'play', name: 'extraMan' }
     case 'wave-start':
-      return 'waveStart'
+      return { verb: 'play', name: 'waveStart' }
     case 'astro-catch':
-      return 'astroCatch'
+      return { verb: 'play', name: 'astroCatch' }
     case 'astro-land':
-      return 'astroLand'
+      return { verb: 'play', name: 'astroLand' }
     case 'astro-hit':
-      return 'astroHit'
+      return { verb: 'play', name: 'astroHit' }
     case 'astro-scream':
-      return 'astroScream'
+      return { verb: 'play', name: 'astroScream' }
+    // df6-2 — the two stateful cues, keyed on their on/off EDGE (core/events.ts).
+    case 'thrust-start':
+      return { verb: 'startLoop', name: 'thrust' }
+    case 'thrust-stop':
+      return { verb: 'stopLoop', name: 'thrust' }
+    case 'lander-suck-start':
+      return { verb: 'startLoop', name: 'landerSuck' }
+    case 'lander-suck-stop':
+      return { verb: 'stopLoop', name: 'landerSuck' }
     default: {
       // Exhaustiveness guard: every kind is handled above, so `event` narrows to
       // `never` here and a new kind without a case is a COMPILE error. At runtime
@@ -97,6 +112,17 @@ function cueFor(event: GameEvent): SoundName | null {
 export function playEventSounds(audio: SoundPlayer, events: readonly GameEvent[]): void {
   for (const event of events) {
     const cue = cueFor(event)
-    if (cue !== null) audio.play(cue)
+    if (cue === null) continue
+    switch (cue.verb) {
+      case 'play':
+        audio.play(cue.name)
+        break
+      case 'startLoop':
+        audio.startLoop(cue.name)
+        break
+      case 'stopLoop':
+        audio.stopLoop(cue.name)
+        break
+    }
   }
 }

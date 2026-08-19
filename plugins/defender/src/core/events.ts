@@ -26,8 +26,16 @@
 //     so the grab moment maps to `lander-pickup` (LPKSND) and LGSND stays unwired.
 //   • CNSND "COIN" (:665) — attract/coin insertion, df7 (Decision A).
 //   • TBSND "TERRAIN BLOW" (:670) — the panic/planet-blow cue; not in df6-1's cue list.
-//   • LSKSND "LANDER SUCK" (:684) — a STATEFUL repeat cue (the lander drawing a humanoid
-//     inside), deferred to df6-2 (the two stateful cues: thrust held-loop + lander-suck).
+//   • CNSND/TBSND above stay out; LSKSND "LANDER SUCK" (:684) is NOW wired here as of
+//     df6-2 — a STATEFUL repeat cue (the lander drawing a humanoid up), sounded as a held
+//     LOOP across the abduction ascent (see the df6-2 kinds and their loop routing below).
+//
+// ─── df6-2: THE TWO STATEFUL CUES (loop edges, not one-shots) ─────────────────────
+// df6-1's cues were all payload-free one-shots. df6-2 adds the two cues with STATE — a
+// HELD sound that must be turned ON and OFF — as four edge kinds: a `-start`/`-stop` pair
+// each, emitted on the on->off / off->on EDGE the core detects (the jt5-3 flap analog).
+// The shell routes `-start` through @shared/audio's startLoop and `-stop` through stopLoop
+// (audio-dispatch.ts), so the sound RINGS between the edges instead of retriggering.
 
 /**
  * Every event kind, as a runtime TUPLE. A VALUE on purpose: the shell's manifest and
@@ -57,6 +65,11 @@ export const EVENT_KINDS = [
   'astro-land', //     a caught humanoid was deposited on the ground — ALSND "ASTRO LAND" (:674)
   'astro-hit', //      a walking humanoid was killed by hostile fire — AHSND "ASTRO HIT" (:675)
   'astro-scream', //   a carried humanoid was dropped and falls — ASCSND "ASTRO SCREAM" (:676)
+  // ── df6-2: the two STATEFUL cues, as loop-edge kinds (start ON, stop OFF) ──
+  'thrust-start', //     thrust pressed — THFLG on ($16, DEFA7.SRC:750); starts the thrust loop
+  'thrust-stop', //      thrust released — THFLG off ($0F, DEFA7.SRC:743); stops the thrust loop
+  'lander-suck-start', //a lander began carrying a humanoid upward — starts the LSKSND loop (:684)
+  'lander-suck-stop', // the abduction ended (top / drop / carrier death) — stops the LSKSND loop
 ] as const
 
 /** The discriminant of every event — derived from the tuple, never re-typed. */
@@ -68,8 +81,9 @@ export type GameEventKind = (typeof EVENT_KINDS)[number]
  * default branch to `never` — which is what makes adding a kind without a cue a COMPILE
  * error instead of a silent drop.
  *
- * Every df6-1 cue is a payload-free ONE-SHOT: each moment maps to exactly one SOUND TABLE
- * entry, so no member carries data. (A field nothing reads would be a promise the seam
- * does not keep — the jt5-1 rule.)
+ * Every member is payload-free `{ type }`: a df6-1 one-shot maps to one SOUND TABLE entry,
+ * and a df6-2 loop edge carries its on/off in the KIND itself (`-start`/`-stop`), so no
+ * member needs a data field. (A field nothing reads would be a promise the seam does not
+ * keep — the jt5-1 rule.)
  */
 export type GameEvent = { readonly [K in GameEventKind]: { readonly type: K } }[GameEventKind]

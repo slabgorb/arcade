@@ -1,7 +1,7 @@
 [
   {
     "id": "SND-1",
-    "claim": "The main-CPU SOUND TABLE is a list of priority-headed cue tables under the format header `SNDPRI,N*(REPCNT,SNDTMR,SND#) N>=1` (SNDTMR in 16 msec, END: REPCNT=0). SND-2..SND-22 pin each cue Defender's df6-1 integration reaches; excluded rows (CNSND coin, TBSND terrain-blow, LSKSND lander-suck, LGSND dead lander-grab, ST2SND/START2) are deferred or dead.",
+    "claim": "The main-CPU SOUND TABLE is a list of priority-headed cue tables under the format header `SNDPRI,N*(REPCNT,SNDTMR,SND#) N>=1` (SNDTMR in 16 msec, END: REPCNT=0). SND-2..SND-22 pin each cue Defender's df6-1 integration reaches, and SND-23 adds the df6-2 LSKSND lander-suck loop (with SND-24..SND-26 pinning the df6-2 thrust THFLG side-path, which has no table row); the still-excluded rows (CNSND coin, LGSND dead lander-grab, TBSND terrain-blow, ST2SND/START2) are deferred or dead.",
     "source": {
       "file": "DEFA7.SRC",
       "line": 660,
@@ -195,6 +195,42 @@
       "file": "DEFA7.SRC",
       "line": 676,
       "verbatim": "ASCSND\tFCB\t$D8,$01,$10,$1A,0 ASTRO SCREAM"
+    }
+  },
+  {
+    "id": "SND-23",
+    "claim": "LSKSND (SNDPRI $C8) is the LANDER SUCK cue — a REPEAT sound (REPCNT=$0A, its second FCB byte) — the df6-2 lander-suck event. The ROM plays it at LANDFX (DEFB6.SRC:803, LDD #LSKSND / JSR SNDLD), reached by `CMPA #YMIN+8 / BLS LANDFX` (:798-799) when a carrying lander reaches the top to pull the humanoid inside. df6-2 sounds this repeat cue as a held loop across the abduction ascent (logged design deviation).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 684,
+      "verbatim": "LSKSND\tFCB\t$C8,$0A,$01,$0E,0 LANDER SUCK"
+    }
+  },
+  {
+    "id": "SND-24",
+    "claim": "THFLG is the THRUST SOUND FLAG — the held state the df6-2 thrust loop edges on. SNDSEQ reads the PIA21 thrust bit (DEFA7.SRC:737-739) and drives THFLG on the press/release edge; the thrust sound is this flag side-path, not a SOUND TABLE row.",
+    "source": {
+      "file": "PHR6.SRC",
+      "line": 293,
+      "verbatim": "THFLG\tRMB\t1\tTHRUST SOUND FLAG"
+    }
+  },
+  {
+    "id": "SND-25",
+    "claim": "The THRUST press edge: SNDSEQ turns the thrust sound ON with sound value $16 and stores it into THFLG (STB THFLG, DEFA7.SRC:751) — the df6-2 thrust-start / loop-on edge.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 750,
+      "verbatim": "\tLDB\t#$16\tNO HIT IT"
+    }
+  },
+  {
+    "id": "SND-26",
+    "claim": "The THRUST release edge: SNDSEQ clears THFLG (CLR THFLG, DEFA7.SRC:742) and sounds the off value $0F — the df6-2 thrust-stop / loop-off edge.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 743,
+      "verbatim": "\tLDB\t#$0F"
     }
   }
 ]

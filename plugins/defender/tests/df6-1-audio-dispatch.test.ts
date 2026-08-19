@@ -18,17 +18,40 @@ import { EVENT_KINDS, type GameEvent } from '../src/core/events.js'
 import { playEventSounds } from '../src/shell/audio-dispatch.js'
 import { SOUNDS, type SoundName, type AudioEngine } from '../src/shell/audio.js'
 
-/** A recording fake: the slice playEventSounds needs, capturing what it plays. */
-function recorder(): { engine: Pick<AudioEngine, 'play'>; played: SoundName[] } {
+/** A recording fake: the slice playEventSounds needs — the one-shot `play` plus the df6-2
+ *  loop seam — capturing what each verb received. */
+function recorder(): {
+  engine: Pick<AudioEngine, 'play' | 'startLoop' | 'stopLoop'>
+  played: SoundName[]
+  loopsOn: SoundName[]
+  loopsOff: SoundName[]
+} {
   const played: SoundName[] = []
-  return { engine: { play: (name: SoundName) => void played.push(name) }, played }
+  const loopsOn: SoundName[] = []
+  const loopsOff: SoundName[] = []
+  return {
+    engine: {
+      play: (name: SoundName) => void played.push(name),
+      startLoop: (name: SoundName) => void loopsOn.push(name),
+      stopLoop: (name: SoundName) => void loopsOff.push(name),
+    },
+    played,
+    loopsOn,
+    loopsOff,
+  }
 }
 
 const oneOf = (kind: GameEvent['type']): GameEvent => ({ type: kind })
 
-describe('df6-1 AC3 — every kind maps to exactly one real cue', () => {
-  it('each EVENT_KINDS discriminant plays one sound, and the name is a real SoundName', () => {
-    for (const kind of EVENT_KINDS) {
+// df6-2 added four STATEFUL cues that route through startLoop/stopLoop, not play. This AC3
+// suite pins the ONE-SHOT invariant, so it sweeps the one-shot kinds; the loop routing is
+// pinned by df6-2-thrust-loop / df6-2-lander-suck (and asserted not to reach play below).
+const LOOP_KINDS: readonly GameEvent['type'][] = ['thrust-start', 'thrust-stop', 'lander-suck-start', 'lander-suck-stop']
+const ONE_SHOT_KINDS = EVENT_KINDS.filter((k) => !LOOP_KINDS.includes(k))
+
+describe('df6-1 AC3 — every one-shot kind maps to exactly one real cue', () => {
+  it('each one-shot discriminant plays one sound, and the name is a real SoundName', () => {
+    for (const kind of ONE_SHOT_KINDS) {
       const { engine, played } = recorder()
       playEventSounds(engine, [oneOf(kind)])
       expect(played.length, `${kind} did not map to exactly one cue`).toBe(1)
@@ -36,11 +59,19 @@ describe('df6-1 AC3 — every kind maps to exactly one real cue', () => {
     }
   })
 
-  it('the 21 kinds map to 21 DISTINCT cues (no two moments collapse onto one sound)', () => {
+  it('the one-shot kinds map to DISTINCT cues (no two moments collapse onto one sound)', () => {
     const { engine, played } = recorder()
-    playEventSounds(engine, EVENT_KINDS.map(oneOf))
-    expect(played.length).toBe(EVENT_KINDS.length)
-    expect(new Set(played).size, 'two kinds mapped to the same cue name').toBe(EVENT_KINDS.length)
+    playEventSounds(engine, ONE_SHOT_KINDS.map(oneOf))
+    expect(played.length).toBe(ONE_SHOT_KINDS.length)
+    expect(new Set(played).size, 'two kinds mapped to the same cue name').toBe(ONE_SHOT_KINDS.length)
+  })
+
+  it('the df6-2 loop kinds do NOT reach play() — they route through the loop seam', () => {
+    const { engine, played, loopsOn, loopsOff } = recorder()
+    playEventSounds(engine, LOOP_KINDS.map(oneOf))
+    expect(played, 'a loop edge must not fire a one-shot play()').toEqual([])
+    // Two starts + two stops across the four edges (thrust + lander-suck).
+    expect(loopsOn.length + loopsOff.length, 'each loop edge must hit startLoop or stopLoop').toBe(LOOP_KINDS.length)
   })
 })
 

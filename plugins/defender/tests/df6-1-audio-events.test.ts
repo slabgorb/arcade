@@ -23,8 +23,10 @@ import { createHash } from 'node:crypto'
 import { EVENT_KINDS, type GameEvent, type GameEventKind } from '../src/core/events.js'
 import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.js'
 
-// The 21 moments this story wires — the EXACT set, so a kind added or dropped without
-// updating this list (and the SOUND TABLE claim behind it) reddens.
+// The 21 one-shot moments df6-1 wired. df6-2 adds STATEFUL loop kinds to the tuple, so this
+// list is the df6-1 SUBSET that must SURVIVE — checked as a superset (every one present, no
+// duplicates), not as the whole tuple. A df6-1 kind dropped without updating this list (and
+// the SOUND TABLE claim behind it) still reddens.
 const EXPECTED_KINDS = [
   'laser-fire',
   'lander-hit',
@@ -75,10 +77,11 @@ function cueStream(seed: number, ticks: number): string[] {
 }
 
 describe('df6-1 AC1 — EVENT_KINDS is a runtime tuple, GameEvent derives from it', () => {
-  it('EVENT_KINDS is exactly the 21 SOUND-TABLE moments, no duplicates', () => {
-    expect([...EVENT_KINDS].sort(), 'the wired cue set drifted from the 21 expected moments').toEqual(
-      [...EXPECTED_KINDS].sort(),
-    )
+  it('EVENT_KINDS still carries every df6-1 one-shot moment, no duplicates', () => {
+    const kinds = EVENT_KINDS as readonly string[]
+    for (const kind of EXPECTED_KINDS) {
+      expect(kinds, `df6-1's '${kind}' was dropped from EVENT_KINDS`).toContain(kind)
+    }
     expect(new Set(EVENT_KINDS).size, 'EVENT_KINDS has a duplicate kind').toBe(EVENT_KINDS.length)
   })
 
@@ -165,8 +168,11 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     const fingerprint = createHash('sha256').update(stream.join('\n')).digest('hex').slice(0, 16)
     // Frozen from the shipped sim: if the integrated cue order/content changes, this
     // reddens and the change must be re-baselined deliberately (the df3-6 digest idiom).
+    // RE-BASELINED for df6-2: this script thrusts on every even tick, so the new thrust
+    // held-loop emits a start/stop edge on nearly every tick — the stream is now 289 cues.
+    // The re-baseline is the deliberate acknowledgement of that intended change.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      'cbb7f493cd8d4b40',
+      'b3d6af7fc6d795fc',
     )
   })
 })

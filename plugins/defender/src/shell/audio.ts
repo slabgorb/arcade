@@ -77,6 +77,9 @@ export type SoundName =
   | 'astroLand'
   | 'astroHit'
   | 'astroScream'
+  // df6-2 — the two STATEFUL LOOP cues (sounded via startLoop/stopLoop, not play).
+  | 'thrust' //     the held thrust loop (THFLG side-path; no SOUND-TABLE row)
+  | 'landerSuck' // the abduction repeat (LSKSND, sounded as a held loop — see CUE_SOURCES)
 
 /**
  * Defender's prefix on the shared assets host — the fleet convention (joust's is
@@ -115,6 +118,10 @@ export const SOUNDS: Readonly<Record<SoundName, string>> = {
   astroLand: 'alsnd.wav',
   astroHit: 'ahsnd.wav',
   astroScream: 'ascsnd.wav',
+  // df6-2 loop cues. `thrust` has no ROM sound-table symbol (it is the THFLG $16/$0F
+  // side-path), so its file is named for the effect; `landerSuck` keeps the LSKSND symbol.
+  thrust: 'thrust.wav',
+  landerSuck: 'lsksnd.wav',
 }
 
 /**
@@ -147,6 +154,11 @@ export const CHANNELS: Readonly<Record<SoundName, string>> = {
   mutantShoot: 'prio-192', //  SSHSND $C0
   baiterShoot: 'prio-192', //  USHSND $C0
   swarmerShoot: 'prio-192', // SWSSND $C0 (the six $C0 shoot/laser/swarm-hit cues share a voice)
+  // df6-2 loop cues, each on its OWN voice. LSKSND is SNDPRI $C8 (200) — no other cue is
+  // $C8, so it keeps the prio-<SNDPRI> naming and its own channel. `thrust` has no SNDPRI
+  // (it is not a SOUND-TABLE row), so it names its own channel plainly.
+  landerSuck: 'prio-200', // LSKSND $C8
+  thrust: 'thrust', //       THFLG side-path — its own loop voice, no SNDPRI to name it by
 }
 
 // ─── Provenance ──────────────────────────────────────────────────────────────────
@@ -167,8 +179,10 @@ export interface Citation {
  * machine's own trailing comment and its SNDPRI byte) and the call site that plays
  * it. A table alone proves the sound exists, not that it belongs to this moment.
  *
- * `invention` is the honest escape hatch: a cue with no table behind it. None is
- * used today — all twenty-one are real SOUND TABLE rows played at a cited site.
+ * `invention` is the honest escape hatch: a cue with no ROM behind it. None is used
+ * today — the twenty-one one-shots and the df6-2 `landerSuck` loop are real SOUND TABLE
+ * rows played at a cited site, and the df6-2 `thrust` loop is a `flag` cue (below), ROM-
+ * cited to THFLG and its $16/$0F transitions rather than to a table row.
  */
 export type CueSource =
   | {
@@ -188,8 +202,26 @@ export type CueSource =
       /** The vector slot a call site plays THROUGH, when it does not name the table
        *  directly. Only `enemyAppear` uses one: SAMEXAP7.SRC:53 loads APSNDV
        *  ($FFDD, PHR6.SRC:96), whose data slot `FDB APSND` (DEFB6.SRC:2247) is what
-       *  resolves the vector to this table. Absent for the twenty direct cues. */
+       *  resolves the vector to this table. Absent for every other direct cue. */
       via?: Citation
+    }
+  | {
+      // df6-2 — a cue the sound driver keys off a FLAG, not a SOUND-TABLE `FCB` row: it
+      // has no `LDD #<table>` / `SNDLD` and no SNDPRI byte. Defender's THRUST is the one
+      // such cue — `SNDSEQ` reads the PIA21 thrust bit and writes `THFLG` on the press/
+      // release EDGE. It is still fully ROM-cited (not an invention): the flag's RMB
+      // declaration DEFINES it, and the two `LDB #$XX` writes are its on/off transitions.
+      kind: 'flag'
+      /** The driver flag, e.g. `THFLG`. */
+      flag: string
+      /** Williams's own comment on the flag's RMB declaration. */
+      romComment: string
+      /** The `RMB` line that DECLARES the flag (e.g. PHR6.SRC:293). */
+      source: Citation
+      /** The `LDB #$XX` that turns the sound ON (the press edge). */
+      soundOn: Citation
+      /** The `LDB #$XX` that turns the sound OFF (the release edge). */
+      soundOff: Citation
     }
   | {
       kind: 'invention'
@@ -202,8 +234,9 @@ export type CueSource =
  * at its SNDPRI, and the call site that plays it — and the same rows are pinned as
  * claims in docs/rom-study/claims/19-sound.json, which the df1-1 citation gate
  * (loadClaims globs the whole claims/ dir) re-verifies on every run, CI included.
- * The whole 21-cue SOUND TABLE sits at DEFA7.SRC:665-691 under the format header at
- * :660 (`SNDPRI,N*(REPCNT,SNDTMR,SND#)`) and is loaded by SNDLD at :709.
+ * The whole SOUND TABLE sits at DEFA7.SRC:665-691 under the format header at :660
+ * (`SNDPRI,N*(REPCNT,SNDTMR,SND#)`) and is loaded by SNDLD at :709; df6-2's `landerSuck`
+ * (LSKSND, :684) is one of its rows, while `thrust` is the one FLAG cue with no row.
  */
 export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
   laserFire: {
@@ -379,6 +412,30 @@ export const CUE_SOURCES: Readonly<Record<SoundName, CueSource>> = {
     romComment: 'ASTRO SCREAM',
     source: { file: 'DEFA7.SRC', line: 676, verbatim: 'ASCSND\tFCB\t$D8,$01,$10,$1A,0 ASTRO SCREAM' },
     callSite: { file: 'DEFB6.SRC', line: 914, verbatim: '\tLDD\t#ASCSND' },
+  },
+  // ─── df6-2: the two STATEFUL loop cues ─────────────────────────────────────────
+  landerSuck: {
+    kind: 'rom',
+    table: 'LSKSND',
+    priority: 0xc8,
+    romComment: 'LANDER SUCK',
+    source: { file: 'DEFA7.SRC', line: 684, verbatim: 'LSKSND\tFCB\t$C8,$0A,$01,$0E,0 LANDER SUCK' },
+    // DESIGN DEVIATION (logged, df6-2 session): the ROM plays LSKSND at LANDFX — the TOP,
+    // the instant a carrying lander pulls the humanoid inside to transform it (reached by
+    // `CMPA #YMIN+8 / BLS LANDFX`, DEFB6.SRC:798-799). In this port that instant is a
+    // single tick, so the REPEAT cue ($0A) is sounded instead as a HELD LOOP across the
+    // whole abduction ascent (start at grab-lift, stop at top/drop/carrier-death). The
+    // call site recorded here is the TRUE one, so the deviation stays honest.
+    callSite: { file: 'DEFB6.SRC', line: 803, verbatim: 'LANDFX\tLDD\t#LSKSND' },
+  },
+  thrust: {
+    kind: 'flag',
+    flag: 'THFLG',
+    romComment: 'THRUST SOUND FLAG',
+    source: { file: 'PHR6.SRC', line: 293, verbatim: 'THFLG\tRMB\t1\tTHRUST SOUND FLAG' },
+    // SNDSEQ reads the PIA21 thrust bit (DEFA7.SRC:737-739) and, on the EDGE, writes THFLG:
+    soundOn: { file: 'DEFA7.SRC', line: 750, verbatim: '\tLDB\t#$16\tNO HIT IT' }, // press → $16 (on)
+    soundOff: { file: 'DEFA7.SRC', line: 743, verbatim: '\tLDB\t#$0F' }, //           release → $0F (off)
   },
 }
 
