@@ -41,8 +41,12 @@ import { SOUNDS } from '../../src/shell/audio-manifest.ts'
 export { SOUNDS }
 
 const RATE = 22050
-// The Williams raster: 8 MHz over 512x260 (the same derivation core/frame.ts uses
-// for its frame clock — a shared formula cannot drift the way a transcribed 60 could).
+// The Williams raster: an 8 MHz pixel clock over 512x260 totals -> 60.09615 Hz, the
+// set_raw video chain at williams.cpp:1556 (docs/rom-study/board-facts.md:25). This is
+// the TRUE refresh, deliberately NOT the sim's nominal 60 Hz (core/sim.ts:454) — sizing
+// each file by the real raster makes its length track the cue's actual SNDTMR frame
+// window. Kept as a literal here because the bake runs under plain node and defender's
+// core clocks its sim at a nominal 60, so there is no shared FRAME_HZ module to import.
 const FRAME_HZ = 8_000_000 / (512 * 260)
 
 // ─── Deterministic PRNG ──────────────────────────────────────────────────────
