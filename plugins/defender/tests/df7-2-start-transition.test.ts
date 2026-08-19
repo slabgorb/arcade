@@ -29,7 +29,7 @@
 // leg reaches the same start once df7-4 lands the game-over->attract timeout.
 
 import { describe, it, expect } from 'vitest'
-import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.js'
+import { stepSim, type Input, type SimState } from '../src/core/sim.js'
 import { STARTING_MEN } from '../src/core/score.js'
 import { composeFrame } from '../src/core/scene.js'
 import { assertNoFullFrameStrobe } from '../src/core/effects.js'

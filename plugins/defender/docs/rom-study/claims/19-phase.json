@@ -5,6 +5,11 @@
     "source": { "file": "DEFA7.SRC", "line": 1100, "verbatim": "ST1\tLDA\tSTATUS" }
   },
   {
+    "id": "PH-ST1-CREDIT",
+    "claim": "The ST1 one-player start gates on CREDIT before beginning a game — LDA CREDIT (then BEQ ST1X: no credit, no start), the coin check df7-2's start wiring reseeds behind.",
+    "source": { "file": "DEFA7.SRC", "line": 1103, "verbatim": "\tLDA\tCREDIT" }
+  },
+  {
     "id": "PH-ST2",
     "claim": "The mainline two-player start state ST2 loads the STATUS word — the 2P alternating start (df7 Decision D; ST2 *TWO PLAYER START).",
     "source": { "file": "DEFA7.SRC", "line": 1112, "verbatim": "ST2\tLDA\tSTATUS" }

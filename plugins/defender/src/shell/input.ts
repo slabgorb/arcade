@@ -36,3 +36,17 @@ export function mapInput(held: KeyMembership): Input {
     smartBomb: anyHeld(BINDINGS.smartBomb),
   }
 }
+
+// df7-2: the START / COIN control (ST1 *ONE PLAYER START, DEFA7.SRC:1100). Separate from
+// the movement/fire bindings so it is inert during play — `Enter` for the intuitive
+// keyboard "start", and `Digit1` for the arcade "1 PLAYER START" (MAME's P1-start key).
+// The df7-1 machine reads this only in attract/game-over (advancePhase ignores it in
+// play), so the `Enter` overlap with the fire binding is harmless: attract never fires.
+const START_KEYS: readonly string[] = ['Enter', 'Digit1']
+
+/** Is a start/coin button held this frame? Feeds `PhaseSignals.startRequested` — the
+ *  attract -> setup start edge (df7-2). Pure, like `mapInput`; the shell reads it, the
+ *  core decides what to do with it. */
+export function startPressed(held: KeyMembership): boolean {
+  return START_KEYS.some((k) => held.has(k))
+}

@@ -31,17 +31,25 @@ describe('df3-6 boot-shell — main.ts drives a LIVE loop (frozen-sim guard)', (
     expect(h.scheduled(), 'the loop did not reschedule — it is a one-shot, not a loop').toBe(true)
   })
 
-  it('steps the sim each frame: the sim advances at rest (df5-8 waves) and thrust changes the frame', () => {
-    // Two resting frames (each frame advances real time by 100 ms → ~6 fixed steps). Since
+  it('once STARTED, steps the sim each frame: the sim advances at rest (df5-8 waves) and thrust changes the frame', () => {
+    // df7-2: main.ts now boots into ATTRACT and steps the sim ONLY in play. Press start
+    // (Enter → ST1 *ONE PLAYER START) to advance attract → setup → play, which reseeds a
+    // fresh game; then release, so the resting measurement below carries no input. This
+    // preserves df3-6's frozen-sim guard, re-pointed at the now-gated live loop.
+    h.keyDown('Enter')
+    h.frame(100) // multiple fixed steps: attract → setup → play (+ reseed), then plays
+    h.keyUp('Enter')
+
+    // Two resting frames (each frame advances real time by ~100 ms → ~6 fixed steps). Since
     // df5-8 wired the wave director into the live sim, waves now DRIVE PLAY even with no
     // input: the drawn image evolves at rest, so the two hashes must DIFFER. A frozen loop
     // (stepSim called once at boot) would draw the same bytes forever — this is the exact
     // frozen-game regression the ?raw guards cannot see. (The sim's evolution is
     // DETERMINISTIC, not clock-driven: the wall-clock ban is pinned by purity.test.ts and
     // the same-seed determinism test in df5-8-sim-wave-wiring.test.ts.)
-    h.frame(100)
-    const rest1 = h.drawnHash()
     h.frame(200)
+    const rest1 = h.drawnHash()
+    h.frame(300)
     const rest2 = h.drawnHash()
     expect(
       rest2,
@@ -50,8 +58,8 @@ describe('df3-6 boot-shell — main.ts drives a LIVE loop (frozen-sim guard)', (
     ).not.toBe(rest1)
 
     h.keyDown('KeyD') // thrust (shell/input.ts binds KeyD → thrust)
-    h.frame(300)
     h.frame(400)
+    h.frame(500)
     const thrusting = h.drawnHash()
     h.keyUp('KeyD')
 
