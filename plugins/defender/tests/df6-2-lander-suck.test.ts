@@ -28,8 +28,8 @@
 // loop edges on. There is ONE sound voice, so the loop is AGGREGATE: it rings while ANY
 // lander is in that state and stops only when the LAST one leaves it.
 //
-// RED today: no `lander-suck-start`/`lander-suck-stop` kinds, no loop dispatch, no
-// LSKSND provenance. Kinds reach the tree through `string` widening so it type-checks.
+// Written RED (no `lander-suck-start`/`-stop` kinds, no loop dispatch, no LSKSND
+// provenance existed); GREEN now lands them. The `string` widening on kinds survives.
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
@@ -60,9 +60,8 @@ const SUCK_STOP = 'lander-suck-stop'
 const SUCK_KINDS: readonly string[] = [SUCK_START, SUCK_STOP]
 
 const kindsTuple = EVENT_KINDS as readonly string[]
-const cueSources = CUE_SOURCES as unknown as Readonly<
-  Record<string, { kind: string; table?: string; priority?: number; source?: { line: number }; callSite?: { file: string; line: number } } | undefined>
->
+// CUE_SOURCES is read directly now (`landerSuck` is a real SoundName). `asEvent` keeps its
+// widening deliberately — the loop-routing tests feed kinds through the shipped dispatch.
 const asEvent = (type: string): GameEvent => ({ type }) as unknown as GameEvent
 const claims = loadClaims()
 const defa7 = (line: number): ProseCitation => ({
@@ -184,7 +183,7 @@ function loopRecorder(): {
     startLoop: (name: string): void => void loopsOn.push(name),
     stopLoop: (name: string): void => void loopsOff.push(name),
   }
-  return { sink: rec as unknown as Parameters<typeof playEventSounds>[0], played, loopsOn, loopsOff }
+  return { sink: rec, played, loopsOn, loopsOff }
 }
 
 describe('df6-2 AC2 — suck-start starts the loop, suck-stop stops it, neither is a play()', () => {
@@ -291,6 +290,33 @@ describe('df6-2 AC2 — two carriers share one loop voice (start once, stop only
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════
+// AC3 / AC4 — the suck edge memory is per-sim, not a module `let` (mirrors the thrust guard)
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+describe('df6-2 AC2 — the previous sucking state is carried per-sim, not globally', () => {
+  it('two sims in flight do not share a suck-loop memory', () => {
+    // The module-scoped-`let prevSucking` regression class, mirrored from the thrust guard
+    // (df6-2-thrust-loop.test.ts): a global would let one game's abduction sound in another.
+    // Stage a carrier in A only; a short window keeps each sim's own wave landers (still
+    // descending from the top) from grabbing and adding noise.
+    let a = opened(3)
+    let b = opened(7)
+    stageCarry(rig(a), 0x4000, 150)
+    a = stepSim(a, NEUTRAL)
+    b = stepSim(b, NEUTRAL)
+    expect(suckCues(a), 'precondition: only sim A has a carrier').toEqual([SUCK_START])
+    expect(suckCues(b), 'sim B has no abduction — it must stay silent').toEqual([])
+
+    for (let i = 0; i < 4; i++) {
+      a = stepSim(a, NEUTRAL)
+      b = stepSim(b, NEUTRAL)
+      expect(suckCues(a), `sim A, extra tick ${i}: a held carry re-starts nothing`).toEqual([])
+      expect(suckCues(b), `sim B, extra tick ${i}: no carrier, no cue`).toEqual([])
+    }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════
 // AC2 / AC4 — the suck cue is CITED (LSKSND, REPCNT=$0A), and the deviation is honest
 // ═══════════════════════════════════════════════════════════════════════════════════
 
@@ -303,15 +329,16 @@ describe('df6-2 AC2 — lander-suck provenance is byte-pinned under the df1-1 ga
   })
 
   it('CUE_SOURCES.landerSuck cites LSKSND at $C8, and records the true LANDFX call site', () => {
-    const src = cueSources['landerSuck']
+    const src = CUE_SOURCES.landerSuck
     expect(src, "CUE_SOURCES has no 'landerSuck'").toBeTruthy()
-    expect(src?.kind, "the suck cue is a real SOUND-TABLE row, not an 'invention'").toBe('rom')
-    expect(src?.table, 'it must cite the LSKSND table').toBe('LSKSND')
-    expect(src?.priority, 'LSKSND is SNDPRI $C8 (200)').toBe(0xc8)
-    expect(src?.source?.line, 'the FCB row is DEFA7.SRC:684').toBe(684)
+    expect(src.kind, "the suck cue is a real SOUND-TABLE row, not an 'invention'").toBe('rom')
+    if (src.kind !== 'rom') return
+    expect(src.table, 'it must cite the LSKSND table').toBe('LSKSND')
+    expect(src.priority, 'LSKSND is SNDPRI $C8 (200)').toBe(0xc8)
+    expect(src.source.line, 'the FCB row is DEFA7.SRC:684').toBe(684)
     // The Design Deviation is honest ONLY if the recorded call site is the true one —
     // LANDFX (DEFB6.SRC:803), the top, even though the port sounds it across the ascent.
-    expect(src?.callSite?.file, 'the call site must name the true DEFB6 site').toBe('DEFB6.SRC')
-    expect(src?.callSite?.line, 'LSKSND is played at LANDFX, DEFB6.SRC:803').toBe(803)
+    expect(src.callSite.file, 'the call site must name the true DEFB6 site').toBe('DEFB6.SRC')
+    expect(src.callSite.line, 'LSKSND is played at LANDFX, DEFB6.SRC:803').toBe(803)
   })
 })

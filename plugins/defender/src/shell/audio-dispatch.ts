@@ -123,6 +123,14 @@ export function playEventSounds(audio: SoundPlayer, events: readonly GameEvent[]
       case 'stopLoop':
         audio.stopLoop(cue.name)
         break
+      default: {
+        // Exhaustiveness fence, matching cueFor's: a new `Cue` verb added without a case
+        // narrows `cue` to `never` here and stops compiling, so a verb cannot ship as a
+        // silent no-op — the same "a new moment cannot ship silently" guarantee the file
+        // makes for the kind switch above.
+        const _never: never = cue
+        void _never
+      }
     }
   }
 }

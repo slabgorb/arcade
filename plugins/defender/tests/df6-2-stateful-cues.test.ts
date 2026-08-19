@@ -15,8 +15,8 @@
 // vacuous). purity.test.ts already scans src/core for the DOM/clock/entropy bans, so the
 // "pure data on the sim state" half of AC3 is enforced there and not re-derived here.
 //
-// RED today: the loop SOUNDS/CHANNELS entries, the thrust claims, and the stateful kinds
-// are all absent. Widened to `string` so the RED tree still type-checks.
+// Written RED (the loop SOUNDS/CHANNELS entries, the thrust claims, and the stateful kinds
+// were all absent); GREEN now lands them. The `string` widenings survive where noted.
 
 import { describe, it, expect } from 'vitest'
 import { readdirSync } from 'node:fs'
@@ -26,8 +26,9 @@ import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.j
 import { SOUNDS, CHANNELS } from '../src/shell/audio.js'
 import { loadClaims, coveredBy, type ProseCitation } from './audit/dossier-sweep'
 
-const sounds = SOUNDS as unknown as Readonly<Record<string, string | undefined>>
-const channels = CHANNELS as unknown as Readonly<Record<string, string | undefined>>
+// Read directly — `thrust`/`landerSuck` are real SoundNames now, so no widening is needed.
+const sounds = SOUNDS
+const channels = CHANNELS
 const claims = loadClaims()
 const cite = (file: string, line: number): ProseCitation => ({
   file,

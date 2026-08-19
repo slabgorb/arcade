@@ -582,6 +582,13 @@ export function stepSim(state: SimState, input: Input): SimState {
   // lander is carrying a humanoid upward (grabbed, not yet at the top) and stops when the
   // LAST such carry ends — reached the top, was dropped on the carrier's death, or lost its
   // passenger. Sounded as a held loop across the ascent (the logged df6-2 design deviation).
+  //
+  // `!l.reachedTop` is DEFENSE-IN-DEPTH, not a reachable branch: perTickWiring transforms a
+  // reachedTop lander into a mutant and `killLander`s it the SAME tick (sim.ts perTickWiring,
+  // even on the panic path), so by here `l.alive` is already false for it. The clause keeps
+  // the predicate expressing the right CONCEPT — "carrying a humanoid UPWARD" excludes one
+  // that already delivered it — independent of that kill-ordering, so a future change to when
+  // the transform runs cannot silently turn a delivered abduction back into a sounding loop.
   const sucking = state._enemyBank.landers.some((l) => l.alive && l.carrying && !l.reachedTop)
   if (sucking && !rt.prevSucking) rt.cues.push({ type: 'lander-suck-start' })
   else if (!sucking && rt.prevSucking) rt.cues.push({ type: 'lander-suck-stop' })

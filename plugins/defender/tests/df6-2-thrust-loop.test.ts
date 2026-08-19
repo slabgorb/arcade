@@ -37,10 +37,10 @@
 // EXACT tick of the edge, with the tick before it clean and a non-vacuity guard first —
 // a `toContain` on a stream that never reached the edge passes for the wrong reason.
 //
-// RED today: `EVENT_KINDS` has no `thrust-start`/`thrust-stop`, the dispatch has no loop
-// cases, and `CUE_SOURCES` has no thrust provenance. The kinds are reached through
-// `string` widening so the RED tree still type-checks (`npm run lint`) — the failures
-// are runtime assertions, not compile errors.
+// Written RED (the kinds/dispatch-cases/provenance did not yet exist); the GREEN
+// implementation now lands them. The `kindsTuple`/`asEvent` string widenings survive so
+// the degrade path can still feed kinds the union forbids — the failures these suites were
+// authored to catch were runtime assertions, never compile errors.
 
 import { describe, it, expect } from 'vitest'
 import { existsSync, readFileSync } from 'node:fs'
@@ -72,8 +72,13 @@ const THRUST_STOP = 'thrust-stop'
 const THRUST_KINDS: readonly string[] = [THRUST_START, THRUST_STOP]
 
 const kindsTuple = EVENT_KINDS as readonly string[]
-const cueSources = CUE_SOURCES as unknown as Readonly<Record<string, { kind: string } | undefined>>
+// `asEvent` stays a deliberate widening: the degrade path needs to feed arbitrary/typo'd
+// kinds the union forbids. CUE_SOURCES is read directly now — `thrust` is a real SoundName.
 const asEvent = (type: string): GameEvent => ({ type }) as unknown as GameEvent
+
+/** Trailing-trim compare — the citation checker's rule: leading/internal whitespace is real. */
+const matches = (verbatim: string, real: string | undefined): boolean =>
+  real !== undefined && verbatim.replace(/\s+$/, '') === real.replace(/\s+$/, '')
 
 // ─── driving the sim ──────────────────────────────────────────────────────────────
 const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
@@ -171,7 +176,7 @@ function loopRecorder(): {
     startLoop: (name: string): void => void loopsOn.push(name),
     stopLoop: (name: string): void => void loopsOff.push(name),
   }
-  return { sink: rec as unknown as Parameters<typeof playEventSounds>[0], played, loopsOn, loopsOff }
+  return { sink: rec, played, loopsOn, loopsOff }
 }
 
 describe('df6-2 AC1 — thrust-start starts a loop, thrust-stop stops it, neither is a play()', () => {
@@ -297,10 +302,32 @@ describe('df6-2 AC1 — the previous thrust level is carried per-sim, not global
 // AC1 / AC4 — the thrust cue is CITED to the ROM (no un-cited src/core constant)
 // ═══════════════════════════════════════════════════════════════════════════════════
 
-describe('df6-2 AC1 — thrust provenance: THFLG / SNDSEQ, not an invention', () => {
-  it('CUE_SOURCES carries a thrust entry and it is ROM-cited, never fabricated', () => {
-    const src = cueSources['thrust']
+describe('df6-2 AC1 — thrust provenance: the THFLG flag cue is byte-cited, not fabricated', () => {
+  it("CUE_SOURCES.thrust is a 'flag' cue naming THFLG and the $16/$0F transition lines", () => {
+    const src = CUE_SOURCES.thrust
     expect(src, "CUE_SOURCES has no 'thrust' — the loop cue must carry its provenance").toBeTruthy()
-    expect(src?.kind, "the thrust cue is a real THFLG side-path, not an 'invention'").not.toBe('invention')
+    expect(src.kind, "the thrust cue is a real THFLG side-path, not an 'invention'").not.toBe('invention')
+    // Pin the flag variant's citation FIELDS — the byte-teeth in df6-1-audio.test.ts skip
+    // this cue (they `continue` on kind !== 'rom'), so without this a drift in
+    // CUE_SOURCES.thrust.source/soundOn/soundOff would ship silently.
+    expect(src.kind, 'thrust is the THFLG flag cue, not a SOUND-TABLE row').toBe('flag')
+    if (src.kind !== 'flag') return
+    expect(src.flag, 'the driver flag is THFLG').toBe('THFLG')
+    expect(src.source.line, 'THFLG is declared at PHR6.SRC:293').toBe(293)
+    expect(src.source.file).toBe('PHR6.SRC')
+    expect(src.soundOn.line, 'the press edge writes $16 at DEFA7.SRC:750').toBe(750)
+    expect(src.soundOff.line, 'the release edge sounds $0F at DEFA7.SRC:743').toBe(743)
+  })
+
+  it.skipIf(!vendoredAvailable)("each thrust citation re-opens byte-for-byte in the 1981 source", () => {
+    const src = CUE_SOURCES.thrust
+    expect(src.kind).toBe('flag')
+    if (src.kind !== 'flag') return
+    for (const c of [src.source, src.soundOn, src.soundOff]) {
+      expect(
+        matches(c.verbatim, vendoredLine(c.file, c.line)),
+        `thrust citation drifted at ${c.file}:${c.line}\n  cite: ${JSON.stringify(c.verbatim)}`,
+      ).toBe(true)
+    }
   })
 })
