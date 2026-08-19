@@ -211,6 +211,11 @@ const frame = (now: number): void => {
         // phase-dispatch / timeout counter advances each frame.
         const boardBefore = game.highScoreTable
         stepGame(game, input)
+        // Test tap (pm6-5, mirroring millipede's window.__sim ml10-5): expose the live
+        // GameState so a Playwright boot-harness can drive a real intermission (set
+        // phase/level and let the core build + step the coffee-break cutscene) for the
+        // AC1 visual playtest. A dev diagnostic only — no game logic reads it.
+        ;(window as unknown as { __sim?: GameState }).__sim = game
         animClock++ // pm4-2: one tick per sim sub-step drives the animation hold
         // Voice this step's cues, then poll the ambient siren. Both run PER sub-
         // step (not per rAF): a catch-up frame may run several steps and each

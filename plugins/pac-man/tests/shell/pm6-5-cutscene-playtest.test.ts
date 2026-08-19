@@ -258,22 +258,30 @@ describe('pm6-5 — the intermission cutscene reaches the live frame (pm6-2/pm6-
     ).toBe(0)
   })
 
-  it('the picture MOVES as the core steps the scene — the layout is not static', () => {
-    // Pac is anchored centre-screen and Blinky is placed by the signed col-gap the core
-    // models; as act 1's script changes that gap (chase, reversal, the solo-actor exits)
-    // Blinky's on-screen position must change. Collect the blit layout across the WHOLE act
-    // and require more than one distinct arrangement — a static tableau that ignored the
-    // live cols would yield exactly one, an intermission that never animates.
+  it('the picture MOVES within a FIXED-state window — genuine per-frame traversal, not the big-Pac size flip', () => {
+    // Each actor is placed from its own faithful traversal coordinate `x`, so the on-screen
+    // positions must sweep as the core steps. CRITICAL: sample only within sub-state 1 (the
+    // chase — bigPacActive stays FALSE and both actors move the whole time). A whole-act
+    // sweep is NOT enough here: the mid-act bigPacActive false->true flip changes Pac's blit
+    // OFFSET (small 16x16 vs big 32x32), so a completely STATIC render (cutsceneScreenX
+    // severed from x) still yields 2 layouts across the act. Confining the window to one
+    // sub-state removes that size-flip, so >1 distinct layout can ONLY come from real motion.
     const s = createAct1Cutscene(1)
     const layouts = new Set<string>()
+    let sampledInS1 = 0
     for (let f = 0; f < 4000 && !s.done; f++) {
-      layouts.add(blitPositions(drawFrame(intermissionGame(s))))
+      if (s.substate === 1) {
+        expect(s.bigPacActive, 'precondition: sub-state 1 is before the big-Pac gate (size flip cannot confound)').toBe(false)
+        layouts.add(blitPositions(drawFrame(intermissionGame(s))))
+        sampledInS1++
+      }
       stepCutscene(s)
     }
     expect(s.done, 'precondition: act 1 reached its final gate within the frame budget').toBe(true)
+    expect(sampledInS1, 'precondition: sub-state 1 (the chase) was sampled across many frames').toBeGreaterThan(2)
     expect(
       layouts.size,
-      'the cutscene never changed its on-screen layout across the whole act — the actors are not positioned from the live core state',
+      'the layout never changed across sub-state 1 with bigPacActive fixed — the actors are STATIC, not positioned from the live traversal coordinate (a severed cutsceneScreenX passes only if this fails)',
     ).toBeGreaterThan(1)
   })
 })
@@ -299,10 +307,44 @@ describe('pm6-5 — the cutscene actors read correctly against the ROM (AC1)', (
       bigFp.h,
       'the big-Pac scene is no taller than the small one — the giant chaser does not read as bigger on screen',
     ).toBeGreaterThan(smallFp.h)
+    // WIDTH too (round-2 #2): a height-only check passes even if the giant Pac is only half
+    // as wide (e.g. it failed to scale on one axis). big-Pac is a single 32x32 blit (the
+    // 2x-scaled sprite), so assert ONE blit is genuinely 32x32 in BOTH dimensions — a giant
+    // Pac that stayed 16x16, or lost a dimension, reddens. (Checking the blit itself, not the
+    // whole-scene footprint, avoids Blinky inflating the measured width.)
+    const has32 = spriteBlits(bigCtx).some((c) => (c.w ?? 0) >= 2 * SPRITE_PX && (c.h ?? 0) >= 2 * SPRITE_PX)
+    expect(
+      has32,
+      'no 32x32 big-Pac blit — the giant chaser is not drawn at 2x (width or height is missing)',
+    ).toBe(true)
+  })
+
+  it('each actor is positioned from its OWN traversal coordinate — Blinky tracks its x, not Pac (round-2 #1)', () => {
+    // The rework's central behavior: both actors are placed from core's per-actor `x`, so
+    // Blinky's on-screen X must move when ONLY Blinky's x changes and Pac holds still. This
+    // isolates Blinky — a render that hardcoded Blinky's position (or read only Pac) would
+    // leave it fixed. Small-Pac scene draws Blinky first, then Pac (drawCutscene order), so
+    // the two sprite blits are [Blinky, Pac]; comparing the SAME index across two scenes
+    // that differ only in blinky.x proves Blinky (not Pac) tracked the change.
+    const base = createAct1Cutscene(1)
+    const moved = createAct1Cutscene(1)
+    moved.blinky.x = base.blinky.x + 40 // shift ONLY Blinky's traversal coord (Pac untouched)
+    const baseBlits = spriteBlits(drawFrame(intermissionGame(base)))
+    const movedBlits = spriteBlits(drawFrame(intermissionGame(moved)))
+    expect(baseBlits.length, 'precondition: the small-Pac scene blits Blinky then Pac (2 sprites)').toBe(2)
+    expect(movedBlits.length, 'precondition: the moved scene also blits two sprites').toBe(2)
+    // Pac (blit index 1) is unchanged — nothing about Pac's state varied.
+    expect(movedBlits[1].x, 'precondition: Pac stays put when only Blinky.x varies').toBe(baseBlits[1].x)
+    // Blinky (blit index 0) tracks its own larger x → a larger screen X.
+    expect(
+      movedBlits[0].x,
+      'the Blinky blit did not follow its own core x — its position is not derived from Blinky (hardcoding it passes only if this fails)',
+    ).toBeGreaterThan(baseBlits[0].x)
   })
 
   it('a FRIGHTENED Blinky renders BLUE (the blue flee), an ordinary Blinky does not', () => {
-    // ROM act 1: Blinky turns blue and flees (pacman.asm:1a70, image #1c / colour #11).
+    // ROM act 1: Blinky turns blue and flees — the frighten-all routine #1a70 sets image
+    // #1c (pacman.asm:1aa1 `ld (ix+#02),#1c`) and colour #11 (pacman.asm:1ab1 `ld (ix+#03),#11`).
     // Assert the actual COLOUR, not just "a different sprite" — a wrong colour-code keeps
     // the frightened sprite index, so a sig-only diff would still pass. The blue must reach
     // the frame, and the plain (red) Blinky must carry none of it (the colour is gated).
