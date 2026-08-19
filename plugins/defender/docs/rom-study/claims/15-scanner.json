@@ -70,5 +70,23 @@
       "line": 1227,
       "verbatim": "\tLDD\t#$9090"
     }
+  },
+  {
+    "id": "SCAN-PLAYER-POS",
+    "claim": "The scanner PLAYER BLIP is on a SEPARATE path from the SCNR world-attacker loop (*PLAYER BLIP OUTPUT, :1242-1258): it loads PLAXC — the player's fixed SCREEN position — and derives the marker's radar column (A>>4, :1243-1246) and row (B>>3, :1247-1249) from it, with NO camera (XTEMP) subtraction. So the player marker is camera-INVARIANT: it holds its radar column as the world scrolls, unlike an attacker blip (SUBD XTEMP, :1261). df7-8 re-derives this to our centred strip by projecting the player's own world position.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1242,
+      "verbatim": "\tLDD\tPLAXC"
+    }
+  },
+  {
+    "id": "SCAN-PLAYER-MARK",
+    "claim": "The player marker written into the scanner is the byte $9099 — palette index 9 (WHITE) in its high nibble, the same index-9 white as the bezel ($9090, :1227). df7-8's player blip draws by this palette INDEX, never a fresh colour.",
+    "source": {
+      "file": "AMODE1.SRC",
+      "line": 1253,
+      "verbatim": "\tLDD\t#$9099"
+    }
   }
 ]

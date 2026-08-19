@@ -9,8 +9,8 @@
 // today" and its AC1 says the scanner is "drawn nowhere today". That is STALE: df5-7
 // already wired `drawScanner` (live-attacker blips, coloured by palette INDEX) and
 // `drawHud` (score + men) into core/scene.ts `composeFrame`, and df5-7 explicitly LEFT the
-// scanner bezel + player-blip to df7 (see the session Delivery Findings). df7-5 now ships the
-// bezel; scene.ts's header records the player-blip (:1242-1257) as still df7's.
+// scanner bezel + player-blip to df7 (see the session Delivery Findings). df7-5 ships the
+// bezel; the player-blip (:1242-1257) remained df7's at df7-5 time (later shipped by df7-8).
 // So the genuine, un-built df7-5 delta is:
 //   • AC1 — the scanner BEZEL: the radar strip's frame, drawn REGARDLESS of attackers
 //           (*SCANNER BEZEL defender/AMODE1.SRC:1225, the 64-col strip :1223 already
@@ -19,8 +19,9 @@
 //           reads state.wave for NOTHING today.
 // The attacker-blip + score/men render already shipped in df5-7 and is green there — a
 // test asserting it would pass on arrival (vacuous RED), so this file does NOT re-assert
-// it. The player-blip (:1242-1257) is in the ROM and named as df7's, but is NOT in df7-5's
-// ACs, so it is flagged in the session findings for a scope ruling, not tested here.
+// it. The player-blip (:1242-1257) was in the ROM and named as df7's, but was NOT in df7-5's
+// ACs, so it was flagged in the session findings for a scope ruling, not tested here (df7-8
+// later shipped it in core/scene.ts).
 //
 // This suite is BLACK-BOX over composeFrame (the df5-7 digest/top-band technique): it
 // pins BEHAVIOUR (the bezel reaches the frame, the wave reaches the HUD, nothing strobes),
