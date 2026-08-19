@@ -1,197 +1,374 @@
 // plugins/defender/src/core/sim.ts
 //
-// Story df3-6 (GREEN) — the pure aggregate that wires the df3 core into ONE tick. df3-1..5
-// shipped each piece in isolation (scheduler, world/camera, ship, stars, laser); this
-// module composes them so `stepSim(state, input)` advances the whole live sim once, and
-// `createSim(rand)` seeds it. PURE, clock-free src/core (tests/purity.test.ts scans it):
-// it imports only sibling core modules, reads no clock, and mints no entropy — STINIT's
-// RAND is INJECTED by the shell (createSim's `rand` argument), exactly as stars.ts asks.
+// Story df3-6 (GREEN) — the pure aggregate that wires the df3 core into ONE tick.
+// Story df6-1 (GREEN) EXTENDS it into the INTEGRATED game: df4/df5 built the enemy
+// menagerie (mutants, baiters, bombers, pods, swarmers), the emergency powers
+// (smart-bomb, hyperspace), scoring and end-of-game as isolated, unit-tested BANK
+// modules that `stepSim` never constructed — so the running game played only landers.
+// df6-1 WIRES them all into the live sim (the "no more deferring the integration"
+// pass), which is what gives every audio cue in the SOUND TABLE a REAL, reachable
+// call site — and carries the df6 audio EVENT CHANNEL (`SimState.cues`, DATA never
+// callbacks — Decision C) that the shell's audio-dispatch turns into sound.
 //
-// The shell drives this off @shared/loop: main.ts calls stepSim() once per fixed 60 Hz
-// tick with the per-tick Input snapshot the shell samples (shell/input.ts mapInput).
+// PURE, clock-free src/core (tests/purity.test.ts scans it): it imports only sibling
+// core modules, reads no clock, and mints no entropy — every RAND is INJECTED by the
+// shell (createSim's `rand` argument). The event channel adds no RNG draw and no
+// ordering change, so df3's seeded-determinism replays reproduce bit-for-bit.
 //
 // ─── THE ORDER OF ONE TICK (mirrors the ROM PLAYER frame) ─────────────────────────
-//   1. REV      stepReverse   — one held press flips facing exactly once (ship.ts)
-//   2. PLAXV    stepVelocityX — damp then thrust on the 24-BIT accumulator (ship.ts)
-//   3. VERTICAL stepVerticalY — freeze/kick/accelerate/integrate the clamped strip
-//   4. PLAY1    slide         — camera slide; it consumes the TOP 16 BITS of PLAXV
-//                               (plaxv24 >> 8 — the sub-pixel low byte is ship territory)
-//   5. STOUT    stepStars     — scroll the starfield by the camera delta (bgl vs bglx)
-//   6. LFIRE    laserBank.fire — spawn a laser (before stepTick, so it first travels NEXT
-//                               tick per df3-5); shipX is the 16-bit onscreen PLAX16
-//   7. DISP     sched.stepTick — one cooperative dispatch pass; travels the live lasers
+//   1-5. ship: REV / PLAXV / VERTICAL / camera slide / stars (df3)
+//   6.   powers: smart-bomb + hyperspace edges (df5-5)
+//   7.   LFIRE: spawn a laser (before the dispatch, df3-5)
+//   8.   update the enemy-aim player pose (world space), then DISP: sched.stepTick —
+//        one dispatch pass drives EVERY process: landers, humanoids, mutants, baiters,
+//        bombers, pods, swarmers, lasers and the wave director (df3/df4/df5)
+//   9.   per-tick sim wiring: lander→mutant transform, lander pickup, panic freak,
+//        the baiter anti-camping timer, lander shooting, and the enemy-shot travel
+//  10.   COLIDE: player lasers vs every enemy (kill+score+explode+cue); enemy
+//        shots/bombs/bodies vs the ship (player death); the rescue catch; the
+//        astro land/hit outcomes
 
 import { createScheduler, type Scheduler } from './scheduler.js'
 import { createLaserBank, type LaserBank, type Laser } from './laser.js'
 import { createEnemyBank, type EnemyBank, type Lander, type Humanoid } from './landers.js'
+import { createMutantBank, type MutantBank, type Mutant } from './mutants.js'
+import { createUfoBank, type UfoBank, type Ufo } from './ufo.js'
+import { createBomberBank, type BomberBank, type Bomber, type Bomb } from './ties.js'
+import { createSwarmerBank, type SwarmerBank, type Swarmer, SWARMER_MAX } from './swarmers.js'
+import { createPodBank, type PodBank, type Pod } from './probes.js'
 import { createWaveDirector, type WaveDirector } from './waves.js'
 import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.js'
-import { createScore, addPoints, loseMan, ENEMY_POINTS, type ScoreState } from './score.js'
-import { isGameOver } from './endgame.js'
-import { laserVsObject, type CollObject } from './collision.js'
+import { laserVsObject, bombVsPlayer, shipVsObject, type CollObject, type Query, type Box } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
 import { slide, wrap16, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
+import {
+  createScore,
+  addPoints,
+  loseMan,
+  ENEMY_POINTS,
+  RESCUE_POINTS,
+  SAFE_LANDING_POINTS,
+  type ScoreState,
+} from './score.js'
+import { isGameOver } from './endgame.js'
+import { smartBomb, canHyperspace, hyperspace, hyperspaceKilled, SMART_BOMB_FLASHES } from './powers.js'
+import type { PlayerPos } from './enemy-motion.js'
+import type { GameEvent } from './events.js'
 
 /** Two 4-bit pixels per raster byte — a picture is `width×2` pixels wide (objects.ts). */
 const PIXELS_PER_BYTE = 2
 
-/** The lander sprite (LNDP1, DEFB6.SRC:1947) — the enemy that materializes/explodes in
- *  the df4 live sim. df4-2 effects animate the appearing/exploding object's OWN picture,
- *  so the appear (on spawn) and the explosion (on a laser kill) both animate this one. */
-const LANDER_PICTURE: ObjectImage = (() => {
-  const pic = OBJECTS.find((o) => o.name === 'LNDP1')
-  if (!pic) throw new Error('sim.ts: LNDP1 is not in the transcribed OBJECTS table')
-  return pic
-})()
+/** Look up a transcribed sprite picture by name (objects.ts OBJECTS), or throw — a missing
+ *  picture is a build error, not a silent empty box. */
+function pic(name: string): ObjectImage {
+  const p = OBJECTS.find((o) => o.name === name)
+  if (!p) throw new Error(`sim.ts: ${name} is not in the transcribed OBJECTS table`)
+  return p
+}
 
-/** The player laser box (LASP1, 8×1, DEFB6.SRC:1940) COLIDE tests against the enemy list
- *  (DEFA7.SRC:2775-2787). Width in PIXELS — the collision seam works in screen space. */
-const LASER_BOX = { width: 8, height: 1 } as const
+// The sprites each entity materializes / explodes as (df4-2 animates the object's OWN picture).
+const LANDER_PICTURE = pic('LNDP1') // LNDP1, DEFB6.SRC:1947
+const MUTANT_PICTURE = pic('SCZP1') // SCZP1 "schizoid", DEFB6.SRC:1896
+const BAITER_PICTURE = pic('UFOP1') // UFOP1 the baiter/ufo
+const BOMBER_PICTURE = pic('TIEP1') // TIEP1 the bomber, DEFB6.SRC:997
+const POD_PICTURE = pic('PRBP1') // PRBP1 the pod/probe, DEFB6.SRC:1909
+const SWARMER_PICTURE = pic('SWPIC1') // SWPIC1 the swarmer
+const HUMANOID_PICTURE = pic('ASTP1') // ASTP1 the astronaut, DEFB6.SRC:1913
+const BOMB_PICTURE = pic('BMBP1') // BMBP1 the bomber's dropped bomb/mine
 
-/** The initial ground population — PTARG := 10 astronauts, planted at game start / player
- *  restore (PLRES→ASTST, DEFA7.SRC:1548; the wave-restore reseeds the SAME count,
- *  LDA #10 / STA PTARG, :1862-1863). They are the landers' prey (the df4-3 abduction loop). */
+/** A picture's collision box: width×2 pixels (two nibbles per byte) × height. */
+function box(picture: ObjectImage): Box {
+  return { width: picture.width * PIXELS_PER_BYTE, height: picture.height }
+}
+
+/** The player laser box (LASP1, 8×1, DEFB6.SRC:1940). */
+const LASER_BOX: Box = { width: 8, height: 1 }
+/** The player ship box (PLAPIC, 8×6) — COLCHK / bomb-vs-player (collision.ts). */
+const SHIP_BOX: Box = { width: 8, height: 6 }
+/** An enemy shot's box — a small aimed projectile. */
+const SHOT_BOX: Box = { width: 2, height: 2 }
+
+/** The initial ground population — PTARG := 10 astronauts (PLRES→ASTST, DEFA7.SRC:1548). */
 const GROUND_HUMANOID_COUNT = 10
-
-/** The astronaut ground row — ASTST plants each at OY16 = $E0 (LDA #$E0 / STA OY16,X,
- *  DEFA7.SRC:1529-1530): the terrain-surface base offset ROFF ($E0, terrain.ts BASE_OFFSET),
- *  near the bottom of the 240-row screen. */
+/** The astronaut ground row — ASTST plants each at OY16 = $E0 (DEFA7.SRC:1529-1530). */
 const GROUND_HUMANOID_Y = 0xe0
+/** Landers/bombers/pods appear two rows below the top (LANDER_SPAWN_Y, landers.ts). */
+const SPAWN_Y = 42 + 2 // YMIN+2 (world.ts YMIN=42)
 
-/** The pure per-tick input snapshot the shell feeds the ship (shell owns the PIA read). */
+// ─── df6-1 integration magnitudes (deviations: not byte-cited ROM values) ──────────
+// These pace behaviours the isolated bank modules deferred (lander shooting, the baiter
+// anti-camping timer, the aimed-shot projectile model, the starting smart-bomb stock).
+// They are df6-1 integration placeholders — logged as Design Deviations — chosen to make
+// each moment reachable in ordinary play; the exact ROM cadences are a later df story.
+/** How many frames an aimed enemy shot travels before it would reach its target. */
+const SHOT_TRAVEL_FRAMES = 40
+/** An aimed shot's total lifetime in frames (a little past its aim point). */
+const SHOT_LIFE = 52
+/** Frames between a live lander's shots (LSHOT — modeled at the sim level: landers.ts
+ *  deferred LSHOT, so the integrated sim owns the lander weapon). Staggered by column. */
+const LANDER_SHOOT_PERIOD = 72
+/** Frames between baiter anti-camping spawns (UFOST countdown, DEFA7.SRC:1690). */
+const BAITER_SPAWN_PERIOD = 480
+/** At most this many baiters harry the player at once. */
+const BAITER_MAX = 2
+/** The player's starting smart-bomb stock (PSBC init — not transcribed into core; the
+ *  df6-1 integration seeds it). */
+const STARTING_SMART_BOMBS = 3
+/** Post-death respawn grace, in frames. On a non-fatal death the ship reappears at its
+ *  start position and is briefly invulnerable, so the hazard that killed it cannot re-kill
+ *  on the very next tick — without this the resting ship death-loops to game-over in a few
+ *  frames. A df6-1 integration placeholder standing in for the ROM's NEWSHP respawn
+ *  sequence (PLADIE → new ship), whose exact timing/animation is a later df story. */
+const RESPAWN_GRACE = 60
+
+/** The pure per-tick input snapshot the shell feeds the ship (shell owns the PIA read).
+ *  df6-1 adds the two emergency-power buttons (edge-debounced in-core, like `reverse`). */
 export interface Input {
   readonly thrust: boolean
   readonly reverse: boolean
   readonly up: boolean
   readonly down: boolean
   readonly fire: boolean
-  /** df5-7: the smart-bomb key (SBOMB, DEFA7.SRC:3175) — one tick clears the on-screen
-   *  attackers (see smartBombClear). The clear is ADR-0005 safe by CONSTRUCTION: it writes
-   *  no framebuffer, so the only on-screen change is the attackers vanishing — bounded and
-   *  non-strobing, never the ROM COM PCRAM whole-page invert. (The df4-2 `classify`/effect
-   *  policy is NOT on this runtime path today — see smartBombClear.) The shell (input.ts
-   *  mapInput) samples the key; a fresh/idle snapshot leaves it false. */
-  readonly smartBomb: boolean
+  // The two emergency-power buttons. OPTIONAL (default: not pressed) so a caller that
+  // predates df6-1 — the df3/df4/df5 movement/wave tests — still forms a valid Input; the
+  // shell's mapInput always provides them.
+  readonly smartBomb?: boolean
+  readonly hyperspace?: boolean
 }
 
-/** The ship's observable on-screen pose: `x`/`y` are the display COLUMN/ROW (high bytes
- *  of PLAX16 / PLAY16), `facing` is the PLADIR sign. */
+/** The ship's observable on-screen pose. */
 export interface ShipView {
   readonly x: number
   readonly y: number
   readonly facing: Facing
 }
 
+/** An in-flight aimed enemy shot: WORLD x, display row y, per-tick velocity, remaining life. */
+export interface EnemyShot {
+  readonly x: number
+  readonly y: number
+  readonly life: number
+}
+
+interface ShotRecord {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+}
+
 /**
- * One frame of the whole Defender sim. The four scalar `_`-fields and the two `_`-objects
- * carry the state stepSim needs to advance; the ship/camera/stars/lasers views are what
- * the shell composer and the tests read. The scheduler and laser bank are stateful
- * objects (df3-1/df3-5), carried by reference across ticks — each createSim() owns its
- * own pair, so two sims never share a run-list and same-seed runs stay deterministic.
+ * The mutable integration runtime, carried by reference across ticks (like the scheduler
+ * and the banks). It holds the state the pure-reducer modules leave to the sim: the score
+ * ledger, the smart-bomb latch/stock, the enemy-aim player pose, the aimed-shot list, the
+ * baiter timer, the input edge latches, and this tick's cue accumulator. NOT part of the
+ * SimState the shell reads — its observable projections (score/men/cues/…) are surfaced on
+ * SimState each tick.
+ */
+interface SimRuntime {
+  readonly rand: () => number
+  /** The ship's current WORLD pose, updated each tick, read by the enemy-aim deps. */
+  player: PlayerPos
+  score: ScoreState
+  smartBombs: number
+  smartBombArmed: boolean
+  smartBombFlash: number
+  gameOver: boolean
+  baiterTimer: number
+  /** Frames of post-death respawn invulnerability remaining (RESPAWN_GRACE on a death). */
+  respawnGrace: number
+  prevSmartBomb: boolean
+  prevHyperspace: boolean
+  shots: ShotRecord[]
+  cues: GameEvent[]
+  /** Landers seen carrying (so lander-pickup fires once per abduction). */
+  readonly carrying: WeakSet<object>
+  /** Fallers already counted as safely landed (so astro-land fires once). */
+  readonly landed: WeakSet<object>
+  /** Per-lander shot countdown (LSHOT cadence), keyed by the stable Lander record. */
+  readonly landerShootTimers: WeakMap<object, number>
+}
+
+/**
+ * One frame of the whole Defender sim. The ship/camera/stars/lasers/enemy/effect views are
+ * what the shell composer and tests read; the `_`-fields carry the state stepSim advances.
  */
 export interface SimState {
   readonly ship: ShipView
   readonly camera: number
   readonly stars: readonly Star[]
   readonly lasers: readonly Laser[]
-  /** The df4-3 abduction population — snapshots refreshed each tick from the enemy bank,
-   *  exactly as `lasers` refreshes from the laser bank. Empty on a fresh sim. */
   readonly landers: readonly Lander[]
   readonly humanoids: readonly Humanoid[]
-  /** The df4-6 in-flight effects (df4-2 APST materialize / EXST explosion), refreshed each
-   *  tick from the effect bank like `lasers`/`landers`. Empty on a fresh sim. */
+  readonly mutants: readonly Mutant[]
+  readonly baiters: readonly Ufo[]
+  readonly bombers: readonly Bomber[]
+  readonly bombs: readonly Bomb[]
+  readonly pods: readonly Pod[]
+  readonly swarmers: readonly Swarmer[]
+  readonly shots: readonly EnemyShot[]
   readonly effects: readonly PlacedEffect[]
-  /** df5-8: the current wave number (GETWV). Refreshed each tick from the wave director;
-   *  0 on a fresh sim, 1 after the first cleared-field tick spawns wave 1. */
   readonly wave: number
-  /** df5-7: the running score (df5-3 ScoreState.score), refreshed each tick like `wave` —
-   *  0 on a fresh sim, raised (addPoints) when the df4-1 COLIDE seam OR the df5-5 smart-bomb
-   *  clear kills an enemy. */
+  /** df5-3 score ledger + df5-6 lives, surfaced from the runtime each tick. */
   readonly score: number
-  /** df5-7: the men (lives) counter (df5-3 ScoreState.men) — STARTING_MEN (3) on a fresh
-   *  sim, decremented by killShip (loseMan), raised by the extra-man award (addPoints). */
   readonly men: number
-  /** df5-7: game over once the men counter falls below zero (df5-6 isGameOver). false fresh. */
+  /** Remaining smart-bomb stock (PSBC). */
+  readonly smartBombs: number
+  /** df5-6 end of game (men < 0). */
   readonly gameOver: boolean
-  /** PLAXV — the 24-bit horizontal velocity accumulator (ship.ts). */
+  /** df6-1: the audio EVENT CHANNEL — this tick's cues, DATA on the returned state
+   *  (Decision C). Rebuilt every tick, never carried forward. Empty on a fresh sim. */
+  readonly cues: readonly GameEvent[]
   readonly _plaxv24: number
-  /** REV facing + debounce latch (ship.ts). */
   readonly _rev: RevState
-  /** PLAY16 + PLAYV vertical state (ship.ts). */
   readonly _vy: VState
-  /** PLAX16 — the ship's 16-bit onscreen X (world.ts). */
   readonly _plax16: number
   readonly _sched: Scheduler
   readonly _laserBank: LaserBank
-  /** The df4-3 abduction bank (landers + humanoids), carried by reference like _laserBank. */
   readonly _enemyBank: EnemyBank
-  /** The df4-6 effect bank (materialize/explosion), carried by reference like _laserBank. */
+  readonly _mutantBank: MutantBank
+  readonly _ufoBank: UfoBank
+  readonly _bomberBank: BomberBank
+  readonly _swarmerBank: SwarmerBank
+  readonly _podBank: PodBank
   readonly _effectBank: EffectBank
-  /** df5-8: the df5-2 wave director, carried by reference so stepSim can read its `wave`
-   *  counter. It is a df3 scheduler PROCESS (registered on `_sched` at construction), so
-   *  the scheduler — not this handle — keeps it dispatching; the handle is read-only. */
   readonly _waveDirector: WaveDirector
-  /** df5-7: the df5-3 score/men state, carried by value across ticks (a pure reducer, not a
-   *  bank) — `score`/`men`/`gameOver` above are its public projection. */
-  readonly _score: ScoreState
+  readonly _rt: SimRuntime
 }
 
-/** The ship's initial pose: onscreen column $20 (the facing-right base, world.ts), mid-strip. */
-const INITIAL_PLAX16 = 0x2000 // column 0x20 in the high byte
-const INITIAL_Y = 120 // a row well inside the [YMIN, 239] strip
+const INITIAL_PLAX16 = 0x2000
+const INITIAL_Y = 120
 
-/**
- * Seed a fresh sim. `rand` (a byte source 0..255) is injected — the shell owns entropy so
- * this stays pure. The scheduler and laser bank are minted here and carried in the state.
- */
+const aliveOf = <T extends { alive: boolean }>(xs: readonly T[]): number => xs.filter((x) => x.alive).length
+
+/** Seed a fresh sim. `rand` (a byte source 0..255) is injected — the shell owns entropy. */
 export function createSim(rand: () => number): SimState {
   const sched = createScheduler()
   const laserBank = createLaserBank(sched)
-  // Minted here but consumes no entropy at construction, so star seeding is unchanged and
-  // a fresh sim carries no enemies (spawning is explicit; the df5 wave logic drives it).
-  const enemyBank = createEnemyBank(sched, rand)
   const effectBank = createEffectBank()
-  // df5-8: wire the df5-2 wave director over the scheduler + enemy bank. It advances when
-  // the LIVE lander population empties (alive count, not the array length — killLander flags
-  // records in place) and spawns each wave's WVTAB lander count through the bank. The x
-  // placement spreads the wave evenly across the 16-bit world cylinder ($10000 wrap,
-  // world.ts) — a deterministic, pure choice (no entropy), so same-seed runs stay identical.
-  const waveDirector = createWaveDirector(
-    sched,
-    () => enemyBank.landers.filter((l) => l.alive).length,
-    (_wave, params) => {
-      const n = params.counts.landers
-      for (let i = 0; i < n; i++) enemyBank.spawnLander(Math.floor((i / n) * 0x10000))
+
+  const rt: SimRuntime = {
+    rand,
+    player: { x: wrap16(INITIAL_PLAX16), y: INITIAL_Y },
+    score: createScore(),
+    smartBombs: STARTING_SMART_BOMBS,
+    smartBombArmed: false,
+    smartBombFlash: 0,
+    gameOver: false,
+    baiterTimer: BAITER_SPAWN_PERIOD,
+    respawnGrace: 0,
+    prevSmartBomb: false,
+    prevHyperspace: false,
+    shots: [],
+    cues: [],
+    carrying: new WeakSet<object>(),
+    landed: new WeakSet<object>(),
+    landerShootTimers: new WeakMap<object, number>(),
+  }
+
+  /** APST materialize + the enemy-appear cue — the fleet's "an enemy comes into being" seam. */
+  const appear = (x: number, y: number, picture: ObjectImage): void => {
+    effectBank.spawnAppear(x, y, picture)
+    rt.cues.push({ type: 'enemy-appear' })
+  }
+
+  /** Aim a shot from an enemy (world x, row y) at a target (world x, row y). */
+  const fireShot = (fromX: number, fromY: number, toX: number, toY: number): void => {
+    const dxWorld = signedWrap16(Math.round(toX) - Math.round(fromX))
+    const dyRow = toY - fromY
+    rt.shots.push({
+      x: fromX,
+      y: fromY,
+      vx: dxWorld / SHOT_TRAVEL_FRAMES,
+      vy: dyRow / SHOT_TRAVEL_FRAMES,
+      life: SHOT_LIFE,
+    })
+  }
+
+  /** A per-type enemy fire callback: push the aimed shot and emit that enemy's SHOOT cue. */
+  const makeFire = (cue: GameEvent['type']) => (fromX: number, fromY: number, toX: number, toY: number): void => {
+    fireShot(fromX, fromY, toX, toY)
+    rt.cues.push({ type: cue })
+  }
+
+  const enemyBank = createEnemyBank(sched, rand)
+  const mutantBank = createMutantBank(sched, { rand, player: () => rt.player, fire: makeFire('mutant-shoot') })
+  const ufoBank = createUfoBank(sched, { rand, player: () => rt.player, fire: makeFire('baiter-shoot') })
+  const bomberBank = createBomberBank(sched, { rand, player: () => rt.player })
+  const swarmerBank = createSwarmerBank(sched, { rand, player: () => rt.player, fire: makeFire('swarmer-shoot') })
+  const podBank = createPodBank(sched, {
+    rand,
+    // MMSW — a killed pod bursts 1..6 swarmers at its position (probes.ts). Cap at SWCNT
+    // (SWARMER_MAX), the refusal swarmers.ts deferred to its scheduler-integrated spawner.
+    releaseSwarmer: (x, y) => {
+      if (aliveOf(swarmerBank.swarmers) >= SWARMER_MAX) return
+      swarmerBank.spawnSwarmer(x, y)
+      appear(x, y, SWARMER_PICTURE)
     },
-  )
-  // df5-10: seed the ground humanoid population at game start — the humanoid analog of the
-  // df5-8 lander wiring above. The ROM plants PTARG(=10) astronauts on player-restore (ASTST);
-  // we spread them DETERMINISTICALLY across the 16-bit world cylinder (the same (i/n)*$10000
-  // even spread the wave uses for landers), at the ROM's astronaut ground row ($E0). Without
-  // this the field is empty, every lander's nearestTarget() is null, and each just descends to
-  // YMAX and idles (landers.ts:242-243) — a wave never clears. PURE: spawnHumanoid reads no
-  // `rand` at spawn, so initStars(rand) below sees the same entropy and same-seed sims stay
-  // byte-identical.
+  })
+
+  /** Spawn one enemy of `kind` at world column `x`, materializing it with an appear cue. */
+  const spawnEnemyAt = (kind: 'lander' | 'bomber' | 'pod', x: number): void => {
+    if (kind === 'lander') enemyBank.spawnLander(x)
+    else if (kind === 'bomber') bomberBank.spawnBomber(x, SPAWN_Y)
+    else podBank.spawnPod(x, SPAWN_Y)
+    appear(x, SPAWN_Y, kind === 'lander' ? LANDER_PICTURE : kind === 'bomber' ? BOMBER_PICTURE : POD_PICTURE)
+  }
+
+  const spawnSpread = (kind: 'lander' | 'bomber' | 'pod', n: number): void => {
+    for (let i = 0; i < n; i++) spawnEnemyAt(kind, Math.floor((i / n) * 0x10000))
+  }
+
+  /** The wave's whole attacker complement empties before the director advances — a wave is
+   *  not cleared while ANY enemy stands, not just landers (the df6-1 integration widens the
+   *  df5-8 lander-only population to the full menagerie). */
+  const population = (): number =>
+    aliveOf(enemyBank.landers) +
+    aliveOf(mutantBank.mutants) +
+    aliveOf(ufoBank.ufos) +
+    aliveOf(bomberBank.bombers) +
+    aliveOf(podBank.pods) +
+    aliveOf(swarmerBank.swarmers)
+
+  const waveDirector = createWaveDirector(sched, population, (_wave, params) => {
+    if (rt.gameOver) return // the game is over — spawn no new field
+    rt.cues.push({ type: 'wave-start' }) // ST1SND (a new field begins)
+    spawnSpread('lander', params.counts.landers)
+    spawnSpread('bomber', params.counts.ties)
+    spawnSpread('pod', params.counts.probes)
+  })
+
+  // Seed the ground humanoid population (df5-10): PTARG(=10) astronauts spread across the
+  // 16-bit world cylinder at the ROM's ground row. DETERMINISTIC (no entropy at spawn).
   for (let i = 0; i < GROUND_HUMANOID_COUNT; i++) {
     enemyBank.spawnHumanoid(Math.floor((i / GROUND_HUMANOID_COUNT) * 0x10000), GROUND_HUMANOID_Y)
   }
-  // df5-7: a fresh df5-3 score/men state — score 0, men STARTING_MEN (3), not yet over.
-  const score = createScore()
+
   const facing: Facing = 'right'
-  return {
+  return withBanks({
     ship: { x: INITIAL_PLAX16 >> 8, y: INITIAL_Y, facing },
     camera: 0,
     stars: initStars(rand),
     lasers: laserBank.lasers,
     landers: enemyBank.landers,
     humanoids: enemyBank.humanoids,
+    mutants: mutantBank.mutants,
+    baiters: ufoBank.ufos,
+    bombers: bomberBank.bombers,
+    bombs: bomberBank.bombs,
+    pods: podBank.pods,
+    swarmers: swarmerBank.swarmers,
+    shots: [],
     effects: effectBank.effects,
     wave: waveDirector.wave,
-    score: score.score,
-    men: score.men,
-    gameOver: isGameOver(score),
+    score: rt.score.score,
+    men: rt.score.men,
+    smartBombs: rt.smartBombs,
+    gameOver: rt.gameOver,
+    cues: [],
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
@@ -199,169 +376,446 @@ export function createSim(rand: () => number): SimState {
     _sched: sched,
     _laserBank: laserBank,
     _enemyBank: enemyBank,
+    _mutantBank: mutantBank,
+    _ufoBank: ufoBank,
+    _bomberBank: bomberBank,
+    _swarmerBank: swarmerBank,
+    _podBank: podBank,
     _effectBank: effectBank,
     _waveDirector: waveDirector,
-    _score: score,
-  }
+    _rt: rt,
+  })
 }
 
-/** Ship death (df5-3 loseMan): decrement the men counter and re-derive game-over (df5-6
- *  isGameOver — men < 0). The public death seam the death wiring uses AND the visual
- *  playtest drives deterministically (the df4-6 spawnExplosion precedent). Returns a new
- *  SimState with `men`/`gameOver` refreshed. */
-export function killShip(state: SimState): SimState {
-  const _score = loseMan(state._score)
-  return { ...state, _score, score: _score.score, men: _score.men, gameOver: isGameOver(_score) }
-}
-
-/** Snapshot-refresh helper: a new SimState reflecting the current enemy/effect-bank views,
- *  used by stepSim and the spawn entries so `landers`/`humanoids`/`effects` never go stale. */
+/** Reproject the bank/effect/runtime snapshots onto a SimState so its views never go stale. */
 function withBanks(state: SimState): SimState {
+  const rt = state._rt
   return {
     ...state,
+    lasers: state._laserBank.lasers,
     landers: state._enemyBank.landers,
     humanoids: state._enemyBank.humanoids,
+    mutants: state._mutantBank.mutants,
+    baiters: state._ufoBank.ufos,
+    bombers: state._bomberBank.bombers,
+    bombs: state._bomberBank.bombs,
+    pods: state._podBank.pods,
+    swarmers: state._swarmerBank.swarmers,
+    shots: rt.shots.map((s) => ({ x: s.x, y: s.y, life: s.life })),
     effects: state._effectBank.effects,
+    wave: state._waveDirector.wave,
+    score: rt.score.score,
+    men: rt.score.men,
+    smartBombs: rt.smartBombs,
+    gameOver: rt.gameOver,
+    cues: rt.cues.slice(),
   }
 }
 
-/** Spawn a lander at the top, descending (*START LANDERS, DEFB6.SRC:649). It MATERIALIZES:
- *  an APST appear effect (df4-2) is enqueued over the lander so it fades in rather than
- *  popping. Returns a new SimState with the lander + its appear effect in the views. */
+/** Spawn a lander at the top, materializing it (the exported entry the visual playtest drives). */
 export function spawnLander(state: SimState, x: number): SimState {
   const lander = state._enemyBank.spawnLander(x)
   if (lander) state._effectBank.spawnAppear(lander.x, lander.y, LANDER_PICTURE)
   return withBanks(state)
 }
 
-/** Place a humanoid on the terrain at (x, y) (ASTRO, DEFB6.SRC:290). Returns a new
- *  SimState with the humanoid in its `humanoids` view. */
+/** Place a humanoid on the terrain at (x, y). */
 export function spawnHumanoid(state: SimState, x: number, y: number): SimState {
   state._enemyBank.spawnHumanoid(x, y)
   return withBanks(state)
 }
 
-/** Start an EXST explosion (df4-2) at (world-x `x`, row `y`) over the lander picture — the
- *  LOCALIZED, seizure-safe burst ADR-0005 requires (classify('enemy-explode') is
- *  'localized'; NO whole-frame strobe). The COLIDE wiring in stepSim calls this on a kill,
- *  and the visual playtest drives it directly. Returns a new SimState with the effect. */
+/** Start an EXST explosion at (x, y) over the lander picture (the visual playtest driver). */
 export function spawnExplosion(state: SimState, x: number, y: number): SimState {
   state._effectBank.spawnExplode(x, y, LANDER_PICTURE)
   return withBanks(state)
 }
 
-/** Advance the sim one 60 Hz tick under `input`. Returns the next state; the scheduler and
- *  laser bank are mutated in place and carried forward by reference. */
-export function stepSim(state: SimState, input: Input): SimState {
-  const rev = stepReverse(state._rev, input.reverse)
-  const plaxv24 = stepVelocityX(state._plaxv24, { accel: input.thrust, facing: rev.facing })
-  const vy = stepVerticalY(state._vy, { up: input.up, down: input.down })
+/** Ship death (df5-3 loseMan): decrement the men counter and re-derive game-over (df5-6
+ *  isGameOver — men < 0). The public death seam the df5-7 visual playtest drives
+ *  deterministically (the df4-6 spawnExplosion precedent); df6-1 keeps it exported and
+ *  re-points it at the integrated runtime's score ledger (`_rt.score`, not the pre-df6-1
+ *  `_score`). The in-tick death path (killPlayer, which also sounds PDSND) is separate. */
+export function killShip(state: SimState): SimState {
+  const rt = state._rt
+  rt.score = loseMan(rt.score)
+  if (isGameOver(rt.score)) rt.gameOver = true
+  return withBanks(state)
+}
 
-  // slide consumes the TOP 16 bits of the 24-bit PLAXV (the seam df3-2 documents).
+/** Advance the sim one 60 Hz tick under `input`. */
+export function stepSim(state: SimState, input: Input): SimState {
+  const rt = state._rt
+  rt.cues = [] // the cue channel is REBUILT each tick, never carried forward (Decision C)
+
+  // 1-3. Ship motion (df3).
+  const rev = stepReverse(state._rev, input.reverse)
+  let plaxv24 = stepVelocityX(state._plaxv24, { accel: input.thrust, facing: rev.facing })
+  let vy = stepVerticalY(state._vy, { up: input.up, down: input.down })
   const camera = slide({ bgl: state.camera, plax16: state._plax16, plaxv: plaxv24 >> 8, facing: rev.facing })
+  let plax16 = camera.plax16
+  let shipFacing = rev.facing
+  let shipRow = vy.y16 >> 8
 
   const stars = stepStars(state.stars, camera.bgl, camera.bglx, STAR_COUNT)
 
-  // Fire BEFORE the dispatch: a fresh laser process (PTIME=1) is not in this tick's
-  // start-of-tick snapshot, so it sits at its spawn for one tick and travels next (df3-5).
-  if (input.fire) state._laserBank.fire(camera.plax16, rev.facing)
+  let died = false
+  const killPlayer = (): void => {
+    if (died || rt.gameOver) return
+    died = true
+    rt.score = loseMan(rt.score)
+    rt.cues.push({ type: 'player-death' }) // PDSND
+    rt.shots.length = 0 // the field's shots clear with the ship
+    if (isGameOver(rt.score)) {
+      rt.gameOver = true
+      return
+    }
+    // Brief post-death invulnerability, so the hazard that killed us cannot re-kill on the
+    // very next tick (without this a hazard overlapping the resting ship death-loops to
+    // game-over in a few frames). A df6-1 placeholder for the ROM's PLADIE→new-ship blink;
+    // the ship keeps its pose (no teleport) so ship-movement invariants are unaffected.
+    rt.respawnGrace = RESPAWN_GRACE
+  }
+  const award = (points: number): void => {
+    const before = rt.score.men
+    rt.score = addPoints(rt.score, points)
+    for (let i = 0; i < rt.score.men - before; i++) rt.cues.push({ type: 'extra-man' }) // RPSND
+  }
+
+  // 6. Powers (df5-5), on the button's RISING edge.
+  const wantSmart = input.smartBomb ?? false
+  const wantHyper = input.hyperspace ?? false
+  const smartEdge = wantSmart && !rt.prevSmartBomb
+  const hyperEdge = wantHyper && !rt.prevHyperspace
+  rt.prevSmartBomb = wantSmart
+  rt.prevHyperspace = wantHyper
+
+  // The smart-bomb CLEAR itself runs AFTER the dispatch (below), not here: clearing the
+  // field before the wave director dispatches would let it see population 0 and respawn a
+  // fresh wave on the SAME tick — a full field would blink and reappear. Deferring the
+  // clear to just after stepTick makes it behave exactly like a laser kill (the director
+  // sees the cleared field on the NEXT tick), so the cleared frame is actually observable.
+  if (rt.smartBombArmed && --rt.smartBombFlash <= 0) rt.smartBombArmed = false
+
+  if (hyperEdge && !rt.gameOver && canHyperspace(0)) {
+    if (hyperspaceKilled(rt.rand)) {
+      killPlayer() // HYPER can strand you — a player death (HYPER issues no cue of its own)
+    } else {
+      const t = hyperspace(rt.rand)
+      plax16 = t.x16
+      shipFacing = t.facing
+      shipRow = t.y
+      vy = { y16: t.y << 8, playv: t.vy }
+      plaxv24 = t.vx
+    }
+  }
+
+  // 7. Fire BEFORE the dispatch (df3-5): the laser travels next tick.
+  if (input.fire) {
+    const laser = state._laserBank.fire(plax16, shipFacing)
+    if (laser) rt.cues.push({ type: 'laser-fire' }) // LASSND — only on a real spawn (cap at 4)
+  }
+
+  // 8. Update the enemy-aim pose (WORLD space) and dispatch every process.
+  rt.player = { x: wrap16(camera.bgl + plax16), y: shipRow }
   state._sched.stepTick()
 
-  const shipRow = vy.y16 >> 8
+  // 9. Per-tick sim wiring.
+  perTickWiring(state, appearAndCue(state))
 
-  // COLIDE (DEFA7.SRC:2775-2787): each live player laser box vs the enemy list. A box
-  // overlap kills the struck lander (LKIL1) and starts a LOCALIZED explosion (EXST) at it.
-  // COLIDE runs in ON-SCREEN space, matching what the player sees (df5-9-R4). The laser is an
-  // onscreen quantity (laser.x = shipX_onscreen + offset, laser.ts), so it needs no camera term;
-  // the landers are WORLD-space, so hitTestLasers offsets them by THIS frame's camera (camera.bgl,
-  // the same value composeFrame renders them with) — `wrap16(lander.x − camera) >> 8` — so a laser
-  // hits the lander you SEE, not one a camera-width away. Advance the effects first, then spawn
-  // this tick's explosions fresh.
+  // Smart bomb fires HERE (after the wave director dispatched in stepTick) so the cleared
+  // field is not instantly respawned this tick — see the note at the edge detection above.
+  if (smartEdge && !rt.gameOver) {
+    const res = smartBomb({ armed: rt.smartBombArmed, count: rt.smartBombs })
+    if (res.fired) {
+      rt.smartBombs = res.count
+      rt.smartBombArmed = true
+      rt.smartBombFlash = SMART_BOMB_FLASHES
+      rt.cues.push({ type: 'smart-bomb' }) // SBSND — the ONE cue; the cleared enemies are silent
+      clearAllEnemies(state, award)
+    }
+  }
+
+  // 10. Collision. Advance effects first, then this tick's outcomes.
   state._effectBank.step()
-  // df5-7: a df4-1 laser kill (and a df5-5 smart-bomb clear) award df5-3 points. The wave
-  // director already ran this tick (sched.stepTick above, before the clear), so clearing the
-  // field does not respawn the next wave until the following tick.
-  const killPoints = hitTestLasers(state, shipRow, camera.bgl)
-  const bombPoints = input.smartBomb ? smartBombClear(state) : 0
-  const score = addPoints(state._score, killPoints + bombPoints)
+  hitTestLasers(state, shipRow, camera.bgl, award)
 
-  return {
-    ship: { x: camera.plax16 >> 8, y: shipRow, facing: rev.facing },
+  // Post-death respawn invulnerability: while it holds, the ship cannot die again (the
+  // hazard that killed it gets time to move off), then it counts down.
+  const graced = rt.respawnGrace > 0
+  if (rt.respawnGrace > 0) rt.respawnGrace -= 1
+
+  const shipScreen: Query = { x: plax16 >> 8, y: shipRow, picture: SHIP_BOX }
+  if (!rt.gameOver) {
+    // Enemy shots + bombs + bodies vs the ship → player death (unless just-respawned).
+    if (!graced && (bombVsPlayer(shipScreen, hazardObjects(state, camera.bgl)) || shipVsObject(shipScreen, enemyObjects(state, camera.bgl)))) {
+      killPlayer()
+    }
+    // The rescue catch (WORLD space — catchFalling tests the ship pose against the fallers).
+    const caught = state._enemyBank.catchFalling({ x: rt.player.x, y: shipRow, picture: box(HUMANOID_PICTURE) })
+    for (let i = 0; i < caught.length; i++) {
+      rt.cues.push({ type: 'astro-catch' }) // ACSND
+      award(RESCUE_POINTS)
+    }
+    // Enemy fire that lands on a walking humanoid → astro-hit; and the safe-landing outcome.
+    resolveHumanoidOutcomes(state, camera.bgl, award)
+  }
+
+  return withBanks({
+    ...state,
+    ship: { x: plax16 >> 8, y: shipRow, facing: shipFacing },
     camera: camera.bgl,
     stars,
-    lasers: state._laserBank.lasers,
-    landers: state._enemyBank.landers,
-    humanoids: state._enemyBank.humanoids,
-    effects: state._effectBank.effects,
-    wave: state._waveDirector.wave,
-    score: score.score,
-    men: score.men,
-    gameOver: isGameOver(score),
     _plaxv24: plaxv24,
-    _rev: rev,
+    _rev: { facing: shipFacing, revflg: rev.revflg },
     _vy: vy,
-    _plax16: camera.plax16,
-    _sched: state._sched,
-    _laserBank: state._laserBank,
-    _enemyBank: state._enemyBank,
-    _effectBank: state._effectBank,
-    _waveDirector: state._waveDirector,
-    _score: score,
+    _plax16: plax16,
+  })
+}
+
+/** A closure the per-tick wiring uses to materialize a transformed enemy with an appear cue. */
+function appearAndCue(state: SimState) {
+  return (x: number, y: number, picture: ObjectImage): void => {
+    state._effectBank.spawnAppear(x, y, picture)
+    state._rt.cues.push({ type: 'enemy-appear' })
   }
 }
 
-/** df5-7 / df5-5 (SBOMB, DEFA7.SRC:3175): clear the on-screen attackers. Kills EVERY live
- *  lander — the enemy bank's only inhabitant today; `killLander` removes each from the view
- *  and, per LKIL1, drops any carried humanoid into a free-fall. Returns the points awarded so
- *  stepSim folds them into the df5-3 score.
- *
- *  ADR-0005 safety holds by CONSTRUCTION, not by a rendered presentation: this writes no
- *  framebuffer, so the only on-screen change is the attackers disappearing — spatially
- *  bounded and non-strobing, never the ROM COM PCRAM whole-page invert. NOTE: neither
- *  powers.ts `clearsType` (OTYP < 2) nor the df4-2 `classify('smart-bomb')` fade presentation
- *  is invoked yet — when a non-lander attacker type is wired, gate the clear with `clearsType`;
- *  when a richer on-screen presentation is wanted, route it through the effect policy so the
- *  fade is real (and keep the assertNoFullFrameStrobe guard green). */
-function smartBombClear(state: SimState): number {
-  const live = state._enemyBank.landers.filter((l) => l.alive)
-  let points = 0
-  for (const lander of live) {
-    state._enemyBank.killLander(lander)
-    points += ENEMY_POINTS.lander
-  }
-  return points
+/** Signed 16-bit difference on the world cylinder ([-0x8000, 0x7fff]). */
+function signedWrap16(d: number): number {
+  const m = wrap16(d)
+  return m >= 0x8000 ? m - 0x10000 : m
 }
 
-/** Run the df4-1 laser-vs-lander COLIDE seam for one tick: every live laser is tested
- *  against the live landers; a box overlap kills that lander and spawns its explosion. The
- *  landers are captured up front so removing one mid-loop can't shift the list under us.
- *  Returns the df5-3 points the kills earned (ENEMY_POINTS.lander each), for stepSim to score. */
-function hitTestLasers(state: SimState, shipRow: number, camera: number): number {
-  const liveLanders = state._enemyBank.landers.filter((l) => l.alive)
-  if (liveLanders.length === 0) return 0
+/** Project a WORLD column to its on-screen column (the exact composeFrame/COLIDE mapping). */
+const toScreenCol = (worldX: number, camera: number): number => wrap16(Math.round(worldX) - camera) >> 8
 
-  const landerBox = { width: LANDER_PICTURE.width * PIXELS_PER_BYTE, height: LANDER_PICTURE.height }
-  // Index the objects so a Hit names WHICH lander to kill (COLIDE returns the struck object).
-  // Each lander is projected to its ON-SCREEN column `wrap16(l.x − camera) >> 8` — the exact
-  // position composeFrame draws it at — so collision agrees with the render (df5-9-R4).
-  const objects: readonly CollObject[] = liveLanders.map((l, i) => ({
-    id: String(i),
-    x: wrap16(l.x - camera) >> 8,
-    y: l.y,
-    picture: landerBox,
-  }))
+// ─── Per-tick sim wiring: transforms, pickups, panic, baiters, lander fire, shot travel ──
+function perTickWiring(state: SimState, appear: (x: number, y: number, p: ObjectImage) => void): void {
+  const rt = state._rt
 
-  let points = 0
+  // PANIC (df5-4): the last humanoid lost freaks every lander (reachedTop-latched).
+  state._enemyBank.panic()
+
+  // lander → mutant (df4-4) and lander PICK-UP (LPKSND), off the live lander views.
+  for (const l of state._enemyBank.landers) {
+    if (!l.alive) continue
+    if (l.reachedTop) {
+      state._mutantBank.transformLander(l) // SCZ — the freaked/abducting lander becomes a mutant
+      appear(l.x, l.y, MUTANT_PICTURE)
+      state._enemyBank.killLander(l) // retire the spent lander (its passenger is already consumed)
+      continue
+    }
+    if (l.carrying && !rt.carrying.has(l)) {
+      rt.carrying.add(l)
+      rt.cues.push({ type: 'lander-pickup' }) // LPKSND — the grab (LGSND is a dead ROM cue)
+    }
+    // LSHOT — landers shoot at the player on a staggered cadence (modeled here; landers.ts
+    // deferred the lander weapon). WeakMap timer keyed by the stable lander record.
+    let t = rt.landerShootTimers.get(l)
+    if (t === undefined) t = 1 + (Math.abs(Math.round(l.x)) % LANDER_SHOOT_PERIOD)
+    if (--t <= 0) {
+      fireAndCue(state, l.x, l.y, 'lander-shoot')
+      t = LANDER_SHOOT_PERIOD
+    }
+    rt.landerShootTimers.set(l, t)
+  }
+
+  // The baiter anti-camping timer (UFOST): while a field stands, harry the player.
+  if (--rt.baiterTimer <= 0) {
+    rt.baiterTimer = BAITER_SPAWN_PERIOD
+    const anyEnemy =
+      aliveOf(state._enemyBank.landers) +
+        aliveOf(state._mutantBank.mutants) +
+        aliveOf(state._bomberBank.bombers) +
+        aliveOf(state._podBank.pods) +
+        aliveOf(state._swarmerBank.swarmers) >
+      0
+    if (anyEnemy && aliveOf(state._ufoBank.ufos) < BAITER_MAX && !rt.gameOver) {
+      state._ufoBank.spawnUfo(rt.player.x, SPAWN_Y)
+      appear(rt.player.x, SPAWN_Y, BAITER_PICTURE)
+    }
+  }
+
+  // Travel the aimed enemy shots; retire the expired.
+  for (let i = rt.shots.length - 1; i >= 0; i--) {
+    const s = rt.shots[i]
+    s.x += s.vx
+    s.y += s.vy
+    if (--s.life <= 0) rt.shots.splice(i, 1)
+  }
+}
+
+/** Fire an aimed lander shot at the player and emit its SHOOT cue. */
+function fireAndCue(state: SimState, fromX: number, fromY: number, cue: GameEvent['type']): void {
+  const rt = state._rt
+  const dxWorld = signedWrap16(Math.round(rt.player.x) - Math.round(fromX))
+  const dyRow = rt.player.y - fromY
+  rt.shots.push({ x: fromX, y: fromY, vx: dxWorld / SHOT_TRAVEL_FRAMES, vy: dyRow / SHOT_TRAVEL_FRAMES, life: SHOT_LIFE })
+  rt.cues.push({ type: cue })
+}
+
+/** Enemy shots + bomber bombs, projected to on-screen boxes (the ship-death hazard list). */
+function hazardObjects(state: SimState, camera: number): readonly CollObject[] {
+  const objs: CollObject[] = []
+  let id = 0
+  for (const s of state._rt.shots) {
+    objs.push({ id: String(id++), x: toScreenCol(s.x, camera), y: Math.round(s.y), picture: SHOT_BOX })
+  }
+  for (const b of state._bomberBank.bombs) {
+    objs.push({ id: String(id++), x: toScreenCol(b.x, camera), y: b.y, picture: box(BOMB_PICTURE) })
+  }
+  return objs
+}
+
+/** Every live enemy body, projected to on-screen boxes (the ship-collision list). */
+function enemyObjects(state: SimState, camera: number): readonly CollObject[] {
+  const objs: CollObject[] = []
+  let id = 0
+  const add = (recs: readonly { x: number; y: number; alive: boolean }[], picture: ObjectImage): void => {
+    for (const r of recs) if (r.alive) objs.push({ id: String(id++), x: toScreenCol(r.x, camera), y: r.y, picture: box(picture) })
+  }
+  add(state._enemyBank.landers, LANDER_PICTURE)
+  add(state._mutantBank.mutants, MUTANT_PICTURE)
+  add(state._ufoBank.ufos, BAITER_PICTURE)
+  add(state._bomberBank.bombers, BOMBER_PICTURE)
+  add(state._podBank.pods, POD_PICTURE)
+  add(state._swarmerBank.swarmers, SWARMER_PICTURE)
+  return objs
+}
+
+/**
+ * COLIDE (DEFA7.SRC:2775-2787): each live player laser vs the WHOLE enemy list. A box overlap
+ * kills the struck enemy, scores it, starts a localized explosion, and emits that enemy's HIT
+ * cue; a carrying lander additionally screams its dropped passenger (ASCSND). One object list,
+ * ROM-faithful, rebuilt per laser so a kill removes the victim from later tests.
+ */
+function hitTestLasers(state: SimState, shipRow: number, camera: number, award: (p: number) => void): void {
+  const rt = state._rt
+  interface Target {
+    obj: CollObject
+    hit: () => void
+  }
+
   for (const laser of state._laserBank.lasers) {
     if (!laser.alive) continue
-    const query = { x: laser.x >> 8, y: shipRow, picture: LASER_BOX }
-    const hit = laserVsObject(query, objects)
-    if (!hit) continue
-    const lander = liveLanders[Number(hit.object.id)]
-    if (!lander || !lander.alive) continue
-    state._enemyBank.killLander(lander) // LKIL1 (DEFB6.SRC:905)
-    state._effectBank.spawnExplode(lander.x, lander.y, LANDER_PICTURE) // EXST (SAMEXAP7)
-    points += ENEMY_POINTS.lander // df5-3: the lander's value (per-enemy points)
+
+    // Rebuilt per laser so a kill removes the victim from the next laser's list.
+    const targets: Target[] = []
+    const at = (rec: { x: number; y: number }, picture: ObjectImage, hit: () => void): void => {
+      targets.push({
+        obj: { id: String(targets.length), x: toScreenCol(rec.x, camera), y: rec.y, picture: box(picture) },
+        hit,
+      })
+    }
+    for (const l of state._enemyBank.landers) {
+      if (!l.alive) continue
+      at(l, LANDER_PICTURE, () => {
+        const scream = l.carrying && !l.reachedTop
+        state._enemyBank.killLander(l)
+        state._effectBank.spawnExplode(l.x, l.y, LANDER_PICTURE)
+        award(ENEMY_POINTS.lander)
+        rt.cues.push({ type: 'lander-hit' }) // LHSND
+        if (scream) rt.cues.push({ type: 'astro-scream' }) // ASCSND — the dropped passenger falls
+      })
+    }
+    for (const m of state._mutantBank.mutants) {
+      if (!m.alive) continue
+      at(m, MUTANT_PICTURE, () => {
+        state._mutantBank.killMutant(m)
+        state._effectBank.spawnExplode(m.x, m.y, MUTANT_PICTURE)
+        award(ENEMY_POINTS.mutant)
+        rt.cues.push({ type: 'mutant-hit' }) // SCHSND
+      })
+    }
+    for (const u of state._ufoBank.ufos) {
+      if (!u.alive) continue
+      at(u, BAITER_PICTURE, () => {
+        state._ufoBank.killUfo(u)
+        state._effectBank.spawnExplode(u.x, u.y, BAITER_PICTURE)
+        award(ENEMY_POINTS.baiter)
+        rt.cues.push({ type: 'baiter-hit' }) // UFHSND
+      })
+    }
+    for (const b of state._bomberBank.bombers) {
+      if (!b.alive) continue
+      at(b, BOMBER_PICTURE, () => {
+        state._bomberBank.killBomber(b)
+        state._effectBank.spawnExplode(b.x, b.y, BOMBER_PICTURE)
+        award(ENEMY_POINTS.bomber)
+        rt.cues.push({ type: 'bomber-hit' }) // TIHSND
+      })
+    }
+    for (const p of state._podBank.pods) {
+      if (!p.alive) continue
+      at(p, POD_PICTURE, () => {
+        state._podBank.killPod(p) // bursts 1..6 swarmers (releaseSwarmer)
+        state._effectBank.spawnExplode(p.x, p.y, POD_PICTURE)
+        award(ENEMY_POINTS.pod)
+        rt.cues.push({ type: 'pod-hit' }) // PRHSND
+      })
+    }
+    for (const s of state._swarmerBank.swarmers) {
+      if (!s.alive) continue
+      at(s, SWARMER_PICTURE, () => {
+        state._swarmerBank.killSwarmer(s)
+        state._effectBank.spawnExplode(s.x, s.y, SWARMER_PICTURE)
+        award(ENEMY_POINTS.swarmer)
+        rt.cues.push({ type: 'swarmer-hit' }) // SWHSND
+      })
+    }
+
+    if (targets.length === 0) return // nothing left to hit this tick
+    const query: Query = { x: laser.x >> 8, y: shipRow, picture: LASER_BOX }
+    const struck = laserVsObject(query, targets.map((t) => t.obj))
+    if (struck) targets[Number(struck.object.id)].hit()
   }
-  return points
+}
+
+/** Enemy fire on a walking humanoid (AHSND) and the uncaught-faller safe-landing (ALSND). */
+function resolveHumanoidOutcomes(state: SimState, camera: number, award: (p: number) => void): void {
+  const rt = state._rt
+
+  // astro-land: an uncaught faller that reached the floor lands safely, once (SC-P250).
+  for (const h of state._enemyBank.humanoids) {
+    if (h.state === 'falling' && h.y >= 240 && !rt.landed.has(h)) {
+      rt.landed.add(h)
+      rt.cues.push({ type: 'astro-land' }) // ALSND
+      award(SAFE_LANDING_POINTS)
+    }
+  }
+
+  // astro-hit: an aimed shot / bomb that overlaps a walking humanoid kills it (AHSND).
+  const prey = state._enemyBank.humanoids.filter((h) => h.alive && h.state === 'walking')
+  if (prey.length === 0) return
+  const preyObjs: CollObject[] = prey.map((h, i) => ({
+    id: String(i),
+    x: toScreenCol(h.x, camera),
+    y: h.y,
+    picture: box(HUMANOID_PICTURE),
+  }))
+  for (const hz of hazardObjects(state, camera)) {
+    const struck = laserVsObject({ x: hz.x, y: hz.y, picture: hz.picture }, preyObjs)
+    if (!struck) continue
+    const victim = prey[Number(struck.object.id)]
+    if (!victim.alive) continue
+    state._enemyBank.killHumanoid(victim)
+    rt.cues.push({ type: 'astro-hit' }) // AHSND
+  }
+}
+
+/** Smart bomb clear: every on-screen enemy dies, scored and exploded but SILENT per-enemy
+ *  (only SBSND sounds). Pods burst first so their swarmers are cleared in the same sweep. */
+function clearAllEnemies(state: SimState, award: (p: number) => void): void {
+  const boom = (rec: { x: number; y: number }, picture: ObjectImage, points: number): void => {
+    state._effectBank.spawnExplode(rec.x, rec.y, picture)
+    award(points)
+  }
+  // Pods burst first so their released swarmers are caught in the same sweep.
+  for (const p of state._podBank.pods.slice()) if (p.alive) { state._podBank.killPod(p); boom(p, POD_PICTURE, ENEMY_POINTS.pod) }
+  for (const s of state._swarmerBank.swarmers.slice()) if (s.alive) { state._swarmerBank.killSwarmer(s); boom(s, SWARMER_PICTURE, ENEMY_POINTS.swarmer) }
+  for (const b of state._bomberBank.bombers.slice()) if (b.alive) { state._bomberBank.killBomber(b); boom(b, BOMBER_PICTURE, ENEMY_POINTS.bomber) }
+  for (const u of state._ufoBank.ufos.slice()) if (u.alive) { state._ufoBank.killUfo(u); boom(u, BAITER_PICTURE, ENEMY_POINTS.baiter) }
+  for (const m of state._mutantBank.mutants.slice()) if (m.alive) { state._mutantBank.killMutant(m); boom(m, MUTANT_PICTURE, ENEMY_POINTS.mutant) }
+  for (const l of state._enemyBank.landers.slice()) if (l.alive) { state._enemyBank.killLander(l); boom(l, LANDER_PICTURE, ENEMY_POINTS.lander) }
 }

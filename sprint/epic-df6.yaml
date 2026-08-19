@@ -98,7 +98,7 @@ description: |-
   emulating the M6808 sound board (synthesis only, roadmap sec 2); hardening/mutation
   batteries (df8+).
 priority: p2
-status: backlog
+status: active
 repos: arcade
 stories:
   - id: df6-1
@@ -106,7 +106,8 @@ stories:
     description: 'The seam and the single-shot emitters together so the seam is never dead (the jt5-1 blind spot: six declared cues were deletable with the suite fully green). Cues are DATA on the returned sim state, never callbacks (Decision C) — purity green, df3 seeded-determinism replays bit-for-bit. Each manifest cue cites its SOUND TABLE symbol+line or is explicitly marked invention-pending (none should be — the table is complete). SNDPRI byte -> CHANNELS voice-stealing (Decision E), not a re-implemented 6809 sequencer. The two STATEFUL cues (thrust held-loop, lander-suck repeat) are df6-2. Attract musics are df7 (Decision A). Audio only — no render/colour change.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -114,6 +115,9 @@ stories:
       - 'AC2: plugins/defender/src/shell/audio.ts holds a SOUNDS manifest + CHANNELS map consuming @shared/audio (imported, not re-implemented); every cue in the manifest CITES its *SOUND TABLE entry (defender/DEFA7.SRC:659-691 — e.g. LASSND :686, LHSND :682, SBSND :672) with a claims/*.json entry verified byte-for-byte under the df1-1 gate, or is explicitly marked invention-pending-source; no un-cited src/core sound constant.'
       - 'AC3: plugins/defender/src/shell/audio-dispatch.ts maps every event kind to a cue behind a never exhaustiveness guard (SH4-5 convention, pinned by tests/audio-dispatch-convention.test.mjs), and each SNDPRI byte is mapped to a @shared/audio CHANNEL (Decision E — higher priority cannot be interrupted by lower, equals interrupt per DEFA7.SRC:662), cited; it does NOT re-implement the 6809 SNDSEQ sequencer.'
       - 'AC4: the sim EMITS each single-shot cue at its cited ROM call site (laser fire, each enemy hit/shoot, grab/pick-up, appear, smart-bomb SBOMB defender/DEFA7.SRC:3183-3184, player death, free ship, wave start, astro catch/land/hit/scream); hyperspace emits NO cue (HYPER defender/DEFA7.SRC:3211-3280 issues no SNDLD — not invented); a mutation battery confirms deleting ANY emitter reddens a value/emission assertion (not a coverage/presence check — the jt5-1 six-deletable-cues blind spot must not recur); NO .wav is committed and the story states plainly Defender is still silent when it closes.'
+    completed: '2026-08-19'
+    review_verdict: approved
+    notes: 'Merged to develop via PR #584 (merge commit a86fe9b4). Full menagerie was wired into the live sim so every one of the 21 cues has a real call site; two integration fixes surfaced during the develop merge (post-death respawn grace, smart-bomb post-dispatch clear). RENDER of the newly-wired enemies (mutants/baiters/bombers/pods/swarmers/shots) is a deferred gap — a later df story. LGSND is a dead ROM cue (no call site) so the grab moment sounds LPKSND; ST1SND (one-player game-start) reused as the wave-start cue.'
   - id: df6-2
     title: "The two STATEFUL cues the single-shot path can't express: the THRUST held-loop and the LANDER-SUCK repeat. Thrust is on/off held state (THFLG defender/PHR6.SRC:293; SNDSEQ turns it on=$16 defender/DEFA7.SRC:750 while PIA21 thrust bit is set :737-739 and off=$0F on release :742-743), routed through @shared/audio's loop seam (the sw6-2 loop-pending carve-out) — loop starts on thrust-held, stops on release. Lander-suck is the abduction-beam REPEAT cue (LSKSND FCB $C8,$0A,... REPCNT=$0A defender/DEFA7.SRC:684) sustained while a lander carries a humanoid up. Both need a held/released edge state the core lacks today (the jt5-3 flap analog). Consumes df6-1 seam + df3 input/scheduler + df4-3 abduction."
     description: 'df6-1 shipped only single-shot cues; the two cues with STATE (a loop and a sustained repeat) land here. The thrust loop mirrors jt5-3''s two-edge flap: the core sees the thrust input each frame but not the on->off / off->on EDGE, so this story adds the edge detector and two kinds (thrust-start, thrust-stop) routed through @shared/audio''s loop start/stop (sw6-2 pending-loop carve-out so it survives the cold-load decode race). The lander-suck repeat is tied to the df4-3 abduction carry state. Purity green; determinism pinned; no samples (df6-3 bakes them). Same file surface as df6-1 (events.ts/sim.ts/audio-dispatch.ts/audio.ts) but a distinct STATE mechanic — a coherent second story, not a false split.'

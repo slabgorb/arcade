@@ -88,6 +88,10 @@ export function installShellDom(): BootHarness {
     clientWidth: CLIENT_W,
     clientHeight: CLIENT_H,
     getContext: () => ctx,
+    // df6-1: main.ts unlocks the audio context on a canvas pointerdown (a real DOM
+    // element carries addEventListener). The boot harness never fires a pointer event,
+    // so this only needs to accept the registration, not route it.
+    addEventListener: () => {},
   }
   ctx.canvas = canvas // render() reads ctx.canvas
 

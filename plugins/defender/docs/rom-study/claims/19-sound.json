@@ -1,0 +1,200 @@
+[
+  {
+    "id": "SND-1",
+    "claim": "The main-CPU SOUND TABLE is a list of priority-headed cue tables under the format header `SNDPRI,N*(REPCNT,SNDTMR,SND#) N>=1` (SNDTMR in 16 msec, END: REPCNT=0). SND-2..SND-22 pin each cue Defender's df6-1 integration reaches; excluded rows (CNSND coin, TBSND terrain-blow, LSKSND lander-suck, LGSND dead lander-grab, ST2SND/START2) are deferred or dead.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 660,
+      "verbatim": "*SNDPRI,N*(REPCNT,SNDTMR,SND#) N>=1"
+    }
+  },
+  {
+    "id": "SND-2",
+    "claim": "LASSND (SNDPRI $C0) is the LASER cue — the laser-fire event. Played at DEFA7.SRC:2767 (LDD #LASSND / JSR SNDLD) after LFIRE spawns a shot.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 686,
+      "verbatim": "LASSND\tFCB\t$C0,$01,$30,$14,0 LASER"
+    }
+  },
+  {
+    "id": "SND-3",
+    "claim": "LHSND (SNDPRI $D0) is the LANDER HIT cue — the lander-hit event. Played by the KILP kill macro at DEFB6.SRC:922 (KILP 0115,LHSND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 682,
+      "verbatim": "LHSND\tFCB\t$D0,$01,$0A,$06,0 LANDER HIT"
+    }
+  },
+  {
+    "id": "SND-4",
+    "claim": "SCHSND (SNDPRI $D0) is the SCHITZ HIT cue — the mutant-hit event (a schizoid is Defender's mutant). Played by KILP at DEFB6.SRC:625 (KILP 0115,SCHSND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 679,
+      "verbatim": "SCHSND\tFCB\t$D0,$01,$08,$17,0 SCHITZ HIT"
+    }
+  },
+  {
+    "id": "SND-5",
+    "claim": "UFHSND (SNDPRI $D0) is the UFO HIT cue — the baiter-hit event (the baiter is Defender's UFO). Played by KILP at DEFB6.SRC:82 (KILP 0120,UFHSND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 680,
+      "verbatim": "UFHSND\tFCB\t$D0,$01,$08,$07,0 UFO HIT"
+    }
+  },
+  {
+    "id": "SND-6",
+    "claim": "PRHSND (SNDPRI $D0) is the PROBE HIT cue — the pod-hit event (the pod is Defender's probe). Played by the KILO kill macro at PRBKIL, DEFB6.SRC:118 (PRBKIL KILO 0210,PRHSND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 678,
+      "verbatim": "PRHSND\tFCB\t$D0,$01,$10,$05,0 PROBE HIT"
+    }
+  },
+  {
+    "id": "SND-7",
+    "claim": "TIHSND (SNDPRI $D0) is the TIE HIT cue — the bomber-hit event (the bomber is Defender's TIE/mine-layer). Played by KILO at TIEKIL, DEFB6.SRC:1120 (TIEKIL KILO 0125,TIHSND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 681,
+      "verbatim": "TIHSND\tFCB\t$D0,$01,$0A,$01,0 TIE HIT"
+    }
+  },
+  {
+    "id": "SND-8",
+    "claim": "SWHSND (SNDPRI $C0) is the SWARM HIT cue — the swarmer-hit event. Played at DEFB6.SRC:192 (LDD #SWHSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 685,
+      "verbatim": "SWHSND\tFCB\t$C0,$01,$08,$07,0 SWARM HIT"
+    }
+  },
+  {
+    "id": "SND-9",
+    "claim": "LSHSND (SNDPRI $C0) is the LANDER SHOOT cue — the lander-shoot event. Played at DEFB6.SRC:581 (LDD #LSHSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 688,
+      "verbatim": "LSHSND\tFCB\t$C0,$01,$08,$03,0 LANDER SHOOT"
+    }
+  },
+  {
+    "id": "SND-10",
+    "claim": "SSHSND (SNDPRI $C0) is the SCHITZO SHOOT cue — the mutant-shoot event. Played at DEFB6.SRC:899 (LDD #SSHSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 689,
+      "verbatim": "SSHSND\tFCB\t$C0,$01,$30,$09,0 SCHITZO SHOOT"
+    }
+  },
+  {
+    "id": "SND-11",
+    "claim": "USHSND (SNDPRI $C0) is the UFO SHOOT cue — the baiter-shoot event. Played at DEFB6.SRC:37 (LDD #USHSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 690,
+      "verbatim": "USHSND\tFCB\t$C0,$01,$08,$03,0 UFO SHOOT"
+    }
+  },
+  {
+    "id": "SND-12",
+    "claim": "SWSSND (SNDPRI $C0) is the SWARM SHOOT cue — the swarmer-shoot event. Played at DEFB6.SRC:269 (LDD #SWSSND / JSR SNDLD, commented SWARMER SOUND).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 691,
+      "verbatim": "SWSSND\tFCB\t$C0,$01,$18,$0C,0 SWARM SHOOT"
+    }
+  },
+  {
+    "id": "SND-13",
+    "claim": "LPKSND (SNDPRI $D0) is the LANDER PICK UP cue — the lander-pickup (abduction grab) event. Played at DEFB6.SRC:790 (LDD #LPKSND / JSR SNDLD). LGSND 'LANDER GRAB' (:687) is a DEAD table with no call site anywhere in the tree, so the grab moment sounds LPKSND.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 683,
+      "verbatim": "LPKSND\tFCB\t$D0,$01,$10,$0B,0 LANDER PICK UP"
+    }
+  },
+  {
+    "id": "SND-14",
+    "claim": "APSND (SNDPRI $D0) is the APPEAR SOUND cue — the enemy-appear event. Played THROUGH the APSNDV vector ($FFDD, PHR6.SRC:96) at SAMEXAP7.SRC:53 (LDD APSNDV / JSR SNDLD); the vector's data slot FDB APSND (DEFB6.SRC:2247) resolves it to this table.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 677,
+      "verbatim": "APSND\tFCB\t$D0,$01,$30,$15,0 APPEAR SOUND"
+    }
+  },
+  {
+    "id": "SND-15",
+    "claim": "SBSND (SNDPRI $E8) is the SMART BOMB cue — the smart-bomb event. Played by SBOMB at DEFA7.SRC:3183 (LDD #SBSND / JSR SNDLD) after SBDISP; it is the ONE cue a smart bomb sounds, the cleared enemies being silent.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 672,
+      "verbatim": "SBSND\tFCB\t$E8,$06,$04,$11,$01,$10,$17,00 SMART BOMB"
+    }
+  },
+  {
+    "id": "SND-16",
+    "claim": "PDSND (SNDPRI $F0) is the PLAYER DEATH cue — the player-death event. Played at DEFA7.SRC:1336 (LDD #PDSND / JSR SNDLD) on the player-death path.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 667,
+      "verbatim": "PDSND\tFCB\t$F0,$02,$08,$11,$01,$20,$17,0 PLAYER DEATH"
+    }
+  },
+  {
+    "id": "SND-17",
+    "claim": "RPSND (SNDPRI $FF, the top priority) is the FREE SHIP cue — the extra-man event (a replay/bonus ship). Played at DEFA7.SRC:529 (LDD #RPSND / JSR SNDLD) alongside the AUDIT of a free ship.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 666,
+      "verbatim": "RPSND\tFCB\t$FF,$01,$20,$1E,0 FREE SHIP"
+    }
+  },
+  {
+    "id": "SND-18",
+    "claim": "ST1SND (SNDPRI $F0) is the START 1 cue — sounded ONCE at game start (ST09, DEFA7.SRC:1105-1106: LDD #ST1SND / JSR SNDLD), NOT per wave; the machine loads no per-field sound. df6-1 reuses it as the wave-start cue (a logged Design Deviation).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 668,
+      "verbatim": "ST1SND\tFCB\t$F0,$01,$40,$0A,0 START 1"
+    }
+  },
+  {
+    "id": "SND-19",
+    "claim": "ACSND (SNDPRI $E0) is the ASTRO CATCH cue — the astro-catch (rescue) event, when the ship catches a falling humanoid. Played at DEFB6.SRC:405 (LDD #ACSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 673,
+      "verbatim": "ACSND\tFCB\t$E0,$03,$0A,$08,0 ASTRO CATCH"
+    }
+  },
+  {
+    "id": "SND-20",
+    "claim": "ALSND (SNDPRI $E0) is the ASTRO LAND cue — the astro-land event, when a humanoid is deposited safely on the ground. Played at DEFB6.SRC:973 (LDD #ALSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 674,
+      "verbatim": "ALSND\tFCB\t$E0,$01,$18,$1F,0 ASTRO LAND"
+    }
+  },
+  {
+    "id": "SND-21",
+    "claim": "AHSND (SNDPRI $E0) is the ASTRO HIT cue — the astro-hit event, when a walking humanoid is killed by hostile fire. Played at DEFB6.SRC:396 (LDD #AHSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 675,
+      "verbatim": "AHSND\tFCB\t$E0,$01,$18,$11,0 ASTRO HIT"
+    }
+  },
+  {
+    "id": "SND-22",
+    "claim": "ASCSND (SNDPRI $D8) is the ASTRO SCREAM cue — the astro-scream event, when a carried humanoid is dropped and falls (a hit carrying-lander screams its passenger). Played at DEFB6.SRC:914 (LDD #ASCSND / JSR SNDLD).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 676,
+      "verbatim": "ASCSND\tFCB\t$D8,$01,$10,$1A,0 ASTRO SCREAM"
+    }
+  }
+]
