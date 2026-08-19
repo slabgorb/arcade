@@ -81,7 +81,8 @@ stories:
     description: 'Decision A: pure-first. The phase machine is a pure transition function in core — no clock, no rAF, seeded — mirroring mc6-1 (state.ts) and pm4''s GamePhase. It consumes df5-6''s men<0 game-over reducer as the play->death edge; game-over is not re-decided here. Wave/attract/setup are gated by the phase, driven by the shell. Every phase constant (timeouts, the mainline order) gated by a claims/*.json entry.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_review
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -89,6 +90,8 @@ stories:
       - 'AC2: the play->death/game-over edge CONSUMES df5-6 isGameOver (men<0, endgame.ts, cited defender/DEFA7.SRC:1423) — it does not re-implement or re-decide game-over; a test pins that the machine enters game-over exactly when the men counter falls below zero and not otherwise.'
       - 'AC3: the mainline phase order and every timeout/cadence constant is cited to the ROM (ST1 *ONE PLAYER START defender/DEFA7.SRC:1100, ST2 :1112, HALLOF defender/AMODE1.SRC:119, HALDIS attract :375, GAMEOV defender/ROMF8.SRC:337) with a claims/*.json entry byte-verified under the df1-1 gate; no un-cited src/core constant.'
       - 'AC4: the phase machine owns no rAF/tick (the shell drives it, phases gate the df3 sim); a mutation to the transition table (e.g. skipping death, or attract not returning from game-over) reddens a transition assertion (not a coverage check).'
+    review_findings: 'Round 1 REJECTED on one LOW/DOC finding — a stale ROM citation at df7-1-phase.test.ts:32 (cited AMODE1.SRC:375 / ROMF8.SRC:337, the section-header comments, not the 377/339 labels). FIXED in round 2 (commit d4a8e200), byte-verified. Round 2 APPROVED, no other findings.'
+    review_verdict: approved
   - id: df7-2
     title: "Setup->play start-of-game wiring: a start/coin action advances attract|game-over -> setup -> play, RESEEDING the sim (createSim with the df5-10 humanoid ground population, the df5-8 wave-1 WVTAB spawn, men=STARTING_MEN=3 per df5-3). Wire the df7-1 phase machine into plugins/defender/src/main.ts so the shell actually starts a game. Cite ST1 *ONE PLAYER START defender/DEFA7.SRC:1100 (credit check :1103). Consumes df7-1 + df3 sim.ts + df5-8/df5-10."
     description: 'The mc6-2 analog: the start-of-game transition. A coin/start input advances the phase to setup then play and reseeds a fresh game — humanoids on the ground (df5-10), wave 1 spawned (df5-8), men=3 (df5-3 STARTING_MEN, NSHIP ROMC8.SRC:802). This is where main.ts stops booting straight into a bare sim and instead boots into attract and starts on input. Purity of the reseed logic preserved; the wiring is shell.'
