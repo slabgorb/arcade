@@ -47,9 +47,14 @@ describe('df7-2 AC2 — main.ts boots into attract via the pure start seam, not 
   })
 
   it('gates the sim step on the play phase (no live game runs on the attract screen)', () => {
-    // stepSim may only run in play — the attract screen must not advance a live game. main.ts
-    // must reference the 'play' phase to gate the step (the exact gate shape is Dev's).
-    expect(code, "main.ts must gate stepping on the 'play' phase").toMatch(/['"]play['"]/)
+    // stepSim may only run in play — the attract screen must not advance a live game. Anchor to
+    // the GATE EXPRESSION (`phase === 'play'`), not a bare `'play'` token: a whole-file token
+    // match would false-green if the gate were removed and a `'play'` literal appeared elsewhere
+    // (rule_checker #15/#25 — review round 1). The `.phase`/`session.phase` receiver is Dev's to
+    // choose, so the anchor allows any identifier before `=== 'play'`.
+    expect(code, "main.ts must gate stepping on a `phase === 'play'` comparison").toMatch(
+      /===\s*['"]play['"]/,
+    )
   })
 
   it('LOAD-BEARING NEGATIVE: main.ts no longer calls createSim directly — the reseed moved into the pure seam', () => {

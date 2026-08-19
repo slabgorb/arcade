@@ -11,7 +11,9 @@
 //   DEFA7.SRC:1102       BSR FPLAY
 //   DEFA7.SRC:1103       LDA CREDIT       <-- the coin gate: no credit -> no start
 //   DEFA7.SRC:1104       BEQ ST1X
-//   DEFA7.SRC:1106       BSR START
+//   DEFA7.SRC:1105       LDD #ST1SND
+//   DEFA7.SRC:1106  ST09 JSR SNDLD
+//   DEFA7.SRC:1107       BSR START
 //
 // The story cites "*ONE PLAYER START defender/DEFA7.SRC:1100 (credit :1103)", so :1103
 // must be byte-pinned in claims/19-phase.json (the df1-1 gate verifies the verbatim).
