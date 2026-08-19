@@ -138,7 +138,8 @@ stories:
     description: 'The absent-source epic''s payload: an ASSET, so its acceptance is a live 200, not a green suite — @shared/audio degrades silently on a 404 exactly as it does on working code, the star-wars sw3-5->sw8-14 gap and the standing Architect gotcha. Synthesise each cue from MAME''s board model + the defend.snd bytes (no waveform can be baked from source — the M6808 firmware is not vendored, roadmap sec 2); the manifest''s source table records which sound# each stands in for and marks any un-anchored cue invention-pending (do not silently fabricate authenticity). Bake exactly the SOUNDS set at run time (this story is LAST among the core three so the cue set is complete and one upload pass suffices). Upload by hand — CI never touches the assets bucket (named plain `arcade`).'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -146,6 +147,7 @@ stories:
       - 'AC2: `just deploy-assets` is extended to bake defender and the files are uploaded to the assets bucket (plain `arcade`, the by-hand path — CI never touches it); the story records the exact bucket/key prefix used.'
       - 'AC3: a live 200 is proven for EVERY manifest URL — the curl status codes are pasted into the session file as the acceptance evidence (Decision B: the curl is the test, NOT the vitest, because silent-degrade makes a 404 indistinguishable from working code); the README/status line is flipped off "silent".'
       - 'AC4: any cue that cannot be sourced or uploaded in this pass is FILED as its own follow-up story BEFORE the epic finishes (a finding is not a backlog item — the standing Architect gotcha), grouped by file surface (the jt9 habit); the story states which cues, if any, remain outstanding.'
+    completed: '2026-08-19'
   - id: df6-4
     title: "AUDIBLE playtest — a whole game loop that SOUNDS right: at http://127.0.0.1:5270/defender/ (DIFFER-from-nonsense-control per the canonical-serve lesson) confirm the laser/hit/explosion cues fire on their moments, the THRUST loops while held and stops on release (df6-2), the smart-bomb PLAYS while its VISUAL stays the ADR-0005 freeze/fade (Decision D — audio is not muted), and NO cue is silently missing (the manifest .wav fetches return 200 in the network log, not a silent-degrade 404). Carry the df7 hand-forward note (the two attract musics PHANTOM/TOCCATA + the hall-of-fame/attract cues, Decision A)."
     description: 'The ears for df6, mirroring df5-7/df4-6''s eyes. Audio can''t be "seen" in a screenshot, so the playtest reads the NETWORK log (Playwright): every SOUNDS .wav fetch returns 200 when its event fires — proving the seam is live and not silent-degrading on a 404 (Decision B''s runtime counterpart). Confirm the thrust loop starts/stops with the key, and that the smart-bomb''s audio plays even though its visual is the accessibility-safe variant (Decision D). An all-200 path sweep proves nothing (SPA fallback) — DIFFER from a nonsense control.'

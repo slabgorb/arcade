@@ -333,3 +333,8 @@ completed_stories:
     title: "HUD + scanner render: draw the score, the men (lives) indicator and the wave number, and PAINT the df5-1 scanner projection (its blip list) into the shell — the scanner is projected in core (df5-1) but drawn NOWHERE today. Consumes df5-1 scanner.ts (the blip list, finally painted) + df5-3 score.ts (score/men) + df2 palette/charset. Cite the ROM scanner bezel (*SCANNER BEZEL defender/AMODE1.SRC:1225) and the HUD layout. Colour by df2 palette INDEX only."
     points: 3
     completed: '2026-08-19'
+  - id: df6-3
+    epic: df6
+    title: "The samples — synthesise one .wav per SOUNDS entry (informed by MAME's Williams sound-board model, williams.cpp:1540, and the machine-local defend.snd = video_sound_rom_1.ic12, williams.cpp:2002 — the battlezone/jt5 synthesis route, since NO sound-board source is vendored, roadmap sec 2), upload via `just deploy-assets` (extend the recipe to bake defender), and PROVE a live 200 for every manifest URL. DERIVE the cue list from SOUNDS in plugins/defender/src/shell/audio.ts AT THE TIME THIS RUNS — do NOT hardcode a count (the jt5-2 lesson). Flip the README/status line off 'silent'. THE ACCEPTANCE TEST IS THE CURL, NOT THE VITEST (Decision B)."
+    points: 3
+    completed: '2026-08-19'
