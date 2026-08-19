@@ -130,7 +130,8 @@ stories:
     description: 'Decision C: the hall of fame is @shared, consumed. df5-6 shipped the pure board + persistence; df7-4 wires the name-entry flow (@shared/name-entry — the same asteroids/missile-command/pac-man shape) so a qualifying game-over score reaches the board, and renders the hall-of-fame display screen (HOFIN :244). No bespoke high-score UI, no new persistence. The ROM stick-driven initial entry (HOFUD :325) maps to @shared/name-entry input.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
