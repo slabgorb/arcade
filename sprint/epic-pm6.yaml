@@ -88,10 +88,9 @@ stories:
     # leg chases a "ripped Blinky". The vendored source refutes it — act-1's chased-
     # back ghost is the BLUE FRIGHTENED sprite (image #1c, pacman.asm:1aa1), NOT
     # ripped. The ripped/torn sheet (#32/#33, pacman.asm:162d, gated on 4e07) is
-    # act 2 = pm6-3. The epic already assigns "ripped-ghost / nail" to act 2, so the
-    # ROM and the epic agree; only this title conflated the two. Text left as the
-    # historical ask; full evidence in .session/pm6-2-session.md Design Deviations
-    # and sprint/context/context-story-pm6-2.md.
+    # act 2 = pm6-3. Text left as the historical ask; the DURABLE record is
+    # sprint/context/context-story-pm6-2.md + .session/pm6-2-session.md (this YAML
+    # comment does not survive `pf sprint story update`, which rewrites the file).
     title: "Cutscene player + ACT 1 (Blinky chase): a deterministic scripted-actor animation player in plugins/pac-man/src/core, and the first coffee-break cutscene — Blinky chases Pac across the screen, then a big Pac turns and chases a ripped Blinky back. Consumes pm3 baked sprites (CONSUMED, no new bake). RED-anchor the actor paths/timing against the quarry (Decision C). Runs during the pm6-1 intermission phase; gentle animation, NO strobe (Decision B)."
     description: 'The cutscene framework + the iconic act-1 scene. A pure, seeded, clock-free scripted-actor player drives sprite positions/frames over the intermission; act 1 is Blinky chasing Pac left-to-right, then big-Pac chasing Blinky right-to-left. The animation timing/paths are RED-anchored to the vendored source + dossier before the reducer is named (Decision C). Reuses pm3 sprites. Gentle motion, no strobe.'
     points: 5
@@ -105,7 +104,7 @@ stories:
       - 'AC2: act 1 (Blinky-chase then big-Pac-chase) plays with the actor paths/timing RED-anchored to the vendored source (plugins/pac-man/reference/source/pacman.asm) + the dossier and cited (Decision C — not fabricated); the sprites are pm3 baked graphics (CONSUMED, no new bake).'
       - 'AC3: every cutscene constant (durations, positions, frame cadence) carries a citations.test.ts claim; no un-cited src/core value; a mutation to a path/timing constant reddens an animation assertion (not a coverage check).'
       - 'AC4: the cutscene is a gentle animation with NO >3 Hz large-area luminance strobe (Decision B, the standing Pac-Man accessibility ruling); it renders via pm3 palette/tiles.'
-    review_findings: "Round-1 HIGH blockers (H1 uncited constants, H2 dead/untested cadence) both RESOLVED (re-verified by direct mutation). One same-class citation defect remains: PAC_MOUTH_CYCLE_PX claim cites 168c but comment asserts byte-citation of and #07 at 168f (undetected drift) — HIGH. Plus M3 belt-and-braces docstring contradiction, L5 untested fallback arm, L6 stale epic 'ripped Blinky' desc, L7 step 'cited' without claim. Route to TEA red rework."
+    review_findings: "H1-R2 (168f) resolved and verified by mutation; L5/L7/M3/L6 all resolved. New HIGH H1-R3: BIG_PAC_FIRST_SUBSTATE cites the load 15e6 not the value-bearing 15e9 sub #05 (mutation-proven invisible to the gate) — identical class to round-2's 168c fix; re-point claim + REQUIRED_ADDRS to 15e9. Plus L8: incomplete 05a5->05ae sweep. Last of the class per exhaustive rule-checker sweep."
     review_verdict: rejected
   - id: pm6-3
     title: "ACT 2 (ripped-ghost / 'nail') + ACT 3 (worm / tearing-ghost): the second and third coffee-break cutscenes, layered on the pm6-2 scripted-actor player. Act 2: Blinky snags on a nail and his sheet tears; act 3: the tattered ghost / worm scene. Consumes the pm6-2 player + pm3 sprites. RED-anchor paths/timing (Decision C); gentle animation, NO strobe (Decision B)."

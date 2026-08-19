@@ -39,7 +39,7 @@
     "id": "CUTSCENE-ACT1-S2-BLINKY-THRESHOLD",
     "symbol": "CUTSCENE_ACT1_S2_BLINKY_THRESHOLD",
     "value": 30,
-    "meaning": "Sub-state 2 (Blinky alone) ends when Blinky's tile byte #4d32 == #1e; on that edge the ROM frightens all ghosts (#1a70) and reverses the actors (#05a5). `sub #1e`.",
+    "meaning": "Sub-state 2 (Blinky alone) ends when Blinky's tile byte #4d32 == #1e; on that edge the ROM frightens all ghosts (#1a70) and reverses the actors (#05ae, `4d3c = 4d30 ^ 2`). `sub #1e`.",
     "addr": "214e",
     "source": {
       "file": "pacman.asm",
@@ -111,12 +111,12 @@
     "id": "CUTSCENE-ACT1-BIGPAC-GATE",
     "symbol": "CUTSCENE_ACT1_BIGPAC_GATE",
     "value": 5,
-    "meaning": "big-Pac sprite routine #15e6 reads #4e06 and `sub #05; ret c` (#15e9/#15eb): the big-Pac (four 16x16 sprites, colour #16) is drawn ONLY when the cutscene sub-state >= 5 \u2014 i.e. from the return leg onward.",
-    "addr": "15e6",
+    "meaning": "big-Pac sprite routine #15e6 reads the cutscene sub-state #4e06 (#15e6 `ld a,(#4e06)`) and gates on `sub #05; ret c` (#15e9/#15eb): the value 5 is the #15e9 immediate byte itself, so the big-Pac (four 16x16 sprites, colour #16) is drawn ONLY when the sub-state >= 5 \u2014 i.e. from the return leg onward. Cited to the compare instruction #15e9, not the load #15e6, so a drift in the #05 operand reddens (the H1-R2/168f discipline).",
+    "addr": "15e9",
     "source": {
       "file": "pacman.asm",
-      "line": 3189,
-      "verbatim": "15e6  3a064e    ld      a,(#4e06)"
+      "line": 3190,
+      "verbatim": "15e9  d605      sub     #05"
     }
   },
   {

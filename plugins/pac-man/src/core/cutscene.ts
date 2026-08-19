@@ -27,9 +27,9 @@
 //     Pac start tile 0x1f             pacman.asm:266b  `ld hl,#1f32`
 //     Blinky start tile 0x1e          pacman.asm:261e  `ld hl,#1e32`
 //     2x mover (steps/frame)          pacman.asm:2186  `call #1806` (x2 — a count)
-//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` / reversal 05ae `4d3c = 4d30 ^ 2` (port's ±1 sign — honest-uncited, no byte-claim)
+//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` (a DATA table mis-decoded as `ld bc` — bytes 3301..3308 are the four dir deltas (01,00)(00,01)(ff,00)(00,ff)) / reversal 05ae `4d3c = 4d30 ^ 2` (port's ±1 sign — honest-uncited, no byte-claim)
 //     frighten (return Blinky = blue) pacman.asm:1a70 / :1aa1 `ld (ix+#02),#1c`
-//     big-Pac from sub-state >= 5     pacman.asm:15e6  `ld a,(#4e06)` / `sub #05`
+//     big-Pac gate value 5            pacman.asm:15e9  `sub #05`  (15e6 loads #4e06)
 //     Pac mouth cadence (8px cycle)   pacman.asm:168f  `and #07`  (4-image cycle)
 //     big-Pac mouth cadence (16px)    pacman.asm:15ef  `and #0f`  (same 4 images, ½ rate)
 //     ghost leg wiggle (8-frame flip) pacman.asm:0e27  `ld a,#08` (counter #4dc4 cmp 8)
@@ -90,7 +90,8 @@ export const ACT1_THRESHOLDS = {
  *  per-step DISTANCE is likewise not a ROM constant. */
 export const CUTSCENE_STEPS_PER_FRAME = 2
 
-/** big-Pac is on screen from sub-state 5 onward (`pacman.asm:15e6` gate `4e06 >= 5`). */
+/** big-Pac is on screen from sub-state 5 onward — the `sub #05` gate at
+ *  `pacman.asm:15e9` (`15e6` loads the sub-state byte `4e06`). */
 export const BIG_PAC_FIRST_SUBSTATE = 5
 
 /** Pac's normal mouth cadence: 4 images across an 8-value pixel cycle — the mask
@@ -186,8 +187,8 @@ export function createAct1Cutscene(_seed: number): CutsceneState {
 }
 
 /** Advance out of the current sub-state's gate. Fires the sub-state-2 boundary
- *  effects (frighten Blinky, reverse both actors — `pacman.asm:1a70` + `05a5`),
- *  arms big-Pac from sub-state 5 (`pacman.asm:15e6`), and ends the scene when the
+ *  effects (frighten Blinky, reverse both actors — `pacman.asm:1a70` + `05ae`),
+ *  arms big-Pac from sub-state 5 (the `sub #05` gate, `pacman.asm:15e9`), and ends the scene when the
  *  final sub-state 6 gate is reached (Pac at 0x3d, `pacman.asm:218f`). */
 function advance(s: CutsceneState): void {
   if (s.substate >= ACT1_SUBSTATE_COUNT - 1) {

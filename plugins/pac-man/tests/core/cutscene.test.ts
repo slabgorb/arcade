@@ -26,7 +26,7 @@
 //     Pac start col 0x1f            pacman.asm:266b  `266b  21321f  ld hl,#1f32`
 //     Blinky start col 0x1e         pacman.asm:261e  `261e  21321e  ld hl,#1e32`
 //     2x mover (steps/frame)        pacman.asm:2186  `2186  cd0618  call #1806` (x2, a count)
-//     big-Pac from sub-state >= 5   pacman.asm:15e6  `15e6  3a064e  ld a,(#4e06)` / `sub #05`
+//     big-Pac gate value 5         pacman.asm:15e9  `15e9  d605    sub #05` (15e6 loads #4e06)
 //     Pac mouth cadence (8-cycle)   pacman.asm:168f  `168f  e607    and #07`  (4 images)
 //     big-Pac mouth cadence (16)    pacman.asm:15ef  `15ef  e60f    and #0f`  (same 4, ½ rate)
 //     ghost leg wiggle (8 frames)   pacman.asm:0e27  `0e27  3e08    ld a,#08` (counter #4dc4 cmp 8)
@@ -220,7 +220,7 @@ describe('pm6-2 AC2: act 1 plays the ROM sub-state arc', () => {
     }
   })
 
-  it('big-Pac activates exactly at sub-state 5 and never before (pacman.asm:15e6 gate 4e06>=5)', () => {
+  it('big-Pac activates exactly at sub-state 5 and never before (pacman.asm:15e9 sub #05 gate)', () => {
     const trace = runToDone(1)
     for (const f of trace) {
       if (f.substate < BIG_PAC_FIRST_SUBSTATE) {
@@ -272,7 +272,7 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
 
   it('the animation-cadence and speed constants are the exact cited ROM values', () => {
     expect(CUTSCENE_STEPS_PER_FRAME).toBe(2) // double call #1806, pacman.asm:2186 (structural count)
-    expect(BIG_PAC_FIRST_SUBSTATE).toBe(5) // sub #05 gate, pacman.asm:15e6
+    expect(BIG_PAC_FIRST_SUBSTATE).toBe(5) // sub #05 gate, pacman.asm:15e9 (value byte; 15e6 is the load)
     expect(PAC_MOUTH_CYCLE_PX).toBe(8) // (4d09)&#07, pacman.asm:168f
     expect(BIG_PAC_MOUTH_CYCLE_PX).toBe(16) // (4d09)&#0f, pacman.asm:15ef
     expect(BIG_PAC_MOUTH_CYCLE_PX).toBe(2 * PAC_MOUTH_CYCLE_PX) // big-Pac chews at half Pac's rate
@@ -295,7 +295,7 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
       '218f', // sub-state 6 threshold 0x3d
       '266b', // Pac start col 0x1f
       '261e', // Blinky start col 0x1e
-      '15e6', // big-Pac gate (4e06 >= 5)
+      '15e9', // big-Pac gate value 5 (sub #05; the compare, not the 15e6 load)
       '168f', // Pac mouth cadence (8-cycle, and #07)
       '15ef', // big-Pac mouth cadence (16-cycle, and #0f)
       '0e27', // ghost leg wiggle period (cmp 8)
