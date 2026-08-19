@@ -12,6 +12,10 @@
 // game (the self-playing attract demo is df7-3). SHELL only: it owns the canvas, the
 // keyboard, the entropy closure and the setup cadence, and hands the pure core nothing but
 // signals + an Input snapshot; the purity boundary lives in src/core/.
+//
+// Story df6-1 (GREEN) — the audio seam. The core emits gameplay cues as DATA on the
+// stepped sim (`sim.cues`); this shell drains them into the shared WebAudio engine each
+// PLAY tick (shell/audio-dispatch.ts). Ships SILENT — no samples in the bucket yet.
 
 import { mountCanvas } from '@shared/host-helpers'
 import { createLoop } from '@shared/loop'
@@ -22,6 +26,8 @@ import { composeFrame } from './core/scene.js'
 import { mapInput, startPressed } from './shell/input.js'
 import { bootSession, advanceStart } from './core/start.js'
 import type { PhaseSignals } from './core/phase.js'
+import { createAudioEngine } from './shell/audio.js'
+import { playEventSounds } from './shell/audio-dispatch.js'
 
 const { canvas, ctx } = mountCanvas(document)
 
@@ -29,6 +35,16 @@ const { canvas, ctx } = mountCanvas(document)
 const held = installHeldKeys(window, {
   preventDefaultFor: new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']),
 })
+
+// df6-1 — the audio seam. The engine is inert until a user gesture unlocks the context
+// (browsers refuse an AudioContext before one) and inert forever where WebAudio is absent,
+// so `resume()` on the first keydown/pointerdown is the cheap, correct hook: only the first
+// call does work. The `.wav` files it would fetch are NOT in this repo and nothing has put
+// them in the bucket yet — df6-1 ships the seam and Defender stays quiet, because a failed
+// fetch degrades silently by design.
+const audio = createAudioEngine()
+window.addEventListener('keydown', () => audio.resume())
+canvas.addEventListener('pointerdown', () => audio.resume())
 
 // Entropy is the shell's to own (STINIT's RAND is injected into the pure core). One
 // closure feeds the attract boot and every start-of-game reseed.
@@ -53,6 +69,10 @@ const loop = createLoop(
     // advance a sim (df7-3 gives attract its self-playing driver).
     if (session.phase === 'play') {
       session = { ...session, sim: stepSim(session.sim, mapInput(held)) }
+      // df6-1 — the core emitted this tick's moments as DATA on `sim.cues`; the shell
+      // turns them into sound. Inside the fixed-timestep update (createLoop owns the pump)
+      // and gated to play, so a catch-up tick's cues are not dropped and attract is silent.
+      playEventSounds(audio, session.sim.cues)
     }
   },
   () => {
