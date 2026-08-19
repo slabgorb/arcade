@@ -611,8 +611,9 @@ export function stepGame(state: GameState, input: GameInput): void {
     // `state.level` is still the cleared level here (advanceLevel is deferred),
     // so it must be sampled BEFORE the advance below (else a round-2 clear would
     // check round 3). On the divert we advance the board now (the next round
-    // loads behind the break) and request the pm2 looping intermission music
-    // (#02, CONSUMED — the shell audio plays it off the event).
+    // loads behind the break) and REQUEST the pm2 looping intermission music on
+    // the audio seam (#02, CONSUMED — pm6-1 emits the request; a shell consumer
+    // plays it off the event with the pm6-2/pm6-3 presentation).
     state.freezeFrames += 1
     const clearExpired = state.freezeFrames >= LEVEL_CLEAR_HOLD_FRAMES
     const intermissionDue = isIntermissionLevel(state.level)

@@ -79,10 +79,13 @@ export interface LevelClearedEvent {
   readonly level: number
 }
 
-/** pm6-1 — a between-rounds coffee-break intermission just started; the shell
- *  audio plays the requested looping music. `music` is the pm2 sound number
- *  (`INTERMISSION_MUSIC` = #02, the looping intermission music the ROM requests
- *  at `pacman.asm:1613` `ld a,#02`). CONSUMED, not re-implemented. */
+/** pm6-1 — a between-rounds coffee-break intermission just started; it REQUESTS
+ *  the looping intermission music on the audio seam. `music` is the pm2 sound
+ *  number (`INTERMISSION_MUSIC` = #02, the looping intermission music the ROM
+ *  requests at `pacman.asm:1613` `ld a,#02`). pm6-1 is pure-first — it emits the
+ *  request; a shell consumer plays #02 with the pm6-2/pm6-3 presentation (no
+ *  `audio.ts` case reads this event yet). CONSUMED (pm2's voice), not
+ *  re-implemented. */
 export interface IntermissionStartedEvent {
   readonly type: 'intermission-started'
   readonly music: number
