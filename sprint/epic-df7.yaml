@@ -143,7 +143,7 @@ stories:
     description: 'df5-1 built the scanner as a pure projection (blip list + palette index) and explicitly left the DRAW to df7''s HUD; today nothing paints it. df7-5 draws the scanner strip (bezel per AMODE1.SRC:1225) plus the score/men/wave HUD figures, reading df5-1 (scanner blips) and df5-3 (score/men) — the shell paints, the core still owns no shell state. This is the df5-1 consumer the projection was built for.'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
@@ -152,6 +152,7 @@ stories:
       - 'AC2: the HUD renders the score, the men (lives) indicator and the current wave number, reading df5-3 score.ts (score/men) — the shell paints figures via df2 charset/palette; the core owns no HUD state.'
       - 'AC3: every HUD/scanner-bezel constant is cited under the df1-1 gate; no un-cited value; purity.test.ts stays green (the render is shell, the projection stays pure df5-1).'
       - 'AC4: no full-frame strobe (Decision B); the HUD/scanner draw is stable across frames (no per-frame flicker) and reads correctly against a synthetic populated scanner (an off-camera blip is visible at the right position).'
+    completed: '2026-08-19'
   - id: df7-6
     title: "2P alternating handoff (df5 Decision D lands here): the death->next-player transition for a two-player game (ST2 *TWO PLAYER START defender/DEFA7.SRC:1112; PLAYER START PROCESS :1206; player-switch P1SW/P2SW :1179). Each player keeps their own men/score/world; on death the phase machine hands off to the other player until both are out. The COCKTAIL screen-flip is DOCUMENTED-NOT-PORTED (desktop-only, upright — Decision D). Consumes df7-1 phase machine + df5-3 score/men."
     description: 'df5 Decision D deferred 2P alternating handoff to df7 as phase-machine territory. Two players alternate on death, each with their own men/score/world snapshot; the machine cycles P1->P2->P1 until both reach game-over. The ROM cocktail screen-flip (P1SW/P2SW drive it) is documented in the design spec but NOT ported — the arcade is desktop-only/upright. Single-player (df7-1..df7-5) is unaffected; 2P is an additive path.'
