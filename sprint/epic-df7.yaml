@@ -190,3 +190,5 @@ stories:
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
+    review_findings: "2 documentation findings (both non-blocking severity, but rejected to correct a false claim I introduced): F1 [MED] scanner.ts:27 — edited comment falsely says MTERR is 're-derived to our centred strip elsewhere'; MTERR is data-only (terrain-data.ts), drawn nowhere. F2 [LOW] df7-5-hud-scanner.test.ts:13,22 — stale 'scene.ts header records player-blip as still df7's' after this diff changed that header. Implementation/tests/citations/purity/safety all verified correct."
+    review_verdict: rejected
