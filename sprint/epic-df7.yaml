@@ -81,7 +81,8 @@ stories:
     description: 'Decision A: pure-first. The phase machine is a pure transition function in core — no clock, no rAF, seeded — mirroring mc6-1 (state.ts) and pm4''s GamePhase. It consumes df5-6''s men<0 game-over reducer as the play->death edge; game-over is not re-decided here. Wave/attract/setup are gated by the phase, driven by the shell. Every phase constant (timeouts, the mainline order) gated by a claims/*.json entry.'
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
