@@ -1,0 +1,22 @@
+[
+  {
+    "id": "HOF-HOFIN",
+    "claim": "HOFIN is the HALL OF FAME INITIALS DISPLAY routine (*HALL OF FAME INITIALS DISPLAY :242) — the df7-4 hall-of-fame screen renders the board's initials, consuming @shared/highscore for the table.",
+    "source": { "file": "AMODE1.SRC", "line": 244, "verbatim": "HOFIN\tLDX\t#$46AC\tTOP LEFT OF INITIALS" }
+  },
+  {
+    "id": "HOF-HOFUL",
+    "claim": "HOFUL underlines the initials being entered (JSR HOFUL 'UNDERLINE INITIALS') — the df7-4 name-entry render draws the underline beneath the in-progress buffer.",
+    "source": { "file": "AMODE1.SRC", "line": 185, "verbatim": "\tJSR\tHOFUL\tUNDERLINE INITIALS" }
+  },
+  {
+    "id": "HOF-HOFUD",
+    "claim": "HOFUD is the HALL OF FAME UP DOWN STICK HANDLER (*HALL OF FAME UP DOWN STICK HANDLER :323) advancing the initials cursor — mapped in df7-4 onto the @shared/name-entry keyboard input (the fleet keyboard ruling, not the trackball stick).",
+    "source": { "file": "AMODE1.SRC", "line": 325, "verbatim": "HOFUD\tCLR\tINIDIR\tZERO INITIALS DIRECTION" }
+  },
+  {
+    "id": "HOF-HOFAS",
+    "claim": "HOFAS adds the score and initials to the list (*HALL OF FAME - ADD SCORE AND INITIALS :270) — the df7-4 commit maps onto @shared insertHighScore (CONSUMED, not re-implemented).",
+    "source": { "file": "AMODE1.SRC", "line": 273, "verbatim": "HOFAS\tSTU\tXTEMP$\tSAVE TOP OF LIST ADDRESS" }
+  }
+]

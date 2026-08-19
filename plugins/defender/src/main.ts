@@ -30,11 +30,12 @@ import { LOGICAL_WIDTH, LOGICAL_HEIGHT, render } from './shell/render.js'
 import { stepSim } from './core/sim.js'
 import { composeFrame } from './core/scene.js'
 import { mapInput, startPressed } from './shell/input.js'
-import { bootSession, advanceStart } from './core/start.js'
+import { bootSession, advanceStart, stepSessionInitials, confirmSessionInitials } from './core/start.js'
 import { attractInput, hasPlayerInput } from './core/attract.js'
 import type { PhaseSignals } from './core/phase.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds } from './shell/audio-dispatch.js'
+import { makeDefenderHighScoreStorage } from './shell/highscore.js'
 
 const { canvas, ctx } = mountCanvas(document)
 
@@ -57,9 +58,34 @@ canvas.addEventListener('pointerdown', () => audio.resume())
 // closure feeds the attract boot and every start-of-game reseed.
 const rand = (): number => (Math.random() * 256) | 0
 
+// df7-4: the one-origin hall-of-fame persistence (df5-6 shell seam, @shared makeHighScoreStorage —
+// the ONLY localStorage toucher; no bespoke board). Load the saved board at boot and carry it onto
+// the Session so a qualifying game-over can commit to it and the HOFIN display can read it.
+const highScoreStorage = makeDefenderHighScoreStorage()
+
 // df7-2: boot into ATTRACT holding a fresh sim — not a bare running game. A start/coin
-// press starts play from here (core/start.ts).
-let session = bootSession(rand)
+// press starts play from here (core/start.ts). df7-4: seeded with the loaded hall-of-fame board.
+let session = bootSession(rand, highScoreStorage.load())
+
+// df7-4: how long the static hall-of-fame screen holds before the mainline loop returns to attract
+// (HALDIS). A SHELL cadence — the shell owns the clock (like df7-2's setupComplete) — counted only
+// while no initials entry is open, so the core entry gate (start.ts) is never raced. ~4s at 60 Hz.
+const GAME_OVER_DWELL_FRAMES = 4 * 60
+let gameOverDwell = 0
+
+// df7-4: the HALL OF FAME initials entry. While an entry is open (a qualifying game-over), route
+// discrete keydowns to the @shared name-entry stepper: Enter commits the initials to the board and
+// PERSISTS it through the shared seam; every letter advances the buffer. Gated on session.nameEntry
+// so play/attract keys are untouched.
+window.addEventListener('keydown', (event) => {
+  if (session.nameEntry === null) return
+  if (event.key === 'Enter') {
+    session = confirmSessionInitials(session)
+    highScoreStorage.save(session.board)
+  } else {
+    session = stepSessionInitials(session, event.key)
+  }
+})
 
 const loop = createLoop(
   () => {
@@ -69,9 +95,16 @@ const loop = createLoop(
     // controls). The exit reads the HUMAN keyboard snapshot — never the demo's own input.
     // `setupComplete` is df7-2's cadence — setup is a single-frame get-ready that
     // auto-advances to play, reseeding the fresh game at that edge.
+    // df7-4: the game-over dwell. Count frames only once any initials entry has CLOSED (a
+    // non-qualifying game-over, or the moment the player confirms) so the hall-of-fame shows
+    // before the loop returns to attract, and the core entry gate is never raced. `overTimeout`
+    // fires the game-over -> attract edge (HALDIS); the core blocks it while an entry is open.
+    if (session.phase === 'game-over' && session.nameEntry === null) gameOverDwell += 1
+    else gameOverDwell = 0
     const signals: PhaseSignals = {
       startRequested: startPressed(held) || hasPlayerInput(mapInput(held)),
       setupComplete: true,
+      overTimeout: gameOverDwell >= GAME_OVER_DWELL_FRAMES,
     }
     session = advanceStart(session, signals, rand)
     // Step the real sim per phase: play is driven by the human keyboard; attract is driven
@@ -93,7 +126,16 @@ const loop = createLoop(
   () => {
     canvas.width = canvas.clientWidth
     canvas.height = canvas.clientHeight
-    render(ctx, composeFrame(session.sim, LOGICAL_WIDTH, LOGICAL_HEIGHT))
+    // df7-4: feed the hall-of-fame payload (the loaded/committed board + the in-progress
+    // initials) so composeFrame's game-over branch draws the HOFIN display, not the bare
+    // GAME OVER screen. In play/attract the game-over branch is not taken, so it is inert.
+    render(
+      ctx,
+      composeFrame(session.sim, LOGICAL_WIDTH, LOGICAL_HEIGHT, {
+        board: session.board,
+        nameEntry: session.nameEntry,
+      }),
+    )
   },
 )
 loop.start()

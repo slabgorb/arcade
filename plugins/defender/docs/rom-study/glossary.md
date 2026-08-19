@@ -89,6 +89,10 @@ one-origin `localStorage` (the ADR-0004 cross-origin-cookie retirement).
 |---|---|---|
 | `PLE2` — out-of-ships → GAME OVER: a 1-player game with no ships left (`BNE PLE02` fails) reaches `PLE2`; the port models it as the men counter falling below zero (`men < 0`) | the end-of-game condition | `defender/DEFA7.SRC:1423` |
 | `HALLOF` — HALL OF FAME ENTRY: the final score → the `@shared` hall of fame (initials + score, consumed not re-implemented) | hall-of-fame entry vector | `defender/AMODE1.SRC:119` |
+| `HOFIN` — HALL OF FAME INITIALS DISPLAY (`*HALL OF FAME INITIALS DISPLAY`): the df7-4 hall-of-fame screen renders the board's initials from here | hall-of-fame initials display | `defender/AMODE1.SRC:244` |
+| `HOFUL` — UNDERLINE INITIALS: the df7-4 name-entry render underlines the in-progress buffer | initials underline | `defender/AMODE1.SRC:185` |
+| `HOFUD` — HALL OF FAME UP DOWN STICK HANDLER (`*HALL OF FAME UP DOWN STICK HANDLER`): the initials cursor stick, mapped in df7-4 onto the `@shared` name-entry keyboard input (the fleet keyboard ruling) | initials up/down stick handler | `defender/AMODE1.SRC:325` |
+| `HOFAS` — ADD SCORE AND INITIALS (`*HALL OF FAME - ADD SCORE AND INITIALS`): the commit maps onto `@shared` `insertHighScore` (consumed, not re-implemented) | add score+initials to list | `defender/AMODE1.SRC:273` |
 | `ST1` — one-player start: a STATUS-word mainline state (`*ONE PLAYER START`) — the df7 phase machine's attract→setup start edge | mainline start state | `defender/DEFA7.SRC:1100` |
 | `ST2` — two-player start: a STATUS-word mainline state (`*TWO PLAYER START`) — the 2P alternating start (df7 Decision D) | mainline start state | `defender/DEFA7.SRC:1112` |
 | `HALDIS` — attract / hall-of-fame display: the attract-mode screen the cabinet returns to (reached by `HALL13 JMP HALDIS` "ATTRACT MODE NOW", `defender/AMODE1.SRC:230`) — the df7 game-over→attract loop close | attract-mode display | `defender/AMODE1.SRC:377` |
