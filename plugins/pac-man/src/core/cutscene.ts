@@ -9,10 +9,15 @@
 //   Act 1 is NOT a frame-counted animation. In the ROM it is a 7-sub-state
 //   machine (state byte `4e06`) dispatched at `pacman.asm:2108` that reuses the
 //   gameplay actor mover (called TWICE per frame = 2x speed) and advances on
-//   TILE-POSITION THRESHOLDS, never on a frame clock. Every constant below was
-//   decoded from the vendored `pacman.asm` and re-verified against the raw bytes:
+//   TILE-POSITION THRESHOLDS, never on a frame clock. Every POSITION / THRESHOLD /
+//   MASK constant below is byte-cited to the vendored `pacman.asm` and re-verified
+//   against the raw bytes — a `claims/cutscene.json` entry re-opens each verbatim,
+//   and citations.test.ts fails on drift. The two STRUCTURAL counts (steps-per-
+//   frame is a call-count, the sub-state count is a table length) are NOT byte
+//   literals, so they are honest-uncited, gated on the cited structure — see the
+//   HONEST-UNCITED note below. Which is which:
 //
-//     driver entry / 7-word dispatch  pacman.asm:2108 / :210c
+//     driver entry / 7-word dispatch  pacman.asm:2108 / :210c  (count = table len)
 //     sub 0 → Pac tile == 0x21        pacman.asm:211d  `sub #21`
 //     sub 1 → Pac tile == 0x1e        pacman.asm:2143  `sub #1e`
 //     sub 2 → Blinky tile == 0x1e     pacman.asm:214e  `sub #1e`
@@ -21,14 +26,13 @@
 //     sub 6 → Pac tile == 0x3d        pacman.asm:218f  `sub #3d`
 //     Pac start tile 0x1f             pacman.asm:266b  `ld hl,#1f32`
 //     Blinky start tile 0x1e          pacman.asm:261e  `ld hl,#1e32`
-//     2x mover (steps/frame)          pacman.asm:2186  `call #1806` (x2)
-//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` / reversal 05a5 `4d30 ^= 2`
+//     2x mover (steps/frame)          pacman.asm:2186  `call #1806` (x2 — a count)
+//     dir vector +1 (fwd) / -1 (rev)  pacman.asm:3303 `00 01` / reversal 05a5 `4d3c = 4d30 ^ 2`
 //     frighten (return Blinky = blue) pacman.asm:1a70 / :1aa1 `ld (ix+#02),#1c`
 //     big-Pac from sub-state >= 5     pacman.asm:15e6  `ld a,(#4e06)` / `sub #05`
-//     big-Pac = four 16x16 sprites    pacman.asm:15e6..162c  (ix+04/06/08/0c, colour #16)
-//     Pac mouth cadence (8px cycle)   pacman.asm:168c  `(4d09)&#07`
-//     big-Pac mouth cadence (16px)    pacman.asm:15ec  `(4d09)&#0f`
-//     ghost leg wiggle (8-frame flip) pacman.asm:0e23  (counter #4dc4 wraps at 8)
+//     Pac mouth cadence (8px cycle)   pacman.asm:168f  `and #07`  (4-image cycle)
+//     big-Pac mouth cadence (16px)    pacman.asm:15ef  `and #0f`  (same 4 images, ½ rate)
+//     ghost leg wiggle (8-frame flip) pacman.asm:0e27  `ld a,#08` (counter #4dc4 cmp 8)
 //
 // ─── STORY-TITLE CORRECTION (ROM refutes it — see the session Design Deviations)
 //   The story TITLE says the return leg chases a "ripped Blinky." The ROM refutes
@@ -48,9 +52,17 @@
 //     movement-vector SIGN `step` (+1 fwd / -1 reversed — cited), never an
 //     invented screen 'left'/'right'. The "across then back" arc IS the +1 -> -1
 //     reversal the ROM performs at the sub-state-2 boundary.
-//   • The tile counter is the ROM's 8-bit byte `4d3a`/`4d32` and WRAPS mod 256 —
-//     the threshold sequence (0x21 then 0x1e, etc.) only closes via that wrap,
-//     exactly as the ROM does it. Motion is one tile-unit per step: never a jump.
+//   • STRUCTURAL COUNTS. CUTSCENE_STEPS_PER_FRAME (2) is the NUMBER of `call #1806`
+//     the driver makes per frame, and ACT1_SUBSTATE_COUNT (7) is the LENGTH of the
+//     dispatch table at `210c` — both are structure, not byte literals, so neither
+//     carries a byte-claim; they are gated on the cited driver/table addresses.
+//   • The tile counter is the ROM's 8-bit byte `4d3a`/`4d32` and WRAPS mod 256.
+//     This port keeps a single forward step-sign across sub-states 0→1, so the
+//     0x21→0x1e gap closes by that wrap. No cited `sub #NN` address SHOWS a wrap or
+//     reset (contrast the leg-wiggle counter at `0e27`, which has an explicit
+//     `cp #08` / `ld (hl),#00`) — the wrap is THIS PORT's step-sign realisation,
+//     inferred, not a directly-cited ROM mechanism. Motion is one tile-unit per
+//     step: never a jump.
 
 /** Pac's cutscene start tile (the high byte of `#1f32`, `pacman.asm:266b`). */
 export const ACT1_PAC_START_COL = 0x1f
@@ -70,32 +82,33 @@ export const ACT1_THRESHOLDS = {
 } as const
 
 /** The ROM ticks the actor mover TWICE per cutscene frame (the double `call
- *  #1806`, `pacman.asm:2186`) — a 2x speed. This is the one citable speed fact;
- *  the per-step DISTANCE is honest-uncited (see the header). */
+ *  #1806`, `pacman.asm:2186`) — a 2x speed. STRUCTURAL: this is the COUNT of mover
+ *  calls, not a byte literal, so it is honest-uncited (see the header); the
+ *  per-step DISTANCE is likewise not a ROM constant. */
 export const CUTSCENE_STEPS_PER_FRAME = 2
 
 /** big-Pac is on screen from sub-state 5 onward (`pacman.asm:15e6` gate `4e06 >= 5`). */
 export const BIG_PAC_FIRST_SUBSTATE = 5
-/** big-Pac is composed of FOUR 16x16 hardware sprites (`pacman.asm:15e6..162c`). */
-export const BIG_PAC_SPRITE_COUNT = 4
 
-/** Pac's normal mouth cadence: 4 images across an 8-pixel cycle — a new mouth
- *  image every 2px (`pacman.asm:168c`, `(4d09)&#07`, thresholds 2/4/6). */
+/** Pac's normal mouth cadence: 4 images across an 8-value pixel cycle — the mask
+ *  `and #07` gives an 8-long cycle, split into 4 images by the thresholds 2/4/6
+ *  (`pacman.asm:168f`/`:1691`..`:16a7`). Byte-cited to the `and #07` mask. */
 export const PAC_MOUTH_CYCLE_PX = 8
-/** big-Pac's mouth cadence: 4 frames across a 16-pixel cycle — a new frame every
- *  4px (`pacman.asm:15ec`, `(4d09)&#0f`, thresholds 4/8/c). */
+/** big-Pac's mouth cadence: the SAME 4 images across a 16-value cycle — the mask
+ *  `and #0f` (`pacman.asm:15ef`), split by thresholds 4/8/c (`:15f1`..`:1601`).
+ *  Half the rate of Pac's 8-cycle; drives the `bigPacActive` branch in updateFrames. */
 export const BIG_PAC_MOUTH_CYCLE_PX = 16
-/** The ghost leg wiggle toggles every 8 frames (`pacman.asm:0e23`, counter
- *  `#4dc4` wraps at 8). */
+/** The ghost leg wiggle toggles every 8 frames — the counter `#4dc4` is compared
+ *  to 8 and reset (`pacman.asm:0e27` `ld a,#08`, `:0e29` `cp (hl)`, `:0e2b` reset). */
 export const GHOST_WIGGLE_PERIOD_FRAMES = 8
 
-/** The act-1 driver dispatches on a 7-word sub-state table (`pacman.asm:210c`). */
+/** The act-1 driver dispatches on a 7-word sub-state table (`pacman.asm:210c`).
+ *  STRUCTURAL: 7 is the table LENGTH, not a byte literal — honest-uncited. */
 export const ACT1_SUBSTATE_COUNT = 7
 
-/** Number of distinct mouth images in each cadence (a phase every 2px of the 8px
- *  cycle; every 4px of the 16px big-Pac cycle) — both are 4-image cycles. */
-const PAC_MOUTH_PHASES = PAC_MOUTH_CYCLE_PX / 2
-const BIG_PAC_MOUTH_PHASES = BIG_PAC_MOUTH_CYCLE_PX / 4
+/** Both mouth cadences draw 4 images per cycle (Pac's #2a/#2c/#2e/#30 at the 2/4/6
+ *  thresholds; big-Pac's 4 `d`-bands at 4/8/c). Only the cycle LENGTH differs. */
+const MOUTH_IMAGE_COUNT = 4
 
 /** How long the sub-state-3 freeze beat holds, in frames. The ROM waits 5 class-1
  *  timer ticks (`rst #30 45 07 00` at `pacman.asm:2169`); as a wall-clock time
@@ -188,14 +201,21 @@ function advance(s: CutsceneState): void {
   s.bigPacActive = s.substate >= BIG_PAC_FIRST_SUBSTATE
 }
 
+/** Which mouth image (0..MOUTH_IMAGE_COUNT-1) an actor shows after `moved` units
+ *  of travel, for a cadence whose cycle is `cyclePx` long. `floor((moved mod
+ *  cyclePx) / (cyclePx / 4))` reproduces the ROM's threshold bands — 2/4/6 for the
+ *  8-cycle (`pacman.asm:1691`..`:16a7`), 4/8/c for the 16-cycle (`:15f1`..`:1601`). */
+function mouthImage(moved: number, cyclePx: number): number {
+  return Math.floor((moved % cyclePx) / (cyclePx / MOUTH_IMAGE_COUNT))
+}
+
 function updateFrames(s: CutsceneState): void {
-  // mouth: one image per mover-step of travel, cycling through the cadence's
-  // image count (a phase every 2px / 4px — the cited cycle sizes). big-Pac uses
-  // its own 16px cadence once active.
-  const phases = s.bigPacActive ? BIG_PAC_MOUTH_PHASES : PAC_MOUTH_PHASES
-  s.pac.frame = s.pac.moved % phases
-  // ghost leg wiggle: a small-area 2-frame toggle every 8 frames (Decision B —
-  // small-area, not a large luminance strobe).
+  // mouth: big-Pac chews over its cited 16-cycle — HALF the rate of small Pac's
+  // 8-cycle — so the `bigPacActive` branch genuinely changes the cadence.
+  const cyclePx = s.bigPacActive ? BIG_PAC_MOUTH_CYCLE_PX : PAC_MOUTH_CYCLE_PX
+  s.pac.frame = mouthImage(s.pac.moved, cyclePx)
+  // ghost leg wiggle: a small-area 2-frame toggle every GHOST_WIGGLE_PERIOD_FRAMES
+  // frames (Decision B — small-area, not a large luminance strobe).
   s.blinky.frame = Math.floor(s.frame / GHOST_WIGGLE_PERIOD_FRAMES) % 2
 }
 

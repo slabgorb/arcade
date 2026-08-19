@@ -88,7 +88,7 @@ stories:
     description: 'The cutscene framework + the iconic act-1 scene. A pure, seeded, clock-free scripted-actor player drives sprite positions/frames over the intermission; act 1 is Blinky chasing Pac left-to-right, then big-Pac chasing Blinky right-to-left. The animation timing/paths are RED-anchored to the vendored source + dossier before the reducer is named (Decision C). Reuses pm3 sprites. Gentle motion, no strobe.'
     points: 5
     priority: p3
-    status: in_progress
+    status: in_review
     started: '2026-08-19'
     repos: arcade
     workflow: tdd

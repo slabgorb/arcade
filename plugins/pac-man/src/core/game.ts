@@ -123,12 +123,12 @@ export const DYING_HOLD_FRAMES = 120
 export const LEVEL_CLEAR_HOLD_FRAMES = 120
 
 /** pm6-1: how long the between-rounds coffee-break INTERMISSION holds before the
- *  next round's READY, in frames. A placeholder window here — pm6-1 is the PHASE +
- *  trigger only, so the break is a static hold (accessibility: NO flash — Decision
- *  B, the same freeze-not-strobe rule as LEVEL_CLEAR_HOLD_FRAMES); pm6-2/pm6-3 lay
- *  the scripted actor animations over this window and pin the real, RED-anchored
- *  duration. Honest-uncited cadence, same policy as LEVEL_CLEAR_HOLD_FRAMES. ~5s @
- *  60Hz. */
+ *  next round's READY, in frames. Since pm6-2, act-1 coffee breaks end on the
+ *  cutscene's COMPLETION (a position, pacman.asm:218f) and BYPASS this constant;
+ *  it survives as the FALLBACK for coffee-break rounds with no scripted cutscene
+ *  yet (act 2/3, pm6-3) and as the belt-and-braces timeout floor. Static hold, NO
+ *  flash — Decision B, the same freeze-not-strobe rule as LEVEL_CLEAR_HOLD_FRAMES.
+ *  Honest-uncited cadence, same policy as LEVEL_CLEAR_HOLD_FRAMES. ~5s @ 60Hz. */
 export const INTERMISSION_HOLD_FRAMES = 300
 
 /** pm4-10: how long GAME OVER holds on screen before the cabinet times out back
@@ -647,9 +647,14 @@ export function stepGame(state: GameState, input: GameInput): void {
     // freeze, NO flash, exactly like level-clear). When a scripted cutscene is
     // playing (pm6-2, act 1) the break ends on the cutscene's COMPLETION (a
     // position, pacman.asm:218f), not a frame count; with no cutscene (act 2/3,
-    // pm6-3) it falls back to the pm6-1 INTERMISSION_HOLD_FRAMES hold. The next
-    // round's board is already loaded (advanceLevel ran on entry), so on expiry
-    // the machine hands off to that round's READY.
+    // pm6-3) it falls back to the pm6-1 INTERMISSION_HOLD_FRAMES hold. This is an
+    // either/or on purpose, NOT a disjunction: the act-1 cutscene runs longer
+    // (~521 frames) than INTERMISSION_HOLD_FRAMES (300), so `|| freezeFrames >= 300`
+    // would truncate it. A cutscene owns its own termination and is guarded by its
+    // own termination test (cutscene.test.ts) — pm6-3 must keep that invariant (a
+    // generous safety cap belongs there, sized above the longest act, if wanted).
+    // The next round's board is already loaded (advanceLevel ran on entry), so on
+    // expiry the machine hands off to that round's READY.
     state.freezeFrames += 1
     if (state.cutscene && !state.cutscene.done) stepCutscene(state.cutscene)
     const intermissionExpired = state.cutscene

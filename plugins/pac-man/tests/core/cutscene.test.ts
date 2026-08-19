@@ -25,10 +25,11 @@
 //     sub-state 6 → Pac col 0x3d    pacman.asm:218f  `218f  d63d    sub #3d`
 //     Pac start col 0x1f            pacman.asm:266b  `266b  21321f  ld hl,#1f32`
 //     Blinky start col 0x1e         pacman.asm:261e  `261e  21321e  ld hl,#1e32`
-//     2x mover (steps/frame)        pacman.asm:2186  `2186  cd0618  call #1806` (x2)
+//     2x mover (steps/frame)        pacman.asm:2186  `2186  cd0618  call #1806` (x2, a count)
 //     big-Pac from sub-state >= 5   pacman.asm:15e6  `15e6  3a064e  ld a,(#4e06)` / `sub #05`
-//     Pac mouth cadence (8px)       pacman.asm:168c  `168c  3a094d  ld a,(#4d09)` / `and #07`
-//     ghost leg wiggle (8 frames)   pacman.asm:0e23  (counter #4dc4 wraps at 8)
+//     Pac mouth cadence (8-cycle)   pacman.asm:168f  `168f  e607    and #07`  (4 images)
+//     big-Pac mouth cadence (16)    pacman.asm:15ef  `15ef  e60f    and #0f`  (same 4, ½ rate)
+//     ghost leg wiggle (8 frames)   pacman.asm:0e27  `0e27  3e08    ld a,#08` (counter #4dc4 cmp 8)
 //     return-Blinky = BLUE frighten pacman.asm:1aa1  `1aa1  dd36021c ld (ix+#02),#1c`
 //
 // ─── STORY-TITLE CORRECTION (refuted by the ROM, recorded as a Design Deviation)
@@ -57,7 +58,6 @@ import {
   ACT1_THRESHOLDS,
   CUTSCENE_STEPS_PER_FRAME,
   BIG_PAC_FIRST_SUBSTATE,
-  BIG_PAC_SPRITE_COUNT,
   PAC_MOUTH_CYCLE_PX,
   BIG_PAC_MOUTH_CYCLE_PX,
   GHOST_WIGGLE_PERIOD_FRAMES,
@@ -87,6 +87,7 @@ interface Sample {
   bigPacActive: boolean
   blinkyFrightened: boolean
   pacFrame: number
+  pacMoved: number
   blinkyFrame: number
   done: boolean
 }
@@ -101,6 +102,7 @@ function sample(s: CutsceneState): Sample {
     bigPacActive: s.bigPacActive,
     blinkyFrightened: s.blinky.frightened,
     pacFrame: s.pac.frame,
+    pacMoved: s.pac.moved,
     blinkyFrame: s.blinky.frame,
     done: s.done,
   }
@@ -269,13 +271,13 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
   })
 
   it('the animation-cadence and speed constants are the exact cited ROM values', () => {
-    expect(CUTSCENE_STEPS_PER_FRAME).toBe(2) // double call #1806, pacman.asm:2186
+    expect(CUTSCENE_STEPS_PER_FRAME).toBe(2) // double call #1806, pacman.asm:2186 (structural count)
     expect(BIG_PAC_FIRST_SUBSTATE).toBe(5) // sub #05 gate, pacman.asm:15e6
-    expect(BIG_PAC_SPRITE_COUNT).toBe(4) // four 16x16 hw sprites, pacman.asm:15e6..162c
-    expect(PAC_MOUTH_CYCLE_PX).toBe(8) // (4d09)&#07, pacman.asm:168c
-    expect(BIG_PAC_MOUTH_CYCLE_PX).toBe(16) // (4d09)&#0f, pacman.asm:15ec
-    expect(GHOST_WIGGLE_PERIOD_FRAMES).toBe(8) // #4dc4 wraps at 8, pacman.asm:0e23
-    expect(ACT1_SUBSTATE_COUNT).toBe(7) // 7-word table, pacman.asm:210c
+    expect(PAC_MOUTH_CYCLE_PX).toBe(8) // (4d09)&#07, pacman.asm:168f
+    expect(BIG_PAC_MOUTH_CYCLE_PX).toBe(16) // (4d09)&#0f, pacman.asm:15ef
+    expect(BIG_PAC_MOUTH_CYCLE_PX).toBe(2 * PAC_MOUTH_CYCLE_PX) // big-Pac chews at half Pac's rate
+    expect(GHOST_WIGGLE_PERIOD_FRAMES).toBe(8) // #4dc4 cmp 8, pacman.asm:0e27
+    expect(ACT1_SUBSTATE_COUNT).toBe(7) // 7-word table, pacman.asm:210c (structural length)
   })
 
   it('a citations.test.ts CLAIM anchors every cited cutscene constant to the ROM (Decision C)', () => {
@@ -294,7 +296,9 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
       '266b', // Pac start col 0x1f
       '261e', // Blinky start col 0x1e
       '15e6', // big-Pac gate (4e06 >= 5)
-      '168c', // Pac mouth cadence (8px)
+      '168c', // Pac mouth cadence (8-cycle, and #07)
+      '15ef', // big-Pac mouth cadence (16-cycle, and #0f)
+      '0e27', // ghost leg wiggle period (cmp 8)
       '1aa1', // return-Blinky = blue frightened (#1c)
     ]
     const addrs = new Set(loadClaims().map((c) => String(c.addr).toLowerCase()))
@@ -303,6 +307,42 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
       missing,
       `claims/cutscene.json must cover these cited ROM addresses (Decision C): ${missing.join(', ')}`,
     ).toEqual([])
+  })
+
+  it('the mouth cadence is a LIVE animation: 8-cycle small, 16-cycle big-Pac (a mutation reddens here)', () => {
+    // AC3 "not a coverage check": observe the actual mouth image, not just the
+    // constant. The image is floor((moved mod cycle)/(cycle/4)) with the CITED
+    // cycle — 8 small, 16 (half the rate) once big-Pac is on. LITERAL cycles here
+    // (not the imported constants) so mutating BIG_PAC_MOUTH_CYCLE_PX, or collapsing
+    // the bigPacActive branch to a single cadence, reddens THIS assertion.
+    const trace = runToDone(1)
+    const IMAGES = 4
+    let sawSmall = false
+    let sawBig = false
+    for (const f of trace) {
+      const cycle = f.bigPacActive ? 16 : 8
+      f.bigPacActive ? (sawBig = true) : (sawSmall = true)
+      const expected = Math.floor((f.pacMoved % cycle) / (cycle / IMAGES))
+      expect(f.pacFrame, `mouth image at moved=${f.pacMoved}, cycle ${cycle}`).toBe(expected)
+    }
+    expect(sawSmall && sawBig, 'both the 8-cycle and the 16-cycle big-Pac phase are exercised').toBe(true)
+    expect(new Set(trace.map((f) => f.pacFrame)).size, 'the mouth actually cycles, not a frozen image').toBeGreaterThan(
+      1,
+    )
+  })
+
+  it('the leg wiggle flips on the cited 8-frame period (a mutation of the period reddens here)', () => {
+    // AC3 "not a coverage check": observe the flip SPACING and assert it against the
+    // LITERAL 8, so mutating GHOST_WIGGLE_PERIOD_FRAMES changes the observed spacing
+    // and reddens. Small-area 2-frame toggle (Decision B), never a full-field flash.
+    const frames = runToDone(1).map((f) => f.blinkyFrame)
+    expect(new Set(frames), 'the legs actually wiggle (both toggle states appear)').toEqual(new Set([0, 1]))
+    const flips: number[] = []
+    for (let i = 1; i < frames.length; i++) if (frames[i] !== frames[i - 1]) flips.push(i)
+    expect(flips.length, 'the wiggle flips several times across the scene').toBeGreaterThan(2)
+    for (let j = 1; j < flips.length; j++) {
+      expect(flips[j] - flips[j - 1], 'consecutive leg-flips are the cited 8 frames apart').toBe(8)
+    }
   })
 })
 
@@ -314,7 +354,7 @@ describe('pm6-2 AC3: every constant is value-pinned (a mutation reddens an asser
 // ─────────────────────────────────────────────────────────────────────────────
 describe('pm6-2 AC4: the cutscene is gentle — no large-area luminance strobe', () => {
   it('the player state exposes no full-field flash/invert signal (there is nothing to strobe)', () => {
-    const s = createAct1Cutscene(1) as unknown as Record<string, unknown>
+    const s = createAct1Cutscene(1)
     for (const banned of ['flash', 'invert', 'strobe', 'blank', 'flashOn', 'fullFieldFlash']) {
       expect(banned in s, `a pure cutscene player must not carry a "${banned}" field`).toBe(false)
     }

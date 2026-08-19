@@ -27,7 +27,7 @@
     "id": "CUTSCENE-ACT1-S1-PAC-THRESHOLD",
     "symbol": "CUTSCENE_ACT1_S1_PAC_THRESHOLD",
     "value": 30,
-    "meaning": "Sub-state 1 (the chase, both actors moving) ends when Pac's tile byte #4d3a == #1e (reached via the 8-bit tile-counter wrap). `sub #1e`.",
+    "meaning": "Sub-state 1 (the chase, both actors moving) ends when Pac's tile byte #4d3a == #1e. `sub #1e`. NOTE: this bare comparison shows no wrap/reset; THIS PORT closes the 0x21->0x1e gap via the 8-bit counter wrap (keeping one forward step-sign), an inference of the port's, not a mechanism this cite demonstrates.",
     "addr": "2143",
     "source": {
       "file": "pacman.asm",
@@ -129,6 +129,30 @@
       "file": "pacman.asm",
       "line": 3279,
       "verbatim": "168c  3a094d    ld      a,(#4d09)"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-BIGPAC-MOUTH-CADENCE",
+    "symbol": "CUTSCENE_ACT1_BIGPAC_MOUTH_CADENCE",
+    "value": 16,
+    "meaning": "big-Pac's mouth reads the same sprite pixel low byte #4d09 (#15ec) and masks `and #0f` (#15ef): the SAME 4 images across a 16-value cycle (thresholds 4/8/c at #15f1..#1601) — half the cadence rate of Pac's `and #07` 8-cycle. The 16-length is the mask #0f + 1.",
+    "addr": "15ef",
+    "source": {
+      "file": "pacman.asm",
+      "line": 3194,
+      "verbatim": "15ef  e60f      and     #0f"
+    }
+  },
+  {
+    "id": "CUTSCENE-ACT1-GHOST-WIGGLE-PERIOD",
+    "symbol": "CUTSCENE_ACT1_GHOST_WIGGLE_PERIOD",
+    "value": 8,
+    "meaning": "The ghost leg-wiggle counter #4dc4 is incremented each frame (#0e26), compared to 8 (#0e27 `ld a,#08`, #0e29 `cp (hl)`) and reset to 0 on match (#0e2b `ld (hl),#00`) — an 8-frame toggle period. The value 8 is the #0e27 immediate byte.",
+    "addr": "0e27",
+    "source": {
+      "file": "pacman.asm",
+      "line": 2042,
+      "verbatim": "0e27  3e08      ld      a,#08"
     }
   },
   {
