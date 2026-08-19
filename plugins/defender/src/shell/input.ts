@@ -20,6 +20,8 @@ const BINDINGS: Readonly<Record<keyof Input, readonly string[]>> = {
   up: ['KeyW', 'ArrowUp'],
   down: ['KeyS', 'ArrowDown'],
   fire: ['Space', 'Enter'],
+  // df5-7: the smart-bomb key (SBOMB) — a dedicated button, distinct from fire.
+  smartBomb: ['KeyB', 'ShiftLeft'],
 }
 
 /** Map the held-key set to the pure per-tick Input snapshot. */
@@ -31,5 +33,6 @@ export function mapInput(held: KeyMembership): Input {
     up: anyHeld(BINDINGS.up),
     down: anyHeld(BINDINGS.down),
     fire: anyHeld(BINDINGS.fire),
+    smartBomb: anyHeld(BINDINGS.smartBomb),
   }
 }

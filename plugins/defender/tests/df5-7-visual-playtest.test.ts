@@ -217,22 +217,33 @@ describe('df5-7 — the score/men HUD reaches the live frame (df5-3)', () => {
   })
 })
 
-// ─── 2. The SCANNER strip renders, and OFF-CAMERA attackers appear on it (df5-1) ───────
+// ─── 2. The SCANNER strip renders — an attacker appears on the top radar band (df5-1) ──
+// The radar strip is a COMPRESSED band across the TOP of the screen (blip row = objY>>3,
+// SCNR). Field attackers spawn at LANDER_SPAWN_Y = YMIN+2 = 44 (below this band), so a
+// change confined to the TOP BAND can only be the scanner blip, never the play-field blit —
+// which is what proves the strip itself renders (the play-field render alone would change
+// the lower frame regardless).
+const SCANNER_BAND_ROWS = 40 // covers the compressed strip (objY>>3 ≤ 30) and excludes the field lander at row 44
+
+/** sha of the top `rows` band only — isolates the scanner strip from the play field below it. */
+function topBandDigest(fb: Framebuffer, rows: number): string {
+  return createHash('sha256').update(fb.data.slice(0, rows * fb.width)).digest('hex').slice(0, 16)
+}
+
 describe('df5-7 — the scanner radar strip reaches the live frame (df5-1)', () => {
-  it('an OFF-CAMERA attacker changes the composed frame — only the scanner can show it', async () => {
-    // An attacker on the FAR side of the $10000 cylinder is not in the main play-field view,
-    // so the ONLY surface that can paint it is the radar strip. If adding it leaves the frame
-    // byte-identical, no scanner is drawn (RED). projectScanner is pure/green (df5-1); df5-7
-    // wires it into composeFrame over the live objects.
+  it('an attacker paints a blip on the TOP radar band — only the scanner can change it there', async () => {
+    // The field lander sits at row 44 (below the band); the ONLY surface that writes into the
+    // top band for it is the radar strip. If the top band is byte-identical with and without
+    // the attacker, no scanner is drawn (RED). projectScanner is pure/green (df5-1); df5-7
+    // wires it into composeFrame over the live attackers, by palette INDEX.
     const sim = await loadSim()
     const { composeFrame } = await loadDynamicScene()
     const baseline = sim.createSim(makeRand(3))
-    const farX = wrap16(baseline.camera + WORLD / 2) // maximally off-camera on the cylinder
-    const withOffCamera = sim.spawnLander(baseline, farX)
+    const withAttacker = sim.spawnLander(baseline, wrap16(baseline.camera + 0x4000))
     expect(
-      digest(composeFrame(withOffCamera, LOGICAL_WIDTH, LOGICAL_HEIGHT)),
-      'an off-camera attacker changed nothing on screen — the scanner strip is not rendered',
-    ).not.toBe(digest(composeFrame(baseline, LOGICAL_WIDTH, LOGICAL_HEIGHT)))
+      topBandDigest(composeFrame(withAttacker, LOGICAL_WIDTH, LOGICAL_HEIGHT), SCANNER_BAND_ROWS),
+      'the attacker changed nothing on the top radar band — the scanner strip is not rendered',
+    ).not.toBe(topBandDigest(composeFrame(baseline, LOGICAL_WIDTH, LOGICAL_HEIGHT), SCANNER_BAND_ROWS))
   })
 
   it('every composed cell stays a valid 4-bit palette index with the scanner + play-field populated', async () => {
