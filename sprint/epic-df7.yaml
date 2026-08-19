@@ -130,7 +130,7 @@ stories:
     description: 'Decision C: the hall of fame is @shared, consumed. df5-6 shipped the pure board + persistence; df7-4 wires the name-entry flow (@shared/name-entry — the same asteroids/missile-command/pac-man shape) so a qualifying game-over score reaches the board, and renders the hall-of-fame display screen (HOFIN :244). No bespoke high-score UI, no new persistence. The ROM stick-driven initial entry (HOFUD :325) maps to @shared/name-entry input.'
     points: 3
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-19'
     repos: arcade
     workflow: tdd
@@ -139,6 +139,7 @@ stories:
       - 'AC2: the hall-of-fame DISPLAY is rendered in the shell (HOFIN initials display, defender/AMODE1.SRC:244; add-score/initials :270) reading the df5-6 board; the ROM entry/underline/stick citations (HALLOF :119, HOFUL :185, HOFUD :325) carry claims/*.json entries under the df1-1 gate.'
       - 'AC3: a non-qualifying game-over skips name-entry and returns to attract (the mainline loop closes); a test pins both the qualifying and non-qualifying paths.'
       - 'AC4: no full-frame strobe in the hall-of-fame/name-entry presentation (Decision B); colour by df2 palette index only; the df4-2 guard stays green.'
+    completed: '2026-08-19'
   - id: df7-5
     title: "HUD + scanner render: draw the score, the men (lives) indicator and the wave number, and PAINT the df5-1 scanner projection (its blip list) into the shell — the scanner is projected in core (df5-1) but drawn NOWHERE today. Consumes df5-1 scanner.ts (the blip list, finally painted) + df5-3 score.ts (score/men) + df2 palette/charset. Cite the ROM scanner bezel (*SCANNER BEZEL defender/AMODE1.SRC:1225) and the HUD layout. Colour by df2 palette INDEX only."
     description: 'df5-1 built the scanner as a pure projection (blip list + palette index) and explicitly left the DRAW to df7''s HUD; today nothing paints it. df7-5 draws the scanner strip (bezel per AMODE1.SRC:1225) plus the score/men/wave HUD figures, reading df5-1 (scanner blips) and df5-3 (score/men) — the shell paints, the core still owns no shell state. This is the df5-1 consumer the projection was built for.'
