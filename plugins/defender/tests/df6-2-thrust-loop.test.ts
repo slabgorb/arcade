@@ -66,7 +66,7 @@ function vendoredLine(file: string, n: number): string {
   return line
 }
 
-// ─── the two kinds this story adds (not in the shipped union yet — widened to string) ──
+// ─── the two kinds this story adds (kept as `string` so the degrade path can feed them) ──
 const THRUST_START = 'thrust-start'
 const THRUST_STOP = 'thrust-stop'
 const THRUST_KINDS: readonly string[] = [THRUST_START, THRUST_STOP]

@@ -54,7 +54,7 @@ function vendoredLine(file: string, n: number): string {
   return line
 }
 
-// ─── the two kinds this story adds (widened to string until they ship) ──────────────
+// ─── the two kinds this story adds (kept as `string` so the degrade path can feed them) ──
 const SUCK_START = 'lander-suck-start'
 const SUCK_STOP = 'lander-suck-stop'
 const SUCK_KINDS: readonly string[] = [SUCK_START, SUCK_STOP]
