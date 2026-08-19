@@ -27,7 +27,7 @@ import type { GameEvent } from '../core/events'
 import type { GameState } from '../core/game'
 import { TILE_PX } from '../core/actor'
 import { LOGICAL_W } from './layout'
-import { drawScorePopup } from './render'
+import { drawScorePopup, drawCutscene } from './render'
 
 export interface Overlays {
   /** Voice one frame's worth of gameplay events (the `events.ts` seam) —
@@ -153,6 +153,11 @@ export function createOverlays(): Overlays {
     // 'ready' phase). Everywhere else keep the pm3-7/pm4-6 banner behaviour.
     if (game.phase === 'attract') {
       drawAttractScreen(ctx)
+    } else if (game.phase === 'intermission') {
+      // pm6-5: the between-level coffee break. main.ts has cleared the field, so the
+      // scripted actors (pm6-2/pm6-3) play on black here — and NOT the READY! banner.
+      // A forced-null break (the pm6-2 no-cutscene path) simply draws nothing.
+      if (game.cutscene) drawCutscene(ctx, game.cutscene)
     } else if (banner === 'game-over') {
       drawBanner(ctx, 'GAME OVER')
     } else if (!readyCleared) {

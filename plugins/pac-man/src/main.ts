@@ -9,7 +9,7 @@
 // attract screen (no trackball), a smaller wiring than centipede's, not a
 // re-invention of it).
 
-import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode, heldAnimPhase } from './shell/render'
+import { drawMaze, drawPacman, drawGhost, drawFruit, drawHud, ghostRenderMode, heldAnimPhase, clearField } from './shell/render'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
 import { createWsg } from './shell/wsg'
@@ -232,20 +232,27 @@ const frame = (now: number): void => {
     )
   }
 
-  drawMaze(logicalCtx, game.pac.eaten)
-  for (const id of ['blinky', 'pinky', 'inky', 'clyde'] as const) {
-    // pm4-3: also draw a returning ghost (eyes / regenerating body), which is
-    // not `released` while in transit but must still appear on screen. pm5-1:
-    // single-sourced through core `isReturningHome` (the same `returning !== null`
-    // predicate) rather than inlined — its first production consumer. NB this is
-    // deliberately BROADER than render.ts's `=== 'eyes'`: it keeps a regenerated
-    // body on screen too, which then renders as a body, not eyes.
-    if (game.house.released[id] || isReturningHome(game, id)) {
-      drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), heldAnimPhase(animClock))
+  if (game.phase === 'intermission') {
+    // pm6-5: the coffee break plays on a BLACK field (the authentic intermission clears
+    // the maze). Blank the backbuffer and let overlays.draw paint the scripted actors on
+    // top — the normal maze/ghosts/Pac are suppressed here.
+    clearField(logicalCtx, LOGICAL_W, LOGICAL_H)
+  } else {
+    drawMaze(logicalCtx, game.pac.eaten)
+    for (const id of ['blinky', 'pinky', 'inky', 'clyde'] as const) {
+      // pm4-3: also draw a returning ghost (eyes / regenerating body), which is
+      // not `released` while in transit but must still appear on screen. pm5-1:
+      // single-sourced through core `isReturningHome` (the same `returning !== null`
+      // predicate) rather than inlined — its first production consumer. NB this is
+      // deliberately BROADER than render.ts's `=== 'eyes'`: it keeps a regenerated
+      // body on screen too, which then renders as a body, not eyes.
+      if (game.house.released[id] || isReturningHome(game, id)) {
+        drawGhost(logicalCtx, game.ghosts[id], ghostRenderMode(game, id), heldAnimPhase(animClock))
+      }
     }
+    drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, heldAnimPhase(animClock))
+    if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   }
-  drawPacman(logicalCtx, game.pac.actor.xPx, game.pac.actor.yPx, game.pac.actor.dir, heldAnimPhase(animClock))
-  if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   drawHud(logicalCtx, game.score, game.highScoreTable[0]?.score ?? 0, game.lives, game.level)
   overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
 

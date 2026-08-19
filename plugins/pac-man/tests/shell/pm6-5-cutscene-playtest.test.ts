@@ -64,11 +64,25 @@ interface RecordedCall {
   y: number
   w?: number
   h?: number
+  /** FNV-1a hash of a putImageData sprite's pixels — lets a comparison tell two
+   *  same-SIZE sprites apart (a frightened vs a normal ghost blit at the same
+   *  spot), which x/y/w/h alone cannot. */
+  sig?: number
   text?: string
   fillStyle?: string
 }
 interface FakeCtx {
   calls: RecordedCall[]
+}
+
+/** FNV-1a over the sprite's RGBA bytes — a cheap content fingerprint. */
+function hashPixels(data: Uint8ClampedArray): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < data.length; i++) {
+    h ^= data[i]
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
 }
 
 function fakeCtx(): CanvasRenderingContext2D & FakeCtx {
@@ -82,8 +96,8 @@ function fakeCtx(): CanvasRenderingContext2D & FakeCtx {
     fillRect: (x: number, y: number, w: number, h: number) =>
       calls.push({ method: 'fillRect', x, y, w, h, fillStyle: String(ctx.fillStyle) }),
     fillText: (text: string, x: number, y: number) => calls.push({ method: 'fillText', x, y, text }),
-    putImageData: (img: { width: number; height: number }, dx: number, dy: number) =>
-      calls.push({ method: 'putImageData', x: dx, y: dy, w: img.width, h: img.height }),
+    putImageData: (img: { width: number; height: number; data: Uint8ClampedArray }, dx: number, dy: number) =>
+      calls.push({ method: 'putImageData', x: dx, y: dy, w: img.width, h: img.height, sig: hashPixels(img.data) }),
     // Sprites may be blitted from an offscreen canvas via drawImage — record both so
     // the contract is not coupled to one blit primitive. The 9-arg form is the common
     // one; capture the destination x/y/w/h (last four args) when present.
@@ -125,7 +139,7 @@ function blitPositions(ctx: ReturnType<typeof fakeCtx>): string {
  *  change?" comparisons (a bigger Pac, a different ghost sprite). */
 function blitSignature(ctx: ReturnType<typeof fakeCtx>): string {
   return spriteBlits(ctx)
-    .map((c) => `${c.x},${c.y},${c.w ?? '?'},${c.h ?? '?'}`)
+    .map((c) => `${c.x},${c.y},${c.w ?? '?'},${c.h ?? '?'},${c.sig ?? '?'}`)
     .sort()
     .join('|')
 }

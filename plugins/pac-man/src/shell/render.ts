@@ -61,6 +61,7 @@
 import { MAZE, tileAt } from '../core/maze'
 import { TILE_PX as CORE_TILE_PX, type Dir } from '../core/actor'
 import type { Ghost, GhostId } from '../core/ghost'
+import type { CutsceneActor, CutsceneState } from '../core/cutscene'
 import { FRIGHT_FLASHES, type Mode } from '../core/mode'
 import type { GameState } from '../core/game'
 import { levelRow, type FruitType } from '../core/level'
@@ -413,6 +414,84 @@ export function drawGhost(ctx: CanvasRenderingContext2D, ghost: Ghost, mode: Gho
 export function drawFruit(ctx: CanvasRenderingContext2D, tileX: number, tileY: number, fruit: FruitType): void {
   const img = spriteImageData(ctx, FRUIT_SPRITE[fruit], FRUIT_COLOR_CODE[fruit])
   ctx.putImageData(img, tileX * TILE_PX + TILE_PX / 2 - SPRITE_PX / 2, tileY * TILE_PX + TILE_PX / 2 - SPRITE_PX / 2)
+}
+
+// ─── pm6-5: the intermission coffee-break cutscene (pm6-2/pm6-3) ─────────────────────
+// Renders the scripted actors modelled in core/cutscene.ts onto the CLEARED intermission
+// field (main.ts blanks the maze while `phase === 'intermission'`). Every sprite is the
+// ROM's own — SPRITES' index IS the ROM image number (the frightened body #1c == 28
+// already proves it, render.ts above). Only the on-screen POSITION is authored: the ROM
+// cites the tile-column GATES, not a pixel row, so the actors run along a fixed cutscene
+// row and take their X from `col`. ACCESSIBILITY (Decision B — the standing Pac-Man
+// ruling): small 16x16 (or 32x32 big-Pac) sprite blits only, never a full-screen fill.
+
+const BIG_PAC_COLOR_CODE = 0x16 // pacman.asm:161e `ld d,#16` — big-Pac's four sprites share colour #16
+const RIPPED_COLOR_CODE = 0x1d // pacman.asm:1646 `ld (ix+#03),#1d` — the torn sheet's colour
+const RIPPED_SPRITE_FRAMES: readonly [number, number] = [0x32, 0x33] // pacman.asm:1642/164d — sheet then further-torn
+// big-Pac tiles a 32x32 from four sprites d..d+3; `d` is picked by the mouth image the
+// ROM derives at pacman.asm:15f5..1609 (mouth bands 0/1/2/3 -> d = 0x14/0x10/0x14/0x18).
+const BIG_PAC_BASE_BY_MOUTH: readonly number[] = [0x14, 0x10, 0x14, 0x18]
+
+/** The fixed screen row the coffee break runs along — lower-middle, clear of the HUD
+ *  bands (rows 0-2 / 34-35). Presentation only, not a ROM pixel claim. */
+const CUTSCENE_ROW_Y = 20 * TILE_PX
+
+/** An actor's screen X from its tile `col` (a full-byte 0..255 wrapping counter), folded
+ *  across the field width so it always lands on screen. */
+function cutsceneActorX(col: number): number {
+  return (((col % MAZE.cols) + MAZE.cols) % MAZE.cols) * TILE_PX
+}
+
+/** The cutscene Pac: the four-sprite big-Pac when `big`, else the small chomping Pac.
+ *  `actor.frame` is the core's mouth image (0..3, cutscene.ts `mouthImage`). */
+function drawCutscenePac(ctx: CanvasRenderingContext2D, actor: CutsceneActor, big: boolean): void {
+  const x = cutsceneActorX(actor.col)
+  if (big) {
+    const base = BIG_PAC_BASE_BY_MOUTH[actor.frame % BIG_PAC_BASE_BY_MOUTH.length]
+    // Four 16x16 quadrants tiling a 32x32, centred on the actor's tile.
+    const ox = x + TILE_PX / 2 - SPRITE_PX
+    const oy = CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX
+    const quads: readonly (readonly [number, number])[] = [
+      [0, 0],
+      [SPRITE_PX, 0],
+      [0, SPRITE_PX],
+      [SPRITE_PX, SPRITE_PX],
+    ]
+    for (let i = 0; i < 4; i++) {
+      ctx.putImageData(spriteImageData(ctx, base + i, BIG_PAC_COLOR_CODE), ox + quads[i][0], oy + quads[i][1])
+    }
+    return
+  }
+  const frames = PAC_FRAMES.left // the break runs leftward; mouth picked by the core frame
+  const frame = frames[actor.frame % frames.length]
+  const img = spriteImageData(ctx, frame.spriteIndex, PACMAN_COLOR_CODE, { flipX: frame.flipX, flipY: frame.flipY })
+  ctx.putImageData(img, x + TILE_PX / 2 - SPRITE_PX / 2, CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX / 2)
+}
+
+/** The cutscene Blinky: the torn-sheet / worm sprite when `ripped`, the blue frightened
+ *  sprite when `frightened`, else the plain red ghost body. `frame` toggles the two leg
+ *  frames (small-area wiggle, Decision B). */
+function drawCutsceneBlinky(ctx: CanvasRenderingContext2D, actor: CutsceneActor): void {
+  const x = cutsceneActorX(actor.col) + TILE_PX / 2 - SPRITE_PX / 2
+  const y = CUTSCENE_ROW_Y + TILE_PX / 2 - SPRITE_PX / 2
+  const leg = actor.frame % 2
+  if (actor.ripped) {
+    ctx.putImageData(spriteImageData(ctx, RIPPED_SPRITE_FRAMES[leg], RIPPED_COLOR_CODE), x, y)
+    return
+  }
+  if (actor.frightened) {
+    ctx.putImageData(spriteImageData(ctx, FRIGHTENED_BODY_FRAMES[leg], FRIGHTENED_COLOR_CODE), x, y)
+    return
+  }
+  const [frameA, frameB] = GHOST_BODY_FRAMES.left
+  ctx.putImageData(spriteImageData(ctx, leg === 0 ? frameA : frameB, GHOST_COLOR_CODE.blinky), x, y)
+}
+
+/** Render one frame of the coffee-break cutscene. Blinky first, Pac on top (Pac leads the
+ *  chase). Called by `overlays.draw` while `phase === 'intermission'` with a live scene. */
+export function drawCutscene(ctx: CanvasRenderingContext2D, cutscene: CutsceneState): void {
+  drawCutsceneBlinky(ctx, cutscene.blinky)
+  drawCutscenePac(ctx, cutscene.pac, cutscene.bigPacActive)
 }
 
 /** A ghost-chain score popup ("200"/"400"/"800"/"1600") — a real 16x16
