@@ -183,13 +183,13 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
   }
 }
 
-// ─── df5-7: the SCANNER radar strip + score/men HUD + game-over screen ───────────────
+// ─── df5-7 + df7-5: the SCANNER radar strip + score/men/wave HUD + game-over screen ──
 // The scanner (df5-1 projectScanner) is a compressed radar band across the TOP: every live
-// ATTACKER (lander) a blip at its radar column, coloured by palette INDEX (OBJCOL). The
-// score/men HUD (df5-3) writes down the top-left. When the game is over (df5-6 men<0) a
-// GAME OVER / final-score screen replaces the frame. Decision C (narrowed for df5-7): this
-// draws the play-field radar, the HUD and the end screen; the scanner SCREEN-ADDRESS/bezel/
-// player-blip and the attract→play→death→game-over phase MACHINE remain df7's.
+// ATTACKER (lander) a blip at its radar column, coloured by palette INDEX (OBJCOL). df5-7
+// drew the blips + the score/men HUD; df7-5 adds the BEZEL (end-bracket rails framing the
+// strip, *SCANNER BEZEL AMODE1.SRC:1225) and the WAVE number in the HUD. When the game is
+// over (df5-6 men<0) a GAME OVER / final-score screen replaces the frame. STILL df7's beyond
+// this story: the scanner SCREEN-ADDRESS/player-blip (:1242-1257) and the phase MACHINE.
 
 /** The radar strip's top row on the frame (blip row = SCANNER_ORIGIN_Y + objY>>3). */
 const SCANNER_ORIGIN_Y = 2
@@ -219,7 +219,7 @@ function drawScannerBezel(fb: Framebuffer): void {
   const originX = (fb.width - SCANNER_COLUMNS) >> 1 // the SAME centred strip drawScanner plots into
   const leftX = originX
   const rightX = originX + SCANNER_COLUMNS - 1
-  for (let r = 0; r <= SCANNER_BEZEL_HEIGHT; r++) {
+  for (let r = 0; r < SCANNER_BEZEL_HEIGHT; r++) {
     const y = SCANNER_ORIGIN_Y + r
     if (y >= fb.height) break
     fb.data[y * fb.width + leftX] = BEZEL_COLOUR
