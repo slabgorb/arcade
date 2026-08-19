@@ -60,7 +60,7 @@ const rand = (): number => (Math.random() * 256) | 0
 
 // df7-4: the one-origin hall-of-fame persistence (df5-6 shell seam, @shared makeHighScoreStorage —
 // the ONLY localStorage toucher; no bespoke board). Load the saved board at boot and carry it onto
-// the Session so a qualifying game-over can commit to it and the HOFIN display can read it.
+// the Session so a qualifying game-over can commit to it and the hall-of-fame screen can read it.
 const highScoreStorage = makeDefenderHighScoreStorage()
 
 // df7-2: boot into ATTRACT holding a fresh sim — not a bare running game. A start/coin
@@ -127,14 +127,22 @@ const loop = createLoop(
     canvas.width = canvas.clientWidth
     canvas.height = canvas.clientHeight
     // df7-4: feed the hall-of-fame payload (the loaded/committed board + the in-progress
-    // initials) so composeFrame's game-over branch draws the HOFIN display, not the bare
-    // GAME OVER screen. In play/attract the game-over branch is not taken, so it is inert.
+    // initials) so composeFrame draws the hall-of-fame screen (title + board + HOFIN entry
+    // line). Gate it on the game-over PHASE, not on `sim.gameOver`: stepSim raises
+    // `sim.gameOver` on men<0 while `session.phase` is still 'play' (the play->game-over edge
+    // is not wired until df7-7), and composeFrame's end-screen branch keys on `sim.gameOver`.
+    // Passing the payload unconditionally would therefore replace df5-6's GAME OVER + final-score
+    // screen with a NON-interactive hall-of-fame board (no entry can open in the 'play' phase)
+    // the moment a live game ends. So until the phase machine actually reaches game-over, keep
+    // the df5-6 screen (the 3-arg path); the hall-of-fame screen renders only in that phase.
     render(
       ctx,
-      composeFrame(session.sim, LOGICAL_WIDTH, LOGICAL_HEIGHT, {
-        board: session.board,
-        nameEntry: session.nameEntry,
-      }),
+      composeFrame(
+        session.sim,
+        LOGICAL_WIDTH,
+        LOGICAL_HEIGHT,
+        session.phase === 'game-over' ? { board: session.board, nameEntry: session.nameEntry } : undefined,
+      ),
     )
   },
 )

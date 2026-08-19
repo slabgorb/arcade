@@ -28,6 +28,7 @@ import type { Framebuffer } from '../src/core/framebuffer.js'
 import { composeFrame } from '../src/core/scene.js'
 import { createSim, type SimState } from '../src/core/sim.js'
 import { assertNoFullFrameStrobe } from '../src/core/effects.js'
+import { HOF_MAX_NAME_CHARS } from '../src/core/scene.js'
 import type { DefenderHighScore } from '../src/core/highscore.js'
 
 const LOGICAL_WIDTH = 292 // src/shell/render.ts LOGICAL_WIDTH — core takes it as an arg (df4-6/df5-7/df7-5 precedent)
@@ -102,6 +103,35 @@ describe('df7-4 AC2 — the hall-of-fame table is rendered from the df5-6 board 
       digest(lowScore),
       'the 3-arg game-over frame no longer varies with the final score — the df5-6 GAME OVER screen regressed',
     ).not.toBe(digest(highScore))
+  })
+})
+
+describe('df7-4 AC2 — a poisoned localStorage board cannot blow up the render (Reviewer F3, DoS)', () => {
+  it('an over-length board name is TRUNCATED to HOF_MAX_NAME_CHARS before drawing', () => {
+    // The board is untrusted (one-origin localStorage; @shared isHighScoreRow caps no name
+    // length). writeText draws glyph-by-glyph every frame, so an unbounded name is a per-frame
+    // render DoS. drawHallOfFame must draw `name.slice(0, HOF_MAX_NAME_CHARS)`: a board with a
+    // huge name renders IDENTICALLY to the same board pre-truncated to the cap.
+    const state = gameOverState(20, 50_000)
+    const huge = 'Z'.repeat(HOF_MAX_NAME_CHARS + 500)
+    const poisoned: DefenderHighScore[] = [{ name: huge, score: 42 }]
+    const preTruncated: DefenderHighScore[] = [{ name: huge.slice(0, HOF_MAX_NAME_CHARS), score: 42 }]
+    expect(
+      digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT, { board: poisoned, nameEntry: null } satisfies Hof)),
+      'a huge board name is not truncated before drawing — an unbounded per-frame render cost (DoS) from untrusted localStorage',
+    ).toBe(digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT, { board: preTruncated, nameEntry: null } satisfies Hof)))
+  })
+
+  it('non-vacuity: below the cap, the name length still affects the frame (the guard is not a blanket wipe)', () => {
+    // Guards the truncation test above — prove the render DOES depend on the name within the cap,
+    // so "identical" there means "both truncated to the same prefix", not "the name is ignored".
+    const state = gameOverState(21, 50_000)
+    const shortA: DefenderHighScore[] = [{ name: 'AB', score: 42 }]
+    const shortB: DefenderHighScore[] = [{ name: 'CD', score: 42 }]
+    expect(
+      digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT, { board: shortA, nameEntry: null } satisfies Hof)),
+      'the render ignores the board name entirely — truncation would be untestable and the display vacuous',
+    ).not.toBe(digest(composeFrame(state, LOGICAL_WIDTH, LOGICAL_HEIGHT, { board: shortB, nameEntry: null } satisfies Hof)))
   })
 })
 

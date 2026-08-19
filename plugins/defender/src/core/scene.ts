@@ -280,6 +280,13 @@ const HOF_FIRST_ROW_Y = 36
 const HOF_ROW_STEP = 12
 /** How many board rows fit above the entry line — the @shared board is at most MAX_HIGH_SCORES. */
 const HOF_MAX_ROWS = 10
+/** Cap the DRAWN length of a board row's initials. The board is loaded from one-origin
+ *  localStorage, which any script on the origin (or a devtools edit) can write; @shared's
+ *  isHighScoreRow validates the TYPE but not the LENGTH of `name`. writeText draws glyph-by-glyph
+ *  every frame, so an unbounded name would be a per-frame render DoS (Reviewer F3). Real initials
+ *  are 3 chars (INITIALS_LENGTH); a small cap keeps a poisoned board's cost bounded regardless.
+ *  Exported so the render test can pin the truncation contract without a timing probe. */
+export const HOF_MAX_NAME_CHARS = 8
 /** The initials-entry prompt drawn under the board while an entry is open. */
 const HOF_ENTRY_PROMPT = 'ENTER INITIALS '
 
@@ -300,7 +307,11 @@ function drawHallOfFame(
 
   let y = HOF_FIRST_ROW_Y
   for (const row of board.slice(0, HOF_MAX_ROWS)) {
-    writeCentered(fb, `${row.name} ${row.score}`, y, TEXT_COLOUR)
+    // Bound the drawn name length — a poisoned localStorage board can carry an arbitrarily long
+    // `name` that isHighScoreRow does not cap (Reviewer F3). `String(...)` also tolerates a
+    // non-string name defensively. The score is a validated finite number, whose string is short.
+    const name = String(row.name).slice(0, HOF_MAX_NAME_CHARS)
+    writeCentered(fb, `${name} ${row.score}`, y, TEXT_COLOUR)
     y += HOF_ROW_STEP
   }
 

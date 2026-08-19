@@ -90,17 +90,18 @@ describe('df7-4 main-wiring — the shell drives the initials entry and saves on
 })
 
 describe('df7-4 main-wiring — the render is fed the board + initials so the HOFIN display draws', () => {
-  it('composeFrame is called with the hall-of-fame payload (board + nameEntry), not sim alone', () => {
-    // Today: composeFrame(session.sim, LOGICAL_WIDTH, LOGICAL_HEIGHT). df7-4 threads the 4th
-    // arg carrying board + nameEntry so scene.ts can draw the HOF screen. Anchor on the SINGLE
-    // composeFrame CALL: `composeFrame(session.sim, … board … nameEntry …)`, bounded by the call's
-    // own closing paren (`[^)]*`, and main.ts has no inner parens in this call). A `[^;]*` bound is
-    // vacuous here — main.ts is written without semicolons, so it would span to end-of-file and
-    // any later mention of both tokens would false-green a regression to the bare 3-arg call
-    // (mutation-tested). Tying both tokens to the same `composeFrame(session.sim, …)` call closes it.
+  it('composeFrame is called with the hall-of-fame payload, GATED on the game-over PHASE (not sim.gameOver)', () => {
+    // df7-4 threads the 4th arg carrying board + nameEntry so scene.ts can draw the HOF screen —
+    // but ONLY in the game-over phase. Reviewer F1: composeFrame's end-screen branch keys on
+    // `sim.gameOver`, which stepSim raises on men<0 while the phase is still 'play' (the
+    // play->game-over edge is unwired until df7-7). Passing the payload unconditionally would
+    // replace df5-6's GAME OVER + score screen with a non-interactive hall-of-fame the moment a
+    // live game ends. So the payload MUST be gated `session.phase === 'game-over' ? {…} : undefined`.
+    // Anchor all three — the phase gate, board, and nameEntry — inside the SINGLE composeFrame call,
+    // bounded by its own closing paren (main.ts has no inner parens in this call).
     expect(
-      /composeFrame\s*\(\s*session\.sim\b[^)]*\bboard\b[^)]*\bnameEntry\b[^)]*\)/s.test(code),
-      'composeFrame is fed session.sim alone (or the board/initials sit outside its call) — the HOFIN display cannot draw',
+      /composeFrame\s*\(\s*session\.sim\b[^)]*session\.phase\s*===\s*'game-over'[^)]*\bboard\b[^)]*\bnameEntry\b[^)]*\)/s.test(code),
+      'composeFrame is fed session.sim alone, OR the hall-of-fame payload is not gated on the game-over phase — a live men<0 (sim.gameOver in phase play) would render the non-interactive HOF screen over df5-6 GAME OVER + score',
     ).toBe(true)
   })
 })

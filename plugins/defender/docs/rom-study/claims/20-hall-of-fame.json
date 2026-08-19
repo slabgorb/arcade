@@ -1,7 +1,7 @@
 [
   {
     "id": "HOF-HOFIN",
-    "claim": "HOFIN is the HALL OF FAME INITIALS DISPLAY routine (*HALL OF FAME INITIALS DISPLAY :242) — the df7-4 hall-of-fame screen renders the board's initials, consuming @shared/highscore for the table.",
+    "claim": "HOFIN is the HALL OF FAME INITIALS DISPLAY routine (*HALL OF FAME INITIALS DISPLAY :242): it (re)draws the 3-character in-progress initials BUFFER while it is being entered — the df7-4 'ENTER INITIALS <buffer>' line maps to it. The persisted multi-row score/initials TABLE above it is df7-4's own un-ported layout, not HOFIN.",
     "source": { "file": "AMODE1.SRC", "line": 244, "verbatim": "HOFIN\tLDX\t#$46AC\tTOP LEFT OF INITIALS" }
   },
   {
@@ -11,7 +11,7 @@
   },
   {
     "id": "HOF-HOFUD",
-    "claim": "HOFUD is the HALL OF FAME UP DOWN STICK HANDLER (*HALL OF FAME UP DOWN STICK HANDLER :323) advancing the initials cursor — mapped in df7-4 onto the @shared/name-entry keyboard input (the fleet keyboard ruling, not the trackball stick).",
+    "claim": "HOFUD is the HALL OF FAME UP DOWN STICK HANDLER (*HALL OF FAME UP DOWN STICK HANDLER :323): the up/down stick CYCLES the currently-selected initial's LETTER (ADDA INIDIR, A-Z wrapping, then redraw) — it does NOT advance the cursor/slot index (INITN), which the separate FIRE-switch handler advances. Mapped in df7-4 onto the @shared/name-entry letter-append keyboard input (the fleet keyboard ruling, not the trackball stick).",
     "source": { "file": "AMODE1.SRC", "line": 325, "verbatim": "HOFUD\tCLR\tINIDIR\tZERO INITIALS DIRECTION" }
   },
   {
