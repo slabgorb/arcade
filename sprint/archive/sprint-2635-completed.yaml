@@ -328,3 +328,8 @@ completed_stories:
     title: "ACT 2 (ripped-ghost / 'nail') + ACT 3 (worm / tearing-ghost): the second and third coffee-break cutscenes, layered on the pm6-2 scripted-actor player. Act 2: Blinky snags on a nail and his sheet tears; act 3: the tattered ghost / worm scene. Consumes the pm6-2 player + pm3 sprites. RED-anchor paths/timing (Decision C); gentle animation, NO strobe (Decision B)."
     points: 3
     completed: '2026-08-19'
+  - id: df7-5
+    epic: df7
+    title: "HUD + scanner render: draw the score, the men (lives) indicator and the wave number, and PAINT the df5-1 scanner projection (its blip list) into the shell — the scanner is projected in core (df5-1) but drawn NOWHERE today. Consumes df5-1 scanner.ts (the blip list, finally painted) + df5-3 score.ts (score/men) + df2 palette/charset. Cite the ROM scanner bezel (*SCANNER BEZEL defender/AMODE1.SRC:1225) and the HUD layout. Colour by df2 palette INDEX only."
+    points: 3
+    completed: '2026-08-19'
