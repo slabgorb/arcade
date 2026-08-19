@@ -118,11 +118,11 @@ function playtest(seed: number, ticks: number, input: (i: number) => Input, setu
   return eng
 }
 
-/** Wall a lander column across the ship's laser row and hold FIRE — the df6-1 fireWall shape. */
+/** Stand a row of landers across the field ahead of the ship and hold FIRE — the df6-1
+ *  fireWall shape, narrowed to landers. `spawnLander` takes only x (the bank fixes the
+ *  spawn row), so this is one lander per column; the swept laser strikes them over the run. */
 function landerWall(r: Rig): void {
-  for (let col = 40; col <= 150; col += 5) {
-    for (let row = 116; row <= 122; row += 2) r._enemyBank.spawnLander(col << 8)
-  }
+  for (let col = 40; col <= 150; col += 5) r._enemyBank.spawnLander(col << 8)
 }
 
 // ─── 1. The whole df6 loop reaches the ENGINE — laser / hit / explosion (AC1) ─────────
