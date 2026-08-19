@@ -184,13 +184,14 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
   }
 }
 
-// ─── df5-7 + df7-5: the SCANNER radar strip + score/men/wave HUD + game-over screen ──
+// ─── df5-7 + df7-5 + df7-8: the SCANNER radar strip + score/men/wave HUD + game-over screen ──
 // The scanner (df5-1 projectScanner) is a compressed radar band across the TOP: every live
 // ATTACKER (lander) a blip at its radar column, coloured by palette INDEX (OBJCOL). df5-7
 // drew the blips + the score/men HUD; df7-5 adds the BEZEL (end-bracket rails framing the
-// strip, *SCANNER BEZEL AMODE1.SRC:1225) and the WAVE number in the HUD. When the game is
-// over (df5-6 men<0) a GAME OVER / final-score screen replaces the frame. STILL df7's beyond
-// this story: the scanner SCREEN-ADDRESS/player-blip (:1242-1257) and the phase MACHINE.
+// strip, *SCANNER BEZEL AMODE1.SRC:1225) and the WAVE number in the HUD; df7-8 adds the PLAYER
+// marker (*PLAYER BLIP OUTPUT :1242-1257) — a WHITE (index 9) tick at the player's own radar
+// column. When the game is over (df5-6 men<0) a GAME OVER / final-score screen replaces the
+// frame. STILL df7's beyond this story: the phase MACHINE.
 
 /** The radar strip's top row on the frame (blip row = SCANNER_ORIGIN_Y + objY>>3). */
 const SCANNER_ORIGIN_Y = 2
@@ -242,6 +243,35 @@ function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): 
     const y = SCANNER_ORIGIN_Y + blip.y
     if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
     fb.data[y * fb.width + x] = blip.colour
+  }
+}
+
+/**
+ * df7-8: the scanner PLAYER marker — a WHITE (palette index 9) tick at the player's own radar
+ * column. The ROM's *PLAYER BLIP OUTPUT (AMODE1.SRC:1242-1257) keeps the player on a SEPARATE
+ * path from the SCNR attacker loop: it reads PLAXC — the player's FIXED screen position — and
+ * derives the marker with NO camera (XTEMP) subtraction, so the marker is camera-INVARIANT (it
+ * holds its column as the world scrolls, unlike an attacker blip's `SUBD XTEMP`). We re-derive
+ * that to our centred strip by projecting the player's OWN world position through the SAME df5-1
+ * projection (Decision A — one radar geometry, not a second): the player's world-x is
+ * `camera + ship.x<<8` (df5-9 — the ship holds a fixed display column while the world scrolls),
+ * and projectScanner's `worldX - scannerLeft` cancels the camera, leaving a fixed column. The
+ * marker is a short vertical tick (index 9, $9099 :1253), a small overlay — never a full-frame
+ * flash (ADR-0005) — drawn INSIDE the df7-5 bezel.
+ */
+const PLAYER_BLIP_COLOUR = 9 // $9099's high nibble — WHITE (AMODE1.SRC:1253), the same index-9 as the bezel
+const PLAYER_BLIP_HEIGHT = 3 // a short tick — a marker, not the 32-row bezel rail
+function drawPlayerBlip(fb: Framebuffer, state: SimState): void {
+  const playerWorldX = wrap16(state.camera + (state.ship.x << 8)) // PLAXC analog: the ship's world-x
+  const object: ScannerObject = { worldX: playerWorldX, y: state.ship.y, colour: PLAYER_BLIP_COLOUR }
+  const [blip] = projectScanner([object], state.camera)
+  const originX = (fb.width - SCANNER_COLUMNS) >> 1 // the SAME centred strip drawScanner/bezel plot into
+  const x = originX + blip.x
+  const top = SCANNER_ORIGIN_Y + blip.y // row = ship.y >> 3 (SCANNER_Y_SHIFT), inside the bezel band
+  for (let r = 0; r < PLAYER_BLIP_HEIGHT; r++) {
+    const y = top + r
+    if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
+    fb.data[y * fb.width + x] = PLAYER_BLIP_COLOUR
   }
 }
 
@@ -404,11 +434,14 @@ export function composeFrame(
     drawEffect(fb, effect, camera)
   }
 
-  // df5-7 + df7-5: overlay the scanner radar strip — its bezel frame (df7-5, drawn even when
-  // empty), then the live-attacker blips (coloured from the lander sprite's own palette index) —
-  // and the score/men/wave HUD, painted on top of the play field.
+  // df5-7 + df7-5 + df7-8: overlay the scanner radar strip — its bezel frame (df7-5, drawn even
+  // when empty), the live-attacker blips (coloured from the lander sprite's own palette index),
+  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the
+  // score/men/wave HUD, painted on top of the play field. Drawn AFTER the gameOver early-return,
+  // so the marker never appears on the end screen.
   drawScannerBezel(fb)
   drawScanner(fb, state, spriteColour(landerPic))
+  drawPlayerBlip(fb, state)
   drawHud(fb, state)
 
   return fb
