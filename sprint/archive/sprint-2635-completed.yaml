@@ -323,3 +323,8 @@ completed_stories:
     title: "Cutscene player + ACT 1 (Blinky chase): a deterministic scripted-actor animation player in plugins/pac-man/src/core, and the first coffee-break cutscene — Blinky chases Pac across the screen, then a big Pac turns and chases a ripped Blinky back. Consumes pm3 baked sprites (CONSUMED, no new bake). RED-anchor the actor paths/timing against the quarry (Decision C). Runs during the pm6-1 intermission phase; gentle animation, NO strobe (Decision B)."
     points: 5
     completed: '2026-08-19'
+  - id: pm6-3
+    epic: pm6
+    title: "ACT 2 (ripped-ghost / 'nail') + ACT 3 (worm / tearing-ghost): the second and third coffee-break cutscenes, layered on the pm6-2 scripted-actor player. Act 2: Blinky snags on a nail and his sheet tears; act 3: the tattered ghost / worm scene. Consumes the pm6-2 player + pm3 sprites. RED-anchor paths/timing (Decision C); gentle animation, NO strobe (Decision B)."
+    points: 3
+    completed: '2026-08-19'

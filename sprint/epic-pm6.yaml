@@ -105,7 +105,7 @@ stories:
     description: 'The remaining two scenes on the pm6-2 framework — same file surface (the cutscene player), distinct scripted animations. Act 2 is the ripped-sheet "nail" scene; act 3 is the worm/tearing scene. RED-anchored to the source + dossier; reuses pm3 sprites. Completes the three-cutscene set the specs deferred.'
     points: 3
     priority: p3
-    status: in_progress
+    status: done
     assigned_to: Keith Avery
     started: '2026-08-19'
     repos: arcade
@@ -115,6 +115,7 @@ stories:
       - 'AC2: the actor paths/timing for both scenes are RED-anchored to the vendored source + dossier and cited (Decision C); the sprites are pm3 baked graphics (CONSUMED); each constant carries a citations.test.ts claim.'
       - 'AC3: a mutation to either scene''s path/timing reddens an animation assertion; no un-cited src/core value; the three cutscenes map to the correct acts at the correct levels (a test pins the act->level mapping).'
       - 'AC4: both scenes are gentle animations with NO >3 Hz large-area strobe (Decision B); colour via pm3 palette/tiles.'
+    completed: '2026-08-19'
   - id: pm6-4
     title: "The level-256 kill screen: the authentic right-half tile/glyph CORRUPTION when the internal level counter rolls past a byte. Model it pure in core (the level byte, pacman.asm:6075 'ld a,(#4e13)'; behaviour docs/rom-study/glossary.md:392) and render the garbled right half. Retire the level.ts:63/:140 'out of scope' stubs. ACCESSIBILITY: render the corruption STATIC/faithful, NOT strobing (Decision B — accessibility outranks ROM fidelity)."
     description: "The famous split-screen kill screen: at level 256 the level counter rolls and the right half of the maze renders as corrupted glyphs (the game becomes unplayable — the authentic bug). Model the roll + the corrupted-tile region purely, render it via pm3 tiles, and retire the two level.ts stubs that flag it out-of-scope (plugins/pac-man/src/core/level.ts:63, :140). Decision B: the corruption is a STATIC garbled tilemap, never a strobe."
