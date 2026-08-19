@@ -16,6 +16,7 @@ completed_epics:
   - ml13
   - jt13
   - df5
+  - df6
 completed_stories:
   - id: mc11-1
     epic: mc11
@@ -342,4 +343,19 @@ completed_stories:
     epic: df7
     title: "Hall-of-fame wiring + name entry: wire df5-6's pure board (core/highscore.ts) + one-origin localStorage (shell/highscore.ts) through @shared/name-entry into the game-over -> name-entry -> hall-of-fame -> attract flow, and RENDER the hall-of-fame display. Consumes @shared/name-entry + @shared/highscore (CONSUMED, not re-built — Decision C). Cite HALLOF defender/AMODE1.SRC:119, HOFIN initials display :244, HOFUD up/down stick handler :325, add-score :270."
     points: 3
+    completed: '2026-08-19'
+  - id: df7-8
+    epic: df7
+    title: 'Scanner player-blip render: draw the player radar marker (ROM *PLAYER BLIP OUTPUT, defender/AMODE1.SRC:1242-1257) — the last un-drawn scanner element df5-7 and df7-5 both left to df7'
+    points: 2
+    completed: '2026-08-19'
+  - id: df6-1
+    epic: df6
+    title: "Audio seam + the single-shot gameplay emitters: plugins/defender/src/core/events.ts (a discriminated union emitted as DATA on the sim state, Decision C), plugins/defender/src/shell/audio.ts (the SOUNDS manifest + CHANNELS map consuming @shared/audio, each cue CITING its *SOUND TABLE entry defender/DEFA7.SRC:659-691), and plugins/defender/src/shell/audio-dispatch.ts (event->cue switch behind a never exhaustiveness guard, SH4-5 convention). The sim EMITS every single-shot cue at its cited call site: laser (LASSND :686), the *HIT cues (lander LHSND :682, swarm SWHSND :685, probe PRHSND :678, ufo/pod UFHSND :680, tie TIHSND :681, schitz/baiter SCHSND :679), the *SHOOT cues (lander LSHSND :688, schitzo SSHSND :689, ufo USHSND :690, swarm SWSSND :691 per DEFB6.SRC:269), lander grab (LGSND :687) + pick-up (LPKSND :683), appear/materialize (APSND :677), smart-bomb (SBSND :672, call site SBOMB->LDD #SBSND->JSR SNDLD defender/DEFA7.SRC:3183-3184), player death (PDSND :667), free ship/extra-man (RPSND :666), wave start (ST1SND :668/ST2SND :669), astro catch/land/hit/scream (ACSND :673/ALSND :674/AHSND :675/ASCSND :676). NOTE: hyperspace has NO dedicated cue — the HYPER routine (defender/DEFA7.SRC:3211-3280) issues no SNDLD; df6 does NOT invent one (no confabulated cite). NO samples, NO uploads (this story cannot be blocked by asset production, the jt5-1 split). Maps SNDPRI->channel (Decision E), cited. Consumes @shared/audio + df3 sim.ts + df4/df5 seams."
+    points: 5
+    completed: '2026-08-19'
+  - id: df6-4
+    epic: df6
+    title: "AUDIBLE playtest — a whole game loop that SOUNDS right: at http://127.0.0.1:5270/defender/ (DIFFER-from-nonsense-control per the canonical-serve lesson) confirm the laser/hit/explosion cues fire on their moments, the THRUST loops while held and stops on release (df6-2), the smart-bomb PLAYS while its VISUAL stays the ADR-0005 freeze/fade (Decision D — audio is not muted), and NO cue is silently missing (the manifest .wav fetches return 200 in the network log, not a silent-degrade 404). Carry the df7 hand-forward note (the two attract musics PHANTOM/TOCCATA + the hall-of-fame/attract cues, Decision A)."
+    points: 2
     completed: '2026-08-19'
