@@ -1,0 +1,155 @@
+id: df6
+type: epic
+title: 'Defender sound (df6) — the absent-source audio epic (phase 5): the fleet event-channel seam, every gameplay cue ported from the ROM SOUND TABLE (priority/timer/sound#, cited), synthesised samples proven by a live 200, and the thrust held-loop; the two attract musics deferred to df7'
+description: |-
+  Sixth Defender epic and phase 5 of the framebuffer-raster cabinet build
+  (docs/playbooks/next-sprite-game.md, roadmap docs/superpowers/specs/2026-08-13-defender-cabinet-roadmap-and-df1-design.md sec 4 df6, approx 13 pts).
+  df1-df5 built a SILENT game: the world scrolls, the menagerie attacks in waves, the
+  scanner reads the world, humanoids are abducted and rescued, the two emergency powers
+  fire, and the game ends into a hall of fame — with no sound at all. df6 is the AUDIO.
+  It is the "absent-source" epic (roadmap sec 2): the sound board is a separate M6808
+  (894.886 kHz, williams.cpp:1540) running defend.snd = video_sound_rom_1.ic12
+  (williams.cpp:2002), and NO sound-board source is vendored in this tree — the same gap
+  Joust's tree has (JOUSTSND.DOC is a three-line pointer). ROMF8/ROMC0/ROMC8 are
+  main-CPU control/diag ROMs, not sound source. So df6 does NOT emulate the sound board;
+  it follows the battlezone/jt5 synthesis approach: pin the command values the MAIN CPU
+  writes (cited), synthesise each effect informed by MAME's board model and the
+  machine-local defend.snd bytes, and route it all through the fleet's existing
+  @shared/audio seam.
+  GROUND TRUTH IS THE MAIN-CPU SOUND TABLE, AND IT IS FULLY CITED. The game writes a
+  6-bit sound command to SOUND EQU $CC02 (defender/PHR6.SRC:18; *B0-B5 SOUND :133; *B1
+  THRUST :138) through the SOUND OUTPUT routine (SNDOUT defender/DEFA7.SRC:693-704 -> STB
+  SOUND :703). Every cue is one entry in the *SOUND TABLE (defender/DEFA7.SRC:659-691),
+  each an FCB command sequence documented in the header at :660 as
+  "SNDPRI,N*(REPCNT,SNDTMR,SND#)" with SNDTMR in 16 msec and SNDPRI "HI=HI,INTERRUPTABLE
+  BY EQUALS" (:662). The SOUND LOADER (SNDLD :706-721) and SOUND SEQUENCER (SNDSEQ
+  :723-757, called from :1943) drive the priority/interruption/repeat model and the
+  THRUST held state (THFLG defender/PHR6.SRC:293; on=$16 :750, off=$0F :743). This is a
+  richer, better-documented command surface than jt5 had — no cue in df6's core need be
+  an invention.
+  The fleet AUDIO SEAM is @shared/audio (src/shared/audio.ts): the VERB seven cabinets
+  share — lazy-context-on-first-gesture, silent-degrade at every failure path, a master
+  GainNode, buffer load/decode keyed by filename, POKEY-style channel voice-stealing, and
+  the sw6-2 loop-pending carve-out (a loop requested before its buffer decodes is started
+  when the decode lands). Each game supplies the NUMBERS (its SOUNDS manifest, CHANNELS
+  map, baseUrl) and keeps them in-game (SH2/SH4 ruled: share the VERB, not the NUMBERS).
+  The event->cue dispatch convention (SH4-5, pinned by tests/audio-dispatch-convention.test.mjs):
+  src/shell/audio-dispatch.ts holds PURE node-importable functions narrowing the engine to
+  a Pick<AudioEngine, ...> slice behind a never exhaustiveness guard. Defender adopts this
+  by importing @shared/audio — one import line, no pin, no version bump (the monorepo
+  dissolved the package boundary). jt5 (joust, also Williams, also absent sound-board
+  source) is the direct sibling; centipede cp5, battlezone and star-wars are the other
+  precedents.
+  DECISION A (RULED, roadmap-canonical): df6 is SOUND ONLY and ships the GAMEPLAY cue set
+  from the SOUND TABLE. The two ATTRACT musics — TODAYS SOUND $FE "PHANTOM"
+  (defender/AMODE1.SRC:148) and HIGH SCORE SOUND $FD "TOCCATA" (:152, played by HALL2 via
+  STBXBV :153,:163) — belong to ATTRACT MODE and the hall-of-fame screen, which df7 builds
+  (roadmap df7: "attract mode + hall of fame"). df6 DEFERS both, preserving their citations
+  for df7; it introduces no attract loop, no new enemy and no new picture.
+  DECISION B (RULED, silent-degrade -> the acceptance test is a live 200, not a green
+  vitest): @shared/audio degrades silently on a missing context, blocked autoplay, a failed
+  fetch and undecodable data alike, so a 404 is INDISTINGUISHABLE from working code — this
+  is exactly how a star-wars .wav stayed missing from sw3-5 through sw8-14, and the
+  standing Architect gotcha. The ASSET story's acceptance is therefore a curl returning 200
+  for every manifest URL, NOT a passing suite; and any "a cue must follow in a later story"
+  finding is FILED as a story before the epic finishes, never left to die in the archive.
+  Upload is by hand via `just deploy-assets` (CI never touches the assets bucket — named
+  plain `arcade`; the recipe must be extended to bake defender). No cue is silently
+  fabricated as authentic: a cue with no MAME/defend.snd anchor is marked invention-pending
+  in the manifest's source table.
+  DECISION C (RULED, determinism): cues are emitted as DATA on the sim state (an event
+  field the sim returns), NEVER as callbacks, so the core stays pure (purity.test.ts green)
+  and df3's seeded-RNG determinism replays reproduce bit-for-bit — the event channel adds
+  no RNG draw and no ordering change, and a test pins that. This mirrors jt5-1's
+  core/events.ts and the SH4-5 dispatch convention. Colour/HUD are unaffected (audio only).
+  DECISION D (RULED, ADR-0005 is a VISUAL exception and does NOT mute audio): ADR-0005 is
+  the PHOTOSENSITIVITY accessibility exception — it substitutes the smart-bomb/death/panic
+  full-frame VISUAL strobe for a freeze/fade/particle (df4-2/df5). It says nothing about
+  sound. The smart-bomb SBSND (defender/DEFA7.SRC:672), player-death PDSND (:667) and
+  terrain-blow/panic TBSND (:670) cues play NORMALLY. df6 records this so no one mistakenly
+  mutes an accessibility-safe visual's audio.
+  DECISION E (RULED, the ROM priority model maps onto CHANNELS, it is not re-emulated): the
+  SOUND TABLE encodes a priority/interruption/repeat model (SNDPRI hi, "interruptable by
+  equals", REPCNT, SNDTMR/16ms; SNDLD :709, SNDSEQ :725). df6 maps each cue's SNDPRI byte
+  onto the @shared/audio CHANNELS voice-stealing seam (the engine's existing verb, cited) —
+  it does NOT port the 6809 SNDSEQ sequencer byte-for-byte. Higher-SNDPRI cues take a
+  channel that a lower one cannot interrupt; equal priorities interrupt (per :662).
+  Reuse-first: @shared/audio (the seam — CONSUMED, not re-implemented), df3 sim.ts state +
+  scheduler.ts (cues are data on the returned state; timed cues are scheduler processes),
+  df4 collision.ts + the enemy reducers (the hit/shoot/grab/suck cue call sites already
+  exist), df5 score.ts/powers.ts and the rescue/panic (extra-man RPSND, smart-bomb SBSND,
+  hyperspace, rescue ACSND, panic TBSND all fire at seams df5 built). NO new @shared
+  extraction — the audio seam already exists and each game keeps its own NUMBERS (the
+  "extract on the second consumer" bar is met the wrong way here: the VERB is already
+  shared, the NUMBERS are Defender-specific).
+  Every command constant re-opens under the df1-1 gate: no src/core sound value without a
+  claims/*.json entry citing defender/<FILE>.SRC:<line>; line numbers from tool output only
+  (RASM radix trap: $hex vs bare decimal — the SOUND TABLE FCBs are hex).
+  Design + full story rationale to be written at kickoff:
+  docs/superpowers/specs/2026-08-1X-defender-df6-sound-design.md (mirror the df5 spec).
+  Traps carried in: the sound board is NOT vendored (synthesise, do not emulate); the
+  acceptance test for assets is a live 200 not a green vitest (silent-degrade); cues are
+  DATA not callbacks (determinism); a seam with no emitter is a blind spot (jt5-1: six
+  cues were deletable with the suite fully green — mutation-guard every emitter); ADR-0005
+  does not mute audio; SNDPRI maps to CHANNELS, it is not re-sequenced; line numbers from
+  tool output only; RASM radix.
+  OUT OF SCOPE: the two ATTRACT musics PHANTOM/TOCCATA + any attract/hall-of-fame cue
+  (df7, Decision A); the attract->play->death->game-over PHASE MACHINE + HUD render (df7);
+  emulating the M6808 sound board (synthesis only, roadmap sec 2); hardening/mutation
+  batteries (df8+).
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: df6-1
+    title: "Audio seam + the single-shot gameplay emitters: plugins/defender/src/core/events.ts (a discriminated union emitted as DATA on the sim state, Decision C), plugins/defender/src/shell/audio.ts (the SOUNDS manifest + CHANNELS map consuming @shared/audio, each cue CITING its *SOUND TABLE entry defender/DEFA7.SRC:659-691), and plugins/defender/src/shell/audio-dispatch.ts (event->cue switch behind a never exhaustiveness guard, SH4-5 convention). The sim EMITS every single-shot cue at its cited call site: laser (LASSND :686), the *HIT cues (lander LHSND :682, swarm SWHSND :685, probe PRHSND :678, ufo/pod UFHSND :680, tie TIHSND :681, schitz/baiter SCHSND :679), the *SHOOT cues (lander LSHSND :688, schitzo SSHSND :689, ufo USHSND :690, swarm SWSSND :691 per DEFB6.SRC:269), lander grab (LGSND :687) + pick-up (LPKSND :683), appear/materialize (APSND :677), smart-bomb (SBSND :672, call site SBOMB->LDD #SBSND->JSR SNDLD defender/DEFA7.SRC:3183-3184), player death (PDSND :667), free ship/extra-man (RPSND :666), wave start (ST1SND :668/ST2SND :669), astro catch/land/hit/scream (ACSND :673/ALSND :674/AHSND :675/ASCSND :676). NOTE: hyperspace has NO dedicated cue — the HYPER routine (defender/DEFA7.SRC:3211-3280) issues no SNDLD; df6 does NOT invent one (no confabulated cite). NO samples, NO uploads (this story cannot be blocked by asset production, the jt5-1 split). Maps SNDPRI->channel (Decision E), cited. Consumes @shared/audio + df3 sim.ts + df4/df5 seams."
+    description: 'The seam and the single-shot emitters together so the seam is never dead (the jt5-1 blind spot: six declared cues were deletable with the suite fully green). Cues are DATA on the returned sim state, never callbacks (Decision C) — purity green, df3 seeded-determinism replays bit-for-bit. Each manifest cue cites its SOUND TABLE symbol+line or is explicitly marked invention-pending (none should be — the table is complete). SNDPRI byte -> CHANNELS voice-stealing (Decision E), not a re-implemented 6809 sequencer. The two STATEFUL cues (thrust held-loop, lander-suck repeat) are df6-2. Attract musics are df7 (Decision A). Audio only — no render/colour change.'
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: plugins/defender/src/core/events.ts defines a discriminated union of gameplay cue moments emitted as a DATA field on the sim state the core returns (never a callback); purity.test.ts stays green and a test pins that df3''s seeded-RNG determinism replay reproduces bit-for-bit with the event channel live (no new RNG draw, no ordering change) — Decision C.'
+      - 'AC2: plugins/defender/src/shell/audio.ts holds a SOUNDS manifest + CHANNELS map consuming @shared/audio (imported, not re-implemented); every cue in the manifest CITES its *SOUND TABLE entry (defender/DEFA7.SRC:659-691 — e.g. LASSND :686, LHSND :682, SBSND :672) with a claims/*.json entry verified byte-for-byte under the df1-1 gate, or is explicitly marked invention-pending-source; no un-cited src/core sound constant.'
+      - 'AC3: plugins/defender/src/shell/audio-dispatch.ts maps every event kind to a cue behind a never exhaustiveness guard (SH4-5 convention, pinned by tests/audio-dispatch-convention.test.mjs), and each SNDPRI byte is mapped to a @shared/audio CHANNEL (Decision E — higher priority cannot be interrupted by lower, equals interrupt per DEFA7.SRC:662), cited; it does NOT re-implement the 6809 SNDSEQ sequencer.'
+      - 'AC4: the sim EMITS each single-shot cue at its cited ROM call site (laser fire, each enemy hit/shoot, grab/pick-up, appear, smart-bomb SBOMB defender/DEFA7.SRC:3183-3184, player death, free ship, wave start, astro catch/land/hit/scream); hyperspace emits NO cue (HYPER defender/DEFA7.SRC:3211-3280 issues no SNDLD — not invented); a mutation battery confirms deleting ANY emitter reddens a value/emission assertion (not a coverage/presence check — the jt5-1 six-deletable-cues blind spot must not recur); NO .wav is committed and the story states plainly Defender is still silent when it closes.'
+  - id: df6-2
+    title: "The two STATEFUL cues the single-shot path can't express: the THRUST held-loop and the LANDER-SUCK repeat. Thrust is on/off held state (THFLG defender/PHR6.SRC:293; SNDSEQ turns it on=$16 defender/DEFA7.SRC:750 while PIA21 thrust bit is set :737-739 and off=$0F on release :742-743), routed through @shared/audio's loop seam (the sw6-2 loop-pending carve-out) — loop starts on thrust-held, stops on release. Lander-suck is the abduction-beam REPEAT cue (LSKSND FCB $C8,$0A,... REPCNT=$0A defender/DEFA7.SRC:684) sustained while a lander carries a humanoid up. Both need a held/released edge state the core lacks today (the jt5-3 flap analog). Consumes df6-1 seam + df3 input/scheduler + df4-3 abduction."
+    description: 'df6-1 shipped only single-shot cues; the two cues with STATE (a loop and a sustained repeat) land here. The thrust loop mirrors jt5-3''s two-edge flap: the core sees the thrust input each frame but not the on->off / off->on EDGE, so this story adds the edge detector and two kinds (thrust-start, thrust-stop) routed through @shared/audio''s loop start/stop (sw6-2 pending-loop carve-out so it survives the cold-load decode race). The lander-suck repeat is tied to the df4-3 abduction carry state. Purity green; determinism pinned; no samples (df6-3 bakes them). Same file surface as df6-1 (events.ts/sim.ts/audio-dispatch.ts/audio.ts) but a distinct STATE mechanic — a coherent second story, not a false split.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: the THRUST cue is a held LOOP — a test pins loop-start on the thrust off->on edge and loop-stop on the on->off edge (the edge state the core adds here), cited to THFLG (defender/PHR6.SRC:293) and the SNDSEQ on=$16 (defender/DEFA7.SRC:750) / off=$0F (:743) transitions gated by the PIA21 thrust bit (:737-739); it is routed through @shared/audio''s loop seam (the sw6-2 loop-pending carve-out), not re-tick per frame.'
+      - 'AC2: the LANDER-SUCK cue is a sustained REPEAT (LSKSND, REPCNT=$0A, defender/DEFA7.SRC:684) started when a df4-3 lander begins carrying a humanoid upward and stopped when the carry ends (humanoid grabbed to top, dropped, or the lander dies); a test pins start/stop against the abduction state, and the repeat constant has a claims/*.json entry verified under the df1-1 gate.'
+      - 'AC3: purity.test.ts stays green (the edge/held state is pure data on the sim state, no DOM/clock/RNG entered the core) and df3''s seeded-determinism replay still reproduces bit-for-bit with both stateful cues live (Decision C).'
+      - 'AC4: a mutation to the thrust edge logic or the suck start/stop reddens a state-transition assertion (not a boolean presence check); no un-cited src/core constant; still NO .wav committed (df6-3 bakes them) — the story states thrust/suck are wired but silent when it closes.'
+  - id: df6-3
+    title: "The samples — synthesise one .wav per SOUNDS entry (informed by MAME's Williams sound-board model, williams.cpp:1540, and the machine-local defend.snd = video_sound_rom_1.ic12, williams.cpp:2002 — the battlezone/jt5 synthesis route, since NO sound-board source is vendored, roadmap sec 2), upload via `just deploy-assets` (extend the recipe to bake defender), and PROVE a live 200 for every manifest URL. DERIVE the cue list from SOUNDS in plugins/defender/src/shell/audio.ts AT THE TIME THIS RUNS — do NOT hardcode a count (the jt5-2 lesson). Flip the README/status line off 'silent'. THE ACCEPTANCE TEST IS THE CURL, NOT THE VITEST (Decision B)."
+    description: 'The absent-source epic''s payload: an ASSET, so its acceptance is a live 200, not a green suite — @shared/audio degrades silently on a 404 exactly as it does on working code, the star-wars sw3-5->sw8-14 gap and the standing Architect gotcha. Synthesise each cue from MAME''s board model + the defend.snd bytes (no waveform can be baked from source — the M6808 firmware is not vendored, roadmap sec 2); the manifest''s source table records which sound# each stands in for and marks any un-anchored cue invention-pending (do not silently fabricate authenticity). Bake exactly the SOUNDS set at run time (this story is LAST among the core three so the cue set is complete and one upload pass suffices). Upload by hand — CI never touches the assets bucket (named plain `arcade`).'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: one baked .wav exists for every entry in SOUNDS (plugins/defender/src/shell/audio.ts) DERIVED at run time (no hardcoded count — the jt5-2 correction); each is synthesised informed by MAME''s Williams sound-board model (williams.cpp:1540) and the machine-local defend.snd (video_sound_rom_1.ic12, williams.cpp:2002), and the manifest''s source table names the sound# it stands in for or marks it invention-pending — no cue silently fabricated as authentic.'
+      - 'AC2: `just deploy-assets` is extended to bake defender and the files are uploaded to the assets bucket (plain `arcade`, the by-hand path — CI never touches it); the story records the exact bucket/key prefix used.'
+      - 'AC3: a live 200 is proven for EVERY manifest URL — the curl status codes are pasted into the session file as the acceptance evidence (Decision B: the curl is the test, NOT the vitest, because silent-degrade makes a 404 indistinguishable from working code); the README/status line is flipped off "silent".'
+      - 'AC4: any cue that cannot be sourced or uploaded in this pass is FILED as its own follow-up story BEFORE the epic finishes (a finding is not a backlog item — the standing Architect gotcha), grouped by file surface (the jt9 habit); the story states which cues, if any, remain outstanding.'
+  - id: df6-4
+    title: "AUDIBLE playtest — a whole game loop that SOUNDS right: at http://127.0.0.1:5270/defender/ (DIFFER-from-nonsense-control per the canonical-serve lesson) confirm the laser/hit/explosion cues fire on their moments, the THRUST loops while held and stops on release (df6-2), the smart-bomb PLAYS while its VISUAL stays the ADR-0005 freeze/fade (Decision D — audio is not muted), and NO cue is silently missing (the manifest .wav fetches return 200 in the network log, not a silent-degrade 404). Carry the df7 hand-forward note (the two attract musics PHANTOM/TOCCATA + the hall-of-fame/attract cues, Decision A)."
+    description: 'The ears for df6, mirroring df5-7/df4-6''s eyes. Audio can''t be "seen" in a screenshot, so the playtest reads the NETWORK log (Playwright): every SOUNDS .wav fetch returns 200 when its event fires — proving the seam is live and not silent-degrading on a 404 (Decision B''s runtime counterpart). Confirm the thrust loop starts/stops with the key, and that the smart-bomb''s audio plays even though its visual is the accessibility-safe variant (Decision D). An all-200 path sweep proves nothing (SPA fallback) — DIFFER from a nonsense control.'
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    acceptance_criteria:
+      - 'AC1: at http://127.0.0.1:5270/defender/ (confirmed to DIFFER from a nonsense control path, not merely return 200 — the canonical-serve lesson) the network log shows the SOUNDS .wav for the laser, an enemy hit, and an explosion each FETCHED (200) when its event fires — proving the live seam, not a silent-degrade 404.'
+      - 'AC2: the THRUST loop is confirmed to start on thrust-held and stop on release (df6-2), and the SMART-BOMB cue is confirmed to PLAY while its visual remains the ADR-0005 freeze/fade (Decision D — audio is not muted by the photosensitivity exception); a note confirms no cue 404''d during the session.'
+      - 'AC3: any missing/wrong cue is filed by FILE SURFACE (the jt9 grooming habit), not merged by theme; the session records which cues were heard and which (if any) were absent.'
+      - 'AC4: the df7 hand-forward note is recorded — the two attract musics (TODAYS SOUND $FE "PHANTOM" defender/AMODE1.SRC:148; HIGH SCORE $FD "TOCCATA" :152) and any hall-of-fame/attract cue wire in df7 with the attract phase machine (Decision A), citations preserved.'
