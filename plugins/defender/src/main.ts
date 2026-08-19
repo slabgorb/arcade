@@ -21,6 +21,7 @@ import { stepSim } from './core/sim.js'
 import { composeFrame } from './core/scene.js'
 import { mapInput, startPressed } from './shell/input.js'
 import { bootSession, advanceStart } from './core/start.js'
+import { attractInput, hasPlayerInput } from './core/attract.js'
 import type { PhaseSignals } from './core/phase.js'
 
 const { canvas, ctx } = mountCanvas(document)
@@ -40,19 +41,24 @@ let session = bootSession(rand)
 
 const loop = createLoop(
   () => {
-    // Drive df7-1's phase machine each frame. `startRequested` is the start/coin button
-    // (ST1 *ONE PLAYER START, DEFA7.SRC:1100); the machine reads it only in attract.
+    // Drive df7-1's phase machine each frame. `startRequested` leaves attract on the
+    // start/coin button (ST1 *ONE PLAYER START, DEFA7.SRC:1100) OR on ANY player key
+    // (df7-3: the self-playing demo yields to a real game the instant a human touches the
+    // controls). The exit reads the HUMAN keyboard snapshot — never the demo's own input.
     // `setupComplete` is df7-2's cadence — setup is a single-frame get-ready that
     // auto-advances to play, reseeding the fresh game at that edge.
     const signals: PhaseSignals = {
-      startRequested: startPressed(held),
+      startRequested: startPressed(held) || hasPlayerInput(mapInput(held)),
       setupComplete: true,
     }
     session = advanceStart(session, signals, rand)
-    // Step the live game ONLY in play — attract/setup hold their frame, they do not
-    // advance a sim (df7-3 gives attract its self-playing driver).
+    // Step the real sim per phase: play is driven by the human keyboard; attract is driven
+    // by df7-3's pure auto-player (the SAME stepSim — no forked demo path), so the attract
+    // screen shows actual gameplay. setup holds its single get-ready frame.
     if (session.phase === 'play') {
       session = { ...session, sim: stepSim(session.sim, mapInput(held)) }
+    } else if (session.phase === 'attract') {
+      session = { ...session, sim: stepSim(session.sim, attractInput(session.sim)) }
     }
   },
   () => {
