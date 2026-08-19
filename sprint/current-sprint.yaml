@@ -10,3 +10,5 @@ sprint:
 epics:
   - df5
   - df6
+  - df7
+  - pm6
