@@ -313,3 +313,8 @@ completed_stories:
     title: "Self-playing attract demo: a deterministic seeded auto-player drives the ship (thrust/fire/reverse) during phase attract so the field plays itself; ANY player input -> setup (start a real game). Pure attract driver in plugins/defender/src/core (seeded RNG, no clock — the mc6-4 analog). Cite the ROM attract display HALDIS defender/AMODE1.SRC:375 (reached HALL13 :230). Consumes df7-1 phase machine + df3 sim.ts (drives the real sim, no separate demo path)."
     points: 3
     completed: '2026-08-19'
+  - id: df6-2
+    epic: df6
+    title: "The two STATEFUL cues the single-shot path can't express: the THRUST held-loop and the LANDER-SUCK repeat. Thrust is on/off held state (THFLG defender/PHR6.SRC:293; SNDSEQ turns it on=$16 defender/DEFA7.SRC:750 while PIA21 thrust bit is set :737-739 and off=$0F on release :742-743), routed through @shared/audio's loop seam (the sw6-2 loop-pending carve-out) — loop starts on thrust-held, stops on release. Lander-suck is the abduction-beam REPEAT cue (LSKSND FCB $C8,$0A,... REPCNT=$0A defender/DEFA7.SRC:684) sustained while a lander carries a humanoid up. Both need a held/released edge state the core lacks today (the jt5-3 flap analog). Consumes df6-1 seam + df3 input/scheduler + df4-3 abduction."
+    points: 3
+    completed: '2026-08-19'
