@@ -42,7 +42,7 @@ import { createHash } from 'node:crypto'
 import type { Framebuffer } from '../src/core/framebuffer.js'
 import { composeFrame, composeStaticFrame } from '../src/core/scene.js'
 import { assertNoFullFrameStrobe } from '../src/core/effects.js'
-import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.js'
+import { stepSim, type Input, type SimState } from '../src/core/sim.js'
 import { attractInput } from '../src/core/attract.js'
 import {
   bootSession,
