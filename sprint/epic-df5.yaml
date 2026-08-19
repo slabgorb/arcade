@@ -125,7 +125,8 @@ stories:
     description: 'df4-3 delivered grab -> carry-to-top -> transform-trigger and the AFALL fall-on-carrier-death; df5-4 closes the loop with the CATCH (rescue) and the all-humanoids-lost PANIC that mass-transforms landers to mutants (the df4-4 SCZ). Enemies are df3 scheduler processes; the transform reuses the df4-4 mutant, it does not re-model it. Scoring for the rescue is df5-3 (this story delivers the MECHANIC, points come from score.ts). Colour by df2 palette index only.'
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
     acceptance_criteria:
@@ -133,6 +134,7 @@ stories:
       - 'AC2: the PANIC trigger — humanoid count reaching zero -> planet explodes -> every remaining lander transforms into a df4-4 mutant (SCZ) — is modelled and cited to the ROM trigger; the transform REUSES the df4-4 SCZ reducer (no re-model), and a test pins that the mass-transform fires exactly once on the zero-humanoid transition, not per frame.'
       - 'AC3: the planet-explosion presentation obeys ADR-0005 (no full-framebuffer inversion in a single frame) — the df4-2 render guard stays GREEN with the panic live; if the explosion is a full-screen effect it renders as the safe freeze/fade/particle variant and the substitution is logged as a 6-field Design Deviation citing docs/adr/0005-photosensitivity-accessibility-exception.md.'
       - 'AC4: humanoids and the falling/caught states are df3 scheduler processes (NEWP,STYPE) killed via the df3 kill path — no per-humanoid rAF/tick; purity.test.ts stays green; every new constant cited under the df1-1 gate.'
+    completed: '2026-08-19'
   - id: df5-5
     title: "Smart-bomb + hyperspace (the two emergency powers, both CITING ADR-0005): plugins/defender/src/core/powers.ts — smart-bomb (*SMART BOMB SBOMB defender/DEFA7.SRC:3173,3175; clears on-screen enemies) and hyperspace (*HYPERSPACE HYPER :3211,3213; *RANDOM HYPER DIRECTION :3228; teleport with re-entry risk). Port the ROM trigger + timing and route the PRESENTATION through the existing df4-2 effect-policy — freeze/fade/particle, NOT the ROM's SBMBX0 COM PCRAM whole-page invert (:3199). The df4-2 guard stays GREEN. Consumes df4-1 collision (smart-bomb clear) + df4-2 effects/policy."
     description: 'Decision B: df5 CITES ADR-0005, it does not re-decide it. df4-2 already built the effect-policy classifier and the no-full-frame-strobe render guard and named these two as its future consumers. Port SBOMB/HYPER trigger+timing, cited; substitute only the strobe PRESENTATION; log a Design Deviation citing ADR-0005; the df4-2 guard must stay green with both powers live. Smart-bomb clears via df4-1 collision; powers are df3 scheduler-driven player actions.'
