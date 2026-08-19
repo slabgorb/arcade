@@ -1,11 +1,11 @@
 sprint:
-  name: TO Sprint 2635
-  jira_sprint_id: 6
-  jira_sprint_name: TO Sprint 2635
-  goal: Missile Command mc7 and follow-ups
-  start_date: '2026-08-16'
-  end_date: '2026-08-30'
+  name: TO Sprint 2636
+  jira_sprint_id: 7
+  jira_sprint_name: TO Sprint 2636
+  goal: Playtest bug sweep (pt1) — fleet-wide fixes from the 2026-08-19 playtest
+  start_date: '2026-08-19'
+  end_date: '2026-09-02'
   status: active
-  number: 2635
+  number: 2636
 epics:
-  - pm6
+  - pt1

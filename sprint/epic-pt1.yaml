@@ -1,0 +1,161 @@
+id: pt1
+type: epic
+title: 'Playtest bug sweep 2026-08-19: fleet-wide bugs observed in visual playtests (millipede, star-wars, tempest, defender/lobby, missile-command, joust, pac-man)'
+description: User playtest 2026-08-19 surfaced 17 observations across seven games plus the lobby. Each observation filed as its own story (the jt9 file-by-surface habit). Mix of sim bugs (joust troll/egg/lava-AI, millipede DDT dup + spawn ramp), projection/display (star-wars), input (missile-command mouse, star-wars mouse-start), attract/lobby UX (tempest attract demo, defender-lobby attract hookup, key labels, difficulty previews), and one verify-against-ROM check (pac-man fruit ladder).
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: pt1-1
+    title: 'millipede: unexploded DDT pills duplicate as the playfield shifts down — fake copies trail down the screen, only one is real'
+    description: "Playtest 2026-08-19: as the playfield scrolls/moves down, any unexploded DDT pill is repeated with a fake copy each shift, leaving a column of phantom pills; only one is interactable/real. Likely the pill's position isn't being remapped on the playfield shift, or the render draws stale rows."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-2
+    title: 'millipede: initial-wave spawn ramp not wired — verify early-game creature spawn tables against the ROM, escalation starts too fast'
+    description: "Playtest 2026-08-19: everything escalates quickly from the first wave; feels like the difficulty/spawn ramp-up (which creatures may spawn at which level/score thresholds) exists in the ROM but isn't wired. Audit the spawn gating for beetles/bees/dragonflies/etc. against the ROM tables and pin with cited tests."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-3
+    title: 'star-wars: surface-run projection looks wrong — elements render very far from the player'
+    description: 'Playtest 2026-08-19: during the Death Star surface run, geometry (towers/trench elements) appears much too distant from the player. Suspect projection or z-scale/near-plane issue specific to the surface phase. Verify against reference footage/ROM math.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-4
+    title: 'star-wars: fix the screen size to a fixed resolution to avoid display problems'
+    description: 'Playtest 2026-08-19: make the star-wars canvas a fixed size rather than tracking the window, to avoid display problems (projection/scaling artifacts). Pair with pt1-3 — a fixed logical resolution may be prerequisite to pinning the projection.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-5
+    title: "tempest: attract mode needs a 'play example' (auto-play demo) instead of just the wordmark"
+    description: "Playtest 2026-08-19: tempest's attract feature only shows the wordmark. Add an attract gameplay demo (self-playing example) like the joust attract demo (jt13-13 demoInput pattern). Verify against the ROM attract sequence."
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-6
+    title: "defender/lobby: hook the lobby up to defender's attract feature"
+    description: "Playtest 2026-08-19: defender has an attract feature that the lobby isn't wired to. Hook the lobby tile/idle flow to trigger/display it, consistent with how other games integrate attract."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-7
+    title: "lobby: game tiles should identify the actual keys, not just say 'keyboard'"
+    description: "Playtest 2026-08-19 (defender surfaced it, applies to lobby tiles generally): the control hint on a lobby tile just says 'keyboard' — display the real bindings (arrows/space/zxc/etc.) per game, sourced from each plugin's manifest."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-8
+    title: 'millipede + missile-command: erase the built-in high score'
+    description: "Playtest 2026-08-19: both games ship a pre-seeded 'built-in' high score. Remove it so the table starts clean (localStorage-backed real scores only), consistent with the rest of the fleet."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-9
+    title: 'tempest: difficulty select should preview the board layout per level, and starting higher should pay a bonus'
+    description: 'Playtest 2026-08-19: the difficulty/level-select should show a preview of the board (web) layout for each starting level, and a score bonus should be awarded for starting at a higher level. Both are authentic Tempest behaviors (SuperZapper-era level select) — check the references, ROM and MAME before implementing; cite the bonus values.'
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-10
+    title: 'star-wars: clicking the mouse should start the game, not just Enter'
+    description: 'Playtest 2026-08-19: on the start screen, a mouse click should start the game in addition to Enter.'
+    points: 1
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-11
+    title: 'star-wars: difficulty selector missing its death-star illustrations, and the easy/medium/hard hit regions are offset left'
+    description: "Playtest 2026-08-19: (a) the difficulty setting should show death stars illustrating the difficulty tiers but doesn't; (b) the hit region for 'easy - medium - hard' is misaligned — you must hover to the LEFT of 'easy' to select it. Fix the hit-testing offset and add the illustrations."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-12
+    title: 'missile-command: left/center/right mouse buttons should fire the corresponding missile base, like z/x/c'
+    description: 'Playtest 2026-08-19: map mouse buttons to bases — left button fires the left (alpha) base, middle the center (delta), right the right (omega) — mirroring the z/x/c keys. Suppress the context menu on right-click.'
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-13
+    title: 'joust: the troll should not be able to pull the player through a platform'
+    description: "Playtest 2026-08-19: when the lava troll grabs the player, it can drag them through solid platform geometry. Collision should still resolve against platforms during a troll grab; check the ROM's troll-pull behavior."
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-14
+    title: 'joust: the spawn/materialize animation overlay should be transparent'
+    description: "Playtest 2026-08-19: the spawning (materialize) animation renders as an opaque overlay; it should be transparent so the playfield shows through, per the arcade's shimmer effect."
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-15
+    title: 'joust: egg-hatching spawns the rider mid-air instead of waiting for a buzzard to descend and collect it'
+    description: 'Playtest 2026-08-19: when an egg hatches, the new enemy appears in the air immediately. Authentic behavior: the egg hatches into a rider standing on the ground/platform, then a buzzard flies down to pick the rider up before it becomes a threat. Verify the hatch → wait → buzzard-pickup sequence against the ROM.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-16
+    title: 'joust: enemies are too vulnerable to lava — a screen can be cleared by waiting for them to suicide'
+    description: 'Playtest 2026-08-19: enemy riders die to lava at a rate that lets the player clear a wave by simply waiting. In the arcade, enemy AI avoids the lava (and the troll grab is survivable for AI); verify enemy flap/altitude AI and lava lethality against the ROM behavior — enemies should rarely if ever suicide.'
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-17
+    title: 'pac-man: peach level followed by another peach level — verify the fruit sequence against the ROM table'
+    description: "Playtest 2026-08-19: after the peach level comes another peach level — suspicious to the eye, but the AUTHENTIC fruit ladder doubles most fruits (cherry, strawberry, peach, peach, apple, apple, grapes, grapes, galaxian, galaxian, bell, bell, key…). Verify our fruit table against pacman.asm's fruit/level table and cite it; if it matches the ROM, close as working-as-intended with the citation as evidence."
+    points: 1
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
