@@ -96,8 +96,9 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
       'every painted rect sits at/around the op position (near x=40, y≤feet)',
     ).toBe(true)
     expect(
-      rec.fills.every((f) => /^rgb\(/.test(f.style)),
-      'painted with a palette colour (DCONST owner colour), never a raw hex/named fill',
+      rec.fills.every((f) => /^rgba?\(/.test(f.style)),
+      'painted with a palette colour (DCONST owner colour), never a raw hex/named fill ' +
+        '(pt1-14: now an rgba() transparent shimmer, still a palette-derived colour)',
     ).toBe(true)
   })
 

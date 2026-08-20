@@ -45,6 +45,10 @@ const GREY = 0xd
 const P1 = 0x5
 const P2 = 0x7
 
+/** The r,g,b channels of a fillStyle, alpha-agnostic — pt1-14 made the warp-in fill an
+ *  rgba() shimmer, so this pins the COLOUR nibble without coupling to that alpha. */
+const channels = (style: string): string => style.match(/[\d.]+/g)!.slice(0, 3).join(',')
+
 const activeIdlePlayer = (g: GameState) =>
   g.sim.sim.processes.find((p) => p.kind === 'player' && p.idleCycle?.end === 'active')
 
@@ -115,18 +119,18 @@ describe('jt13-12 — paintWarpIn honours the explicit idle colour nibble', () =
     const pics = await loadPictures()
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
-    const rgb = (n: number) => `rgb(${colours[n].r} ${colours[n].g} ${colours[n].b})`
+    const chan = (n: number) => `${colours[n].r},${colours[n].g},${colours[n].b}`
 
     // A full-height idle op for a P1 arrival, but on the GREY beat of the cycle.
     const rec = recordingContext()
     paint(rec.ctx, { x: 40, y: 100, width: 16, height: 20, frame: 29, owner: 'p1', colour: 0xd }, colours)
     expect(rec.fills.length, 'the idle bird paints at full height').toBeGreaterThan(0)
     expect(
-      rec.fills.every((f) => f.style === rgb(0xd)),
+      rec.fills.every((f) => channels(f.style) === chan(0xd)),
       'every rect is filled with the GREY nibble ($D) the op carries',
     ).toBe(true)
     expect(
-      rec.fills.some((f) => f.style === rgb(0x5)),
+      rec.fills.some((f) => channels(f.style) === chan(0x5)),
       'and NEVER the owner yellow ($5) — the explicit idle colour overrides the owner default',
     ).toBe(false)
   })
@@ -138,7 +142,7 @@ describe('jt13-12 — paintWarpIn honours the explicit idle colour nibble', () =
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
     const rec = recordingContext()
     paint(rec.ctx, { x: 40, y: 100, width: 16, height: 20, frame: 29, owner: 'p1' }, colours)
-    const yellow = `rgb(${colours[0x5].r} ${colours[0x5].g} ${colours[0x5].b})`
-    expect(rec.fills.every((f) => f.style === yellow), 'owner P1 yellow ($5) when no colour override').toBe(true)
+    const yellow = `${colours[0x5].r},${colours[0x5].g},${colours[0x5].b}`
+    expect(rec.fills.every((f) => channels(f.style) === yellow), 'owner P1 yellow ($5) when no colour override').toBe(true)
   })
 })

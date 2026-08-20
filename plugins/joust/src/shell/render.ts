@@ -258,6 +258,16 @@ const WARPIN_DEFAULT_W = 16
 const WARPIN_DEFAULT_H = 16
 /** The lit transporter pad's thickness under the feet (a short owner-coloured bar). */
 const WARPIN_PAD_H = 2
+/**
+ * 0.6 — the warp-in overlay's alpha (pt1-14). The materialise silhouette is drawn
+ * SEE-THROUGH so the playfield shows through it, reading as the arcade's shimmer rather
+ * than an opaque box that erases the arena behind the arriving bird. This is a SHELL
+ * rendering choice, not a transcribed ROM constant: TREFF's DCONST constant-fill is
+ * per-frame opaque on the raster hardware; the transparency is the owner's explicit call
+ * in the story ("should be transparent so the playfield shows through, per the arcade's
+ * shimmer effect"). Visible (> 0) but see-through (< 1).
+ */
+const WARPIN_SHIMMER_ALPHA = 0.6
 
 /**
  * Paint one TREFF warp-in frame (jt13-2 — the shell mile of the transporter
@@ -291,7 +301,8 @@ export function paintWarpIn(
   // P1 yellow $5, P2 green $7, enemy white $1, JOUSTRV4.SRC:5739).
   const nibble = op.colour ?? (op.owner === 'p2' ? 7 : op.owner === 'enemy' ? 1 : 5)
   const colour = colours[nibble]
-  context.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+  // Transparent (pt1-14): the playfield shows through the materialise shimmer.
+  context.fillStyle = `rgba(${colour.r}, ${colour.g}, ${colour.b}, ${WARPIN_SHIMMER_ALPHA})`
   // The lit transporter pad — bottom-anchored at the feet, shown all window long.
   context.fillRect(op.x, feetY - WARPIN_PAD_H, w, WARPIN_PAD_H)
   // The bird silhouette grows up out of the pad, only once PFRAME <= 20.
