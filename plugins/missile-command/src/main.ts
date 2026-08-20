@@ -14,6 +14,7 @@ import { drawFrame } from './shell/render.js'
 import { applyLetterbox } from './shell/viewport.js'
 import {
   keydownReducer,
+  mousedownReducer,
   beginSetupOnInput,
   applyPointerMotion,
   createPointerLock,
@@ -139,6 +140,26 @@ window.addEventListener('keydown', (event: KeyboardEvent): void => {
   // a NEW array, so a changed reference is the save signal (the asteroids pattern).
   if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
   drain()
+})
+
+// Fire buttons (pt1-12). A Missile Command cabinet is a trackball + THREE fire buttons;
+// the LEFT / MIDDLE / RIGHT mouse buttons fire the left / centre / right base exactly as
+// Z/X/C do (mousedownReducer routes through the same fireOrStart key path). Same drain +
+// high-score-persist envelope as the keydown handler above, so a mouse fire sounds its
+// launch cue. The existing click→pointer-lock handler still runs — mousedown fires, click
+// locks, and both coexist.
+canvas.addEventListener('mousedown', (event: MouseEvent): void => {
+  const prevScores = game.highScores
+  game = mousedownReducer(event.button, game)
+  if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
+  drain()
+})
+
+// pt1-12: suppress the browser context menu on the canvas so the RIGHT button fires the
+// right base instead of popping the OS menu over the field. Canvas-scoped, so a
+// right-click anywhere else on the page still behaves normally.
+canvas.addEventListener('contextmenu', (event: MouseEvent): void => {
+  event.preventDefault()
 })
 
 // SH3-3: the frame loop is now @shared/loop's createLoop — the fixed-timestep
