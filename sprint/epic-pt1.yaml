@@ -11,10 +11,12 @@ stories:
     description: "Playtest 2026-08-19: as the playfield scrolls/moves down, any unexploded DDT pill is repeated with a fake copy each shift, leaving a column of phantom pills; only one is interactable/real. Likely the pill's position isn't being remapped on the playfield shift, or the render draws stale rows."
     points: 3
     priority: p1
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
+    review_findings: "Not reproducible / working-as-designed. Verified live on the running dev server: 0 phantom DDT stamps across 60 forced continuous down-scrolls; field DDT-stamp count stays exactly 2x intact-table-entries. The field shifts only through the single paired path scrollDown+ddtScrollDown (sim.ts:500-514); render is a cleared 1:1 field->screen draw; ddtPlacements(table) is dead/unused; every drawn pill is table-tracked (so 'only one interactable' is structurally impossible). Deployed millipede-v0.0.8 (playtest day) has the same ml7-9 wiring. The observed 'trailing duplicates' are the ROM-correct continuous DDT-bomb seeding stream (up to 4 bombs seeded at top, scrolling down, all interactable). Closed per user 2026-08-20."
   - id: pt1-2
     title: 'millipede: initial-wave spawn ramp not wired — verify early-game creature spawn tables against the ROM, escalation starts too fast'
     description: "Playtest 2026-08-19: everything escalates quickly from the first wave; feels like the difficulty/spawn ramp-up (which creatures may spawn at which level/score thresholds) exists in the ROM but isn't wired. Audit the spawn gating for beetles/bees/dragonflies/etc. against the ROM tables and pin with cited tests."
