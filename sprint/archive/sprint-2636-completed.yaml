@@ -107,3 +107,8 @@ completed_stories:
     title: 'defender: revive the live palette — the laser, bombs, TIEs, pods and the mutant shimmer render black because colour RAM is frozen at boot defaults'
     points: 8
     completed: '2026-08-20'
+  - id: pt1-26
+    epic: pt1
+    title: 'defender: flipping the ship around does not flip the sprite — it always faces right'
+    points: 2
+    completed: '2026-08-20'

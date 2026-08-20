@@ -351,10 +351,11 @@ stories:
       Owner-reported (2026-08-19 playtest), confirmed in the 2026-08-20 render audit. The facing is fully tracked (state.ship.facing, flipped correctly by stepReverse, ship.ts:100) but the render never reads it: scene.ts:442 always blits PLAPIC with no facing branch, blitObject (objects.ts) has no flip parameter, and objects-data.ts:58 holds a single right-facing PLAPIC with no mirrored variant. Fix: horizontally mirror the PLAPIC cell (add a flip flag to blitObject, or a mirrored sprite) selected on facing === left. Small, self-contained, immediately owner-visible.
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-27
     title: 'defender: laser fire tracks the ship current row instead of the row it was fired from — shots snap vertically and hit at the wrong height'
