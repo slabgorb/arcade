@@ -70,6 +70,32 @@ function controlsTextFor(id: string): string {
   return game!.controls.join(' ').toLowerCase()
 }
 
+// Direct unit test of the AC1 detector. AC1 below routes EVERY game through
+// isBareDeviceLabel and nothing else, so without this the function could be broken
+// in either direction and the fleet loop would stay green (a `return false` mutant
+// empties every `bare` array; a `return true` mutant is caught only for the three
+// games that also have AC2 checks). Pinning both truth values here kills both mutants.
+describe('isBareDeviceLabel — the AC1 detector, pinned directly', () => {
+  it.each(['Keyboard', 'Mouse', 'Mouse / Trackball', 'Joystick', '  ', '—'])(
+    'flags %j as a bare device label (no keys)',
+    (hint) => {
+      expect(isBareDeviceLabel(hint)).toBe(true)
+    },
+  )
+
+  it.each([
+    'MOVE — WASD / Arrows',
+    'FIRE — Space',
+    'SMART BOMB — B',
+    'AIM — Mouse',
+    'FLY — Mouse / Arrows',
+    'Joystick — ←↑↓→ / WASD',
+    'FIRE — Click / Space',
+  ])('accepts %j — it names a real key or action', (hint) => {
+    expect(isBareDeviceLabel(hint)).toBe(false)
+  })
+})
+
 describe('pt1-7: lobby control hints name real keys, not bare devices', () => {
   // Non-vacuity floor first (lang-review #15): a filtered-empty GAMES would make
   // every it.each below silently pass zero cases. Pin the fleet is present.
@@ -103,16 +129,18 @@ describe('pt1-7: lobby control hints name real keys, not bare devices', () => {
   })
 
   it('centipede names the pointer and how to fire (Click/Space)', () => {
-    // plugins/centipede/src/shell/input.ts:96-105 — pointer-lock mouse + left-button
-    // fire, Arrows/WASD move, Space fire. Not the bare 'Mouse' it ships today.
+    // plugins/centipede/src/shell/input.ts: keyboard move/fire at :96-100 (Arrows/WASD
+    // move, Space fire); pointer-lock mouse + left-button fire at :43-75 (FIRE_BUTTON=0,
+    // onMouseDown). Not the bare 'Mouse' it ships today.
     const text = controlsTextFor('centipede')
     expect(text, 'centipede control hint should still name the mouse').toContain('mouse')
     expect(text, 'centipede control hint should name a fire input').toMatch(/click|space/)
   })
 
   it('millipede names the pointer and how to fire (Click/Space)', () => {
-    // plugins/millipede/src/main.ts:97,113-118 — pointer-lock mouse; fire
-    // Space/Enter/Ctrl/Z/X/↑, click fires. Not the bare 'Mouse / Trackball' today.
+    // plugins/millipede/src/main.ts: fire keys at :97 (Space/Enter/Ctrl/Z/X/↑); the
+    // pointerdown handler at :116-119 locks the pointer (trackball) and sets fireHeld
+    // (:119 — click fires). Not the bare 'Mouse / Trackball' today.
     const text = controlsTextFor('millipede')
     expect(text, 'millipede control hint should still name the mouse/trackball').toContain('mouse')
     expect(text, 'millipede control hint should name a fire input').toMatch(/click|space/)
