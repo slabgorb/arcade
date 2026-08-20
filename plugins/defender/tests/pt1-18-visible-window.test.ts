@@ -75,11 +75,19 @@ const noEntities = (camera: number): SimState => ({
   effects: [],
 })
 
-/** Columns where two same-size frames differ in ANY row. */
+/** The first row BELOW the scanner band (the pt1-24 band bound: blips ≤ row 31, contour ≤ 41).
+ *  Since pt1-24, EVERY live attacker — humanoids included — blips on the radar strip whether or
+ *  not the main view shows it (SCNR reads the absolute OX16, AMODE1.SRC:1260 — exactly the
+ *  property the scanner test below pins). This file measures the MAIN-VIEW cull, so its diffs
+ *  must start below the strip or an off-window attacker's legitimate radar blip reads as a
+ *  cull failure. The HROW=200 fixture sits far below this bound. */
+const MAIN_VIEW_TOP = 60
+
+/** Columns where two same-size frames differ in any MAIN-VIEW row (below the scanner band). */
 function diffCols(a: Framebuffer, b: Framebuffer): number[] {
   const cols: number[] = []
   for (let x = 0; x < W; x++) {
-    for (let y = 0; y < H; y++) {
+    for (let y = MAIN_VIEW_TOP; y < H; y++) {
       if (a.data[y * W + x] !== b.data[y * W + x]) {
         cols.push(x)
         break
