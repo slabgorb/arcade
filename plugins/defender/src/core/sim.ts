@@ -41,6 +41,8 @@ import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.
 import { laserVsObject, bombVsPlayer, shipVsObject, type CollObject, type Query, type Box } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
+import { DEFAULT_PCRAM } from './palette.js'
+import { initColorCycle, stepColorCycle, type ColorCycleState } from './color-cycle.js'
 import { decodeScrollSurface, TERRAIN } from './terrain.js'
 import { slide, wrap16, projectWorldX, projectOnscreenX, shipWorldX, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
@@ -232,6 +234,12 @@ export interface SimState {
   /** df6-1: the audio EVENT CHANNEL — this tick's cues, DATA on the returned state
    *  (Decision C). Rebuilt every tick, never carried forward. Empty on a fresh sim. */
   readonly cues: readonly GameEvent[]
+  /** pt1-22 (ADR-0007 decision 1): the live 16-byte PCRAM colour shadow. Pure 4-bit-packed
+   *  BBGGGRRR bytes (never RGBA — the shell decodes them), seeded from DEFAULT_PCRAM (the
+   *  CRINIT copy) and mutated each tick by the standing colour cyclers. The shell decodes
+   *  through THIS every frame instead of a module-load cache, reviving the laser/bomb/TIE/
+   *  mutant colours that otherwise sit frozen at their $00 boot black. */
+  readonly pcram: readonly number[]
   readonly _plaxv24: number
   readonly _rev: RevState
   readonly _vy: VState
@@ -247,6 +255,8 @@ export interface SimState {
   readonly _effectBank: EffectBank
   readonly _waveDirector: WaveDirector
   readonly _rt: SimRuntime
+  /** pt1-22: the pure state of the three standing colour cyclers (COLR/CBOMB/TIECOL). */
+  readonly _colorCycle: ColorCycleState
 }
 
 const INITIAL_PLAX16 = 0x2000
@@ -389,6 +399,11 @@ export function createSim(rand: () => number): SimState {
     smartBombs: rt.smartBombs,
     gameOver: rt.gameOver,
     cues: [],
+    // pt1-22: the live palette boots as the CRINIT copy of the default table (a fresh
+    // array so the shadow is never the shared DEFAULT_PCRAM reference), and the standing
+    // cyclers start ready to fire on the first tick.
+    pcram: [...DEFAULT_PCRAM],
+    _colorCycle: initColorCycle(),
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
@@ -606,11 +621,18 @@ export function stepSim(state: SimState, input: Input): SimState {
   else if (!sucking && rt.prevSucking) rt.cues.push({ type: 'lander-suck-stop' })
   rt.prevSucking = sucking
 
+  // pt1-22: advance the standing colour cyclers one tick off the PREVIOUS shadow, returning
+  // a fresh 16-byte shadow (persistent — state.pcram is never mutated). This is the "live
+  // palette" the shell decodes through: registers 1/A/C/D/E/F animate, 0 and 2-9/B stay put.
+  const cycled = stepColorCycle(state._colorCycle, state.pcram)
+
   return withBanks({
     ...state,
     ship: { x: projectOnscreenX(plax16), y: shipRow, facing: shipFacing },
     camera: camera.bgl,
     stars,
+    pcram: cycled.pcram,
+    _colorCycle: cycled.cc,
     _plaxv24: plaxv24,
     _rev: { facing: shipFacing, revflg: rev.revflg },
     _vy: vy,
