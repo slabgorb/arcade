@@ -170,7 +170,9 @@ const loop = createLoop(
         session.phase === 'game-over' ? { board: session.board, nameEntry: session.nameEntry } : undefined,
         // pt1-20: show the control hint on the ATTRACT screen (the self-playing demo) so a
         // first-time player learns Defender's unintuitive keys; live play stays un-cluttered.
-        { controlHint: session.phase === 'attract' },
+        // pt1-29: feed the in-play high score (top of the persisted board) so the HUD shows it
+        // during live play, not only on the game-over hall-of-fame screen (the 2026-08-20 audit fix).
+        { controlHint: session.phase === 'attract', highScore: session.board[0]?.score ?? 0 },
       ),
     )
   },
