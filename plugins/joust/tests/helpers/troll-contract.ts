@@ -141,6 +141,20 @@ export interface TrollModule {
    * (`CMPA #FLOOR+7-32 / BLO`). Pure predicate over the pixel Y.
    */
   outOfTrollReach(pixelY: number): boolean
+
+  /**
+   * LAVVIC (JOUSTRV4.SRC:1711-1731, pt1-13) — is a candidate/gripped victim still
+   * WITHIN the lava troll's reach? The ROM re-verifies range every frame (LAVVFY
+   * :1702, the grip loop :1667, ADDLAV :6653) and RELEASES the moment it fails — which
+   * is what keeps the troll from dragging a bird DOWN through a platform. Three release
+   * tests, true iff the victim is IN range (held):
+   *   • GROUNDED (PSTATE != 0) ⇒ out                         (:1716-1717)
+   *   • pixelY ABOVE FLOOR+7-32 = 198 (too high) ⇒ out       (:1718-1720)
+   *   • posX-2 in the CLIF5 central band (40, 240) ⇒ out —
+   *     in range ONLY at the screen-edge lava gaps            (:1721-1726)
+   * Pure predicate over plain numbers (the troll.ts idiom, cf. outOfTrollReach).
+   */
+  trollVictimInRange(posX: number, pixelY: number, airborne: boolean): boolean
 }
 
 /**
@@ -155,7 +169,7 @@ export async function loadTroll(): Promise<TrollModule> {
   const specifier = ['..', '..', 'src', 'core', 'troll.js'].join('/')
   try {
     const mod = (await import(/* @vite-ignore */ specifier)) as Partial<TrollModule>
-    for (const fn of ['trollSpawnable', 'beginGrip', 'escalateGrip', 'stepGrip', 'escapeScoreEvent', 'outOfTrollReach'] as const) {
+    for (const fn of ['trollSpawnable', 'beginGrip', 'escalateGrip', 'stepGrip', 'escapeScoreEvent', 'outOfTrollReach', 'trollVictimInRange'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
     if (typeof mod.BREAK_FREE_VY !== 'number') throw new Error('module has no `BREAK_FREE_VY` export')

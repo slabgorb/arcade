@@ -213,6 +213,36 @@ export function outOfTrollReach(pixelY: number): boolean {
 }
 
 /**
+ * LAVVIC (JOUSTRV4.SRC:1711-1731, pt1-13) — is a candidate/gripped victim still WITHIN
+ * the lava troll's reach? The ROM re-verifies range every frame (LAVVFY :1702, the grip
+ * loop :1667, and ADDLAV's `JSR LAVVI3` :6653) and RELEASES the grip the instant it
+ * fails — which is what keeps the troll from dragging a bird DOWN through a platform. A
+ * bird is in range ONLY at the screen-edge lava gaps (the columns with no platform above
+ * the lava); the central band is the "(CLIF5 BOUNDS)". Three release tests:
+ *
+ *   • GROUNDED (`LDA PSTATE,Y / BNE LVVOUT`, :1716-1717) — not in the air ⇒ out.
+ *   • TOO HIGH (`LDA PPOSY+1,Y / CMPA #FLOOR+7-32 / BLO LVVOUT`, :1718-1720) — a
+ *     whole-pixel Y ABOVE FLOOR+7-32 = 198 has climbed clear ⇒ out. This is the same
+ *     ceiling as `outOfTrollReach`.
+ *   • CENTRAL X (`LDD PPOSX,Y / ADDD #-2 / CMPD #54-14 / BLE LVVIN / CMPD #240 /
+ *     BLT LVVOUT`, :1721-1726) — with the ROM's `-2` fudge for the exact-X match,
+ *     posX-2 <= 40 (= 54-14) is a LEFT lava gap (in), posX-2 >= 240 is a RIGHT lava gap
+ *     (in), and the (40, 240) middle is over the CLIF5 platforms ⇒ out.
+ *
+ * Pure predicate over plain numbers (the troll.ts idiom, cf. `outOfTrollReach`); true
+ * iff the victim is IN range (still held). `stepTrolls` calls it as
+ * `trollVictimInRange(entity.posX, entity.posY >> 8, entity.airborne)`.
+ */
+export function trollVictimInRange(posX: number, pixelY: number, airborne: boolean): boolean {
+  if (!airborne) return false // PSTATE != 0 — grounded (:1716-1717)
+  if (outOfTrollReach(pixelY)) return false // pixelY < FLOOR+7-32 = 198 — too high (:1718-1720)
+  const d = posX - 2 // ADDD #-2 — fudge for the exact X co-ordinate match (:1722)
+  if (d <= 54 - 14) return true // CMPD #54-14 / BLE LVVIN — a left-side lava gap (:1723-1724)
+  if (d < 240) return false // CMPD #240 / BLT LVVOUT — the central CLIF5 platforms (:1725-1726)
+  return true // d >= 240 — a right-side lava gap (LVVIN, :1727)
+}
+
+/**
  * The 50-point break-free score event (AC-2, JOUSTRV4.SRC:6666-6670). The value is
  * the BCD-DECODED 50 (SCRTEN reads the raw $50 as tens via DAA), not the raw byte —
  * ruling C: the verify-in-emulation caveat lives in claim JT33-011, this event does

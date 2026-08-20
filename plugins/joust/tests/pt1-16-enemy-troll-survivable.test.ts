@@ -79,6 +79,12 @@ const GRACE_FRAMES = 30 * 60 // LAVKLL: the 30 s grace before the pull escalates
 const BASE_PULL = 0x08
 
 const ISLAND = 40 // a keep-alive island buzzard, clear of the grip point
+// pt1-13: the lava troll can only HOLD a bird over an exposed screen-edge lava gap —
+// LAVVIC releases any grip whose victim is in the central (40,240) `posX-2` band (over a
+// platform). Stage the gripped victim at a left-edge gap (posX-2 = 18 <= 40, in range) so
+// the grip holds and these X-independent grip mechanics stay observable.
+const GRAB_X = 20
+const HAND_X = GRAB_X - 2 // the troll hand sits 2px in from its victim (TROLL_X_OFFSET)
 
 // ─── Fixtures (the jt13-11 / lava-troll-enemy-grip-drown idiom) ──────────────
 
@@ -184,8 +190,8 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
     const smod = await loadSim()
     const VICTIM_ID = 0x202
     const trollId = 0x15_0000 + VICTIM_ID
-    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
-    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, DEATH_Y - 6, BASE_PULL, GRACE_FRAMES)])
+    const enemy = { ...enemyAt(VICTIM_ID, GRAB_X, entityAt(GRAB_X, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, HAND_X, DEATH_Y - 6, BASE_PULL, GRACE_FRAMES)])
 
     // Non-vacuity: the fixture really does start with the troll gripping the enemy.
     expect(grippedByOf(enemyIn(d, VICTIM_ID)), 'the fixture stages a committed grace grip on the enemy').toBe(trollId)
@@ -227,8 +233,8 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
     const trollId = 0x15_0000 + VICTIM_ID
     const PULL = 100 // > 96, so a flap cannot flip velY negative — the enemy keeps falling
     const START_Y = 200 // in the troll's reach (>=198) and clear of the lava (<230) for a few frames
-    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, START_Y)), grippedBy: trollId } as SimProcess
-    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, START_Y - 3, PULL, GRACE_FRAMES)])
+    const enemy = { ...enemyAt(VICTIM_ID, GRAB_X, entityAt(GRAB_X, START_Y)), grippedBy: trollId } as SimProcess
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, HAND_X, START_Y - 3, PULL, GRACE_FRAMES)])
 
     const velYs: number[] = []
     for (let i = 0; i < 3; i++) {
@@ -251,8 +257,8 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
     const smod = await loadSim()
     const PID = 1
     const trollId = 0x15_0000 + PID
-    const victim = { ...playerAt(PID, 100, DEATH_Y - 3), grippedBy: trollId } as SimProcess
-    let d = await trollSim([victim, trollGripping(PID, 98, DEATH_Y - 6, BASE_PULL, GRACE_FRAMES)])
+    const victim = { ...playerAt(PID, GRAB_X, DEATH_Y - 3), grippedBy: trollId } as SimProcess
+    let d = await trollSim([victim, trollGripping(PID, HAND_X, DEATH_Y - 6, BASE_PULL, GRACE_FRAMES)])
 
     expect(grippedByOf(playerIn(d, PID)), 'the fixture stages a committed grace grip on the player').toBe(trollId)
 
@@ -285,9 +291,9 @@ describe('pt1-16 — a gripped enemy at the escalated $500 cap still drowns', ()
     const smod = await loadSim()
     const VICTIM_ID = 0x202
     const trollId = 0x15_0000 + VICTIM_ID
-    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
+    const enemy = { ...enemyAt(VICTIM_ID, GRAB_X, entityAt(GRAB_X, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
     // killTimer: 1 ⇒ grace already spent; pull already at the cap.
-    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, DEATH_Y - 6, PULL_CAP, 1)])
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, HAND_X, DEATH_Y - 6, PULL_CAP, 1)])
 
     let drowned = false
     for (let i = 0; i < 200 && !drowned; i++) {

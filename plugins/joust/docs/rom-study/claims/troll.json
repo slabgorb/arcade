@@ -196,5 +196,59 @@
       "line": 6775,
       "verbatim": "\tLDA\t#LAVID\t\tLAVATROLL I.D."
     }
+  },
+  {
+    "id": "JT113-001",
+    "claim": "LAVVIC range gate: the grip caller re-verifies the victim is still within range every frame (LAVVFY → BSR LAVVIC), releasing to the give-up LAVATF when it is not — the check that keeps the troll from dragging a bird through a platform (JOUSTRV4.SRC:1702).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1702,
+      "verbatim": "LAVVFY\tBSR\tLAVVIC\t\tCHECK IF VICTIM IS STILL WITHIN RANGE"
+    }
+  },
+  {
+    "id": "JT113-002",
+    "claim": "LAVVIC release test 1: a victim that is not still in the air (PSTATE != 0, grounded) is out of range and the grip releases (JOUSTRV4.SRC:1716).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1716,
+      "verbatim": "\tLDA\tPSTATE,Y\tTHIS OBJECT IS STILL IN THE AIR?"
+    }
+  },
+  {
+    "id": "JT113-003",
+    "claim": "LAVVIC release test 2: a victim whose whole-pixel Y is above FLOOR+7-32 = 198 is too high — out of reach — and the grip releases (the outOfTrollReach ceiling) (JOUSTRV4.SRC:1719).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1719,
+      "verbatim": "\tCMPA\t#FLOOR+7-32"
+    }
+  },
+  {
+    "id": "JT113-004",
+    "claim": "LAVVIC release test 3 (left bound): after the -2 fudge, posX-2 <= 54-14 = 40 is a left-side lava gap and the victim is IN range (BLE LVVIN) (JOUSTRV4.SRC:1723).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1723,
+      "verbatim": "\tCMPD\t#54-14"
+    }
+  },
+  {
+    "id": "JT113-005",
+    "claim": "LAVVIC release test 3 (right bound): posX-2 below 240 is over the central CLIF5 platforms — OUT of range (BLT LVVOUT); only posX-2 >= 240 is a right-side lava gap. This is the CLIF5 BOUNDS that fence off the through-platform column (JOUSTRV4.SRC:1725).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 1725,
+      "verbatim": "\tCMPD\t#240\t\t(CLIF5 BOUNDS)"
+    }
+  },
+  {
+    "id": "JT113-006",
+    "claim": "ADDLAV runs the LAVVIC reach arm after every fall step (JSR LAVVI3 / BNE ADLFRE) — the bird-out-of-range re-check that releases the grip each frame (JOUSTRV4.SRC:6653).",
+    "source": {
+      "file": "JOUSTRV4.SRC",
+      "line": 6653,
+      "verbatim": "\tJSR\tLAVVI3\t\tBIRD OUT OF LAVA TROLLS RANGE?"
+    }
   }
 ]

@@ -61,6 +61,12 @@ const PULL_CAP = 0x500
 // jt13-10's keep-alive island buzzard, verbatim: a grounded enemy far from the
 // lava holds the wave open so it never advances and spawns fresh birds mid-sink.
 const ISLAND = 100
+// pt1-13: the lava troll can only HOLD a bird within LAVVIC range (posX-2 <= 40 or >= 240);
+// a central column is released as through-a-platform. Stage the drown victim at posX 41
+// (posX-2 = 39 <= 40, IN range) — chosen just PAST the burned-shore lava-troll cells
+// (X in [-32,38]) so the drowning body is NOT re-seized by the per-contact grab on its
+// onset frame. The sink cadence is Y-based, so the column does not change what this measures.
+const GRIP_X = 41
 
 // ─── Fixtures (jt13-10 / jt13-7 shapes) ──────────────────────────────────────
 
@@ -162,8 +168,8 @@ describe('jt13-11 AC1 — a gripped victim pulled under sinks like the swim deat
   it('the body is NOT removed the frame it reaches the lava — it stays and sinks to FLOOR+20', async () => {
     const smod = await loadSim()
     const trollId = 0x15_0000 + PLAYER1_ID
-    const victim = { ...playerAt(PLAYER1_ID, 100, DEATH_Y - 3), grippedBy: trollId } as SimProcess
-    let d = await grippedDrownSim([victim, trollGripping(PLAYER1_ID, 98, DEATH_Y - 6)])
+    const victim = { ...playerAt(PLAYER1_ID, GRIP_X, DEATH_Y - 3), grippedBy: trollId } as SimProcess
+    let d = await grippedDrownSim([victim, trollGripping(PLAYER1_ID, GRIP_X, DEATH_Y - 6)])
 
     // Precondition: the victim really is in the troll's grip on arrival.
     expect(grippedByOf(playerIn(d, PLAYER1_ID)), 'the fixture stages a committed grip').toBe(trollId)
@@ -233,8 +239,8 @@ describe('jt13-11 AC2 — the gripped drown sounds SNPLAV, exactly once', () => 
   it('a gripped player drown emits player-lava-death once, like the swim death', async () => {
     const smod = await loadSim()
     const trollId = 0x15_0000 + PLAYER1_ID
-    const victim = { ...playerAt(PLAYER1_ID, 100, DEATH_Y - 3), grippedBy: trollId } as SimProcess
-    let d = await grippedDrownSim([victim, trollGripping(PLAYER1_ID, 98, DEATH_Y - 6)])
+    const victim = { ...playerAt(PLAYER1_ID, GRIP_X, DEATH_Y - 3), grippedBy: trollId } as SimProcess
+    let d = await grippedDrownSim([victim, trollGripping(PLAYER1_ID, GRIP_X, DEATH_Y - 6)])
 
     const kinds: string[] = []
     for (let i = 0; i < 200; i++) {
