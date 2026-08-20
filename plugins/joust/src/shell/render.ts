@@ -19,7 +19,7 @@
 // own end-of-line token), so they must be reshaped into a rectangle before they
 // can be indexed as one — otherwise every row after the first shears left.
 
-import { PALETTES, PIXEL_BLOCKS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
+import { PALETTES, PIXEL_BLOCKS, ENTITY_RECORDS, expandAshFrames, type PixelBlock, type Palette } from '../core/pictures.js'
 import { CRUMBLE_FLAVOR, CRUMBLE_DEBRIS_FRAME_COUNT } from '../core/crumble.js'
 import { WARPIN_FRAME_COUNT, WARPIN_BIRD_VISIBLE_PFRAME } from '../core/warpin.js'
 import { fitIntegerScale } from '@shared/view'
@@ -252,54 +252,94 @@ export function paintCrumble(
   context.fillRect(op.x, op.y - jitter, w, h)
 }
 
-/** The standing bird+rider footprint the warp-in silhouette grows into when the op
- *  carries no explicit size — ~the ROM box-erase width (`#18`, JOUSTRV4.SRC:5800). */
+/** The lit transporter pad's width when the op names no resolvable sprite —
+ *  ~the ROM box-erase width (`#18`, JOUSTRV4.SRC:5800). */
 const WARPIN_DEFAULT_W = 16
-const WARPIN_DEFAULT_H = 16
 /** The lit transporter pad's thickness under the feet (a short owner-coloured bar). */
 const WARPIN_PAD_H = 2
 
 /**
- * Paint one TREFF warp-in frame (jt13-2 — the shell mile of the transporter
- * spawn animation).
+ * The raster pixel block a warp-in op's sprite `name` resolves to. A mount frame
+ * name (ORSTND, ORFLAP, SFLY1R …) is an ENTITY_RECORDS entry whose `source` is the
+ * actual raster block (ORSTND → ORUN4R); resolve through it exactly as `blitOp`'s
+ * `entitySource` does, then look the block up (name or alias) in PIXEL_BLOCKS.
+ */
+function warpInSprite(name: string | undefined): PixelBlock | undefined {
+  if (!name) return undefined
+  const source = ENTITY_RECORDS.find((r) => r.name === name)?.source ?? name
+  return PIXEL_BLOCKS.find((b) => b.name === source || b.aliases.includes(source))
+}
+
+/**
+ * Paint one TREFF warp-in frame (jt13-2; pt1-14 — the authentic, TRANSPARENT effect).
  *
- * A `kind:'warpin'` op has no atlas silhouette, so like the dissolve/crumble it
- * takes a dedicated `fillRect` path. `op.y` is the whole-pixel FEET; the effect is
- * bottom-anchored there (the ROM shifts WCY to keep the feet planted while the bird
- * grows, JOUSTRV4.SRC:5763-5772). The colour is the `DCONST` owner nibble — P1
- * yellow ($5), P2 green ($7), enemy white ($1) (JOUSTRV4.SRC:5739) — a transcribed
- * palette index, never an invented hex.
+ * The ROM does NOT lay an opaque box over the arena: TREFF blits with the blitter's
+ * SOLID bit ADDED to the zero-suppress transfer, on TWO distinct DMA images —
+ *   • the lit TRANSPORTER pad: `LDA ,X / ORA #$10` "CONSTANT FILL OF TRANSPORTER"
+ *     (JOUSTRV4.SRC:5736-5739, after `JSR BCKYUP` puts up its background image);
+ *   • the arriving bird's OWN sprite: `LDA WCDMA,X / ORA #$10` on the mount DMA block
+ *     (JOUSTRV4.SRC:5787-5790, after `JSR WPLYR` sets it up).
+ * The zero-suppress default is `LDA #$0A` (SYSTEM.SRC:504 `WR1CLS` / :568 `WR2CLS`).
+ * `$0A|$10 = $1A`: zero-suppress KEPT, so the sprite's transparent (nibble-0) pixels
+ * are NOT drawn and the playfield shows through them; the SOLID bit recolours every
+ * foreground pixel to the single `DCONST` constant colour. So the effect is a
+ * bird-SHAPED silhouette in one opaque colour, not a translucent rectangle.
  *
- * PROCEDURAL, not pixel-accurate: the constant-filled standing sprite is a growing
- * bar, sized by the PFRAME frame (the ROM derives WCLENY the same way, :5753-5757):
- *   • the lit pad shows for the whole window;
- *   • the bird silhouette appears only once PFRAME <= 20 (`CMPA #20`, :5742) and
- *     grows UP out of the pad to full height.
+ * Rendered on the `paintDissolve` idiom (no atlas here — only fillStyle/fillRect):
+ *   • the lit pad shows for the whole window, bottom-anchored at the feet;
+ *   • the bird silhouette appears only once PFRAME <= 20 (`CMPA #20`, :5742) and grows
+ *     UP from the feet — the ROM clamps the DMA height WCLENY off PFRAME (:5753-5757)
+ *     while shifting WCY to keep the feet planted (:5763-5772). We reveal the sprite's
+ *     bottom `visibleRows` rows, feet pinned, more each frame.
+ * The colour is the `DCONST` owner nibble — P1 yellow ($5), P2 green ($7), enemy white
+ * ($1) (:5739) — or the explicit idle-cycle nibble (jt13-12). Every foreground pixel is
+ * OPAQUE (rgb, never rgba): the see-through is the sprite's own zero pixels, not alpha.
  */
 export function paintWarpIn(
   context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>,
-  op: { x: number; y: number; width?: number; height?: number; frame?: number; facing?: number; owner?: string; colour?: number },
+  op: { x: number; y: number; frame?: number; facing?: number; owner?: string; name?: string; colour?: number },
   colours: readonly Rgba[],
 ): void {
-  const w = op.width ?? WARPIN_DEFAULT_W
-  const h = op.height ?? WARPIN_DEFAULT_H
-  if (w <= 0 || h <= 0) return
-  const frame = op.frame ?? 0
   const feetY = op.y
   // The constant-fill colour: an explicit `colour` nibble (jt13-12 — the cycling TREPL
   // idle role) when the op carries one, else the `DCONST` owner colour (jt13-2 grow-in:
-  // P1 yellow $5, P2 green $7, enemy white $1, JOUSTRV4.SRC:5739).
+  // P1 yellow $5, P2 green $7, enemy white $1, JOUSTRV4.SRC:5739). OPAQUE — the ROM's
+  // constant fill is solid; the transparency is the sprite's zero-suppressed pixels.
   const nibble = op.colour ?? (op.owner === 'p2' ? 7 : op.owner === 'enemy' ? 1 : 5)
   const colour = colours[nibble]
   context.fillStyle = `rgb(${colour.r} ${colour.g} ${colour.b})`
+
+  const sprite = warpInSprite(op.name)
+  const padW = sprite ? sprite.width * 2 : WARPIN_DEFAULT_W
   // The lit transporter pad — bottom-anchored at the feet, shown all window long.
-  context.fillRect(op.x, feetY - WARPIN_PAD_H, w, WARPIN_PAD_H)
-  // The bird silhouette grows up out of the pad, only once PFRAME <= 20.
+  context.fillRect(op.x, feetY - WARPIN_PAD_H, padW, WARPIN_PAD_H)
+
+  // The bird silhouette appears only once PFRAME <= 20; without a resolvable sprite
+  // (e.g. an op that carries no name) only the lit pad shows.
+  const frame = op.frame ?? 0
   const firstVisible = WARPIN_FRAME_COUNT - WARPIN_BIRD_VISIBLE_PFRAME
-  if (frame >= firstVisible) {
-    const span = WARPIN_FRAME_COUNT - firstVisible
-    const progress = (frame - firstVisible + 1) / span
-    const birdH = Math.max(1, Math.round((h - WARPIN_PAD_H) * progress))
-    context.fillRect(op.x, feetY - WARPIN_PAD_H - birdH, w, birdH)
+  if (frame < firstVisible || !sprite) return
+
+  // WCLENY grow-in: reveal the sprite's bottom `visibleRows` rows, feet pinned to the
+  // pad, more rows each frame until full height.
+  const span = WARPIN_FRAME_COUNT - firstVisible
+  const progress = (frame - firstVisible + 1) / span
+  const spriteW = sprite.width * 2
+  const spriteH = sprite.height
+  const visibleRows = Math.min(spriteH, Math.max(1, Math.round(spriteH * progress)))
+  const bottom = feetY - WARPIN_PAD_H // the sprite's feet sit on the pad
+  const mirror = op.facing === -1 // left-facers are mirrored, as blitOp mirrors the atlas
+
+  for (let vr = 0; vr < visibleRows; vr++) {
+    const row = spriteH - 1 - vr
+    const y = bottom - 1 - vr
+    for (let col = 0; col < spriteW; col++) {
+      // 4bpp, two pixels per byte, HIGH nibble is the LEFT pixel (as buildAtlas decodes).
+      const byte = sprite.bytes[row * sprite.width + (col >> 1)]
+      const nib = (col & 1) === 0 ? (byte >> 4) & 0x0f : byte & 0x0f
+      if (nib === 0) continue // zero-suppressed: the playfield shows through here
+      const drawCol = mirror ? spriteW - 1 - col : col
+      context.fillRect(op.x + drawCol, y, 1, 1)
+    }
   }
 }

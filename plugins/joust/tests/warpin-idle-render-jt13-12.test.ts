@@ -23,9 +23,13 @@ import { loadPictures } from './helpers/pictures-contract.js'
 
 type PaintWarpIn = (
   context: { fillStyle: string; fillRect(x: number, y: number, w: number, h: number): void },
-  op: { x: number; y: number; width?: number; height?: number; frame?: number; owner?: string; colour?: number },
+  op: { x: number; y: number; frame?: number; owner?: string; name?: string; colour?: number },
   colours: readonly { r: number; g: number; b: number; a: number }[],
 ) => void
+
+// pt1-14 — the warp-in now draws the arriving bird's own sprite silhouette, so its op
+// carries a resolvable mount frame name (P1 ostrich stand → source block ORUN4R).
+const MOUNT = 'ORSTND'
 
 function recordingContext() {
   const fills: Array<{ x: number; y: number; w: number; h: number; style: string }> = []
@@ -115,11 +119,13 @@ describe('jt13-12 — paintWarpIn honours the explicit idle colour nibble', () =
     const pics = await loadPictures()
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
+    // pt1-14: the silhouette fill is OPAQUE rgb() (never rgba) — an exact string compare
+    // both pins the colour nibble AND guards against an opacity regression sneaking back.
     const rgb = (n: number) => `rgb(${colours[n].r} ${colours[n].g} ${colours[n].b})`
 
     // A full-height idle op for a P1 arrival, but on the GREY beat of the cycle.
     const rec = recordingContext()
-    paint(rec.ctx, { x: 40, y: 100, width: 16, height: 20, frame: 29, owner: 'p1', colour: 0xd }, colours)
+    paint(rec.ctx, { x: 40, y: 100, frame: 29, owner: 'p1', name: MOUNT, colour: 0xd }, colours)
     expect(rec.fills.length, 'the idle bird paints at full height').toBeGreaterThan(0)
     expect(
       rec.fills.every((f) => f.style === rgb(0xd)),
@@ -137,7 +143,7 @@ describe('jt13-12 — paintWarpIn honours the explicit idle colour nibble', () =
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
     const rec = recordingContext()
-    paint(rec.ctx, { x: 40, y: 100, width: 16, height: 20, frame: 29, owner: 'p1' }, colours)
+    paint(rec.ctx, { x: 40, y: 100, frame: 29, owner: 'p1', name: MOUNT }, colours)
     const yellow = `rgb(${colours[0x5].r} ${colours[0x5].g} ${colours[0x5].b})`
     expect(rec.fills.every((f) => f.style === yellow), 'owner P1 yellow ($5) when no colour override').toBe(true)
   })

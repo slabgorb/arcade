@@ -207,15 +207,15 @@ describe('jt13-14 — the on-pad idle silhouette stays small (photosensitive saf
     const paint = (r as unknown as {
       paintWarpIn: (
         ctx: { fillStyle: string; fillRect(x: number, y: number, w: number, h: number): void },
-        op: { x: number; y: number; width?: number; height?: number; frame?: number; owner?: string; colour?: number },
+        op: { x: number; y: number; frame?: number; owner?: string; name?: string; colour?: number },
         colours: readonly { r: number; g: number; b: number; a: number }[],
       ) => void
     }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
 
-    // A full-height idle op EXACTLY as drawList emits it (sim.ts idle branch): no explicit
-    // width/height, so paintWarpIn uses its real 16×16 silhouette defaults; the cycling colour
-    // nibble (grey $D here) is what flashes. This is the biggest the idle bird ever draws.
+    // A full-height idle op EXACTLY as drawList emits it (sim.ts idle branch): the mount
+    // frame name (P1 ostrich stand → ORUN4R, ~16×20) drives the silhouette; the cycling
+    // colour nibble (grey $D here) is what flashes. This is the biggest the idle bird draws.
     const fills: Array<{ w: number; h: number }> = []
     const ctx = {
       fillStyle: '',
@@ -223,7 +223,7 @@ describe('jt13-14 — the on-pad idle silhouette stays small (photosensitive saf
         fills.push({ w, h })
       },
     }
-    paint(ctx, { x: 40, y: 120, frame: 29, owner: 'p1', colour: 0xd }, colours)
+    paint(ctx, { x: 40, y: 120, frame: 29, owner: 'p1', name: 'ORSTND', colour: 0xd }, colours)
 
     const paintedArea = fills.reduce((sum, f) => sum + f.w * f.h, 0)
     const CANVAS_AREA = 292 * 240 // LOGICAL_WIDTH × LOGICAL_HEIGHT (render.ts)

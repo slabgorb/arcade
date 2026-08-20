@@ -8,11 +8,14 @@
 // it. Without it a `kind:'warpin'` op hits blitOp, finds no atlas block, and
 // paints ZERO pixels — the "dark feature" this repo tests for explicitly.
 //
-// PROCEDURAL by design (the render-crumble precedent): pixel-accurate WCLENY
-// silhouette clipping is deferred. The pins are VISIBILITY (fillRects emitted),
-// GROWTH (the painted height increases across the TREFF frames — the warp-in) and
-// FEET-PINNED (the bottom edge is fixed; the bird grows UPWARD out of the pad,
-// JOUSTRV4.SRC:5763-5772) — not exact pixels.
+// pt1-14 CLOSED the deferral this header once recorded: paintWarpIn no longer paints a
+// procedural bar — it resolves the op's mount frame to the real sprite block and reveals
+// its actual nibble rows bottom-up (the per-pixel WCLENY silhouette clipping). This suite
+// still pins the STRUCTURAL contracts — VISIBILITY (fillRects emitted), GROWTH (painted
+// height increases across the TREFF frames) and FEET-PINNED (bottom edge fixed, the bird
+// grows UPWARD out of the pad, JOUSTRV4.SRC:5763-5772). The pixel-accurate pins (playfield
+// through the sprite's holes, opaque monochrome fill) live in
+// render-warpin-transparent-pt1-14.test.ts.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -39,19 +42,22 @@ function recordingContext(): {
   return { ctx, fills }
 }
 
-// The op shape the shell draws a warp-in from: a footprint (x,y = the FEET anchor
-// on the pad; width/height = the full standing sprite the silhouette grows into),
-// the TREFF frame, facing, and the owner colour selector (P1 yellow / P2 green /
-// enemy white — DCONST, JOUSTRV4.SRC:5739).
+// The op shape the shell draws a warp-in from: a footprint (x,y = the FEET anchor on
+// the pad), the mount frame `name` (which resolves to the sprite the silhouette is cut
+// from — pt1-14, sizing comes from HERE, not width/height), the TREFF frame, facing, and
+// the owner colour selector (P1 yellow / P2 green / enemy white — DCONST, JOUSTRV4.SRC:5739).
 type WarpInOp = {
   x: number
   y: number
-  width?: number
-  height?: number
   frame?: number
   facing?: number
   owner?: string
+  name?: string
 }
+
+// pt1-14 — the warp-in draws the arriving bird's own sprite silhouette, so the op must
+// carry a resolvable mount frame name (P1 ostrich stand → source block ORUN4R).
+const MOUNT = 'ORSTND'
 type PaintWarpIn = (
   context: { fillStyle: string; fillRect(x: number, y: number, w: number, h: number): void },
   op: WarpInOp,
@@ -87,7 +93,7 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
     // A mid-window frame (bird visible) must actually paint, positioned at the op.
     const midFrame = w.WARPIN_FRAME_COUNT - 1
     const rec = recordingContext()
-    paint(rec.ctx, { x: 40, y: 100, width: 16, height: 20, frame: midFrame, owner: 'p1' }, colours)
+    paint(rec.ctx, { x: 40, y: 100, frame: midFrame, owner: 'p1', name: MOUNT }, colours)
     expect(rec.fills.length, 'a warp-in op must PAINT, not silently skip like blitOp did').toBeGreaterThan(0)
     const painted = rec.fills.reduce((a, f) => a + f.w * f.h, 0)
     expect(painted, 'it paints a non-empty area').toBeGreaterThan(0)
@@ -97,7 +103,8 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
     ).toBe(true)
     expect(
       rec.fills.every((f) => /^rgb\(/.test(f.style)),
-      'painted with a palette colour (DCONST owner colour), never a raw hex/named fill',
+      'painted with a palette colour (DCONST owner colour), never a raw hex/named fill ' +
+        '(pt1-14: an OPAQUE constant-colour silhouette; the see-through is the sprite zero pixels)',
     ).toBe(true)
   })
 
@@ -112,7 +119,7 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
     const firstVisible = w.WARPIN_FRAME_COUNT - w.WARPIN_BIRD_VISIBLE_PFRAME
     const early = recordingContext()
     const late = recordingContext()
-    const op = { x: 40, y: 100, width: 16, height: 20, owner: 'p1' as const }
+    const op = { x: 40, y: 100, owner: 'p1' as const, name: MOUNT }
     paint(early.ctx, { ...op, frame: firstVisible }, colours)
     paint(late.ctx, { ...op, frame: w.WARPIN_FRAME_COUNT - 1 }, colours)
     expect(early.fills.length, 'an early (short) frame still paints').toBeGreaterThan(0)
@@ -134,7 +141,7 @@ describe('jt13-2 — the warp-in PAINTS in the shell (was a dark feature)', () =
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
 
     const firstVisible = w.WARPIN_FRAME_COUNT - w.WARPIN_BIRD_VISIBLE_PFRAME
-    const op = { x: 40, y: 100, width: 16, height: 20, owner: 'p1' as const }
+    const op = { x: 40, y: 100, owner: 'p1' as const, name: MOUNT }
     const early = recordingContext()
     const late = recordingContext()
     paint(early.ctx, { ...op, frame: firstVisible }, colours)
