@@ -197,7 +197,7 @@ describe('df3-6 composer isolates each element — the ship and laser are actual
     const base = createSim(overStars())
     const none = composeFrame({ ...base, lasers: [] }, LOGICAL_WIDTH, LOGICAL_HEIGHT)
     const one = composeFrame(
-      { ...base, lasers: [{ x: 0x4000, facing: 'right', alive: true }] },
+      { ...base, lasers: [{ x: 0x4000, facing: 'right', alive: true, y: 120 }] }, // pt1-27: y required (captured fire row)
       LOGICAL_WIDTH,
       LOGICAL_HEIGHT,
     )

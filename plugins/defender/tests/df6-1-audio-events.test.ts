@@ -179,8 +179,13 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // in lockstep — so which landers grab/collide when, and the integrated hit/pickup/scream cue
     // order, shifts (300 -> 287 cues). Intended. df6-1-audio-emission still 21/21 and the bit-for-bit
     // replay + seed-divergence tests above still pass, so the stream is healthy, not leaking entropy.
+    // RE-BASELINED for pt1-27: laser collision now queries at the laser's OWN captured fire row
+    // (laser.y) instead of the ship's live row, so over this scripted run (which climbs/dives while
+    // shots are in flight) WHICH enemies each shot strikes shifts, and the hit-cue order with it
+    // (287 cues before and after — content shifted, not count). Intended: that ship-tracked collision
+    // row WAS the pt1-27 bug. Replay + seed-divergence above still pass, so the stream is healthy.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      '22cffd53e6e17bea',
+      'e80467cdef87c1e5',
     )
   })
 })

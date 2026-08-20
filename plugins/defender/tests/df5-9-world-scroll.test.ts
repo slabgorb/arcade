@@ -154,7 +154,7 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
       camera,
       humanoids: [],
       landers: [],
-      lasers: [{ x: 0x2600, facing: 'right', alive: true }],
+      lasers: [{ x: 0x2600, facing: 'right', alive: true, y: 120 }], // pt1-27: y required (captured fire row)
       effects: [],
     })
     const laserCol = (camera: number): number => {

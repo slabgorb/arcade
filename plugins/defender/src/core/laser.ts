@@ -60,6 +60,12 @@ export interface Laser {
   readonly facing: Facing
   /** True while travelling; false once it flies off-screen (LASD). */
   readonly alive: boolean
+  /**
+   * pt1-27: the ship row CAPTURED at fire time, frozen for the whole flight. The ROM's
+   * travel loops (LASR/LASL) only ever advance PD horizontally — nothing re-reads the
+   * ship's Y after the spawn — so render and collision must read this, never the live ship.
+   */
+  readonly y: number
 }
 
 /** The player's laser bank: LFLG + the live lasers, firing onto a shared scheduler. */
@@ -68,8 +74,12 @@ export interface LaserBank {
   readonly count: number
   /** A snapshot of the live lasers. */
   readonly lasers: readonly Laser[]
-  /** LFIRE — spawn a laser from the ship; returns null at the cap (spawns nothing). */
-  fire: (shipX: number, facing: Facing) => Laser | null
+  /**
+   * LFIRE — spawn a laser from the ship; returns null at the cap (spawns nothing).
+   * `shipY` (pt1-27) is the ship row at fire time, captured onto the record; it TRAILS
+   * so the df3-5 suite's two-arg `fire(x, facing)` calls stay valid (they never read y).
+   */
+  fire: (shipX: number, facing: Facing, shipY?: number) => Laser | null
 }
 
 /** The internal, mutable laser record — `Laser` is its read-only face. */
@@ -77,6 +87,7 @@ interface LaserRecord {
   x: number
   facing: Facing
   alive: boolean
+  y: number
 }
 
 /**
@@ -94,7 +105,7 @@ export function createLaserBank(sched: Scheduler): LaserBank {
     if (i !== -1) lasers.splice(i, 1)
   }
 
-  const fire = (shipX: number, facing: Facing): Laser | null => {
+  const fire = (shipX: number, facing: Facing, shipY = 0): Laser | null => {
     // Guard the module boundary (lang-review #21, mirroring scheduler.ts's SLEEP guard):
     // a non-finite shipX would make the leading edge non-finite, and offScreen() — which
     // tests `>=`/`<=` — is ALWAYS false for NaN, so the laser process would reschedule
@@ -106,7 +117,8 @@ export function createLaserBank(sched: Scheduler): LaserBank {
 
     // INC LFLG (:2766): position the leading edge at spawn (STX PD before the loop).
     const offset = facing === 'right' ? SPAWN_OFFSET_RIGHT : SPAWN_OFFSET_LEFT
-    const rec: LaserRecord = { x: shipX + offset, facing, alive: true }
+    // pt1-27: y is captured HERE, once — the travel loop below only ever writes x.
+    const rec: LaserRecord = { x: shipX + offset, facing, alive: true, y: shipY }
     lasers.push(rec)
 
     // The travel loop (LASR0 / LASL0): check the death edge FIRST (the ROM tests PD at

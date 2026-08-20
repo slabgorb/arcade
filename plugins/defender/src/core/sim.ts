@@ -554,7 +554,7 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   // 7. Fire BEFORE the dispatch (df3-5): the laser travels next tick.
   if (input.fire) {
-    const laser = state._laserBank.fire(plax16, shipFacing)
+    const laser = state._laserBank.fire(plax16, shipFacing, shipRow) // pt1-27: capture the fire row
     if (laser) rt.cues.push({ type: 'laser-fire' }) // LASSND — only on a real spawn (cap at 4)
   }
 
@@ -580,7 +580,7 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   // 10. Collision. Advance effects first, then this tick's outcomes.
   state._effectBank.step()
-  hitTestLasers(state, shipRow, camera.bgl, award)
+  hitTestLasers(state, camera.bgl, award)
 
   // Post-death respawn invulnerability: while it holds, the ship cannot die again (the
   // hazard that killed it gets time to move off), then it counts down.
@@ -768,7 +768,7 @@ function enemyObjects(state: SimState, camera: number): readonly CollObject[] {
  * cue; a carrying lander additionally screams its dropped passenger (ASCSND). One object list,
  * ROM-faithful, rebuilt per laser so a kill removes the victim from later tests.
  */
-function hitTestLasers(state: SimState, shipRow: number, camera: number, award: (p: number) => void): void {
+function hitTestLasers(state: SimState, camera: number, award: (p: number) => void): void {
   const rt = state._rt
   interface Target {
     obj: CollObject
@@ -846,7 +846,8 @@ function hitTestLasers(state: SimState, shipRow: number, camera: number, award: 
     }
 
     if (targets.length === 0) return // nothing left to hit this tick
-    const query: Query = { x: projectOnscreenX(laser.x), y: shipRow, picture: LASER_BOX }
+    // pt1-27: the collision row is the laser's OWN captured fire row, not the ship's live row.
+    const query: Query = { x: projectOnscreenX(laser.x), y: laser.y, picture: LASER_BOX }
     const struck = laserVsObject(query, targets.map((t) => t.obj))
     if (struck) targets[Number(struck.object.id)].hit()
   }
