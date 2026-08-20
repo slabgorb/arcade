@@ -12,3 +12,8 @@ completed_stories:
     title: 'defender: the whole world renders on one screen — the horizontal projection is collapsed, the camera-scroll and scanner are cosmetic'
     points: 8
     completed: '2026-08-19'
+  - id: pt1-5
+    epic: pt1
+    title: "tempest: attract mode needs a 'play example' (auto-play demo) instead of just the wordmark"
+    points: 5
+    completed: '2026-08-19'

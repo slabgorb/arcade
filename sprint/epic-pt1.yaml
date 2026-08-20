@@ -47,9 +47,11 @@ stories:
     description: "Playtest 2026-08-19: tempest's attract feature only shows the wordmark. Add an attract gameplay demo (self-playing example) like the joust attract demo (jt13-13 demoInput pattern). Verify against the ROM attract sequence."
     points: 5
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-19'
     type: bug
   - id: pt1-6
     title: "defender/lobby: hook the lobby up to defender's attract feature"
