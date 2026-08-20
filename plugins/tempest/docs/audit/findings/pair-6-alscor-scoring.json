@@ -179,6 +179,7 @@
   {
     "id": "SC-011",
     "class": "STRUCTURAL",
+    "remediated_by": "pt1-9",
     "title": "Start-level chooser: ROM shows a scrolling 5-wide window of candidate levels, ours shows one",
     "source": {
       "file": "ALSCOR.MAC",
