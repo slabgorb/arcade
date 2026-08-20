@@ -188,10 +188,11 @@ function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: nu
 // fleet's medical guards (no single colour ≥ 60% of the frame, df3-6-live-sim; a safe clear
 // repaints < 90%, df5-7-visual-playtest) and of assertNoFullFrameStrobe, and it is never a
 // >3 Hz large-area strobe: one pulse per trigger, fading out over the effect's life.
-// The fade/freeze policy distinction is preserved in classify() for future divergence; the
-// safe MVP renders every non-raster presentation as this one wash (a literal "freeze" — holding
-// a prior frame — is not expressible in this stateless per-tick composer). See the pt1-25
-// Design Deviation.
+// The fade/freeze/particle policy distinction is preserved in classify() for future divergence;
+// the safe MVP renders EVERY non-raster presentation (fade AND freeze AND particle) as this one
+// wash — a literal "freeze" (holding a prior frame) is not expressible in this stateless per-tick
+// composer, and no separate particle-burst renderer exists yet ('terrain-blow' is not spawned into
+// the bank today, so 'particle' is currently latent). See the pt1-25 Design Deviation.
 
 /** The wash's peak index — a DIM lift of the empty field (BACKGROUND=0), kept low so the
  *  substitute is low-contrast, the opposite of the ROM's full-white strobe. */

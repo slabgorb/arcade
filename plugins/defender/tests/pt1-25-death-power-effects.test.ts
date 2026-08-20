@@ -45,7 +45,7 @@
 import { describe, it, expect } from 'vitest'
 import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.js'
 import { composeFrame } from '../src/core/scene.js'
-import { classify, assertNoFullFrameStrobe } from '../src/core/effects.js'
+import type { EffectEvent } from '../src/core/effects.js'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../src/shell/render.js'
 
 const NEUTRAL: Input = {
@@ -61,11 +61,13 @@ const withInput = (over: Partial<Input>): Input => ({ ...NEUTRAL, ...over })
 
 // ─── The pt1-25 contract shim (the pt1-27 pattern: a test-local view of the field GREEN
 //     must add). The read side today has no discriminator; the wiring must tag each screen
-//     effect with its EffectEvent so the composer can classify() it. We only ASSERT on the
-//     three screen events — legacy enemy effects may leave `event` unset. ─────────────────
-type ScreenEvent = 'player-death' | 'smart-bomb' | 'hyperspace'
+//     effect with its EffectEvent so the composer can classify() it. `TaggedEffect.event` is
+//     the REAL EffectEvent union imported from effects.ts — not a re-declared copy — so a
+//     rename of an event string reddens here. We only ASSERT on the three screen events the
+//     three triggers spawn; legacy enemy effects tag `enemy-explode`. ─────────────────────
+type ScreenEvent = Extract<EffectEvent, 'player-death' | 'smart-bomb' | 'hyperspace'>
 interface TaggedEffect {
-  readonly event?: ScreenEvent | 'enemy-explode' | 'terrain-blow'
+  readonly event?: EffectEvent
 }
 const SCREEN_EVENTS: readonly ScreenEvent[] = ['player-death', 'smart-bomb', 'hyperspace']
 const isScreenEvent = (e: unknown): e is ScreenEvent => SCREEN_EVENTS.includes(e as ScreenEvent)
@@ -73,6 +75,18 @@ const isScreenEvent = (e: unknown): e is ScreenEvent => SCREEN_EVENTS.includes(e
 /** Every screen-effect tag present in a `state.effects` view. */
 const screenTags = (state: SimState): ScreenEvent[] =>
   state.effects.map((e) => (e as TaggedEffect).event).filter(isScreenEvent)
+
+/** The rig cast (the df6-1-audio-emission pattern): a focused, typed view of the internal bank
+ *  spawners + runtime the collision reads — NOT `any`, so a rename of a real internal reddens. */
+interface Rig {
+  _ufoBank: { spawnUfo: (x: number, y: number) => unknown }
+  _rt: { player: { x: number; y: number } }
+}
+const rig = (s: SimState): Rig => s as unknown as Rig
+
+/** scene.ts caps the wash at SCREEN_WASH_PEAK=3, a DIM lift; assert no changed cell exceeds a
+ *  low index, so a mutation that fills the frame bright/white (index 15) reddens. */
+const WASH_MAX_INDEX = 4
 
 /** A safe byte source: constant 100 — in-band for initStars, ≤192 so hyperspace teleports. */
 const safeRand = (): (() => number) => () => 100
@@ -108,10 +122,23 @@ describe('pt1-25 — player death spawns an ADR-0005 player-death effect (killPl
     ).toContain('player-death')
   })
 
-  it('the player-death event classifies as a seizure-safe full-frame-strobe, never a raster', () => {
-    const p = classify('player-death')
-    expect(p.class).toBe('full-frame-strobe')
-    expect(p.presentation, 'ADR-0005: death is a fade of the frame, not a rastered sprite').not.toBe('raster')
+  it('an ORDINARY collision death (enemy on the ship) also spawns the effect — the choke point', () => {
+    // The far-more-common death: a baiter materialised on the ship, killed by collision, not a
+    // hyperspace strand. This pins the spawn to killPlayer ITSELF (both death branches), so a
+    // mis-wire to only the hyperspace path reddens. (df6-1-audio-emission's collision-death rig.)
+    let s = stepSim(createSim(safeRand()), NEUTRAL) // opening tick spawns the wave/ground
+    expect(screenTags(s), 'no death yet').not.toContain('player-death')
+    rig(s)._ufoBank.spawnUfo(rig(s)._rt.player.x, rig(s)._rt.player.y) // a baiter on the ship
+    const menBefore = s.men
+
+    s = stepSim(s, NEUTRAL) // the collision resolves → killPlayer()
+
+    expect(hasCue(s, 'player-death'), 'the collision death still sounds PDSND').toBe(true)
+    expect(s.men, 'the collision cost a man — confirms the death fired').toBe(menBefore - 1)
+    expect(
+      screenTags(s),
+      'killPlayer must spawn the effect for a COLLISION death too, not only the hyperspace strand',
+    ).toContain('player-death')
   })
 })
 
@@ -125,12 +152,6 @@ describe('pt1-25 — hyperspace spawns an ADR-0005 freeze effect', () => {
     const tags = screenTags(s)
     expect(tags, 'hyperspace must spawn its own effect — today it teleports invisibly').toContain('hyperspace')
     expect(tags, 'a clean jump is not a death').not.toContain('player-death')
-  })
-
-  it('the hyperspace event classifies as a seizure-safe full-frame-strobe, never a raster', () => {
-    const p = classify('hyperspace')
-    expect(p.class).toBe('full-frame-strobe')
-    expect(p.presentation, 'ADR-0005: hyperspace holds a freeze across the jump').not.toBe('raster')
   })
 })
 
@@ -160,22 +181,24 @@ describe('pt1-25 — a smart bomb spawns an ADR-0005 fade effect (not just per-e
       LOGICAL_HEIGHT,
     )
 
-    let differs = false
+    // Measure the wash directly, not via assertNoFullFrameStrobe: composeFrame draws the
+    // scanner/HUD AFTER the effect, so the frame is never byte-identically all-$F and that guard
+    // cannot see a full-fill regression here. Bound the wash itself instead.
+    let changed = 0
+    let brightest = 0
     for (let i = 0; i < withWash.data.length; i++) {
       if (withWash.data[i] !== withoutWash.data[i]) {
-        differs = true
-        break
+        changed++
+        if (withWash.data[i] > brightest) brightest = withWash.data[i]
       }
     }
-    expect(differs, 'the smart-bomb effect must actually reach the framebuffer, not just SimState').toBe(true)
-
-    // ADR-0005: whatever the wash is, it must not be a whole-frame white-fill/inversion.
-    expect(() => assertNoFullFrameStrobe(withoutWash.data, withWash.data)).not.toThrow()
-  })
-
-  it('the smart-bomb event classifies as a seizure-safe full-frame-strobe, never a raster', () => {
-    const p = classify('smart-bomb')
-    expect(p.class).toBe('full-frame-strobe')
-    expect(p.presentation, 'ADR-0005: the COM PCRAM invert is substituted by a bounded fade').not.toBe('raster')
+    const total = withWash.data.length
+    expect(changed, 'the smart-bomb effect must actually reach the framebuffer, not just SimState').toBeGreaterThan(0)
+    // ADR-0005: the wash is a BOUNDED sparse lattice (≤1/9 of the frame), never a near-full-screen
+    // flash — a mutation filling the whole frame (changed/total→~1) reddens here.
+    expect(changed / total, 'the wash must stay a bounded fraction of the frame').toBeLessThan(0.2)
+    // ADR-0005: the wash is a DIM low-contrast lift — a mutation to a bright/white fill (index 15)
+    // reddens here.
+    expect(brightest, 'no washed cell may exceed the dim SCREEN_WASH_PEAK band').toBeLessThanOrEqual(WASH_MAX_INDEX)
   })
 })

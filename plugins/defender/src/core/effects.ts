@@ -44,7 +44,7 @@
 // by tests/audit/brief-dossier.test.ts); only the strobe PRESENTATION is substituted by a
 // seizure-safe variant, and that substitution is NAMED in the session Design Deviation.
 //   • an ordinary enemy explosion → LOCALIZED, rastered normally.
-//   • player death               → a brief FREEZE + FADE of the existing frame.
+//   • player death               → a brief FADE of the existing frame (classify → 'fade').
 //   • terrain explosion (TERBLO)  → a non-strobing PARTICLE burst, bounded in area/contrast.
 // assertNoFullFrameStrobe() is the render-side guard ADR-0005 §Decision.4 requires: no effect
 // path may write a whole-framebuffer inversion / white-fill in a single frame, so a later
