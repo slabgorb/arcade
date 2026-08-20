@@ -82,3 +82,8 @@ completed_stories:
     title: 'joust: the spawn/materialize animation overlay should be transparent'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-13
+    epic: pt1
+    title: 'joust: the troll should not be able to pull the player through a platform'
+    points: 3
+    completed: '2026-08-20'

@@ -157,10 +157,11 @@ stories:
     description: "Playtest 2026-08-19: when the lava troll grabs the player, it can drag them through solid platform geometry. Collision should still resolve against platforms during a troll grab; check the ROM's troll-pull behavior."
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-14
     title: 'joust: the spawn/materialize animation overlay should be transparent'
