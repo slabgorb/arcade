@@ -70,7 +70,7 @@ const PALETTE_SPECIFIER = '../src/core/palette.js'
 
 // ─── Loaders (lazy, self-describing) ──────────────────────────────────────────────
 
-interface Input {
+interface LivePaletteInput {
   readonly thrust: boolean
   readonly reverse: boolean
   readonly up: boolean
@@ -79,7 +79,7 @@ interface Input {
   readonly smartBomb?: boolean
   readonly hyperspace?: boolean
 }
-const NEUTRAL: Input = { thrust: false, reverse: false, up: false, down: false, fire: false }
+const NEUTRAL: LivePaletteInput = { thrust: false, reverse: false, up: false, down: false, fire: false }
 
 /** The minimum observable slice of SimState this suite reads. */
 interface SimStateView {
@@ -87,7 +87,7 @@ interface SimStateView {
 }
 interface SimModule {
   createSim: (rand: () => number) => SimStateView
-  stepSim: (state: SimStateView, input: Input) => SimStateView
+  stepSim: (state: SimStateView, input: LivePaletteInput) => SimStateView
 }
 
 async function loadSim(): Promise<SimModule> {
@@ -146,7 +146,7 @@ async function loadCycle(): Promise<CycleModule> {
     throw new Error(
       'core/color-cycle.ts not built yet — GREEN (Dev) ports the ROM colour tables under ' +
         'the citation gate: COLTAB (the laser/bomb table, defender/DEFA7.SRC:3037-3043) and ' +
-        `TCTAB (the TIE table, defender/DEFB6.SRC:1207-1209). (${(e as Error).message})`,
+        `TCTAB (the TIE table, defender/DEFB6.SRC:1207-1209). (${e instanceof Error ? e.message : String(e)})`,
     )
   }
 }
@@ -199,6 +199,19 @@ async function playPcram(seed: number, n: number): Promise<number[][]> {
 /** The distinct values register `idx` took across a run of pcram snapshots. */
 function valuesAt(frames: readonly number[][], idx: number): number[] {
   return frames.map((f) => f[idx])
+}
+
+/** How many consecutive ticks register `idx` holds its FIRST stored value once it leaves
+ *  `bootValue` — i.e. the cycler's hold cadence in ticks (its SLEEP/NAP argument). Returns
+ *  -1 if the register never leaves its boot value. */
+function firstHoldTicks(frames: readonly number[][], idx: number, bootValue: number): number {
+  const seq = valuesAt(frames, idx)
+  const start = seq.findIndex((v) => v !== bootValue)
+  if (start < 0) return -1
+  const held = seq[start]
+  let run = 0
+  while (start + run < seq.length && seq[start + run] === held) run++
+  return run
 }
 
 // A minimal framebuffer and a recording 2D-context mock (mirrors render.test.ts) so the
@@ -341,15 +354,38 @@ describe('pt1-22 · the laser colour cycler animates index 1 through COLTAB (COL
       expect(table.has(v), `laser value 0x${v.toString(16)} is not in COLTAB — wrong table wired`).toBe(true)
   })
 
-  it('the cycle wraps — the laser sequence is periodic, not a one-shot ramp', async () => {
+  it('the cycle wraps — the laser RETURNS to COLTAB[0] and re-walks (COLR loops, not a one-shot ramp)', async () => {
     // COLR resets LCOLRX at the COLTAB $00 terminator (defender/DEFA7.SRC:3028 BEQ COLR)
-    // and re-walks from the top: the register must REVISIT an earlier value. A one-shot
-    // that stops at the table end (no wrap) never repeats and reds here.
-    const frames = await playPcram(6, 240)
-    const seq = valuesAt(frames, LASER).filter((v) => v !== 0x00)
-    const seen = new Set<number>()
-    const wrapped = seq.some((v) => (seen.has(v) ? true : (seen.add(v), false)))
-    expect(wrapped, 'the laser colour cycle must wrap (revisit a value) — COLR loops COLTAB').toBe(true)
+    // and re-walks from the top. Assert the wrap DIRECTLY (not "some value recurs" — COLTAB
+    // has adjacent duplicate pairs 0x47/0x87/0xc7 that a single monotonic pass already
+    // "revisits" with zero wraparound): COLTAB[0] (0x38, UNIQUE in the table) is stored once
+    // per pass, so it must recur. A one-shot ramp that freezes at the $00 terminator hits
+    // 0x38 exactly once (at the very start) and never again; deleting the terminator reset
+    // reddens this. 36 non-terminator entries × LASER_PERIOD(2) = 72 ticks/pass; 200 ≈ 2.7.
+    const { COLTAB } = await loadCycle()
+    const START = COLTAB[0]
+    const seq = valuesAt(await playPcram(6, 200), LASER)
+    // Count run-STARTS of COLTAB[0] (the 2-tick hold counts once): ≥2 ⇒ the walk wrapped
+    // back to the top of the table at least once.
+    let entries = 0
+    for (let i = 0; i < seq.length; i++) if (seq[i] === START && (i === 0 || seq[i - 1] !== START)) entries++
+    expect(entries, 'COLTAB[0] must recur — COLR wraps at the $00 terminator and re-walks from the top').toBeGreaterThanOrEqual(2)
+  })
+
+  it('each laser colour is held for the ROM cadence — SLEEP #2 = 2 ticks (load-bearing)', async () => {
+    // COLR sleeps SLEEP #2 between stores (defender/DEFA7.SRC:3031 LDA #2 / :3033 JMP SLEEP),
+    // so each laser colour must persist for exactly 2 sim ticks. LASER_CADENCE_TICKS is the
+    // ROM magnitude read from the source, NOT the private LASER_PERIOD const — halving the
+    // cadence (LASER_PERIOD 2→1) reddens this (lang-review #29: cited constants load-bearing).
+    const LASER_CADENCE_TICKS = 2
+    const { COLTAB } = await loadCycle()
+    const seq = valuesAt(await playPcram(6, 60), LASER)
+    // COLTAB[0] (0x38, unique) is the first store; measure its hold before the walk advances.
+    const start = seq.indexOf(COLTAB[0])
+    expect(start, 'the laser must light within a few ticks').toBeGreaterThan(0)
+    let run = 0
+    while (start + run < seq.length && seq[start + run] === COLTAB[0]) run++
+    expect(run, 'the laser holds each colour for exactly the ROM cadence (SLEEP #2 = 2 ticks)').toBe(LASER_CADENCE_TICKS)
   })
 })
 
@@ -383,6 +419,32 @@ describe('pt1-22 · the bomb & TIE cyclers animate indices A/C and D/E/F', () =>
     expect(triples.size, 'the TIE registers must actually cycle (more than one row observed)').toBeGreaterThan(1)
     for (const t of triples)
       expect(rows.has(t), `TIE triple (${t}) is not a TCTAB row — wrong table/order wired`).toBe(true)
+  })
+
+  it('the TIE cycler holds each row for the ROM cadence — NAP 6 = 6 ticks (load-bearing)', async () => {
+    // TIECOL sleeps NAP 6 between rows (defender/DEFB6.SRC:1197), so each TCTAB row must
+    // persist for exactly 6 ticks. TIE_CADENCE_TICKS is the ROM magnitude, NOT the private
+    // TIE_PERIOD const — shortening the cadence (TIE_PERIOD 6→3) reddens this. Register E is
+    // 0x00 at boot (DEFAULT_PCRAM[14]) and row 0 stores E=0x81, held until row 1 stores 0x2f.
+    const TIE_CADENCE_TICKS = 6
+    const frames = await playPcram(17, 60)
+    expect(
+      firstHoldTicks(frames, TIE_E, 0x00),
+      'each TIE row is held for exactly the ROM cadence (NAP 6 = 6 ticks)',
+    ).toBe(TIE_CADENCE_TICKS)
+  })
+
+  it('the bomb flash is two-phase — a frame shows BOMB_A=$FF while BOMB_C=$00 (A≠C), the pre-pick flash', async () => {
+    // CBOMB's first phase blacks C and lights A full-white: LDA #$FF / STA PCRAM+$A (A=$FF)
+    // then CLR PCRAM+$C (C=$00) — defender/DEFB6.SRC:1213-1215 — the ONE moment A≠C, before
+    // the second phase writes the same COLTAB colour into both. This pins the $FF/$00 flash
+    // the header calls the mutant shimmer; deleting the flash branch (A always == C) reddens.
+    const frames = await playPcram(29, 60)
+    const flash = frames.find((f) => f[BOMB_A] === 0xff && f[BOMB_C] === 0x00)
+    expect(
+      flash,
+      'CBOMB must flash PCRAM+$A=$FF with PCRAM+$C=$00 (defender/DEFB6.SRC:1213-1215) before the colour pick',
+    ).toBeTruthy()
   })
 })
 

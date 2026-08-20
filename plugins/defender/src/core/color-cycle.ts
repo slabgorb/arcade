@@ -12,7 +12,7 @@
 // This is a PURE, clock-free, entropy-free core layer (tests/purity.test.ts scans it): it
 // takes the current shadow + cycle state and returns the next shadow. It does NOT read the
 // gameplay RNG — the ROM's CBOMB colour pick reads the free-running SEED (defender/
-// DEFB6.SRC:1219 LDA SEED / ANDA #$1F), but the clone's `rand` is the gameplay entropy
+// DEFB6.SRC:1217-1218 LDA SEED / ANDA #$1F), but the clone's `rand` is the gameplay entropy
 // stream threaded through every enemy bank; drawing from it here would desync every
 // rand-sensitive sim test. So the bomb pick rides a SELF-CONTAINED counter (bombSeed)
 // seeded from a fixed constant — the palette animation is deterministic and independent of
@@ -61,13 +61,13 @@ const TIE_F_REG = 0xf // TIECOL → PCRAM+$F
 
 /** Cycler cadences, in ticks — the ROM's SLEEP/NAP arguments (cited above). */
 const LASER_PERIOD = 2 // COLR: SLEEP #2 (defender/DEFA7.SRC:3031)
-const TIE_PERIOD = 6 // TIECOL: NAP 6 (defender/DEFB6.SRC:1197,1204)
+const TIE_PERIOD = 6 // TIECOL: NAP 6 (defender/DEFB6.SRC:1197)
 const BOMB_FLASH_PERIOD = 3 // CBOMB: NAP 3 after the $FF/$00 flash (defender/DEFB6.SRC:1216)
 const BOMB_COLOUR_PERIOD = 6 // CBOMB: NAP 6 after the colour pick (defender/DEFB6.SRC:1228)
 
 /** The 6-byte bomb flash value and the register the flash blacks out. */
 const BOMB_FLASH_ON = 0xff // LDA #$FF (defender/DEFB6.SRC:1213)
-const BOMB_PICK_MASK = 0x1f // ANDA #$1F (defender/DEFB6.SRC, CBMB1)
+const BOMB_PICK_MASK = 0x1f // ANDA #$1F (defender/DEFB6.SRC:1218, CBMB1)
 
 /** The self-contained pure state of the three standing cyclers. Carried on SimState so
  *  stepSim advances it each tick; every field is a plain integer (clock-free, no entropy). */
@@ -136,7 +136,7 @@ export function stepColorCycle(
       bombWait = BOMB_FLASH_PERIOD
     } else {
       bombSeed = nextBombSeed(bombSeed)
-      const colour = COLTAB[bombSeed & BOMB_PICK_MASK] // COLTAB[SEED AND $1F] (:1219)
+      const colour = COLTAB[bombSeed & BOMB_PICK_MASK] // COLTAB[SEED AND $1F] (:1217-1220)
       out[BOMB_A_REG] = colour // STA PCRAM+$A (:1221)
       out[BOMB_C_REG] = colour // STA PCRAM+$C (:1222)
       bombFlashNext = true
