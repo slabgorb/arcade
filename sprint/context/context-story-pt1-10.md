@@ -19,6 +19,24 @@ Playtest 2026-08-19: on the start screen, a mouse click should start the game in
 _Approach hints to be refined by TEA/Dev. The story title above defines the
 intended behavior._
 
+**Where start-input lives (context discovery, SM):** All device→core input mapping
+is in the shell at `plugins/star-wars/src/shell/input.ts`. Today:
+- The `start` edge is a one-shot latch (`pendingStart`) armed **only** on
+  `keydown` of `Enter`/`Digit1`/`Numpad1` (guarded `!e.repeat`), then cleared the
+  next time the core samples it (`input.ts:29-38`, `:46-47`).
+- A mouse press already fires a `pointerdown` listener — but it maps to
+  `state.fire = true` (the yoke trigger), **not** to `start` (`input.ts:27`).
+
+So a click currently only pulls the trigger; nothing arms `start` from the mouse.
+The fix lives entirely in the shell (`core/` is pure and untouched — the game's
+purity test scans `src/core/` source text). TEA/Dev own the design of *how* a
+click arms start, including two seams already visible in the file's own comments:
+(1) `start` is edge-consumed and the core acts on it only in attract/gameover, and
+(2) the keydown latch deliberately guards `!e.repeat` because the initials-entry
+screen sits behind the same key — decide whether a click needs an equivalent guard.
+The core/shell boundary is the single hard rule (`plugins/star-wars/CLAUDE.md`);
+verify the shell change by loading `http://127.0.0.1:5270/star-wars/` after `just serve`.
+
 ## Scope
 - In scope: the behavior described by the story title.
 - Out of scope: unrelated changes.
