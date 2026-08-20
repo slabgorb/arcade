@@ -12,8 +12,12 @@ joust: the troll should not be able to pull the player through a platform
 - **Repo:** arcade
 - **Epic:** Playtest bug sweep 2026-08-19 (pt1)
 
-## Problem
-Playtest 2026-08-19: a lava-troll grab drags the player through solid platforms.
+## Background
+Playtest 2026-08-19: when the lava troll grabs the player, it can drag them through solid platform geometry. Collision should still resolve against platforms during a troll grab; check the ROM's troll-pull behavior.
+
+## ⚠ Critical Setup Note: Troll is Wave-Gated
+
+**Do NOT measure on a wave-1 sim.** In joust the lava troll only spawns wave 4+, and `createWaveSim(1)` covers the lava band entirely (bridge burns wave 3, troll spawns wave 4+). ANY suicide/lava/troll measurement on a wave-1 arena is vacuous. TEA must build a wave-4+ (or `bridgeBurned:true`) arena — see the `trollSim` helper precedent — to reproduce the pull-through and to guard against it. Reproduce the RED against a real troll-grab state, not a synthetic wave-1 one.
 
 ## Findings (research complete — two defects, the second is the real one)
 
