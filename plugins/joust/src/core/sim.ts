@@ -98,6 +98,7 @@ import {
   escalateGrip,
   stepGrip,
   outOfTrollReach,
+  trollVictimInRange,
   escapeScoreEvent,
   type TrollGrip,
 } from './troll.js'
@@ -1142,6 +1143,19 @@ function stepTrolls(
     }
 
     if (troll.grip) {
+      // LAVVIC (pt1-13, JOUSTRV4.SRC:1702,1711-1731): the ROM re-verifies range every
+      // frame and RELEASES the grip the instant the victim leaves it (LAVVFY → BNE
+      // LAVATF). Run it BEFORE integrating another fall step — the missing check that let
+      // a grip drag a bird straight DOWN through a platform to the lava. ADDLAV holds the
+      // victim's X, so this bites a grab committed on an out-of-range column or a bird
+      // that has since grounded; the too-high arm is also covered by the `outOfTrollReach`
+      // break-free below (the escape that scores). No score here — the troll simply can't
+      // reach, so it lets go.
+      if (!trollVictimInRange(vEnt.posX, vEnt.posY >> 8, vEnt.airborne)) {
+        victim.grippedBy = undefined
+        removed.add(troll.id)
+        continue
+      }
       // ADDLAV: escalate the pull, then fold it into the victim's fall.
       const grip = escalateGrip(troll.grip)
       // The gripped bird's flap is the ONLY way out (ADLFRE / LAVVI3, JOUSTRV4.SRC:6616,

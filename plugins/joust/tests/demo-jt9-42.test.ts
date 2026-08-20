@@ -404,14 +404,18 @@ describe('jt9-42 F2 — a gripped victim falls by the grip pull ALONE, never gri
     const lavgra = waveValue('LAVGRA', TROLL_WAVE)
 
     // A committed grip on a player victim, victim at rest (velY 0) in open air.
+    // pt1-13: staged at a left-edge lava gap (posX 20, posX-2 = 18 <= 40) and in the
+    // troll's vertical reach (pixelY 205 >= FLOOR+7-32 = 198) so LAVVIC keeps the grip IN
+    // range — a central column or a too-high victim would be released. velY is the grip
+    // pull alone (position-independent), so this measurement is unchanged by the move.
     const START_VELY = 0
-    const PIXEL_Y = 120
+    const PIXEL_Y = 205
     const grip = troll.beginGrip(lavgra)
-    const victim = playerAt(1, 100, PIXEL_Y, {
+    const victim = playerAt(1, 20, PIXEL_Y, {
       grippedBy: 0x15_0000 + 1,
-      entity: entityAt(100, PIXEL_Y, { velY: START_VELY }),
+      entity: entityAt(20, PIXEL_Y, { velY: START_VELY }),
     })
-    const t = trollProc(1, 98, PIXEL_Y, { grip })
+    const t = trollProc(1, 18, PIXEL_Y, { grip })
 
     const after = dmod.stepSim(await stagedDemo([t, victim]))
     const got = byId(after, 1)?.entity?.velY

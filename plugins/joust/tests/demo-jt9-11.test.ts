@@ -283,7 +283,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
     // Stage the hand already extended (animPhase 5) and BELOW its victim, so the only
     // thing left is the raise: the hand pixel-Y must DECREASE toward victim+3.
     const victimY = HAND_START_Y - 20
-    const victim = playerAt(PLAYER1_ID, 100, victimY)
+    const victim = playerAt(PLAYER1_ID, 20, victimY)
     let d = await stagedDemo([
       victim,
       trollProc(PLAYER1_ID, 98, HAND_START_Y, { entity: entityAt(98, HAND_START_Y, { animPhase: EXTENDED_FRAME / 6 }) }),
@@ -306,7 +306,7 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
     // — this test stops the loop at commit, so reachability is not load-bearing for its
     // assertion, but staging an unreachable grab would still be a lie about the geometry.
     const victimY = 205
-    const victim = playerAt(PLAYER1_ID, 100, victimY)
+    const victim = playerAt(PLAYER1_ID, 20, victimY)
     const gripY = victimY + GRIP_Y_OFFSET
     let d = await stagedDemo([
       victim,
@@ -338,13 +338,15 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
     // In the troll's reach (>= FLOOR+7-32 = 198, the LAVVI3 line, pt1-16) and above the
     // burned-shore contact band (< 211): a victim staged above the reach line would break
     // free on frame one (outOfTrollReach), so the pull-driven fall this suite measures
-    // would be replaced by normal flight physics.
+    // would be replaced by normal flight physics. pt1-13: staged at a left-edge lava gap
+    // (posX 20, posX-2 = 18 <= 40) so LAVVIC keeps the grip IN range — a central column
+    // would be released as through-a-platform (the grip mechanics measured are X-independent).
     const victimY = 205
     const gripY = victimY + GRIP_Y_OFFSET
     const d = await stagedDemo(
       [
-        playerAt(PLAYER1_ID, 100, victimY),
-        trollProc(PLAYER1_ID, 98, gripY, { entity: entityAt(98, gripY, { animPhase: EXTENDED_FRAME / 6 }) }),
+        playerAt(PLAYER1_ID, 20, victimY),
+        trollProc(PLAYER1_ID, 18, gripY, { entity: entityAt(18, gripY, { animPhase: EXTENDED_FRAME / 6 }) }),
       ],
       wave,
     )
@@ -432,10 +434,10 @@ describe('jt9-11 AC-4 — a gripped victim can break free for 50 points or be pu
     const gripY = victimY + GRIP_Y_OFFSET
     const base = troll.beginGrip(4)
     const d = await stagedDemo([
-      playerAt(PLAYER1_ID, 100, victimY),
-      trollProc(PLAYER1_ID, 98, gripY, {
+      playerAt(PLAYER1_ID, 20, victimY),
+      trollProc(PLAYER1_ID, 18, gripY, {
         grip: { ...base, ...gripOver },
-        entity: entityAt(98, gripY, { animPhase: EXTENDED_FRAME / 6 }),
+        entity: entityAt(18, gripY, { animPhase: EXTENDED_FRAME / 6 }),
       }),
     ])
     return { d, step: (s: SimState) => dmod.stepSim(s, inputs ? { [PLAYER1_ID]: { dir: 0, flap: true, flapHeld: false } } : undefined) }

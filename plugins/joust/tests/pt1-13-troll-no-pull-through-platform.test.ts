@@ -41,7 +41,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { loadTroll } from './helpers/troll-contract.js'
-import { loadSim, type SimState, type SimProcess, type EntityState, type PlayerInput } from './helpers/sim-contract.js'
+import { loadSim, type SimState, type SimProcess, type EntityState } from './helpers/sim-contract.js'
 import { withNoPendingEnemies } from './helpers/wave-entry.js'
 
 // ─── ROM scalars (JOUSTRV4.SRC:37 FLOOR = $DF) ───────────────────────────────

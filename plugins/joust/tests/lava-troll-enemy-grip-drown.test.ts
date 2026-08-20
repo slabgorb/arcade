@@ -141,8 +141,8 @@ describe('enemy grip — the lava troll grabs an enemy victim, it does not give 
     // climbs clear on frame one — an unreachable grab the troll could never have
     // committed. Grab near the lava, where the shore troll actually reaches.
     const victimY = 205
-    const enemy = enemyAt(VICTIM_ID, 100, entityAt(100, victimY))
-    const troll = trollAtGrip(VICTIM_ID, 98, victimY + GRIP_Y_OFFSET)
+    const enemy = enemyAt(VICTIM_ID, 20, entityAt(20, victimY))
+    const troll = trollAtGrip(VICTIM_ID, 18, victimY + GRIP_Y_OFFSET)
     let d = await trollSim([enemy, troll])
 
     let committed = false
@@ -173,8 +173,8 @@ describe('enemy grip-drown — a gripped enemy sinks and sounds SNELAV', () => {
     const smod = await loadSim()
     const VICTIM_ID = 0x202
     const trollId = 0x15_0000 + VICTIM_ID
-    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
-    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, DEATH_Y - 6)])
+    const enemy = { ...enemyAt(VICTIM_ID, 20, entityAt(20, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 18, DEATH_Y - 6)])
 
     // Precondition: the enemy really is in the troll's grip on arrival.
     expect(grippedByOf(enemyIn(d, VICTIM_ID)), 'the fixture stages a committed grip on the enemy').toBe(trollId)
@@ -214,8 +214,8 @@ describe('enemy grip-drown — a gripped enemy sinks and sounds SNELAV', () => {
     const smod = await loadSim()
     const VICTIM_ID = 0x202
     const trollId = 0x15_0000 + VICTIM_ID
-    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
-    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, DEATH_Y - 6)])
+    const enemy = { ...enemyAt(VICTIM_ID, 20, entityAt(20, DEATH_Y - 3)), grippedBy: trollId } as SimProcess
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 18, DEATH_Y - 6)])
 
     const kinds: string[] = []
     for (let i = 0; i < 200; i++) {
