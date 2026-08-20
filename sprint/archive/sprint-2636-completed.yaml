@@ -42,3 +42,8 @@ completed_stories:
     title: 'joust: enemies are too vulnerable to lava — a screen can be cleared by waiting for them to suicide'
     points: 3
     completed: '2026-08-20'
+  - id: pt1-11
+    epic: pt1
+    title: 'star-wars: difficulty selector missing its death-star illustrations, and the easy/medium/hard hit regions are offset left'
+    points: 2
+    completed: '2026-08-20'
