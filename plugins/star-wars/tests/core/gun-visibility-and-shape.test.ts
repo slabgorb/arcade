@@ -430,11 +430,13 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // because it changes gameRules.ts's LINE COUNT and the findings' `ours` citations are
     // re-opened against the working tree. A mutant that moves lines cannot report a clean
     // blast radius in this repo. Folded to five lines, exactly replacing the original five.)
-    const corner: Vec3 = [3000, 189.6, SKIM_ALTITUDE + 94.8] // native: depth 3000, 189.6 right, 94.8 above skim
-    expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
+    // pt1-3 raw scale: the offsets are ×30 (was 189.6 / 94.8 at the ÷30 hit radius of 200) so the
+    // corner sits just OUTSIDE the raw disc (radius 6000) yet still INSIDE the 1.5× ROM octagon.
+    const corner: Vec3 = [3000, 5688, SKIM_ALTITUDE + 2844] // native: depth 3000, 5688 right, 2844 above skim
+    expect(Math.hypot(5688, 2844), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
       TURRET_HIT_RADIUS,
     )
-    expect(189.6 + 94.8, 'fixture guard: INSIDE the ROM octagon, so a leak would accept it').toBeLessThanOrEqual(
+    expect(5688 + 2844, 'fixture guard: INSIDE the ROM octagon, so a leak would accept it').toBeLessThanOrEqual(
       1.5 * TURRET_HIT_RADIUS,
     )
     const surfaceAt = (pos: Vec3): GameState => ({
@@ -457,8 +459,8 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
 
     // The positive control, without which the assertion above passes for any broken fixture:
     // the same bearing, just inside the disc, still dies.
-    const inside: Vec3 = [3000, 170, SKIM_ALTITUDE + 85] // native: depth 3000, 170 right, 85 above skim
-    expect(Math.hypot(170, 85), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
+    const inside: Vec3 = [3000, 5100, SKIM_ALTITUDE + 2550] // native: depth 3000, 5100 right, 2550 above skim (÷30 era: 170/85)
+    expect(Math.hypot(5100, 2550), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
     expect(
       turretDied(stepGame(surfaceAt(inside), restTrigger(WIDE), DT)),
       'positive control: the surface gun still works on this bearing',

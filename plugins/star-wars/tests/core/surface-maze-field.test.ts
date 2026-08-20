@@ -38,7 +38,6 @@ import { NO_INPUT } from '../../src/core/input'
 // ported ROM time-box.
 import { SPACE_PHASE_OVER } from '../support/space-phase-end'
 import { fireAt } from '../support/aim'
-import { GROUND_MODEL_SCALE } from '../../src/shell/render' // pt1-3: placement shares the model footprint scale
 import type { Vec3 } from '@shared/math3d'
 
 const DT = 0.05
@@ -147,19 +146,13 @@ describe('sw4-3 — the surface field is authored, not randomly spawned', () => 
     expect(sawField).toBe(true) // the authored field really is present
   })
 
-  it('places turrets only at the maze’s authored lateral coordinates (at the presentation scale)', () => {
-    // pt1-3: the authored maze X is in RAW ROM units, but the tower MODEL, the
-    // ground grid and the camera all live at the 1/30 presentation scale
-    // (render.ts GROUND_MODEL_SCALE). A turret must therefore be planted at its
-    // authored e.x SCALED by that factor — not raw, which plants it ~30x too far
-    // to the side. Match by nearest scaled coordinate (tolerant of 1/30 rounding).
+  it('places turrets only at the maze’s authored lateral coordinates', () => {
     const wave = 5
-    const authoredScaledX = mazeForWave(wave).entries.map((e) => e.x * GROUND_MODEL_SCALE)
+    const authoredX = new Set(mazeForWave(wave).entries.map((e) => e.x))
     const seenX = turretXsOverRun(1983, wave, 400)
     expect(seenX.size).toBeGreaterThan(0)
     for (const x of seenX) {
-      const match = authoredScaledX.some((ax) => Math.abs(ax - x) < 1e-6)
-      expect(match, `turret at x=${x} is not an authored (scaled) maze position`).toBe(true)
+      expect(authoredX.has(x), `turret at x=${x} is not an authored maze position`).toBe(true)
     }
   })
 

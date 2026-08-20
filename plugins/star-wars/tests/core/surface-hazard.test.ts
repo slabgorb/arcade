@@ -110,13 +110,15 @@ const ground = (pos: Vec3, kind: 'tower' | 'bunker' | 'bishop', age = 0): Turret
 const CLIMB: Input = { aimX: 0, aimY: 1, fire: false } // +aimY = up (surface.test.ts convention)
 
 /** The bunker's whole body tops out at 6 height units * 120 scale = 720 raw ROM
- *  units = 24 at the sim's 1/30 height scale (WSOBJ.MAC .WP GND / D-013). A
- *  LITERAL, not a constant-under-audit (tp1-27 rule). */
-const BUNKER_BODY_TOP = 24
+ *  units (WSOBJ.MAC .WP GND / D-013). pt1-3: the surface renders at 1:1 raw now,
+ *  so this is 720 (was 24 at the retired ÷30 height scale). A LITERAL, not a
+ *  constant-under-audit (tp1-27 rule). */
+const BUNKER_BODY_TOP = 720
 
-/** GD$MXT ($1C00 = 7168 raw, WSMAIN.MAC:2598) at the 1/30 height scale — the
- *  ROM's surface ceiling, staged as "as high as the cabinet lets you fly". */
-const ROM_CEILING = 238
+/** GD$MXT ($1C00 = 7168 raw, WSMAIN.MAC:2598) — the ROM's surface ceiling, staged
+ *  as "as high as the cabinet lets you fly". pt1-3: raw 1:1 scale now (was 238 at
+ *  the retired ÷30 height scale). */
+const ROM_CEILING = 7168
 
 /** Step `steps` frames, collecting every emitted event type along the way. */
 function fly(s0: GameState, steps: number, input: Input = NO_INPUT): { s: GameState; types: string[] } {

@@ -17,15 +17,23 @@
 import type { Vec3 } from '@shared/math3d'
 import type { Model3D } from './models'
 
+// pt1-3: the surface renders at 1:1 raw ROM units now (the ÷30 presentation fudge
+// is retired — projection audit §6.2). These grid dimensions are the shipped
+// presentation values ×30, so the grid's segment counts and on-screen appearance
+// are unchanged, but it now recedes across the RAW maze field (positions to $8000)
+// under the raw camera seat (GD$MDT = 3840) — the towers stand ON it instead of
+// floating far past its old ÷30 horizon. The scroll (raw ~5250 u/s) now recycles
+// the lateral lines at the field's own rate, not 30× too fast.
+
 /** Lateral (right-axis) spacing between the longitudinal (parallel-to-depth) lines. */
-export const GRID_X = 400
+export const GRID_X = 12000
 /** Spacing between the lateral (across-right) lines — also the scroll period. */
-export const GRID_Z = 500
+export const GRID_Z = 15000
 /** Half the grid's total width: the outermost longitudinal lines sit at right = ±this,
- *  wide enough to run off-screen at the horizon (ADR 0002 part A: ≈ 3000–4000). */
-export const GRID_HALF_WIDTH = 3600
+ *  wide enough to run off-screen at the horizon and to carry the maze's ±$8000 lanes. */
+export const GRID_HALF_WIDTH = 108000
 /** Far cutoff: the grid recedes from the cockpit out to depth ≈ +GRID_FAR (the horizon). */
-export const GRID_FAR = 6000
+export const GRID_FAR = 180000
 
 /**
  * A wide ground grid on the native floor plane (up = 0), scrolled toward the

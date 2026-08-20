@@ -649,12 +649,15 @@ export const PLAY_CUBE_MIN = 0x8300 - 0x10000 // -32,000 — the ROM's $8300 as 
  * recentres every ground object's height by GD$MDT (0xF00 = 3840), whose comment
  * is "OFFSET HITE TO MID OF PLAYERS HITE" — the offset exists precisely so that a
  * ground object's model z = 0 sits at the height the player flies at. So GD$MDT IS
- * the skim altitude, expressed in raw ROM units; at the shell's 1/30 presentation
- * scale (render.ts GROUND_MODEL_SCALE) that is 3840/30 = 128. Pinned against the
- * shell in tests/shell/render.ground-object-placement.test.ts. */
-export const SKIM_ALTITUDE = 128
-/** Below this clearance the ship scrapes the surface — a terrain crash. */
-export const MIN_SKIM_ALTITUDE = 40
+ * the skim altitude in raw ROM units. pt1-3: the surface now renders at 1:1 raw
+ * scale like every other model (GROUND_MODEL_SCALE = 1), so this IS GD$MDT = 3840
+ * verbatim — the ÷30 presentation fudge (128) is retired. Pinned against the shell
+ * in tests/shell/render.ground-object-placement.test.ts. */
+export const SKIM_ALTITUDE = 3840
+/** Below this clearance the ship scrapes the surface — a terrain crash. House rule
+ * D-021's raised floor, in raw ROM units (pt1-3: was 40 at the ÷30 scale). Sits
+ * above the raw bunker top (720) so cruise clears bunkers. */
+export const MIN_SKIM_ALTITUDE = 1200
 /** Points awarded for destroying a laser turret. */
 export const TURRET_SCORE = 200
 /** Legacy surface cadence constant — since sw4-3 the surface lays the wave's
@@ -663,8 +666,8 @@ export const TURRET_SCORE = 200
  * as a convenient step-size unit in the surface suites. */
 export const TURRET_SPAWN_INTERVAL = 1.5
 /** Hit sphere around a turret — the radius the player's BEAM must pass within to hit it
- *  (sw7-17: the gun is hitscan). */
-export const TURRET_HIT_RADIUS = 200
+ *  (sw7-17: the gun is hitscan). Raw ROM units (pt1-3: was 200 at the ÷30 scale). */
+export const TURRET_HIT_RADIUS = 6000
 /** Elevation of a tower's gun — the white cap crowning the column (sw3-11,
  * ex the sw2-3 yellow cube). Fireballs launch from world y = TOWER_HEIGHT, not
  * from the y=0 floor. This IS the drawn composite peak (SURFACE_TOWER column +
@@ -672,18 +675,18 @@ export const TURRET_HIT_RADIUS = 200
  * the PLACED cap in tests/shell/render.ground-object-placement.test.ts.
  *
  * CORRECTED by sw5-5 from 232. The cannon top is WSOBJ.MAC `.PGND -4,0,58`, and
- * that 58 is HEX (the file is `.RADIX 16`): 0x58 = 88 .S units, which at the
- * shell's 1/30 presentation scale is y = 352. sw3-11 read the column in decimal,
- * so the shipped tower was short — and its true aspect is 5.5:1, not the 3.6:1
- * that misreading implied. The ship now skims at the ROM's own fraction of tower
- * height (SKIM_ALTITUDE / TOWER_HEIGHT = 3840 / (0x58 × 120) ≈ 0.36), not the
- * ~mid-tower the old pairing appeared to give: the towers LOOM.
+ * that 58 is HEX (the file is `.RADIX 16`): 0x58 = 88 .S units × .S=120 = 10560 raw
+ * ROM units (pt1-3: the surface renders at 1:1 raw now, so this is the ROM value
+ * verbatim — was 352 at the ÷30 scale). sw3-11 read the column in decimal, so the
+ * shipped tower was short — and its true aspect is 5.5:1, not the 3.6:1 that
+ * misreading implied. The ship skims at the ROM's own fraction of tower height
+ * (SKIM_ALTITUDE / TOWER_HEIGHT = 3840 / 10560 ≈ 0.36): the towers LOOM.
  *
- * NOTE the tower now out-reaches TURRET_HIT_RADIUS (200): the hit sphere no longer
- * covers the cannon section it draws above y=328. The collidable VOLUME is
+ * NOTE the tower still out-reaches TURRET_HIT_RADIUS (6000 raw): the hit sphere no
+ * longer covers the cannon section it draws above y=9840. The collidable VOLUME is
  * unchanged — the tower simply grew around it. Growing the radius to match is a
  * play-balance call, not a fidelity one, and is deliberately not made here. */
-export const TOWER_HEIGHT = 352
+export const TOWER_HEIGHT = 10560
 /** Grace window (seconds) a freshly-risen tower holds fire before its first shot
  * (Story sw2-3). Turns round-1 firing into a readable reaction beat instead of a
  * tower that fires the instant it appears. Kept well under the ~2s a tower dwells
@@ -691,23 +694,24 @@ export const TOWER_HEIGHT = 352
 export const TOWER_FIRE_GRACE = 0.75
 /** Elevation of a bunker's gun (sw7-5 / D-016). The ROM's bunker is the squat
  * base of the shared GND table — its whole body spans 0..6 height units (0..720
- * raw; 0..24 at the 1/30 scale), and GDHTBK centers the bunker's blast at
- * 3×120 = mid-body (WSGRND.MAC:1166). The fireball erupts from that low body,
- * never from empty air at TOWER_HEIGHT. */
-export const BUNKER_MUZZLE_HEIGHT = 12
+ * raw ROM units), and GDHTBK centers the bunker's blast at 3×120 = 360 = mid-body
+ * (WSGRND.MAC:1166). pt1-3: raw scale now, so this IS 360 verbatim (was 12 at ÷30).
+ * The fireball erupts from that low body, never from empty air at TOWER_HEIGHT. */
+export const BUNKER_MUZZLE_HEIGHT = 360
 /** Ceiling below which the ship crashes into a STANDING bunker (sw7-5 / D-020).
  * ROM: the crash needs the ship below the bunker top (`M$TZ+M.U1 - 6*120.*2
  * IFLT`, WSGRND.MAC:940-942) — a 720-raw-unit top over a 512-raw-unit floor
  * (GD$MNT), so low flight risks bunkers and cruise clears them. The clone's
- * raised floor (MIN_SKIM_ALTITUDE 40, house rule D-021) sits above the
- * raw-scaled top (24), so the band is re-based proportionally:
- * 40 × 720/512 ≈ 56 (see the sw7-5 reachability-ruling deviation). */
-export const BUNKER_CRASH_CEILING = 56
+ * raised floor (MIN_SKIM_ALTITUDE 1200, house rule D-021) sits above the raw
+ * bunker top (720), so the band is re-based proportionally: 1200 × 720/512 ≈ 1680
+ * (pt1-3: raw scale; was 56 at ÷30 — see the sw7-5 reachability-ruling deviation). */
+export const BUNKER_CRASH_CEILING = 1680
 /** The surface flight-band ceiling (sw7-5). ROM: `GD$MXT ==1C00` (7168 raw,
- * WSMAIN.MAC:2597-2598) = ~238 at the 1/30 scale — deliberately BELOW the
- * tower cap (TOWER_HEIGHT 352), so a tower can never be overflown and the
- * maze can fight back (D-020's tower crash carries no height gate). */
-export const MAX_SKIM_ALTITUDE = 238
+ * WSMAIN.MAC:2597-2598) — pt1-3: raw scale now, so this IS 7168 verbatim (was 238
+ * at ÷30). Deliberately BELOW the tower cap (TOWER_HEIGHT 10560), so a tower can
+ * never be overflown and the maze can fight back (D-020's tower crash carries no
+ * height gate). */
+export const MAX_SKIM_ALTITUDE = 7168
 /** Lateral half-width of the ship↔object crash window (sw7-5 / D-020), in the
  * maze's raw lateral units. ROM contact reach is the 45° cone ∩ the X window
  * ($200..$400 + speed, WSGRND.MAC:901-946) ≈ $300..$1800 raw; $400 = 1024 sits
@@ -717,8 +721,10 @@ export const OBJECT_CRASH_LATERAL = 1024
 
 // Internal tuning (not part of the test contract).
 
-/** How fast the yoke flies the ship up/down (altitude units/second). */
-export const ALTITUDE_RATE = 200
+/** How fast the yoke flies the ship up/down (raw ROM units/second). pt1-3: scaled
+ *  ×30 with the raw altitude band (was 200 at the ÷30 scale) so the ship still
+ *  crosses the ~6000-unit band (MIN_SKIM 1200 → MAX_SKIM 7168) in ~1s, not ~30s. */
+export const ALTITUDE_RATE = 6000
 /** Legacy flat surface scroll rate (units/second). RETIRED as the live surface
  * pace by sw7-18 / D-022 — the ground phase now scrolls at an ACCELERATING rate
  * (SURFACE_SEED_SPEED → SURFACE_MAX_SPEED). Kept only as a step-size unit some

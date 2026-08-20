@@ -249,17 +249,20 @@ describe('Wave 2 — collisions, scoring & lives', () => {
 
   it('a player shot that misses leaves the turret standing and the score untouched', () => {
     const base = surface()
-    const site: Vec3 = [4000, 0, EYE_HIGH] // native [depth, right, up]: 4000 ahead, level with the eye
+    // pt1-3 raw scale: a maze-realistic depth (raw ROM units), far enough that a
+    // reachable aim can clear the TURRET_HIT_RADIUS (6000) sphere — a tower right
+    // under the cockpit fills the whole aim cone and cannot be missed.
+    const site: Vec3 = [16000, 0, EYE_HIGH] // native [depth, right, up]: 16000 ahead, level with the eye
     const s0 = {
       ...base,
       turrets: [turretAt(site)],
       fireCooldown: 0,
       firePrev: false,
     }
-    // The trigger goes down with the crosshair on empty ground 2,000 units to the RIGHT of the
-    // turret — an aim the yoke really can reach (|aimX| = 0.50), so this is a miss the pilot
-    // could make, not an un-aimable one standing in for one.
-    const aside: Vec3 = [4000, 2000, EYE_HIGH] // native [depth, right, up]: 4000 ahead, 2000 right
+    // The trigger goes down with the crosshair on empty ground 9,000 units to the RIGHT of the
+    // turret — an aim the yoke really can reach (|aimX| ≈ 0.56) that clears the hit sphere, so
+    // this is a miss the pilot could make, not an un-aimable one standing in for one.
+    const aside: Vec3 = [16000, 9000, EYE_HIGH] // native [depth, right, up]: 16000 ahead, 9000 right
     const aim = aimAt(aside, eyeOf(s0))
     expect(aim.reachable, `the yoke must be able to point here (${aim.aimX.toFixed(2)})`).toBe(true)
 

@@ -229,20 +229,22 @@ describe('sw7-17 — the player laser resolves INSTANTLY (no travelling bolt)', 
 // ---------------------------------------------------------------------------
 
 describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', () => {
-  // The arithmetic these two tests are built on, at depth 10,000 with today's 600 u/s scroll.
-  // Miss distance ≈ |x| · (L·c)/(L·c + b·d) with L = |tower − eye|, c = closing, b = bolt:
+  // The arithmetic these two tests are built on, at depth 20,000 (raw ROM units, pt1-3).
+  // Miss distance ≈ |x| · (L·c)/(L·c + b·d) with L = |tower − eye|, c = closing (the surface
+  // seed pace ≈ 5,250 u/s), b = bolt (PROJECTILE_SPEED 12,000):
   //
-  //     |x| = 2,000  ->  miss ~97   INSIDE TURRET_HIT_RADIUS (200) — kills either way
-  //     |x| = 6,000  ->  miss ~331  OUTSIDE — the projectile CANNOT land this shot
+  //     |x| =  4,000  ->  miss ~1,233   INSIDE TURRET_HIT_RADIUS (6,000) — kills either way
+  //     |x| = 18,000  ->  miss ~6,670   OUTSIDE — the projectile CANNOT land this shot
   //
-  // Both are reachable on the yoke at this depth (|aimX| = X/D = 0.2 and 0.6 under the
-  // aspect-independent sw10-1 lens), so neither is hiding behind an un-aimable target.
+  // Both are reachable on the yoke at this depth (|aimX| = X/D = 0.2 and 0.9 under the
+  // aspect-independent sw10-1 lens), so neither is hiding behind an un-aimable target. The raw
+  // hit radius (6,000) is large, so it takes a far-off-axis tower to out-run the travelling bolt.
 
-  it('DESTROYS a tower 6,000 units off-axis that a projectile physically cannot reach', () => {
-    // THE POINT OF THE STORY. The bolt crosses this tower's plane 331 units inside of it —
+  it('DESTROYS a tower 18,000 units off-axis that a projectile physically cannot reach', () => {
+    // THE POINT OF THE STORY. The bolt crosses this tower's plane ~670 units inside of it —
     // every frame, at every aim, for ever. Dead-on is not good enough for a travelling shot
     // when the world is closing; it is exactly good enough for a beam.
-    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right, level with the eye
+    const tower: Vec3 = [20000, 18000, EYE_HIGH] // native: depth 20,000, 18,000 to the right, level with the eye
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)
@@ -261,7 +263,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     // loudly here instead. sw7-18: the closing speed is now the accelerating surface pace; use
     // its SLOWEST value (the $100 seed) — the most conservative case — and the bolt still misses.
     const eye: Vec3 = [0, 0, EYE_HIGH] // native: at the origin depth, level with the eye
-    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
+    const tower: Vec3 = [20000, 18000, EYE_HIGH] // native: depth 20,000, 18,000 to the right
     const d = tower[0] // native depth
     const L = length(sub(tower, eye))
     const miss = Math.abs(tower[1]) * ((L * SURFACE_SEED_SPEED) / (L * SURFACE_SEED_SPEED + PROJECTILE_SPEED * d))
@@ -277,7 +279,7 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     // kills at t = 0.81 s given room to fly). It is red today only because it is measured on the
     // firing frame, i.e. for the instant-resolve reason every test in (a) is red. It is here so
     // that "dead-on hits" is asserted across the axis and not only at the offset that breaks.
-    const tower: Vec3 = [10000, 2000, EYE_HIGH] // native: depth 10,000, 2,000 to the right
+    const tower: Vec3 = [20000, 4000, EYE_HIGH] // native: depth 20,000, 4,000 to the right
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)
@@ -288,13 +290,13 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
 
   it('still misses what the crosshair is NOT on — the beam is not an auto-aim', () => {
     // The other half of WYSIWYG, and the thing a "nearest object anywhere ahead" resolver
-    // would break. The tower is 6,000 off-axis; the yoke is centred, pointing at empty sky.
-    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
+    // would break. The tower is 18,000 off-axis; the yoke is centred, pointing at empty sky.
+    const tower: Vec3 = [20000, 18000, EYE_HIGH] // native: depth 20,000, 18,000 to the right
     const s0 = surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const s = stepGame(s0, trigger(), DT)
 
-    expect(towerDied(s), 'a centred crosshair must not kill a tower 6,000 to the right').toBe(false)
+    expect(towerDied(s), 'a centred crosshair must not kill a tower 18,000 to the right').toBe(false)
   })
 })
 
@@ -352,10 +354,12 @@ describe('sw7-17 — the beam is cast from the ship point, not the world origin'
     // unchanged, the beam would resolve from the floor `altitude` below the pilot and R11a's
     // parallax comes straight back.
     //
-    // The fixture makes that distinction bite. Flying at the band ceiling (238) against a
-    // tower 800 out on the floor, the aim ray from the EYE passes through the tower; the same
-    // ray cast from the ORIGIN passes ~228 away — outside TURRET_HIT_RADIUS (200).
-    const tower: Vec3 = [800, 0, 0] // native: 800 dead ahead, on the floor (up 0)
+    // The fixture makes that distinction bite. pt1-3 raw scale: flying at the band ceiling
+    // (MAX_SKIM_ALTITUDE 7168) against a tower on the floor, the aim ray from the EYE passes
+    // through the tower; the same ray cast from the ORIGIN lands a full altitude (7168) below it
+    // — outside TURRET_HIT_RADIUS (6000). The tower sits deeper than the ceiling so the pilot can
+    // still aim down at it (a tower nearer than the altitude is below the yoke's reach).
+    const tower: Vec3 = [12000, 0, 0] // native: 12,000 dead ahead, on the floor (up 0)
     const s0 = surface({ altitude: MAX_SKIM_ALTITUDE, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
     const aim = aimAt(tower, eyeOf(s0), 1)

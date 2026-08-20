@@ -1,125 +1,108 @@
 // tests/core/surface-projection-scale.test.ts
 //
-// Story pt1-3 (RED / TEA) — the Death Star SURFACE RUN renders its towers far
-// too distant from the player. Reference: the 1983 arcade Wave-6 surface run —
-// the towers are LARGE and NEAR, filling much of the frame, standing on the
-// ground the ship skims (AL82 arcade longplay still, supplied by the user).
+// Story pt1-3 — the Death Star SURFACE RUN rendered its towers far too distant
+// from the player. Reference: the 1983 arcade Wave-6 surface run — the towers are
+// LARGE and NEAR, filling much of the frame, standing on the ground the ship skims
+// (AL82 arcade longplay still, supplied by the user).
 //
-// THE BUG. The surface phase mixes two coordinate systems. Everything the tower
-// is measured against sits at the ROM->world PRESENTATION scale (1/30 — the
-// render.ts GROUND_MODEL_SCALE that draws the ROM's 960-unit tower footprint at
-// r=32): the ground grid (surface-grid.ts GRID_HALF_WIDTH=3600 / GRID_FAR=6000),
-// the camera seat (SKIM_ALTITUDE=128) and the tower MODEL itself. But mazeField
-// (src/core/sim.ts) plants the authored maze coordinates UNSCALED — raw ROM units
-// out to +/-32768 lateral and ~32768 deep. A 352-tall tower model planted at
-// depth ~34000 projects to an NDC height of ~0.01: a sub-pixel speck ~9x beyond
-// the far edge of the very grid it should stand on. The render.ts:250 comment
-// says it out loud — "the maze spacing and hit radii all assume" the 1/30 scale —
-// so the placement is the outlier, not the grid/camera/model.
+// THE BUG (and the fix, per the 2026-08-08 projection audit §5/§6.2). The surface
+// SIMULATION is authentic raw ROM units — maze positions to $8000, scroll $100/
+// frame, all ROM-cited (surface-pacing.test.ts). But the surface VISUAL layer was
+// left at a stale pre-migration PRESENTATION scale: the tower model was drawn at
+// GROUND_MODEL_SCALE = 1/30 and the camera sat at SKIM_ALTITUDE = 128, over a
+// ÷30 grid. So a raw-positioned tower (depth to ~34000) was drawn with a ÷30 model
+// (height 352) and projected to ~1% of the screen — a speck floating far past the
+// ÷30 grid's horizon. pt1-3 unifies the surface on raw ROM units (model 1:1,
+// camera seat GD$MDT = 3840, raw grid, raw heights), so the raw tower (height
+// 0x58×120 = 10560) LOOMS at the raw camera, exactly as the cabinet's does.
 //
-// These tests pin the contract in WORLD space, where it is exact and uniform
-// across every maze — NOT in screen pixels, where the bug's on-screen towers
-// (small-lateral, mid-depth rows) sit only just beyond the grid edge and no
-// pixel threshold separates "buggy-far" from "at the horizon" without becoming
-// brittle. A tower planted within the drawn ground necessarily projects large
-// under the authentic +/-45 deg square lens; the envelope IS the visual symptom.
+// This suite pins the user-visible SYMPTOM in screen space — a surface tower on
+// the field subtends a SUBSTANTIAL on-screen height, not a speck — read through
+// the shell's own projection pipeline exactly as surface-visibility.test.ts does.
+// The raw constant VALUES themselves are pinned in
+// tests/shell/render.ground-object-placement.test.ts.
 //
-// THE CONTRACT (WITHOUT prescribing which knob Dev turns):
-//   1. Every laid surface tower stands WITHIN the ground grid it scrolls over
-//      (lateral within +/-GRID_HALF_WIDTH, depth ahead of the cockpit and no
-//      deeper than the drawn horizon GRID_FAR) — not 9x outside it.
-//   2. The placement scale equals the tower MODEL's footprint scale
-//      (GROUND_MODEL_SCALE): positions and footprints must share one scale, or a
-//      tower cannot sit on its own base.
-//
-// Sacred boundary: pure core placement, exercised through the real space->surface
-// transition. No DOM, no time except `dt`.
+// Sacred boundary: no DOM, no time except dt; projection is read via the shell's
+// pure math.
 
 import { describe, it, expect } from 'vitest'
-import { initialState, type GameState } from '../../src/core/state'
-import { stepGame } from '../../src/core/sim'
-import { NO_INPUT } from '../../src/core/input'
+import {
+  initialState,
+  SPAWN_DISTANCE,
+  SKIM_ALTITUDE,
+  TOWER_HEIGHT,
+  type GameState,
+} from '../../src/core/state'
 import { mazeForWave } from '../../src/core/surfaceMazes'
-import { GROUND_MODEL_SCALE } from '../../src/shell/render'
-import { SPACE_PHASE_OVER } from '../support/space-phase-end'
+import { FOV_Y } from '../../src/core/gameRules'
+import { perspective, transform, type Vec3 } from '@shared/math3d'
+import { project, NEAR, FAR } from '../../src/shell/wireframe'
+import { cameraView } from '../../src/shell/render'
 
-const DT = 0.05
+// A representative surface viewport (square-lens letterbox: project() maps through
+// a centred square of side min(w,h)).
+const W = 1280
+const H = 960
+const proj = perspective(FOV_Y, W / H, NEAR, FAR)
 
-// The drawn extent of the surface floor (surface-grid.ts). A tower outside these
-// floats over undrawn void — which is exactly the bug: the raw-unit field runs to
-// +/-32768 lateral, ~34000 deep, while the grid ends at +/-3600 / 6000.
-const GRID_HALF_WIDTH = 3600
-const GRID_FAR = 6000
-
-/** Drive a fresh run through space->surface at a chosen wave, so the maze is laid
- *  by the real phase transition (mirrors surface-maze-field.test.ts). */
-function enterSurface(seed: number, wave: number): GameState {
-  let s: GameState = {
-    ...initialState(seed),
-    wave,
-    phase: 'space',
-    ...SPACE_PHASE_OVER,
-    enemies: [],
-    enemyShots: [],
-  }
-  for (let i = 0; i < 200 && s.phase !== 'surface'; i++) s = stepGame(s, NO_INPUT, DT)
-  return s
-}
-
-/** The full authored field, one surface frame in (before anything scrolls past
- *  the cull plane) — every maze entry, at its laid world position. */
-function laidField(seed: number, wave: number) {
-  return stepGame(enterSurface(seed, wave), NO_INPUT, DT).turrets
-}
-
-// --- 1. Towers stand within the ground they scroll over ----------------------
-
-describe('pt1-3 — surface towers are laid within the ground grid, not 9x beyond it', () => {
-  it('lays every wave 2..20 tower within the lateral grid envelope (|right| <= GRID_HALF_WIDTH)', () => {
-    for (let wave = 2; wave <= 20; wave++) {
-      const field = laidField(1983, wave)
-      expect(field.length, `wave ${wave} laid a field`).toBeGreaterThan(0)
-      for (const t of field) {
-        // native pos = [depth(+X fwd), right(+Y lateral), up(+Z)]
-        expect(
-          Math.abs(t.pos[1]),
-          `wave ${wave}: tower at lateral ${t.pos[1]} is outside the +/-${GRID_HALF_WIDTH} grid`,
-        ).toBeLessThanOrEqual(GRID_HALF_WIDTH)
-      }
-    }
-  })
-
-  it('lays every laid tower ahead of the cockpit and no deeper than the drawn horizon (GRID_FAR)', () => {
-    for (let wave = 2; wave <= 20; wave++) {
-      for (const t of laidField(1983, wave)) {
-        expect(t.pos[0], `wave ${wave}: tower depth ${t.pos[0]} must be in front of the cockpit`).toBeGreaterThan(0)
-        expect(
-          t.pos[0],
-          `wave ${wave}: tower depth ${t.pos[0]} is beyond the drawn ground (${GRID_FAR})`,
-        ).toBeLessThanOrEqual(GRID_FAR)
-      }
-    }
-  })
+const surfaceEye = (alt = SKIM_ALTITUDE): GameState => ({
+  ...initialState(1983),
+  phase: 'surface',
+  altitude: alt,
 })
 
-// --- 2. Placement scale == model footprint scale (the root cause) ------------
+/** A native world point carried into eye space by the surface camera. */
+const toEye = (p: Vec3): Vec3 => transform(cameraView(surfaceEye()), p)
 
-describe('pt1-3 — tower PLACEMENT shares the tower MODEL footprint scale', () => {
-  it('places each tower at its authored lateral coordinate SCALED by GROUND_MODEL_SCALE', () => {
-    // The model is drawn at GROUND_MODEL_SCALE (render.ts). The maze spacing "all
-    // assumes it" (render.ts:250). So a tower authored at raw e.x must be planted
-    // at e.x * GROUND_MODEL_SCALE — otherwise footprint and position disagree by
-    // 30x and the tower cannot sit on its own base. Today it is planted at raw e.x.
-    const wave = 7 // DIFF: entries at lateral 0 out to +/-28672
-    const authored = mazeForWave(wave).entries
-    const field = laidField(1983, wave)
-    expect(field.length, 'wave 7 laid a field').toBeGreaterThan(0)
-    for (const t of field) {
-      const match = authored.some((e) => Math.abs(e.x * GROUND_MODEL_SCALE - t.pos[1]) < 1e-6)
-      expect(
-        match,
-        `tower at lateral ${t.pos[1]} matches no authored e.x * GROUND_MODEL_SCALE (raw placement bug)`,
-      ).toBe(true)
-    }
+/** The on-screen vertical extent (pixels) of a tower standing at native world
+ *  position `pos`: base at up = 0, cannon top at up = TOWER_HEIGHT. Null if either
+ *  end falls behind the near plane. project() -> [screenX, screenY]. */
+function towerScreenHeight(pos: Vec3): number | null {
+  const base = project(toEye([pos[0], pos[1], 0]), proj, W, H)
+  const top = project(toEye([pos[0], pos[1], TOWER_HEIGHT]), proj, W, H)
+  if (!base || !top) return null
+  return Math.abs(top[1] - base[1])
+}
+
+// The deepest a maze tower is ever planted: the farthest authored forward depth
+// across every playable wave, shifted by the spawn horizon (mazeField in sim.ts:
+// depth = e.y + SPAWN_DISTANCE, raw ROM units). Even THIS tower must read as a
+// real object, not a speck.
+const deepestMazeDepth = (() => {
+  let maxY = 0
+  for (let wave = 2; wave <= 20; wave++) {
+    for (const e of mazeForWave(wave).entries) if (e.y > maxY) maxY = e.y
+  }
+  return maxY + SPAWN_DISTANCE
+})()
+
+describe('pt1-3 — surface towers loom at a readable on-screen size, not distant specks', () => {
+  // Reference (arcade Wave 6): the central tower fills ~40% of the frame height.
+  // The ÷30 visual bug left towers at ~1% (a speck). 12% of the viewport is a
+  // generous floor: far below the reference, far above the speck. At the raw
+  // camera seat (3840) a 10560-tall tower at the FARTHEST spawn depth subtends
+  // ~10560/depth of the square lens — comfortably clearing this — while the ÷30
+  // build's 352-tall model at the same raw depth fails it by an order of magnitude.
+  const MIN_FRACTION = 0.12
+
+  it('a tower at the FARTHEST spawn depth still subtends a readable height', () => {
+    const far: Vec3 = [deepestMazeDepth, 0, 0] // dead ahead, on the floor
+    const h = towerScreenHeight(far)
+    expect(h, 'the deepest tower must project in front of the cockpit').not.toBeNull()
+    expect(
+      h!,
+      `deepest tower (depth ${deepestMazeDepth}) projects only ${Math.round(h ?? 0)}px — a speck`,
+    ).toBeGreaterThanOrEqual(MIN_FRACTION * H)
+  })
+
+  it('a tower at a near-field spawn depth fills a large fraction of the frame', () => {
+    // The nearest authored row (e.y = 0) enters at depth SPAWN_DISTANCE and looms
+    // as it approaches. Dead ahead, its cannon should tower well up the screen.
+    const near: Vec3 = [SPAWN_DISTANCE, 0, 0]
+    const h = towerScreenHeight(near)
+    expect(h, 'a near tower must project in front of the cockpit').not.toBeNull()
+    expect(h!, `near tower (depth ${SPAWN_DISTANCE}) projects only ${Math.round(h ?? 0)}px`).toBeGreaterThanOrEqual(
+      0.5 * H,
+    )
   })
 })
