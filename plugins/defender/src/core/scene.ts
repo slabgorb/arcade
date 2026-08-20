@@ -478,8 +478,9 @@ export function composeFrame(
     // Lasers are ON-SCREEN quantities (laser.x = shipX_onscreen + offset, laser.ts) — like the
     // ship, they do NOT scroll with the camera, so they project through projectOnscreenX (pt1-18:
     // the same pixel.8→window mapping the ship uses), NOT the world projection. Collision agrees:
-    // hitTestLasers projects the laser the same way.
-    drawLaserStreak(fb, projectOnscreenX(laser.x), state.ship.y, laser.facing)
+    // hitTestLasers projects the laser the same way, and (pt1-27) both read the laser's OWN
+    // captured fire row (laser.y) — never the ship's live row, which drags in-flight shots.
+    drawLaserStreak(fb, projectOnscreenX(laser.x), laser.y, laser.facing)
   }
 
   // df4-6: the materialize/explosion effects, painted on top (a fresh sim has none, so
