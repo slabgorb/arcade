@@ -86,8 +86,13 @@ export interface EffectState {
   readonly kind: EffectKind
   /** RSIZE: the ROM's signed-16-bit animation counter (SAMEXAP7.SRC:58,91,136,163). */
   readonly size: number
-  /** The df2-4 INERT ObjectImage this effect animates — the SAME object passed in. */
-  readonly picture: ObjectImage
+  /** The df2-4 INERT ObjectImage this effect animates — the SAME object passed in. Absent on a
+   *  SCREEN effect (pt1-25): a full-frame fade/freeze substitute animates no sprite. */
+  readonly picture?: ObjectImage
+  /** The ADR-0005 event this effect presents (pt1-25). A LOCALIZED materialize/explosion is
+   *  `enemy-explode`; a SCREEN effect carries its own event so the composer `classify()`s it
+   *  into the seizure-safe presentation instead of the sprite raster. */
+  readonly event: EffectEvent
   /** True the frame the ROM's finish test fires (EXPLODE `CMPA #$30` / APPEAR `BPL`). */
   readonly done: boolean
 }
@@ -115,15 +120,24 @@ export interface EffectPolicy {
 // ─── The appear / explode lifecycle over a passed-in INERT picture (AC1) ─────────────
 
 /** APST (SAMEXAP7.SRC:16,58): begin a materialize over `picture`. Seeds the negative APPEAR
- *  size; the picture is held by reference (no pixel copy). */
-export function startAppear(picture: ObjectImage): EffectState {
-  return { kind: 'appear', size: APPEAR_INIT_SIZE, picture, done: false }
+ *  size; the picture is held by reference (no pixel copy). `event` tags the ADR-0005 policy —
+ *  a materialize is a LOCALIZED `enemy-explode`. */
+export function startAppear(picture: ObjectImage, event: EffectEvent = 'enemy-explode'): EffectState {
+  return { kind: 'appear', size: APPEAR_INIT_SIZE, picture, event, done: false }
 }
 
 /** EXST (SAMEXAP7.SRC:17,91): begin an explosion over `picture`. Seeds the positive EXPLODE
- *  size; the picture is held by reference (no pixel copy). */
-export function startExplode(picture: ObjectImage): EffectState {
-  return { kind: 'explode', size: EXPLODE_INIT_SIZE, picture, done: false }
+ *  size; the picture is held by reference (no pixel copy). `event` tags the ADR-0005 policy —
+ *  an enemy death is a LOCALIZED `enemy-explode`. */
+export function startExplode(picture: ObjectImage, event: EffectEvent = 'enemy-explode'): EffectState {
+  return { kind: 'explode', size: EXPLODE_INIT_SIZE, picture, event, done: false }
+}
+
+/** pt1-25: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace). It has
+ *  NO sprite — the composer `classify()`s the event into the ADR-0005 safe presentation (a
+ *  bounded fade/freeze wash), not a raster. It rides the EXPLODE decay so it retires itself. */
+export function startScreen(event: EffectEvent): EffectState {
+  return { kind: 'explode', size: EXPLODE_INIT_SIZE, event, done: false }
 }
 
 /**
@@ -273,8 +287,12 @@ export interface PlacedEffect {
   readonly done: boolean
   /** RSIZE (SAMEXAP7): the animation counter, so the composer can size the burst. */
   readonly size: number
-  /** The df2-4 INERT ObjectImage this effect animates — the SAME object, by reference. */
-  readonly picture: ObjectImage
+  /** pt1-25: the ADR-0005 event, so the composer `classify()`s a SCREEN effect into its
+   *  seizure-safe presentation instead of the localized sprite raster. */
+  readonly event: EffectEvent
+  /** The df2-4 INERT ObjectImage this effect animates — the SAME object, by reference. Absent
+   *  on a SCREEN effect (a fade/freeze substitute animates no sprite). */
+  readonly picture?: ObjectImage
 }
 
 /** The effect bank: the live effects + spawn/step, carried by reference across ticks. */
@@ -284,6 +302,9 @@ export interface EffectBank {
   spawnAppear: (x: number, y: number, picture: ObjectImage) => void
   /** EXST: begin an EXPLOSION at (x, y) over `picture` (played when an enemy is killed). */
   spawnExplode: (x: number, y: number, picture: ObjectImage) => void
+  /** pt1-25: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace) — a
+   *  full-frame ADR-0005 safe wash, so it carries no position or picture. */
+  spawnScreen: (event: EffectEvent) => void
   /** Advance every effect one frame; retire the ones the ROM's finish test has fired. */
   step: () => void
 }
@@ -310,6 +331,7 @@ export function createEffectBank(): EffectBank {
     y: r.y,
     done: r.effect.done,
     size: r.effect.size,
+    event: r.effect.event,
     picture: r.effect.picture,
   })
 
@@ -322,6 +344,10 @@ export function createEffectBank(): EffectBank {
     },
     spawnExplode(x, y, picture): void {
       records.push({ effect: startExplode(picture), x, y })
+    },
+    spawnScreen(event): void {
+      // A screen effect has no position — 0,0 is unused; the composer classifies by `event`.
+      records.push({ effect: startScreen(event), x: 0, y: 0 })
     },
     step(): void {
       // Drop the effects that finished LAST frame, then advance the survivors — so a `done`

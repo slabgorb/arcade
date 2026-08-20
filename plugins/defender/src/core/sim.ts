@@ -507,6 +507,9 @@ export function stepSim(state: SimState, input: Input): SimState {
     died = true
     rt.score = loseMan(rt.score)
     rt.cues.push({ type: 'player-death' }) // PDSND
+    // pt1-25: the on-screen death — spawn the ADR-0005 player-death effect HERE (the one
+    // choke point), so every death cause (enemy collision, hyperspace strand) surfaces it.
+    state._effectBank.spawnScreen('player-death')
     rt.shots.length = 0 // the field's shots clear with the ship
     if (isGameOver(rt.score)) {
       rt.gameOver = true
@@ -549,6 +552,8 @@ export function stepSim(state: SimState, input: Input): SimState {
       shipRow = t.y
       vy = { y16: t.y << 8, playv: t.vy }
       plaxv24 = t.vx
+      // pt1-25: the vanish/reappear — an ADR-0005 hyperspace effect (freeze) marks the jump.
+      state._effectBank.spawnScreen('hyperspace')
     }
   }
 
@@ -574,6 +579,9 @@ export function stepSim(state: SimState, input: Input): SimState {
       rt.smartBombArmed = true
       rt.smartBombFlash = SMART_BOMB_FLASHES
       rt.cues.push({ type: 'smart-bomb' }) // SBSND — the ONE cue; the cleared enemies are silent
+      // pt1-25: the screen-level flash — the ADR-0005 smart-bomb wash (the COM PCRAM invert's
+      // seizure-safe substitute), distinct from the per-enemy explosions clearAllEnemies queues.
+      state._effectBank.spawnScreen('smart-bomb')
       clearAllEnemies(state, award)
     }
   }

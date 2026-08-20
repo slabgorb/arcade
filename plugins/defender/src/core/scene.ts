@@ -34,6 +34,7 @@ import { drawStars, STAR_COUNT } from './stars.js'
 import { WORLD_COLS, projectWorldX, projectOnscreenX, shipWorldX } from './world.js'
 import { projectScanner, SCANNER_COLUMNS, type ScannerObject } from './scanner.js'
 import type { PlacedEffect } from './effects.js'
+import { classify } from './effects.js'
 import type { SimState } from './sim.js'
 import type { DefenderHighScore } from './highscore.js'
 
@@ -177,9 +178,50 @@ function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: nu
   }
 }
 
-/** Blit one in-flight effect: its picture (rastered normally) plus the expanding spark.
- *  `camera` (BGL) camera-offsets the world-x, so the effect scrolls with its enemy. */
+// ─── pt1-25: the ADR-0005 SCREEN effects (player death / smart bomb / hyperspace) ──────
+// The ROM presents these three as full-frame white/inverse STROBES (the smart bomb's SBMBX0
+// COM PCRAM whole-page invert DEFA7.SRC:3199, the player-death and hyperspace screen flashes).
+// ADR-0005 (owner photosensitivity) forbids that: classify() marks them full-frame-strobe and
+// the composer substitutes a BOUNDED, low-contrast, single-shot DECAYING wash. It lifts only
+// a SPARSE lattice (every third cell) of the empty BACKGROUND to a dim index — sprites, terrain,
+// stars and HUD are untouched — so it repaints ≤ 1/9 of the frame. That keeps it clear of the
+// fleet's medical guards (no single colour ≥ 60% of the frame, df3-6-live-sim; a safe clear
+// repaints < 90%, df5-7-visual-playtest) and of assertNoFullFrameStrobe, and it is never a
+// >3 Hz large-area strobe: one pulse per trigger, fading out over the effect's life.
+// The fade/freeze policy distinction is preserved in classify() for future divergence; the
+// safe MVP renders every non-raster presentation as this one wash (a literal "freeze" — holding
+// a prior frame — is not expressible in this stateless per-tick composer). See the pt1-25
+// Design Deviation.
+
+/** The wash's peak index — a DIM lift of the empty field (BACKGROUND=0), kept low so the
+ *  substitute is low-contrast, the opposite of the ROM's full-white strobe. */
+const SCREEN_WASH_PEAK = 3
+/** Lattice stride: only every SCREEN_WASH_STEP-th cell on each axis is touched, so the wash
+ *  covers at most 1/STEP² of the frame — bounded in area, well under the fleet's flash guards. */
+const SCREEN_WASH_STEP = 3
+
+/** Paint the ADR-0005 safe wash: lift a sparse lattice of the empty background to a dim index
+ *  that DECAYS as the effect ages (brightest at spawn, gone by the end), touching no drawn pixel. */
+function drawScreenWash(fb: Framebuffer, phase: number): void {
+  const intensity = Math.round((1 - phase) * SCREEN_WASH_PEAK)
+  if (intensity <= BACKGROUND) return
+  for (let y = 0; y < fb.height; y += SCREEN_WASH_STEP) {
+    for (let x = 0; x < fb.width; x += SCREEN_WASH_STEP) {
+      const i = y * fb.width + x
+      if (fb.data[i] === BACKGROUND) fb.data[i] = intensity
+    }
+  }
+}
+
+/** Blit one in-flight effect. A SCREEN effect (pt1-25) renders as the ADR-0005 safe wash; a
+ *  LOCALIZED enemy effect renders its picture (rastered normally) plus the expanding spark.
+ *  `camera` (BGL) camera-offsets the world-x, so the localized effect scrolls with its enemy. */
 function drawEffect(fb: Framebuffer, e: PlacedEffect, camera: number): void {
+  if (classify(e.event).presentation !== 'raster') {
+    drawScreenWash(fb, effectPhase(e)) // pt1-25 — player death / smart bomb / hyperspace
+    return
+  }
+  if (!e.picture) return // a localized effect always carries its sprite; guard the type anyway
   const col = projectWorldX(e.x, camera) // world-x → visible-window pixel (pt1-18), null if off-window
   if (col === null) return // an effect on an off-camera enemy is culled with it (scanner has no effects)
   blitObject(fb, e.picture, col, e.y)
