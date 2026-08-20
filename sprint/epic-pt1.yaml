@@ -217,7 +217,8 @@ stories:
       Complements pt1-7 (lobby tile key labels). Verify the input path drives the ship in a live playtest.
     points: 2
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-20T00:37:31Z'
     repos: arcade
     workflow: tdd
     type: bug
