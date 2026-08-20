@@ -207,7 +207,7 @@ describe('jt13-14 — the on-pad idle silhouette stays small (photosensitive saf
     const paint = (r as unknown as {
       paintWarpIn: (
         ctx: { fillStyle: string; fillRect(x: number, y: number, w: number, h: number): void },
-        op: { x: number; y: number; width?: number; height?: number; frame?: number; owner?: string; name?: string; colour?: number },
+        op: { x: number; y: number; frame?: number; owner?: string; name?: string; colour?: number },
         colours: readonly { r: number; g: number; b: number; a: number }[],
       ) => void
     }).paintWarpIn

@@ -297,7 +297,7 @@ function warpInSprite(name: string | undefined): PixelBlock | undefined {
  */
 export function paintWarpIn(
   context: Pick<CanvasRenderingContext2D, 'fillStyle' | 'fillRect'>,
-  op: { x: number; y: number; width?: number; height?: number; frame?: number; facing?: number; owner?: string; name?: string; colour?: number },
+  op: { x: number; y: number; frame?: number; facing?: number; owner?: string; name?: string; colour?: number },
   colours: readonly Rgba[],
 ): void {
   const feetY = op.y
