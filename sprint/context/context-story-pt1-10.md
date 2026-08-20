@@ -10,74 +10,39 @@ star-wars: clicking the mouse should start the game, not just Enter
 - **Priority:** p1
 - **Workflow:** tdd
 - **Repo:** arcade
-- **Epic:** Playtest bug sweep 2026-08-19 (pt1)
+- **Epic:** Playtest bug sweep 2026-08-19: fleet-wide bugs observed in visual playtests (millipede, star-wars, tempest, defender/lobby, missile-command, joust, pac-man)
 
 ## Problem
-Playtest 2026-08-19: on the start screen a mouse click should start the game.
-
-**Research (2026-08-19): this is a fidelity fix, not just UX — the game's own
-attract screen says 'PULL TRIGGER TO START' (`render.ts:1628`, cited MS.STR; again
-at game-over `:1741`), the mouse button IS the trigger, and the ROM's start switch
-is the trigger bits:** `WSGLOB.MAC:342-343` — `STRTBT ==BT7!BT6!THMBT` /
-`FIREBT ==BT7!BT6`, i.e. FIREBT ⊂ STRTBT. `STRTCK` (`WSMAIN.MAC:573-611`, `:604
-ANDA #STRTBT`) fires the start; the select screen commits on the same family
-(`WSMAIN.MAC:1125 ANDA #FIREBT!THMBT`). So the rule is "the trigger starts the
-game" — mouse button AND Space — keeping Enter/1 as keyboard aliases.
-
-## Findings
-
-**Current shell input (`src/shell/input.ts`):** `pointermove` → aim (`:20-26`,
-the mouse IS the yoke); `pointerdown/up` → `state.fire` (`:27-28`); keydown
-`Space` → fire, `Enter`/`Digit1`/`Numpad1` → `pendingStart` latch (`:29-38`);
-`sample()` returns `{...state, start: pendingStart}` and clears the latch
-(`:42-49`). **`start` has no pointer source; `fire` is ignored in attract.**
-Consumers: `sim.ts:214-215` (attract + `input.start` → `openSelect`);
-gameover→attract has a `startPrev` rising-edge guard (`sim.ts:225-262`).
-`Input.start` declared `src/core/input.ts:22`.
-
-**THE TRAP — double-action on one click:** attract → select on `start`
-(`sim.ts:214`), and `stepSelect` commits on `input.fire && hover !== null`
-(`sim.ts:894-897`) with NO rising-edge guard. One pointerdown setting both
-`start` and held `fire` could start the game AND instantly pick whichever Death
-Star the cursor sits over. The gameover path already guards with `startPrev`
-(`sim.ts:250,262`); the select path needs the same (reuse the existing `firePrev`
-register `stepGame` maintains for the hitscan laser, or add `selectFirePrev`).
-Note the existing test fixtures (`tests/support/select.ts` — `enterSelect` then
-`fireAtChoice` on the very next step) already model "start then immediately
-fire", so a naive latch could flip them green-by-accident or red — TEA should
-treat those fixtures as the double-action spec.
+Playtest 2026-08-19: on the start screen, a mouse click should start the game in addition to Enter.
 
 ## Technical Approach
-1. `shell/input.ts`: pointerdown ALSO latches `pendingStart` (trigger == start,
-   per STRTBT) and keydown `Space` likewise (it's a trigger key) — pure shell
-   change entering core only through `Input.start`
-   (`tests/core/core-purity.test.ts` constraint).
-2. `core/sim.ts`: rising-edge guard on the select commit so the starting click
-   can't also pick a Death Star.
-3. Update the keybind card copy (`main.ts:120-131` `ENTER  START`) to match.
-4. No shell-input unit suite exists today (`tests/shell/` has no input.test.ts) —
-   TEA creates one (can serve pt1-4's rect change too).
+_Approach hints to be refined by TEA/Dev. The story title above defines the
+intended behavior._
+
+**Where start-input lives (context discovery, SM):** All device→core input mapping
+is in the shell at `plugins/star-wars/src/shell/input.ts`. Today:
+- The `start` edge is a one-shot latch (`pendingStart`) armed **only** on
+  `keydown` of `Enter`/`Digit1`/`Numpad1` (guarded `!e.repeat`), then cleared the
+  next time the core samples it (`input.ts:29-38`, `:46-47`).
+- A mouse press already fires a `pointerdown` listener — but it maps to
+  `state.fire = true` (the yoke trigger), **not** to `start` (`input.ts:27`).
+
+So a click currently only pulls the trigger; nothing arms `start` from the mouse.
+The fix lives entirely in the shell (`core/` is pure and untouched — the game's
+purity test scans `src/core/` source text). TEA/Dev own the design of *how* a
+click arms start, including two seams already visible in the file's own comments:
+(1) `start` is edge-consumed and the core acts on it only in attract/gameover, and
+(2) the keydown latch deliberately guards `!e.repeat` because the initials-entry
+screen sits behind the same key — decide whether a click needs an equivalent guard.
+The core/shell boundary is the single hard rule (`plugins/star-wars/CLAUDE.md`);
+verify the shell change by loading `http://127.0.0.1:5270/star-wars/` after `just serve`.
 
 ## Scope
-- In scope: the start latch, the select edge guard, the keybind card line.
-- Out of scope: select layout/hit regions (pt1-11); canvas sizing (pt1-4);
-  changing the attract copy (it's already correct and cited).
-
-## Tests affected
-- `tests/core/framing.test.ts`, `tests/core/select-death-star.test.ts`,
-  `tests/support/select.ts` — the enterSelect/fireAtChoice cadence interacts with
-  the new edge guard; re-derive deliberately.
-- `tests/core/name-entry.test.ts` / `name-entry-resolution.test.ts` — the
-  startPrev edge discipline must hold for pointer-driven start (no machine-gun
-  through initials).
-- `tests/shell/render.attract-start-prompt.test.ts` /
-  `render.framing-prompts.test.ts` — PULL TRIGGER copy (unchanged, stays green).
+- In scope: the behavior described by the story title.
+- Out of scope: unrelated changes.
 
 ## Acceptance Criteria
-_TEA to define at RED. Suggested: AC1 a mouse click (and Space) on attract opens
-select, cited to STRTBT/FIREBT (`WSGLOB.MAC:342-343`, `WSMAIN.MAC:604`); AC2 the
-starting click cannot commit a Death Star on the same press (rising edge pinned);
-AC3 Enter/1 still work; AC4 initials screen unaffected by held buttons._
+_No acceptance criteria recorded in the sprint YAML — TEA to define during the RED phase._
 
 ---
-_Generated by `pf context create story pt1-10`; researched and expanded by Architect 2026-08-19._
+_Generated by `pf context create story pt1-10` from the sprint YAML._

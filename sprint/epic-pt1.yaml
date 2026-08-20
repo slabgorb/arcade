@@ -96,7 +96,8 @@ stories:
     description: 'Playtest 2026-08-19: on the start screen, a mouse click should start the game in addition to Enter.'
     points: 1
     priority: p1
-    status: backlog
+    status: in_review
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
     type: bug
