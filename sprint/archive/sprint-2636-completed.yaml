@@ -22,3 +22,8 @@ completed_stories:
     title: 'star-wars: clicking the mouse should start the game, not just Enter'
     points: 1
     completed: '2026-08-20'
+  - id: pt1-20
+    epic: pt1
+    title: 'defender: in-game controls are undiscoverable — add on-screen control hints (reverse/thrust/fire/smart-bomb)'
+    points: 2
+    completed: '2026-08-20'
