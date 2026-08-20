@@ -17,8 +17,12 @@
 // box is centred on the billboard) from the real render output, inverts that centre
 // through the shell's own mouse→aim map (src/shell/input.ts:35-38), and drives the
 // REAL sim hit test. Any placement that puts the star inside its choice's hit
-// region passes; the round-1 offset fails. Isolated over a turret-free SURFACE
-// background (steel grid only) so the only green is the three billboards.
+// region passes; the round-1 offset fails. Rendered in the SURFACE phase, which
+// draws no green: the only green scene element is the TIE fighter (TIE_GLOW,
+// render.ts), and TIEs are gated to the space phase — the surface grid itself is
+// steel. So the three billboards are the only green strokes, and finding them by
+// colour needs no other isolation. (enemies/turrets/debris are emptied too, but
+// those are red/yellow/white, not green — belt-and-braces, not the guarantee.)
 
 import { describe, it, expect } from 'vitest'
 import { render } from '../../src/shell/render'

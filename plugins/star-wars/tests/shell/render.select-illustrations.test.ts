@@ -18,15 +18,20 @@
 // fails. HOW Dev seats the billboards is theirs to choose.
 //
 // ISOLATION: the picker overlay (drawSelect) is PHASE-INDEPENDENT — it draws the
-// same three tier illustrations regardless of the 3D scene behind it. We put the
-// frame in the SURFACE phase with no turrets or debris, so the background is only
-// the steel receding grid (#5a6b8c) — no green and no red strokes. That leaves the
-// picker's own VGCGRN/VGCWHT/VGCRED palette as the ONLY green/red in the frame, so
-// each assertion bites cleanly: zero such strokes today (drawSelect paints only the
-// cyan text labels), three separated death stars once the illustrations land. (A
-// SPACE-phase frame would draw the lone approaching death star behind the picker,
-// whose wide green body bridges the three billboards into one cluster — a confound
-// we sidestep rather than fight.)
+// same three tier illustrations regardless of the 3D scene behind it. We render in
+// the SURFACE phase and empty the ground objects, which zeroes the background's
+// contribution to BOTH families the assertions read:
+//   * GREEN — the only green scene element is the TIE fighter, gated to the space
+//     phase; the surface grid itself is steel (#5a6b8c). So SURFACE phase alone
+//     guarantees no background green.
+//   * RED — surface bunkers and ground-debris draw red; emptying `turrets`/
+//     `groundDebris` removes those, so no background red.
+// That leaves the picker's own VGCGRN/VGCWHT/VGCRED palette as the ONLY green/red in
+// the frame, so each assertion bites cleanly: zero such strokes today (drawSelect
+// paints only the cyan text labels), three separated death stars once the
+// illustrations land. (A SPACE-phase frame would draw the lone approaching death
+// star behind the picker, whose wide green body bridges the three billboards into
+// one cluster — a confound we sidestep rather than fight.)
 
 import { describe, it, expect } from 'vitest'
 import { render } from '../../src/shell/render'
@@ -39,8 +44,9 @@ const H = 600
 const NO_SCORES: HighScoreTable<'wave'> = []
 
 /** A quiet select-mode frame: the picker up, no live hover, over a surface-phase
- *  background stripped to its steel grid (no turrets/debris) so nothing behind the
- *  picker paints green or red. The overlay draws identically in any phase. */
+ *  background (no green — TIEs are space-only, the grid is steel) with turrets and
+ *  debris emptied (removing the only background red). The overlay draws identically
+ *  in any phase. See the ISOLATION note at the top of the file. */
 const selectFrame = (): GameState => ({
   ...initialState(1983),
   mode: 'select',
