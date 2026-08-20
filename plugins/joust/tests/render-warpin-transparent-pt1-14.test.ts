@@ -213,15 +213,18 @@ describe('pt1-14 — the warp-in overlay is a TRANSPARENT silhouette (playfield 
     const w = await loadWarpIn()
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
-    const sprite = resolveSprite(SPRITE_NAME, pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
 
     const rects: Array<{ w: number; h: number }> = []
     const ctx = { fillStyle: '', fillRect: (_x: number, _y: number, ww: number, hh: number) => void rects.push({ w: ww, h: hh }) }
 
-    // Named op: the lit pad (the h=2 bar) spans the resolved sprite width.
-    paint(ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME }, colours)
+    // Named op: the lit pad (the h=2 bar) spans the resolved sprite width. Use the STORK
+    // (SFLY1R, width 9 → 18px), whose width differs from WARPIN_DEFAULT_W(16) — so this
+    // proves the pad TRACKS the sprite and isn't just the constant default.
+    const stork = resolveSprite('SFLY1R', pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
+    expect(stork.width * 2, 'the stork is wider than the default pad, so the assertion bites').not.toBe(16)
+    paint(ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p2', name: 'SFLY1R' }, colours)
     const pad = rects.find((f) => f.h === 2)
-    expect(pad?.w, 'the pad width tracks the resolved sprite width').toBe(sprite.width * 2)
+    expect(pad?.w, 'the pad width tracks the resolved sprite width').toBe(stork.width * 2)
     expect(rects.some((f) => f.w === 1 && f.h === 1), 'the named op also paints the silhouette').toBe(true)
 
     // Nameless op: no resolvable sprite → only the WARPIN_DEFAULT_W(16) pad, no silhouette.
