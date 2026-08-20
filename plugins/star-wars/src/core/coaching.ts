@@ -55,7 +55,7 @@ export function coachingFor(s: GameState): string | null {
   // to return before that pass, so the hint live at death stayed on the state and on screen — a
   // dead pilot still being told to SHOOT FIREBALLS (sw7-10 rework, finding F3). The branch at
   // sim.ts:228 is finalised now, and the death sites set gameOver alongside the mode
-  // (sim.ts:769, :1277, :1580, :1753); this line is the half that does not depend on the mode.
+  // (sim.ts:769, :1299, :1603, :1776); this line is the half that does not depend on the mode.
   if (s.gameOver) return null
   if (s.wave !== 1) return null // SC.FWV
   if (s.phase === 'space') {

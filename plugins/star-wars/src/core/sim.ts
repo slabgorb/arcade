@@ -1082,24 +1082,40 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // The PMREB cue's crossing is detected from `scrollSpeed` but is NOT emitted here —
   // it waits for the shield resolution below (sw8-21). See the block after `loseShield`.
 
-  // --- Ground objects: lay the authored WSGRND maze once, then scroll it in --
-  // sw4-3: the surface is the wave's fixed, hand-authored WSGRND tower maze —
-  // NOT a random spawner. Lay the whole field on the first surface frame (unless
-  // turrets were hand-placed, so pre-seated fixtures/saves are respected), then
-  // the existing scroll/cull machinery translates the field toward the cockpit
-  // and drops each object as it sweeps past (a finite, single-pass field).
+  // --- Ground objects: lay the authored WSGRND maze once, then RE-FLY it staged ---
+  // sw4-3: the surface is the wave's fixed, hand-authored WSGRND tower maze — NOT a
+  // random spawner. Lay the whole field on the first surface frame (unless turrets were
+  // hand-placed, so pre-seated fixtures/saves are respected).
+  //
+  // pt1-21 restores the ROM's STAGED MULTI-PASS traversal on top of that. Two changes:
+  //  (1) WRAP, don't cull. Forward position M$TX is a wrapping 16-bit accumulator; each
+  //      `$8000` sweep re-flies the SAME maze (`INC GD.SEQ`, WSMAIN.MAC:2537-2547). So the
+  //      frame an object sweeps past the cockpit it re-enters one SURFACE_SEQ_SPAN ahead
+  //      instead of being dropped — the maze is a ring, not a finite single pass.
+  //  (2) Gate PRESENCE, not just firing, on `gdSeq`. The maze-loop top SKIPS a dormant
+  //      object ENTIRELY — no draw, no gun, no collision — until the traversal reaches it
+  //      (`CMPA TGD$SQ(X) / LBLT 90$`, WSGRND.MAC:738-742; GDVIEW/GDGUN downstream :771-781).
+  //      Reached objects live in `turrets` (drawn/collidable/shootable); unreached ones wait
+  //      in `dormant`, still flying, so the reveal stages 7-0/9-1/7-2/5-3 across the laps
+  //      (DIFF, WSGRND.MAC:146). Gate ONCE here so every consumer reads the same subset.
   let surfaceMazeLaid = state.surfaceMazeLaid
-  let field = state.turrets
+  let ring = [...state.turrets, ...(state.surfaceDormant ?? [])]
   if (!surfaceMazeLaid) {
-    if (field.length === 0) field = mazeField(state.wave)
+    if (ring.length === 0) ring = mazeField(state.wave)
     surfaceMazeLaid = true
   }
-  const scrolled = field.map((turret): Turret => {
-    const pos: Vec3 = [turret.pos[0] - scrollSpeed * dt, turret.pos[1], turret.pos[2]] // sw10-1 scroll = −depth (−X)
+  const step = scrollSpeed * dt
+  const scrolled = ring.map((turret): Turret => {
+    const raw = turret.pos[0] - step // sw10-1 scroll = −depth (−X)
+    // wrap past the cockpit → re-enter one SEQ_SPAN ahead (the ROM's M$TX $8000 wrap)
+    const depth = raw > 0 ? raw : raw + SURFACE_SEQ_SPAN
     // age toward fire grace; keep the kind (bunker/tower/bishop) + seq riding along
-    return { ...turret, pos, age: (turret.age ?? 0) + dt }
+    return { ...turret, pos: [depth, turret.pos[1], turret.pos[2]], age: (turret.age ?? 0) + dt }
   })
-  const turrets = scrolled.filter((turret) => turret.pos[0] > 0) // still ahead of the cockpit (depth +X)
+  // PRESENCE gate: reached objects are the live field; the rest wait, still flying.
+  const reached = (turret: Turret): boolean => gdSeq >= (turret.seq ?? 0)
+  const turrets = scrolled.filter(reached) // drawn / collidable / shootable this pass
+  const dormant = scrolled.filter((turret) => !reached(turret)) // held out until their seq comes up
 
   // --- Ship↔object collision (sw7-5 / D-020): the maze fights back ----------
   // ROM GDVIEW: closing on a standing tower glows the shields and crashes
@@ -1112,13 +1128,20 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // cockpit plane (its scrolled z crosses 0), the same speed-widened moment as
   // the ROM's `M.XP - $200 - speed` time-window — the crashed object is NOT destroyed
   // (no enemy-death, no score) — it flies off behind, like the cabinet's.
-  for (const passed of scrolled) {
-    if (passed.pos[0] > 0) continue // still in flight — only plane-crossers crash (depth +X ahead)
-    if (Math.abs(passed.pos[1]) > OBJECT_CRASH_LATERAL) continue // off the flight line (right +Y)
-    const kind = passed.kind ?? 'tower' // absent kind == tower (sw3-11 back-compat)
+  // The plane-crossing is read off the PRE-wrap depth (`ring`, minus this frame's step),
+  // since `scrolled` has already wrapped every crosser one SEQ_SPAN forward. A DORMANT
+  // object cannot be crashed into — the maze-loop skip is upstream of GDVIEW's crash
+  // (WSGRND.MAC:738-742 before :901-912), so a tower the traversal has not reached is
+  // simply not there to hit (pt1-21).
+  for (const object of ring) {
+    if (!reached(object)) continue // dormant — undrawn and uncollidable this pass
+    const crossed = object.pos[0] - step
+    if (crossed > 0) continue // still in flight — only plane-crossers crash (depth +X ahead)
+    if (Math.abs(object.pos[1]) > OBJECT_CRASH_LATERAL) continue // off the flight line (right +Y)
+    const kind = object.kind ?? 'tower' // absent kind == tower (sw3-11 back-compat)
     if (kind === 'bunker' && altitude >= BUNKER_CRASH_CEILING) continue // overflown
     damage++
-    events.push({ type: 'object-crash', kind, pos: [...passed.pos] as Vec3 })
+    events.push({ type: 'object-crash', kind, pos: [crossed, object.pos[1], object.pos[2]] as Vec3 })
   }
 
   // --- Every standing ground object fires on the cadence --------------------
@@ -1131,12 +1154,11 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
   // the clone's homing-fireball model (house rule D-017 — not the ROM's
   // directional FRB*GN guns; its distance-weighted fire chance is a logged
   // Delivery Finding, not ported).
-  // Awakening gate (sw7-18 / D-018): an object may fire only once the traversal
-  // has reached its awakening sequence (`gdSeq >= .C`, WSGRND.MAC:740-742). An
-  // absent seq (hand-placed fixtures / pre-D-018 saves) is awake from the start.
-  const armed = turrets.filter(
-    (turret) => (turret.age ?? 0) >= TOWER_FIRE_GRACE && gdSeq >= (turret.seq ?? 0),
-  )
+  // Awakening gate (sw7-18 / D-018): an object may fire only once the traversal has
+  // reached its awakening sequence (`gdSeq >= .C`, WSGRND.MAC:740-742). pt1-21 lifted
+  // that gate up into PRESENCE — `turrets` already holds only reached objects — so the
+  // fire filter now only holds a freshly-risen object for its readable-beat grace.
+  const armed = turrets.filter((turret) => (turret.age ?? 0) >= TOWER_FIRE_GRACE)
   let enemyFireCooldown = state.enemyFireCooldown - dt
   if (enemyFireCooldown <= 0 && armed.length > 0 && enemyShots.length < MAX_FIREBALL_SLOTS) {
     const shooter = armed[nextInt(rng, armed.length)]
@@ -1282,6 +1304,7 @@ function stepSurface(state: GameState, input: Input, dt: number, common: StepCom
     laserOn,
     firePrev,
     turrets: standingTurrets,
+    surfaceDormant: dormant, // the not-yet-reached objects keep flying (wrapped) for the next lap
     groundDebris,
     enemyShots: liveShots,
     fireCooldown,
@@ -2050,6 +2073,9 @@ export function enterPhase(s: GameState, phase: Phase): GameState {
     // stepSurface frame fills `turrets` from `mazeForWave(wave)`. Reset here so
     // each wave's surface (and a dev phase-jump) lays its own field.
     surfaceMazeLaid: false,
+    // A fresh surface also empties the staged-reveal reservoir (pt1-21): the next
+    // stepSurface frame re-splits mazeForWave(wave) into reached/dormant off gdSeq 0.
+    surfaceDormant: [],
     // Likewise the trench channel scroll, so a fresh (or jumped) trench always
     // opens with the corridor anchored at the cockpit (story 11-6).
     trenchScrollZ: 0,

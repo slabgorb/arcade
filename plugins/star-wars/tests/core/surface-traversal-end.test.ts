@@ -280,7 +280,7 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // >> Line numbers below marked (pre-fix) describe that OLD layout and will not
 // >> match the current file: the fix moved the push. Current anchors are
 // >> `const scrollSpeed` (sim.ts:1073, where the crossing is computed),
-// >> `loseShield` / `const lives` (:1216-1217) and the gated push (:1238-1243).
+// >> `loseShield` / `const lives` (:1238-1239) and the gated push (:1260-1266).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the

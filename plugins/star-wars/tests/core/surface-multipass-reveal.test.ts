@@ -14,7 +14,7 @@
 //      GDVIEW (draw) and GDGUN (fire) both sit DOWNSTREAM of that skip
 //      (WSGRND.MAC:771-781). DIFF splits its towers across sequences (7-0/9-1/
 //      7-2/5-3, WSGRND.MAC:146) so only ~1/3 of the maze exists on pass 0.
-//      OURS gates only FIRING (`armed`, sim.ts:1137-1139): every object is laid,
+//      OURS gates only FIRING (the `armed` filter in `stepSurface`): every object is laid,
 //      drawn and collidable from frame 1 — the `turrets` set the shell renders
 //      and the crash loop reads is the WHOLE maze regardless of gdSeq. (The
 //      `Turret.seq` doc already CLAIMS "nor, in the shell, draw"; the core does
@@ -25,7 +25,7 @@
 //      and the phase ends on a LAP COUNT — `LDA GD.SEQ / CMPA #5` (WSMAIN.MAC:
 //      1678-1689) — flying the SAME $1000..$8000 maze five times as the staged
 //      subset grows. OURS lays the authored field ONCE and culls each object as
-//      it sweeps past (sim.ts:1085-1102, `filter(pos[0] > 0)`); the maze is only
+//      it sweeps past (the old `filter(pos[0] > 0)` cull in `stepSurface`); the maze is only
 //      ~1 SEQ_SPAN deep (depths 0..$8000 + SPAWN_DISTANCE), so it is EMPTY by
 //      gdSeq 1 and the remaining four passes fly over bare ground. All the towers
 //      land in the opening ~few seconds — the "one dense pass".
@@ -131,7 +131,7 @@ describe('pt1-21 — a dormant object (seq > gdSeq) is not present in the field'
 // ── AC 2 — PRESENCE: a dormant object cannot crash the ship ──
 //
 // WSGRND's skip is BEFORE GDVIEW's crash test, so a dormant tower cannot be flown
-// into. Ours crashes on anything that sweeps past the cockpit (sim.ts:1115-1122).
+// into. Ours crashes on anything that sweeps past the cockpit (the crash loop in `stepSurface`).
 
 describe('pt1-21 — a dormant object cannot crash the ship (presence, not just fire)', () => {
   // Seated just ahead of the cockpit plane so the frame's scroll (~seed 5,250 · DT

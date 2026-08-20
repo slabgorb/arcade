@@ -1087,6 +1087,15 @@ export interface GameState {
    * `stepSurface` frame lays `mazeForWave(wave)` into `turrets` — but ONLY if no
    * turrets were hand-placed, so pre-placed fixtures and saves are respected. */
   surfaceMazeLaid: boolean
+  /** The staged-reveal DORMANT reservoir (pt1-21): ground objects the traversal has
+   * NOT yet reached (`gdSeq < seq`). They are held OUT of `turrets` — undrawn,
+   * uncollidable, unshootable, per the ROM's maze-loop skip `CMPA TGD$SQ(X) / LBLT 90$`
+   * (WSGRND.MAC:738-742) — yet keep flying (wrapped) so the SAME maze re-flies staged
+   * across the five `$8000` laps (M$TX wrap, WSMAIN.MAC:2537-2547). `stepSurface`
+   * reconciles both lists against `gdSeq` each frame: reached objects promote into
+   * `turrets`, unreached ones wait here. Optional — absent means an empty reservoir
+   * (pre-pt1-21 saves / hand-placed fixtures), read via `?? []`. */
+  surfaceDormant?: Turret[]
   /** How far the walled trench channel has scrolled toward the cockpit (Wave 3,
    * story 11-6). Advanced by TRENCH_SCROLL_SPEED — the SAME rate that scrolls the
    * exhaust port up the channel — so the corridor and the port rush past together;
