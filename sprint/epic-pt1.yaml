@@ -49,8 +49,8 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
-    review_findings: "F1 (main.ts:47): dpr reconstructed via bufferWidth/cssWidth drifts from resolved vp.dpr — expose dpr from applyLetterbox and read it directly (fleet-consistent). F2 (viewport.test.ts:270): 'wired not orphaned' tripwire matches bare identifier — anchor to call site applyLetterbox(canvas. Both low-severity, clean fixes; change is otherwise sound + gameplay-neutral."
-    review_verdict: rejected
+    review_findings: "Round 2 APPROVED: F1 (dpr exposed from Letterbox, read directly) and F2 (tripwire anchored to call site) both fixed at root; suite 2467/2467, lint clean, gameplay-neutral."
+    review_verdict: approved
   - id: pt1-5
     title: "tempest: attract mode needs a 'play example' (auto-play demo) instead of just the wordmark"
     description: "Playtest 2026-08-19: tempest's attract feature only shows the wordmark. Add an attract gameplay demo (self-playing example) like the joust attract demo (jt13-13 demoInput pattern). Verify against the ROM attract sequence."
