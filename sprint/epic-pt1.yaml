@@ -44,10 +44,14 @@ stories:
     description: 'Playtest 2026-08-19: make the star-wars canvas a fixed size rather than tracking the window, to avoid display problems (projection/scaling artifacts). Pair with pt1-3 — a fixed logical resolution may be prerequisite to pinning the projection.'
     points: 2
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
+    review_findings: "Round 2 APPROVED: F1 (dpr exposed from Letterbox, read directly) and F2 (tripwire anchored to call site) both fixed at root; suite 2467/2467, lint clean, gameplay-neutral."
+    review_verdict: approved
   - id: pt1-5
     title: "tempest: attract mode needs a 'play example' (auto-play demo) instead of just the wordmark"
     description: "Playtest 2026-08-19: tempest's attract feature only shows the wordmark. Add an attract gameplay demo (self-playing example) like the joust attract demo (jt13-13 demoInput pattern). Verify against the ROM attract sequence."
