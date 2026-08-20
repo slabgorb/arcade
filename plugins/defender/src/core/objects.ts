@@ -39,8 +39,13 @@ const PIXELS_PER_BYTE = 2
  * width×height, or a non-finite position each throws, because a short `bytes` array
  * (undefined→0→background) or a NaN position (fb.data[NaN] is a silent no-op) would
  * otherwise paint a truncated object or drop it with no error.
+ *
+ * `flip` horizontally MIRRORS the cell within its own `width×2`-pixel span, pivoting the
+ * top-left anchor (x, y) unchanged: pixel column `localX` lands at `span-1-localX`. The
+ * transcribed sprites all face right, so the caller passes `flip` to draw a left-facing
+ * pose (pt1-26 — the player ship reads `state.ship.facing`; cf. drawLaserStreak in scene.ts).
  */
-export function blitObject(fb: Framebuffer, obj: ObjectImage, x: number, y: number): void {
+export function blitObject(fb: Framebuffer, obj: ObjectImage, x: number, y: number, flip = false): void {
   if (obj.encoding !== 'raster') {
     throw new Error(`blitObject refuses a non-raster block: ${obj.name} (encoding ${obj.encoding})`)
   }
@@ -52,6 +57,7 @@ export function blitObject(fb: Framebuffer, obj: ObjectImage, x: number, y: numb
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     throw new Error(`blitObject: non-finite position (${x}, ${y}) for object ${obj.name}`)
   }
+  const spanX = obj.width * PIXELS_PER_BYTE // the cell's pixel width (two nibbles per byte)
   for (let row = 0; row < obj.height; row++) {
     for (let col = 0; col < obj.width; col++) {
       const byte = obj.bytes[col * obj.height + row] // COLUMN-major (df2-6)
@@ -59,7 +65,8 @@ export function blitObject(fb: Framebuffer, obj: ObjectImage, x: number, y: numb
       for (let half = 0; half < PIXELS_PER_BYTE; half++) {
         const index = nibbles[half]
         if (index === 0) continue // transparent — leave the framebuffer be
-        const fx = x + col * PIXELS_PER_BYTE + half
+        const localX = col * PIXELS_PER_BYTE + half
+        const fx = x + (flip ? spanX - 1 - localX : localX) // flip → horizontal mirror (pt1-26)
         const fy = y + row
         if (fx < 0 || fy < 0 || fx >= fb.width || fy >= fb.height) continue // clip
         fb.data[fy * fb.width + fx] = index
