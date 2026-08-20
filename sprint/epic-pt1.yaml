@@ -294,3 +294,88 @@ stories:
     workflow: tdd
     completed: '2026-08-20'
     type: bug
+  - id: pt1-22
+    title: 'defender: revive the live palette — the laser, bombs, TIEs, pods and the mutant shimmer render black because colour RAM is frozen at boot defaults'
+    description: |-
+      Root cause R1 from the 2026-08-20 gameplay render audit (plugins/defender/docs/2026-08-20-defender-gameplay-render-audit.md), ruled by ADR-0007. shell/render.ts:41 resolves CRAM ONCE at module load from DEFAULT_PCRAM and decodes every frame through it; core carries no live PCRAM shadow and writes no colour registers. So palette index 1 (LASER) and indices A-F stay 0x00 = black forever. The player laser is drawn correctly every frame in pure black on black (scene.ts:114, palette.ts:25). Williams copies PCRAM into hardware colour RAM every frame (DEFA7.SRC:1968-1980) and mutates the shadow at runtime to animate registers.
+      Fix (ADR-0007 decision 1): carry the 16-byte PCRAM shadow as live SimState (readonly pcram), add pure per-tick colour cyclers (laser index 1, the A-F bomb/monochrome/TIE cyclers, the mutant shimmer) with ROM-cited timing/colour tables, and have render.ts decode through the live shadow each frame instead of the module-load cache. Purity boundary unchanged (core hands indices + palette bytes; shell invents no colour). ADR-0005: the cyclers are localized/small-area and permitted, but no cycler may drive a >3 Hz strobe over a large area; assertNoFullFrameStrobe stays the guard.
+      PREREQUISITE story: the black-sprite half of pt1-23 and pt1-25's smart-bomb wash depend on this. Land it first.
+    points: 8
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-23
+    title: 'defender: five of seven enemy types are never drawn — mutants, baiters, bombers, pods, swarmers and dropped bombs attack you invisibly'
+    description: |-
+      Highest-impact defect from the 2026-08-20 render audit. composeFrame in scene.ts blits only state.landers and state.humanoids; the other banks (mutants, baiters/UFOs, bombers/TIEs, pods, swarmers, bombs) are live in SimState (sim.ts:212-217), scheduler-driven, and fully collidable (enemyObjects adds every bank, sim.ts:722-727) but drawn nowhere. They only blink in for one frame at spawn (materialize effect) and death (explosion); for their whole roaming/shooting life they are invisible. Collision already uses the same projection as the would-be render (toScreenCol is projectWorldX, sim.ts:626), so positions are correct — the defect is purely a missing blit loop.
+      Fix: add a composeFrame blit loop over the five (six with bombs) banks, projecting each through projectWorldX like landers. Sprite bytes for baiter (UFOP1) and swarmer (SWPIC1) are non-black and render immediately; mutant (SCZP1), bomber (TIEP1), pod (PRBP1) and bomb (BMBP1) use indices A-F and additionally need pt1-22's live palette to be visible.
+      Depends on pt1-22 for the TIE/pod/bomb/mutant colours; the blit loop itself can be built in parallel.
+    points: 5
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-24
+    title: 'defender: the scanner only blips landers — no humanoids, no other enemies, no terrain contour on the radar strip'
+    description: |-
+      From the 2026-08-20 render audit. drawScanner builds its blip list from state.landers only (scene.ts:243), so mutants, baiters, bombers, pods, swarmers and the humanoids give no radar warning; the ROM SCNR loops the whole OBJ table. The mini-terrain contour (MTERR) is transcribed (terrain-data.ts:31) but drawn nowhere — scanner.ts:29 marks it deferred. Fix: project every live bank plus humanoids to the strip (coloured by OBJCOL index, matching the existing lander-blip path) and draw the MTERR contour. Independent of the other stories.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-25
+    title: 'defender: player-death, smart-bomb and hyperspace have no on-screen effect — the ADR-0005 safe-variant policy layer is built but never called'
+    description: |-
+      Root cause R2 from the 2026-08-20 render audit, ruled by ADR-0007 decision 2. The ADR-0005 effect-presentation policy in core/effects.ts (classify + the fade/freeze/particle safe variants) has ZERO call sites outside comments. So killPlayer (sim.ts:478) only plays a sound and drops the men count (its own comment calls it a df6-1 placeholder) with no explosion or respawn blink; the smart-bomb clears the field with per-enemy explosions but no screen-level flash; hyperspace (sim.ts:515) teleports instantly with no vanish/reappear; the terrain-blast particle variant is likewise uncalled.
+      Fix: spawn an effect through the existing effects.ts bank on player death, smart-bomb fire and hyperspace, let classify() pick the seizure-safe presentation, and surface/blit it in scene.ts. The smart-bomb whole-page invert (COM PCRAM, DEFA7.SRC:3199) renders as the ADR-0005 bounded non-strobing wash, NOT a real palette inversion. Log the strobe substitution as a Design Deviation citing ADR-0005 in each consuming story, as that ADR requires.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-26
+    title: 'defender: flipping the ship around does not flip the sprite — it always faces right'
+    description: |-
+      Owner-reported (2026-08-19 playtest), confirmed in the 2026-08-20 render audit. The facing is fully tracked (state.ship.facing, flipped correctly by stepReverse, ship.ts:100) but the render never reads it: scene.ts:442 always blits PLAPIC with no facing branch, blitObject (objects.ts) has no flip parameter, and objects-data.ts:58 holds a single right-facing PLAPIC with no mirrored variant. Fix: horizontally mirror the PLAPIC cell (add a flip flag to blitObject, or a mirrored sprite) selected on facing === left. Small, self-contained, immediately owner-visible.
+    points: 2
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-27
+    title: 'defender: laser fire tracks the ship current row instead of the row it was fired from — shots snap vertically and hit at the wrong height'
+    description: |-
+      From the 2026-08-20 render audit. A Laser record stores x, facing, alive but NO y (laser.ts:56). Both the render (scene.ts:467) and the collision test (sim.ts:815) draw/test each in-flight laser at state.ship.y / shipRow — the ship live row — so firing and then moving up or down drags every existing shot to the new row and makes it collide there. The ROM laser PD is a full screen address encoding its own fixed row. Fix: capture y at fire time on the Laser record and use it in both the render and hitTestLasers. Small; fixes a render AND a collision bug together.
+    points: 3
+    priority: p1
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-28
+    title: 'defender: thrusting shows no exhaust flame — only an audio cue plays'
+    description: |-
+      From the 2026-08-20 render audit. Holding thrust accelerates the ship but draws no exhaust plume; thrust produces only audio cues (sim.ts:471-472 thrust-start/thrust-stop) and no render code reads the thrust bit. The only player sprite is PLAPIC (objects-data.ts:58); scene.ts:442 blits it unconditionally with no exhaust pass. Fix: draw a flickering exhaust cell behind the ship (opposite the facing) while thrust is held, ROM-sourced where a flame sprite exists. Independent.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
+  - id: pt1-29
+    title: 'defender: HUD is missing the in-play high score and the smart-bomb stock readout'
+    description: |-
+      From the 2026-08-20 render audit. drawHud draws only score, men and wave (scene.ts:311-315). The high score appears only on the game-over hall-of-fame screen, never during live play; the smart-bomb stock (state.smartBombs, sim.ts:225) is never drawn at all. Fix: add the in-play high-score readout and a smart-bomb stock indicator to drawHud, coloured through the palette by index like the existing HUD text. Small; independent.
+    points: 2
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+    type: bug
