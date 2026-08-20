@@ -97,10 +97,11 @@ stories:
     description: 'Playtest 2026-08-19: the difficulty/level-select should show a preview of the board (web) layout for each starting level, and a score bonus should be awarded for starting at a higher level. Both are authentic Tempest behaviors (SuperZapper-era level select) — check the references, ROM and MAME before implementing; cite the bonus values.'
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
     review_findings: 'R2: both R1 findings FIXED (mutation-proven). One new LOW: render.ts:855 citation range ALSCOR.MAC:1154-1163 excludes JSR BODSPL (actually :1164); change to 1154-1164. One-char fix.'
     review_verdict: approved

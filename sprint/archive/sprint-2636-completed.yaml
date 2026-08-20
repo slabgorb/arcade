@@ -52,3 +52,8 @@ completed_stories:
     title: 'star-wars: surface-run projection looks wrong — elements render very far from the player'
     points: 3
     completed: '2026-08-20'
+  - id: pt1-9
+    epic: pt1
+    title: 'tempest: difficulty select should preview the board layout per level, and starting higher should pay a bonus'
+    points: 5
+    completed: '2026-08-20'
