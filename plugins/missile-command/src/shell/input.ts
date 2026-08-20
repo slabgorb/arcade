@@ -132,8 +132,8 @@ export function fireKeyToBase(key: string): number | null {
  * buttons wired to the same FIREMA switches (.BYTE MFIREL,MFIREC,MFIRER — Left/Centre/
  * Right — ABMLAU, W3MAIN:606) that Z/X/C bind, so the three buttons ARE the cabinet's
  * real fire input and select the same bases. Left/middle/right button index == base
- * index == fireKeyToBase('z'/'x'/'c'). (The batteries read ALPHA/DELTA/OMEGA left→right
- * on-screen — the story's terminology; the ROM's own symbols above are L/C/R.)
+ * index == fireKeyToBase('z'/'x'/'c'). (ALPHA/DELTA/OMEGA — the story's names for the
+ * three bases, left→right; the ROM draws no such text, its own symbols above are L/C/R.)
  */
 export function fireButtonToBase(button: number): number | null {
   switch (button) {
