@@ -1,42 +1,35 @@
 // tests/render-warpin-transparent-pt1-14.test.ts
 //
-// Story pt1-14 — RED phase (O'Brien / TEA). THE WARP-IN OVERLAY MUST BE TRANSPARENT.
+// Story pt1-14 — THE WARP-IN OVERLAY IS TRANSPARENT (authentic, silhouette-based).
 //
-// Playtest 2026-08-19: the TREFF spawn/materialise animation (paintWarpIn, jt13-2)
-// renders as an OPAQUE overlay — `fillStyle = rgb(...)` + fillRect lays down a solid
-// owner-coloured box that completely erases the playfield behind the arriving bird.
-// The arcade's materialisation reads as a SHIMMER: the playfield shows THROUGH the
-// growing silhouette. This suite pins that behaviour — the paint must composite with
-// alpha < 1 so pixels behind it survive.
+// Playtest 2026-08-19: the TREFF spawn/materialise animation rendered as an OPAQUE
+// BOX — a solid owner-coloured rectangle that erased the playfield behind the arriving
+// bird. The ROM does no such thing. TREFF blits the bird's OWN sprite with the blitter's
+// SOLID bit ADDED to the zero-suppress transfer (`ORA #$10` "CONSTANT FILL OF
+// TRANSPORTER", JOUSTRV4.SRC:5736-5739 / :5787-5790; `WR1CLS #$0A` zero-suppress default,
+// SYSTEM.SRC:504/568). `$0A|$10 = $1A`: zero-suppress KEPT, so the sprite's transparent
+// (nibble-0) pixels are NOT drawn and the PLAYFIELD SHOWS THROUGH THEM; the SOLID bit
+// recolours every foreground pixel to one `DCONST` constant colour.
 //
-// ─── ROM NOTE (for Dev / Reviewer) ───────────────────────────────────────────
-// TREFF's DCONST constant-fill (JOUSTRV4.SRC:5739) is per-frame opaque on the raster
-// hardware; the see-through "shimmer" is the OWNER'S explicit call in this story
-// ("should be transparent so the playfield shows through, per the arcade's shimmer
-// effect"), logged as a Delivery Finding. The alpha value itself is a shell rendering
-// choice, not a transcribed ROM constant — the pin here is < 1 (transparent), not a
-// specific magic number.
-//
-// ─── WHY A COMPOSITING MOCK, NOT JUST A STRING CHECK ─────────────────────────
-// The behaviour the playtester saw is "the playfield is erased". The direct, least-
-// coupled way to prove the fix is to actually blend the paint over a background and
-// assert the background SURVIVES — an opaque fill replaces it, a transparent fill
-// does not. A second test pins the emitted fillStyle alpha so the intent is legible
-// even if the compositing model ever changes.
+// So "transparent" here means a bird-SHAPED silhouette in one OPAQUE colour, with the
+// arena visible through every gap in and around the shape — NOT a translucent rectangle.
+// This suite pins exactly that: (1) the playfield survives at a real interior HOLE of the
+// sprite, (2) foreground pixels are the single OPAQUE constant colour, (3) the paint is a
+// silhouette (holes exist inside its bounding box), not a filled box.
 
 import { describe, it, expect } from 'vitest'
 import { loadRender } from './helpers/render-contract.js'
 import { loadPictures } from './helpers/pictures-contract.js'
 import { loadWarpIn } from './helpers/warpin-contract.js'
+import type { PixelBlock, EntityRecord } from './helpers/pictures-contract.js'
 
 type WarpInOp = {
   x: number
   y: number
-  width?: number
-  height?: number
   frame?: number
   facing?: number
   owner?: string
+  name?: string
   colour?: number
 }
 type PaintWarpIn = (
@@ -45,120 +38,136 @@ type PaintWarpIn = (
   colours: readonly { r: number; g: number; b: number; a: number }[],
 ) => void
 
-/**
- * Parse the alpha channel out of a `fillStyle` string. `rgb(...)` is opaque (a=1);
- * `rgba(r,g,b,a)` / `rgb(r g b / a)` carries an explicit alpha in [0,1]. Returns 1
- * for any opaque form so the "opaque overlay" bug reads as a=1 here.
- */
-function styleAlpha(style: string): number {
-  // rgba(r, g, b, a)
-  const rgba = style.match(/^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)$/i)
-  if (rgba) return Number(rgba[1])
-  // rgb(r g b / a)  — CSS Color 4 slash-alpha form
-  const slash = style.match(/^rgb\(\s*[\d.]+\s+[\d.]+\s+[\d.]+\s*\/\s*([\d.]+)\s*\)$/i)
-  if (slash) return Number(slash[1])
-  // rgb(...) with no alpha component → fully opaque
-  return 1
+/** Resolve a mount frame name to its raster block exactly as paintWarpIn does:
+ *  ENTITY_RECORDS `name → source`, then the PIXEL_BLOCKS block. */
+function resolveSprite(name: string, blocks: PixelBlock[], records: EntityRecord[]): PixelBlock {
+  const source = records.find((r) => r.name === name)?.source ?? name
+  const block = blocks.find((b) => b.name === source || b.aliases.includes(source))
+  if (!block) throw new Error(`no sprite block for ${name} (source ${source})`)
+  return block
 }
 
-/** Parse the r,g,b of a fillStyle (either rgb() or rgba()) into a channel triple. */
-function styleRgb(style: string): { r: number; g: number; b: number } {
-  const nums = style.match(/[\d.]+/g)!.map(Number)
-  return { r: nums[0], g: nums[1], b: nums[2] }
+/** The nibble at (row,col) of a raster block: 2 px/byte, HIGH nibble = LEFT pixel. */
+function nibbleAt(block: PixelBlock, row: number, col: number): number {
+  const byte = block.bytes[row * block.width + (col >> 1)]
+  return (col & 1) === 0 ? (byte >> 4) & 0x0f : byte & 0x0f
 }
 
-/**
- * A 2D context mock that ALPHA-COMPOSITES every fillRect onto a pixel grid, honouring
- * the fillStyle's alpha (out = src·a + dst·(1−a)). This is what makes the "playfield
- * shows through" assertion behavioural rather than cosmetic.
- */
-function compositingContext(background: { r: number; g: number; b: number }): {
+/** A context mock that records the fillStyle written at each 1×1 pixel (last writer wins)
+ *  and, for pixels never written, reports the background — an OPAQUE-fill playfield model. */
+function paintGrid(background: string): {
   ctx: { fillStyle: string; fillRect(x: number, y: number, w: number, h: number): void }
-  pixel(x: number, y: number): { r: number; g: number; b: number }
+  at(x: number, y: number): string
+  fills: string[]
 } {
-  const grid = new Map<string, { r: number; g: number; b: number }>()
-  const at = (x: number, y: number) => grid.get(`${x},${y}`) ?? { ...background }
+  const grid = new Map<string, string>()
+  const fills: string[] = []
   const ctx = {
     fillStyle: '',
     fillRect(x: number, y: number, w: number, h: number): void {
-      const a = styleAlpha(ctx.fillStyle)
-      const src = styleRgb(ctx.fillStyle)
-      for (let py = y; py < y + h; py++) {
-        for (let px = x; px < x + w; px++) {
-          const dst = at(px, py)
-          grid.set(`${px},${py}`, {
-            r: src.r * a + dst.r * (1 - a),
-            g: src.g * a + dst.g * (1 - a),
-            b: src.b * a + dst.b * (1 - a),
-          })
-        }
-      }
+      fills.push(ctx.fillStyle)
+      for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) grid.set(`${px},${py}`, ctx.fillStyle)
     },
   }
-  return { ctx, pixel: at }
+  return { ctx, at: (x, y) => grid.get(`${x},${y}`) ?? background, fills }
 }
 
-describe('pt1-14 — the warp-in overlay is TRANSPARENT (the playfield shows through)', () => {
-  it('the playfield behind a full-height silhouette SURVIVES — an opaque fill would erase it', async () => {
+// Screen geometry the impl uses: op.y is the FEET; pad is WARPIN_PAD_H(2) tall just above
+// it; the sprite's bottom row sits on the pad and row r maps to y = (op.y - 2) - spriteH + r.
+const OP_X = 40
+const OP_Y = 100
+const PAD_H = 2
+const SPRITE_NAME = 'ORSTND' // P1 ostrich stand → source block ORUN4R
+
+describe('pt1-14 — the warp-in overlay is a TRANSPARENT silhouette (playfield shows through)', () => {
+  it('the playfield SURVIVES at a real interior hole of the bird sprite — not a solid box', async () => {
     const r = await loadRender()
     const pics = await loadPictures()
     const w = await loadWarpIn()
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
+    const sprite = resolveSprite(SPRITE_NAME, pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
+    const spriteW = sprite.width * 2
 
-    // A distinctive playfield background the overlay is drawn over.
-    const background = { r: 10, g: 20, b: 240 }
-    const rec = compositingContext(background)
+    // Find a TRUE interior hole: a zero (transparent) pixel with foreground on the SAME
+    // row both to its left AND its right — the playfield must show through it.
+    let hole: { row: number; col: number } | null = null
+    let solid: { row: number; col: number } | null = null
+    for (let row = 0; row < sprite.height && !hole; row++) {
+      const fg: number[] = []
+      for (let col = 0; col < spriteW; col++) if (nibbleAt(sprite, row, col) !== 0) fg.push(col)
+      if (fg.length < 2) continue
+      solid ??= { row, col: fg[0] }
+      for (let col = fg[0] + 1; col < fg[fg.length - 1]; col++) {
+        if (nibbleAt(sprite, row, col) === 0) { hole = { row, col }; break }
+      }
+    }
+    expect(hole, 'the mount sprite has an interior transparent pixel to prove the point').not.toBeNull()
+    expect(solid, 'the mount sprite has foreground pixels').not.toBeNull()
 
-    // The last frame = full-height bird, the largest occluding box.
-    const op = { x: 40, y: 100, width: 16, height: 20, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1' as const }
-    paint(rec.ctx, op, colours)
+    const background = 'rgb(10 20 240)' // a distinctive blue playfield
+    const rec = paintGrid(background)
+    // Full-height frame (whole sprite revealed), default facing (no mirror).
+    paint(rec.ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME }, colours)
 
-    // Sample a pixel well inside the painted silhouette (bird body, above the pad).
-    const sx = 45
-    const sy = 90
-    const px = rec.pixel(sx, sy)
-
-    // The owner colour the overlay fills with (DCONST nibble 5 for P1).
-    const overlay = colours[5]
-
-    // If the fill were opaque, this pixel would be EXACTLY the overlay colour and the
-    // background would be gone. Transparency means the blue playfield still shows.
+    const yOf = (row: number) => OP_Y - PAD_H - sprite.height + row
+    // The interior hole is TRANSPARENT — the blue playfield still shows there.
     expect(
-      Math.round(px.b),
-      'the playfield (blue) must show THROUGH the materialise overlay — an opaque fill ' +
-        'would drop this to the overlay colour (pt1-14: transparent shimmer)',
-    ).toBeGreaterThan(overlay.b)
-
-    // And the pixel is not the untouched background either — something IS painted.
+      rec.at(OP_X + hole!.col, yOf(hole!.row)),
+      'the playfield shows THROUGH a zero-suppressed interior pixel of the silhouette',
+    ).toBe(background)
+    // A foreground pixel on that same row IS painted (so the hole is a real gap, not off-sprite).
+    const owner = colours[5]
     expect(
-      { r: Math.round(px.r), g: Math.round(px.g), b: Math.round(px.b) },
-      'the silhouette is still visible — the frame is composited, not skipped',
-    ).not.toEqual(background)
+      rec.at(OP_X + solid!.col, yOf(solid!.row)),
+      'a foreground pixel is painted in the constant owner colour',
+    ).toBe(`rgb(${owner.r} ${owner.g} ${owner.b})`)
   })
 
-  it('every emitted fill carries an alpha in (0,1) — visible but see-through', async () => {
+  it('every fill is the single OPAQUE constant colour — monochrome silhouette, no alpha, no box', async () => {
+    const r = await loadRender()
+    const pics = await loadPictures()
+    const w = await loadWarpIn()
+    const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
+    const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
+    const sprite = resolveSprite(SPRITE_NAME, pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
+
+    const rec = paintGrid('rgb(0 0 0)')
+    paint(rec.ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME }, colours)
+
+    const owner = colours[5]
+    const expected = `rgb(${owner.r} ${owner.g} ${owner.b})`
+    expect(rec.fills.length, 'the warp-in paints (pad + silhouette)').toBeGreaterThan(0)
+    // OPAQUE: no rgba anywhere. The see-through is the sprite's zero pixels, not alpha.
+    expect(rec.fills.every((s) => /^rgb\(/.test(s)), 'every fill is opaque rgb(), never rgba()').toBe(true)
+    // MONOCHROME: the whole silhouette is ONE constant colour, not the sprite's own palette.
+    expect(rec.fills.every((s) => s === expected), 'every fill is the single DCONST constant colour').toBe(true)
+
+    // SILHOUETTE, not a filled box: the painted bird pixels do NOT cover the whole
+    // sprite bounding box — there are transparent gaps.
+    const spriteW = sprite.width * 2
+    let painted = 0
+    const yOf = (row: number) => OP_Y - PAD_H - sprite.height + row
+    for (let row = 0; row < sprite.height; row++)
+      for (let col = 0; col < spriteW; col++)
+        if (rec.at(OP_X + col, yOf(row)) === expected) painted++
+    const bbox = spriteW * sprite.height
+    expect(painted, 'the silhouette paints some foreground').toBeGreaterThan(0)
+    expect(painted, 'but NOT the whole bounding box — it is a shape with holes, not a box').toBeLessThan(bbox)
+  })
+
+  it('honours the explicit idle-cycle colour nibble (jt13-12) — grey silhouette, not owner yellow', async () => {
     const r = await loadRender()
     const pics = await loadPictures()
     const w = await loadWarpIn()
     const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
     const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
 
-    const styles: string[] = []
-    const ctx = {
-      fillStyle: '',
-      fillRect(): void {
-        styles.push(ctx.fillStyle)
-      },
-    }
-    // A mid-window frame paints both the pad and the bird — both must be transparent.
-    paint(ctx, { x: 40, y: 100, width: 16, height: 20, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1' }, colours)
-
-    expect(styles.length, 'the warp-in must paint (pad + bird), not skip').toBeGreaterThan(0)
-    for (const style of styles) {
-      const a = styleAlpha(style)
-      expect(a, `fill "${style}" must be transparent (alpha < 1) so the playfield shows through`).toBeLessThan(1)
-      expect(a, `fill "${style}" must still be visible (alpha > 0), not fully erased`).toBeGreaterThan(0)
-    }
+    const rec = paintGrid('rgb(0 0 0)')
+    paint(rec.ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME, colour: 0xd }, colours)
+    const grey = colours[0xd]
+    const yellow = colours[5]
+    expect(rec.fills.every((s) => s === `rgb(${grey.r} ${grey.g} ${grey.b})`), 'silhouette is the explicit grey nibble').toBe(true)
+    expect(rec.fills.some((s) => s === `rgb(${yellow.r} ${yellow.g} ${yellow.b})`), 'never the owner yellow when a colour is given').toBe(false)
   })
 })
