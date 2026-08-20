@@ -87,3 +87,8 @@ completed_stories:
     title: 'joust: the troll should not be able to pull the player through a platform'
     points: 3
     completed: '2026-08-20'
+  - id: pt1-15
+    epic: pt1
+    title: 'joust: egg-hatching spawns the rider mid-air instead of waiting for a buzzard to descend and collect it'
+    points: 3
+    completed: '2026-08-20'
