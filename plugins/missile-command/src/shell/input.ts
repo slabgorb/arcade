@@ -126,6 +126,28 @@ export function fireKeyToBase(key: string): number | null {
 }
 
 /**
+ * pt1-12: map a MouseEvent.button index to its missile base — 0 (left) → 0 (alpha/
+ * left), 1 (middle) → 1 (delta/centre), 2 (right) → 2 (omega/right); null for any
+ * other button so a stray press launches nothing. The MOUSE mirror of fireKeyToBase:
+ * a Missile Command cabinet is a trackball + THREE fire buttons wired to the same
+ * FIREMA switches (.BYTE MFIREL,MFIREC,MFIRER — ABMLAU, W3MAIN:606) that Z/X/C bind,
+ * so the three buttons ARE the cabinet's real fire input and select the same bases.
+ * Left/middle/right button index == base index == fireKeyToBase('z'/'x'/'c').
+ */
+export function fireButtonToBase(button: number): number | null {
+  switch (button) {
+    case 0:
+      return 0
+    case 1:
+      return 1
+    case 2:
+      return 2
+    default:
+      return null
+  }
+}
+
+/**
  * mc3 (mc3-5): ammo-GATED firing over the live game state. The fire `key` picks
  * its base (via fireKeyToBase — the Z/X/C mapping is preserved); a destroyed base
  * or one with `ammo === 0` cannot fire, so the state is returned UNCHANGED. A live
@@ -195,6 +217,29 @@ export function fireOrStart(key: string, state: GameState): GameState {
   if (state.phase === 'attract') return beginSetupOnInput(state) // any input -> setup
   if (fireKeyToBase(key) !== null && state.phase === 'over') return startGame(state)
   return fireFromKey(key, state)
+}
+
+// pt1-12: the base each mouse button fires, as the Z/X/C key that fires that SAME base
+// (fireButtonToBase(b) === base index === this array's index). Delegating to fireOrStart
+// through this table is what makes the mouse buttons behave EXACTLY like the keys —
+// ammo-gated fire in play, inert while paused / entering initials, attract→setup,
+// over→restart — with no second copy of that phase logic to drift.
+const BUTTON_FIRE_KEYS = ['z', 'x', 'c'] as const
+
+/**
+ * pt1-12 the mousedown reducer main.ts drives on each mouse-button press. The button
+ * picks its base (fireButtonToBase — 0/1/2 → left/centre/right, the FIREMA switches);
+ * a non-fire button returns the state UNCHANGED. A fire button is routed through
+ * `fireOrStart` under the SAME base's key, so it fires exactly like Z/X/C: ammo-gated
+ * in play, inert in 'entry'/'pause', attract→setup, over→restart. It deliberately does
+ * NOT go through the composed `keydownReducer` — a mouse button must not toggle pause
+ * (pauseFromKey) or type an initial (nameEntryFromKey). Pure — the input state is never
+ * mutated. main.ts owns only the sound-drain / high-score persistence around it.
+ */
+export function mousedownReducer(button: number, state: GameState): GameState {
+  const idx = fireButtonToBase(button)
+  if (idx === null) return state
+  return fireOrStart(BUTTON_FIRE_KEYS[idx], state)
 }
 
 // mc11-3: the START switch during name entry. Ground truth: GETINI aborts TAKE INITIALS
