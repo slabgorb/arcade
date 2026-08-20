@@ -160,9 +160,11 @@ stories:
     description: 'Playtest 2026-08-19: enemy riders die to lava at a rate that lets the player clear a wave by simply waiting. In the arcade, enemy AI avoids the lava (and the troll grab is survivable for AI); verify enemy flap/altitude AI and lava lethality against the ROM behavior — enemies should rarely if ever suicide.'
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-17
     title: 'pac-man: peach level followed by another peach level — verify the fruit sequence against the ROM table'
