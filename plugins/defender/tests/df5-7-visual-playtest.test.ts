@@ -200,12 +200,14 @@ describe('df5-7 — the score/men HUD reaches the live frame (df5-3)', () => {
   })
 
   it('killing a lander under fire RAISES the on-screen score (df4-1 kill → df5-3 addPoints)', async () => {
-    // The df4-6 kill staging: a humanoid on the beam row baits the lander into the laser
-    // stream; the COLIDE kill must now ALSO award df5-3 points, so `score` rises.
+    // The df4-6 kill staging (RE-STAGED for pt1-19): a bait humanoid at the GROUND row in the
+    // LANDER'S OWN column, so the column-aligned lander runs the full abduction — dives down the
+    // near firing-lane, grabs, carries up through SHIP_ROW into the laser stream (LANDS0 only dives
+    // at an aligned target). The COLIDE kill must now ALSO award df5-3 points, so `score` rises.
     const sim = await loadSim()
-    const SHIP_ROW = 120
+    const GROUND_ROW = 232 // near the floor (below SHIP_ROW=INITIAL_Y=120): the abduction run climbs back up through the beam
     let s = sim.createSim(makeRand(7))
-    s = sim.spawnHumanoid(s, 48 << 8, SHIP_ROW)
+    s = sim.spawnHumanoid(s, 38 << 8, GROUND_ROW)
     s = sim.spawnLander(s, 38 << 8)
     const scoreBefore = s.score
     const before = s.landers.length
