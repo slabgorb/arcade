@@ -122,3 +122,8 @@ completed_stories:
     title: "defender: laser fire tracks the ship current row instead of the row it was fired from — shots snap vertically and hit at the wrong height"
     points: 3
     completed: 2026-08-20
+  - id: pt1-25
+    epic: pt1
+    title: 'defender: player-death, smart-bomb and hyperspace have no on-screen effect — the ADR-0005 safe-variant policy layer is built but never called'
+    points: 5
+    completed: '2026-08-20'
