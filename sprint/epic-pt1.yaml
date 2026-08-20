@@ -84,13 +84,20 @@ stories:
     completed: '2026-08-20'
     type: bug
   - id: pt1-8
-    title: 'millipede + missile-command: erase the built-in high score'
-    description: "Playtest 2026-08-19: both games ship a pre-seeded 'built-in' high score. Remove it so the table starts clean (localStorage-backed real scores only), consistent with the rest of the fleet."
-    points: 2
+    title: 'millipede + missile-command + star-wars: erase the built-in high score (board starts empty)'
+    description: "Playtest 2026-08-19: millipede, missile-command AND star-wars each ship a pre-seeded ROM 'built-in' high-score ladder that shows on a fresh/empty boot. Remove the SEED so every board starts clean (localStorage-backed real scores only), consistent across the fleet. RULING (2026-08-20): star-wars is IN scope (it seeds the same way). The DEFAULT_HIGH_SCORES constant + its ROM byte-decode/citation-audit tests are KEPT as unwired reference (documentation only) in all three games — only the runtime seed path and the empty-boot display are changed. Deviation from ROM fidelity is deliberate and user-sanctioned."
+    points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    acceptance_criteria:
+      - 'millipede, missile-command and star-wars each start with an EMPTY live high-score board on a first/empty boot: loadHighScores() (and the equivalent seed path, e.g. star-wars seedDefaultHighScores) returns [] when storage is empty, and the initial GameState board is [].'
+      - On a fresh boot each game's displayed HIGH SCORES table / top HIGH value shows the empty state (blank/zero rungs), never the ROM default names+scores (BBM/DFT/OBI etc.).
+      - A persisted board with real localStorage scores still loads unchanged (real scores only, never re-seeded over).
+      - 'DEFAULT_HIGH_SCORES and its ROM byte-decode + citation/audit tests REMAIN in all three games as unwired reference: no runtime seed path imports it, and the fidelity/citation suite stays green.'
+      - Seed-behavior tests that asserted the ladder appears on empty boot / in initial state / in attract are rewritten to assert the empty-start behavior; no test still requires a seeded default on a clean board.
     type: bug
   - id: pt1-9
     title: 'tempest: difficulty select should preview the board layout per level, and starting higher should pay a bonus'
