@@ -137,7 +137,9 @@ const loop = createLoop(
     // no input sample) and stepUnlessPaused returns the prior state reference, so
     // resume is deterministic. A frozen frame skips the event pump + gameover edge
     // below (they must not re-fire against a stale, un-advanced state).
-    state = stepUnlessPaused(() => stepGame(state, input.sample(), dt), state, pause.isPaused())
+    // sample(state.mode): the mouse click is contextual (pt1-10) — a click on the
+    // attract screen means "start" (like Enter), and the trigger everywhere else.
+    state = stepUnlessPaused(() => stepGame(state, input.sample(state.mode), dt), state, pause.isPaused())
     if (state === prev) return
     // Play one sound per gameplay event the core emitted this frame. The pump
     // lives here (not loop.ts) because the game state — and its `events` channel

@@ -1,14 +1,15 @@
 // tests/shell/input.start-on-click.test.ts
 //
-// RED for pt1-10 — a mouse click on the start screen must start the game, the
-// same as Enter (playtest 2026-08-19: "on the start screen a mouse click should
-// start the game in addition to Enter").
+// pt1-10 — a mouse click on the start screen must start the game, the same as
+// Enter (playtest 2026-08-19: "on the start screen a mouse click should start the
+// game in addition to Enter").
 //
-// The start-input mapping is shell IO in `src/shell/input.ts`. `start` is a
-// one-shot EDGE: the controller latches it and the core consumes it, acting on
-// it only in attract/gameover (see the input.ts header comment). Today Enter /
-// Digit1 / Numpad1 arm that edge, but a mouse press only sets `fire` (the yoke
-// trigger) — so a click cannot start the game. That is the bug.
+// The click is CONTEXTUAL. The story says "in addition to Enter", so a click on
+// attract must do EXACTLY what Enter does — arm the one-shot `start` edge and
+// nothing more. Enter is not the fire trigger; a click IS. So the click must be
+// spent on the start and must NOT also pull the trigger, or the same held button
+// would blast through the SELECT-A-DEATH-STAR picker (whose confirm is `fire`).
+// On every other screen a click is the trigger, unchanged.
 //
 // `createInputController` registers listeners on the global `window` and reads a
 // `canvas`, neither of which exists in star-wars' `node` test env. We stub a
@@ -46,38 +47,65 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('pt1-10: a mouse click starts the game, same as Enter', () => {
+describe('pt1-10: a mouse click starts the game, contextually', () => {
   // Non-vacuity anchor: proves the fake window actually drives the latch. If this
-  // ever fails, the RED case below is harness breakage, not the real defect.
+  // fails, the click cases below are harness breakage, not the real defect.
   it('baseline — Enter arms the start edge through the stubbed window', () => {
     const input = createInputController(fakeCanvas())
-    expect(input.sample().start).toBeFalsy() // nothing pressed yet
+    expect(input.sample('attract').start).toBeFalsy() // nothing pressed yet
     win.dispatchEvent(keydown('Enter'))
-    expect(input.sample().start).toBe(true)
+    expect(input.sample('attract').start).toBe(true)
   })
 
-  // The story. RED today: pointerdown maps to `fire`, never to the start edge.
-  it('a mouse click (pointerdown) arms the start edge, exactly like Enter', () => {
+  // The story: a click on the start screen starts the game.
+  it('a click on the attract screen arms the start edge, exactly like Enter', () => {
     const input = createInputController(fakeCanvas())
     win.dispatchEvent(new Event('pointerdown'))
-    expect(input.sample().start).toBe(true)
+    expect(input.sample('attract').start).toBe(true)
   })
 
-  // Regression guard (passes today): the click must STILL pull the trigger. The
-  // fix adds a start edge to pointerdown; it must not drop the existing fire.
-  it('the click still pulls the trigger — fire is unchanged', () => {
+  // "in addition to Enter" — no MORE than Enter. Enter does not fire, so the
+  // click that starts must not fire either: its held button is spent on the start
+  // and stays swallowed until released, so it cannot bleed into the picker.
+  it('the attract click is spent on start — it does not also fire into the picker', () => {
     const input = createInputController(fakeCanvas())
     win.dispatchEvent(new Event('pointerdown'))
-    expect(input.sample().fire).toBe(true)
+    expect(input.sample('attract').fire).toBe(false) // the start frame is not a fire
+    // Same physical button still held as the core advances attract -> select:
+    const inSelect = input.sample('select')
+    expect(inSelect.fire).toBe(false) // still swallowed → picker is not auto-confirmed
+    expect(inSelect.start).toBeFalsy() // one click is one start edge only
   })
 
-  // The start edge is one-shot, like the Enter latch: a single click yields
-  // exactly one start=true, then clears — so one click drives exactly one
-  // attract->play transition, never a machine-gun of edges.
-  it('one click yields exactly one start edge, then clears', () => {
+  // Release, then a FRESH click in the picker is a real trigger — that is how the
+  // player actually confirms a Death Star.
+  it('after releasing, a fresh click in the picker fires (confirms), not swallowed', () => {
+    const input = createInputController(fakeCanvas())
+    win.dispatchEvent(new Event('pointerdown')) // starts the game on attract
+    input.sample('attract')
+    win.dispatchEvent(new Event('pointerup')) // release
+    win.dispatchEvent(new Event('pointerdown')) // fresh press in the picker
+    const s = input.sample('select')
+    expect(s.fire).toBe(true)
+    expect(s.start).toBeFalsy()
+  })
+
+  // Outside attract a click is ONLY the trigger — it never arms start (during play
+  // a click must fire the guns, not restart anything).
+  it('during play a click is the trigger, never a start', () => {
     const input = createInputController(fakeCanvas())
     win.dispatchEvent(new Event('pointerdown'))
-    expect(input.sample().start).toBe(true) // consumed here
-    expect(input.sample().start).toBeFalsy() // no second edge from one click
+    const s = input.sample('playing')
+    expect(s.fire).toBe(true)
+    expect(s.start).toBeFalsy()
+  })
+
+  // One-shot, like the Enter latch: one attract click yields exactly one start
+  // edge, then clears — one click = one attract->select transition.
+  it('one attract click yields exactly one start edge, then clears', () => {
+    const input = createInputController(fakeCanvas())
+    win.dispatchEvent(new Event('pointerdown'))
+    expect(input.sample('attract').start).toBe(true) // consumed here
+    expect(input.sample('attract').start).toBeFalsy() // no second edge from one click
   })
 })
