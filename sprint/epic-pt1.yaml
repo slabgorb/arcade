@@ -57,12 +57,16 @@ stories:
     type: bug
   - id: pt1-6
     title: "defender/lobby: hook the lobby up to defender's attract feature"
-    description: "Playtest 2026-08-19: defender has an attract feature that the lobby isn't wired to. Hook the lobby tile/idle flow to trigger/display it, consistent with how other games integrate attract."
+    description: |-
+      Playtest 2026-08-19: defender has an attract feature that the lobby isn't wired to. Hook the lobby tile/idle flow to trigger/display it, consistent with how other games integrate attract.
+
+      RESOLVED (canceled 2026-08-20) — already delivered by df7-7 (e295acb7, 2026-08-19 16:43), which flipped defender to showcase:true and registered it in the lobby showcase carousel. The playtest that filed pt1-6 ran a pre-df7-7 build. Verified at cancel time: plugins/defender/plugin.ts and the generated src/host/registry.ts both carry listed:true + showcase:true; LISTED_GAMES feeds createShowcase which filters showcase:true, so defender is in the rotation and its /defender/ attract demo renders in the iframe. No further code needed. The lobby has no per-tile attract seam separate from the showcase carousel — the carousel IS how every game integrates attract.
     points: 3
     priority: p1
-    status: backlog
+    status: canceled
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-7
     title: "lobby: game tiles should identify the actual keys, not just say 'keyboard'"
