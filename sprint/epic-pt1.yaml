@@ -174,7 +174,7 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
-    review_verdict: rejected
+    review_verdict: approved
     review_findings: 'Round 1 REJECTED (2 findings; core claim holds — table matches ROM, POINTS axis live-decoded + mutation-tested). R-1 (rule #1, LOW): non-null assertions line!/word! at fruit-ladder.test.ts:50,52 bypass TS narrowing (expect().toBeTruthy() is not a type guard) — replace with narrowing throws. R-2 (rule #17, MED): header cites pacman.asm:3b08 as ROM verification of the DOUBLING axis, but the doubling test only checks levelRow() self-consistency and never reads 3b08 — make 3b08 load-bearing (parse the fruit-per-level table live, assert the doubling pairing against ROM sprite codes) or soften the header to a self-consistency pin.'
   - id: pt1-18
     title: 'defender: the whole world renders on one screen — the horizontal projection is collapsed, the camera-scroll and scanner are cosmetic'
