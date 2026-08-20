@@ -11,7 +11,7 @@
 import { createRng, nextInt, type Rng } from '@shared/rng'
 import { PLYFLD_SIZE, type ConwayState } from './conway'
 import { musher, type MushCounts } from './mushroom'
-import { createMillipede, NCENT, type Segment } from './millipede'
+import { createMillipede, CENTIS_FAST, NCENT, type Segment } from './millipede'
 import { createPlayer, type PlayerState } from './input'
 import { initRoster, type Roster } from './enemies/roster'
 import { newDdtTable, ddtPlace, ddtRestore, type DdtTable } from './ddt'
@@ -42,13 +42,29 @@ export interface GameState {
   player: PlayerState
   shot: Shot
   segments: Segment[]
-  /** CENTIN (MLDEF.MAC:299) — the connected millipede LENGTH, 1..NCENT. Init NCENT
-   *  (MILLI.MAC:1168-1170 "SET CENTIPEDE SIZE"), tracks the live connected count as
-   *  segments die, and — the point of holding it as a register — is PRESERVED across
-   *  a death so CENTPC re-lays the same length rather than a fresh full train
-   *  (MILLI.MAC:549 "LDY X,CENTIN"). Splits are deferred (ml3-2), so today every live
-   *  segment is connected and CENTIN == the live segment count. */
+  /** CENTIN (MLDEF.MAC:299) — the millipede's WAVE-LENGTH register, 1..NCENT. In the
+   *  ROM it is written ONLY by INIT (12, MILLI.MAC:1169) and by the CENTPC walk
+   *  (DEC/reload, :509-512) — NEVER decremented per segment-death — so it is the
+   *  PRESERVED length CENTPC re-lays (MILLI.MAC:549) and the value the wave-clear gates
+   *  read to pick a CONWAY (==9) or BOMBS (∈BOMBSL) wave. pt1-2 wires the walk, so this
+   *  now steps 12→11→…→1→(reload 0x0C) across waves rather than tracking live deaths;
+   *  the live count drives the colour latch separately (see fieldColourIndex). */
   centin: number
+  /** CENTIS (MLDEF.MAC:300) — the millipede SPEED register, the per-frame step
+   *  magnitude of every segment (dv, |dh|). INIT boots it to 2, "FAST TO START WITH"
+   *  (MILLI.MAC:1171, WP-1); each wave clear INCrements it ("FASTER", :1906, WP-2) and
+   *  the CENTPC walk resets it to 1 (SLOW, below 20,000) or 2 (FAST) once it reaches 3
+   *  (stepWaveCadence, MT-16). This is what makes the game escalate across waves. */
+  centis: number
+  /** NOCENT (MLDEF.MAC:391) — the bomb-mode budget: the count of dive-bombing critters
+   *  still to enter this bomb wave. 0 = not in bomb mode. Armed at a wave clear whose
+   *  CENTIN is in BOMBSL (bombModeStart, DD-97/98); the per-frame BOMBS dispatcher
+   *  (MILLI.MAC:28) enters a critter and decrements it while it is non-zero. */
+  nocent: number
+  /** BOMBV (MLDEF.MAC:396) — the bomb-mode scoring flag, INCremented when a bomb wave
+   *  arms (MILLI.MAC:1923, DD-100). Non-zero means SHOOT3 awards the escalating
+   *  bomb-mode score; 0 outside a bomb wave. */
+  bombv: number
   /** The CENTIN the playfield is currently COLOURED for — the latched colour row
    *  (row = fieldColourIndex-1, MLIRQ.MAC:255-256). Held separately from `centin`
    *  so the base band only recolours at an LCOLOR event, not every frame (ml11-1).
@@ -154,7 +170,10 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     player: createPlayer(),
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
-    centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1168-1170) — a full train
+    centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1169) — a full-length wave register
+    centis: CENTIS_FAST, // FAST TO START WITH (MILLI.MAC:1171, WP-1)
+    nocent: 0, // not in bomb mode at boot (MLDEF.MAC:391)
+    bombv: 0, // no bomb-mode scoring at boot (MLDEF.MAC:396)
     fieldColourIndex: NCENT, // field coloured for the full millipede at wave start (ml11-1)
     lcolor: false, // LCOLOR clear at boot — nothing to recolour yet (MLIRQ.MAC:248)
     roster: initRoster(),

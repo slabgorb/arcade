@@ -19,6 +19,7 @@ import {
   stepMillipede,
   createMillipede,
   checkPlayerCollision,
+  stepWaveCadence,
   VACANT_COLOR,
   BODY_COLOR,
   NCENT,
@@ -40,9 +41,15 @@ import {
   ddtScrollUp,
   anyDdtExploding,
   inDdtCloud,
+  bombs,
+  bombModeStart,
+  BOMBS_SLOTS,
   DDT_KILL_BODY_PTS,
   DDT_KILL_HEAD_PTS,
 } from './ddt'
+import { startBee } from './bee'
+import { startDragonfly } from './dragonfly'
+import { startMosquito } from './mosquito'
 import { obstacOffset, obstacleAt, FULL_MUSHROOM, TOP_MIN, musher, type MushCounts } from './mushroom'
 import { initConway, masterStep } from './conway'
 import { scrollDispatch, scrollDown, scrollUp, type ScrollGate } from './scroll'
@@ -76,6 +83,57 @@ const SEGMENT_BODY_PTS = 10 // MILLI.MAC:2162 "LDA I,10 ;BODY=10 POINTS" (DD-225
 const SEGMENT_HEAD_PTS = 100 // MILLI.MAC:2171-2175 LSR×4 of 0x10 → 100s digit (DD-226)
 
 const isLive = (s: Segment): boolean => s.color !== VACANT_COLOR
+
+/** The bomb context the BOMBS dispatcher needs to build a forced flier spawn. */
+interface BombFlierCtx {
+  frame: number
+  score2: number
+  playerAlive: boolean
+  slow: number
+  dead: number
+  beetles: number
+  mush: number
+  mushTop: number
+  centin: number
+  rnd0: number
+  rnd1: number
+}
+
+/**
+ * BOMBS enters the chosen critter into its (free) flier slot — the BEEMV3 / FLYMV3 /
+ * MOSQT3 forced spawn the dispatcher jumps to (MILLI.MAC:471/482/486). Returns true
+ * only when a critter was actually placed (start* no-ops on an invalid RND0 column, and
+ * an occupied slot is skipped) — the ROM DECs NOCENT after a successful entry (:472).
+ * `nocent: 1` in the flier envs marks bomb mode for dragonflySpeed (DF-31).
+ */
+function enterBombFlier(critter: 'bee' | 'dragonfly' | 'mosquito', roster: Roster, ctx: BombFlierCtx): boolean {
+  if (critter === 'bee') {
+    const slot = roster.bees[0]
+    if (slot.color !== 0) return false
+    startBee(slot, {
+      frame: ctx.frame, score2: ctx.score2, attract: false, nocent: 1, playerAlive: ctx.playerAlive,
+      rnd0: ctx.rnd0, rnd1: ctx.rnd1, centin: ctx.centin, dead: ctx.dead, beetles: ctx.beetles, mush: ctx.mush,
+    })
+    return slot.color !== 0
+  }
+  if (critter === 'dragonfly') {
+    const slot = roster.dragonflies[0]
+    if (slot.color !== 0) return false
+    startDragonfly(slot, {
+      frame: ctx.frame, score2: ctx.score2, attract: false, slow: ctx.slow, nocent: 1,
+      playerAlive: ctx.playerAlive, rnd0: ctx.rnd0, rnd1: ctx.rnd1, dead: ctx.dead, beetles: ctx.beetles,
+      mushTop: ctx.mushTop, centin: ctx.centin,
+    })
+    return slot.color !== 0
+  }
+  const slot = roster.mosquitoes[0]
+  if (slot.color !== 0) return false
+  startMosquito(slot, {
+    frame: ctx.frame, score2: ctx.score2, slow: ctx.slow, playerAlive: ctx.playerAlive,
+    rnd0: ctx.rnd0, rnd1: ctx.rnd1, centin: ctx.centin,
+  })
+  return slot.color !== 0
+}
 
 /** Live slots (colour ≠ 0) in a creature's slot band. */
 const liveSlots = (slots: ReadonlyArray<{ color: number }>): number =>
@@ -326,10 +384,30 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   let wave = state.wave
   let delay = state.delay
   let conway = state.conway
+  let centis = state.centis // CENTIS — the speed register (walked at restart below)
+  let centin = state.centin // CENTIN — the wave-length register (walked at restart below)
+  let nocent = state.nocent
+  let bombv = state.bombv
   const millipedeCleared = !segments.some(isLive)
+  let justArmed = false
   if (millipedeCleared && delay === 0) {
     delay = WAVE_DELAY // arm the inter-wave pause (edge: DELAY was idle)
-    conway = initConway() // start between-wave mushroom growth/death (INICON)
+    justArmed = true // don't count down the frame we armed it (the arm and CHKEND share a frame)
+    centis += 1 // INC CENTIS — "FASTER" (MILLI.MAC:1906, WP-2)
+    // The wave-event gates fire ONLY on the clear where CENTIS has just reached 3
+    // (MILLI.MAC:1908, WP-3), and read the CURRENT wave-length register (before the
+    // next CENTPC walk decrements it).
+    if (centis === 3) {
+      if (centin === 9) {
+        conway = initConway() // CENTIN==9 → INICON: start CONWAY (MILLI.MAC:1911-1914, WP-4/5/6)
+      } else {
+        const budget = bombModeStart(centin, score2Of(score)) // CENTIN∈BOMBSL arms bomb mode (DD-97/98)
+        if (budget !== null) {
+          nocent = budget // NOCENT budget (MILLI.MAC:1922, DD-99)
+          bombv += 1 // INC BOMBV — begin scoring the bomb wave (MILLI.MAC:1923, DD-100)
+        }
+      }
+    }
   }
   // SCROLL (MILLI.MAC:46) reads CDONE *before* MASTER (:49) runs, and masterStep
   // can complete the metamorphosis and clear `active` within one call (conway.ts,
@@ -337,13 +415,18 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // BEFORE this frame's MASTER — snapshot it here, or a scroll would unlock one
   // frame early on the completion frame (SC-6).
   const conwayActiveForScroll = conway.active
-  // MASTER runs every frame while CONWAY is active (MILLI.MAC:47-49), a
-  // background process that grows/kills mushrooms in place; a no-op while idle.
-  // (The ROM's CENTIN==9 gating of *which* wave-clears start it is a documented
-  // deviation — here every clear seeds it; harmless as a background process.)
+  // MASTER runs every frame while CONWAY is active (MILLI.MAC:47-49), a background
+  // process that grows/kills mushrooms in place; a no-op while idle. CONWAY is now
+  // started only on the CENTIN==9 wave clear (the arm branch above, WP-4/5/6), matching
+  // the ROM (MILLI.MAC:1911-1914) — no longer seeded on every clear.
   conway = masterStep(state.field, conway)
   const beetlesPresent = roster.beetles.some((b) => b.color !== 0)
-  const chkend = stepWaveDelay(delay, {
+  // The frame that arms WAVE_DELAY does not also count it down — CHKEND begins on the
+  // next frame. (Before pt1-2 the conway-every-clear hold masked this; with CONWAY now
+  // gated to CENTIN==9 the guard is explicit so a plain clear still reads WAVE_DELAY.)
+  const chkend = justArmed
+    ? { delay, waveReady: false }
+    : stepWaveDelay(delay, {
     // mushroomsRestoring — CHKEND's first blocker (MLSUB.MAC:54 is `LDA MEM+1`,
     // the RESTOR sweep pointer, MLDEF.MAC:344), NOT the conway CDONE flag. The
     // real MEM+1/RESTOR sweep is unwired in this sim (restor() in mushroom.ts has
@@ -359,9 +442,17 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   })
   delay = chkend.delay
   if (chkend.waveReady) {
-    // The inter-wave pause elapsed: start the next wave (new train + fresh
-    // bombs re-stamped, DDTS/DDTS2). Difficulty ramps via the wave counter.
-    segments = createMillipede({ headingSign: 1 })
+    // CENTPC (MILLI.MAC:504-519): the per-wave length/speed walk. Once CENTIS has
+    // reached 3 it DECs the wave-length register (reloading 0x0C at 0) and resets
+    // CENTIS to SLOW(1) below 20,000 or FAST(2) at/after (MT-14/15/16); below 3 it is
+    // a no-op. The re-laid train marches at the walked length and speed — this is the
+    // difficulty ramp (pt1-2), which used to re-lay a constant full-length FAST train.
+    const walk = stepWaveCadence(centin, centis, score2Of(score))
+    centin = walk.centin
+    centis = walk.centis
+    // looseHeads:false — a flat connected train (the ROM's loose-head refill rides with
+    // the deferred split, ml3-2), matching the death re-lay; a shortened train needs it.
+    segments = createMillipede({ headingSign: 1, centin, centis, looseHeads: false })
     scrollQueued -= 1 // CENTPC re-lays the train and scrolls DOWN (MILLI.MAC:503)
     ddtPlace(state.ddt, false)
     ddtRestore(state.ddt, state.field)
@@ -417,6 +508,42 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     ddtScrollUp(state.ddt) // the SCROLU DDT half (SC-50): step the bank up, no seeding
   }
 
+  // 9c. BOMBS (MILLI.MAC:28, WP-7) — the per-frame dive-bomb dispatcher. A no-op unless
+  //     a bomb wave is armed (NOCENT>0). On the RND0&7 gate (DD-77) it picks a
+  //     bee/dragonfly/mosquito by the wave-length register (the 90$ table, DD-82..92),
+  //     enters it into a free flier slot (BEEMV3/FLYMV3/MOSQT3) and DECs the budget.
+  if (nocent > 0) {
+    const anyFlierFree =
+      roster.bees[0].color === 0 ||
+      roster.dragonflies[0].color === 0 ||
+      roster.mosquitoes[0].color === 0
+    const beec = new Array<number>(BOMBS_SLOTS).fill(anyFlierFree ? 0 : 1) // ≥1 free slot ⇔ has a 0
+    const decision = bombs({
+      nocent,
+      specialAttract: false, // MODE bit 7 clear in play (DD-76)
+      rnd0: nextInt(state.rng, 0x100), // the RND0&7 entry gate (DD-77)
+      rndPick: nextInt(state.rng, 0x100), // the second RND0 read, the creature pick (DD-88)
+      centin,
+      beec,
+    })
+    if (decision.kind === 'enter') {
+      const entered = enterBombFlier(decision.critter, roster, {
+        frame: state.frame,
+        score2: score2Of(score),
+        playerAlive: alive,
+        slow,
+        dead: liveSegs,
+        beetles: roster.beetles.filter((b) => b.color !== 0).length,
+        mush: mushLower,
+        mushTop,
+        centin,
+        rnd0: nextInt(state.rng, 0x100),
+        rnd1: nextInt(state.rng, 0x100),
+      })
+      if (entered) nocent -= 1 // DEC NOCENT after a successful entry (MILLI.MAC:472/483/487)
+    }
+  }
+
   // 10. Bonus life — the SCORNG tail (bonus.ts awardBonus), run once per frame
   //     the score advanced (the ROM runs it after every award). The band
   //     comparator fires inside the [threshold, +9,999] window, adds a life
@@ -456,9 +583,13 @@ function stepPlay(state: GameState, input: GameInput): GameState {
   // LCOLOR gate (MLIRQ.MAC:248-256): a change in the connected length arms the
   // recolour; recolourField latches the field colour index to the new CENTIN and
   // clears the flag. A steady length holds the previous colour (ml7-4 no-strobe).
-  const newCentin = liveSegs === 0 ? NCENT : liveSegs
-  const armed = state.lcolor || newCentin !== state.centin
-  const recol = recolourField(state.fieldColourIndex, newCentin, armed)
+  // The colour latch follows the LIVE connected length (the millipede shortening as
+  // segments die), independent of the CENTIN wave-length register (which now walks
+  // across waves, pt1-2). Arm when the live length differs from the currently-coloured
+  // band and latch to it — idempotent once caught up (ml11-1 no-strobe).
+  const liveLen = liveSegs === 0 ? NCENT : liveSegs
+  const armed = state.lcolor || liveLen !== state.fieldColourIndex
+  const recol = recolourField(state.fieldColourIndex, liveLen, armed)
 
   return {
     ...state,
@@ -473,6 +604,9 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     wave,
     delay,
     conway,
+    centis, // CENTIS speed register — INC on clear, reset by the CENTPC walk (pt1-2)
+    nocent, // NOCENT bomb-mode budget — armed on a BOMBSL clear, drained by BOMBS
+    bombv, // BOMBV bomb-mode scoring flag
     bonusL,
     bonusM,
     scrolc,
@@ -483,7 +617,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     // live segment is connected — CENTIN == the live count. A cleared millipede
     // reloads to NCENT (MT-15, CENTIN never rests at 0), so a death during the
     // inter-wave pause re-lays a full train.
-    centin: newCentin,
+    centin, // CENTIN wave-length register — walked by CENTPC, never per-death (pt1-2)
     fieldColourIndex: recol.fieldColourIndex,
     lcolor: recol.lcolor,
     deathTimer: playerDied ? DEATH_HOLD : state.deathTimer,

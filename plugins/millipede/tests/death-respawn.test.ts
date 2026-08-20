@@ -76,12 +76,12 @@ describe('death respawn resets the screen (does not instantly re-kill)', () => {
   })
 })
 
-// The ROM's CENTPC preserves CENTIN — the connected millipede length — across a
-// death (MILLI.MAC:498-549: DEAD≠0 + CENTIS<3 skips the DEC, then `LDY X,CENTIN`
-// re-lays from the preserved register). Splits are deferred here (ml3-2), so the
-// train is always flat-connected and CENTIN == the live segment count; the death
-// re-lay must reproduce that length, not reset to a full NCENT train.
-describe('CENTIN register — the connected length, preserved across a death', () => {
+// The ROM's CENTPC preserves CENTIN — the wave-length register — across a death
+// (MILLI.MAC:498-549: DEAD≠0 + CENTIS<3 skips the DEC, then `LDY X,CENTIN` re-lays
+// from the preserved register). CENTIN is written ONLY by INIT and the CENTPC walk
+// (MILLI.MAC:509/512/1169), never per segment-death (pt1-2), so a death re-lays the
+// register's length, not a fresh full NCENT train and not the whittled live count.
+describe('CENTIN register — the wave-length, preserved across a death', () => {
   /** A play state whose lead segment sits on the gun (fatal), train length `n`. */
   function playWithTrainOnGun(n: number): GameState {
     const g = createGame(0x1982, { phase: 'play' })
@@ -98,11 +98,15 @@ describe('CENTIN register — the connected length, preserved across a death', (
     expect(liveCount(g)).toBe(NCENT)
   })
 
-  it('the register follows the connected length as segments are removed', () => {
+  it('the register is NOT decremented per segment-death (ROM: written only by CENTPC/INIT)', () => {
+    // Whittling the live train does not touch CENTIN — it is the wave-length register,
+    // decremented only by the CENTPC walk (MILLI.MAC:509), never per death (pt1-2). The
+    // live count drives the colour latch separately; here it drops to 4 while CENTIN holds.
     let g = createGame(0x1982, { phase: 'play' })
-    g = { ...g, segments: g.segments.slice(0, 4) } // whittled to four
+    g = { ...g, segments: g.segments.slice(0, 4) } // four live segments
     g = stepGame(g, NO_INPUT)
-    expect(g.centin).toBe(4)
+    expect(g.centin, 'CENTIN holds the wave-length register, not the live count').toBe(NCENT)
+    expect(liveCount(g), 'the live connected count did drop to four').toBe(4)
   })
 
   it('death re-lays a train of the PRESERVED length, not a fresh full train', () => {

@@ -174,8 +174,10 @@ describe('ml11-1 AC1 — GameState exposes the latched colour index + gate', () 
 
   it('a REAL length change (segment kill) latches the field colour a step DOWN — the gate is not dead', () => {
     // Three connected segments; the shot sits on one. Killing it drops the live
-    // connected length 3 → 2, so the field must recolour to the CENTIN=2 row.
-    // (A single-segment kill reloads CENTIN to NCENT — sim.ts:427 — so use three.)
+    // connected length 3 → 2, so the field must recolour to the length-2 row. (Use
+    // three, not one: with a full clear the wave would re-lay a train — pt1-2 — and
+    // the colour tracks the LIVE length, which is now separate from the CENTIN
+    // wave-length register that no longer follows per-segment deaths.)
     type Segment = GameState['segments'][number]
     const at = (h: number): Segment => ({ h, v: 0x40, dh: 1, dv: 0, pic: 0, color: HEAD_COLOR })
     const g: GameState = {
@@ -185,8 +187,9 @@ describe('ml11-1 AC1 — GameState exposes the latched colour index + gate', () 
       shot: { active: true, h: 0x80, v: 0x40 },
     }
     const after = stepGame(g, idle)
+    const liveLen = after.segments.filter((s) => s.color !== 0).length
     expect(kinds(after), 'precondition: the shot killed a segment').toContain('segment-killed')
-    expect(after.centin, 'precondition: the live connected length dropped to 2').toBe(2)
+    expect(liveLen, 'precondition: the live connected length dropped to 2').toBe(2)
     expect(colourIndexOf(after), 'the field recoloured a step — latched to the live length, not frozen at 12').toBe(2)
   })
 
