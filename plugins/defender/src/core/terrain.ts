@@ -14,8 +14,11 @@
 // ─── THE ALTITUDE DECODE (the SCROLL walk, defender/BLK71.SRC) ─────────────────
 // The scroll generators ADDR01/ADDL01 (:307,236) walk TDATA via RFONR1/LFONR1 (:435,487),
 // consuming ONE bit per world column from base $E0: a SET bit steps UP, a CLEAR bit steps
-// DOWN. That is 2048 columns over TDATA's 2048 bits = the whole $10000 world at $20/column,
-// sampled to WORLD_COLS for the port's $100/pixel lap. This is NOT BGALT/ALTTBL (:372): that
+// DOWN. That is 2048 columns over TDATA's 2048 bits = the whole $10000 world at $20/column.
+// `decodeScrollSurface`'s `worldCols` picks the sampling: the STATIC title screen samples to
+// WORLD_COLS (256, the $100/pixel lap), while the live in-game scroll (pt1-18, scene.ts) passes
+// the native 2048 UNSAMPLED so terrain and object projection share one zoom. This is NOT
+// BGALT/ALTTBL (:372): that
 // table is filled but NEVER read in the ROM — decoding it (as the original df2-5 code did)
 // rendered a quarter of the planet at half resolution. See
 // docs/adr/0006-defender-terrain-world-coordinate-reconciliation.md. Bytes are the ROM's;

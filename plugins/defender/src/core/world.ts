@@ -75,10 +75,11 @@ export function wrap16(x: number): number {
   return x & 0xffff
 }
 
-/** The world cylinder measured in SCREEN COLUMNS: a world-x's on-screen column is `x >> 8`
- *  (the high byte), so the $10000 cylinder is exactly `0x10000 >> 8 = 256` columns around.
- *  The camera (BGL >> 8) and every world-space blit share this period — the terrain must tile
- *  at it too, or the surface snaps once per lap when BGL wraps (df5-9). */
+/** The world cylinder at the LEGACY `>> 8` scale: `0x10000 >> 8 = 256` columns around. Pre-pt1-18
+ *  every world-space blit used this period; NOW it governs only the STATIC title screen
+ *  (composeStaticFrame, camera 0, no live scroll). The live in-game view (pt1-18) instead projects
+ *  world objects through projectWorldX (the 150*64 window stretched across the raster, ~32.9
+ *  world-X/pixel) and scrolls the terrain at TERRAIN_SCROLL_COLS (2048) — a finer scale than this. */
 export const WORLD_COLS = 0x10000 >> 8
 
 /** PLABX — absolute world X is derived, not stored: onscreen + BGL, wrapped. */
@@ -111,15 +112,25 @@ export const VISIBLE_WINDOW_X = 150 * 64 // 9600 = $2580
 export const SCREEN_WIDTH = 292
 
 /** Map a camera-relative world offset (0..VISIBLE_WINDOW_X) to its framebuffer pixel column. The
- *  9600-unit window is stretched linearly across the full SCREEN_WIDTH. */
+ *  9600-unit window is stretched linearly across the full SCREEN_WIDTH, then CLAMPED to the raster
+ *  [0, SCREEN_WIDTH-1]. World objects are culled at the window (projectWorldX returns null before
+ *  reaching here), so the clamp only bites ONSCREEN quantities: a rightward laser lives a few ticks
+ *  past the window (it dies at the ROM RIGHT_EDGE 0x9800 → offset 9728 → an unclamped pixel 295),
+ *  and without the clamp that pixel would sit one-to-four columns past the 0..291 framebuffer and
+ *  feed out-of-window coordinates into the collision box arithmetic (edge-hunter pt1-18). Clamping
+ *  keeps every projected pixel in-bounds and, as a bonus, makes an accidentally-uncalled cull
+ *  observable to the render tests (an off-window object would draw at 291 instead of self-clipping). */
 function windowPixel(offset: number): number {
-  return Math.floor((offset * SCREEN_WIDTH) / VISIBLE_WINDOW_X)
+  const px = Math.floor((offset * SCREEN_WIDTH) / VISIBLE_WINDOW_X)
+  return px < 0 ? 0 : px >= SCREEN_WIDTH ? SCREEN_WIDTH - 1 : px
 }
 
-/** Project an absolute world-X to its framebuffer pixel under `camera`, or `null` if it lies
+/** Project an absolute WORLD-X to its framebuffer pixel under `camera`, or `null` if it lies
  *  OUTSIDE the visible window (off-camera — it is then drawn only on the scanner, which reads the
- *  absolute OX16). This is the one on-screen projection the render AND the collision share, so an
- *  attacker is drawn exactly where it can be hit. (DEFA7.SRC:2527-2530.) */
+ *  absolute OX16). This is the one WORLD-SPACE projection the render AND the collision share, so an
+ *  attacker is drawn exactly where it can be hit. (DEFA7.SRC:2527-2530.) Onscreen quantities (the
+ *  ship, lasers) are NOT world-space and never cull — they go through projectOnscreenX, whose pixel
+ *  is clamped to the raster (windowPixel) rather than nulled. */
 export function projectWorldX(worldXAbs: number, camera: number): number | null {
   const offset = wrap16(Math.round(worldXAbs) - camera)
   if (offset >= VISIBLE_WINDOW_X) return null // BHS OPLP — OFF SCREEN

@@ -261,8 +261,10 @@ function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): 
  * holds its column as the world scrolls, unlike an attacker blip's `SUBD XTEMP`). We re-derive
  * that to our centred strip by projecting the player's OWN world position through the SAME df5-1
  * projection (Decision A — one radar geometry, not a second): the player's world-x is
- * `camera + ship.x<<8` (df5-9 — the ship holds a fixed display column while the world scrolls),
- * and projectScanner's `worldX - scannerLeft` cancels the camera, leaving a fixed column. The
+ * `shipWorldX(state._plax16, camera)` = `camera + (plax16 >> 2)` (pt1-18 — reconciling PLAX16's
+ * pixel.8 format to OX16's pixel.6 world; the old `camera + ship.x<<8` no longer holds because
+ * `ship.x` is now a window-projected framebuffer pixel, not a plax16>>8 column). projectScanner's
+ * `worldX - scannerLeft` cancels the camera, leaving a fixed column while the world scrolls. The
  * marker is a short vertical tick (index 9, $9099 :1253), a small overlay — never a full-frame
  * flash (ADR-0005) — drawn INSIDE the df7-5 bezel.
  */

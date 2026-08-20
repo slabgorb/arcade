@@ -34,7 +34,8 @@ import { describe, it, expect } from 'vitest'
 import { createSim, type SimState } from '../src/core/sim.js'
 import { composeFrame } from '../src/core/scene.js'
 import { projectScanner, SCANNER_COLUMNS } from '../src/core/scanner.js'
-import { wrap16 } from '../src/core/world.js'
+import { wrap16, projectWorldX, SCREEN_WIDTH } from '../src/core/world.js'
+import { LOGICAL_WIDTH } from '../src/shell/render.js'
 import type { Framebuffer } from '../src/core/framebuffer.js'
 
 const W = 292
@@ -149,5 +150,35 @@ describe('pt1-18 — the main view is a 150*64 scrolling window onto a ~6.8-scre
         'cull that removes it everywhere would blind the radar',
     ).toBeGreaterThanOrEqual(0)
     expect(blip.x, 'and lands within the 64-column radar strip').toBeLessThan(SCANNER_COLUMNS)
+  })
+})
+
+describe('pt1-18 — the projection contract, pinned directly (not through the render clip)', () => {
+  // The render-based cull tests above observe projectWorldX through composeFrame, where
+  // blitObject's own bounds clip discards any pixel >= 292 — which masks the exact BHS boundary
+  // and the load-bearingness of the null cull (reviewer test-analyzer). These assert the contract
+  // on the function's return value directly, so a flip of `>=` to `>` or a deleted guard reddens.
+  it('projectWorldX returns null AT the window boundary and a pixel just inside it (the BHS >= boundary)', () => {
+    expect(projectWorldX(VISIBLE_WINDOW_X - 1, 0), 'camera-rel 9599 is inside the window → a real pixel').not.toBeNull()
+    expect(projectWorldX(VISIBLE_WINDOW_X, 0), 'camera-rel 9600 is OFF the window → null (BHS OPLP fires at >= 150*64)').toBeNull()
+  })
+
+  it('projectWorldX culls every off-window offset (the null guard is load-bearing, not equivalent)', () => {
+    for (const off of [VISIBLE_WINDOW_X, 0x4000, 0x8000, 0xff00]) {
+      expect(projectWorldX(off, 0), `off-window offset ${off} must be culled`).toBeNull()
+    }
+    // …and an on-window pixel is always inside the raster [0, SCREEN_WIDTH).
+    const px = projectWorldX(VISIBLE_WINDOW_X - 1, 0)
+    expect(px).not.toBeNull()
+    expect(px as number).toBeGreaterThanOrEqual(0)
+    expect(px as number).toBeLessThan(SCREEN_WIDTH)
+  })
+
+  it('SCREEN_WIDTH (core, drives collision) equals LOGICAL_WIDTH (shell, drives render) — they must not drift', () => {
+    // world.ts carries SCREEN_WIDTH so the sim's collision maps the visible window to the same
+    // raster width the shell renders at. If the board width ever changes in render.ts, this reddens.
+    expect(SCREEN_WIDTH, 'core SCREEN_WIDTH must equal shell LOGICAL_WIDTH or collision & render disagree').toBe(
+      LOGICAL_WIDTH,
+    )
   })
 })
