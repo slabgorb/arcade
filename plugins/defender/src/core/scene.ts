@@ -110,6 +110,16 @@ const SHIP_OBJECT = 'PLAPIC'
  *  its own palette indices (blitObject invents no colour). */
 const LANDER_OBJECT = 'LNDP1'
 const HUMANOID_OBJECT = 'ASTP1'
+/** pt1-23: the six roaming/attacking banks that were live + collidable but never drawn — each
+ *  carries its own palette indices (blitObject invents no colour; pt1-22 revived the A–F cyclers
+ *  so the mutant/bomber/pod/bomb pixels are no longer black). The ROM sprite labels match the
+ *  `*_PICTURE` the sim blits for spawn/death effects and for collision (sim.ts:76-82). */
+const MUTANT_OBJECT = 'SCZP1' // schizoid, DEFB6.SRC:1896
+const BAITER_OBJECT = 'UFOP1' // baiter/UFO
+const BOMBER_OBJECT = 'TIEP1' // bomber (TIE), DEFB6.SRC:997
+const POD_OBJECT = 'PRBP1' // pod/probe, DEFB6.SRC:1909
+const SWARMER_OBJECT = 'SWPIC1' // swarmer
+const BOMB_OBJECT = 'BMBP1' // the bomber's dropped bomb/mine, DEFB6.SRC:1935
 /** LASER colour: palette entry 1 (core/palette.ts DEFAULT_PCRAM label 1 = LASER). */
 const LASER_COLOUR = 1
 /** Pixels of the laser's leading streak drawn behind its head. */
@@ -469,6 +479,39 @@ export function composeFrame(
     const col = projectWorldX(humanoid.x, camera)
     if (col === null) continue
     blitObject(fb, humanoidPic, col, humanoid.y)
+  }
+
+  // pt1-23: the six roaming/attacking banks — live + collidable (enemyObjects, sim.ts:745-762)
+  // but previously drawn NOWHERE, so mutants/baiters/bombers/pods/swarmers/bombs attacked the
+  // player invisibly for their whole life. Each is projected through the SAME visible window as
+  // the landers and the collision path (projectWorldX = toScreenCol, sim.ts:626) and blitted by
+  // its own palette indices (pt1-22 revived the A–F cyclers so these are no longer black); an
+  // off-window member is culled here and seen only on the scanner.
+  const blitBank = (
+    recs: readonly { readonly x: number; readonly y: number; readonly alive: boolean }[],
+    label: string,
+  ): void => {
+    const pic = require_(OBJECTS, label, 'object')
+    for (const r of recs) {
+      if (!r.alive) continue // a dead member is skipped, as with the landers above
+      const col = projectWorldX(r.x, camera)
+      if (col === null) continue
+      blitObject(fb, pic, col, r.y)
+    }
+  }
+  blitBank(state.mutants ?? [], MUTANT_OBJECT)
+  blitBank(state.baiters ?? [], BAITER_OBJECT)
+  blitBank(state.bombers ?? [], BOMBER_OBJECT)
+  blitBank(state.pods ?? [], POD_OBJECT)
+  blitBank(state.swarmers ?? [], SWARMER_OBJECT)
+
+  // The bomber's dropped bombs carry a `lifetime`, not an `alive` flag (ties.ts:52-56) — a bomb is
+  // drawn while it sits in the bank, projected through the same window.
+  const bombPic = require_(OBJECTS, BOMB_OBJECT, 'object')
+  for (const bomb of state.bombs ?? []) {
+    const col = projectWorldX(bomb.x, camera)
+    if (col === null) continue
+    blitObject(fb, bombPic, col, bomb.y)
   }
 
   for (const laser of state.lasers) {
