@@ -850,9 +850,11 @@ function drawSelect(
     64, CLAW_COLOR, 26,
   )
   // pt1-9 (S-015): the bonus for STARTING here — the SAME value the sim pays
-  // (startWaveBonus, sim.ts commits it into s.startBonus at select). Red, per the
-  // ROM's BODSPL bonus colour (ALSCOR.MAC:1250-1254). Single source of truth: the
-  // number shown equals the number paid because both read startWaveBonus(level).
+  // (startWaveBonus, sim.ts commits it into s.startBonus at select). Red because
+  // the ROM's RATE YOURSELF chooser sets the beam RED before drawing the bonus:
+  // `LDY I,RED / JSR NWCOLO` then `JSR BODSPL` in RQRDSP (ALSCOR.MAC:1154-1163).
+  // Single source of truth: the number shown equals the number paid because both
+  // read startWaveBonus(level).
   drawGlowText(
     ctx, `BONUS  ${startWaveBonus(s.select.selectedLevel)}`, W / 2, H * 0.7, 22, GLYPH_HEX.red, 10,
   )

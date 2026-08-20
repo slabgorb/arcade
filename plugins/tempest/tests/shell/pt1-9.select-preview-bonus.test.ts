@@ -96,7 +96,41 @@ function argsOf(call: string): string[] {
   return args
 }
 
+// Strip `//` line comments and `/* */` block comments so a CODE scan can never be
+// satisfied by a comment that merely mentions the token (rule #15 — the round-1
+// reject: `/glowPolyline\(/` matched the `// ... glowPolyline (not via drawTube`
+// comment and stayed green when the real call was deleted). Quote-aware: a `//`
+// or `/*` inside a string/template literal is preserved.
+function stripComments(src: string): string {
+  let out = ''
+  let quote: string | null = null
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+    const n = src[i + 1]
+    if (quote) {
+      out += c
+      if (c === '\\') { out += src[++i] ?? ''; continue }
+      if (c === quote) quote = null
+      continue
+    }
+    if (c === "'" || c === '"' || c === '`') { quote = c; out += c; continue }
+    if (c === '/' && n === '/') { while (i < src.length && src[i] !== '\n') i++; out += '\n'; continue }
+    if (c === '/' && n === '*') {
+      i += 2
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++
+      i++ // consume the closing '/'
+      out += ' '
+      continue
+    }
+    out += c
+  }
+  return out
+}
+
 const select = fnBody(renderSrc, 'drawSelect')
+// Comment-blind view — the structural (call-presence) scans run against THIS, so a
+// comment token can never satisfy them. String-literal checks still use `select`.
+const selectCode = stripComments(select)
 
 // ---- helper sanity (not the feature) --------------------------------------
 
@@ -104,6 +138,27 @@ describe('pt1-9 helper sanity — drawSelect body is found and parseable', () =>
   it('locates the drawSelect function body', () => {
     expect(select, 'drawSelect must exist in render.ts').not.toBe('')
     expect(select).toContain('RATE YOURSELF') // known content, proves we sliced the right fn
+  })
+
+  it('stripComments removes comment tokens but keeps code and string literals', () => {
+    // If this ever no-ops, the comment-blind guards silently re-vacuate — so pin it.
+    const sample = "code(); // glowPolyline(fake) in a comment\n/* startWaveBonus(fake) */ real('a // b')"
+    const out = stripComments(sample)
+    expect(out, 'a // comment mentioning a token must be gone').not.toMatch(/glowPolyline/)
+    expect(out, 'a /* */ comment mentioning a token must be gone').not.toMatch(/startWaveBonus/)
+    expect(out, 'real code survives').toContain('code()')
+    expect(out, 'real code survives').toContain('real(')
+    expect(out, '// inside a string literal is preserved').toContain("'a // b'")
+  })
+
+  it('the drawSelect comment token that broke round 1 is absent from the code view', () => {
+    // render.ts carries `// ... glowPolyline (not via drawTube ...` as prose. The
+    // structural scans run on selectCode, where that comment is stripped — so the
+    // ONLY glowPolyline( left is the real call.
+    expect(select, 'the comment that caused the round-1 vacuous match still exists in raw source')
+      .toMatch(/\/\/[^\n]*glowPolyline/)
+    expect(selectCode, 'but it is gone from the comment-blind view')
+      .not.toMatch(/\/\/[^\n]*glowPolyline/)
   })
 })
 
@@ -113,22 +168,24 @@ describe('pt1-9 AC1 — the select screen previews the selected level\'s well la
   it('draws the well geometry for the selected level via tubeForLevel', () => {
     // The preview must come from the canonical geometry table (tubeForLevel →
     // ROM_REMAP), the SAME source the playfield uses — not a bespoke drawing.
-    expect(select, "drawSelect must build the preview from tubeForLevel(...)")
+    expect(selectCode, "drawSelect must build the preview from tubeForLevel(...)")
       .toMatch(/tubeForLevel\s*\(/)
   })
 
   it('keys the preview to the SELECTED level, not a fixed one', () => {
     // tubeForLevel(1) hardcoded would show the same web for every choice — the
     // whole point is that spinning the chooser changes the previewed layout.
-    expect(select, 'the previewed tube must be tubeForLevel(...selectedLevel...)')
+    expect(selectCode, 'the previewed tube must be tubeForLevel(...selectedLevel...)')
       .toMatch(/tubeForLevel\s*\([^)]*selectedLevel/)
   })
 
   it('strokes the well outline as a polyline (the ROM DSPHOL rim, no spokes)', () => {
     // DSPHOL draws the rim outline only; a scaled glowPolyline over the near ring
-    // is exactly that. drawSelect draws no polyline today.
-    expect(select, 'drawSelect must stroke the preview outline via glowPolyline')
-      .toMatch(/glowPolyline\s*\(/)
+    // is exactly that. Anchored to the ACTUAL call (glowPolyline(ctx, previewRing,
+    // …)) against the comment-blind CODE view — a comment mentioning glowPolyline
+    // cannot satisfy it (round-1 reject #15), and only the real ring draw does.
+    expect(selectCode, 'drawSelect must stroke the preview ring via glowPolyline(ctx, previewRing, …)')
+      .toMatch(/glowPolyline\s*\(\s*ctx\s*,\s*previewRing\b/)
   })
 })
 
@@ -136,7 +193,7 @@ describe('pt1-9 AC1 — the select screen previews the selected level\'s well la
 
 describe('pt1-9 AC2 — the select screen shows the start bonus, single source of truth', () => {
   it('computes the shown bonus from startWaveBonus(...)', () => {
-    expect(select, 'drawSelect must read the bonus from startWaveBonus(...)')
+    expect(selectCode, 'drawSelect must read the bonus from startWaveBonus(...)')
       .toMatch(/startWaveBonus\s*\(/)
   })
 
@@ -144,12 +201,14 @@ describe('pt1-9 AC2 — the select screen shows the start bonus, single source o
     // The sim pays startWaveBonus(level) with level === selectedLevel at start
     // (sim.ts:707 via startGameAtLevel). Showing startWaveBonus(selectedLevel)
     // makes the displayed number identical to the paid one, always.
-    expect(select, 'the shown bonus must be startWaveBonus(...selectedLevel...)')
+    expect(selectCode, 'the shown bonus must be startWaveBonus(...selectedLevel...)')
       .toMatch(/startWaveBonus\s*\([^)]*selectedLevel/)
   })
 
   it('renders the bonus through a text-draw call (it appears on screen)', () => {
-    const carriesBonus = textDrawCalls(select).some((c) => {
+    // textDrawCalls only matches drawGlowText(/vecText( calls, so a comment can't
+    // satisfy this; scan the comment-blind view for belt-and-suspenders.
+    const carriesBonus = textDrawCalls(selectCode).some((c) => {
       const a = argsOf(c)
       return a.length >= 2 && /startWaveBonus/.test(a[1])
     })
@@ -163,7 +222,7 @@ describe('pt1-9 AC2 — the select screen shows the start bonus, single source o
     const LADDER = ['6000', '16000', '32000', '54000', '74000', '94000', '114000']
     for (const v of LADDER) {
       const re = new RegExp(v.replace(/(\d)(?=(\d{3})+$)/g, '$1_?')) // 16000 or 16_000
-      expect(select, `select must not hardcode the bonus literal ${v}`).not.toMatch(re)
+      expect(selectCode, `select must not hardcode the bonus literal ${v}`).not.toMatch(re)
     }
   })
 })
@@ -180,7 +239,7 @@ describe('pt1-9 AC4 — the preview/bonus add no fast luminance strobe (Decision
     const re = /Math\.sin\(\s*renderTime\s*\*\s*([\d.]+)\s*\)/g
     const coeffs: number[] = []
     let m: RegExpExecArray | null
-    while ((m = re.exec(select))) coeffs.push(parseFloat(m[1]))
+    while ((m = re.exec(selectCode))) coeffs.push(parseFloat(m[1]))
     for (const k of coeffs) {
       expect(k, `sine flash coefficient ${k} rad/s exceeds the ~1.3 Hz strobe ceiling`)
         .toBeLessThanOrEqual(8)
