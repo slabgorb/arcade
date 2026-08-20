@@ -15,7 +15,7 @@ export const meta: GameMeta = {
   title: 'DEFENDER',
   year: 1980,
   color: '#00d0a8',
-  controls: ['Keyboard'],
+  controls: ['MOVE — WASD / Arrows', 'FIRE — Space', 'SMART BOMB — B'],
   order: 11,
   listed: true,
   showcase: true,
