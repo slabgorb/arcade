@@ -21,7 +21,7 @@ import { drawEscOverlay } from '@shared/esc-overlay'
 import { createAudioEngine } from './shell/audio'
 import { render } from './shell/render'
 import { drawDebugOverlay } from './shell/debug-overlay'
-import { resizeToDisplay } from '@shared/view'
+import { applyLetterbox } from './shell/viewport'
 
 // star-wars records the `wave` reached; the shared factory binds load/save to the
 // 'star-wars-high-scores' localStorage key and validates each row's finite score +
@@ -33,17 +33,21 @@ const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard
 // sc1-1: the checked mount replaces `as HTMLCanvasElement` + `getContext('2d')!`.
 const { canvas, ctx } = mountCanvas(document)
 
-// The DPR-resize + CSS-box sizing is @shared/view's resizeToDisplay (SH2-10),
-// which owns the Math.min(2, devicePixelRatio||1) cap+guard every cabinet hand-rolled.
+// pt1-4: pin the canvas to a fixed 4:3 cabinet aspect and letterbox it (shell/viewport,
+// over @shared/view), instead of filling the window. Handing render() the fitted box —
+// not the whole window — reunites the HUD with sw10-1's centered scene square; the black
+// page shows through around the centered canvas as the side bars (the fleet look
+// battlezone/asteroids already wear). `box.dpr` is the exact ratio the fit resolved
+// (capped + guarded in @shared/view), read directly for ctx.scale — no reconstruction.
 let W = window.innerWidth
 let H = window.innerHeight
-let dpr = 1 // real value set by resize() below, from the resolved ViewportSize
+let dpr = 1 // real value set by resize() below, from the applied letterbox fit
 
 function resize(): void {
-  const vp = resizeToDisplay(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
-  W = vp.cssWidth
-  H = vp.cssHeight
-  dpr = vp.dpr
+  const box = applyLetterbox(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
+  W = box.cssWidth
+  H = box.cssHeight
+  dpr = box.dpr
 }
 window.addEventListener('resize', resize)
 resize()
