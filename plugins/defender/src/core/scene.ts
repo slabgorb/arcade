@@ -287,8 +287,8 @@ function drawPlayerBlip(fb: Framebuffer, state: SimState): void {
 // ─── pt1-20: the on-screen CONTROL HINT (discoverability) ────────────────────────────
 // Playtest 2026-08-19: a first-time player cannot tell how to fly or fire — Defender's
 // reverse-to-turn scheme is unintuitive and nothing on screen explains it. The bindings work
-// (shell/input.ts: A=reverse-facing, D=thrust, W/S=vertical, Space/Enter=fire, RightShift=
-// smart-bomb); the gap is DISCOVERABILITY. The attract demo carries this hint line so a player
+// (shell/input.ts: A=reverse-facing, D=thrust, W/S=vertical, Space/Enter=fire, ShiftLeft/B=
+// smart-bomb — RightShift is hyperspace, a separate power); the gap is DISCOVERABILITY. The attract demo carries this hint line so a player
 // learns the keys before dropping a coin. Drawn in CORE (the defender draw-in-core rule) as a
 // sparse index-9 text line — never a full-frame flash (ADR-0005).
 
@@ -297,7 +297,8 @@ function drawPlayerBlip(fb: Framebuffer, state: SimState): void {
  *  so the keys are spelled as words. */
 export const CONTROL_HINT = 'A REVERSE D THRUST SPACE FIRE SHIFT BOMB'
 /** Hint line position: low on the raster, above the planet surface (rows ~186+), left-aligned so
- *  the ~252px line (letters advance 7px, spaces 3px) clears the 292-wide board. */
+ *  the line (measured 250px wide — the charset is non-uniform: most letters advance 7px, but 'I'
+ *  is 5px and 'M' 9px) clears the 292-wide board. */
 const HINT_X = 8
 const HINT_Y = 168
 
@@ -406,7 +407,7 @@ export function composeFrame(
   width: number,
   height: number,
   hof?: { board: readonly DefenderHighScore[]; nameEntry: { readonly buffer: string; readonly score: number } | null },
-  options?: { controlHint?: boolean },
+  options?: { readonly controlHint?: boolean },
 ): Framebuffer {
   const fb = createFramebuffer(width, height)
   clear(fb, BACKGROUND)

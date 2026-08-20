@@ -2,8 +2,9 @@
 //
 // Story pt1-20 — RED phase (Leeloo / TEA). Playtest 2026-08-19: a player cannot tell how
 // to fly or fire Defender. The bindings already exist and work (shell/input.ts: A/Left =
-// reverse-facing, D/Right = thrust, W/S/Up/Down = vertical, Space/Enter = fire, RightShift =
-// smart-bomb) — the GAP IS DISCOVERABILITY. This story draws an on-screen control hint so a
+// reverse-facing, D/Right = thrust, W/S/Up/Down = vertical, Space/Enter = fire, ShiftLeft/B =
+// smart-bomb (RightShift is hyperspace, a separate power)) — the GAP IS DISCOVERABILITY. This
+// story draws an on-screen control hint so a
 // first-time player learns the unintuitive reverse-to-turn scheme.
 //
 // Defender draws every screen in CORE (core/scene.ts composeFrame); shell/render.ts is a bare
@@ -143,7 +144,7 @@ describe('pt1-20 — CONTROL_HINT is the SSOT hint text and actually teaches the
   it('names the SMART-BOMB key (SHIFT) — the least-guessable binding', () => {
     expect(
       CONTROL_HINT.toUpperCase(),
-      'the hint must tell the player which key drops the smart-bomb (input.ts binds RightShift)',
+      'the hint must tell the player which key drops the smart-bomb (input.ts binds ShiftLeft/B)',
     ).toMatch(/\bSHIFT\b/)
   })
 

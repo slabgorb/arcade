@@ -30,10 +30,13 @@ const code = stripComments(mainSrc)
 
 describe('pt1-20 — main.ts shows the control hint on the attract screen', () => {
   it('passes a controlHint option into composeFrame (the hint is wired to the render, not dead in core)', () => {
+    // Anchor to the composeFrame( call itself (lang-review #15/#25): a bare /controlHint/ over the
+    // whole file would false-green on the token appearing in any unrelated identifier. Require the
+    // option to sit INSIDE a composeFrame(...) argument list.
     expect(
       code,
-      'main.ts must request the control hint from composeFrame — pass a `controlHint` option, or the hint never reaches the screen',
-    ).toMatch(/controlHint/)
+      'main.ts must request the control hint from composeFrame — pass a `controlHint` option inside the composeFrame(...) call, or the hint never reaches the screen',
+    ).toMatch(/composeFrame\s*\([\s\S]*?controlHint/)
   })
 
   it('gates the hint on the ATTRACT phase — it shows in the demo, NOT during live play', () => {
