@@ -38,7 +38,7 @@
 // fall STRUCTURE; df5 supplies the exact vertical speeds (the same call laser.ts's STEP makes).
 
 import type { Scheduler, Process } from './scheduler.js'
-import { YMIN, YMAX, type Facing } from './world.js'
+import { YMIN, YMAX, wrap16, type Facing } from './world.js'
 import { collide, type Query, type Box, type CollObject } from './collision.js'
 import type { EffectEvent } from './effects.js'
 
@@ -85,6 +85,20 @@ const WALK_TURN_THRESHOLD = 8
 const DESCEND_STEP = 2
 /** Carry ascent speed once a humanoid is grabbed (rows/tick, df4-3 placeholder); COM(LNDYV) up-split (:785). */
 const CARRY_STEP = 2
+/** Horizontal roam-speed ceiling for a target-less lander's patrol drift (units/tick,
+ *  df4-3 placeholder). The ROM draws EACH lander's horizontal velocity randomly at spawn
+ *  (LDA LNDXV / JSR RMAX, then a random sign `BITB #1`, DEFB6.SRC:667-676); LNDXV is
+ *  wave-table RAM (PHR6.SRC:392), so — exactly like DESCEND_STEP stands in for LNDYV — there
+ *  is no fixed magnitude to port, only the STRUCTURE: an individual, signed, per-lander drift
+ *  that spreads a fresh wave out instead of letting it fall as one synchronized column. */
+const ROAM_X_SPEED = 0x20
+/** The altitude a target-less lander patrols at while roaming (df4-3 placeholder). The ROM
+ *  roams toward `GETALT-50` — 50 rows above the TERRAIN surface at the lander's own column
+ *  (LANDSA, DEFB6.SRC:726-736) — which needs the terrain the pure enemy bank is not yet given
+ *  (a logged deferral, see the pt1-19 Delivery Finding). This fixed band stands in for that
+ *  terrain-relative altitude, the same defer as DESCEND_STEP; it sits well above YMAX so a
+ *  lander with no prey PATROLS rather than plunging to the floor. */
+const PATROL_Y = YMIN + 60
 
 /** The scheduler PTYPE tags — opaque ids; any distinct values (df3 scheduler.ts). */
 const LANDER_PTYPE = 2
@@ -181,6 +195,10 @@ type LanderPhase = 'descend' | 'carry' | 'done'
 interface LanderRecord {
   x: number
   y: number
+  /** OXV — this lander's individual horizontal roam velocity (LNDXV, DEFB6.SRC:667-676),
+   *  drawn once at spawn. Applied only while roaming (no target in reach); the hunt path
+   *  steers X toward the target column instead. */
+  vx: number
   alive: boolean
   carrying: boolean
   reachedTop: boolean
@@ -193,6 +211,19 @@ function approach(from: number, to: number, step: number): number {
   const delta = to - from
   if (Math.abs(delta) <= step) return to
   return from + Math.sign(delta) * step
+}
+
+/** Draw one lander's INDIVIDUAL horizontal roam velocity (LNDXV draw + sign, DEFB6.SRC:667-676):
+ *  magnitude 1..ROAM_X_SPEED and a sign, spread from the per-lander spawn INDEX. The ROM draws
+ *  this from RAND; we draw it deterministically from the spawn sequence instead so a fresh
+ *  wave still fans out (each lander its own signed rate) WITHOUT consuming the shared cue-stream
+ *  entropy — the exact magnitude is already a df4-3 placeholder (ROAM_X_SPEED), and keeping the
+ *  injected `rand` stream untouched preserves every seeded scenario's bit-for-bit replay. Never
+ *  zero — a magnitude of 0 would leave the lander column-locked, the bug this fixes. */
+function roamVelocity(seq: number): number {
+  const h = (seq * 2654435761) >>> 0 // Knuth multiplicative hash — spreads consecutive indices
+  const magnitude = 1 + (h % ROAM_X_SPEED) // 1..ROAM_X_SPEED (the RMAX-bounded magnitude)
+  return (h & 1) === 1 ? magnitude : -magnitude // low bit → sign (BITB #1, DEFB6.SRC:672-675)
 }
 
 /**
@@ -209,6 +240,9 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
   // one-shot TERBLO has already fired (the BNE ASTCX guard — once, never per frame).
   let humanoidEverSpawned = false
   let panicFired = false
+  // Per-lander spawn index — seeds each lander's individual roam velocity (LNDXV, see
+  // roamVelocity) so a wave fans out without drawing on the shared `rand` cue stream.
+  let landerSpawnSeq = 0
 
   const removeHumanoid = (rec: HumanoidRecord): void => {
     const i = humanoids.indexOf(rec)
@@ -298,7 +332,8 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
 
     const rec: LanderRecord = {
       x,
-      y: LANDER_SPAWN_Y, // LDA #YMIN+2 (DEFB6.SRC:663)
+      y: LANDER_SPAWN_Y, // LDA #YMIN+2 (DEFB6.SRC:663) — the ROM spawn row is uniform
+      vx: roamVelocity(landerSpawnSeq++), // LDA LNDXV / JSR RMAX + sign (DEFB6.SRC:667-676)
       alive: true,
       carrying: false,
       reachedTop: false,
@@ -325,7 +360,12 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
             rec.phase = 'carry'
           }
         } else {
-          rec.y = approach(rec.y, YMAX, DESCEND_STEP) // no target yet — keep descending
+          // LANDSA roam-before-dive (DEFB6.SRC:688,726-736): no humanoid in reach — PATROL.
+          // Drift horizontally at this lander's own velocity (so the wave spreads, not a row)
+          // and settle toward the roam altitude band; do NOT plunge to the floor. The ROM
+          // rides GETALT-50 (terrain-relative); PATROL_Y is that band's df4-3 placeholder.
+          rec.x = wrap16(rec.x + rec.vx) // OX16 is the 16-bit world cylinder (wrap16, world.ts)
+          rec.y = approach(rec.y, PATROL_Y, DESCEND_STEP)
         }
         s.sleep(1, step)
         return
