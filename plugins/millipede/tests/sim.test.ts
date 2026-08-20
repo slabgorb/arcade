@@ -306,14 +306,18 @@ describe('ml6-2 stepGame — between-wave CONWAY mushroom growth', () => {
   })
 
   it('clearing the millipede starts CONWAY (INICON, MILLI.MAC:1913-1914)', () => {
-    const g = play({ segments: [], delay: 0 })
+    // pt1-2: CONWAY is gated on CENTIN == 9 (the wave whose walk reaches length 9),
+    // not every clear. centis defaults to FAST(2) at boot, so this clear increments
+    // it to 3 and, with centin 9, jumps to INICON. See tests/wave-progression.test.ts.
+    const g = play({ segments: [], delay: 0, centin: 9 })
     const after = stepGame(g, idle)
     expect(after.conway.active).toBe(true)
   })
 
   it('CONWAY is driven each frame (MASTER, MILLI.MAC:47-49) and terminates on its own', () => {
     // An empty field has nothing to grow, so the process ends quickly (CW-24/25).
-    let g = play({ segments: [], delay: 0, field: new Uint8Array(0x3c0) })
+    // centin 9 opens the pt1-2 CONWAY gate (see the test above).
+    let g = play({ segments: [], delay: 0, field: new Uint8Array(0x3c0), centin: 9 })
     g = stepGame(g, idle)
     expect(g.conway.active).toBe(true)
     for (let i = 0; i < 200 && g.phase === 'play' && g.conway.active; i++) g = stepGame(g, idle)
