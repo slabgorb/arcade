@@ -31,8 +31,14 @@ import { writeText } from './charset.js'
 import { blitObject, OBJECTS, type ObjectImage } from './objects.js'
 import { blitTerrain, decodeScrollSurface, TERRAIN } from './terrain.js'
 import { drawStars, STAR_COUNT } from './stars.js'
-import { WORLD_COLS, projectWorldX, projectOnscreenX, shipWorldX } from './world.js'
-import { projectScanner, SCANNER_COLUMNS, type ScannerObject } from './scanner.js'
+import { WORLD_COLS, projectWorldX, projectOnscreenX, shipWorldX, wrap16 } from './world.js'
+import {
+  projectScanner,
+  SCANNER_COLUMNS,
+  SCANNER_LEFT_OFFSET,
+  SCANNER_X_SHIFT,
+  type ScannerObject,
+} from './scanner.js'
 import type { PlacedEffect } from './effects.js'
 import type { SimState } from './sim.js'
 import type { DefenderHighScore } from './highscore.js'
@@ -253,13 +259,37 @@ function drawScannerBezel(fb: Framebuffer): void {
   }
 }
 
-/** Draw the df5-1 scanner strip: project every live attacker (lander) to its radar blip and
- *  plot it in the top band by palette INDEX. Nothing is drawn when no attacker is live (the
+/** pt1-24: draw the df5-1 scanner strip — project EVERY live attacker to its radar blip and
+ *  plot it in the top band by palette INDEX. The ROM's SCNR blip loop (SCNR10/SCNR3,
+ *  AMODE1.SRC:1259-1274) walks the WHOLE live-object chain, so every bank blips — the landers,
+ *  the humanoids, and the pt1-23 six (mutants/baiters/bombers/pods/swarmers/bombs) — each in
+ *  its OWN colour (LDD OBJCOL,X :1270, the spriteColour seam). The projection reads the
+ *  ABSOLUTE OX16 (:1260): there is NO visible-window cull — spotting the attackers the main
+ *  view culls is the radar's entire purpose. Nothing is drawn when no attacker is live (the
  *  bezel — drawScannerBezel — frames the empty strip). */
-function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): void {
-  const objects: ScannerObject[] = (state.landers ?? [])
-    .filter((l) => l.alive)
-    .map((l) => ({ worldX: l.x, y: l.y, colour: attackerColour }))
+function drawScanner(fb: Framebuffer, state: SimState): void {
+  const objects: ScannerObject[] = []
+  // One bank at a time, each blip in the bank's own sprite colour (OBJCOL per record, :1270).
+  // A dead member is off the ROM's live chain and never blips; a Bomb carries `lifetime`, not
+  // `alive` (ties.ts) — it exists while in the bank, so `alive === false` never matches it.
+  const addBank = (
+    recs: readonly { readonly x: number; readonly y: number; readonly alive?: boolean }[],
+    label: string,
+  ): void => {
+    const colour = spriteColour(require_(OBJECTS, label, 'object'))
+    for (const r of recs) {
+      if (r.alive === false) continue
+      objects.push({ worldX: r.x, y: r.y, colour })
+    }
+  }
+  addBank(state.landers ?? [], LANDER_OBJECT)
+  addBank(state.humanoids ?? [], HUMANOID_OBJECT)
+  addBank(state.mutants ?? [], MUTANT_OBJECT)
+  addBank(state.baiters ?? [], BAITER_OBJECT)
+  addBank(state.bombers ?? [], BOMBER_OBJECT)
+  addBank(state.pods ?? [], POD_OBJECT)
+  addBank(state.swarmers ?? [], SWARMER_OBJECT)
+  addBank(state.bombs ?? [], BOMB_OBJECT)
   if (objects.length === 0) return
   const originX = (fb.width - SCANNER_COLUMNS) >> 1 // centre the 64-column strip
   for (const blip of projectScanner(objects, state.camera)) {
@@ -267,6 +297,46 @@ function drawScanner(fb: Framebuffer, state: SimState, attackerColour: number): 
     const y = SCANNER_ORIGIN_Y + blip.y
     if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
     fb.data[y * fb.width + x] = blip.colour
+  }
+}
+
+/**
+ * pt1-24: the MTERR mini-terrain contour — the strip's own terrain line, transcribed at
+ * core/terrain-data.ts (BLK71.SRC:529) but drawn nowhere until now. The ROM draw (MT1/MTLP,
+ * AMODE1.SRC:1197-1224): XTEMP = BGL − ($8000 − 150*32) is the scanner-left world-X
+ * (:1197-1199); LSRA/LSRA on its hi byte (:1200-1201) is XTEMP >> 10 — the SAME >>10 world
+ * compression the blips use (SCANNER_X_SHIFT), so the contour scrolls in register with them —
+ * selecting the table start `U = MTERR + 3*column` (:1202-1205). MTLP then walks 64 triples
+ * [row, pat0, pat1] (`PULU B,X`, :1213), one per strip column, writing pat0 at the triple's
+ * screen row and pat1 at row+1 (`STD ,Y / STX [,Y++]`, :1214-1215 — Williams VRAM is
+ * column-major, consecutive addresses step DOWN) until CMPA #(SCANER!>8)+64 (:1223). The table
+ * is DOUBLED (128 triples, bytes 0-191 == 192-383) so a 64-triple read from any start 0..63
+ * never wraps. Our re-derivation (the df5-7/df7-5 precedent — we draw OUR centred strip, not
+ * the Williams bitmap addresses): the row byte anchors at SCANNER_ORIGIN_Y like every blip,
+ * and each non-zero pattern byte paints one pixel in the colour its OWN nibbles carry
+ * (every non-zero MTERR nibble is 7 — the colour comes from the transcribed data, never
+ * invented). Drawn unconditionally, attacker-independent, every frame.
+ */
+const MTERR_BLOCK = 'MTERR'
+/** Bytes per MTERR strip column — the triple [row, pat0, pat1] (LDB #3 / MUL, AMODE1.SRC:1204). */
+const MTERR_TRIPLE = 3
+
+function drawScannerTerrain(fb: Framebuffer, camera: number): void {
+  const mterr = require_(TERRAIN, MTERR_BLOCK, 'terrain block').bytes
+  const originX = (fb.width - SCANNER_COLUMNS) >> 1 // the SAME centred strip the blips plot into
+  // The table start column: scanner-left world-X >> 10 (LSRA/LSRA on XTEMP, AMODE1.SRC:1200-1205).
+  const start = wrap16(camera - SCANNER_LEFT_OFFSET) >> SCANNER_X_SHIFT
+  for (let c = 0; c < SCANNER_COLUMNS; c++) {
+    const t = MTERR_TRIPLE * (start + c) // doubled table: start ≤ 63, so start+63 ≤ 126 < 128 triples
+    const row = mterr[t]
+    const x = originX + c
+    for (const [dy, pat] of [mterr[t + 1], mterr[t + 2]].entries()) {
+      if (pat === 0) continue // a $00 pattern byte paints nothing (only pat1 is ever $00)
+      const y = SCANNER_ORIGIN_Y + row + dy // pat0 at the row byte, pat1 one row DOWN (:1214-1215)
+      if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
+      // The pattern byte's own non-zero nibble IS the palette index (every MTERR nibble is 7).
+      fb.data[y * fb.width + x] = (pat >> 4) || (pat & 0x0f)
+    }
   }
 }
 
@@ -532,13 +602,16 @@ export function composeFrame(
     drawEffect(fb, effect, camera)
   }
 
-  // df5-7 + df7-5 + df7-8: overlay the scanner radar strip — its bezel frame (df7-5, drawn even
-  // when empty), the live-attacker blips (coloured from the lander sprite's own palette index),
-  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the HUD
-  // (score/men/wave + pt1-29 high score + smart-bomb stock), painted on top of the play field.
-  // Drawn AFTER the gameOver early-return, so the marker never appears on the end screen.
+  // df5-7 + df7-5 + df7-8 + pt1-24: overlay the scanner radar strip — its bezel frame (df7-5,
+  // drawn even when empty), the MTERR mini-terrain contour (pt1-24, camera-rotated, drawn even
+  // when empty — AFTER the bezel so the contour's end-column pixels survive), the live-attacker
+  // blips (EVERY bank, each in its own sprite colour), the df7-8 PLAYER marker (a WHITE tick at
+  // the player's own radar column) — and the HUD (score/men/wave + pt1-29 high score +
+  // smart-bomb stock), painted on top of the play field. Drawn AFTER the gameOver early-return,
+  // so the marker never appears on the end screen.
   drawScannerBezel(fb)
-  drawScanner(fb, state, spriteColour(landerPic))
+  drawScannerTerrain(fb, camera)
+  drawScanner(fb, state)
   drawPlayerBlip(fb, state)
   drawHud(fb, state, options?.highScore ?? 0) // pt1-29: high score from the shell's board (0 when unknown)
 

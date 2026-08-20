@@ -106,11 +106,19 @@ const cleared = (camera = 0): SimState => ({
   effects: [],
 })
 
-/** Columns where two same-size frames differ in ANY row (pt1-18's diffCols). */
+/** The first row BELOW the scanner band (the pt1-24 band bound: blips ≤ row 31, contour ≤ 41).
+ *  Since pt1-24, every live bank member ALSO blips on the radar strip — off-window members
+ *  included (SCNR reads the absolute OX16, AMODE1.SRC:1260). This file measures the MAIN-VIEW
+ *  blit and its cull, so its diffs must start below the strip or a member's legitimate radar
+ *  blip reads as a cull/footprint failure. The EY=100 fixtures sit far below this bound. */
+const MAIN_VIEW_TOP = 60
+
+/** Columns where two same-size frames differ in any MAIN-VIEW row (pt1-18's diffCols,
+ *  scanner band excluded). */
 function diffCols(a: Framebuffer, b: Framebuffer): number[] {
   const cols: number[] = []
   for (let x = 0; x < W; x++) {
-    for (let y = 0; y < H; y++) {
+    for (let y = MAIN_VIEW_TOP; y < H; y++) {
       if (a.data[y * W + x] !== b.data[y * W + x]) {
         cols.push(x)
         break
@@ -120,13 +128,17 @@ function diffCols(a: Framebuffer, b: Framebuffer): number[] {
   return cols
 }
 
-/** The distinct palette-index VALUES that differ between two frames. Every differing pixel's
- *  value in the populated frame is a bank-sprite pixel (the bank is the only change vs the
- *  control), so this is exactly the set of nibble indices the bank painted. */
+/** The distinct palette-index VALUES that differ between two frames in the MAIN VIEW. Every
+ *  differing main-view pixel's value in the populated frame is a bank-sprite pixel (the bank is
+ *  the only change vs the control, and its pt1-24 radar blip sits above MAIN_VIEW_TOP), so this
+ *  is exactly the set of nibble indices the bank painted. */
 function diffIndices(a: Framebuffer, b: Framebuffer): Set<number> {
   const set = new Set<number>()
-  for (let i = 0; i < a.data.length; i++) {
-    if (a.data[i] !== b.data[i]) set.add(a.data[i])
+  for (let y = MAIN_VIEW_TOP; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x
+      if (a.data[i] !== b.data[i]) set.add(a.data[i])
+    }
   }
   return set
 }

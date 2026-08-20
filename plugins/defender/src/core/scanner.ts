@@ -26,10 +26,10 @@
 //
 // The screen-address base (SCANER-1, column-major addressing) is re-derived to our centred strip
 // (the shared originX centring in scene.ts); this pure core returns radar-space {x, y, colour}
-// only. The mini-terrain line (MTERR) is transcribed as data (terrain-data.ts) but is not yet
-// drawn anywhere — still deferred df7 work. The bezel (:1225-1233, df7-5) and the player blip
-// (:1242-1257, df7-8) are composed in pure core/scene.ts (composeFrame) — the defender
-// draw-in-core rule — NOT the shell.
+// only. The mini-terrain line (MTERR, transcribed at terrain-data.ts) is drawn by
+// core/scene.ts drawScannerTerrain (pt1-24, the ROM's MT1/MTLP walk :1197-1224). The bezel
+// (:1225-1233, df7-5) and the player blip (:1242-1257, df7-8) are likewise composed in pure
+// core/scene.ts (composeFrame) — the defender draw-in-core rule — NOT the shell.
 
 import { wrap16 } from './world.js'
 
