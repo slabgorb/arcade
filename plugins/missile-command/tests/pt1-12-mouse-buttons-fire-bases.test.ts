@@ -271,13 +271,15 @@ describe('pt1-12 — main.ts wires the buttons and suppresses the context menu',
 
   it('drives mousedownReducer from a mousedown listener, using the event button', () => {
     const src = mainSrc()
-    // Anchor to the listener that does the work, not a bare token: a mousedown handler
-    // must be registered AND it must call the new reducer.
-    expect(src, "main.ts must register a 'mousedown' listener").toMatch(
-      /addEventListener\(\s*['"]mousedown['"]/,
-    )
-    expect(src, 'the mousedown handler must drive mousedownReducer').toMatch(/\bmousedownReducer\b/)
-    expect(src, 'the reducer must be fed the mouse button index (event.button)').toMatch(/\.button\b/)
+    // Find the mousedown listener, then scope the corroborating checks to ITS handler
+    // window (per lang-review #25) — so an unused `mousedownReducer` import or a `.button`
+    // read elsewhere in the file cannot satisfy them. The reducer must be CALLED inside
+    // the handler (`mousedownReducer(` — not merely named), fed the event's button.
+    const at = src.search(/addEventListener\(\s*['"]mousedown['"]/)
+    expect(at, "main.ts must register a 'mousedown' listener").toBeGreaterThanOrEqual(0)
+    const handler = src.slice(at, at + 300)
+    expect(handler, 'the mousedown handler must CALL mousedownReducer').toMatch(/\bmousedownReducer\s*\(/)
+    expect(handler, 'the reducer must be fed the mouse button index (event.button)').toMatch(/\.button\b/)
   })
 
   it("suppresses the browser context menu on the canvas (preventDefault on 'contextmenu')", () => {
