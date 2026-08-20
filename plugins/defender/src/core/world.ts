@@ -108,7 +108,7 @@ export const VISIBLE_WINDOW_X = 150 * 64 // 9600 = $2580
 /** The on-screen raster width, in framebuffer pixels, the visible window maps across. This is a
  *  board fact the SHELL owns (render.ts LOGICAL_WIDTH); the sim's collision must agree with the
  *  render on it, so the core carries it too — pinned equal to LOGICAL_WIDTH by a test so the two
- *  cannot drift. The ROM's own visible raster is 292 (williams.cpp set_visarea). */
+ *  cannot drift. The ROM's own visible raster is 292 (williams.cpp:1601 set_visarea). */
 export const SCREEN_WIDTH = 292
 
 /** Map a camera-relative world offset (0..VISIBLE_WINDOW_X) to its framebuffer pixel column. The
