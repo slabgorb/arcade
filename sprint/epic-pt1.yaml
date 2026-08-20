@@ -222,3 +222,5 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: '3 High factual-doc errors: comments/test-messages say RightShift=smart-bomb but input.ts binds smartBomb to ShiftLeft/B (RightShift=hyperspace); plus 3 Low rule nits (readonly on options param, bare-token /controlHint/ test assertion, 250px width comment). No runtime defect; CONTROL_HINT string is correct.'
+    review_verdict: rejected
