@@ -379,7 +379,8 @@ stories:
       From the 2026-08-20 render audit. Holding thrust accelerates the ship but draws no exhaust plume; thrust produces only audio cues (sim.ts:471-472 thrust-start/thrust-stop) and no render code reads the thrust bit. The only player sprite is PLAPIC (objects-data.ts:58); scene.ts:442 blits it unconditionally with no exhaust pass. Fix: draw a flickering exhaust cell behind the ship (opposite the facing) while thrust is held, ROM-sourced where a flame sprite exists. Independent.
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
     type: bug
