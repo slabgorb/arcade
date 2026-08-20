@@ -33,10 +33,11 @@ stories:
     description: 'Playtest 2026-08-19: during the Death Star surface run, geometry (towers/trench elements) appears much too distant from the player. Suspect projection or z-scale/near-plane issue specific to the surface phase. Verify against reference footage/ROM math.'
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-4
     title: 'star-wars: fix the screen size to a fixed resolution to avoid display problems'

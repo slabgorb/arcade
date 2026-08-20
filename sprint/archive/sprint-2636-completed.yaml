@@ -47,3 +47,8 @@ completed_stories:
     title: 'star-wars: difficulty selector missing its death-star illustrations, and the easy/medium/hard hit regions are offset left'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-3
+    epic: pt1
+    title: 'star-wars: surface-run projection looks wrong — elements render very far from the player'
+    points: 3
+    completed: '2026-08-20'
