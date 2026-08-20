@@ -111,7 +111,10 @@ function collect(
  */
 function fireWall(seed: number, placeAt: (r: Rig, x: number, y: number) => void): Set<string> {
   return collect(seed, 50, () => withInput({ fire: true }), (r) => {
-    for (let col = 40; col <= 150; col += 5) {
+    for (let col = 10; col <= 36; col += 2) {
+      // pt1-18: the on-screen firing band — right of the ship (world-offset ~2k) and inside the
+      // 150*64 visible window (world-offset < 9600, i.e. col << 8 < 9600 => col < 37.5). A wall at
+      // the old cols 40..150 now falls OFF-camera (culled), where the beam cannot reach it.
       for (let row = 116; row <= 122; row += 2) placeAt(r, col << 8, row)
     }
   })
@@ -174,7 +177,10 @@ describe('df6-1 AC4 — the lander life-cycle cues', () => {
     // it was carrying (and had not reached the top), its dropped passenger screams.
     const seen = collect(3, 40, () => withInput({ fire: true }), (r) => {
       for (const l of r._enemyBank.landers.slice()) r._enemyBank.killLander(l)
-      for (let col = 40; col <= 150; col += 5) {
+      for (let col = 10; col <= 36; col += 2) {
+      // pt1-18: the on-screen firing band — right of the ship (world-offset ~2k) and inside the
+      // 150*64 visible window (world-offset < 9600, i.e. col << 8 < 9600 => col < 37.5). A wall at
+      // the old cols 40..150 now falls OFF-camera (culled), where the beam cannot reach it.
         const l = r._enemyBank.spawnLander(col << 8)
         if (l) {
           l.carrying = true

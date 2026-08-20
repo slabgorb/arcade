@@ -136,3 +136,21 @@ a rider on the terrain fix.
 - `docs/superpowers/specs/2026-08-18-defender-terrain-scroll-walk-design.md` — the df5-11 design.
 - df5-9 session (archived): the two Architect flags (`sprint/archive/df5-9-session.md`).
 - ADR-0005 — the ROM-always-wins framing this ADR operates under.
+
+---
+
+## Amendment (2026-08-19, pt1-18)
+
+This ADR's `>> 8` / 256-columns-per-lap / `$100`-per-pixel model described the whole live
+view when it was written. **pt1-18 superseded it for the live in-game scroll.** The live
+view now projects world objects through a *visible window* — `projectWorldX` in `world.ts`:
+an object is on-screen iff `(worldX − camera) & 0xffff < 150*64` (the ROM's own object-
+visibility test, `DEFA7.SRC:2527-2530` `CMPD #150*64 / BHS OPLP`), and that 9600-unit window
+is stretched across the 292px raster (~32.9 world-X per pixel), so the world is a ~6.8-screen
+scrolling cylinder rather than one screen showing everything. The terrain scroll follows at
+the matching zoom (`decodeScrollSurface(block, 2048)`, `camera >> 5`).
+
+The `>> 8` / `WORLD_COLS` model in this ADR still governs the **static title screen**
+(`composeStaticFrame`, camera 0, no scroll). Everything else here — the `BGL` camera, the
+scroll walk, the cylinder-tiling rationale — stands unchanged; only the world-X→pixel *scale*
+of the live view moved.
