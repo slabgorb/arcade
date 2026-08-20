@@ -293,21 +293,21 @@ describe('AC-2 — an uncollected KILL egg matures like any other (the waveEgg g
     expect(enemiesIn(after).length, 'and a buzzard flew back in to remount').toBe(1)
   })
 
-  it('enters that buzzard from the FARTHER edge, like every other remount', async () => {
+  it('stands the hatched rider GROUNDED at its hatch spot (pt1-15), not flown in from the edge', async () => {
     const diff = await loadDifficulty()
     const dmod = (await loadSim()) as unknown as Record<string, number>
-    const egg = await loadEgg()
     const frames = diff.waveValue('EGGWT', 1) * dmod.EGG_WAIT_NAP_FRAMES
-    // KILLS: a kill-egg hatch that skips `remountEntryEdge` and drops the bird
-    // where the egg lay. The egg sits at posX 250 (the RIGHT half), so the ROM
-    // sends the bird in from the LEFT (:3272-3278).
+    // pt1-15 RE-BASELINE: the cutscene no longer swaps the egg into an AIRBORNE buzzard
+    // at the far edge. Per EGGLLP (JOUSTRV4.SRC:3316) the rider STANDS on the ground at
+    // its hatch spot ("POINT TO STANDING PLAYER", :3313) and waits for a buzzard to
+    // collect it. So a right-half egg at posX 250 leaves its rider standing AT 250,
+    // grounded — the `remountEntryEdge` far edge now only picks the rider's FACING.
     const demo = await stagedDemo([playerAt(PLAYER1_ID, 20, 40), killEggProc(1, { posX: 250 })])
     const after = await run(demo, frames + dmod.EGG_HATCH_ANIM_FRAMES)
     const bird = enemiesIn(after)[0]
-    expect(bird, 'a bird remounted').toBeTruthy()
-    expect(bird.enemy?.entity.posX, 'a right-half egg sends the bird in from the LEFT').toBe(
-      egg.REMOUNT_ENTRY_LEFT_X,
-    )
+    expect(bird, 'a rider hatched').toBeTruthy()
+    expect(bird.enemy?.entity.posX, 'the rider stands at its hatch spot, not the far edge').toBe(250)
+    expect(bird.enemy?.entity.airborne, 'and it stands on the ground, not airborne').toBe(false)
   })
 
   it('stops holding the wave open PERMANENTLY — the egg leaves, a killable bird replaces it', async () => {

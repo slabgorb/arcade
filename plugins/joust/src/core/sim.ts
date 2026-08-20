@@ -49,6 +49,7 @@ import {
   willHatch,
   remountEntryEdge,
   remountBudgetDebit,
+  REMOUNT_MAX_VELX,
   bumpEggHits,
   eggValue,
   airCatchBonus,
@@ -1493,29 +1494,52 @@ function spawnWaveEggs(waveNumber: number): SimProcess[] {
 }
 
 /**
- * The REMOUNT buzzard a SETTLED wave egg hatches into (EGGLND/EGGMAN, JOUSTRV4.SRC:3239-3279):
- * a live GROUND enemy flying back in from the FARTHER (opposite) edge (egg.ts's
- * `remountEntryEdge` — the ROM correction to "nearer") at max FLYX speed. So a hatched wave egg
- * both DROPS an egg and RAISES an enemy — the egg wave is no longer a permanent egg-lock; it can
- * be fought and cleared. Its id rides a namespace clear of every live process. Pure.
+ * pt1-15 — the STANDING KNIGHT a matured egg hatches into (EGGMAN → EGGLLP,
+ * JOUSTRV4.SRC:3279-3319). The ROM does NOT swap the egg straight into an airborne
+ * threat: after the crack cutscene reveals the standing player (`LEAY 24,Y  POINT TO
+ * STANDING PLAYER`, :3313) the knight STANDS on the ground at its hatch spot and loops
+ * `EGGLLP  PCNAP 8  WAIT UNTILL BUZZARD COMES OR KILLED BY PLAYER` (:3316) while a
+ * riderless buzzard (created `PVELY=0 NOT FALLING YET`, :3259) flies in to fetch it;
+ * only when it mounts (MOUNRI) is it a flying threat.
+ *
+ * So the hatched rider EMERGES GROUNDED at the hatch spot (`egg.posX`, feet on the
+ * settled-egg ledge), not airborne at the arena edge. It stands for the collect-wait —
+ * held here as the process `nap`, which IS the ROM's PCNAP: a napped process is skipped
+ * by `stepFrame` (frozen, stationary) but still drawn and still collidable, so the
+ * player can kill the standing knight (the EGGLLP "OR KILLED BY PLAYER" arm). The wait
+ * is the buzzard's flight time from the far edge at max FLYX speed — `distance /
+ * REMOUNT_MAX_VELX` — after which the rider WAKES and its brain lifts it off (the
+ * buzzard has collected it). This is the standing-knight vulnerability jt9-25 deferred.
+ *
+ * The port carries no separate riderless-buzzard `EnemyState` (see enemy.ts's
+ * remount-brain PRDIR note), so the inbound buzzard is abstracted as this wait: the
+ * observable order — hatch → grounded standing rider → (wait) → airborne threat — is
+ * what the 2026-08-19 playtest asked for. jt9-47's species carry survives: the woken
+ * rider restores the laying enemy's PID/brain, not a fixed bounder. Its id rides a
+ * namespace clear of every live process. Pure.
  */
 function remountEnemyProcess(id: number, egg: EggState): SimProcess {
   const entry = remountEntryEdge(egg.posX)
-  // jt9-47 — the remount restores the species that laid the egg (PID carried
-  // across EGGLND/MOUNRI), not a fixed bounder. A WAVEGG wave egg has no laying
-  // enemy, so it carries no species and falls back to bounder.
+  // jt9-47 — the rider restores the species that laid the egg (PID carried across
+  // EGGLND/MOUNRI), not a fixed bounder. A WAVEGG wave egg has no laying enemy, so it
+  // carries no species and falls back to bounder.
   const type: EnemyType = egg.enemyType ?? 'bounder'
+  // EGGLLP hold = the buzzard's flight from the FAR (opposite) edge at max FLYX speed
+  // (`LDA #8  AT MAXIMUM WARP SPEED`, :3256-3257). One `nap` per frame; ≥1 so a rider
+  // hatching at the very edge still stands at least a frame.
+  const collectWait = Math.max(1, Math.ceil(Math.abs(entry.posX - egg.posX) / REMOUNT_MAX_VELX))
   const enemy: EnemyState = {
     entity: {
-      posX: entry.posX,
+      posX: egg.posX,
       posY: egg.posY,
-      velXIndex: entry.velX,
+      velXIndex: 0,
       velXFrac: 0,
       velY: 0,
       timeUp: 1,
-      groundState: null,
+      // PLYBR — the ROM STAND state (`STANDR`, JOUSTRV4.SRC:7164): grounded, flyVel 0.
+      groundState: 'PLYBR',
       plantZ: 0,
-      airborne: true,
+      airborne: false,
       animPhase: 0,
     },
     facing: entry.facing,
@@ -1528,7 +1552,8 @@ function remountEnemyProcess(id: number, egg: EggState): SimProcess {
     // the 4-egg complement is really infinite and the DEATH3 award never fires.
     eggsLeft: egg.eggsLeft,
   }
-  return { id, cls: 'secondary', nap: 1, period: 1, kind: 'enemy', enemy, enemyType: type, collisionEnabled: true }
+  // nap = the EGGLLP hold; period 1 so once collected it steps every frame like any bird.
+  return { id, cls: 'secondary', nap: collectWait, period: 1, kind: 'enemy', enemy, enemyType: type, collisionEnabled: true }
 }
 
 /**
@@ -2707,11 +2732,13 @@ export function stepSim(state: SimState, inputs?: Record<number, PlayerInput>): 
   processes = processes.flatMap((p) => {
     if (p.kind !== 'egg' || !p.egg) return [p]
     const egg = p.egg
-    // ── The EGGMAN cutscene, once begun (jt9-25): walk EGGTBL, then the buzzard ──
+    // ── The EGGMAN cutscene, once begun (jt9-25): walk EGGTBL, then the knight stands ──
     // `EGGNXF`/`EGGHCH` (:3294-3307) draws a row, naps its col-2 (`JSR VNAPTPC`),
-    // advances 3 bytes and stops when col-2 is 0 (PLY4S). When the walk runs off the
-    // end the remount buzzard flies in (the EGGLLP wait, :3316, collapsed to the spawn
-    // here; the standing knight's own vulnerability is the filed follow-up).
+    // advances 3 bytes and stops when col-2 is 0 (PLY4S). pt1-15: when the walk runs off
+    // the end the rider does NOT fly in — it STANDS on the ground at its hatch spot and
+    // waits for a buzzard to collect it (EGGLLP :3316, `remountEnemyProcess`). The prior
+    // deferral spawned an airborne buzzard at the far edge here (the "appears in the air"
+    // the 2026-08-19 playtest reported).
     if (egg.hatchRow !== undefined) {
       const nap = (egg.hatchNap ?? 1) - 1
       if (nap > 0) return [{ ...p, egg: { ...egg, hatchNap: nap } }]
