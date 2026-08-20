@@ -8,11 +8,14 @@
 // it. Without it a `kind:'warpin'` op hits blitOp, finds no atlas block, and
 // paints ZERO pixels — the "dark feature" this repo tests for explicitly.
 //
-// PROCEDURAL by design (the render-crumble precedent): pixel-accurate WCLENY
-// silhouette clipping is deferred. The pins are VISIBILITY (fillRects emitted),
-// GROWTH (the painted height increases across the TREFF frames — the warp-in) and
-// FEET-PINNED (the bottom edge is fixed; the bird grows UPWARD out of the pad,
-// JOUSTRV4.SRC:5763-5772) — not exact pixels.
+// pt1-14 CLOSED the deferral this header once recorded: paintWarpIn no longer paints a
+// procedural bar — it resolves the op's mount frame to the real sprite block and reveals
+// its actual nibble rows bottom-up (the per-pixel WCLENY silhouette clipping). This suite
+// still pins the STRUCTURAL contracts — VISIBILITY (fillRects emitted), GROWTH (painted
+// height increases across the TREFF frames) and FEET-PINNED (bottom edge fixed, the bird
+// grows UPWARD out of the pad, JOUSTRV4.SRC:5763-5772). The pixel-accurate pins (playfield
+// through the sprite's holes, opaque monochrome fill) live in
+// render-warpin-transparent-pt1-14.test.ts.
 
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'

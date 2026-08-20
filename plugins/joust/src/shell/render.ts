@@ -273,10 +273,13 @@ function warpInSprite(name: string | undefined): PixelBlock | undefined {
 /**
  * Paint one TREFF warp-in frame (jt13-2; pt1-14 — the authentic, TRANSPARENT effect).
  *
- * The ROM does NOT lay an opaque box over the arena: TREFF blits the arriving bird's
- * OWN sprite with the blitter's SOLID bit ADDED to the zero-suppress transfer
- * (`LDA ,X / ORA #$10` "CONSTANT FILL OF TRANSPORTER", JOUSTRV4.SRC:5736-5739 and the
- * bird DMA block :5787-5790; `WR1CLS #$0A` zero-suppress default, SYSTEM.SRC:504/568).
+ * The ROM does NOT lay an opaque box over the arena: TREFF blits with the blitter's
+ * SOLID bit ADDED to the zero-suppress transfer, on TWO distinct DMA images —
+ *   • the lit TRANSPORTER pad: `LDA ,X / ORA #$10` "CONSTANT FILL OF TRANSPORTER"
+ *     (JOUSTRV4.SRC:5736-5739, after `JSR BCKYUP` puts up its background image);
+ *   • the arriving bird's OWN sprite: `LDA WCDMA,X / ORA #$10` on the mount DMA block
+ *     (JOUSTRV4.SRC:5787-5790, after `JSR WPLYR` sets it up).
+ * The zero-suppress default is `LDA #$0A` (SYSTEM.SRC:504 `WR1CLS` / :568 `WR2CLS`).
  * `$0A|$10 = $1A`: zero-suppress KEPT, so the sprite's transparent (nibble-0) pixels
  * are NOT drawn and the playfield shows through them; the SOLID bit recolours every
  * foreground pixel to the single `DCONST` constant colour. So the effect is a

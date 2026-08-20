@@ -4,12 +4,13 @@
 //
 // Playtest 2026-08-19: the TREFF spawn/materialise animation rendered as an OPAQUE
 // BOX — a solid owner-coloured rectangle that erased the playfield behind the arriving
-// bird. The ROM does no such thing. TREFF blits the bird's OWN sprite with the blitter's
-// SOLID bit ADDED to the zero-suppress transfer (`ORA #$10` "CONSTANT FILL OF
-// TRANSPORTER", JOUSTRV4.SRC:5736-5739 / :5787-5790; `WR1CLS #$0A` zero-suppress default,
-// SYSTEM.SRC:504/568). `$0A|$10 = $1A`: zero-suppress KEPT, so the sprite's transparent
-// (nibble-0) pixels are NOT drawn and the PLAYFIELD SHOWS THROUGH THEM; the SOLID bit
-// recolours every foreground pixel to one `DCONST` constant colour.
+// bird. The ROM does no such thing. TREFF blits with the blitter's SOLID bit ADDED to
+// the zero-suppress transfer on two DMA images: the lit TRANSPORTER pad (`ORA #$10`
+// "CONSTANT FILL OF TRANSPORTER", JOUSTRV4.SRC:5736-5739) and the arriving bird's OWN
+// sprite (the mount DMA block, :5787-5790). Zero-suppress default `LDA #$0A`
+// (SYSTEM.SRC:504 WR1CLS / :568 WR2CLS). `$0A|$10 = $1A`: zero-suppress KEPT, so the
+// sprite's transparent (nibble-0) pixels are NOT drawn and the PLAYFIELD SHOWS THROUGH
+// THEM; the SOLID bit recolours every foreground pixel to one `DCONST` constant colour.
 //
 // So "transparent" here means a bird-SHAPED silhouette in one OPAQUE colour, with the
 // arena visible through every gap in and around the shape — NOT a translucent rectangle.
@@ -169,5 +170,63 @@ describe('pt1-14 — the warp-in overlay is a TRANSPARENT silhouette (playfield 
     const yellow = colours[5]
     expect(rec.fills.every((s) => s === `rgb(${grey.r} ${grey.g} ${grey.b})`), 'silhouette is the explicit grey nibble').toBe(true)
     expect(rec.fills.some((s) => s === `rgb(${yellow.r} ${yellow.g} ${yellow.b})`), 'never the owner yellow when a colour is given').toBe(false)
+  })
+
+  it('a left-facer (facing -1) MIRRORS the silhouette horizontally', async () => {
+    const r = await loadRender()
+    const pics = await loadPictures()
+    const w = await loadWarpIn()
+    const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
+    const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
+    const sprite = resolveSprite(SPRITE_NAME, pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
+    const spriteW = sprite.width * 2
+
+    // Capture the bird PIXELS (the 1×1 fills; the pad is the wider h=2 bar) as (col,row).
+    const birdCells = (facing: 1 | -1): Set<string> => {
+      const cells = new Set<string>()
+      const ctx = {
+        fillStyle: '',
+        fillRect(x: number, y: number, ww: number, hh: number): void {
+          if (ww === 1 && hh === 1) cells.add(`${x - OP_X},${y}`)
+        },
+      }
+      paint(ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME, facing }, colours)
+      return cells
+    }
+    const right = birdCells(1)
+    const left = birdCells(-1)
+    expect(right.size, 'the right-facing silhouette paints pixels').toBeGreaterThan(0)
+    expect(left.size, 'the mirrored silhouette paints the same number of pixels').toBe(right.size)
+    // Every left-facer pixel is a right-facer pixel reflected across the sprite width.
+    const mirroredRight = new Set([...right].map((k) => {
+      const [c, y] = k.split(',').map(Number)
+      return `${spriteW - 1 - c},${y}`
+    }))
+    expect([...left].every((k) => mirroredRight.has(k)), 'facing -1 is the column-mirror of facing 1').toBe(true)
+    // Non-vacuous: the sprite is asymmetric, so the mirror actually MOVES pixels.
+    expect([...left].some((k) => !right.has(k)), 'the mirror is a real flip, not a no-op on a symmetric shape').toBe(true)
+  })
+
+  it('the pad tracks the sprite width, and a nameless op paints ONLY the fallback pad', async () => {
+    const r = await loadRender()
+    const pics = await loadPictures()
+    const w = await loadWarpIn()
+    const paint = (r as unknown as { paintWarpIn: PaintWarpIn }).paintWarpIn
+    const colours = r.rgbaPalette(pics.PALETTES.COLOR1)
+    const sprite = resolveSprite(SPRITE_NAME, pics.PIXEL_BLOCKS, pics.ENTITY_RECORDS)
+
+    const rects: Array<{ w: number; h: number }> = []
+    const ctx = { fillStyle: '', fillRect: (_x: number, _y: number, ww: number, hh: number) => void rects.push({ w: ww, h: hh }) }
+
+    // Named op: the lit pad (the h=2 bar) spans the resolved sprite width.
+    paint(ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1', name: SPRITE_NAME }, colours)
+    const pad = rects.find((f) => f.h === 2)
+    expect(pad?.w, 'the pad width tracks the resolved sprite width').toBe(sprite.width * 2)
+    expect(rects.some((f) => f.w === 1 && f.h === 1), 'the named op also paints the silhouette').toBe(true)
+
+    // Nameless op: no resolvable sprite → only the WARPIN_DEFAULT_W(16) pad, no silhouette.
+    rects.length = 0
+    paint(ctx, { x: OP_X, y: OP_Y, frame: w.WARPIN_FRAME_COUNT - 1, owner: 'p1' }, colours)
+    expect(rects, 'a nameless op paints exactly the fallback pad').toEqual([{ w: 16, h: 2 }])
   })
 })
