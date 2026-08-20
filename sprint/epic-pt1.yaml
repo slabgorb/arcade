@@ -101,7 +101,7 @@ stories:
     workflow: tdd
     type: bug
     review_findings: 'R2: both R1 findings FIXED (mutation-proven). One new LOW: render.ts:855 citation range ALSCOR.MAC:1154-1163 excludes JSR BODSPL (actually :1164); change to 1154-1164. One-char fix.'
-    review_verdict: rejected
+    review_verdict: approved
   - id: pt1-10
     title: 'star-wars: clicking the mouse should start the game, not just Enter'
     description: 'Playtest 2026-08-19: on the start screen, a mouse click should start the game in addition to Enter.'
