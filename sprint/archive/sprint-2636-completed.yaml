@@ -27,3 +27,8 @@ completed_stories:
     title: 'defender: in-game controls are undiscoverable — add on-screen control hints (reverse/thrust/fire/smart-bomb)'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-7
+    epic: pt1
+    title: "lobby: game tiles should identify the actual keys, not just say 'keyboard'"
+    points: 2
+    completed: '2026-08-20'

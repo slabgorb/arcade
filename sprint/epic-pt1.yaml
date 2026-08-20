@@ -69,10 +69,11 @@ stories:
     description: "Playtest 2026-08-19 (defender surfaced it, applies to lobby tiles generally): the control hint on a lobby tile just says 'keyboard' — display the real bindings (arrows/space/zxc/etc.) per game, sourced from each plugin's manifest."
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-8
     title: 'millipede + missile-command: erase the built-in high score'
