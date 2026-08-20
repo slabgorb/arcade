@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { stepGame, type GameInput } from '../src/core/sim'
 import { createGame, type GameState } from '../src/core/game-state'
+import { MILLI_HIGH_SCORE_DEPTH } from '../src/core/highscore'
 import { HEAD_COLOR } from '../src/core/millipede'
 import { ddtVacant, ddtExploding, DDT_STAMP } from '../src/core/ddt'
 import type { GameEventKind } from '../src/core/events'
@@ -284,11 +285,13 @@ describe('ml6-2 stepGame — game-over holds then times out to attract', () => {
   })
 
   it('when the hold reaches 0 it returns to a FRESH attract world (score reset)', () => {
-    // A NON-qualifying score (100 can't beat the seeded ladder's lowest rung): a
-    // QUALIFYING game-over now routes to name entry instead (ml10-2), so the
-    // attract-timeout path is the non-qualifying case. See highscore-wiring.test.ts.
+    // The attract-timeout path is the NON-qualifying game-over case: a qualifying score
+    // routes to name entry instead (ml10-2). pt1-8: a fresh EMPTY board lets ANY score
+    // qualify, so pin a FULL ladder here (100 can't beat its lowest rung) to exercise the
+    // non-qualifying → attract path. See highscore-wiring.test.ts.
+    const fullBoard = Array.from({ length: MILLI_HIGH_SCORE_DEPTH }, (_, i) => ({ name: 'ZZ', score: 50_000 + i }))
     const g = createGame(0x1982, { phase: 'game-over' })
-    const after = stepGame({ ...g, delay: 1, score: 100, lives: 0 }, idle)
+    const after = stepGame({ ...g, delay: 1, score: 100, lives: 0, highScores: fullBoard }, idle)
     expect(after.phase).toBe('attract')
     expect(after.score).toBe(0) // a brand-new game
     expect(after.lives).toBe(3)

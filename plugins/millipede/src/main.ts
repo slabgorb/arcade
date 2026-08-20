@@ -52,8 +52,8 @@ const audio = createAudio()
 //    and the qualify check read the persisted ladder, saved when a commit changes it. ──
 const highScoreStorage = makeMilliHighScoreStorage()
 
-// ── The game, booting into the silent attract demo, seeded with the persisted ladder
-//    (the seeded ROM DEFAULT_HIGH_SCORES on a first/empty boot — loadHighScores). ──
+// ── The game, booting into the silent attract demo, with the persisted ladder
+//    (EMPTY on a first/empty boot — pt1-8: no built-in seed; loadHighScores). ──
 let game: GameState = { ...createGame(0x1982), highScores: loadHighScores(highScoreStorage) }
 
 // ── Mouse capture (ml10-4): the trackball reads pointer-lock movementX/Y deltas
@@ -289,7 +289,7 @@ function render(state: GameState): void {
 
   drawGridStamps(
     c,
-    hudPlacements({ score: state.score, lives: state.lives, highScore: state.highScores[0].score }),
+    hudPlacements({ score: state.score, lives: state.lives, highScore: state.highScores[0]?.score ?? 0 }),
     alphanumericPens(),
   )
 }

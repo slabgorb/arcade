@@ -14,7 +14,8 @@
 // reads "GROWTHS" but its bytes decode to GROWTH (and the screenshot agrees).
 //   space = 0x00; A..Z = 0x01..0x1A (self-verified via the MLATR.MAC:601 byte
 //   decode above — hud.ts:33 documents only the digits); 0..9 = 0x20..0x29 (DIGITZ, hud.ts:33)
-// The HIGH SCORES table is core/highscore.ts DEFAULT_HIGH_SCORES. The blue
+// The HIGH SCORES table is the LIVE ladder passed to showcaseSections() (the
+// persisted board, empty on a fresh cabinet since pt1-8 — not the core constant). The blue
 // background is BKGND #0F8 (MLATR.MAC:604-605, GREYSC) — active-low wiring drives
 // only the three blue lines, so palette.ts decodes $F8 to pure blue.
 //
