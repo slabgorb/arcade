@@ -126,13 +126,14 @@ export function fireKeyToBase(key: string): number | null {
 }
 
 /**
- * pt1-12: map a MouseEvent.button index to its missile base — 0 (left) → 0 (alpha/
- * left), 1 (middle) → 1 (delta/centre), 2 (right) → 2 (omega/right); null for any
- * other button so a stray press launches nothing. The MOUSE mirror of fireKeyToBase:
- * a Missile Command cabinet is a trackball + THREE fire buttons wired to the same
- * FIREMA switches (.BYTE MFIREL,MFIREC,MFIRER — ABMLAU, W3MAIN:606) that Z/X/C bind,
- * so the three buttons ARE the cabinet's real fire input and select the same bases.
- * Left/middle/right button index == base index == fireKeyToBase('z'/'x'/'c').
+ * pt1-12: map a MouseEvent.button index to its missile base — 0 (left) → 0, 1 (middle)
+ * → 1, 2 (right) → 2; null for any other button so a stray press launches nothing. The
+ * MOUSE mirror of fireKeyToBase: a Missile Command cabinet is a trackball + THREE fire
+ * buttons wired to the same FIREMA switches (.BYTE MFIREL,MFIREC,MFIRER — Left/Centre/
+ * Right — ABMLAU, W3MAIN:606) that Z/X/C bind, so the three buttons ARE the cabinet's
+ * real fire input and select the same bases. Left/middle/right button index == base
+ * index == fireKeyToBase('z'/'x'/'c'). (The batteries read ALPHA/DELTA/OMEGA left→right
+ * on-screen — the story's terminology; the ROM's own symbols above are L/C/R.)
  */
 export function fireButtonToBase(button: number): number | null {
   switch (button) {

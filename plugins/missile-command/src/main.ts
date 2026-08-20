@@ -156,7 +156,7 @@ canvas.addEventListener('mousedown', (event: MouseEvent): void => {
 })
 
 // pt1-12: suppress the browser context menu on the canvas so the RIGHT button fires the
-// omega base instead of popping the OS menu over the field. Canvas-scoped, so a
+// right base instead of popping the OS menu over the field. Canvas-scoped, so a
 // right-click anywhere else on the page still behaves normally.
 canvas.addEventListener('contextmenu', (event: MouseEvent): void => {
   event.preventDefault()

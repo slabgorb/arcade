@@ -155,6 +155,11 @@ describe('pt1-12 — a live base fires from its button: one ABM out, one round s
       const idx = fireKeyToBase(key) as number
       const out = mousedownReducer(button, g)
       expect(out.abms.length, `button ${button} must launch exactly one ABM`).toBe(g.abms.length + 1)
+      // The launched ABM flies to the crosshair (AIM) from THIS base — the "checkable
+      // target" the AIM fixture exists for.
+      const launched = out.abms[out.abms.length - 1]
+      expect(launched.target, `button ${button}'s ABM must aim at the crosshair`).toEqual(AIM)
+      expect(launched.origin, `button ${button}'s ABM must launch from base ${idx}`).toEqual(g.bases[idx].pos)
       expect(out.bases[idx].ammo, `button ${button} must spend base ${idx}`).toBe(g.bases[idx].ammo - 1)
       expect(
         out.soundEvents.some((e) => e.type === 'launched'),
@@ -215,7 +220,18 @@ describe('pt1-12 — a live base fires from its button: one ABM out, one round s
 // typed an initial, or fired under the pause overlay would diverge and redden here.
 // ═════════════════════════════════════════════════════════════════════════════════
 describe('pt1-12 — a fire button behaves EXACTLY like its Z/X/C key, in every phase', () => {
-  const PHASES: ReadonlyArray<GameState['phase']> = ['play', 'pause', 'entry', 'attract', 'over']
+  // ALL seven Phase values (src/core/state.ts) — the "EVERY phase" claim above is literal.
+  // 'setup'/'between' fire (fireOrStart → fireFromKey), 'play' fires, 'pause'/'entry' are
+  // inert, 'attract'→setup, 'over'→restart; the mouse path must match the key path in each.
+  const PHASES: ReadonlyArray<GameState['phase']> = [
+    'attract',
+    'setup',
+    'play',
+    'pause',
+    'between',
+    'over',
+    'entry',
+  ]
 
   for (const [button, key] of BUTTON_KEY) {
     for (const phase of PHASES) {
@@ -284,13 +300,14 @@ describe('pt1-12 — main.ts wires the buttons and suppresses the context menu',
 
   it("suppresses the browser context menu on the canvas (preventDefault on 'contextmenu')", () => {
     const src = mainSrc()
-    // Assert both markers exist BEFORE slicing (per lang-review #25), then require the
-    // preventDefault WITHIN the contextmenu handler's window — not merely somewhere in
-    // the file — so an unrelated preventDefault elsewhere could not satisfy this.
-    const at = src.indexOf('contextmenu')
+    // Anchor to the actual `addEventListener('contextmenu'` REGISTRATION (per lang-review
+    // #15/#25), not a bare `indexOf('contextmenu')` whole-file scan — the word 'contextmenu'
+    // in a comment or string must not redirect the window away from the real listener. Assert
+    // the anchor is found BEFORE slicing, then require preventDefault WITHIN the handler slice.
+    const at = src.search(/addEventListener\(\s*['"]contextmenu['"]/)
     expect(at, "main.ts must register a 'contextmenu' listener").toBeGreaterThanOrEqual(0)
-    const window = src.slice(at, at + 200)
-    expect(window, "the contextmenu handler must call preventDefault() to suppress the menu").toMatch(
+    const handler = src.slice(at, at + 200)
+    expect(handler, "the contextmenu handler must call preventDefault() to suppress the menu").toMatch(
       /preventDefault\s*\(/,
     )
   })
