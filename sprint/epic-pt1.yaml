@@ -255,6 +255,7 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: pt1-20
     title: 'defender: in-game controls are undiscoverable — add on-screen control hints (reverse/thrust/fire/smart-bomb)'
     description: >-
