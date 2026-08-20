@@ -38,6 +38,7 @@ import {
 } from '../../src/core/state'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
+import { mazeForWave } from '../../src/core/surfaceMazes'
 
 /** An armed ground object (past its fire grace) at a lateral x / depth z, with an
  *  awakening sequence. Placed near enough that it survives the frame's scroll.
@@ -136,10 +137,13 @@ describe('sw7-18 / D-018 — the laid maze field carries each object its awakeni
     }
   })
 
-  it('the laid field really spans more than one sequence (not a constant fill)', () => {
-    const fresh: GameState = { ...enterPhase({ ...initialState(1983), wave: 3 }, 'surface'), lives: 9999 }
-    const s = stepGame(fresh, NO_INPUT, 0.001)
-    const seqs = new Set(s.turrets.map((t) => t.seq))
+  it('the wave maze really spans more than one sequence (not a constant fill)', () => {
+    // pt1-21 re-scoped: this checks the DATA the wave lays, NOT what is PRESENT at
+    // gdSeq 0. Once presence is gated on gdSeq (pt1-21), the opening frame reveals
+    // only the seq-0 subset (surface-multipass-reveal.test.ts), so reading seqs off
+    // `s.turrets` at gdSeq 0 would see a single sequence. The staging that matters
+    // lives in the authored maze — assert it there, where presence gating can't hide it.
+    const seqs = new Set(mazeForWave(3).entries.map((e) => e.seq))
     expect(seqs.size).toBeGreaterThan(1) // SQUARE spans seq 0..3, not all-zero
   })
 })
