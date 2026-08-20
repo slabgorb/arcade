@@ -4,75 +4,15 @@
 Playtest bug sweep 2026-08-19: fleet-wide bugs observed in visual playtests (millipede, star-wars, tempest, defender/lobby, missile-command, joust, pac-man)
 
 ## Overview
-User playtest 2026-08-19 surfaced 17 observations across seven games plus the lobby.
-Each observation filed as its own story (the jt9 file-by-surface habit — file by
-surface, never merge by theme). Mix of sim bugs (joust troll/egg/lava-AI, millipede
-DDT dup + spawn ramp), projection/display (star-wars), input (missile-command mouse,
-star-wars mouse-start), attract/lobby UX (tempest attract demo, defender-lobby
-attract hookup, key labels, difficulty previews), and one verify-against-ROM check
-(pac-man fruit ladder).
+User playtest 2026-08-19 surfaced 17 observations across seven games plus the lobby. Each observation filed as its own story (the jt9 file-by-surface habit). Mix of sim bugs (joust troll/egg/lava-AI, millipede DDT dup + spawn ramp), projection/display (star-wars), input (missile-command mouse, star-wars mouse-start), attract/lobby UX (tempest attract demo, defender-lobby attract hookup, key labels, difficulty previews), and one verify-against-ROM check (pac-man fruit ladder).
 
 ## Metadata
 - **Epic ID:** pt1
 - **Repo:** arcade
 
 ## Background
-
-**Why this epic exists.** Sprint 2635 closed the last content epics (pm6 was the
-final deferred authentic content). The 2026-08-19 owner playtest is the first
-fleet-wide eyes-on pass since; pt1 is its defect ledger. Stories are grouped here
-solely because they share a provenance (one playtest), not a theme — each is an
-independent surface and lands as its own branch/PR.
-
-**Cross-story guardrails (standing rulings, all apply):**
-
-- **ROM always wins.** Every behavioral question in this epic — millipede spawn
-  gating, joust egg→rider→buzzard-pickup sequence, tempest level-select bonus
-  values, pac-man fruit ladder — is answered from the vendored source
-  (`reference/original-source/<name>/`, `plugins/pac-man/reference/source/`) or,
-  for Williams titles, MAME cited in prose against the pinned SHA
-  (`docs/reference-sources.md`). A playtest observation states a *symptom*; the ROM
-  states the *spec*. Where the observation and the ROM disagree (pt1-17 fruit
-  doubles are likely authentic), the ROM ruling closes the story.
-- **Accessibility outranks ROM fidelity** (the standing Decision B ruling, owner has
-  photosensitive epilepsy): NO >3 Hz large-area luminance strobe in ANY new effect —
-  this constrains the tempest attract demo (pt1-5), the joust materialize overlay
-  (pt1-14), and any difficulty-preview animation (pt1-9, pt1-11). A safe-static
-  substitution is logged as a Design Deviation citing the ruling.
-- **Core/shell split is load-bearing.** Sim fixes (pt1-1, pt1-2, pt1-13, pt1-15,
-  pt1-16, tempest bonus in pt1-9) land in `plugins/<id>/src/core/` and keep each
-  game's purity/core-boundary test green. Input and render fixes (pt1-3, pt1-4,
-  pt1-10, pt1-11, pt1-12, pt1-14) are shell — EXCEPT defender, whose raster
-  compose lives in `core/scene.ts` (`composeFrame`), the standing df7-5 trap.
-- **Citations gates.** New `src/core` constants in gated games (tempest, star-wars,
-  pac-man, missile-command, millipede, joust source-tests) carry citation claims;
-  anchor the byte that ENCODES the value, not an adjacent load, and mutate to prove
-  the gate reddens. Do not fabricate cites — RED-anchor first where no clean asm
-  line exists.
-- **Joust fingerprint cascade risk** (jt13-13/jt13-14 lesson): joust physics/AI
-  changes (pt1-13, pt1-15, pt1-16) can cascade into demo fingerprint fixtures —
-  `rng-unmoved` is the tell. Expect and budget fixture re-baselines; prefer the
-  change-shape with the smaller cascade.
-- **Playtest verification** (the canonical-serve lesson): any visual confirmation
-  compares a game path against a nonsense control path — an all-200 sweep proves
-  nothing. Playwright harness, not claude-in-chrome.
-- **Reuse-first.** pt1-5 (tempest attract demo) consumes the jt13-13 `demoInput`
-  pattern, not a new mechanism. pt1-7 (lobby key labels) extends the existing
-  plugin manifest/registry seam (`src/host` + `gen-registry.mjs`), not a side
-  channel. pt1-8 (built-in high scores) goes through `@shared/highscore`'s existing
-  seeding seam.
-
-**Sequencing notes:**
-- pt1-4 (star-wars fixed screen size) likely precedes pt1-3 (surface projection) —
-  pin the canvas before pinning the math.
-- pt1-6 and pt1-7 both touch the lobby/manifest seam; whoever lands first defines
-  the contract change, the second consumes it.
-- pt1-17 is verify-first: if our fruit table matches the ROM (peach at L3 AND L4 is
-  authentic), it closes as working-as-intended with the citation as evidence.
-
-**Out of scope:** new content, new assets/bakes, any `@shared` extraction not
-proven by a second consumer (the standing bar), quarter-extracting urgency
-mechanics, strobing effects of any kind.
+_Cross-story constraints and guardrails to be filled in as the epic
+progresses._
 
 ---
-_Generated by `pf context create epic pt1` from the sprint YAML; expanded by Architect 2026-08-19._
+_Generated by `pf context create epic pt1` from the sprint YAML._
