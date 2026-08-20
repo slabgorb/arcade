@@ -72,3 +72,8 @@ completed_stories:
     title: 'star-wars: fix the screen size to a fixed resolution to avoid display problems'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-8
+    epic: pt1
+    title: 'millipede + missile-command + star-wars: erase the built-in high score (board starts empty)'
+    points: 5
+    completed: '2026-08-20'
