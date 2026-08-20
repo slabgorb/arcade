@@ -244,7 +244,7 @@ function approachColumn(from: number, to: number, step: number): number {
   return wrap16(from + Math.sign(gap) * step)
 }
 
-/** Draw one lander's INDIVIDUAL horizontal roam velocity (LNDXV draw + sign, DEFB6.SRC:667-676):
+/** Draw one lander's INDIVIDUAL horizontal roam velocity (LNDXV draw + sign, DEFB6.SRC:670-676):
  *  magnitude 1..ROAM_X_SPEED and a sign, spread from the per-lander spawn INDEX. The ROM draws
  *  this from RAND; we draw it deterministically from the spawn sequence instead so a fresh
  *  wave still fans out (each lander its own signed rate) WITHOUT consuming the shared cue-stream
