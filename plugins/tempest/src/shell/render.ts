@@ -2,7 +2,7 @@
 import { GameState, Enemy } from '../core/state'
 import type { HighScoreTable } from '@shared/highscore'
 import { glowStrokePasses, blitGlowDot, cappedDpr } from './glow'
-import { Tube, Point, currentLane, project, laneWidth, flipPivot, clawTransform, warpDiveTube, warpDescentTube, warpEyeClipDepth, WARP_EYE_CLIP_MARGIN, warpEyeDest } from '../core/geometry'
+import { Tube, Point, currentLane, project, laneWidth, flipPivot, clawTransform, warpDiveTube, warpDescentTube, warpEyeClipDepth, WARP_EYE_CLIP_MARGIN, warpEyeDest, tubeForLevel } from '../core/geometry'
 import { isJumping, jumpProgress } from '../core/enemies/interpreter'
 import { Fx, EnemyBurst, PlayerSplat, PlayerSpark, FuseScorePop } from './fx'
 import { createPhosphor, phosphorAlpha } from './phosphor'
@@ -16,7 +16,7 @@ import {
   type Glyph, type GlyphColor, type PaletteColor,
 } from './glyphs'
 import { layoutText, CELL_H } from './font'
-import { WARP_STARFIELD_GATE, ROM_FPS, EYE_FLYIN_START, MAX_SELECT_LEVEL } from '../core/rules'
+import { WARP_STARFIELD_GATE, ROM_FPS, EYE_FLYIN_START, MAX_SELECT_LEVEL, startWaveBonus } from '../core/rules'
 
 // The Superzapper strobe ramp (Story 10-15): eight hues the well flashes through
 // while a zap is active, indexed by the core's flash counter. The per-level WELL
@@ -822,21 +822,52 @@ function drawSelect(
   // the game appends the top selectable level — never a bare four-letter caption.
   drawGlowText(ctx, 'RATE YOURSELF', W / 2, H * 0.13, 40, '#39ff14', 22)
   drawGlowText(ctx, `RANKING FROM 1 TO ${MAX_SELECT_LEVEL}`, W / 2, H * 0.13 + 38, 16, GLYPH_HEX.red, 8)
-  drawGlowText(ctx, 'SELECT START LEVEL', W / 2, H * 0.3, 26, color, 14)
+  drawGlowText(ctx, 'SELECT START LEVEL', W / 2, H * 0.28, 26, color, 14)
+  // pt1-9 (SC-011): PREVIEW the chosen level's board. The audit accepts our
+  // single-value chooser only if it conveys "current level, its bonus, its hole"
+  // — so draw the selected well's rim outline (the ROM DSPHOL rim, no spokes:
+  // ALDISP.MAC:2863) from the SAME geometry table the playfield uses. The near
+  // ring is bbox-centred and scaled into a small well icon; drawn directly with
+  // glowPolyline (not via drawTube, which is GameState-shaped). Static colour —
+  // no per-frame flash (accessibility: no photosensitive strobe).
+  const preview = tubeForLevel(s.select.selectedLevel)
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const p of preview.near) {
+    if (p.x < minX) minX = p.x
+    if (p.x > maxX) maxX = p.x
+    if (p.y < minY) minY = p.y
+    if (p.y > maxY) maxY = p.y
+  }
+  const previewCx = (minX + maxX) / 2
+  const previewCy = (minY + maxY) / 2
+  const previewScale = (H * 0.14) / (Math.max(maxX - minX, maxY - minY) || 1)
+  const previewRing = preview.near.map(
+    (p) => [W / 2 + (p.x - previewCx) * previewScale, H * 0.43 + (p.y - previewCy) * previewScale] as const,
+  )
+  glowPolyline(ctx, previewRing, { stroke: color, width: 2, blur: 10 }, preview.closed)
   drawGlowText(
-    ctx, `START LEVEL  ${String(s.select.selectedLevel).padStart(2, '0')}`, W / 2, H * 0.5,
+    ctx, `START LEVEL  ${String(s.select.selectedLevel).padStart(2, '0')}`, W / 2, H * 0.6,
     64, CLAW_COLOR, 26,
   )
+  // pt1-9 (S-015): the bonus for STARTING here — the SAME value the sim pays
+  // (startWaveBonus, sim.ts commits it into s.startBonus at select). Red because
+  // the ROM's RATE YOURSELF chooser sets the beam RED before drawing the bonus:
+  // `LDY I,RED / JSR NWCOLO` then `JSR BODSPL` in RQRDSP (ALSCOR.MAC:1154-1164).
+  // Single source of truth: the number shown equals the number paid because both
+  // read startWaveBonus(level).
+  drawGlowText(
+    ctx, `BONUS  ${startWaveBonus(s.select.selectedLevel)}`, W / 2, H * 0.7, 22, GLYPH_HEX.red, 10,
+  )
   // Skill ladder flanking the chooser: NOVICE (easiest) … EXPERT (hardest).
-  drawGlowText(ctx, 'NOVICE', W * 0.17, H * 0.5, 18, '#ff2f4f', 8)
-  drawGlowText(ctx, 'EXPERT', W * 0.83, H * 0.5, 18, '#ff2f4f', 8)
+  drawGlowText(ctx, 'NOVICE', W * 0.17, H * 0.43, 18, '#ff2f4f', 8)
+  drawGlowText(ctx, 'EXPERT', W * 0.83, H * 0.43, 18, '#ff2f4f', 8)
   // tp1-20 (V-033/V-034): the ROM's own prompts, verbatim, in their fixed
   // Messages-table colours — PRMOV is TURQOI at full opacity (ALLANG.MAC:70/:126),
   // PRFIR is YELLOW (ALLANG.MAC:71/:131) — replacing the invented browser hints.
-  drawGlowText(ctx, 'SPIN KNOB TO CHANGE', W / 2, H * 0.72, 16, GLYPH_HEX.cyan, 6)
+  drawGlowText(ctx, 'SPIN KNOB TO CHANGE', W / 2, H * 0.8, 16, GLYPH_HEX.cyan, 6)
   const blink = 0.5 + 0.5 * Math.sin(renderTime * 4)
   ctx.globalAlpha = blink
-  drawGlowText(ctx, 'PRESS FIRE TO SELECT', W / 2, H * 0.72 + 32, 18, GLYPH_HEX.yellow, 12)
+  drawGlowText(ctx, 'PRESS FIRE TO SELECT', W / 2, H * 0.8 + 32, 18, GLYPH_HEX.yellow, 12)
   ctx.globalAlpha = 1
 }
 
