@@ -112,3 +112,8 @@ completed_stories:
     title: 'defender: flipping the ship around does not flip the sprite — it always faces right'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-23
+    epic: pt1
+    title: 'defender: five of seven enemy types are never drawn — mutants, baiters, bombers, pods, swarmers and dropped bombs attack you invisibly'
+    points: 5
+    completed: '2026-08-20'

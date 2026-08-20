@@ -320,10 +320,11 @@ stories:
       Depends on pt1-22 for the TIE/pod/bomb/mutant colours; the blit loop itself can be built in parallel.
     points: 5
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-24
     title: 'defender: the scanner only blips landers — no humanoids, no other enemies, no terrain contour on the radar strip'
