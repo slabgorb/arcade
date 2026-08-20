@@ -100,7 +100,7 @@ export interface TrollModule {
   /** 'ADDGRA' — the normal gravity routine the grip replaces / restores. */
   NORMAL_ROUTINE: string
   /** FLOOR+7-32 = 198 — the LAVVI3 out-of-reach scanline: a gripped bird whose
-   *  whole-pixel Y is ABOVE this has climbed clear of the troll (JOUSTRV4.SRC:6653,1718). */
+   *  whole-pixel Y is ABOVE this has climbed clear of the troll (JOUSTRV4.SRC:6653,1719). */
   LAVVI3_ESCAPE_Y: number
 
   /**

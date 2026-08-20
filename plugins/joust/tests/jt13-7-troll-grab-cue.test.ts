@@ -111,10 +111,10 @@ function trollAtGrip(victimId: number, posX: number, pixelY: number): SimProcess
 async function aboutToGrabSim(): Promise<SimState> {
   const smod = await loadSim()
   const base = smod.createWaveSim(SEED, 4)
-  // Within the troll's vertical reach (>= FLOOR+7-32 = 198, the LAVVI3 line, pt1-16). A
-  // victim staged ABOVE that line would be released the instant the grip commits
-  // (outOfTrollReach), resolving the grab in a frame or two — so the "never resolves in
-  // this window" invariant this file leans on requires an in-reach, near-the-lava grab.
+  // Within the troll's vertical reach (>= FLOOR+7-32 = 198, the LAVVI3 line, pt1-16). No
+  // assertion here observes a break-free, so the value is not load-bearing — but a grab
+  // staged ABOVE the reach line would be released the instant it commits (outOfTrollReach),
+  // making the file's "never resolves in this window" framing false; keep it in reach.
   const victimY = 205
   const gripY = victimY + GRIP_Y_OFFSET
   return withNoPendingEnemies({

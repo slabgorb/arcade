@@ -72,8 +72,10 @@ const FLOOR = 0xdf
 const DEATH_Y = FLOOR + 7 // 230 — the ADGFLR lava kill plane
 const PULL_CAP = 0x500 // the escalated grip's $500 cap (troll.ts) — inescapable
 const GRACE_FRAMES = 30 * 60 // LAVKLL: the 30 s grace before the pull escalates (troll.ts)
-// A base-LAVGRA pull: the wave-1 DYWORD start is $0008 (:7305), well under the
-// flap impulse, so a flapping bird breaks free during the grace.
+// A base-LAVGRA pull: the LAVGRA DYWORD's START seeds are $0004/$0006/$0008 — the
+// three GAME-ADJUST difficulty settings, NOT wave values (:7305). Any is well under
+// the -96 flap impulse, so a flapping bird breaks free during the grace; $0008 is the
+// hardest-difficulty seed and still escapable.
 const BASE_PULL = 0x08
 
 const ISLAND = 40 // a keep-alive island buzzard, clear of the grip point
@@ -169,15 +171,16 @@ async function trollSim(cast: SimProcess[]): Promise<SimState> {
 const NEUTRAL: PlayerInput = { dir: 0, flap: false, flapHeld: false }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC1 — a gripped enemy in the grace window is SURVIVABLE (breaks free via its AI).
+// AC1 — a gripped enemy in the grace window is SURVIVABLE (flaps free).
 //
 // RED on develop: `stepTrolls`' grip branch freezes the enemy to NEUTRAL_INPUT,
 // so it never flaps, never escapes, and drowns — enemy-lava-death fires and the
 // grip is only ever released by the drown, never by a break-free. GREEN: the grip
-// flap is driven by the enemy's brain, so the pulled-down bounder flaps out.
+// synthesises a flap-when-falling struggle (the real seek brain stays frozen,
+// jt9-42), so the pulled-down bounder flaps and climbs out.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grace window', () => {
-  it('a gripped enemy breaks free via its own AI flap and does not drown', async () => {
+  it('a gripped enemy breaks free by flapping and does not drown', async () => {
     const smod = await loadSim()
     const VICTIM_ID = 0x202
     const trollId = 0x15_0000 + VICTIM_ID
@@ -212,6 +215,38 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
     expect(scoredEscape, 'an enemy break-free awards no escape score').toBe(false)
   })
 
+  it('the synthesised flap is EDGE-detected — no full impulse on consecutive falling frames', async () => {
+    // The struggle flaps on the RISING edge of the wings-down level, never two wakes
+    // running (`pressed = wingsDown && !prevFlapHeld`), like every other AI flap. Pin it
+    // directly: hold the enemy FALLING for several frames (pull 100 > the 96 flap impulse,
+    // so velY stays >= 0) and watch velY. Frame 1 fires the -96 impulse (velY = pull-96);
+    // every later falling frame adds ONLY the pull — a level trigger would re-impulse each
+    // frame (a "machine gun"), leaving velY near zero instead of climbing by the full pull.
+    const smod = await loadSim()
+    const VICTIM_ID = 0x202
+    const trollId = 0x15_0000 + VICTIM_ID
+    const PULL = 100 // > 96, so a flap cannot flip velY negative — the enemy keeps falling
+    const START_Y = 200 // in the troll's reach (>=198) and clear of the lava (<230) for a few frames
+    const enemy = { ...enemyAt(VICTIM_ID, 100, entityAt(100, START_Y)), grippedBy: trollId } as SimProcess
+    let d = await trollSim([enemy, trollGripping(VICTIM_ID, 98, START_Y - 3, PULL, GRACE_FRAMES)])
+
+    const velYs: number[] = []
+    for (let i = 0; i < 3; i++) {
+      d = smod.stepSim(d)
+      const en = enemyIn(d, VICTIM_ID)
+      expect(en?.enemy, `the enemy is still gripped and airborne on frame ${i}`).toBeDefined()
+      velYs.push(en!.enemy!.entity.velY)
+    }
+
+    // Frame 0 flapped: velY got the -96 impulse folded with the +100 pull (a level trigger
+    // and the edge agree here — both flap the FIRST falling frame).
+    expect(velYs[0], 'frame 0 fires the flap impulse: velY = pull - 96').toBe(PULL - 96)
+    // Frames 1 and 2 must NOT re-flap: each adds only the pull. A level trigger would
+    // subtract another 96 here, so these deltas are the edge-detection guard.
+    expect(velYs[1] - velYs[0], 'frame 1 adds only the pull — no second impulse (edge, not level)').toBe(PULL)
+    expect(velYs[2] - velYs[1], 'frame 2 adds only the pull — still no machine-gun').toBe(PULL)
+  })
+
   it('ANCHOR: the identical grace grip is escapable — a gripped PLAYER flaps free', async () => {
     const smod = await loadSim()
     const PID = 1
@@ -243,7 +278,7 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
 // AC2 (GUARD) — the fix must not make enemies immune to the troll. Past the 30 s
 // grace, at the $500 pull cap, a gripped enemy still drowns — "arithmetically
 // inescapable" even flapping. Green on develop (frozen ⇒ drowns) and after the fix
-// (brain flaps, but -96 cannot beat +1280). Pins the escapable/lethal boundary.
+// (the synthesised flap fires, but -96 cannot beat +1280). Pins the escapable/lethal boundary.
 // ═════════════════════════════════════════════════════════════════════════════
 describe('pt1-16 — a gripped enemy at the escalated $500 cap still drowns', () => {
   it('an enemy gripped past the grace (pull at the cap) is pulled under and sounds SNELAV', async () => {

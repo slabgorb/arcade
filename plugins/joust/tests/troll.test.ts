@@ -212,7 +212,7 @@ describe('AC-2 — the grip repoints gravity and the break-free is sustained', (
 
   // pt1-16 — LAVVI3, the SECOND break-free path: a gripped bird that has climbed clear of
   // the troll's reach breaks free (ADLX / JSR LAVVI3 / BNE ADLFRE, JOUSTRV4.SRC:6653). The
-  // reach line is a WHOLE-PIXEL Y ceiling `CMPA #FLOOR+7-32 / BLO` (:1718) — strictly ABOVE
+  // reach line is a WHOLE-PIXEL Y ceiling `CMPA #FLOOR+7-32 / BLO` (:1719) — strictly ABOVE
   // FLOOR+7-32 = 230-32 = 198. Pinned exactly, the way BREAK_FREE_VY / isLavaDeath are, so a
   // one-pixel drift of the 32px citation reddens rather than passing the whole suite.
   it('outOfTrollReach is the exact FLOOR+7-32 = 198 ceiling (BLO — strictly above)', async () => {

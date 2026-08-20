@@ -31,7 +31,7 @@ JOUSTRV4.SRC:1651-1652); ADDLAV (:6608-6642) runs INSIDE the ordinary flying loo
 (`FLAPST/FLIPST → JSR [PADGRA,U]`), which each wing cycle re-reads the bird's joystick
 (`AIROVR / JSR [PJOY,U]`, :6456) — for an enemy, its own synthetic CURJOY. It escapes two
 ways: break-free VELOCITY (`CMPD #-$0180 / BLT ADLFRE`, :6616) or by climbing OUT OF the
-troll's reach (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653; `CMPA #FLOOR+7-32`, :1718). Escape
+troll's reach (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653; `CMPA #FLOOR+7-32`, :1719). Escape
 is only possible during the 30 s grace (pull = base LAVGRA $04..$08, :7305); past grace the
 pull escalates to the $500 cap (:6374-6386) and is inescapable.
 

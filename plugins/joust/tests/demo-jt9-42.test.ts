@@ -374,8 +374,11 @@ describe('jt9-42 F1-D — a gripped enemy is skipped: its looker countdown is fr
 
     // GRIPPED: the troll holds a committed grip on this enemy (grippedBy set). The
     // flight/looker core must skip it (`runBehaviour`'s grippedBy short-circuit), so its armed plavt stays put.
-    const grippedEnemy = smartEnemyAt(0x300, 100, 120, 'boundr', { grippedBy: 0x15_0000 + 0x300 })
-    const grippingTroll = trollProc(0x300, 98, 120, { grip: troll.beginGrip(lavgra) })
+    // y=205 is in the troll's reach (>= FLOOR+7-32 = 198, LAVVI3, pt1-16), so the grip genuinely
+    // persists rather than being released as out-of-reach the same tick — the frozen-plavt assertion
+    // no longer rides on stepFrame happening to run before stepTrolls.
+    const grippedEnemy = smartEnemyAt(0x300, 100, 205, 'boundr', { grippedBy: 0x15_0000 + 0x300 })
+    const grippingTroll = trollProc(0x300, 98, 205, { grip: troll.beginGrip(lavgra) })
     const gripped = dmod.stepSim(await stagedDemo([grippingTroll, grippedEnemy]))
     const g = byId(gripped, 0x300)?.enemy
     expect(g, 'the gripped enemy still exists').toBeDefined()

@@ -87,12 +87,12 @@ export const TROLL_WAVE = BRIDGE_WAVE + TROLL_DELAY
 export const GRIP_ROUTINE = 'ADDLAV'
 /** 'ADDGRA' — the normal gravity routine the grip replaces / restores (:6641). */
 export const NORMAL_ROUTINE = 'ADDGRA'
-/** `CMPA #FLOOR+7-32` (LAVVI3, JOUSTRV4.SRC:6653,1718) — a gripped bird that rises
+/** `CMPA #FLOOR+7-32` (LAVVI3, JOUSTRV4.SRC:6653,1719) — a gripped bird that rises
  * ABOVE this whole-pixel scanline is OUT OF the troll's reach and breaks free
  * (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653). 32 px above the kill plane. The SECOND
  * escape path beside the -$0180 velocity break-free: a bird flapping steadily out of
- * the grip (an AI enemy on its brain's wingbeat) climbs clear rather than mashing to
- * escape velocity. DECIMAL offset off the hex DEATH_Y (= 198). */
+ * the grip (an AI enemy on its synthesised flap-when-falling struggle, see `stepTrolls`)
+ * climbs clear rather than mashing to escape velocity. DECIMAL offset off DEATH_Y (= 198). */
 export const LAVVI3_ESCAPE_Y = DEATH_Y - 32
 
 /** The troll grip's escalating state — the two RAM words PATCH1/2/3 drive. */
@@ -203,7 +203,7 @@ export function stepGrip(velY: number, posY: number, grip: TrollGrip, wingsUp = 
  * LAVVI3 (JOUSTRV4.SRC:6653,1714-1720) — a gripped bird has climbed OUT OF the lava
  * troll's reach and breaks free (`ADLX / JSR LAVVI3 / BNE ADLFRE`). The reach test is
  * a whole-pixel Y ceiling: a bird ABOVE FLOOR+7-32 is out (`CMPA #FLOOR+7-32 / BLO`,
- * :1718). This is how a steadily-flapping bird that never reaches escape VELOCITY — an
+ * :1719). This is how a steadily-flapping bird that never reaches escape VELOCITY — an
  * AI enemy on its synthesised flap-when-falling struggle (see `stepTrolls`) — still
  * survives the grip: it simply climbs clear. (LAVVI3's alive/airborne/X-bounds arms are
  * moot in the grip loop: the victim is a live airborne bird and ADDLAV clears its velX,

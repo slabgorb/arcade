@@ -302,8 +302,9 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
     const dmod = await loadSim()
     // Hand extended and ONE pixel short of the grip point: the next frame should land
     // it on victim+3 and commit the grip. Grip is absent until that frame. In the troll's
-    // reach (>= 198, the LAVVI3 line, pt1-16) so the staged grab is one the troll could
-    // actually hold — this test stops at commit, but keep every grab fixture reachable.
+    // reach (>= 198, the LAVVI3 line, pt1-16) for consistency with the other grab fixtures
+    // — this test stops the loop at commit, so reachability is not load-bearing for its
+    // assertion, but staging an unreachable grab would still be a lie about the geometry.
     const victimY = 205
     const victim = playerAt(PLAYER1_ID, 100, victimY)
     const gripY = victimY + GRIP_Y_OFFSET
