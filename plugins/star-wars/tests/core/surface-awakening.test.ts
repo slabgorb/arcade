@@ -38,6 +38,7 @@ import {
 } from '../../src/core/state'
 import { stepGame, enterPhase } from '../../src/core/sim'
 import { NO_INPUT } from '../../src/core/input'
+import { mazeForWave } from '../../src/core/surfaceMazes'
 
 /** An armed ground object (past its fire grace) at a lateral x / depth z, with an
  *  awakening sequence. Placed near enough that it survives the frame's scroll.
@@ -125,21 +126,31 @@ describe('sw7-18 / D-018 — undefined seq is treated as awake (seq 0)', () => {
 describe('sw7-18 / D-018 — the laid maze field carries each object its awakening seq', () => {
   it('every object the wave maze lays exposes a numeric seq in 0..3', () => {
     // Fresh auto-laid surface (no hand-placed turrets): the first frame lays
-    // mazeForWave(wave), which must now stamp each Turret with its MazeEntry.seq.
+    // mazeForWave(wave), which must stamp each Turret with its MazeEntry.seq.
+    // pt1-21 gates PRESENCE on gdSeq, so at gdSeq 0 `s.turrets` holds only the seq-0
+    // subset and the seq-1..3 objects wait in `surfaceDormant`. Read the UNION so this
+    // verifies the stamping across EVERY laid object, not just the ones revealed first
+    // (else the check goes vacuous for 2/3 of the maze — the seq-1..3 entries).
     const fresh: GameState = { ...enterPhase({ ...initialState(1983), wave: 3 }, 'surface'), lives: 9999 }
     const s = stepGame(fresh, NO_INPUT, 0.001) // tiny dt — lay the field, barely scroll
-    expect(s.turrets.length).toBeGreaterThan(0)
-    for (const t of s.turrets) {
+    const laid = [...s.turrets, ...(s.surfaceDormant ?? [])]
+    expect(laid.length).toBe(mazeForWave(3).entries.length) // the WHOLE field is laid, none lost
+    for (const t of laid) {
       expect(typeof t.seq).toBe('number')
       expect(t.seq).toBeGreaterThanOrEqual(0)
       expect(t.seq).toBeLessThanOrEqual(3)
     }
+    // ...and the stamping really spans the sequences — seq 1-3 are carried, not all seq-0
+    expect(new Set(laid.map((t) => t.seq)).size).toBeGreaterThan(1)
   })
 
-  it('the laid field really spans more than one sequence (not a constant fill)', () => {
-    const fresh: GameState = { ...enterPhase({ ...initialState(1983), wave: 3 }, 'surface'), lives: 9999 }
-    const s = stepGame(fresh, NO_INPUT, 0.001)
-    const seqs = new Set(s.turrets.map((t) => t.seq))
+  it('the wave maze really spans more than one sequence (not a constant fill)', () => {
+    // pt1-21 re-scoped: this checks the DATA the wave lays, NOT what is PRESENT at
+    // gdSeq 0. Once presence is gated on gdSeq (pt1-21), the opening frame reveals
+    // only the seq-0 subset (surface-multipass-reveal.test.ts), so reading seqs off
+    // `s.turrets` at gdSeq 0 would see a single sequence. The staging that matters
+    // lives in the authored maze — assert it there, where presence gating can't hide it.
+    const seqs = new Set(mazeForWave(3).entries.map((e) => e.seq))
     expect(seqs.size).toBeGreaterThan(1) // SQUARE spans seq 0..3, not all-zero
   })
 })

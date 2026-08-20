@@ -987,7 +987,8 @@ export const SPACE_PHASE_HEAD_START_S = 1.95
  * quota-neutral).
  *
  * sw4-3 RECONCILE (user-ratified): this SUPERSEDES sw3-3's disasm `byte_98CB`
- * stream quota (22,22,32,…,50). The surface is a finite single-pass maze — the
+ * stream quota (22,22,32,…,50). The maze is a FIXED tower set (pt1-21 re-flies it
+ * across ~5 staged laps, but the set never grows and killed towers stay dead) — the
  * original Atari source (`WSGRND.MAC` `IGRND` seeds "# OF TOWERS LEFT" straight
  * from `.TWRS`) outranks the disasm per CLAUDE.md, and a maze of N towers can
  * only be cleared by killing its N towers (a larger target would soft-lock).
@@ -1087,6 +1088,15 @@ export interface GameState {
    * `stepSurface` frame lays `mazeForWave(wave)` into `turrets` — but ONLY if no
    * turrets were hand-placed, so pre-placed fixtures and saves are respected. */
   surfaceMazeLaid: boolean
+  /** The staged-reveal DORMANT reservoir (pt1-21): ground objects the traversal has
+   * NOT yet reached (`gdSeq < seq`). They are held OUT of `turrets` — undrawn,
+   * uncollidable, unshootable, per the ROM's maze-loop skip `CMPA TGD$SQ(X) / LBLT 90$`
+   * (WSGRND.MAC:738-742) — yet keep flying (wrapped) so the SAME maze re-flies staged
+   * across the five `$8000` laps (M$TX wrap, WSMAIN.MAC:2537-2547). `stepSurface`
+   * reconciles both lists against `gdSeq` each frame: reached objects promote into
+   * `turrets`, unreached ones wait here. Optional — absent means an empty reservoir
+   * (pre-pt1-21 saves / hand-placed fixtures), read via `?? []`. */
+  surfaceDormant?: Turret[]
   /** How far the walled trench channel has scrolled toward the cockpit (Wave 3,
    * story 11-6). Advanced by TRENCH_SCROLL_SPEED — the SAME rate that scrolls the
    * exhaust port up the channel — so the corridor and the port rush past together;

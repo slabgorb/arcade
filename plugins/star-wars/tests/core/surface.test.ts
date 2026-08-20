@@ -164,9 +164,13 @@ describe('Wave 2 — laser turrets', () => {
 
   it('keeps the surface within the wave maze — a finite field, not an unbounded stream', () => {
     // sw4-3 replaced the capped random spawner with the wave's fixed authored
-    // WSGRND maze: the whole field is present and scrolls past ONCE, so the
-    // ceiling is the maze's own entry count, not the old MAX_TURRETS on-screen
-    // cap. (See surface-maze-field.test.ts for the authored-placement contract.)
+    // WSGRND maze; pt1-21 then made that maze a staged RING that re-flies across ~5
+    // laps (presence-gated by gdSeq), so at any instant the DRAWN set (`turrets`) is
+    // a subset of the fixed field — never more than the maze's own entry count, and
+    // never the old MAX_TURRETS on-screen cap. The set is finite because the ring has
+    // exactly `entries.length` objects split between `turrets` and `surfaceDormant`;
+    // it does not grow. (See surface-maze-field.test.ts for the authored-placement
+    // contract and surface-multipass-reveal.test.ts for the staged reveal.)
     let s = surface()
     const cap = mazeForWave(s.wave).entries.length
     for (let i = 0; i < 120; i++) {

@@ -167,12 +167,15 @@ describe('sw4-3 — the surface field is authored, not randomly spawned', () => 
 
   it('lays the FULL authored field on entry — every maze entry, not a subset', () => {
     // Guards the half-field bug the Reviewer flagged: towersForWave reads the
-    // maze's OWN full tower count, so a partial placement would silently
-    // soft-lock. One surface frame in, the whole field is laid and nothing has
-    // yet scrolled past the cull plane (the nearest entry enters at −SPAWN_DISTANCE).
+    // maze's OWN full tower count, so a partial placement would silently soft-lock.
+    // pt1-21 stages the reveal — one frame in, only the seq-0 subset is PRESENT
+    // (`turrets`); the rest wait in the dormant reservoir, still flying, and promote
+    // as the traversal reaches them. The guard the Reviewer wanted is that the WHOLE
+    // authored field is laid and NONE is lost — so count the union, not `turrets` alone.
     const wave = 5
     const s = stepGame(enterSurface(1983, wave), NO_INPUT, DT)
-    expect(s.turrets).toHaveLength(mazeForWave(wave).entries.length)
+    const laid = s.turrets.length + (s.surfaceDormant?.length ?? 0)
+    expect(laid).toBe(mazeForWave(wave).entries.length)
   })
 })
 

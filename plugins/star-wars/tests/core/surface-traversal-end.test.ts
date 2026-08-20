@@ -280,7 +280,7 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 // >> Line numbers below marked (pre-fix) describe that OLD layout and will not
 // >> match the current file: the fix moved the push. Current anchors are
 // >> `const scrollSpeed` (sim.ts:1073, where the crossing is computed),
-// >> `loseShield` / `const lives` (:1216-1217) and the gated push (:1238-1243).
+// >> `loseShield` / `const lives` (:1238-1239) and the gated push (:1260-1266).
 //
 // WHY THIS IS NOT A ONE-LINE `if` (the thing the story's "same fix shape as
 // sw8-13" phrasing hides). `lives` is bound by `loseShield`, far below where the
@@ -298,8 +298,8 @@ describe('sw7-18 / D-019 — the PMREB "finish ground with rebel" tune (audio ri
 //
 // Two of these tests exist specifically to refute the near-misses, and both turn
 // on the same structural fact: the surface accrues `damage` at SEVERAL points,
-// some above where the crossing is computed (`const scrollSpeed`, :1050) and some
-// below it, while `loseShield` (:1210) is the ONE place damage becomes death.
+// some above where the crossing is computed (`const scrollSpeed`, :1073) and some
+// below it, while `loseShield` (:1238) is the ONE place damage becomes death.
 // That is why the gate must read `loseShield`'s result and not any earlier proxy
 // — and it stays true however many damage sources the stepper grows:
 //   - the turret-bolt case lands damage BELOW the crossing, so a fix reading the
@@ -341,8 +341,8 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   }
 
   /** Flying below MIN_SKIM_ALTITUDE scrapes the surface: one shield, no RNG, no
-   *  enemy. Its `damage++` is at `sim.ts:1043-1047` — ABOVE where the crossing is
-   *  computed (`const scrollSpeed`, :1050), which is what makes the near-miss fix
+   *  enemy. Its `damage++` is at `sim.ts:1056-1060` — ABOVE where the crossing is
+   *  computed (`const scrollSpeed`, :1073), which is what makes the near-miss fix
    *  in the turret-bolt test below look plausible. */
   const scraping = { altitude: 0 }
 
@@ -368,13 +368,13 @@ describe('sw8-21 — a finishGround crossing on the death frame cues NOTHING', (
   })
 
   it('silences it for a TURRET BOLT too — damage that lands BELOW the cue site', () => {
-    // The bolt's hit-test (`liveShots`, sim.ts:1201-1208) runs BELOW the point
-    // where the crossing is computed (`const scrollSpeed`, :1050), so at that
+    // The bolt's hit-test (`liveShots`, sim.ts:1229-1236) runs BELOW the point
+    // where the crossing is computed (`const scrollSpeed`, :1073), so at that
     // point this frame's `damage` counter has not yet seen the bolt — whereas
-    // the terrain scrape above it (:1000-1004) has already been counted. A fix
+    // the terrain scrape above it (:1056-1060) has already been counted. A fix
     // that gated on `damage` at the crossing would therefore pass the scrape
     // test above and fail this one. Only the post-`loseShield` `lives`
-    // (:1216-1217) sees every source, whatever they are.
+    // (:1238-1239) sees every source, whatever they are.
     const ship = surfaceShip(SKIM_ALTITUDE)
     const out = stepGame(
       atCrossing({
