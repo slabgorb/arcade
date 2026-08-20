@@ -172,6 +172,9 @@ const loop = createLoop(
         // first-time player learns Defender's unintuitive keys; live play stays un-cluttered.
         { controlHint: session.phase === 'attract' },
       ),
+      // pt1-22: decode this frame through the sim's LIVE PCRAM shadow so the colour cyclers
+      // (laser/bomb/TIE/mutant) render instead of sitting frozen at their $00 boot black.
+      session.sim.pcram,
     )
   },
 )

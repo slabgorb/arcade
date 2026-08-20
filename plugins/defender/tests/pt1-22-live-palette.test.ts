@@ -55,6 +55,9 @@
 // Byte-accuracy of COLTAB/TCTAB belongs to the citation gate (a new claims/*.json).
 
 import { describe, it, expect } from 'vitest'
+import { readFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 
 // Variable specifiers so `tsc --noEmit` does not statically resolve modules whose future
 // shape does not exist yet (sim.ts has no `pcram`; core/color-cycle.ts is unbuilt) — a
@@ -383,6 +386,62 @@ describe('pt1-22 · the bomb & TIE cyclers animate indices A/C and D/E/F', () =>
   })
 })
 
+// ─── 4b. The tables are BYTE-VERIFIED against the ROM (mutation-proven, not self-referential) ──
+//
+// §3/§4 pin the cyclers' WIRING against the exported COLTAB/TCTAB — but a test that checks
+// "the laser emits values ⊆ COLTAB" cannot catch a flipped byte IN COLTAB (both sides move
+// together: lang-review #18/#26). This block closes that loop with an INDEPENDENT reader of
+// the vendored 1981 source (the charset-gate.test.ts pattern): it parses the FCB rows the
+// citation gate byte-verifies and asserts the exported constants equal them. Mutate a COLTAB
+// or TCTAB byte in core/color-cycle.ts and THIS reddens.
+
+// plugins/defender/tests → the vendored source is three levels up at the monorepo root
+// (the same tree + tracked-in-git fact the citation gate relies on).
+const vendoredRoot =
+  process.env.DEFENDER_SOURCE_DIR ??
+  join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'reference', 'original-source', 'defender')
+const vendoredAvailable = existsSync(vendoredRoot)
+
+/** Parse the byte list from an FCB row's operand (Williams RASM: `$hh` hex, bare = decimal).
+ *  e.g. "COLTAB\tFCB\t$38,$39,$3A" → [0x38,0x39,0x3a]; "\tFCB\t$3C,0" → [0x3c,0x00]. */
+function fcbBytes(line: string): number[] {
+  const operand = line.split(/\bFCB\b/)[1]
+  if (operand === undefined) throw new Error(`not an FCB row: ${JSON.stringify(line)}`)
+  return operand
+    .trim()
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0)
+    .map((t) => (t.startsWith('$') ? parseInt(t.slice(1), 16) : parseInt(t, 10)))
+}
+
+/** The bytes an FCB-row range of the vendored source declares, concatenated. */
+function sourceTableBytes(file: string, from: number, to: number): number[] {
+  const src = readFileSync(join(vendoredRoot, file), 'utf8').split('\n')
+  const bytes: number[] = []
+  for (let n = from; n <= to; n++) bytes.push(...fcbBytes(src[n - 1]))
+  return bytes
+}
+
+describe.skipIf(!vendoredAvailable)('pt1-22 · the ROM tables are byte-verified against the 1981 source', () => {
+  it('COLTAB equals the vendored DEFA7.SRC:3037-3042 FCB rows byte-for-byte (incl. the $00 terminator)', async () => {
+    const { COLTAB } = await loadCycle()
+    // Independent re-read of the source rows the citation gate pins (claims/21-color-cycle.json).
+    // A flipped byte in core/color-cycle.ts's COLTAB — or in the source — reddens here.
+    const rom = sourceTableBytes('DEFA7.SRC', 3037, 3042)
+    expect(rom.length, 'COLTAB is 36 colours + the $00 terminator').toBe(37)
+    expect(rom[rom.length - 1], 'the last byte is the $00 wrap terminator').toBe(0x00)
+    expect([...COLTAB]).toEqual(rom)
+  })
+
+  it('TCTAB equals the vendored DEFB6.SRC:1207-1209 FCB rows byte-for-byte', async () => {
+    const { TCTAB } = await loadCycle()
+    const rom = sourceTableBytes('DEFB6.SRC', 1207, 1209)
+    expect(rom.length, 'TCTAB is three 3-byte rows').toBe(9)
+    expect([...TCTAB]).toEqual(rom)
+  })
+})
+
 // ─── 5. ADR-0005 safety — localized cyclers, never a large-area strobe ─────────────
 
 describe('pt1-22 · ADR-0005 safety: the cyclers are localized; the background is never strobed', () => {
@@ -414,23 +473,25 @@ describe('pt1-22 · ADR-0005 safety: the cyclers are localized; the background i
 
 // ─── 6. Purity — deterministic given the injected RNG ─────────────────────────────
 
-describe('pt1-22 · the cyclers are pure (no clock, entropy only via the injected rand)', () => {
-  it('two sims with identical rand produce identical pcram sequences', async () => {
-    // CBOMB draws its colour from SEED (defender/DEFB6.SRC:1219 LDA SEED / ANDA #$1F), so
-    // the shadow depends on entropy — but that entropy is the INJECTED rand, never a
-    // wall-clock. Same seed -> same sequence, byte for byte (the src/core purity contract,
-    // like stars' injected RAND). A cycler that reads Date.now()/Math.random() diverges.
+describe('pt1-22 · the cyclers are pure and do NOT perturb the gameplay RNG stream', () => {
+  it('two sims with identical rand produce identical pcram sequences (no wall-clock)', async () => {
+    // The shadow is a pure function of tick count — a cycler that read Date.now()/
+    // Math.random() would make two same-seed runs diverge. (The src/core purity contract.)
     const a = await playPcram(42, 180)
     const b = await playPcram(42, 180)
     expect(a).toEqual(b)
   })
 
-  it('a different rand yields a different shadow sequence (the entropy is actually consumed)', async () => {
-    // The mirror of the above: if the two runs above matched by IGNORING rand entirely,
-    // this would falsely pass too. Different seeds must diverge somewhere (CBOMB's pick),
-    // proving the determinism above is real reproduction, not a constant.
+  it('a DIFFERENT rand yields the SAME shadow sequence — the palette does not draw from gameplay entropy', async () => {
+    // CORRECTED CONTRACT (see the Dev deviation for pt1-22): the ROM's CBOMB reads the
+    // free-running SEED, but the clone's `rand` is the GAMEPLAY entropy stream threaded
+    // through every enemy bank — drawing from it in a per-tick palette cycler would desync
+    // ~15 rand-sensitive sim tests (frame hashes, enemy positions). So the cyclers carry
+    // their own self-contained counter and are INDEPENDENT of the injected rand: two runs
+    // with different seeds must produce the SAME pcram sequence. A cycler that leaked the
+    // gameplay rand into the palette (the thing that would break the sim suite) reds here.
     const a = await playPcram(1, 180)
     const b = await playPcram(2, 180)
-    expect(a).not.toEqual(b)
+    expect(a, 'the colour cyclers must not depend on the gameplay RNG (they would desync the sim)').toEqual(b)
   })
 })
