@@ -62,3 +62,8 @@ completed_stories:
     title: 'missile-command: left/center/right mouse buttons should fire the corresponding missile base, like z/x/c'
     points: 2
     completed: '2026-08-20'
+  - id: pt1-21
+    epic: pt1
+    title: 'star-wars: surface run is one dense pass — restore the ROM staged multi-pass tower reveal'
+    points: 5
+    completed: '2026-08-20'
