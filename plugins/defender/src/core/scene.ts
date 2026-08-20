@@ -452,7 +452,9 @@ export function composeFrame(
   const surface = decodeScrollSurface(require_(TERRAIN, TERRAIN_BLOCK, 'terrain block'), TERRAIN_SCROLL_COLS)
   blitTerrain(fb, surface, TERRAIN_COLOUR, camera >> TERRAIN_SCROLL_SHIFT, TERRAIN_SCROLL_COLS)
 
-  blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y)
+  // pt1-26: the ship faces the way it flies — mirror PLAPIC (a right-facing cell) when the
+  // tracked facing (sim.ts stepReverse) is 'left', the same seam the laser already reads.
+  blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y, state.ship.facing === 'left')
 
   // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1), projected
   // through the visible window (pt1-18); an off-window entity is culled here and seen only on radar.
