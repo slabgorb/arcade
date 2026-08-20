@@ -208,6 +208,13 @@ const HUD_SCORE_Y = 2
 const HUD_MEN_Y = 12
 /** df7-5: the current wave number, a glyph-row below men. */
 const HUD_WAVE_Y = 22
+/** pt1-29: the in-play HIGH SCORE, a glyph-row below wave — the audit fix (the high score was
+ *  shown only on the game-over hall-of-fame screen). Its value is not in the sim; the shell passes
+ *  it (options.highScore, the best score on the persisted board). */
+const HUD_HISCORE_Y = 32
+/** pt1-29: the SMART-BOMB stock (state.smartBombs), a glyph-row below the high score — tracked in
+ *  the sim since df5-5 but drawn nowhere until now. */
+const HUD_BOMBS_Y = 42
 /** GAME OVER screen text (df5-6). */
 const GAME_OVER_TEXT = 'GAME OVER'
 
@@ -307,11 +314,16 @@ function drawControlHint(fb: Framebuffer): void {
   writeText(fb, CONTROL_HINT, HINT_X, HINT_Y, TEXT_COLOUR)
 }
 
-/** Draw the df5-3 score/men HUD + df5-2 wave number down the top-left, by palette INDEX (WHITE). */
-function drawHud(fb: Framebuffer, state: SimState): void {
+/** Draw the df5-3 score/men HUD + df5-2 wave number + pt1-29 high score/smart-bomb stock down the
+ *  top-left, by palette INDEX (WHITE). The high score is not a sim quantity (the CMOS ledger holds
+ *  coins only) — the shell passes it in (composeFrame options.highScore, top of the persisted board);
+ *  the smart-bomb stock is state.smartBombs. */
+function drawHud(fb: Framebuffer, state: SimState, highScore: number): void {
   writeText(fb, String(state.score ?? 0), HUD_X, HUD_SCORE_Y, TEXT_COLOUR)
   writeText(fb, String(state.men ?? 0), HUD_X, HUD_MEN_Y, TEXT_COLOUR)
   writeText(fb, String(state.wave ?? 0), HUD_X, HUD_WAVE_Y, TEXT_COLOUR) // df7-5: the current wave
+  writeText(fb, String(highScore), HUD_X, HUD_HISCORE_Y, TEXT_COLOUR) // pt1-29: in-play high score
+  writeText(fb, String(state.smartBombs ?? 0), HUD_X, HUD_BOMBS_Y, TEXT_COLOUR) // pt1-29: smart-bomb stock
 }
 
 /** Draw the df5-6 GAME OVER / final-score screen (men<0): the play field is replaced by the
@@ -397,7 +409,8 @@ function drawHallOfFame(
  * Compose the live frame from the current sim state into a fresh `width × height` index
  * surface: clear, scroll-composite the starfield, lay the planet surface, blit the ship
  * at its display column/row, streak any lasers in flight, and overlay the df5-7 scanner
- * strip + score/men HUD. When the game is over (df5-6), the end screen replaces the frame —
+ * strip + the HUD (score, men, df7-5 wave, and pt1-29 in-play high score + smart-bomb stock).
+ * When the game is over (df5-6), the end screen replaces the frame —
  * the df7-4 HALL OF FAME screen when the shell passes the board + initials entry (`hof`),
  * otherwise the plain GAME OVER / final-score screen. Pure and deterministic — same inputs,
  * same indices out. Returns palette INDICES.
@@ -407,7 +420,7 @@ export function composeFrame(
   width: number,
   height: number,
   hof?: { board: readonly DefenderHighScore[]; nameEntry: { readonly buffer: string; readonly score: number } | null },
-  options?: { readonly controlHint?: boolean },
+  options?: { readonly controlHint?: boolean; readonly highScore?: number },
 ): Framebuffer {
   const fb = createFramebuffer(width, height)
   clear(fb, BACKGROUND)
@@ -475,13 +488,13 @@ export function composeFrame(
 
   // df5-7 + df7-5 + df7-8: overlay the scanner radar strip — its bezel frame (df7-5, drawn even
   // when empty), the live-attacker blips (coloured from the lander sprite's own palette index),
-  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the
-  // score/men/wave HUD, painted on top of the play field. Drawn AFTER the gameOver early-return,
-  // so the marker never appears on the end screen.
+  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the HUD
+  // (score/men/wave + pt1-29 high score + smart-bomb stock), painted on top of the play field.
+  // Drawn AFTER the gameOver early-return, so the marker never appears on the end screen.
   drawScannerBezel(fb)
   drawScanner(fb, state, spriteColour(landerPic))
   drawPlayerBlip(fb, state)
-  drawHud(fb, state)
+  drawHud(fb, state, options?.highScore ?? 0) // pt1-29: high score from the shell's board (0 when unknown)
 
   // pt1-20: the control hint, painted last over the play field when the caller asks for it (the
   // attract demo). Opt-in, so live play stays un-cluttered; drawn AFTER the gameOver early-return
