@@ -48,6 +48,7 @@ import {
   TRENCH_TURRET,
   TRENCH_SQUARE,
   TRENCH_CATWALK,
+  type Model3D,
 } from '../core/models'
 import { STAR_FAR, type Star } from '../core/starfield'
 import {
@@ -77,7 +78,7 @@ import {
 } from '@shared/math3d'
 import { project, drawWireframe, ndcToScreen, GLOW_FOR, NEAR, FAR } from './wireframe'
 import { layoutText, CELL_H } from './font'
-import { glowPolyline } from './glow'
+import { glowPolyline, withGlow } from './glow'
 
 const GLOW = '#00e5ff' // cockpit cyan
 const TIE_GLOW = GLOW_FOR['TIE Fighter'] // enemy green (shared)
@@ -1685,20 +1686,69 @@ function drawScoringPage(ctx: CanvasRenderingContext2D, w: number, h: number): v
   }
 }
 
+// The DEATH_STAR body picture's model radius (models.ts: vertices span ±50 in the
+// billboard plane); the picker scales its illustrations relative to this.
+const DEATH_STAR_PICKER_RADIUS = 50
+
+/** Draw the authentic death-star vector picture (M-010: VGCGRN green body, VGCWHT
+ *  white equatorial trench, VGCRED red superlaser dish) as a flat billboard centred
+ *  at screen (cx,cy), scaled to `radius` px. The picture is a billboard plane in the
+ *  model's [right = Y, up = Z] axes (sw10-1), so its 2D shape is (vertex[1],
+ *  vertex[2]). This is a 2D FRAMING-SCREEN decoration, so it draws in SCREEN space
+ *  directly rather than through the world camera — the same reason the picker's
+ *  labels do (see drawSelect). */
+function drawDeathStarPicker(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
+  const scale = radius / DEATH_STAR_PICKER_RADIUS
+  const strokeModel = (m: Model3D, color: string): void => {
+    withGlow(ctx, { stroke: color, width: 1.5, blur: 8 }, () => {
+      ctx.beginPath()
+      for (const [a, b] of m.edges) {
+        const va = m.vertices[a]
+        const vb = m.vertices[b]
+        ctx.moveTo(cx + va[1] * scale, cy - va[2] * scale)
+        ctx.lineTo(cx + vb[1] * scale, cy - vb[2] * scale)
+      }
+      ctx.stroke()
+    })
+  }
+  strokeModel(DEATH_STAR, DEATH_STAR_BODY_GLOW)
+  strokeModel(DEATH_STAR_TRENCH, DEATH_STAR_TRENCH_GLOW)
+  strokeModel(DEATH_STAR_DISH, DEATH_STAR_DISH_GLOW)
+  ctx.shadowBlur = 0
+}
+
 /** PH$SDS — the SELECT-A-DEATH-STAR difficulty picker (story sw9-2): title,
  *  fire instruction, and the three EASY/MEDIUM/HARD choices (TCMES.MAC:582-587),
- *  the hovered one lit like a live target. Positions come from the core's own
- *  DEATH_STAR_CHOICES.aim so the drawn cursor always agrees with the hit-test. */
+ *  each illustrated with its own death star (VJBMIN in the ROM, WSMAIN.MAC:1039-1145)
+ *  and lit like a live target when hovered.
+ *
+ *  The illustration + label of each choice sit at that choice's aim, mapped to the
+ *  screen by the SAME per-axis, full-canvas convention the shell's mouse→aim map
+ *  inverts (src/shell/input.ts:35-38): aim.x spans the full width, aim.y the full
+ *  height. So a label's pixel inverts back to its own aim EXACTLY, and hovering the
+ *  label selects it (pt1-11). The label anchor is kept on the aim untouched; the
+ *  death star is offset ABOVE it, which does not enter the hit test. NB: drawing
+ *  through the world camera's square letterbox (ndcToScreen) would use min(w,h) on
+ *  both axes and so disagree with input.ts on a non-square window — that mismatch
+ *  was the bug. */
 function drawSelect(ctx: CanvasRenderingContext2D, state: GameState, w: number, h: number): void {
   glowText(ctx, 'SELECT A DEATH STAR', w / 2, h * 0.26, BANNER_TEXT_PX, 'center', GLOW, 24)
   glowText(ctx, 'FIRE LASER AT DESIRED DEATH STAR', w / 2, h * 0.38, HUD_TEXT_PX, 'center', BOLT_GLOW, 12)
   const hoverIndex = state.select?.hover ?? null
+  const radius = Math.min(w, h) * 0.06
   for (let i = 0; i < DEATH_STAR_CHOICES.length; i++) {
     const choice = DEATH_STAR_CHOICES[i]
-    const x = w / 2 + choice.aim[0] * w * 0.3
-    const y = h / 2 - choice.aim[1] * h * 0.3
+    const x = w / 2 + choice.aim[0] * (w / 2)
+    const y = h / 2 - choice.aim[1] * (h / 2)
     const hovered = i === hoverIndex
-    glowText(ctx, choice.label, x, y, BANNER_TEXT_PX * 0.6, 'center', hovered ? BOLT_GLOW : GLOW, hovered ? 20 : 10)
+    // The death star and its label straddle the choice's hit origin (x, y) — the
+    // star just above, the label just below — so BOTH sit inside SELECT_HIT_RADIUS
+    // and hovering EITHER selects the tier. The ROM makes the illustration itself
+    // the target (draw and hit share one origin, WSMAIN.MAC:1102-1120); firing at a
+    // death star must therefore pick it, not just its caption (pt1-11 round 2). The
+    // offsets stay a fraction of the hit radius on the narrowest (landscape) window.
+    drawDeathStarPicker(ctx, x, y - radius, radius)
+    glowText(ctx, choice.label, x, y + radius * 0.9, BANNER_TEXT_PX * 0.6, 'center', hovered ? BOLT_GLOW : GLOW, hovered ? 20 : 10)
   }
   ctx.shadowBlur = 0
 }

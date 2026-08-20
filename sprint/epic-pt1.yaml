@@ -115,10 +115,12 @@ stories:
     description: "Playtest 2026-08-19: (a) the difficulty setting should show death stars illustrating the difficulty tiers but doesn't; (b) the hit region for 'easy - medium - hard' is misaligned — you must hover to the LEFT of 'easy' to select it. Fix the hit-testing offset and add the illustrations."
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20T10:46:57Z'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: pt1-12
     title: 'missile-command: left/center/right mouse buttons should fire the corresponding missile base, like z/x/c'
     description: 'Playtest 2026-08-19: map mouse buttons to bases — left button fires the left (alpha) base, middle the center (delta), right the right (omega) — mirroring the z/x/c keys. Suppress the context menu on right-click.'
