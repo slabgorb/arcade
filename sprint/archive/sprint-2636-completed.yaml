@@ -17,3 +17,8 @@ completed_stories:
     title: "tempest: attract mode needs a 'play example' (auto-play demo) instead of just the wordmark"
     points: 5
     completed: '2026-08-19'
+  - id: pt1-10
+    epic: pt1
+    title: 'star-wars: clicking the mouse should start the game, not just Enter'
+    points: 1
+    completed: '2026-08-20'
