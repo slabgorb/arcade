@@ -67,3 +67,8 @@ completed_stories:
     title: 'star-wars: surface run is one dense pass — restore the ROM staged multi-pass tower reveal'
     points: 5
     completed: '2026-08-20'
+  - id: pt1-4
+    epic: pt1
+    title: 'star-wars: fix the screen size to a fixed resolution to avoid display problems'
+    points: 2
+    completed: '2026-08-20'
