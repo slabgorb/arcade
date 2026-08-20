@@ -106,7 +106,7 @@ interface BombFlierCtx {
  * an occupied slot is skipped) — the ROM DECs NOCENT after a successful entry (:472).
  * `nocent: 1` in the flier envs marks bomb mode for dragonflySpeed (DF-31).
  */
-function enterBombFlier(critter: 'bee' | 'dragonfly' | 'mosquito', roster: Roster, ctx: BombFlierCtx): boolean {
+function enterBombFlier(critter: 'bee' | 'dragonfly' | 'mosquito', roster: Roster, ctx: Readonly<BombFlierCtx>): boolean {
   if (critter === 'bee') {
     const slot = roster.bees[0]
     if (slot.color !== 0) return false
@@ -271,7 +271,12 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     frame: state.frame,
     score2: score2Of(state.score),
     player: { h: player.h, v: player.v, alive: player.alive },
-    centin: liveSegments,
+    // CENTIN — the walked WAVE-LENGTH register (state.centin), NOT the live count.
+    // The ROM creature gates read `X,CENTIN`: the beetle's "NO BEETLES WHEN CENTIPEDE
+    // IS FULL" gate is `CMP I,12.` / `BCS` (CENTIN>=12, MILLI.MAC:265-266, BT-12); the
+    // bee (BE-7), dragonfly (DF-9) and mosquito (MQ-7) gates read it too. DEAD (the
+    // live count, `LDA X,DEAD`/`BEQ` :262-263) is a SEPARATE gate, threaded below.
+    centin: state.centin,
     hard: false,
     score1: score1Of(state.score),
     dead: liveSegments, // DEAD = remaining live centipede segments (MLDEF.MAC:295)
@@ -487,7 +492,7 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     // cancel (:1812) is still reproduced above and is orthogonal to this flag.
     hitDdt,
     segmentsRemaining: liveSegs, // DEAD (SC-2/10)
-    centin: liveSegs, // CENTIN (SC-3/11) — the continuous arm's length-4 gate
+    centin, // CENTIN (SC-3/11) — the walked wave-length register the continuous arm's ==4 gate reads
     frame: state.frame, // the arm's 128-frame phase input (SC-13)
   }
   const disp = scrollDispatch(scrolc, scrollGate)
@@ -613,10 +618,6 @@ function stepPlay(state: GameState, input: GameInput): GameState {
     hitDdt,
     mushCounts: { lower: mushLower, top: mushTop },
     slow,
-    // CENTIN tracks the connected length. Splits are deferred (ml3-2) so every
-    // live segment is connected — CENTIN == the live count. A cleared millipede
-    // reloads to NCENT (MT-15, CENTIN never rests at 0), so a death during the
-    // inter-wave pause re-lays a full train.
     centin, // CENTIN wave-length register — walked by CENTPC, never per-death (pt1-2)
     fieldColourIndex: recol.fieldColourIndex,
     lcolor: recol.lcolor,

@@ -169,12 +169,12 @@ describe('ml6-2 stepGame — the wave loop (clear → DELAY → next wave)', () 
   const liveBeetle = { color: 0xb9, pic: 0x34, v: 0x40, h: 0x80, dv: 0, dh: 0, timer: 0 }
 
   it('clearing the millipede arms the inter-wave DELAY (MILLI.MAC:1912-1915)', () => {
-    // No live segments and DELAY idle → the wave is won: arm 0x40 AND start the
-    // conway restoration (INICON, initConway → active). CHKEND runs the same
-    // frame and now HOLDS while mushrooms restore (MLSUB.MAC:54, wired in
-    // ml10-3), so the armed 0x40 does NOT tick down this frame — the countdown
-    // waits for restoration to finish. (Before ml10-3 the dead `false` blocker
-    // let it tick to 0x3F on the clear frame, mid-restoration.)
+    // No live segments and DELAY idle → the wave is won: arm 0x40. This is a PLAIN
+    // clear (default CENTIN 12 is neither 9 nor a BOMBSL level, so no CONWAY/BOMBS),
+    // and the armed 0x40 does NOT tick down this frame because the `justArmed` guard
+    // skips CHKEND on the arming frame (pt1-2). Before pt1-2 the conway-every-clear
+    // hold masked the same-frame decrement; gating CONWAY to CENTIN==9 made the guard
+    // explicit so a plain clear still reads 0x40 rather than 0x3F.
     const g = play({ segments: [], delay: 0 })
     const after = stepGame(g, idle)
     expect(after.delay).toBe(0x40)

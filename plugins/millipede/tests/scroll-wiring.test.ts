@@ -172,14 +172,16 @@ describe('ml7-9 AC2 — SCROLL consumes a pending scroll each frame (MLSUB.MAC:1
 
 // ═══════════════════════════════════════════════════════════════════════════
 describe('ml7-9 AC3 — the continuous-scroll arm drives the descent (MLSUB.MAC:1133-1140)', () => {
-  // A length-4 LIVE train (CENTIN==4), no hit DDT, at FRAME phase (frame & $7F)
-  // == $1E arms the DEC SCROLC that makes the field drift DOWN under the march.
+  // The wave-length register CENTIN==4 (walked, pt1-2 — the arm reads `X,CENTIN`,
+  // not the live segment count), no hit DDT, at FRAME phase (frame & $7F) == $1E
+  // arms the DEC SCROLC that makes the field drift DOWN under the march. A length-4
+  // live train rides along so the phase stays `play`, but the arm keys off centin.
   const fourTrain = () => createGame(SEED, { phase: 'play' }).segments.slice(0, 4)
 
   it('armed at phase $1E: the field drifts DOWN one row (SC-11/13/14)', () => {
     const field = emptyField()
     field[idx(7, 0x10)] = 0x33
-    const g = playState({ field, segments: fourTrain(), frame: 0x1e, scrolc: 0 })
+    const g = playState({ field, segments: fourTrain(), centin: 4, frame: 0x1e, scrolc: 0 })
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x0f)], 'the arm scrolled the field down (SC-14)').toBe(0x33)
     expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)
@@ -190,18 +192,18 @@ describe('ml7-9 AC3 — the continuous-scroll arm drives the descent (MLSUB.MAC:
     // per-frame. If the arm fired every frame this control would also scroll.
     const field = emptyField()
     field[idx(7, 0x10)] = 0x33
-    const g = playState({ field, segments: fourTrain(), frame: 0x1d, scrolc: 0 })
+    const g = playState({ field, segments: fourTrain(), centin: 4, frame: 0x1d, scrolc: 0 })
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x10)], 'marker stayed put off-phase').toBe(0x33)
     expect(downScrollFingerprint(out.field), 'no scroll off the $1E phase').toBe(false)
   })
 
-  it('a WRONG-length train at phase $1E does NOT arm (CENTIN != 4, SC-11)', () => {
-    // The full 12-segment boot train: the arm is wave-4-specific, so it must not
-    // fire here even though the frame phase is right.
+  it('a WRONG-length register at phase $1E does NOT arm (CENTIN != 4, SC-11)', () => {
+    // The boot register CENTIN==12 (createGame default): the arm is wave-4-specific,
+    // so it must not fire here even though the frame phase is right.
     const field = emptyField()
     field[idx(7, 0x10)] = 0x33
-    const g = playState({ field, frame: 0x1e, scrolc: 0 }) // default 12-live train
+    const g = playState({ field, frame: 0x1e, scrolc: 0 }) // default CENTIN register == 12
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x10)], 'no arm with a 12-length train').toBe(0x33)
     expect(downScrollFingerprint(out.field)).toBe(false)
@@ -553,7 +555,7 @@ describe('ml7-12 — the scroll gate READS the register: HITDDT suppresses the c
   it('SUPPRESSED: HITDDT set ⇒ the armed continuous arm does NOT scroll (MLSUB.MAC:1129, SC-9)', () => {
     const field = emptyField()
     field[idx(7, 0x10)] = 0x33
-    const g = playState({ field, segments: fourTrain(), frame: 0x1e, scrolc: 0, hitDdt: true })
+    const g = playState({ field, segments: fourTrain(), centin: 4, frame: 0x1e, scrolc: 0, hitDdt: true })
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x10)], 'HITDDT suppressed the arm — marker stayed put').toBe(0x33)
     expect(downScrollFingerprint(out.field), 'no down-scroll while HITDDT is set (SC-9)').toBe(false)
@@ -565,7 +567,7 @@ describe('ml7-12 — the scroll gate READS the register: HITDDT suppresses the c
     // register, not on a mis-armed fixture. Green now and after wiring.
     const field = emptyField()
     field[idx(7, 0x10)] = 0x33
-    const g = playState({ field, segments: fourTrain(), frame: 0x1e, scrolc: 0 })
+    const g = playState({ field, segments: fourTrain(), centin: 4, frame: 0x1e, scrolc: 0 })
     const out = stepGame(g, idle)
     expect(out.field[idx(7, 0x0f)], 'the arm scrolled the field down (SC-14)').toBe(0x33)
     expect(downScrollFingerprint(out.field), 'grey re-entry stamped (SC-29)').toBe(true)

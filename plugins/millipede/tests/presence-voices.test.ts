@@ -87,14 +87,17 @@ describe('ml7-8 AC1 — the sim edge-signals presence (observed in play, not jus
   it('emits beetle-start on the vacant→live edge (a beetle appears)', () => {
     // Prev frame: NO beetle live (a fresh play state's band is all vacant). This
     // frame the BEETL gate opens: frame 0x37 + score2 0 fires beetleSpawnTick, a
-    // live keeper segment (DEAD≠0) and centin 1 (<12) pass the remaining gates, so
-    // stepBeetles spawns one — the rising edge the sim must voice as beetle-start.
+    // live keeper segment (DEAD≠0) and the CENTIN wave-length register 1 (<12, so
+    // NOT "CENTIPEDE IS FULL", BT-12) pass the remaining gates, so stepBeetles spawns
+    // one — the rising edge the sim must voice as beetle-start. The gate reads
+    // `X,CENTIN` (the walked register, pt1-2), not the live segment count, so set it.
     const prev = createGame(0x1982, { phase: 'play' })
     const armed: GameState = {
       ...prev,
       frame: 0x37,
       field: new Uint8Array(PLYFLD_SIZE), // clear field so a stray shot can't confound
       segments: [keeperSegment()],
+      centin: 1, // CENTIN register < 12 — beetles allowed (was implicitly the live count)
       player: { ...prev.player, h: 0x40, v: 0x30, alive: true },
       shot: { active: false, h: 0, v: 0 },
     }

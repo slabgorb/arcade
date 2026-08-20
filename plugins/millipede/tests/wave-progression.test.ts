@@ -28,8 +28,9 @@
 import { describe, it, expect } from 'vitest'
 import { stepGame, type GameInput } from '../src/core/sim'
 import { createGame, type GameState } from '../src/core/game-state'
-import { CENTIS_FAST, CENTIS_SLOW, NCENT } from '../src/core/millipede'
+import { CENTIS_FAST, CENTIS_SLOW, NCENT, BODY_COLOR, type Segment } from '../src/core/millipede'
 import { BOMBSL, bombModeStart } from '../src/core/ddt'
+import { PLYFLD_SIZE } from '../src/core/conway'
 
 const SEED = 0x1982
 const idle: GameInput = { dh: 0, dv: 0, fire: false, start: false }
@@ -148,11 +149,58 @@ describe('pt1-2 — BOMBS dive-bomb mode arms and dispatches (DD-95..101, WP-7)'
   })
 
   it('the per-frame BOMBS dispatcher drains NOCENT during a bomb wave (WP-7, :28)', () => {
-    // BOMBS is JSR-ed every frame and, while NOCENT > 0, enters critters and DECs
-    // NOCENT (DD-84/85/91/92). Over many frames the budget must drain. RED today: the
-    // dispatcher is orphaned, so a forced NOCENT never moves.
-    let g = play({ nocent: 20, bombv: 1, centin: 7 })
+    // BOMBS is JSR-ed every frame and, while NOCENT > 0, enters the register's critter
+    // and DECs NOCENT (DD-84/85/91/92). Over many frames the budget must drain. RED
+    // when the dispatcher was orphaned: a forced NOCENT never moved.
+    //
+    // CENTIN 1 picks via BOMBS_CREATURES[0]=$83 (bee/mosquito/dragonfly by RND0), whose
+    // slots normal play keeps free enough for the dispatcher to enter — the honest claim
+    // is a DRAIN, not a full purge. (A register whose picked critter a normal spawn holds
+    // permanently — e.g. CENTIN 7 → dragonfly — cannot drain in this port's 3-typed-slot
+    // model; that slot-contention + bomb-train-suppression gap is a documented follow-up.)
+    let g = play({ nocent: 20, bombv: 1, centin: 1 })
     for (let i = 0; i < 300 && g.phase === 'play'; i++) g = stepGame(g, idle)
     expect(nocentOf(g), 'the dispatcher must consume the bomb budget').toBeLessThan(20)
+  })
+})
+
+describe('pt1-2 — the creature-introduction ramp reads the WALKED register, not the live count', () => {
+  // The ROM creature gates read `X,CENTIN` — the preserved wave-length register the
+  // CENTPC walk steps down each wave — with DEAD (the live segment count) a SEPARATE
+  // gate. The sharpest discriminator is the beetle's "NO BEETLES WHEN CENTIPEDE IS
+  // FULL" gate (BT-12, CENTIN>=12, `CMP I,12.`/`BCS` MILLI.MAC:265-266): hold the LIVE count fixed at 1
+  // (a single keeper segment, DEAD!=0) and vary only the register. If the gate read
+  // the live count the beetle would spawn in BOTH cases; because it reads the walked
+  // register, CENTIN==12 blocks it and CENTIN==11 admits it. Re-pointing EnemyView.centin
+  // back to the live count (the pre-pt1-2 bug) reddens the FULL case.
+
+  /** A lone live body segment far from the gun — keeps DEAD!=0 (so the BEETL gate can
+   *  open) without threatening the player or catching a stray shot. */
+  const keeper = (): Segment => ({ h: 0xc0, v: 0xd0, dh: 0, dv: 0, pic: 0, color: BODY_COLOR })
+
+  /** The BEETL spawn frame (0x37) with a clear field, a lone keeper segment and the gun
+   *  parked away — everything the beetle needs EXCEPT the register verdict. */
+  const beetleArmed = (centin: number): GameState => {
+    const base = createGame(SEED, { phase: 'play' })
+    return {
+      ...base,
+      frame: 0x37,
+      field: new Uint8Array(PLYFLD_SIZE),
+      segments: [keeper()],
+      player: { ...base.player, h: 0x40, v: 0x30, alive: true },
+      shot: { active: false, h: 0, v: 0 },
+      centin,
+    }
+  }
+  const beetleLive = (g: GameState): boolean => g.roster.beetles.some((b) => b.color !== 0)
+
+  it('CENTIN register 11 (< 12) admits a beetle — the live count is only 1 either way', () => {
+    expect(beetleLive(stepGame(beetleArmed(11), idle))).toBe(true)
+  })
+
+  it('CENTIN register 12 (FULL) blocks the beetle though only ONE segment is live (BT-12)', () => {
+    // The discriminator: DEAD == 1 here too, so a live-count gate would still spawn it.
+    // The register reads FULL, so BEETL is suppressed — the ramp gate is the register.
+    expect(beetleLive(stepGame(beetleArmed(12), idle))).toBe(false)
   })
 })

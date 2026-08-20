@@ -43,9 +43,9 @@ export interface GameState {
   shot: Shot
   segments: Segment[]
   /** CENTIN (MLDEF.MAC:299) — the millipede's WAVE-LENGTH register, 1..NCENT. In the
-   *  ROM it is written ONLY by INIT (12, MILLI.MAC:1169) and by the CENTPC walk
+   *  ROM it is written ONLY by INIT (LDA I,12., MILLI.MAC:1168) and by the CENTPC walk
    *  (DEC/reload, :509-512) — NEVER decremented per segment-death — so it is the
-   *  PRESERVED length CENTPC re-lays (MILLI.MAC:549) and the value the wave-clear gates
+   *  PRESERVED length CENTPC re-lays (LDY X,CENTIN, MILLI.MAC:546) and the value the wave-clear gates
    *  read to pick a CONWAY (==9) or BOMBS (∈BOMBSL) wave. pt1-2 wires the walk, so this
    *  now steps 12→11→…→1→(reload 0x0C) across waves rather than tracking live deaths;
    *  the live count drives the colour latch separately (see fieldColourIndex). */
@@ -170,7 +170,7 @@ export function createGame(seed: number, opts?: CreateGameOpts): GameState {
     player: createPlayer(),
     shot: { active: false, h: 0, v: 0 },
     segments: createMillipede({ headingSign: 1 }),
-    centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1169) — a full-length wave register
+    centin: NCENT, // SET CENTIPEDE SIZE (MILLI.MAC:1170) — a full-length wave register
     centis: CENTIS_FAST, // FAST TO START WITH (MILLI.MAC:1171, WP-1)
     nocent: 0, // not in bomb mode at boot (MLDEF.MAC:391)
     bombv: 0, // no bomb-mode scoring at boot (MLDEF.MAC:396)
