@@ -305,7 +305,8 @@ stories:
       PREREQUISITE story: the black-sprite half of pt1-23 and pt1-25's smart-bomb wash depend on this. Land it first.
     points: 8
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
     type: bug
