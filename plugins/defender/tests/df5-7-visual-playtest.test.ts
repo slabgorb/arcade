@@ -206,7 +206,10 @@ describe('df5-7 — the score/men HUD reaches the live frame (df5-3)', () => {
     // at an aligned target). The COLIDE kill must now ALSO award df5-3 points, so `score` rises.
     const sim = await loadSim()
     const GROUND_ROW = 232 // near the floor (below SHIP_ROW=INITIAL_Y=120): the abduction run climbs back up through the beam
-    let s = sim.createSim(makeRand(7))
+    // RE-STAGED for pt1-28 (seed 7 → 10): THINIT consumes 33 rand draws at createSim, shifting
+    // every later draw, so the seed-7 roam/abduction run no longer meets this staging (measured:
+    // only some seeds ever do — 7/5/21 before the shift, 10 et al. after; the pt1-19 precedent).
+    let s = sim.createSim(makeRand(10))
     s = sim.spawnHumanoid(s, 38 << 8, GROUND_ROW)
     s = sim.spawnLander(s, 38 << 8)
     const scoreBefore = s.score
