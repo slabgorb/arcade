@@ -116,7 +116,7 @@ const HUMANOID_OBJECT = 'ASTP1'
  *  `*_PICTURE` the sim blits for spawn/death effects and for collision (sim.ts:76-82). */
 const MUTANT_OBJECT = 'SCZP1' // schizoid, DEFB6.SRC:1896
 const BAITER_OBJECT = 'UFOP1' // baiter/UFO
-const BOMBER_OBJECT = 'TIEP1' // bomber (TIE), DEFB6.SRC:997
+const BOMBER_OBJECT = 'TIEP1' // bomber (TIE), DEFB6.SRC:1923 (the sprite bitmap; the TIEST spawn routine is :997)
 const POD_OBJECT = 'PRBP1' // pod/probe, DEFB6.SRC:1909
 const SWARMER_OBJECT = 'SWPIC1' // swarmer
 const BOMB_OBJECT = 'BMBP1' // the bomber's dropped bomb/mine, DEFB6.SRC:1935
@@ -484,7 +484,7 @@ export function composeFrame(
   // pt1-23: the six roaming/attacking banks — live + collidable (enemyObjects, sim.ts:745-762)
   // but previously drawn NOWHERE, so mutants/baiters/bombers/pods/swarmers/bombs attacked the
   // player invisibly for their whole life. Each is projected through the SAME visible window as
-  // the landers and the collision path (projectWorldX = toScreenCol, sim.ts:626) and blitted by
+  // the landers and the collision path (projectWorldX = toScreenCol, sim.ts:660) and blitted by
   // its own palette indices (pt1-22 revived the A–F cyclers so these are no longer black); an
   // off-window member is culled here and seen only on the scanner.
   const blitBank = (
