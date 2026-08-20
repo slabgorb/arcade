@@ -44,6 +44,16 @@ const font = vi.hoisted(() => {
     peek() {
       return lastText
     },
+    // Reset BOTH the move log and the last-laid-out text. Resetting `lastText` is
+    // load-bearing: it is set only by layoutText, so the background scene's moveTos
+    // (which call no layoutText) inherit whatever text was live when the render
+    // began. Without a per-render reset, the PREVIOUS render's final label leaks in
+    // and tags this render's background strokes — silently mis-capturing the label
+    // whose name happens to equal that leftover (it was HARD that got bitten).
+    reset() {
+      moves.length = 0
+      lastText = ''
+    },
     layoutText(text: string) {
       lastText = text.toUpperCase()
       return { strokes: [{ points: [{ x: 0, y: 0 }] }], width: 0 }
@@ -63,8 +73,11 @@ vi.mock('../../src/shell/font', () => ({
 const NO_SCORES: HighScoreTable<'wave'> = []
 
 /** A recording ctx whose moveTo tags each point with the most-recently laid-out
- *  text, so a label's draw anchor can be recovered by name. */
+ *  text, so a label's draw anchor can be recovered by name. Resets the capture
+ *  state on construction, so every render starts with a clean tag and no leak from
+ *  a prior render can mis-tag this one's background strokes. */
 function makeCapturingCtx(w: number, h: number): CanvasRenderingContext2D {
+  font.reset()
   const target: Record<string | symbol, unknown> = { canvas: { width: w, height: h } }
   const proxy = new Proxy(target, {
     get(t, prop) {
