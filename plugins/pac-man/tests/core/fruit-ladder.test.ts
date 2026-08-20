@@ -3,8 +3,12 @@
 // Story pt1-17 — the 2026-08-19 playtest flagged "peach after peach": a bonus fruit
 // that appears on two consecutive levels. That is the AUTHENTIC Pac-Man ladder — every
 // fruit past strawberry spans two levels — so this story is verify-and-guard, not a
-// fix. What the playtester read as a "peach" is the MELON (levels 7-8); its sprite is
-// famously mistaken for one.
+// fix. The "peach" is most likely the THIRD fruit (levels 3-4): our `FruitType` names it
+// `orange`, but the graphics dossier labels that very sprite "peach, by conventional ROM
+// ordering" (docs/rom-study/claims/graphics.json, sprite index 18) — a round orange-pink
+// fruit widely misremembered as a peach. Whichever pair the eye caught, the doubling
+// itself is ROM-correct, and this guard pins every level 1-13 individually, so the
+// verdict holds either way.
 //
 // This test locks the level->fruit progression our game actually serves — the public
 // seam `levelRow(level).fruit`, which the HUD row and the spawn logic both read —
@@ -59,11 +63,11 @@ interface Rung {
 const LADDER: readonly Rung[] = [
   { level: 1, type: 'cherry', addr: '2b23' }, // 100
   { level: 2, type: 'strawberry', addr: '2b25' }, // 300
-  { level: 3, type: 'orange', addr: '2b27' }, // 500  ┐ doubled
+  { level: 3, type: 'orange', addr: '2b27' }, // 500  ┐ the "peach after peach" (see header)
   { level: 4, type: 'orange', addr: '2b27' }, //      ┘
   { level: 5, type: 'apple', addr: '2b29' }, // 700   ┐
   { level: 6, type: 'apple', addr: '2b29' }, //       ┘
-  { level: 7, type: 'melon', addr: '2b2b' }, // 1000  ┐ the "peach after peach"
+  { level: 7, type: 'melon', addr: '2b2b' }, // 1000  ┐
   { level: 8, type: 'melon', addr: '2b2b' }, //       ┘
   { level: 9, type: 'galaxian', addr: '2b2d' }, // 2000 ┐
   { level: 10, type: 'galaxian', addr: '2b2d' }, //      ┘
@@ -103,10 +107,13 @@ describe('fruit ladder — the level→fruit progression served to the player (p
   })
 
   it('key is the terminal fruit from level 13 on — bell does not extend past 12', () => {
+    expect(levelRow(13).fruit.type).toBe('key') // level 13's value is ROM-pinned to 2b31 above
     expect(levelRow(12).fruit.type).toBe('bell')
     expect(levelRow(12).fruit.type).not.toBe(levelRow(13).fruit.type) // bell → key boundary
-    for (const lvl of [13, 14, 20, 21, 100, 256]) {
-      expect(levelRow(lvl).fruit).toEqual({ type: 'key', points: 5000 }) // pacman.asm:2b31
+    // Every level past 12 clamps to the terminal rung — asserted AS level 13's fruit, not
+    // a transcribed literal, so the ROM value flows through the byte-checked rung above.
+    for (const lvl of [14, 20, 21, 100, 256]) {
+      expect(levelRow(lvl).fruit).toEqual(levelRow(13).fruit)
     }
   })
 })
