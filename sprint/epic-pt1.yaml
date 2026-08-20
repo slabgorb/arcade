@@ -378,7 +378,9 @@ stories:
       From the 2026-08-20 render audit. drawHud draws only score, men and wave (scene.ts:311-315). The high score appears only on the game-over hall-of-fame screen, never during live play; the smart-bomb stock (state.smartBombs, sim.ts:225) is never drawn at all. Fix: add the in-play high-score readout and a smart-bomb stock indicator to drawHud, coloured through the palette by index like the existing HUD text. Small; independent.
     points: 2
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
