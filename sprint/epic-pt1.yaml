@@ -181,9 +181,11 @@ stories:
       projection; do it TDD with a live playtest verify.
     points: 8
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-19'
     type: bug
   - id: pt1-19
     title: 'defender: landers spawn and fall in a synchronized Space-Invaders row instead of roaming independently'
