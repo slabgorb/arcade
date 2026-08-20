@@ -1026,15 +1026,24 @@ describe('jt5-1 AC3 — the sim fingerprint is unchanged by the event channel', 
     // is STILL 2_006_456_271 and `wave` still 1 — the change adds no draw, the law this
     // group pins. Play moved: the two settled eggs mature into grounded standing riders
     // (now enemy#4260098 / enemy#4260097 where two eggs used to sit), enemy#256 is back in
-    // the frame-2400 arena, and the reshaped contacts cost P2 a life and some score
-    // (lives 3/3 -> 3/2, scores 100/2100 -> 100/1150).
+    // the frame-2400 arena.
+    //
+    // pt1-15 REWORK RE-BASELINE (round-2 HIGH fix: the grounded standing rider is now
+    // INTANGIBLE during its EGGLLP hold — collisionEnabled:false + mat — so a player can no
+    // longer DIE to the helpless standing knight; before this fix a live kind:'enemy' rider
+    // killed a player who flew up into it). FOURTEENTH consecutive re-baseline, `rng` STILL
+    // 2_006_456_271 and `wave` still 1 — intangibility adds no draw. This re-baseline IS the
+    // proof of the fix: P2 no longer loses that life in the seeded replay (lives 3/2 -> 3/3),
+    // banks 50 fewer from the kill it no longer books (scores 100/1150 -> 100/1100), and the
+    // arena reorders as the un-killed P2 keeps flying. The round-1 lost life was this exact
+    // bug firing in ordinary play, not a benign butterfly.
     expect(fingerprint(0xbeef, 2400)).toEqual({
       frame: 2400,
       rng: 2_006_456_271,
       wave: 1,
-      procs: 'enemy#256,enemy#4260098,enemy#4260097,player#1,player#2',
-      scores: [100, 1150],
-      lives: [3, 2],
+      procs: 'enemy#256,enemy#4260098,player#2,enemy#4260097,player#1',
+      scores: [100, 1100],
+      lives: [3, 3],
     })
   })
 

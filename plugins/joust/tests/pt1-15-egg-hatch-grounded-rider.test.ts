@@ -231,6 +231,50 @@ describe('pt1-15 AC-3 — the hatch is not a permanent egg-lock: a threat eventu
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
+// AC-4 — the standing rider is HARMLESS to the player during the hold
+//        ("...before it becomes a threat"). Reviewer round-1 HIGH regression guard:
+//        the ROM's standing knight is COLLECTED via EGGSCR and can never kill the
+//        player (EGGLLP :3316), but a live kind:'enemy' collides by joust height, so a
+//        player flying UP into the grounded knight would lose and DIE. The rider is now
+//        intangible (collisionEnabled:false + mat) for the hold, so the player passes
+//        through unharmed until it wakes.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('pt1-15 AC-4 — a player cannot die to the standing rider during the hold', () => {
+  it('a player overlapping the held rider FROM BELOW is not killed', async () => {
+    const dmod = await loadSim()
+    const EGG_X = 100
+    let d = await stagedDemo([playerAt(PLAYER1_ID, 260, 40), hatchingEggProc({ posX: EGG_X })])
+    // Step to the frame the grounded standing rider first exists (parked player far away).
+    let rider: SimProcess | undefined
+    for (let f = 0; f < 300; f++) {
+      d = dmod.stepSim(d)
+      const e = enemiesIn(d).find((p) => entityOf(p)?.airborne === false)
+      if (e) { rider = e; break }
+    }
+    const re = rider && entityOf(rider)
+    expect(re, 'the grounded standing rider exists').toBeDefined()
+    // It must be intangible during the hold — otherwise the joust-height kill is live.
+    expect(rider!.collisionEnabled, 'the standing rider is intangible during the hold').toBe(false)
+    // Drop a player ON the rider, 6px BELOW it (higher plantHeight => would LOSE the joust
+    // if the rider were collidable). With the pre-fix collidable rider this was `player-death`.
+    const kx = re!.posX
+    const ky = re!.posY >> 8
+    const procs = d.sim.processes.filter((p) => p.kind !== 'player')
+    procs.push(playerAt(PLAYER1_ID, kx, ky + 6))
+    let d2: SimState = { ...d, sim: { ...d.sim, processes: procs } }
+    d2 = dmod.stepSim(d2)
+    expect(
+      d2.cues.some((c) => c.type === 'player-death'),
+      'a helpless standing rider must NOT kill the player (before it becomes a threat)',
+    ).toBe(false)
+    expect(
+      d2.sim.processes.some((p) => p.kind === 'player' && p.id === PLAYER1_ID),
+      'the player survives the overlap',
+    ).toBe(true)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
 // PROVENANCE — the ROM facts this story rests on (JOUSTRV4.SRC, LF-vendored)
 //   Byte-reads only; SKIP where the copyrighted tree is absent (CI). Each pairs the
 //   instruction with its own comment so the anchor is the CLAIM, not a bare token

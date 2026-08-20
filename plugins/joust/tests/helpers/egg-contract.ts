@@ -10,7 +10,10 @@
 // ─── WHAT jt2-4 MODELS (all cited; see egg-source.test.ts) ───────────────────
 // The egg lifecycle as a PROCESS. A killed enemy becomes an egg (DEATH3,
 // JOUSTRV4.SRC:2952-3007); the egg falls, bounces, settles on a ledge, and — if
-// the enemy has eggs left — HATCHES a buzzard that flies back in to remount:
+// the enemy has eggs left — HATCHES. (pt1-15: the hatch is not instant — the rider
+// STANDS grounded at its hatch spot for an EGGLLP collect-wait, :3316, then takes off
+// as the remount; the standing phase + its wiring live in sim.ts, not this jt2-4 core.)
+// The jt2-4 laws below stop at the point a buzzard is dispatched to remount:
 //
 //   • SPAWN carries the victim's velocities verbatim (LDD PVELY / STD PVELY,
 //     LDA PVELX / STA PVELX, JOUSTRV4.SRC:2991-2994) and RESETS the bump
