@@ -5,6 +5,11 @@
 // scores — into the table on a NOVRAM reset, so a fresh machine greets the
 // player with the iconic Rebel names, not an empty ladder.
 //
+// pt1-8 (2026-08-20): this seed is RETIRED. `DEFAULT_HIGH_SCORES` below is now
+// UNWIRED ROM REFERENCE — nothing in src/ reads it (main.ts boots the persisted
+// board as-is, EMPTY on a fresh cabinet, and render shows "NO SCORES YET"). The
+// constant + its byte-decode tests are kept as documentation of the original.
+//
 // The scores are PACKED BCD, not hex: `INTSCR: .WORD 0128,5353` is the
 // decimal-digit string 0128'5353 = 1,285,353 (each nibble is a BCD digit). The
 // initials are hex letter-indices A=1..Z=26: `INTINT: .BYTE 0F,02,09` =
@@ -33,12 +38,3 @@ export const DEFAULT_HIGH_SCORES: HighScoreTable<'wave'> = [
   { name: 'EAR', score: 384_766, wave: null },
   { name: 'RLM', score: 380_655, wave: null },
 ]
-
-/**
- * DOINTS-on-reset: a fresh (empty) board gets the ROM defaults; a board that
- * already holds any real score is returned untouched — the ROM copies the
- * defaults on RESET only, never over a player's ladder.
- */
-export function seedDefaultHighScores(loaded: HighScoreTable<'wave'>): HighScoreTable<'wave'> {
-  return loaded.length === 0 ? [...DEFAULT_HIGH_SCORES] : loaded
-}

@@ -1,10 +1,10 @@
 // tests/core/default-high-scores.test.ts
 //
-// sw7-3 RED — H-015: the ROM ships a SEEDED default high-score board. DOINTS
+// H-015: the ROM's SEEDED default high-score board. A real cabinet's DOINTS
 // (TCHSCR.MAC:701-716) copies 10 default entries — INTINT initials + INTSCR
-// scores — into the table on a NOVRAM reset. Our board boots empty ("NO SCORES
-// YET"); a fresh cabinet must instead greet the player with the iconic Rebel
-// names OBI .. RLM.
+// scores — into the table on a NOVRAM reset. This suite is the byte-decode
+// REFERENCE for that constant (`DEFAULT_HIGH_SCORES` in src/core/highScores.ts),
+// kept green after pt1-8 retired the runtime seed (see the pt1-8 note below).
 //
 // The scores are PACKED BCD, not hex: `INTSCR: .WORD 0128,5353` is read as the
 // decimal-digit string 0128'5353 = 1,285,353 (TCHSCR is effectively RADIX 16,
@@ -13,16 +13,15 @@
 // verified ARITHMETICALLY against the primary source
 // (~/Projects/star-wars-1983-source-text/TCHSCR.MAC:718-738), not the finding's
 // prose — e.g. `.WORD 0087,2551` -> 00'87'25'51 -> 872,551.
-//
-// This module (src/core/highScores.ts) does not exist until GREEN; the import
-// fails RED. Dev creates:
-//   - DEFAULT_HIGH_SCORES : HighScoreTable<'wave'>  (pure data, highest first)
-//   - seedDefaultHighScores(loaded) : returns the defaults on an EMPTY board,
-//                                     the loaded table UNCHANGED otherwise
-//     — the DOINTS-on-reset seam main.ts wires the storage.load() through.
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_HIGH_SCORES, seedDefaultHighScores } from '../../src/core/highScores'
-import { makeHighScoreRowGuard, type HighScoreTable } from '@shared/highscore'
+// pt1-8 (2026-08-20): the SEED is retired. star-wars no longer greets a fresh cabinet
+// with the ROM defaults — the board starts EMPTY (localStorage-backed real scores only),
+// a deliberate deviation from ROM fidelity. `seedDefaultHighScores` and its describe
+// block below are removed; the empty-boot behaviour is pinned in
+// tests/core/pt1-8-empty-high-score.test.ts. DEFAULT_HIGH_SCORES itself is KEPT here as
+// unwired ROM REFERENCE — the byte-decode + sw8-20 blocks below still guard the constant.
+import { DEFAULT_HIGH_SCORES } from '../../src/core/highScores'
+import { makeHighScoreRowGuard } from '@shared/highscore'
 
 // The authentic seed ladder, highest first — INTINT/INTSCR decoded from
 // TCHSCR.MAC:718-738. Pinned to LITERALS so no assertion re-derives from the
@@ -113,16 +112,8 @@ describe('sw8-20 — the ROM defaults carry NO per-run wave: honest null, not th
   })
 })
 
-describe('sw7-3 H-015 — seedDefaultHighScores: DOINTS runs ONLY on an empty / reset board', () => {
-  it('seeds the 10 defaults when the stored table is empty (a fresh cabinet)', () => {
-    expect(seedDefaultHighScores([])).toEqual(DEFAULT_HIGH_SCORES)
-  })
-
-  it('NEVER clobbers a non-empty board (a single real score must not wipe the ladder)', () => {
-    // The Design-B trap: falling back to the defaults whenever the board "looks
-    // empty enough". The ROM copies defaults on RESET only; once any score is
-    // posted the table is the player's. Prove a populated board passes through.
-    const real: HighScoreTable<'wave'> = [{ name: 'ZZZ', score: 42, wave: 1 }]
-    expect(seedDefaultHighScores(real)).toEqual(real)
-  })
-})
+// pt1-8: the `seedDefaultHighScores` DOINTS-on-reset block that stood here is removed.
+// A fresh cabinet no longer seeds the defaults — the board boots EMPTY. That behaviour
+// (and that no runtime path reads DEFAULT_HIGH_SCORES) is pinned in
+// tests/core/pt1-8-empty-high-score.test.ts. The decode + sw8-20 blocks above remain as
+// the constant's unwired ROM reference.

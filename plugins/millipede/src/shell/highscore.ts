@@ -20,7 +20,7 @@
 // commit is ml7's job. This story delivers the module ml7 will call.
 
 import { makeHighScoreStorage, isHighScoreRow, type HighScoreStorage } from '@shared/highscore'
-import { DEFAULT_HIGH_SCORES, type MilliHighScore } from '../core/highscore.js'
+import { type MilliHighScore } from '../core/highscore.js'
 
 /** The one-origin cabinet game id — the localStorage key prefix and the R2 key prefix
  *  are both this. Kept in one place so a stray 'milli'/'millepede' typo can't split the
@@ -56,15 +56,14 @@ function isRenderableRow({ name, score }: MilliHighScore): boolean {
   )
 }
 
-/** The ladder to boot with: the persisted board when the player has one, else the
- *  seeded ROM DEFAULT_HIGH_SCORES. `load()` returns [] for a first boot OR an
- *  unreachable/corrupt store, and an empty ladder would let ANY positive score qualify
- *  and blank the attract high-score readout — so the seeded 99$-block defaults stand
- *  until a real board is saved. Rows the millipede encoder cannot render are dropped
- *  (ml10-2 rework [SEC]); if that empties the board, the seeded default stands. */
+/** The ladder to boot with: the persisted board, or EMPTY on a first boot (pt1-8: no
+ *  built-in seed — the ROM DEFAULT_HIGH_SCORES ladder is no longer seeded here). `load()`
+ *  returns [] for a first boot OR an unreachable/corrupt store, so a fresh cabinet starts
+ *  clean and any positive score then qualifies (filling the board). Rows the millipede
+ *  encoder cannot render are dropped (ml10-2 rework [SEC]); the board stays [] if that
+ *  empties it. */
 export function loadHighScores(
   storage: HighScoreStorage<MilliHighScore>,
 ): readonly MilliHighScore[] {
-  const saved = storage.load().filter(isRenderableRow)
-  return saved.length > 0 ? saved : DEFAULT_HIGH_SCORES
+  return storage.load().filter(isRenderableRow)
 }

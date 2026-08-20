@@ -39,6 +39,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
+import { MC_HIGH_SCORE_DEPTH } from '../src/core/highscore.js'
 // (mc4-4's HUD render block — "the HUD draws the wave number and current multiplier",
 //  asserted via the drawn fillText string — moved to render-hud.test.ts when mc9-4
 //  retired the monospace fillText HUD. Its guarantees are re-pinned there
@@ -189,6 +190,10 @@ describe('mc4-4 AC1 — game-over wins at wave-end (no advance, frozen)', () => 
     score: 1000,
     cities: base.cities.map((c) => ({ ...c, alive: false })),
     bases: base.bases.map((b) => ({ ...b, ammo: 0 })),
+    // pt1-8: createPlayGame now seeds an EMPTY board, on which any score qualifies and a
+    // game-over routes to name-entry. Pin a FULL ladder so score 1000 can't qualify — this
+    // test is about the wave-end → over freeze, not high-score entry.
+    highScores: Array.from({ length: MC_HIGH_SCORE_DEPTH }, (_, i) => ({ name: 'ZZ', score: 9000 + i })),
   })
   const stepped = stepGame(eowDead) as WaveState
 

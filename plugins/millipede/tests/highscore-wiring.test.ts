@@ -65,7 +65,6 @@ import { createGame, type GameState } from '../src/core/game-state'
 import { stepGame, type GameInput } from '../src/core/sim'
 import {
   DEFAULT_HIGH_SCORES,
-  MILLI_HIGH_SCORE_DEPTH,
   MILLI_INITIALS_LENGTH,
   type MilliHighScore,
 } from '../src/core/highscore.js'
@@ -136,14 +135,11 @@ function gameOverState(score: number, delay: number): GameState {
   } as EntryState
 }
 
-// ─── Group A: createGame seeds the live ladder + an empty initials buffer ─────────
-describe('ml10-2 A — createGame carries the seeded ladder and an empty initials buffer', () => {
-  it('seeds highScores with the eight-rung ROM DEFAULT ladder', () => {
+// ─── Group A: createGame starts with an EMPTY ladder + an empty initials buffer ───
+describe('ml10-2 A — createGame carries an EMPTY ladder and an empty initials buffer', () => {
+  it('starts highScores EMPTY (pt1-8: no built-in seed — real scores only)', () => {
     const g = asEntry(createGame(0x1982))
-    expect(g.highScores, 'createGame must seed the ladder Dev renders + qualifies against').toEqual(
-      DEFAULT_HIGH_SCORES,
-    )
-    expect(g.highScores).toHaveLength(MILLI_HIGH_SCORE_DEPTH)
+    expect(g.highScores, 'a fresh game must carry no built-in scores').toEqual([])
   })
 
   it('seeds an empty initials buffer', () => {

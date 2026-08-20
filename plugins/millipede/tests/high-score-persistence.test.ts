@@ -178,13 +178,12 @@ describe('ml5-4 — src/shell/highscore.ts persists the ladder under the cabinet
     }
   })
 
-  it('loadHighScores falls back to the seeded ROM ladder on a first / empty boot', () => {
-    // First boot: the attract ladder must show the seeded DEFAULT_HIGH_SCORES, never
-    // an empty board — an empty ladder lets ANY positive score qualify and blanks the
-    // attract high-score readout.
+  it('loadHighScores returns an EMPTY board on a first / empty boot (pt1-8: no built-in seed)', () => {
+    // pt1-8: a fresh cabinet starts CLEAN — the ROM DEFAULT_HIGH_SCORES ladder is no
+    // longer seeded onto an empty board. localStorage-backed real scores only, so an
+    // empty store yields an empty ladder (any positive score then qualifies, filling it).
     const loaded = loadHighScores(makeMilliHighScoreStorage())
-    expect(loaded).toEqual(DEFAULT_HIGH_SCORES)
-    expect(loaded).toHaveLength(MILLI_HIGH_SCORE_DEPTH)
+    expect(loaded).toEqual([])
   })
 
   it('loadHighScores returns the persisted board on a returning boot', () => {
@@ -210,18 +209,18 @@ describe('ml5-4 — src/shell/highscore.ts persists the ladder under the cabinet
   })
 
   // ─── Graceful degradation: persistence must NEVER crash the game (rule #10) ──────
-  it('corrupt stored JSON degrades to the seeded ladder, never a throw', () => {
+  it('corrupt stored JSON degrades to an EMPTY board, never a throw (pt1-8)', () => {
     installStorage(makeFakeStorage({ [highScoreKey(GAME_ID)]: '{ not json ]' }))
     let loaded: readonly MilliHighScore[] = []
     expect(() => {
       loaded = loadHighScores(makeMilliHighScoreStorage())
     }).not.toThrow()
-    expect(loaded).toEqual(DEFAULT_HIGH_SCORES)
+    expect(loaded).toEqual([])
   })
 
-  it('a non-array / non-row payload is rejected and falls back to the seeded ladder', () => {
+  it('a non-array / non-row payload is rejected and degrades to an EMPTY board (pt1-8)', () => {
     installStorage(makeFakeStorage({ [highScoreKey(GAME_ID)]: JSON.stringify({ hacked: true }) }))
-    expect(loadHighScores(makeMilliHighScoreStorage())).toEqual(DEFAULT_HIGH_SCORES)
+    expect(loadHighScores(makeMilliHighScoreStorage())).toEqual([])
   })
 
   it('a stored table with junk rows keeps only the valid base-shape rows on load', () => {
@@ -238,10 +237,10 @@ describe('ml5-4 — src/shell/highscore.ts persists the ladder under the cabinet
     ])
   })
 
-  it('unreachable storage (no localStorage) loads the seeded ladder and save is an inert no-op', () => {
+  it('unreachable storage (no localStorage) loads an EMPTY board and save is an inert no-op (pt1-8)', () => {
     installStorage(undefined) // node / private-mode: even reading the global can be absent
     const storage = makeMilliHighScoreStorage()
-    expect(loadHighScores(storage)).toEqual(DEFAULT_HIGH_SCORES)
+    expect(loadHighScores(storage)).toEqual([])
     expect(() => storage.save(board)).not.toThrow()
   })
 })

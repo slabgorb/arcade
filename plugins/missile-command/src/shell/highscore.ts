@@ -14,7 +14,7 @@
 // `isHighScoreRow` directly rather than makeHighScoreRowGuard(field).
 
 import { makeHighScoreStorage, isHighScoreRow, type HighScoreStorage } from '@shared/highscore'
-import { DEFAULT_HIGH_SCORES, type MissileCommandHighScore } from '../core/highscore.js'
+import { type MissileCommandHighScore } from '../core/highscore.js'
 
 /** The one-origin cabinet game id — the localStorage key prefix and the R2 key
  *  prefix are both this. Kept in one place so a stray 'mc'/'missilecommand' typo
@@ -27,14 +27,12 @@ export function makeMcHighScoreStorage(): HighScoreStorage<MissileCommandHighSco
   return makeHighScoreStorage<MissileCommandHighScore>(MC_HIGH_SCORE_GAME_ID, isHighScoreRow, '')
 }
 
-/** The ladder to boot with: the persisted board when the player has one, else the
- *  seeded ROM DEFAULT_HIGH_SCORES. `load()` returns [] for a first boot OR an
- *  unreachable/corrupt store, and an empty ladder would let ANY positive score
- *  qualify and blank the attract screen — so the seeded W3DSUP defaults stand until
- *  a real board is saved. */
+/** The ladder to boot with: the persisted board, or EMPTY on a first boot (pt1-8: no
+ *  built-in seed — the ROM DEFAULT_HIGH_SCORES ladder is no longer seeded here). `load()`
+ *  returns [] for a first boot OR an unreachable/corrupt store, so a fresh cabinet starts
+ *  clean and any positive score then qualifies (filling the board). */
 export function loadHighScores(
   storage: HighScoreStorage<MissileCommandHighScore>,
 ): readonly MissileCommandHighScore[] {
-  const saved = storage.load()
-  return saved.length > 0 ? saved : DEFAULT_HIGH_SCORES
+  return storage.load()
 }

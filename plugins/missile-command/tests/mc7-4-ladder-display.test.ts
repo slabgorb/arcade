@@ -113,9 +113,16 @@ const paint = (state: GameState): Mark[] => {
   drawFrame(ctx, state, W, H, state.wave)
   return marks
 }
-// An attract frame at frame 0 (the sim's only clock is state.frame). Fresh game =
-// the seeded default ladder in state.highScores.
-const attractFrame = (): GameState => ({ ...createGame(1), phase: 'attract', frame: 0 })
+// An attract frame at frame 0 (the sim's only clock is state.frame). pt1-8: a fresh
+// game now boots an EMPTY board, so this fixture explicitly seeds a full sample ladder
+// (DEFAULT_HIGH_SCORES, imported here purely as sample data) to exercise the RENDER
+// path — the display must paint whatever ladder is in state.
+const attractFrame = (): GameState => ({
+  ...createGame(1),
+  phase: 'attract',
+  frame: 0,
+  highScores: DEFAULT_HIGH_SCORES,
+})
 
 // Marks whose Y falls inside the reserved slot region [slot.y, slot.y+slot.h) — the
 // rungs live here; the HUD BEST figure and the HIGH SCORES header sit OUTSIDE it, so
