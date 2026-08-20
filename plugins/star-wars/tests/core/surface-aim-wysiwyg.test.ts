@@ -16,7 +16,7 @@
 // That sentence is FALSE for the surface, and has been false since the camera-lift
 // (stories 11-2 / 11-5). The surface camera flies at `[0, state.altitude, 0]`
 // (`render.ts cameraView`), altitude in [MIN_SKIM_ALTITUDE .. MAX_SKIM_ALTITUDE] =
-// [40..238]. The muzzle, the fireball target (`toCockpit`) and the cockpit hit-test all
+// [1200..7168] (pt1-3 raw scale). The muzzle, the fireball target (`toCockpit`) and the cockpit hit-test all
 // still sit at the world origin. So the eye and the gun ride PARALLEL RAYS separated by
 // `altitude` — the exact defect sw5-6 fixed one phase over, still live in this one.
 //
@@ -245,22 +245,22 @@ describe('sw7-16 — the two ship points inside one frame', () => {
   // still true and still worth pinning. The lost guard is recorded as a Delivery Finding on
   // sw7-17: it is a real cost of the hitscan port, not an oversight.
 
-  it('a TERRAIN-CRASH frame holds two ship points 87 apart — the teleport is real', () => {
+  it('a TERRAIN-CRASH frame holds two ship points ~2639 apart — the teleport is real', () => {
     // THE CASE ROUND 1'S DOCSTRING GOT WRONG, and the reason `aimY: 0` was never a harmless
     // convenience. Diving from just inside the floor of the band trips the crash bump, which
-    // does not ease the ship up — it TELEPORTS it:
+    // does not ease the ship up — it TELEPORTS it (pt1-3 raw scale: MIN_SKIM 1200, SKIM 3840):
     //
-    //     if (altitude < MIN_SKIM_ALTITUDE) altitude = SKIM_ALTITUDE   // 40 -> 128
+    //     if (altitude < MIN_SKIM_ALTITUDE) altitude = SKIM_ALTITUDE   // 1200 -> 3840
     //
-    // so the frame's two ship points sit 87 apart (88 firing from exactly 40) — NOT the "one
-    // frame of climb (<= ALTITUDE_RATE * dt)" = 3.33 the docstring claimed, and not "three
-    // orders under" anything. The pilot aimed from 41; his shot leaves from 41. The teleport is
-    // the same frame's business, and it is not the gun's.
+    // so the frame's two ship points sit ~2639 apart — NOT the "one frame of climb
+    // (<= ALTITUDE_RATE * dt)" = 100 the docstring claimed, and not "three orders under"
+    // anything. The pilot aimed from 1201; his shot leaves from 1201. The teleport is the same
+    // frame's business, and it is not the gun's.
     //
     // The gun half of that sentence is no longer assertable (see this section's header — the
     // beam leaves no object to read a spawn point from). The DISTANCE half is, and it is the
     // load-bearing fact: it is what makes "which ship point?" a real question rather than a
-    // rounding error, and it is what round 1's docstring got wrong by a factor of 26.
+    // rounding error.
     const s0 = surface({ altitude: MIN_SKIM_ALTITUDE + 1 })
     const s = stepGame(s0, trigger({ aimY: -1 }), DT)
 
@@ -271,8 +271,8 @@ describe('sw7-16 — the two ship points inside one frame', () => {
     expect(s.altitude, 'the bump teleports the ship; it does not ease it').toBe(SKIM_ALTITUDE)
     expect(
       eyeOf(s)[2] - s0.altitude, // native up is index 2
-      'the frame really does hold two ship points ~87 apart — the docstring said 3.33',
-    ).toBeCloseTo(87)
+      'the frame really does hold two ship points a full teleport apart — not one frame of climb',
+    ).toBeCloseTo(SKIM_ALTITUDE - (MIN_SKIM_ALTITUDE + 1))
   })
 })
 
@@ -284,11 +284,12 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
   // WHICH OF THESE CASES ACTUALLY DISCRIMINATE — stated plainly, because a suite that takes
   // credit it has not earned is what got round 1 rejected. Aiming at a tower's base from
   // altitude A, the unfixed build's floor-level bolt arrives ~0.952·A BELOW it, against a
-  // TURRET_HIT_RADIUS of 200. So it is only a MISS once 0.952·A > 200, i.e. A > ~210:
+  // TURRET_HIT_RADIUS of 6000 (pt1-3 raw scale). So it is only a MISS once 0.952·A > 6000,
+  // i.e. A > ~6300:
   //
-  //     MIN_SKIM_ALTITUDE   40  ->  ~38 low   inside the sphere — a kill either way
-  //     SKIM_ALTITUDE      128  -> ~122 low   inside the sphere — a kill either way
-  //     MAX_SKIM_ALTITUDE  238  -> ~227 low   OUTSIDE — the only case that catches the bug
+  //     MIN_SKIM_ALTITUDE  1200  -> ~1142 low   inside the sphere — a kill either way
+  //     SKIM_ALTITUDE      3840  -> ~3656 low   inside the sphere — a kill either way
+  //     MAX_SKIM_ALTITUDE  7168  -> ~6824 low   OUTSIDE — the only case that catches the bug
   //
   // The first two are AC coverage ("dead-on aim kills at every altitude in the band"), NOT
   // regression guards, and this file does not pretend otherwise. Sections (a) and (b) are
@@ -323,7 +324,10 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
   it.each(ALTITUDE_BAND)(
     'DESTROYS a tower the crosshair is on, flying at %s (altitude %s)',
     (_label, alt) => {
-      const tower: Vec3 = [4000, 0, 0] // native [depth, right, up]: 4000 ahead
+      // pt1-3 raw scale: a maze-realistic depth (raw ROM units), deeper than the raw
+      // flight-band ceiling (7168) so the base is aimable from every altitude in the
+      // band — a tower 4000 ahead sits 61° below the eye at the ceiling, off the yoke.
+      const tower: Vec3 = [12000, 0, 0] // native [depth, right, up]: 12000 ahead
       const s0 = surface({ altitude: alt, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
 
       const aim = aimAt(tower, eyeOf(s0), ASPECT)
@@ -358,10 +362,12 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
 /**
  * A fireball height that ONLY a ship-centred hit-test can catch while the pilot flies at the
  * floor of the band: outside the ORIGIN's sphere (> COCKPIT_HIT_RADIUS) but inside the SHIP's
- * (< MIN_SKIM_ALTITUDE + COCKPIT_HIT_RADIUS) — the window (80, 120). Its midpoint, DERIVED
- * from the constants rather than typed, so a retune moves the probe instead of rotting it.
+ * (|y - MIN_SKIM_ALTITUDE| < COCKPIT_HIT_RADIUS). pt1-3: at raw scale MIN_SKIM (1200) sits far
+ * above the small cockpit sphere (80), so anything near the ship clears the origin trivially;
+ * sit the probe COCKPIT_HIT_RADIUS/2 BELOW the floor-ship (= 1160), DERIVED from the constants
+ * so a retune moves it instead of rotting it.
  */
-const PROBE_Y = (COCKPIT_HIT_RADIUS + (MIN_SKIM_ALTITUDE + COCKPIT_HIT_RADIUS)) / 2 // = 100
+const PROBE_Y = MIN_SKIM_ALTITUDE - COCKPIT_HIT_RADIUS / 2 // = 1160 at raw scale
 
 describe('sw7-16 — enemy fire tracks the flying ship', () => {
   it('aims a tower fireball at the ship point, not at the origin', () => {
@@ -435,17 +441,16 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
   })
 
   it('carries the hit sphere DOWN with the ship, not merely away from the origin', () => {
-    // ROUND 1'S INERT GUARD, MADE TO BITE. It used to park the shot at [0, MIN_SKIM_ALTITUDE,
-    // 0] = [0, 40, 0] and call itself "the ship flies down ONTO a floor-level fireball". It
-    // never was a guard: 40 is INSIDE COCKPIT_HIT_RADIUS (80), so the unfixed build's
-    // origin-centred sphere scored that hit too, and the test passed against the exact bug it
-    // was written to catch. Its own comment even asserted `MIN_SKIM_ALTITUDE < COCKPIT_HIT_
-    // RADIUS` — the fact that made it inert — and read it as the fixture's justification.
+    // ROUND 1'S INERT GUARD, MADE TO BITE. It used to park the shot inside the cockpit sphere
+    // at the origin, so the unfixed build's origin-centred sphere scored the hit too, and the
+    // test passed against the exact bug it was written to catch.
     //
-    // To discriminate at the floor of the band the shot must sit OUTSIDE the origin's sphere
-    // and INSIDE the ship's: the window (80, 120) with the pilot at 40. PROBE_Y is its
-    // midpoint. This still tests what the old one meant to — that the hit sphere MOVES rather
-    // than merely moving away — because a sphere left at the origin misses PROBE_Y entirely.
+    // To discriminate, the shot must sit OUTSIDE the origin's sphere and INSIDE the ship's.
+    // pt1-3 raw scale: the pilot flies at MIN_SKIM_ALTITUDE (1200), far above the small cockpit
+    // sphere (COCKPIT_HIT_RADIUS 80), so PROBE_Y = 1160 (a half-radius below the floor-ship) is
+    // trivially outside the origin and inside the ship. This still tests what the old one meant
+    // to — that the hit sphere MOVES with the ship — because a sphere left at the origin misses
+    // PROBE_Y entirely.
     const s0 = surface({
       altitude: MIN_SKIM_ALTITUDE,
       enemyShots: [{ pos: [0, 0, PROBE_Y], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]
@@ -474,17 +479,20 @@ describe('sw7-16 — enemy fire tracks the flying ship', () => {
     // pilot would go quietly invulnerable — with NaN absorbing, so altitude never recovers.
     // Failing OPEN is strictly worse than the bug this story fixed. Reachable via `input.ts`'s
     // `0/0` on a zero-height canvas rect (the yoke listener is on `window`, not the canvas).
+    // The NaN bump resets the ship to SKIM_ALTITUDE (3840), so the probe that proves mortality
+    // must sit inside the cockpit sphere around THAT height — not PROBE_Y, which hugs MIN_SKIM.
+    const probeAtReset = SKIM_ALTITUDE - COCKPIT_HIT_RADIUS / 2 // = 3800 at raw scale
     const s0 = surface({
       altitude: MIN_SKIM_ALTITUDE,
-      enemyShots: [{ pos: [0, 0, PROBE_Y], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]
+      enemyShots: [{ pos: [0, 0, probeAtReset], vel: [0, 0, 0], ttl: 5 }], // native [depth, right, up]
       lives: 3,
     })
     const s = stepGame(s0, trigger({ fire: false, aimY: NaN }), DT)
 
     expect(s.altitude, 'a NaN yoke must not poison the ship point').toBe(SKIM_ALTITUDE)
     expect(Number.isNaN(s.altitude)).toBe(false)
-    // The pilot is still mortal: the fireball at PROBE_Y is inside the sphere around the reset
-    // ship (|100 − 128| = 28 < 80), so it lands. A NaN-poisoned sphere would have missed it.
+    // The pilot is still mortal: the fireball at probeAtReset is inside the sphere around the
+    // reset ship (|3800 − 3840| = 40 < 80), so it lands. A NaN-poisoned sphere would have missed it.
     expect(s.events.filter((e) => e.type === 'player-death' && e.cause === 'turret')).toHaveLength(1)
   })
 })

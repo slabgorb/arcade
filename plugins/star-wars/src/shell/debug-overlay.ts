@@ -175,7 +175,8 @@ function sceneModels(state: GameState, view: Mat4): { model: Model3D; mv: Mat4 }
     items.push({ model: DEATH_STAR_SURFACE, mv: multiply(view, modelMatrix(floor, SURFACE_ORIENT)) })
     for (const tu of state.turrets) {
       // sw5-5: the ground models are in raw ROM units, so the overlay must apply
-      // the same presentation scale render() does or its bounds rings land 30x out.
+      // the same model scale render() does (GROUND_MODEL_SCALE — raw 1:1 since
+      // pt1-3) or its bounds rings drift off the towers they mark.
       items.push({
         model: SURFACE_TOWER,
         mv: multiply(view, modelMatrix(tu.pos, TOWER_ORIENT, GROUND_MODEL_SCALE)),

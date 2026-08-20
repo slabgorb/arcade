@@ -371,9 +371,9 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // SHAPE (WSGRND.MAC:1076-1132 is a width/height box with no octagon term).
     //
     // CORRECTED at GREEN. This comment used to say the tower "sits at vert 4000 against a
-    // pyramid bound of 230.9 — hopelessly off the SPACE glass". SKIM_ALTITUDE is 128, which is
-    // INSIDE that bound, so the seat was never off the glass and this test did not bite the
-    // mutant it named: measured, hoisting the C_PV gate into `beamHit` leaves this test GREEN.
+    // pyramid bound of 230.9 — hopelessly off the SPACE glass". The seat's exact relation to that
+    // retired pyramid bound is moot (SKIM_ALTITUDE is 3840 at pt1-3 raw scale); what the mutation
+    // showed is the point: measured, hoisting the C_PV gate into `beamHit` leaves this test GREEN.
     // What does catch that mutant is `hitscan-laser.test.ts`'s 6,000-off-axis tower (and the
     // direct `beamHit` probe below), so the property was covered — by a different test than
     // this one claimed. Kept as ordinary surface-still-fires cover, named for what it does.
@@ -406,9 +406,9 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // The discriminator has to sit where they differ, and they differ in one place: the octagon
     // CORNER. Today's disc is a strict subset of the ROM region, so hoisting the ROM shape into
     // the helper can only ADD hits — never remove them. The seat below is therefore one the
-    // surface must keep MISSING: at 26.57° off the ray and 212 units out, it is outside
-    // TURRET_HIT_RADIUS (200) but inside the ROM box (189.6, 94.8 both ≤ 200) and inside the
-    // ROM octagon (284.4 ≤ 300). If the space shape ever reaches `beamHit`, this tower starts
+    // surface must keep MISSING: at 26.57° off the ray and 6360 units out, it is outside
+    // TURRET_HIT_RADIUS (6000) but inside the ROM box (5688, 2844 both ≤ 6000) and inside the
+    // ROM octagon (8532 ≤ 9000). If the space shape ever reaches `beamHit`, this tower starts
     // dying and this test reddens.
     //
     // VERBATIM MUTANT this kills — the WHOLE body of `beamHit`, replaced, same five lines:
@@ -430,11 +430,13 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
     // because it changes gameRules.ts's LINE COUNT and the findings' `ours` citations are
     // re-opened against the working tree. A mutant that moves lines cannot report a clean
     // blast radius in this repo. Folded to five lines, exactly replacing the original five.)
-    const corner: Vec3 = [3000, 189.6, SKIM_ALTITUDE + 94.8] // native: depth 3000, 189.6 right, 94.8 above skim
-    expect(Math.hypot(189.6, 94.8), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
+    // pt1-3 raw scale: the offsets are ×30 (was 189.6 / 94.8 at the ÷30 hit radius of 200) so the
+    // corner sits just OUTSIDE the raw disc (radius 6000) yet still INSIDE the 1.5× ROM octagon.
+    const corner: Vec3 = [3000, 5688, SKIM_ALTITUDE + 2844] // native: depth 3000, 5688 right, 2844 above skim
+    expect(Math.hypot(5688, 2844), 'fixture guard: OUTSIDE the disc the surface uses').toBeGreaterThan(
       TURRET_HIT_RADIUS,
     )
-    expect(189.6 + 94.8, 'fixture guard: INSIDE the ROM octagon, so a leak would accept it').toBeLessThanOrEqual(
+    expect(5688 + 2844, 'fixture guard: INSIDE the ROM octagon, so a leak would accept it').toBeLessThanOrEqual(
       1.5 * TURRET_HIT_RADIUS,
     )
     const surfaceAt = (pos: Vec3): GameState => ({
@@ -457,8 +459,8 @@ describe('sw8-27 AC3 — the gate does not leak into the shared helper', () => {
 
     // The positive control, without which the assertion above passes for any broken fixture:
     // the same bearing, just inside the disc, still dies.
-    const inside: Vec3 = [3000, 170, SKIM_ALTITUDE + 85] // native: depth 3000, 170 right, 85 above skim
-    expect(Math.hypot(170, 85), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
+    const inside: Vec3 = [3000, 5100, SKIM_ALTITUDE + 2550] // native: depth 3000, 5100 right, 2550 above skim (÷30 era: 170/85)
+    expect(Math.hypot(5100, 2550), 'fixture guard: inside the disc').toBeLessThan(TURRET_HIT_RADIUS)
     expect(
       turretDied(stepGame(surfaceAt(inside), restTrigger(WIDE), DT)),
       'positive control: the surface gun still works on this bearing',
