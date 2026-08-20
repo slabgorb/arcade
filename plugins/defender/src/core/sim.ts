@@ -41,6 +41,7 @@ import { createEffectBank, type EffectBank, type PlacedEffect } from './effects.
 import { laserVsObject, bombVsPlayer, shipVsObject, type CollObject, type Query, type Box } from './collision.js'
 import { OBJECTS, type ObjectImage } from './objects.js'
 import { initStars, stepStars, STAR_COUNT, type Star } from './stars.js'
+import { decodeScrollSurface, TERRAIN } from './terrain.js'
 import { slide, wrap16, projectWorldX, projectOnscreenX, shipWorldX, type Facing } from './world.js'
 import { stepVelocityX, stepReverse, stepVerticalY, type RevState, type VState } from './ship.js'
 import {
@@ -94,6 +95,9 @@ const SHOT_BOX: Box = { width: 2, height: 2 }
 const GROUND_HUMANOID_COUNT = 10
 /** The astronaut ground row — ASTST plants each at OY16 = $E0 (DEFA7.SRC:1529-1530). */
 const GROUND_HUMANOID_Y = 0xe0
+/** Terrain surface resolution used to sample lander roam altitude: TDATA is 256 bytes × 8 =
+ *  2048 one-bit columns spanning one world lap (0x10000), matching the render (scene.ts). */
+const TERRAIN_SURFACE_COLS = 2048
 /** Landers/bombers/pods appear two rows below the top (LANDER_SPAWN_Y, landers.ts). */
 const SPAWN_Y = 42 + 2 // YMIN+2 (world.ts YMIN=42)
 
@@ -302,7 +306,15 @@ export function createSim(rand: () => number): SimState {
     rt.cues.push({ type: cue })
   }
 
-  const enemyBank = createEnemyBank(sched, rand)
+  // The planet surface (TDATA), decoded once, gives landers their terrain-relative roam altitude
+  // (GETALT): 2048 columns span one world lap (0x10000), so `worldX >> 5` picks a column. Landers
+  // over different terrain roam at different altitudes — the pt1-19 fix for the synchronized row.
+  const terrainBlock = TERRAIN.find((b) => b.name === 'TDATA')
+  const surface = terrainBlock ? decodeScrollSurface(terrainBlock, TERRAIN_SURFACE_COLS) : null
+  const groundAt = surface
+    ? (worldX: number): number => surface[(wrap16(worldX) >> 5) % surface.length]
+    : undefined
+  const enemyBank = createEnemyBank(sched, rand, groundAt)
   const mutantBank = createMutantBank(sched, { rand, player: () => rt.player, fire: makeFire('mutant-shoot') })
   const ufoBank = createUfoBank(sched, { rand, player: () => rt.player, fire: makeFire('baiter-shoot') })
   const bomberBank = createBomberBank(sched, { rand, player: () => rt.player })

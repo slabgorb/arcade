@@ -31,14 +31,15 @@
 // ONE shared df3 scheduler (the laser.ts precedent) — never their own tick — the spawn
 // entropy is INJECTED as `rand`, and no colour is named here (the render blits LNDP1 /
 // ASTP1 by df2 palette INDEX). Every constant here is cited to its DEFB6.SRC instruction
-// and pinned by a claims/*.json entry (the df1-1 gate) — EXCEPT the two vertical speeds
-// DESCEND_STEP/CARRY_STEP, which are df4-3 placeholders: the authentic descent velocity
-// LNDYV is wave-table RAM (PHR6.SRC:393) the df5 wave logic initialises, so there is no
-// fixed magnitude to port yet. This core reproduces travel DIRECTION and the grab/carry/
-// fall STRUCTURE; df5 supplies the exact vertical speeds (the same call laser.ts's STEP makes).
+// and pinned by a claims/*.json entry (the df1-1 gate) — EXCEPT the movement-speed
+// placeholders (DESCEND_STEP/CARRY_STEP, and pt1-19's ROAM_X_SPEED/PATROL_Y), which are
+// df4-3-style stand-ins for wave-table RAM / terrain values (LNDYV/LNDXV/GETALT) the later
+// wave+terrain logic supplies — so there is no fixed magnitude to port yet. This core
+// reproduces travel DIRECTION and the roam/grab/carry/fall STRUCTURE; df5 supplies the
+// exact vertical speeds (the same call laser.ts's STEP makes).
 
 import type { Scheduler, Process } from './scheduler.js'
-import { YMIN, YMAX, type Facing } from './world.js'
+import { YMIN, YMAX, wrap16, type Facing } from './world.js'
 import { collide, type Query, type Box, type CollObject } from './collision.js'
 import type { EffectEvent } from './effects.js'
 
@@ -85,6 +86,29 @@ const WALK_TURN_THRESHOLD = 8
 const DESCEND_STEP = 2
 /** Carry ascent speed once a humanoid is grabbed (rows/tick, df4-3 placeholder); COM(LNDYV) up-split (:785). */
 const CARRY_STEP = 2
+/** Horizontal roam-speed ceiling for a roaming lander's patrol drift (units/tick,
+ *  df4-3 placeholder). The ROM draws EACH lander's horizontal velocity randomly at spawn
+ *  (LDA LNDXV / JSR RMAX, then a random sign `BITB #1`, DEFB6.SRC:670-676); LNDXV is
+ *  wave-table RAM (PHR6.SRC:392), so — exactly like DESCEND_STEP stands in for LNDYV — there
+ *  is no fixed magnitude to port, only the STRUCTURE: an individual, signed, per-lander drift
+ *  that spreads a fresh wave out instead of letting it fall as one synchronized column. */
+const ROAM_X_SPEED = 0x20
+/** Rows a roaming lander hovers ABOVE the terrain surface at its column — the ROM's
+ *  `GETALT / SUBA #50` (LANDSA, DEFB6.SRC:711-712). Each lander roams toward `ground(x)-50`,
+ *  so landers over different terrain settle at DIFFERENT altitudes: that per-column spread is
+ *  what stops a wave descending as one synchronized row (the pt1-19 bug), and it is the ROM's
+ *  own mechanism, not a placeholder. */
+const ROAM_ABOVE_GROUND = 50
+/** Flat fallback ground row when no terrain profile is supplied (bank unit tests) — the sim
+ *  wires the real per-column surface (sim.ts `groundAt`). Matches the humanoid ground row so a
+ *  target-less lander in a flat bank still roams above its prey, not at the floor. */
+const DEFAULT_GROUND_Y = YMAX - 16
+/** Coarse column-alignment window (world-X units): a lander DIVES to grab only once it is
+ *  within this band of its target's column; otherwise it ROAMS (LANDS0 masks OX16 to its top
+ *  bits — `ANDA #$FC` on the high byte ≈ a 1024-unit column — and branches CLOSE→LANDG0 grab
+ *  vs. else→LANDSA roam, DEFB6.SRC:698-705). This is what makes landers pick prey INDIVIDUALLY
+ *  as they drift, instead of every lander beelining its nearest humanoid from spawn in lockstep. */
+const COLUMN_ALIGN_TOL = 0x400
 
 /** The scheduler PTYPE tags — opaque ids; any distinct values (df3 scheduler.ts). */
 const LANDER_PTYPE = 2
@@ -181,6 +205,10 @@ type LanderPhase = 'descend' | 'carry' | 'done'
 interface LanderRecord {
   x: number
   y: number
+  /** OXV — this lander's individual horizontal roam velocity (LNDXV, DEFB6.SRC:670-676),
+   *  drawn once at spawn. Applied only while roaming (target not yet column-aligned); the
+   *  hunt path steers X toward the target column instead. */
+  vx: number
   alive: boolean
   carrying: boolean
   reachedTop: boolean
@@ -195,13 +223,57 @@ function approach(from: number, to: number, step: number): number {
   return from + Math.sign(delta) * step
 }
 
+/** Signed shortest delta from `a` to `b` on the 16-bit world cylinder (−0x8000..0x7fff):
+ *  world-X wraps at $10000 (world.ts wrap16), so targeting must measure the SHORT way round,
+ *  not a raw subtraction — a humanoid that walked past the seam is one step away, not 0xFFFF.
+ *  Tolerant of an un-wrapped operand (`& 0xffff` folds it onto the cylinder first). */
+function columnGap(from: number, to: number): number {
+  return ((to - from + 0x8000) & 0xffff) - 0x8000
+}
+
+/** Absolute column separation on the cylinder — the wrap-aware |a − b|. */
+function columnDist(a: number, b: number): number {
+  return Math.abs(columnGap(a, b))
+}
+
+/** `approach` along the cylinder: step `from` toward `to` the SHORT way, wrapped, snapping
+ *  onto `to`'s column when within a step. Keeps a hunting lander's X on the 16-bit cylinder. */
+function approachColumn(from: number, to: number, step: number): number {
+  const gap = columnGap(from, to)
+  if (Math.abs(gap) <= step) return wrap16(to)
+  return wrap16(from + Math.sign(gap) * step)
+}
+
+/** Draw one lander's INDIVIDUAL horizontal roam velocity (LNDXV draw + sign, DEFB6.SRC:670-676):
+ *  magnitude 1..ROAM_X_SPEED and a sign, spread from the per-lander spawn INDEX. The ROM draws
+ *  this from RAND; we draw it deterministically from the spawn sequence instead so a fresh
+ *  wave still fans out (each lander its own signed rate) WITHOUT consuming the shared cue-stream
+ *  entropy — the exact magnitude is already a df4-3 placeholder (ROAM_X_SPEED), and keeping the
+ *  injected `rand` stream untouched preserves every seeded scenario's bit-for-bit replay. Never
+ *  zero — a magnitude of 0 would leave the lander column-locked, the bug this fixes. */
+function roamVelocity(seq: number): number {
+  const h = (seq * 2654435761) >>> 0 // Knuth multiplicative hash — spreads consecutive indices
+  const magnitude = 1 + (h % ROAM_X_SPEED) // 1..ROAM_X_SPEED (the RMAX-bounded magnitude)
+  return (h & 1) === 1 ? magnitude : -magnitude // low bit → sign (BITB #1, DEFB6.SRC:672-675)
+}
+
 /**
  * Create the abduction bank on `sched` (df3-1's cooperative scheduler). `rand` is the
  * injected byte source (0..255) — the same entropy seam createSim owns; the pure core
  * never mints its own. No entropy is consumed at construction, so a sim that spawns no
  * enemies leaves the shared RNG stream untouched.
+ *
+ * `groundAt(worldX)` is the TERRAIN surface row at a world column (the ROM's GETALT) — the sim
+ * wires its real per-column planet surface, and a roaming lander hovers `ROAM_ABOVE_GROUND`
+ * over it, so landers over different terrain settle at different altitudes (LANDSA, :711-712).
+ * Optional: bank unit tests omit it and get a flat ground (DEFAULT_GROUND_Y), which still keeps
+ * a roamer above the floor. Must return a finite row for every finite x.
  */
-export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank {
+export function createEnemyBank(
+  sched: Scheduler,
+  rand: () => number,
+  groundAt: (worldX: number) => number = () => DEFAULT_GROUND_Y,
+): EnemyBank {
   const humanoids: HumanoidRecord[] = []
   const landers: LanderRecord[] = []
   // The df5-4 panic edges on a TRANSITION, so it needs both: whether a humanoid ever existed
@@ -209,6 +281,9 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
   // one-shot TERBLO has already fired (the BNE ASTCX guard — once, never per frame).
   let humanoidEverSpawned = false
   let panicFired = false
+  // Per-lander spawn index — seeds each lander's individual roam velocity (LNDXV, see
+  // roamVelocity) so a wave fans out without drawing on the shared `rand` cue stream.
+  let landerSpawnSeq = 0
 
   const removeHumanoid = (rec: HumanoidRecord): void => {
     const i = humanoids.indexOf(rec)
@@ -225,7 +300,7 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
     let bestDist = Infinity
     for (const h of humanoids) {
       if (!h.alive || h.state !== 'walking') continue
-      const d = Math.abs(h.x - x)
+      const d = columnDist(x, h.x) // wrap-aware nearest on the 16-bit cylinder (GTARG)
       if (d < bestDist) {
         bestDist = d
         best = h
@@ -298,7 +373,8 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
 
     const rec: LanderRecord = {
       x,
-      y: LANDER_SPAWN_Y, // LDA #YMIN+2 (DEFB6.SRC:663)
+      y: LANDER_SPAWN_Y, // LDA #YMIN+2 (DEFB6.SRC:663) — the ROM spawn row is uniform
+      vx: roamVelocity(landerSpawnSeq++), // LDA LNDXV / JSR RMAX + sign (DEFB6.SRC:670-676)
       alive: true,
       carrying: false,
       reachedTop: false,
@@ -315,17 +391,28 @@ export function createEnemyBank(sched: Scheduler, rand: () => number): EnemyBank
         if (!rec.target || !rec.target.alive || rec.target.state !== 'walking') rec.target = nearestTarget(rec.x)
 
         const t = rec.target
-        if (t) {
-          rec.x = approach(rec.x, t.x, HUNT_X_STEP) // hunt the target column (LANDG, :759-764)
-          rec.y = approach(rec.y, t.y, DESCEND_STEP) // descend to its altitude (LANDSA, :711-725)
+        // LANDS0 (DEFB6.SRC:691): a lander DIVES to grab only when it is column-aligned with a
+        // live target (CLOSE→LANDG0, :698-704); otherwise — no target, OR one it has not yet
+        // drifted over — it ROAMS (else→LANDSA, :705). This is the fix for the "synchronized
+        // row": landers no longer beeline their nearest humanoid from spawn in lockstep.
+        if (t && columnDist(rec.x, t.x) <= COLUMN_ALIGN_TOL) {
+          rec.x = approachColumn(rec.x, t.x, HUNT_X_STEP) // hunt the target column (LANDG, :759-764)
+          rec.y = approach(rec.y, t.y, DESCEND_STEP) // dive to its altitude (LANDG loop, :756-775)
           // ARE WE ON HIM? — aligned in X within $80 and Y within ~12 (LANDG3, :778-782).
-          if (Math.abs(rec.x - t.x) <= GRAB_X_TOL && Math.abs(rec.y - t.y) <= GRAB_Y_TOL) {
+          if (columnDist(rec.x, t.x) <= GRAB_X_TOL && Math.abs(rec.y - t.y) <= GRAB_Y_TOL) {
             rec.carrying = true // swap kill vectors + split upward (DEFB6.SRC:783-793)
             t.state = 'grabbed'
             rec.phase = 'carry'
           }
         } else {
-          rec.y = approach(rec.y, YMAX, DESCEND_STEP) // no target yet — keep descending
+          // LANDSA roam (DEFB6.SRC:705,711-719): no target in its column — PATROL. Drift
+          // horizontally at this lander's own velocity (so the wave spreads and each lander
+          // finds prey individually as it drifts over a humanoid's column) and settle toward the
+          // TERRAIN-relative roam altitude `ground(x)-50` (GETALT / SUBA #50). Because the ground
+          // varies by column, landers spread in ALTITUDE from spawn — the fix for the "same
+          // altitude" row — instead of diving in lockstep or sinking to the floor.
+          rec.x = wrap16(rec.x + rec.vx) // OX16 is the 16-bit world cylinder (wrap16, world.ts)
+          rec.y = approach(rec.y, groundAt(rec.x) - ROAM_ABOVE_GROUND, DESCEND_STEP)
         }
         s.sleep(1, step)
         return

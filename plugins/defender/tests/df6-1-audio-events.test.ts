@@ -174,8 +174,13 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // scrolling run (off-window enemies are no longer hittable / hazardous), so the integrated
     // hit/scream cue stream shifts (289 -> 300 cues). Deliberate acknowledgement of that intended
     // change — the per-cue emission tests (df6-1-audio-emission) still pass, so the stream is healthy.
+    // RE-BASELINED for pt1-19: landers now ROAM (individual horizontal drift, patrol altitude) and
+    // dive to grab only once column-aligned, instead of every lander beelining its nearest humanoid
+    // in lockstep — so which landers grab/collide when, and the integrated hit/pickup/scream cue
+    // order, shifts (300 -> 287 cues). Intended. df6-1-audio-emission still 21/21 and the bit-for-bit
+    // replay + seed-divergence tests above still pass, so the stream is healthy, not leaking entropy.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      'c4573f3245c8ba85',
+      '22cffd53e6e17bea',
     )
   })
 })

@@ -286,23 +286,21 @@ describe('df4-6 — the COLIDE seam runs in stepSim: a laser kills a descending 
     // If an authentic geometry needs a different staging, GREEN adjusts the scenario;
     // it may NOT satisfy this by leaving collision unwired.
     const sim = await loadSim()
-    // STAGING (within the license above): the ship dwells at its start row and holds fire, so its
-    // laser stream is a steady rightward beam along SHIP_ROW. A humanoid sits AT that beam row,
-    // to the right of the lander but NEARER to it than any of df5-10's auto-seeded ground
-    // humanoids — the lander spawns in a low-density GAP between two seeded columns (col 38 sits
-    // ~2560 world-units from this target vs ~3175 to the nearest seeded humanoid), so nearestTarget
-    // picks THIS humanoid deterministically, independent of the seeded spread. The lander descends
-    // to the beam row and hunts sideways along it toward the target — lingering in the beam — where
-    // an authentic laser box (df4-1 laserVsObject) overlaps and kills it (verified: killed ~tick 120,
-    // still hunting, before it can close the grab gap). Placing the target on the beam row (not
-    // below it) is what keeps the lander AT SHIP_ROW; a same-column target below the beam would be
-    // grabbed and carried up out of laser reach instead. SHIP_ROW mirrors sim.ts INITIAL_Y; the
-    // lander is in the near firing-lane the beam sweeps first (col 38, just right of the ship's
-    // col 32). Deterministic under the seed.
-    const SHIP_ROW = 120
+    // STAGING (within the license above; RE-STAGED for pt1-19): the ship dwells at its start row
+    // and holds fire, so its laser stream is a steady rightward beam along SHIP_ROW. Since pt1-19,
+    // a lander only DIVES toward a target it is column-aligned with (LANDS0); otherwise it roams.
+    // So we plant a bait humanoid at the GROUND row in the lander's OWN column (col 38, just right
+    // of the ship's col 32 — the near firing-lane the beam sweeps first). The aligned lander runs
+    // the full abduction: it dives down the near firing-lane to the ground humanoid, grabs, and
+    // carries it back UP through SHIP_ROW — and an authentic laser box (df4-1 laserVsObject) overlaps
+    // and kills it during that run (verified: killed ~tick 172, explosion + points). The bait is
+    // NEARER than any of df5-10's auto-seeded ground humanoids (~0 vs ~3175 to the nearest seeded
+    // column), so nearestTarget picks it deterministically. SHIP_ROW mirrors sim.ts INITIAL_Y.
+    // Deterministic under the seed.
+    const GROUND_ROW = 232 // near the floor (below SHIP_ROW=INITIAL_Y=120): the abduction run climbs back up through the beam
     let s = sim.createSim(makeRand(7))
-    s = sim.spawnHumanoid(s, 48 << 8, SHIP_ROW) // beam row, just right of the lander → its nearest target
-    s = sim.spawnLander(s, 38 << 8) // near the ship's firing lane, in a low-density gap between seeded columns
+    s = sim.spawnHumanoid(s, 38 << 8, GROUND_ROW) // lander's own column, on the ground → aligned abduction run up the firing-lane
+    s = sim.spawnLander(s, 38 << 8) // near the ship's firing lane; column-aligned with the bait → dives, grabs, carries up through the beam
     const before = s.landers.length
     expect(before, 'precondition: one lander is airborne').toBeGreaterThan(0)
 

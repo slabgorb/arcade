@@ -252,10 +252,12 @@ stories:
       the landers do NOT share a single Y/velocity after N ticks.
     points: 5
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
   - id: pt1-20
     title: 'defender: in-game controls are undiscoverable — add on-screen control hints (reverse/thrust/fire/smart-bomb)'
     description: >-
