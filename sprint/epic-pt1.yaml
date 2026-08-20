@@ -169,10 +169,13 @@ stories:
     description: "Playtest 2026-08-19: after the peach level comes another peach level — suspicious to the eye, but the AUTHENTIC fruit ladder doubles most fruits (cherry, strawberry, peach, peach, apple, apple, grapes, grapes, galaxian, galaxian, bell, bell, key…). Verify our fruit table against pacman.asm's fruit/level table and cite it; if it matches the ROM, close as working-as-intended with the citation as evidence."
     points: 1
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20T09:18:06Z'
     repos: arcade
     workflow: tdd
     type: bug
+    review_verdict: approved
+    review_findings: 'Round 1 REJECTED (2 findings; core claim holds — table matches ROM, POINTS axis live-decoded + mutation-tested). R-1 (rule #1, LOW): non-null assertions line!/word! at fruit-ladder.test.ts:50,52 bypass TS narrowing (expect().toBeTruthy() is not a type guard) — replace with narrowing throws. R-2 (rule #17, MED): header cites pacman.asm:3b08 as ROM verification of the DOUBLING axis, but the doubling test only checks levelRow() self-consistency and never reads 3b08 — make 3b08 load-bearing (parse the fruit-per-level table live, assert the doubling pairing against ROM sprite codes) or soften the header to a self-consistency pin.'
   - id: pt1-18
     title: 'defender: the whole world renders on one screen — the horizontal projection is collapsed, the camera-scroll and scanner are cosmetic'
     description: >-
