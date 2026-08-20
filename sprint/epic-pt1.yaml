@@ -259,7 +259,7 @@ stories:
       ROM-confirmed fidelity divergence in the Death Star surface TRAVERSAL (distinct from pt1-3, which fixed the projection scale). Our clone (sim.ts mazeField/stepSurface) lays the ENTIRE wave maze at once and scrolls it past in ONE accelerating pass (~5s); the awakening seq (turret.seq) gates only FIRING (sim.ts:1138), not presence. The arcade does a STAGED MULTI-PASS reveal, verified against the 1983 source:
 
       - The ship LAPS the same $1000..$8000-deep maze ~5 times: forward pos M$TX is a wrapping 16-bit accumulator; each $8000 wrap does INC GD.SEQ (WSMAIN.MAC:2537-2547).
-      - The phase ends on a LAP COUNT, not a timer: LDA GD.SEQ / CMPA #5 / IFHS -> clear towers, then one blanked pass -> set PHASE to trench (WSMAIN.MAC:1678-1689). PH.TIM is music/pacing only.
+      - 'The phase ends on a LAP COUNT, not a timer: LDA GD.SEQ / CMPA #5 / IFHS -> clear towers, then one blanked pass -> set PHASE to trench (WSMAIN.MAC:1678-1689). PH.TIM is music/pacing only.'
       - The awakening byte (.C / TGD$SQ) gates PRESENCE, not just firing: LDA GD.SEQ / CMPA TGD$SQ(X) / LBLT 90$ at the maze loop top (WSGRND.MAC:738-742) SKIPS the object entirely (no draw, no gun) when GD.SEQ < .C; GDVIEW+GDGUN both sit downstream (WSGRND.MAC:771-781). DIFF splits towers across sequences 7-0/9-1/7-2/5-3 (WSGRND.MAC:146) — only ~1/3 exist on pass 0.
       - Speed confirmed: seed $100, +1/frame, cap $400 (WSMAIN.MAC:1621-1665); one $8000 sweep ~6.2s seed / ~1.6s cap at 20.5Hz.
 
