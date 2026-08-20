@@ -115,7 +115,8 @@ stories:
     description: "Playtest 2026-08-19: (a) the difficulty setting should show death stars illustrating the difficulty tiers but doesn't; (b) the hit region for 'easy - medium - hard' is misaligned — you must hover to the LEFT of 'easy' to select it. Fix the hit-testing offset and add the illustrations."
     points: 2
     priority: p1
-    status: backlog
+    status: in_progress
+    started: '2026-08-20T10:46:57Z'
     repos: arcade
     workflow: tdd
     type: bug
