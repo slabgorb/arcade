@@ -213,7 +213,9 @@ describe('mc7-3 AC-B — a qualifying game-over routes to entry, a non-qualifyin
     expect(after.phase, 'a qualifying game-over must reach entry, not stop at over').toBe('entry')
     expect(after.initials, 'entry starts with an empty buffer').toBe('')
     expect(after.score, 'the qualifying score is carried into entry for the commit').toBe(QUALIFY)
-    expect(after.highScores, 'the ladder is untouched until commit').toEqual(DEFAULT_HIGH_SCORES)
+    // pt1-8: a fresh cabinet's board is EMPTY; routing to entry must not insert, so the
+    // ladder stays [] until the commit (any positive score qualifies on an open board).
+    expect(after.highScores, 'the ladder is untouched until commit').toEqual([])
   })
 
   it('leaves a non-qualifying game-over in over (never enters name entry)', () => {
@@ -370,10 +372,10 @@ describe('mc7-3 AC-D — the ladder persists under the one-origin cabinet key', 
     expect(JSON.parse(raw as string)).toEqual(board)
   })
 
-  it('loadHighScores falls back to the seeded ROM ladder when storage is empty', () => {
-    // First boot / unreachable storage: the attract ladder must still show the
-    // W3DSUP defaults, never an empty board (which would make any score qualify).
-    expect(loadHighScores(makeMcHighScoreStorage())).toEqual(DEFAULT_HIGH_SCORES)
+  it('loadHighScores returns an EMPTY board when storage is empty (pt1-8: no built-in seed)', () => {
+    // pt1-8: a fresh cabinet starts CLEAN — no seeded W3DSUP ladder. An empty store
+    // yields an empty board; any positive score then qualifies and fills it.
+    expect(loadHighScores(makeMcHighScoreStorage())).toEqual([])
   })
 
   it('loadHighScores returns the persisted board on a returning boot', () => {

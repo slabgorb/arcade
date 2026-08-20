@@ -21,8 +21,14 @@
 //                                     the loaded table UNCHANGED otherwise
 //     — the DOINTS-on-reset seam main.ts wires the storage.load() through.
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_HIGH_SCORES, seedDefaultHighScores } from '../../src/core/highScores'
-import { makeHighScoreRowGuard, type HighScoreTable } from '@shared/highscore'
+// pt1-8 (2026-08-20): the SEED is retired. star-wars no longer greets a fresh cabinet
+// with the ROM defaults — the board starts EMPTY (localStorage-backed real scores only),
+// a deliberate deviation from ROM fidelity. `seedDefaultHighScores` and its describe
+// block below are removed; the empty-boot behaviour is pinned in
+// tests/core/pt1-8-empty-high-score.test.ts. DEFAULT_HIGH_SCORES itself is KEPT here as
+// unwired ROM REFERENCE — the byte-decode + sw8-20 blocks below still guard the constant.
+import { DEFAULT_HIGH_SCORES } from '../../src/core/highScores'
+import { makeHighScoreRowGuard } from '@shared/highscore'
 
 // The authentic seed ladder, highest first — INTINT/INTSCR decoded from
 // TCHSCR.MAC:718-738. Pinned to LITERALS so no assertion re-derives from the
@@ -113,16 +119,8 @@ describe('sw8-20 — the ROM defaults carry NO per-run wave: honest null, not th
   })
 })
 
-describe('sw7-3 H-015 — seedDefaultHighScores: DOINTS runs ONLY on an empty / reset board', () => {
-  it('seeds the 10 defaults when the stored table is empty (a fresh cabinet)', () => {
-    expect(seedDefaultHighScores([])).toEqual(DEFAULT_HIGH_SCORES)
-  })
-
-  it('NEVER clobbers a non-empty board (a single real score must not wipe the ladder)', () => {
-    // The Design-B trap: falling back to the defaults whenever the board "looks
-    // empty enough". The ROM copies defaults on RESET only; once any score is
-    // posted the table is the player's. Prove a populated board passes through.
-    const real: HighScoreTable<'wave'> = [{ name: 'ZZZ', score: 42, wave: 1 }]
-    expect(seedDefaultHighScores(real)).toEqual(real)
-  })
-})
+// pt1-8: the `seedDefaultHighScores` DOINTS-on-reset block that stood here is removed.
+// A fresh cabinet no longer seeds the defaults — the board boots EMPTY. That behaviour
+// (and that no runtime path reads DEFAULT_HIGH_SCORES) is pinned in
+// tests/core/pt1-8-empty-high-score.test.ts. The decode + sw8-20 blocks above remain as
+// the constant's unwired ROM reference.
