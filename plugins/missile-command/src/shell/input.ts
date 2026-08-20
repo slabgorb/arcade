@@ -130,7 +130,7 @@ export function fireKeyToBase(key: string): number | null {
  * → 1, 2 (right) → 2; null for any other button so a stray press launches nothing. The
  * MOUSE mirror of fireKeyToBase: a Missile Command cabinet is a trackball + THREE fire
  * buttons wired to the same FIREMA switches (.BYTE MFIREL,MFIREC,MFIRER — Left/Centre/
- * Right — ABMLAU, W3MAIN:606) that Z/X/C bind, so the three buttons ARE the cabinet's
+ * Right — ABMLAU, W3MAIN:606, a logical ordinal; phys 1213) that Z/X/C bind, so the three buttons ARE the cabinet's
  * real fire input and select the same bases. Left/middle/right button index == base
  * index == fireKeyToBase('z'/'x'/'c'). (ALPHA/DELTA/OMEGA — the story's names for the
  * three bases, left→right; the ROM draws no such text, its own symbols above are L/C/R.)

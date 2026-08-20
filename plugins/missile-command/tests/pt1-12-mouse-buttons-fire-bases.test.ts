@@ -8,7 +8,9 @@
 //
 // ─── GROUND TRUTH (why this is faithful, not an invention) ───────────────────────
 // Missile Command is a trackball + THREE-FIRE-BUTTON cabinet. REV-01 LAUNCH ABMS
-// (ABMLAU, W3MAIN:606) reads three fire switches through the mask table
+// (ABMLAU, W3MAIN:606 — a LOGICAL ordinal; W3MAIN.MAC is double-spaced so the physical
+// label is at 1213, the mc2-1 convention — see abm.test.ts) reads three fire switches
+// through the mask table
 // `FIREMA: .BYTE MFIREL,MFIREC,MFIRER` — each switch fires its OWN base, left/centre/
 // right. Z/X/C already bind those three switches for the keyboard (fireKeyToBase,
 // src/shell/input.ts, mc1-4). Mapping the three MOUSE buttons to the same three
@@ -80,7 +82,7 @@ async function loadButtons(): Promise<ButtonModule> {
       'mouse-button fire seam not built yet — Dev adds to src/shell/input.ts: (1) ' +
         'fireButtonToBase(button): 0→0 (left/alpha), 1→1 (middle/delta), 2→2 (right/omega), ' +
         'null otherwise — the mouse mirror of fireKeyToBase (FIREMA: MFIREL/MFIREC/MFIRER, ' +
-        'ABMLAU W3MAIN:606); and (2) mousedownReducer(button, state): behaves like the Z/X/C ' +
+        'ABMLAU W3MAIN:606, phys 1213); and (2) mousedownReducer(button, state): behaves like the Z/X/C ' +
         'key path (fireOrStart) for the mapped base — ammo-gated fire in play, inert in ' +
         'entry/pause, non-fire button returns state unchanged. Pure, no mutation. ' +
         `(${(e as Error).message})`,
