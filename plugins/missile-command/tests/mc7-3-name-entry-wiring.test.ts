@@ -74,6 +74,7 @@ import { launchIcbm } from '../src/core/icbm.js'
 import { fireOrStart } from '../src/shell/input.js'
 import {
   DEFAULT_HIGH_SCORES,
+  MC_HIGH_SCORE_DEPTH,
   type MissileCommandHighScore,
 } from '../src/core/highscore.js'
 import {
@@ -219,7 +220,14 @@ describe('mc7-3 AC-B — a qualifying game-over routes to entry, a non-qualifyin
   })
 
   it('leaves a non-qualifying game-over in over (never enters name entry)', () => {
-    const after = stepGame(gameOverFrame(NO_QUALIFY))
+    // pt1-8: a fresh EMPTY board lets ANY positive score qualify, so pin a FULL ladder
+    // here — NO_QUALIFY can't beat its lowest rung, exercising the non-qualifying → over
+    // path (which on an empty board would route to entry).
+    const fullBoard: MissileCommandHighScore[] = Array.from({ length: MC_HIGH_SCORE_DEPTH }, (_, i) => ({
+      name: 'ZZ',
+      score: 9000 + i,
+    }))
+    const after = stepGame({ ...gameOverFrame(NO_QUALIFY), highScores: fullBoard })
     expect(after.phase, 'a non-qualifying game-over stays over').toBe('over')
     expect(after.initials).toBe('')
   })

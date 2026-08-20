@@ -64,7 +64,6 @@ import {
   type Phase,
 } from './state.js'
 import {
-  DEFAULT_HIGH_SCORES,
   qualifiesForHighScore,
   insertHighScore,
   type MissileCommandHighScore,
@@ -174,7 +173,7 @@ export function createPlayGame(seed = 1): GameState {
     phase: 'play',
     overFrames: 0,
     entryFrames: 0,
-    highScores: DEFAULT_HIGH_SCORES,
+    highScores: [], // pt1-8: no built-in seed — main.ts threads the persisted board (empty on a fresh cabinet)
     initials: '',
     remaining: waveSchedule(INITIAL_WAVE).count,
     wave: INITIAL_WAVE,
@@ -223,9 +222,9 @@ export function createGame(seed = 1): GameState {
  */
 export function startGame(state: GameState): GameState {
   // mc7-2: the high-score ladder is cabinet-persistent — a restart reseeds the
-  // battle but CARRIES the ladder forward (createPlayGame's default is only the
-  // boot seed; mc7-3's shell reload overwrites it on boot). The initials buffer
-  // resets (createPlayGame seeds it empty).
+  // battle but CARRIES the ladder forward (createPlayGame's default is EMPTY since
+  // pt1-8; mc7-3's shell reload threads the persisted board on boot). The initials
+  // buffer resets (createPlayGame seeds it empty).
   return state.phase === 'over' || state.phase === 'setup'
     ? { ...createPlayGame(state.rng.seed), highScores: state.highScores }
     : state
