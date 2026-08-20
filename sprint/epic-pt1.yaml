@@ -269,7 +269,9 @@ stories:
       Net: our surface run is ~5x too short and too dense (user playtest 2026-08-20: "towers too close together / brief encounter"). Fix: gate tower PRESENCE on gdSeq (not just firing), and re-fly the maze across ~5 laps as gdSeq increments, ending at GD.SEQ>=5. Structural change to stepSurface + its pacing/traversal tests. Full ROM audit is summarized in the pt1-3 session Delivery Findings.
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
