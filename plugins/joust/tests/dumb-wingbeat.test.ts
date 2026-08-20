@@ -764,9 +764,18 @@ describe('AC6 — the dumb wing cue', () => {
       //   0xbeef  down 304 -> 301, playerDown 153 -> 148, playerUp 153 -> 148
       //   0x2468  down 342 -> 295, playerDown 154 -> 151, playerUp 154 -> 151
       //   0xface  down 172 -> 179, playerDown 154 -> 148, playerUp 154 -> 148
-      0xbeef: { down: 301, playerDown: 148, playerUp: 148 },
-      0x2468: { down: 295, playerDown: 151, playerUp: 151 },
-      0xface: { down: 179, playerDown: 148, playerUp: 148 },
+      // pt1-15 RE-BASELINE (the hatched rider now STANDS grounded at its hatch spot for
+      // an EGGLLP collect-wait before it takes off, instead of flying in airborne at the
+      // far edge — sim.ts). A standing rider runs no flight, so it emits no enemy-wing
+      // cues during the hold; the enemy-down census FALLS on every seed, and the seeded
+      // trajectory perturbation nudges a knight's lifetime on 0xface (playerDown/Up +1).
+      // The `rng` cursor is UNMOVED (audio-events.test.ts AC3): the change adds no draw.
+      //   0xbeef  down 301 -> 299, playerDown 148, playerUp 148
+      //   0x2468  down 295 -> 287, playerDown 151, playerUp 151
+      //   0xface  down 179 -> 154, playerDown 148 -> 149, playerUp 148 -> 149
+      0xbeef: { down: 299, playerDown: 148, playerUp: 148 },
+      0x2468: { down: 287, playerDown: 151, playerUp: 151 },
+      0xface: { down: 154, playerDown: 149, playerUp: 149 },
     }
     for (const seed of [0xbeef, 0x2468, 0xface]) {
       const t = cueCensus(seed, 2000)
