@@ -20,9 +20,11 @@ stories:
     description: "Playtest 2026-08-19: everything escalates quickly from the first wave; feels like the difficulty/spawn ramp-up (which creatures may spawn at which level/score thresholds) exists in the ROM but isn't wired. Audit the spawn gating for beetles/bees/dragonflies/etc. against the ROM tables and pin with cited tests."
     points: 3
     priority: p1
-    status: backlog
+    status: done
+    started: '2026-08-19'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-3
     title: 'star-wars: surface-run projection looks wrong — elements render very far from the player'
