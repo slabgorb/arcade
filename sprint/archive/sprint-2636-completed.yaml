@@ -57,3 +57,8 @@ completed_stories:
     title: 'tempest: difficulty select should preview the board layout per level, and starting higher should pay a bonus'
     points: 5
     completed: '2026-08-20'
+  - id: pt1-12
+    epic: pt1
+    title: 'missile-command: left/center/right mouse buttons should fire the corresponding missile base, like z/x/c'
+    points: 2
+    completed: '2026-08-20'
