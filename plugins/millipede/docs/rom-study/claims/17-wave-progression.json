@@ -1,0 +1,65 @@
+[
+  {
+    "id": "WP-1",
+    "claim": "INIT boots the centipede speed CENTIS to 2 — \"FAST TO START WITH\": the first wave runs fast, matching the port default; the slow/fast RESET below the 20,000 threshold only bites AFTER the CENTPC walk drives CENTIS to 3.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1171,
+      "verbatim": "\tLDA I,02\t\t;FAST TO START WITH"
+    }
+  },
+  {
+    "id": "WP-2",
+    "claim": "On each wave clear the register CENTIS is INCREMENTED (\"FASTER\") — the between-wave speed ramp. This INC is the engine of the whole progression: it is what eventually drives CENTIS to 3, unlocking the CENTPC length walk and the CONWAY / BOMBS wave gates.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1906,
+      "verbatim": "\tINC X,CENTIS  \t\t;FASTER"
+    }
+  },
+  {
+    "id": "WP-3",
+    "claim": "Immediately after INC CENTIS the wave-clear code compares CENTIS with 3; only when it has just reached 3 (BCC skips below, BNE skips above) do the CONWAY / BOMBS wave-event gates below run. This is the same threshold the CENTPC walk uses to decide whether to DEC CENTIN.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1908,
+      "verbatim": "\tCMP I,03"
+    }
+  },
+  {
+    "id": "WP-4",
+    "claim": "When CENTIS has just reached 3 the wave-clear code loads the CURRENT CENTIN (the preserved wave-length register, read BEFORE the following CENTPC decrements it) to decide which wave event fires.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1911,
+      "verbatim": "\tLDA X,CENTIN"
+    }
+  },
+  {
+    "id": "WP-5",
+    "claim": "CENTIN is compared with 9: a match selects the CONWAY growth/death wave rather than a bombing wave or a plain wave.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1912,
+      "verbatim": "\tCMP I,9"
+    }
+  },
+  {
+    "id": "WP-6",
+    "claim": "On CENTIN == 9 the wave clear jumps to INICON, arming the CONWAY between-wave mushroom growth/death — so CONWAY is NOT started on every wave clear, only on the one whose CENTIN walked to 9.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 1914,
+      "verbatim": "\tJMP INICON\t\t;START CONWAY"
+    }
+  },
+  {
+    "id": "WP-7",
+    "claim": "BOMBS — the bomb-mode entry dispatcher — is JSR-ed every frame from the main creature loop; it is a no-op unless NOCENT is non-zero, so the per-frame call is the wiring seam that turns an armed bomb wave into dive-bombing critters.",
+    "source": {
+      "file": "MILLI.MAC",
+      "line": 28,
+      "verbatim": "\tJSR BOMBS\t\t;BOMB PLAYER WITH BEE, DRAGONFLY, ..."
+    }
+  }
+]

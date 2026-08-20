@@ -169,12 +169,12 @@ describe('ml6-2 stepGame — the wave loop (clear → DELAY → next wave)', () 
   const liveBeetle = { color: 0xb9, pic: 0x34, v: 0x40, h: 0x80, dv: 0, dh: 0, timer: 0 }
 
   it('clearing the millipede arms the inter-wave DELAY (MILLI.MAC:1912-1915)', () => {
-    // No live segments and DELAY idle → the wave is won: arm 0x40 AND start the
-    // conway restoration (INICON, initConway → active). CHKEND runs the same
-    // frame and now HOLDS while mushrooms restore (MLSUB.MAC:54, wired in
-    // ml10-3), so the armed 0x40 does NOT tick down this frame — the countdown
-    // waits for restoration to finish. (Before ml10-3 the dead `false` blocker
-    // let it tick to 0x3F on the clear frame, mid-restoration.)
+    // No live segments and DELAY idle → the wave is won: arm 0x40. This is a PLAIN
+    // clear (default CENTIN 12 is neither 9 nor a BOMBSL level, so no CONWAY/BOMBS),
+    // and the armed 0x40 does NOT tick down this frame because the `justArmed` guard
+    // skips CHKEND on the arming frame (pt1-2). Before pt1-2 the conway-every-clear
+    // hold masked the same-frame decrement; gating CONWAY to CENTIN==9 made the guard
+    // explicit so a plain clear still reads 0x40 rather than 0x3F.
     const g = play({ segments: [], delay: 0 })
     const after = stepGame(g, idle)
     expect(after.delay).toBe(0x40)
@@ -306,14 +306,18 @@ describe('ml6-2 stepGame — between-wave CONWAY mushroom growth', () => {
   })
 
   it('clearing the millipede starts CONWAY (INICON, MILLI.MAC:1913-1914)', () => {
-    const g = play({ segments: [], delay: 0 })
+    // pt1-2: CONWAY is gated on CENTIN == 9 (the wave whose walk reaches length 9),
+    // not every clear. centis defaults to FAST(2) at boot, so this clear increments
+    // it to 3 and, with centin 9, jumps to INICON. See tests/wave-progression.test.ts.
+    const g = play({ segments: [], delay: 0, centin: 9 })
     const after = stepGame(g, idle)
     expect(after.conway.active).toBe(true)
   })
 
   it('CONWAY is driven each frame (MASTER, MILLI.MAC:47-49) and terminates on its own', () => {
     // An empty field has nothing to grow, so the process ends quickly (CW-24/25).
-    let g = play({ segments: [], delay: 0, field: new Uint8Array(0x3c0) })
+    // centin 9 opens the pt1-2 CONWAY gate (see the test above).
+    let g = play({ segments: [], delay: 0, field: new Uint8Array(0x3c0), centin: 9 })
     g = stepGame(g, idle)
     expect(g.conway.active).toBe(true)
     for (let i = 0; i < 200 && g.phase === 'play' && g.conway.active; i++) g = stepGame(g, idle)
