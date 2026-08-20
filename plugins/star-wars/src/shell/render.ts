@@ -1741,8 +1741,14 @@ function drawSelect(ctx: CanvasRenderingContext2D, state: GameState, w: number, 
     const x = w / 2 + choice.aim[0] * (w / 2)
     const y = h / 2 - choice.aim[1] * (h / 2)
     const hovered = i === hoverIndex
-    drawDeathStarPicker(ctx, x, y - radius * 1.9, radius)
-    glowText(ctx, choice.label, x, y, BANNER_TEXT_PX * 0.6, 'center', hovered ? BOLT_GLOW : GLOW, hovered ? 20 : 10)
+    // The death star and its label straddle the choice's hit origin (x, y) — the
+    // star just above, the label just below — so BOTH sit inside SELECT_HIT_RADIUS
+    // and hovering EITHER selects the tier. The ROM makes the illustration itself
+    // the target (draw and hit share one origin, WSMAIN.MAC:1102-1120); firing at a
+    // death star must therefore pick it, not just its caption (pt1-11 round 2). The
+    // offsets stay a fraction of the hit radius on the narrowest (landscape) window.
+    drawDeathStarPicker(ctx, x, y - radius, radius)
+    glowText(ctx, choice.label, x, y + radius * 0.9, BANNER_TEXT_PX * 0.6, 'center', hovered ? BOLT_GLOW : GLOW, hovered ? 20 : 10)
   }
   ctx.shadowBlur = 0
 }
