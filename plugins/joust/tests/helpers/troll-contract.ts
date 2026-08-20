@@ -99,6 +99,9 @@ export interface TrollModule {
   GRIP_ROUTINE: string
   /** 'ADDGRA' — the normal gravity routine the grip replaces / restores. */
   NORMAL_ROUTINE: string
+  /** FLOOR+7-32 = 198 — the LAVVI3 out-of-reach scanline: a gripped bird whose
+   *  whole-pixel Y is ABOVE this has climbed clear of the troll (JOUSTRV4.SRC:6653,1718). */
+  LAVVI3_ESCAPE_Y: number
 
   /**
    * The spawn gate (AC-1). True only when the bridge has burned AND the wave is at
@@ -131,6 +134,13 @@ export interface TrollModule {
 
   /** The 50-point break-free score event (AC-2, ruling C — caveat in the claim). */
   escapeScoreEvent(): TrollScoreEvent
+
+  /**
+   * LAVVI3 (JOUSTRV4.SRC:6653,1714-1720) — a gripped bird has climbed OUT OF the troll's
+   * reach and breaks free: true iff the whole-pixel Y is ABOVE `LAVVI3_ESCAPE_Y`
+   * (`CMPA #FLOOR+7-32 / BLO`). Pure predicate over the pixel Y.
+   */
+  outOfTrollReach(pixelY: number): boolean
 }
 
 /**
@@ -145,10 +155,11 @@ export async function loadTroll(): Promise<TrollModule> {
   const specifier = ['..', '..', 'src', 'core', 'troll.js'].join('/')
   try {
     const mod = (await import(/* @vite-ignore */ specifier)) as Partial<TrollModule>
-    for (const fn of ['trollSpawnable', 'beginGrip', 'escalateGrip', 'stepGrip', 'escapeScoreEvent'] as const) {
+    for (const fn of ['trollSpawnable', 'beginGrip', 'escalateGrip', 'stepGrip', 'escapeScoreEvent', 'outOfTrollReach'] as const) {
       if (typeof mod[fn] !== 'function') throw new Error(`module has no \`${fn}\` export`)
     }
     if (typeof mod.BREAK_FREE_VY !== 'number') throw new Error('module has no `BREAK_FREE_VY` export')
+    if (typeof mod.LAVVI3_ESCAPE_Y !== 'number') throw new Error('module has no `LAVVI3_ESCAPE_Y` export')
     return mod as TrollModule
   } catch (e) {
     throw new Error(

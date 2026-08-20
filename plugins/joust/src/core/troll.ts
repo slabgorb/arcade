@@ -203,10 +203,11 @@ export function stepGrip(velY: number, posY: number, grip: TrollGrip, wingsUp = 
  * LAVVI3 (JOUSTRV4.SRC:6653,1714-1720) — a gripped bird has climbed OUT OF the lava
  * troll's reach and breaks free (`ADLX / JSR LAVVI3 / BNE ADLFRE`). The reach test is
  * a whole-pixel Y ceiling: a bird ABOVE FLOOR+7-32 is out (`CMPA #FLOOR+7-32 / BLO`,
- * :1718). This is how a steadily-flapping bird that never reaches escape VELOCITY —
- * an AI enemy on its BOLEV1 wingbeat — still survives the grip: it simply climbs
- * clear. (LAVVI3's alive/airborne/X-bounds arms are moot in the grip loop: the victim
- * is a live airborne bird and ADDLAV clears its velX, so it holds the grabbed X.) */
+ * :1718). This is how a steadily-flapping bird that never reaches escape VELOCITY — an
+ * AI enemy on its synthesised flap-when-falling struggle (see `stepTrolls`) — still
+ * survives the grip: it simply climbs clear. (LAVVI3's alive/airborne/X-bounds arms are
+ * moot in the grip loop: the victim is a live airborne bird and ADDLAV clears its velX,
+ * so it holds the grabbed X.) */
 export function outOfTrollReach(pixelY: number): boolean {
   return pixelY < LAVVI3_ESCAPE_Y
 }

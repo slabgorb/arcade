@@ -332,7 +332,11 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
   /** Stage a troll already at the grip point so the next step commits the grab. */
   async function aboutToGrab(wave: number): Promise<{ d: SimState; step: (d: SimState) => SimState }> {
     const dmod = await loadSim()
-    const victimY = 120
+    // In the troll's reach (>= FLOOR+7-32 = 198, the LAVVI3 line, pt1-16) and above the
+    // burned-shore contact band (< 211): a victim staged above the reach line would break
+    // free on frame one (outOfTrollReach), so the pull-driven fall this suite measures
+    // would be replaced by normal flight physics.
+    const victimY = 205
     const gripY = victimY + GRIP_Y_OFFSET
     const d = await stagedDemo(
       [

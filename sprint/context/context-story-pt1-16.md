@@ -29,20 +29,23 @@ by waiting" the report names — the troll picks the wave apart and none survive
 The ROM: a gripped bird is NOT frozen. The troll only swaps its GRAVITY (`PADGRA → ADDLAV`,
 JOUSTRV4.SRC:1651-1652); ADDLAV (:6608-6642) runs INSIDE the ordinary flying loop
 (`FLAPST/FLIPST → JSR [PADGRA,U]`), which each wing cycle re-reads the bird's joystick
-(`AIROVR / JSR [PJOY,U]`, :6459) — for an enemy, its own synthetic CURJOY. It escapes two
+(`AIROVR / JSR [PJOY,U]`, :6456) — for an enemy, its own synthetic CURJOY. It escapes two
 ways: break-free VELOCITY (`CMPD #-$0180 / BLT ADLFRE`, :6616) or by climbing OUT OF the
 troll's reach (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653; `CMPA #FLOOR+7-32`, :1718). Escape
 is only possible during the 30 s grace (pull = base LAVGRA $04..$08, :7305); past grace the
 pull escalates to the $500 cap (:6374-6386) and is inescapable.
 
 ## Delivered fix
-`stepTrolls` now drives a gripped ENEMY's grip flap from its base level-flight rule (BOLEV1:
-flap iff falling), NOT the human input map; PTIMUP is cleared on the flap edge (GOFLAP/GOFLIP,
-:6185/:6219) so flaps stay full strength; and `outOfTrollReach` (LAVVI3, the FLOOR+7-32 reach
-line) is honoured in the grip loop, so a steadily-flapping enemy climbs clear during grace.
-The seek/looker brain stays frozen while gripped (jt9-42, unchanged). Post-grace at the $500
-cap the enemy still drowns (guard). An enemy climbing free scores NOTHING — the break-free 50
-is the player's award (crediting an enemy escape would restore free points for waiting).
+The gripped enemy's seek/looker brain stays frozen (jt9-42), so we cannot re-run the ROM's real
+flap decision. `stepTrolls` instead SYNTHESISES the struggle — a port invention, NOT a port of
+BOLEV1 or any named routine (BOLEV1 is the ordinary non-grip level-flight AI, and is separately
+unported — see below): flap-when-falling (`velY >= 0`), EDGE-detected via `enemy.prevFlapHeld`
+like every other AI flap in the codebase (`demo-ai.ts`/`enemy.ts`), instead of the human input
+map's NEUTRAL. PTIMUP is cleared on the flap edge (GOFLAP/GOFLIP, :6185/:6219) so flaps stay
+full strength; and `outOfTrollReach` (LAVVI3, the FLOOR+7-32 = 198 reach line, :6653) is honoured
+in the grip loop, so a steadily-flapping enemy climbs clear during grace. Post-grace at the $500
+cap the enemy still drowns (guard). An enemy climbing free scores NOTHING — the break-free 50 is
+the player's award (crediting an enemy escape would restore free points for waiting).
 
 Lava lethality itself is correct and untouched (ADGFLR/SNELAV, `sim.ts` stepLavaDeath).
 

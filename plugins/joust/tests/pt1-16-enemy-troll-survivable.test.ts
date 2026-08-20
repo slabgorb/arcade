@@ -16,9 +16,9 @@
 // patched to ADDLAV (:1651-1652) — but ADDLAV ("ADD IN LAVA TROLLS GRAVITY",
 // :6608-6642) is invoked from INSIDE the ordinary flying flap/flip loop
 // (FLAPST/FLIPST → `JSR [PADGRA,U]`, :6170/:6197). Every wing cycle the gripped
-// bird still runs AIROVR → `JSR [PJOY,U]` (:6459) to read its joystick. For an
+// bird still runs AIROVR → `JSR [PJOY,U]` (:6456) to read its joystick. For an
 // ENEMY, [PJOY,U] is its BRAIN, which writes CURJOY (SHDN/BOUNDR/… `STD CURJOY`).
-// So a gripped enemy's own AI keeps flapping, and ADDLAV's break-free test
+// So in the ROM a gripped enemy's own AI keeps flapping, and ADDLAV's break-free test
 // `CMPD #-$0180 / BLT ADLFRE` (:6616) is reachable by EITHER kind — the routine
 // is a shared vtable entry, and the `IFN DEBUG` note at :6525 documents that
 // "ONLY PLAYERS & EMIES SHOULD GET HERE." The grab itself is kind-blind:
@@ -43,17 +43,20 @@
 //
 // ─── WHAT THIS FILE PINS ─────────────────────────────────────────────────────
 //   AC1 (RED)   — a gripped enemy in the GRACE window is SURVIVABLE: grabbed,
-//                 then it breaks free via its own AI flap (grippedBy clears while
-//                 it is alive ABOVE the lava) and never sounds enemy-lava-death.
+//                 then it flaps and climbs free (grippedBy clears while it is alive
+//                 ABOVE the lava) and never sounds enemy-lava-death.
 //   AC1-anchor  — the identical grace fixture IS escapable: a gripped PLAYER
 //                 flapping out breaks free. (Proves the setup is winnable, so the
 //                 enemy's drown is the defect, not an inescapable grip.)
 //   AC2 (GUARD) — the fix must not grant enemies immunity: a gripped enemy at the
 //                 post-grace $500 CAP still drowns. Green on develop and after.
 //
-// The Dev fix: `stepTrolls` must drive a gripped ENEMY's grip flap from its AI
-// brain decision (its synthetic CURJOY), not from the human `inputs` map — the
-// same brain that flies it when it is not gripped.
+// The Dev fix: our port CANNOT re-run the ROM's brain here — a gripped enemy's
+// seek/looker AI is frozen (jt9-42). So `stepTrolls` SYNTHESISES the struggle (a
+// port invention, not a named ROM routine): flap-when-falling, edge-detected like
+// every other AI flap, instead of the human `inputs` map's NEUTRAL. The bird then
+// escapes by climbing clear of the troll's reach (LAVVI3, :6653) — the slow-flap
+// path — or by escape velocity (ADLFRE, :6616) the way a mashing player does.
 //
 // node env (dynamic import of the modules off disk). This header never spells the
 // vitest env directive as a token.
@@ -202,7 +205,7 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
 
     // RED on develop: the enemy is frozen (no brain flap), so it drowns instead of
     // flapping out — the wave depletes by waiting, which is the reported bug.
-    expect(drowned, 'a gripped enemy in the grace window must NOT drown — its AI flaps it clear').toBe(false)
+    expect(drowned, 'a gripped enemy in the grace window must NOT drown — it flaps and climbs clear').toBe(false)
     expect(brokeFree, 'the gripped enemy breaks free of the troll and survives above the lava').toBe(true)
     // An enemy climbing free scores NOTHING — the break-free 50 is the PLAYER's award.
     // Crediting it would restore "free points for waiting", the flip side of the bug.
@@ -257,6 +260,6 @@ describe('pt1-16 — a gripped enemy at the escalated $500 cap still drowns', ()
       for (const c of d.cues) if (c.type === 'enemy-lava-death') drowned = true
     }
 
-    expect(drowned, 'at the $500 cap the grip is inescapable — the enemy drowns even with its AI flapping').toBe(true)
+    expect(drowned, 'at the $500 cap the grip is inescapable — the enemy drowns even while flapping').toBe(true)
   })
 })

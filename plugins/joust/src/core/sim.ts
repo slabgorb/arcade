@@ -1145,18 +1145,23 @@ function stepTrolls(
       // ADDLAV: escalate the pull, then fold it into the victim's fall.
       const grip = escalateGrip(troll.grip)
       // The gripped bird's flap is the ONLY way out (ADLFRE / LAVVI3, JOUSTRV4.SRC:6616,
-      // 6653). A PLAYER reads the human joystick; an ENEMY reads its OWN synthetic
-      // joystick — a gripped bird still runs the flying loop `AIROVR / JSR [PJOY,U]`
-      // (:6459) each wing cycle, and ADDLAV only REPLACES its gravity (:6608-6642).
-      // Its seek/looker brain is frozen while gripped (jt9-42), but the FLAP loop is
-      // the base level-flight rule BOLEV1 — flap iff falling (`PVELY >= 0`), which
-      // self-alternates (a flap arms the BOLEV2 coast). Without this an AI enemy was
-      // pinned to NEUTRAL_INPUT and could never struggle free — every grabbed enemy
-      // drowned, so a wave could be cleared by waiting (pt1-16).
+      // 6653). A gripped bird still runs the flying loop `AIROVR / JSR [PJOY,U]` (:6456)
+      // each wing cycle, and ADDLAV only REPLACES its gravity (:6608-6642) — a PLAYER
+      // reads the human joystick there. An ENEMY's seek/looker brain is FROZEN while
+      // gripped (jt9-42), so we cannot re-run its real decision; we SYNTHESISE the
+      // struggle — a port INVENTION, not a named ROM routine — as "flap when falling"
+      // (the buzzard fights to stay above the lava). Edge-detected like every other AI
+      // flap in this codebase (`demo-ai.ts` `!prevFlapHeld`, `enemy.ts` `pressed`): a
+      // bird cannot flap two wakes running, so `flap` is the RISING edge of the
+      // wings-down level, never a full impulse on consecutive frames. Without this an AI
+      // enemy was pinned to NEUTRAL_INPUT and could never struggle free — every grabbed
+      // enemy drowned, so a wave could be cleared by waiting (pt1-16).
       let input: PlayerInput
       if (victim.kind === 'enemy' && victim.enemy) {
-        const falling = vEnt.velY >= 0
-        input = { dir: 0, flap: falling, flapHeld: falling }
+        const wingsDown = vEnt.velY >= 0
+        const pressed = wingsDown && !(victim.enemy.prevFlapHeld ?? false)
+        input = { dir: 0, flap: pressed, flapHeld: wingsDown }
+        victim.enemy = { ...victim.enemy, prevFlapHeld: wingsDown }
       } else {
         input = inputs?.[victim.id] ?? NEUTRAL_INPUT
       }
