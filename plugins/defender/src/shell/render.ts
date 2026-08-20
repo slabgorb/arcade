@@ -36,19 +36,21 @@ export const BACKGROUND_INDEX = 0
  *  Rgba shape and callers of this module keep importing it from here. */
 export type { Rgba }
 
-/** The live 16-entry colour RAM: the default PCRAM shadow resolved to CRAM
- *  (core/palette.ts). df2 renders a static frame, so it is resolved once here. */
+/** The DEFAULT 16-entry colour RAM: the boot PCRAM shadow resolved to CRAM (core/palette.ts).
+ *  Used for the STATIC path (title/attract gallery) and as the fallback when no live shadow
+ *  is supplied. The live in-game path (pt1-22) passes the sim's per-frame `pcram` instead. */
 const CRAM = resolveCram(DEFAULT_PCRAM)
 
 /**
- * Decode a framebuffer palette index to RGBA. df2-1 shipped a temporary grey ramp
- * here; df2-2 swaps in the transcribed CRAM palette (defender/DEFB6.SRC:1876) decoded
- * through the shared Williams BBGGGRRR decoder — the one point df2-2 replaces, and
- * nothing else on the blit path. Colours are reached BY INDEX through the transcribed
- * palette, never an invented literal.
+ * Decode a framebuffer palette index to RGBA through a 16-entry colour RAM. df2-2
+ * transcribed the real CRAM palette (defender/DEFB6.SRC:1876) decoded through the shared
+ * Williams BBGGGRRR decoder; pt1-22 makes the palette LIVE: callers pass this frame's
+ * `cram` (the sim's mutated PCRAM shadow, defender/DEFA7.SRC:1968-1980) so the colour
+ * cyclers are visible, defaulting to the boot palette when none is given (the static path).
+ * Colours are reached BY INDEX through the supplied palette, never an invented literal.
  */
-export function indexToRgba(index: number): Rgba {
-  return paletteToRgba(CRAM[index & 0x0f])
+export function indexToRgba(index: number, cram: readonly number[] = CRAM): Rgba {
+  return paletteToRgba(cram[index & 0x0f])
 }
 
 /**
@@ -59,7 +61,7 @@ export function indexToRgba(index: number): Rgba {
  * expanded into an already-scaled ImageData and blitted once, keeping the 1980s
  * pixels crisp without an OffscreenCanvas (putImageData does not resample).
  */
-export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer): void {
+export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer, pcram?: readonly number[]): void {
   const { canvas } = ctx
   const { scale, dx, dy, width, height } = fitIntegerScale(
     canvas.width,
@@ -68,9 +70,14 @@ export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer): void {
     LOGICAL_HEIGHT,
   )
 
+  // pt1-22: decode through the LIVE shadow the sim hands us this frame (the frame IRQ's
+  // PCRAM→CRAM copy, modelled by resolveCram), falling back to the boot palette for the
+  // static path. Every pixel below reaches its colour by INDEX through this one `cram`.
+  const cram = pcram ? resolveCram(pcram) : CRAM
+
   // Ground (letterbox bars + anything the raster does not cover): the background
   // palette index resolved through indexToRgba, never an invented literal.
-  const bg = indexToRgba(BACKGROUND_INDEX)
+  const bg = indexToRgba(BACKGROUND_INDEX, cram)
   ctx.fillStyle = `rgb(${bg.r} ${bg.g} ${bg.b})`
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
@@ -78,7 +85,7 @@ export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer): void {
   const out = img.data
   for (let sy = 0; sy < LOGICAL_HEIGHT; sy++) {
     for (let sx = 0; sx < LOGICAL_WIDTH; sx++) {
-      const { r, g, b, a } = indexToRgba(fb.data[sy * fb.width + sx])
+      const { r, g, b, a } = indexToRgba(fb.data[sy * fb.width + sx], cram)
       for (let ry = 0; ry < scale; ry++) {
         let o = ((sy * scale + ry) * width + sx * scale) * 4
         for (let rx = 0; rx < scale; rx++) {

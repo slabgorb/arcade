@@ -1,0 +1,191 @@
+[
+  {
+    "id": "CYC-SPAWN-COLR",
+    "claim": "At player-start the game spawns COLR as a STANDING process (life-scoped, not per-entity) — the laser colour cycler runs for the whole life.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1284,
+      "verbatim": "\tNEWP\tCOLR,STYPE"
+    }
+  },
+  {
+    "id": "CYC-SPAWN-CBOMB",
+    "claim": "At player-start the game spawns CBOMB as a STANDING process — the bomb colour cycler (registers A and C) runs for the whole life.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1287,
+      "verbatim": "\tNEWP\tCBOMB,STYPE"
+    }
+  },
+  {
+    "id": "CYC-SPAWN-TIECOL",
+    "claim": "At player-start the game spawns TIECOL as a STANDING process — the TIE colour cycler (registers D/E/F) runs for the whole life.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1288,
+      "verbatim": "\tNEWP\tTIECOL,STYPE"
+    }
+  },
+  {
+    "id": "CYC-IRQ-COPY",
+    "claim": "The frame IRQ copies the 16-byte PCRAM shadow into hardware CRAM every frame (the *COLOR MAPPING block), so a mutated shadow re-colours the screen next frame.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 1968,
+      "verbatim": "*COLOR MAPPING"
+    }
+  },
+  {
+    "id": "CYC-LASER-STORE",
+    "claim": "COLR stores each COLTAB entry into PCRAM+1 (the LASER register, palette index 1).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3030,
+      "verbatim": "\tSTB\tPCRAM+1"
+    }
+  },
+  {
+    "id": "CYC-LASER-SLEEP",
+    "claim": "COLR sleeps 2 ticks between laser colour steps (LDA #2 before JMP SLEEP).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3031,
+      "verbatim": "\tLDA\t#2"
+    }
+  },
+  {
+    "id": "CYC-LASER-WRAP",
+    "claim": "COLR wraps the laser colour walk at the COLTAB $00 terminator (BEQ COLR resets the index).",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3028,
+      "verbatim": "\tBEQ\tCOLR"
+    }
+  },
+  {
+    "id": "COLTAB-0",
+    "claim": "COLTAB (laser/bomb colour table) bytes 0-4 are $38,$39,$3A,$3B,$3C.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3037,
+      "verbatim": "COLTAB\tFCB\t$38,$39,$3A,$3B,$3C"
+    }
+  },
+  {
+    "id": "COLTAB-1",
+    "claim": "COLTAB bytes 5-12 are $3D,$3E,$3F,$37,$2F,$27,$1F,$17.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3038,
+      "verbatim": "\tFCB\t$3D,$3E,$3F,$37,$2F,$27,$1F,$17"
+    }
+  },
+  {
+    "id": "COLTAB-2",
+    "claim": "COLTAB bytes 13-18 are $47,$47,$87,$87,$C7,$C7.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3039,
+      "verbatim": "\tFCB\t$47,$47,$87,$87,$C7,$C7"
+    }
+  },
+  {
+    "id": "COLTAB-3",
+    "claim": "COLTAB bytes 19-26 are $C6,$C5,$CC,$CB,$CA,$DA,$E8,$F8.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3040,
+      "verbatim": "\tFCB\t$C6,$C5,$CC,$CB,$CA,$DA,$E8,$F8"
+    }
+  },
+  {
+    "id": "COLTAB-4",
+    "claim": "COLTAB bytes 27-34 are $F9,$FA,$FB,$FD,$FF,$BF,$3F,$3E.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3041,
+      "verbatim": "\tFCB\t$F9,$FA,$FB,$FD,$FF,$BF,$3F,$3E"
+    }
+  },
+  {
+    "id": "COLTAB-5",
+    "claim": "COLTAB byte 35 is $3C, followed by the 0 terminator that wraps the COLR walk.",
+    "source": {
+      "file": "DEFA7.SRC",
+      "line": 3042,
+      "verbatim": "\tFCB\t$3C,0"
+    }
+  },
+  {
+    "id": "CYC-BOMB-FLASH-A",
+    "claim": "CBOMB writes the $FF flash into PCRAM+$A (bomb register A, palette index 10).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1214,
+      "verbatim": "\tSTA\tPCRAM+$A"
+    }
+  },
+  {
+    "id": "CYC-BOMB-FLASH-C",
+    "claim": "CBOMB blacks PCRAM+$C on the flash phase (bomb register C, palette index 12 — the mutant index-12 pixel).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1215,
+      "verbatim": "\tCLR\tPCRAM+$C"
+    }
+  },
+  {
+    "id": "CYC-BOMB-COLOUR-C",
+    "claim": "On the colour phase CBOMB writes the picked COLTAB colour into PCRAM+$C.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1222,
+      "verbatim": "\tSTA\tPCRAM+$C"
+    }
+  },
+  {
+    "id": "CYC-TIE-STORE-DE",
+    "claim": "TIECOL stores a TCTAB row's first two bytes into PCRAM+$D/$E (TIE registers D and E).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1200,
+      "verbatim": "\tSTD\tPCRAM+$D"
+    }
+  },
+  {
+    "id": "CYC-TIE-STORE-F",
+    "claim": "TIECOL stores a TCTAB row's third byte into PCRAM+$F (TIE register F).",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1202,
+      "verbatim": "\tSTA\tPCRAM+$F"
+    }
+  },
+  {
+    "id": "TCTAB-0",
+    "claim": "TCTAB (TIE colour table) row 0 is $81,$81,$2F.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1207,
+      "verbatim": "TCTAB\tFCB\t$81,$81,$2F"
+    }
+  },
+  {
+    "id": "TCTAB-1",
+    "claim": "TCTAB row 1 is $81,$2F,$07.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1208,
+      "verbatim": "\tFCB\t$81,$2F,$07"
+    }
+  },
+  {
+    "id": "TCTAB-2",
+    "claim": "TCTAB row 2 is $2F,$81,$07.",
+    "source": {
+      "file": "DEFB6.SRC",
+      "line": 1209,
+      "verbatim": "\tFCB\t$2F,$81,$07"
+    }
+  }
+]
