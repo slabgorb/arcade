@@ -281,10 +281,11 @@ export const GROUND_MODEL_SCALE = 1
 //   2. the lift undoes GD$MDT. The ROM recentres every ground object's height so
 //      that model z = 0 is the height the PLAYER flies at (its comment: "OFFSET
 //      HITE TO MID OF PLAYERS HITE"), leaving the base ring at z = -GD$MDT. Adding
-//      GD$MDT back — at the presentation scale — seats the base on the floor; under
-//      P the old +Y lift lands on the native up (+Z) axis, where it belongs.
+//      GD$MDT back — at the model scale (raw 1:1 since pt1-3) — seats the base on
+//      the floor; under P the old +Y lift lands on the native up (+Z) axis, where it belongs.
 //
-// That lift is 3840/30 = 128 world units, which is exactly SKIM_ALTITUDE: the ROM
+// That lift is GD_HEIGHT_OFFSET × GROUND_MODEL_SCALE = 3840 × 1 = 3840 world units,
+// which is exactly SKIM_ALTITUDE: the ROM
 // has been telling us the ship's skim height all along. Derived here from the ROM
 // constant rather than from SKIM_ALTITUDE itself, so that retuning the flight
 // height (a play-balance knob) cannot silently sink the towers into the floor.

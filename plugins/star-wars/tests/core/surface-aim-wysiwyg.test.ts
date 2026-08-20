@@ -16,7 +16,7 @@
 // That sentence is FALSE for the surface, and has been false since the camera-lift
 // (stories 11-2 / 11-5). The surface camera flies at `[0, state.altitude, 0]`
 // (`render.ts cameraView`), altitude in [MIN_SKIM_ALTITUDE .. MAX_SKIM_ALTITUDE] =
-// [40..238]. The muzzle, the fireball target (`toCockpit`) and the cockpit hit-test all
+// [1200..7168] (pt1-3 raw scale). The muzzle, the fireball target (`toCockpit`) and the cockpit hit-test all
 // still sit at the world origin. So the eye and the gun ride PARALLEL RAYS separated by
 // `altitude` — the exact defect sw5-6 fixed one phase over, still live in this one.
 //
@@ -245,7 +245,7 @@ describe('sw7-16 — the two ship points inside one frame', () => {
   // still true and still worth pinning. The lost guard is recorded as a Delivery Finding on
   // sw7-17: it is a real cost of the hitscan port, not an oversight.
 
-  it('a TERRAIN-CRASH frame holds two ship points 87 apart — the teleport is real', () => {
+  it('a TERRAIN-CRASH frame holds two ship points ~2639 apart — the teleport is real', () => {
     // THE CASE ROUND 1'S DOCSTRING GOT WRONG, and the reason `aimY: 0` was never a harmless
     // convenience. Diving from just inside the floor of the band trips the crash bump, which
     // does not ease the ship up — it TELEPORTS it (pt1-3 raw scale: MIN_SKIM 1200, SKIM 3840):
@@ -284,11 +284,12 @@ describe('sw7-16 — what you aim at is what you hit (surface towers)', () => {
   // WHICH OF THESE CASES ACTUALLY DISCRIMINATE — stated plainly, because a suite that takes
   // credit it has not earned is what got round 1 rejected. Aiming at a tower's base from
   // altitude A, the unfixed build's floor-level bolt arrives ~0.952·A BELOW it, against a
-  // TURRET_HIT_RADIUS of 200. So it is only a MISS once 0.952·A > 200, i.e. A > ~210:
+  // TURRET_HIT_RADIUS of 6000 (pt1-3 raw scale). So it is only a MISS once 0.952·A > 6000,
+  // i.e. A > ~6300:
   //
-  //     MIN_SKIM_ALTITUDE   40  ->  ~38 low   inside the sphere — a kill either way
-  //     SKIM_ALTITUDE      128  -> ~122 low   inside the sphere — a kill either way
-  //     MAX_SKIM_ALTITUDE  238  -> ~227 low   OUTSIDE — the only case that catches the bug
+  //     MIN_SKIM_ALTITUDE  1200  -> ~1142 low   inside the sphere — a kill either way
+  //     SKIM_ALTITUDE      3840  -> ~3656 low   inside the sphere — a kill either way
+  //     MAX_SKIM_ALTITUDE  7168  -> ~6824 low   OUTSIDE — the only case that catches the bug
   //
   // The first two are AC coverage ("dead-on aim kills at every altitude in the band"), NOT
   // regression guards, and this file does not pretend otherwise. Sections (a) and (b) are

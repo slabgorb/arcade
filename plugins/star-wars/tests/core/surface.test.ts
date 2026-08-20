@@ -214,16 +214,16 @@ describe('Wave 2 — collisions, scoring & lives', () => {
   // The replacement is the sentence the bolt was standing in for: AIM AT IT AND PULL THE TRIGGER.
   //
   // The turret is seated at the pilot's own cruise height (`base.altitude`) rather than on the
-  // floor, for two reasons. First, geometry: the pilot cruises SKIM_ALTITUDE (128) up and the old
-  // site was only 100 units out, i.e. 52° below him — outside the 30° the 60° FOV allows, so the
+  // floor, for two reasons. First, geometry: the pilot cruises SKIM_ALTITUDE (3840, pt1-3 raw) up
+  // and a floor-level site close in sits far below the eye — outside the FOV the yoke can reach, so the
   // yoke physically cannot point at it and "the player shot it" is not a thing that can happen.
   // Second, the throttle: on the surface the yoke's vertical axis also flies the ship, so a
   // downward shot moves the ship while the shot is measured. Level with the eye, dead-on is
   // purely lateral and the fixture's only moving part is the gun.
   //
   // The MISS pin is re-seated deeper as well, and that is load-bearing rather than tidying: aim
-  // is ANGULAR, so at the old 100-unit range even a full-deflection yoke sweeps less than 60
-  // units sideways — inside TURRET_HIT_RADIUS (200). At that range there is no such thing as a
+  // is ANGULAR, so a close-in pin sits entirely inside TURRET_HIT_RADIUS (6000, pt1-3 raw): the
+  // whole reachable aim cone is within the hit sphere. At that range there is no such thing as a
   // reachable miss, and the pin would have gone green while proving the opposite of its name.
   const EYE_HIGH = surface().altitude
 

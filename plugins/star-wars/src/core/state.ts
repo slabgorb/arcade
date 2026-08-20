@@ -703,8 +703,9 @@ export const BUNKER_MUZZLE_HEIGHT = 360
  * IFLT`, WSGRND.MAC:940-942) — a 720-raw-unit top over a 512-raw-unit floor
  * (GD$MNT), so low flight risks bunkers and cruise clears them. The clone's
  * raised floor (MIN_SKIM_ALTITUDE 1200, house rule D-021) sits above the raw
- * bunker top (720), so the band is re-based proportionally: 1200 × 720/512 ≈ 1680
- * (pt1-3: raw scale; was 56 at ÷30 — see the sw7-5 reachability-ruling deviation). */
+ * bunker top (720). pt1-3: raw scale — the ÷30-era 56 (≈ 40 × 720/512 = 56.25)
+ * scaled ×30 = 1680, behaviour-preserving (the ROM-proportional 1200 × 720/512 =
+ * 1687.5 lands in the same crash band). See the sw7-5 reachability-ruling deviation. */
 export const BUNKER_CRASH_CEILING = 1680
 /** The surface flight-band ceiling (sw7-5). ROM: `GD$MXT ==1C00` (7168 raw,
  * WSMAIN.MAC:2597-2598) — pt1-3: raw scale now, so this IS 7168 verbatim (was 238

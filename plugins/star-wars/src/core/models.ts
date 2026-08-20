@@ -457,7 +457,8 @@ export const DEATH_STAR_SURFACE: Model3D = {
  * sits at the height the player flies at and the base ring lands at z = -GD$MDT.
  * It is therefore the ROM's own statement of the skim altitude: the shell undoes
  * the recentring to seat the base on the floor (render.ts), and state.ts's
- * SKIM_ALTITUDE is this value at the shell's presentation scale.
+ * SKIM_ALTITUDE is this value at the shell's model scale — raw 1:1 since pt1-3, so
+ * SKIM_ALTITUDE == GD_HEIGHT_OFFSET (3840).
  */
 export const GD_HEIGHT_OFFSET = 0xf00
 

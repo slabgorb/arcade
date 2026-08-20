@@ -76,10 +76,10 @@
 // says so rather than implying it caught something it did not:
 //
 //   (a) RED. Instant resolve, straightforwardly.
-//   (b) RED, both offsets — but only |x| = 6,000 is a LEAD test. At |x| = 2,000 the lead error
-//       is ~97 units, inside TURRET_HIT_RADIUS, so a projectile fired there lands (measured:
-//       it kills at t = 0.81 s if you let it fly). It is axis coverage that happens to be red
-//       today for reason (a). Only the 6,000 case is unreachable at ANY time by a projectile.
+//   (b) RED, both offsets — but only |x| = 18,000 is a LEAD test (pt1-3 raw scale). At
+//       |x| = 4,000 the lead error is ~1,233 units, inside TURRET_HIT_RADIUS (6,000), so a
+//       projectile fired there lands. It is axis coverage that happens to be red today for
+//       reason (a). Only the 18,000 case is unreachable at ANY time by a projectile.
 //   (c) RED for reason (a). Its real job is forward: the list is written FAR-FIRST so a resolver
 //       that takes list order — or the farthest — fails. Given time to fly, today's bolt does
 //       reach the near tower first and is spent on it, so this is not a regression guard.
@@ -273,10 +273,10 @@ describe('sw7-17 — a dead-on shot hits, however far off-axis the tower is', ()
     )
   })
 
-  it('axis coverage: a tower 2,000 off-axis dies too', () => {
+  it('axis coverage: a tower 4,000 off-axis dies too', () => {
     // NOT a lead test, and this file does not claim it as one. The lead error at this offset is
-    // ~97 units — inside TURRET_HIT_RADIUS — so a projectile fired here DOES land (measured: it
-    // kills at t = 0.81 s given room to fly). It is red today only because it is measured on the
+    // ~1,233 units — inside TURRET_HIT_RADIUS (6,000) — so a projectile fired here DOES land. It
+    // is red today only because it is measured on the
     // firing frame, i.e. for the instant-resolve reason every test in (a) is red. It is here so
     // that "dead-on hits" is asserted across the axis and not only at the offset that breaks.
     const tower: Vec3 = [20000, 4000, EYE_HIGH] // native: depth 20,000, 4,000 to the right
@@ -427,7 +427,7 @@ describe('sw7-17 — enemy fire is still a real travelling object', () => {
     // creeping straight at him at its own ~300 u/s muzzle speed (`surface-fire-scroll-carry.test.ts`
     // owns that contract). sw7-16's guard still stands under the corrected fire model: the shot leaves
     // the cap (asserted above) and targets the flying SHIP, and reaching him is DOWNWARD — the cap
-    // stands at TOWER_HEIGHT (352) while the pilot cruises at MAX_SKIM_ALTITUDE (238).
+    // stands at TOWER_HEIGHT (10560) while the pilot cruises at MAX_SKIM_ALTITUDE (7168).
     const shot = s.enemyShots[0]
     expect(shot.vel[0], 'depth rides the scroll toward the cockpit, not the muzzle creep').toBeCloseTo(
       -s.surfaceScrollSpeed,
@@ -543,7 +543,7 @@ describe('sw7-17 — the trench beam is clipped to 28,672 units forward (CLBLZ)'
 
 describe('sw7-17 — the hitscan gun is pure and deterministic', () => {
   it('the same shot from the same state resolves identically', () => {
-    const tower: Vec3 = [10000, 6000, EYE_HIGH] // native: depth 10,000, 6,000 to the right
+    const tower: Vec3 = [20000, 18000, EYE_HIGH] // native: depth 20,000, 18,000 to the right (pt1-3 raw scale)
     const build = (): GameState =>
       surface({ altitude: EYE_HIGH, turrets: [{ pos: [...tower] as Vec3, age: 0 }] })
     const aim = aimAt(tower, eyeOf(build()), 1)

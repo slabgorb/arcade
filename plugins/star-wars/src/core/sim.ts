@@ -333,7 +333,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // rides, the beam leaves from THERE. Cast from the world origin while the eye flies above it,
   // the sight-line and the beam run on parallel rays and everything the crosshair lands on is
   // missed underneath by exactly that gap. In the trench the ship is `trenchView` (the pilot flies
-  // 512..3840 above the floor); on the surface it is [0, 0, altitude] (40..238 above it). Only in
+  // 512..3840 above the floor); on the surface it is [0, 0, altitude] (1200..7168 above it). Only in
   // space is the ship the fixed cockpit at the origin. `shipPoint` is that one point, per phase.
   //
   // It is the ship at the START of the step — the eye the pilot actually sighted down, since the
@@ -2395,7 +2395,7 @@ export function surfaceShip(altitude: number): Vec3 {
  * and the collision world does NOT follow him:
  *
  *   space    the fixed cockpit at the origin — the only phase where eye and origin coincide
- *   surface  [0, 0, altitude] — he flies 40..238 above the floor (MIN/MAX_SKIM_ALTITUDE)
+ *   surface  [0, 0, altitude] — he flies 1200..7168 above the floor (MIN/MAX_SKIM_ALTITUDE)
  *   trench   `trenchView` — he flies 512..3840 above it (TRENCH_EYE_MIN/MAX), and steers
  *
  * Exhaustive over Phase — no `default`, no trailing return — so a fourth phase is a COMPILE error

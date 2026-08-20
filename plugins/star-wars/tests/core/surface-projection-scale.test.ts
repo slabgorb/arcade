@@ -95,14 +95,17 @@ describe('pt1-3 — surface towers loom at a readable on-screen size, not distan
     ).toBeGreaterThanOrEqual(MIN_FRACTION * H)
   })
 
-  it('a tower at a near-field spawn depth fills a large fraction of the frame', () => {
-    // The nearest authored row (e.y = 0) enters at depth SPAWN_DISTANCE and looms
-    // as it approaches. Dead ahead, its cannon should tower well up the screen.
+  it('a tower at a near-field spawn depth fills the frame — towers over 1.5x the viewport', () => {
+    // The nearest authored row (e.y = 0) enters at depth SPAWN_DISTANCE and looms as it
+    // approaches. Dead ahead at the raw camera seat a 10560-tall tower there projects to ~4.4x
+    // the viewport height, so it should overflow the frame several times over. Pin >= 1.5x H:
+    // far above the ÷30 bug (~0.15x) yet loose enough to survive a modest SPAWN_DISTANCE
+    // re-derivation (the projection-audit §6.2 flags that constant as tunable).
     const near: Vec3 = [SPAWN_DISTANCE, 0, 0]
     const h = towerScreenHeight(near)
     expect(h, 'a near tower must project in front of the cockpit').not.toBeNull()
     expect(h!, `near tower (depth ${SPAWN_DISTANCE}) projects only ${Math.round(h ?? 0)}px`).toBeGreaterThanOrEqual(
-      0.5 * H,
+      1.5 * H,
     )
   })
 })
