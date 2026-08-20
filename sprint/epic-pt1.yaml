@@ -332,9 +332,10 @@ stories:
       From the 2026-08-20 render audit. drawScanner builds its blip list from state.landers only (scene.ts:243), so mutants, baiters, bombers, pods, swarmers and the humanoids give no radar warning; the ROM SCNR loops the whole OBJ table. The mini-terrain contour (MTERR) is transcribed (terrain-data.ts:31) but drawn nowhere — scanner.ts:29 marks it deferred. Fix: project every live bank plus humanoids to the strip (coloured by OBJCOL index, matching the existing lander-blip path) and draw the MTERR contour. Independent of the other stories.
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-25
     title: 'defender: player-death, smart-bomb and hyperspace have no on-screen effect — the ADR-0005 safe-variant policy layer is built but never called'
