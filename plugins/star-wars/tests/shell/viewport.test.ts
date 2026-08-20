@@ -159,6 +159,28 @@ describe('pt1-4 — HiDPI backing store (device pixel ratio)', () => {
     expect(box.bufferHeight).toBe(1800)
   })
 
+  it('exposes the exact resolved dpr — read directly, not reconstructed (rule #34)', () => {
+    // main.ts scales its context by this dpr, so the fit must hand back the EXACT
+    // resolved ratio, not force the caller to divide the floor-rounded buffer by the
+    // css size. A fractional cssWidth (1079 → cssWidth 1438.66…) makes the two differ:
+    // the reconstruction drifts (2877/1438.66… = 1.99976…) while box.dpr stays 2.
+    const box = computeLetterbox(1920, 1079, 2)
+    expect(box.dpr).toBe(2)
+    expect(box.dpr).not.toBeCloseTo(box.bufferWidth / box.cssWidth, 6) // proves the drift the reconstruction had
+    // The clamp (rule: min(MAX_DPR, rawDpr||1)) is reflected in the exposed value too.
+    expect(computeLetterbox(1200, 900, 3).dpr).toBe(2) // capped
+    expect(computeLetterbox(1200, 900, 0).dpr).toBe(1) // falsy → 1×
+  })
+
+  it('applyLetterbox returns the same resolved dpr it wrote to the backing store', () => {
+    const c = fakeCanvas()
+    const box = applyLetterbox(c, 1920, 1079, 2)
+    // The buffer it wrote equals css × the exposed dpr (floored) — self-consistent.
+    expect(box.dpr).toBe(2)
+    expect(c.width).toBe(Math.floor(box.cssWidth * box.dpr))
+    expect(c.height).toBe(Math.floor(box.cssHeight * box.dpr))
+  })
+
   it('clamps devicePixelRatio to MAX_DPR (2) to bound the backing store', () => {
     expect(MAX_DPR).toBe(2)
     // A 3× display must NOT produce a 3× (3600×2700) buffer — it is capped at 2×.
@@ -269,7 +291,13 @@ describe('pt1-4 — main.ts is actually wired to the letterbox fit (not orphaned
 
   it('imports the letterbox seam from the viewport module', () => {
     expect(mainSrc).toContain('./shell/viewport')
-    expect(mainSrc).toContain('applyLetterbox')
+  })
+
+  it('actually CALLS applyLetterbox on the canvas in resize() — wired, not orphaned', () => {
+    // A bare `toContain('applyLetterbox')` matches the import or a comment too, so it
+    // cannot tell "wired" from "imported-but-orphaned" — the exact regression this
+    // guards. Anchor to the invocation on the canvas element instead.
+    expect(mainSrc).toMatch(/applyLetterbox\(\s*canvas/)
   })
 
   it('no longer resolves the viewport with the window-filling resizeToDisplay seam', () => {

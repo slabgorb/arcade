@@ -42,6 +42,12 @@ export interface Letterbox {
   bufferWidth: number
   /** Backing-store height in device pixels (whole pixels). */
   bufferHeight: number
+  /** The resolved (capped + guarded) device pixel ratio actually applied,
+   *  `Math.min(MAX_DPR, rawDpr || 1)`. Exposed directly so a caller that scales its
+   *  context by the DPR (star-wars' `ctx.scale(dpr, dpr)`) reads the exact value the
+   *  fit used, rather than reconstructing it by dividing the floor-rounded buffer by
+   *  the css size. Always ≥ 1 — a real ratio, so no divide-by-zero guard is needed. */
+  dpr: number
 }
 
 /** The minimal HTMLCanvasElement surface `applyLetterbox` mutates — duck-typed so
@@ -69,6 +75,7 @@ export function computeLetterbox(
     cssHeight: box.height,
     bufferWidth: Math.floor(box.width * dpr),
     bufferHeight: Math.floor(box.height * dpr),
+    dpr,
   }
 }
 
@@ -90,5 +97,6 @@ export function applyLetterbox(
     cssHeight: box.height,
     bufferWidth: vp.deviceWidth,
     bufferHeight: vp.deviceHeight,
+    dpr: vp.dpr,
   }
 }

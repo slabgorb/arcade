@@ -37,8 +37,8 @@ const { canvas, ctx } = mountCanvas(document)
 // over @shared/view), instead of filling the window. Handing render() the fitted box —
 // not the whole window — reunites the HUD with sw10-1's centered scene square; the black
 // page shows through around the centered canvas as the side bars (the fleet look
-// battlezone/asteroids already wear). dpr is derived from the applied box (applyLetterbox
-// returns the backing store, not the ratio) and guarded when the window collapses to 0.
+// battlezone/asteroids already wear). `box.dpr` is the exact ratio the fit resolved
+// (capped + guarded in @shared/view), read directly for ctx.scale — no reconstruction.
 let W = window.innerWidth
 let H = window.innerHeight
 let dpr = 1 // real value set by resize() below, from the applied letterbox fit
@@ -47,7 +47,7 @@ function resize(): void {
   const box = applyLetterbox(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
   W = box.cssWidth
   H = box.cssHeight
-  dpr = box.cssWidth > 0 ? box.bufferWidth / box.cssWidth : 1
+  dpr = box.dpr
 }
 window.addEventListener('resize', resize)
 resize()
