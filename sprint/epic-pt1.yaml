@@ -133,10 +133,11 @@ stories:
     description: 'Playtest 2026-08-19: map mouse buttons to bases — left button fires the left (alpha) base, middle the center (delta), right the right (omega) — mirroring the z/x/c keys. Suppress the context menu on right-click.'
     points: 2
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-13
     title: 'joust: the troll should not be able to pull the player through a platform'
