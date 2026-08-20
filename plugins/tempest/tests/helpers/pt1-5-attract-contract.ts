@@ -51,9 +51,10 @@ export async function loadAttract(): Promise<AttractSchedulerModule> {
   try {
     return (await import(/* @vite-ignore */ modPath)) as AttractSchedulerModule
   } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e)
     throw new Error(
       'GREEN (Dev) must create plugins/tempest/src/core/attract-scheduler.ts — the pure ' +
-        `attract-page sub-cycle (pt1-5). Import failed: ${(e as Error).message}`,
+        `attract-page sub-cycle (pt1-5). Import failed: ${reason}`,
     )
   }
 }

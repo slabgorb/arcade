@@ -33,13 +33,10 @@ const NEUTRAL: Input = { spin: 0, fire: false, zap: false, start: false }
 const DT = 1 / 60
 
 const neutral = (s: GameState): GameState => stepGame(s, NEUTRAL, DT)
-const mode = (s: GameState): string => (s as unknown as { mode: string }).mode
-// Access `attract` WITHOUT optional chaining so RED throws a real failure (the field
-// is absent until GREEN) instead of passing vacuously on `undefined === undefined`.
-const page = (s: GameState): AttractPage =>
-  (s as unknown as { attract: { page: AttractPage } }).attract.page
-const framesOnPage = (s: GameState): number =>
-  (s as unknown as { attract: { framesOnPage: number } }).attract.framesOnPage
+// GameState now types `mode` and `attract` (pt1-5), so these read directly — no cast.
+const mode = (s: GameState): string => s.mode
+const page = (s: GameState): AttractPage => s.attract.page
+const framesOnPage = (s: GameState): number => s.attract.framesOnPage
 
 /** Idle-step until the scheduler shows `target`, or fail if it never does. */
 function stepUntilPage(seed: number, target: AttractPage): GameState {
@@ -123,6 +120,29 @@ describe('pt1-5 attract cycle — the demo VISIBLY PLAYS on its page (AC1, the d
     // And on its page the demo is a real play example, not a frozen board.
     expect(sawEnemyWhileActive, 'the demo must spawn enemies while it plays').toBe(true)
     expect(firedWhileActive, 'the demo must fire while it plays').toBe(true)
+  })
+
+  // MAGNITUDE (Reviewer #29): the test above accumulates spawn/fire across MANY demo
+  // visits, so it stays green even if a single demo page is far too short to actually
+  // play (a 5-frame dwell flickering on and off would satisfy it after enough cycles).
+  // The story's defect is exactly that magnitude — the demo must dwell long enough to
+  // BE a play example. Measure ONE uninterrupted demo-page visit: within that single
+  // visit the demo must spawn an enemy AND fire. Shrinking DEMO_DWELL_FRAMES below a
+  // real play example reddens this (proven: DEMO_DWELL_FRAMES=5 → this test fails).
+  it('a SINGLE demo-page visit lasts long enough to spawn an enemy AND fire', () => {
+    let s = stepUntilPage(2024, 'demo') // first frame on the demo page (demo seeded)
+    expect(s.demoActive).toBe(true)
+    let sawEnemy = false
+    let fired = false
+    // Walk exactly this one demo-page visit — until the rotation advances off 'demo'.
+    for (let i = 0; i < 100_000 && page(s) === 'demo'; i++) {
+      if (s.enemies.length > 0) sawEnemy = true
+      if (s.events.some((e) => e.type === 'fire')) fired = true
+      if (sawEnemy && fired) break
+      s = neutral(s)
+    }
+    expect(sawEnemy, 'the demo must spawn an enemy within one demo-page visit').toBe(true)
+    expect(fired, 'the demo must fire within one demo-page visit').toBe(true)
   })
 })
 

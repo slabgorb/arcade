@@ -13,9 +13,15 @@
 //   - An exported pure `demoInput(state: GameState): Input` from src/core/sim.ts
 //     that computes the demo's synthetic input from the board (no RNG, no DOM).
 //   - The `attract` case of stepGame runs the normal playing pipeline via
-//     `demoInput` when idle (neutral input), seeding the demo lazily on the first
-//     idle step. `mode` stays 'attract' throughout the demo (it never flips to
-//     'playing'). A demo death returns to the title (not 'gameover').
+//     `demoInput` when idle (neutral input). `mode` stays 'attract' throughout the
+//     demo (it never flips to 'playing'). A demo death returns to the title (not
+//     'gameover').
+//
+// ENTRY POINT UPDATED by pt1-5: Story 10-3 seeded the demo on the FIRST idle step.
+// pt1-5 added the three-page attract rotation (ladder → logo → demo), so the demo
+// now seeds only when the rotation reaches the DEMO page. That integration contract
+// lives in tests/core/pt1-5.attract-cycle.test.ts; the pure `demoInput` brain below
+// (Group A) is unaffected by the page model and stays here.
 //
 // TEA decisions (see session Design Deviations):
 //   - "Most-advanced enemy" == the enemy NEAREST THE RIM == MAXIMUM `depth` in our
