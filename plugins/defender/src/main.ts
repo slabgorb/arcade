@@ -170,9 +170,17 @@ const loop = createLoop(
         session.phase === 'game-over' ? { board: session.board, nameEntry: session.nameEntry } : undefined,
         // pt1-20: show the control hint on the ATTRACT screen (the self-playing demo) so a
         // first-time player learns Defender's unintuitive keys; live play stays un-cluttered.
-        // pt1-29: feed the in-play high score (top of the persisted board) so the HUD shows it
-        // during live play, not only on the game-over hall-of-fame screen (the 2026-08-20 audit fix).
-        { controlHint: session.phase === 'attract', highScore: session.board[0]?.score ?? 0 },
+        // pt1-29: feed the in-play high score — the BEST score on the persisted board — so the HUD
+        // shows it during live play, not only on the game-over hall-of-fame screen (2026-08-20 audit).
+        // Take the MAX, not board[0]: the board is written sorted (insertHighScore) but the load path
+        // (@shared/highscore parseTable) only filters, so corrupt or hand-edited localStorage could
+        // leave row 0 below the true best — the same distrust src/shared/highscore.ts's maxScoreIn and
+        // this game's own hall-of-fame (core/scene.ts) apply to the identical adversarial store. Rows
+        // are finite-validated by parseTable, and Math.max(0) yields 0 for an empty board.
+        {
+          controlHint: session.phase === 'attract',
+          highScore: Math.max(0, ...session.board.map((row) => row.score)),
+        },
       ),
     )
   },

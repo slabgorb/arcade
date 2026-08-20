@@ -210,7 +210,7 @@ const HUD_MEN_Y = 12
 const HUD_WAVE_Y = 22
 /** pt1-29: the in-play HIGH SCORE, a glyph-row below wave — the audit fix (the high score was
  *  shown only on the game-over hall-of-fame screen). Its value is not in the sim; the shell passes
- *  it (options.highScore, the top of the persisted board). */
+ *  it (options.highScore, the best score on the persisted board). */
 const HUD_HISCORE_Y = 32
 /** pt1-29: the SMART-BOMB stock (state.smartBombs), a glyph-row below the high score — tracked in
  *  the sim since df5-5 but drawn nowhere until now. */
@@ -409,7 +409,8 @@ function drawHallOfFame(
  * Compose the live frame from the current sim state into a fresh `width × height` index
  * surface: clear, scroll-composite the starfield, lay the planet surface, blit the ship
  * at its display column/row, streak any lasers in flight, and overlay the df5-7 scanner
- * strip + score/men HUD. When the game is over (df5-6), the end screen replaces the frame —
+ * strip + the HUD (score, men, df7-5 wave, and pt1-29 in-play high score + smart-bomb stock).
+ * When the game is over (df5-6), the end screen replaces the frame —
  * the df7-4 HALL OF FAME screen when the shell passes the board + initials entry (`hof`),
  * otherwise the plain GAME OVER / final-score screen. Pure and deterministic — same inputs,
  * same indices out. Returns palette INDICES.
@@ -487,9 +488,9 @@ export function composeFrame(
 
   // df5-7 + df7-5 + df7-8: overlay the scanner radar strip — its bezel frame (df7-5, drawn even
   // when empty), the live-attacker blips (coloured from the lander sprite's own palette index),
-  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the
-  // score/men/wave HUD, painted on top of the play field. Drawn AFTER the gameOver early-return,
-  // so the marker never appears on the end screen.
+  // the df7-8 PLAYER marker (a WHITE tick at the player's own radar column) — and the HUD
+  // (score/men/wave + pt1-29 high score + smart-bomb stock), painted on top of the play field.
+  // Drawn AFTER the gameOver early-return, so the marker never appears on the end screen.
   drawScannerBezel(fb)
   drawScanner(fb, state, spriteColour(landerPic))
   drawPlayerBlip(fb, state)
