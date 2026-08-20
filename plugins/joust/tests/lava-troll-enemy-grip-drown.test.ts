@@ -134,7 +134,13 @@ describe('enemy grip — the lava troll grabs an enemy victim, it does not give 
   it('an enemy staged at the grip point gains grippedBy when the hand closes', async () => {
     const smod = await loadSim()
     const VICTIM_ID = 0x202
-    const victimY = 120
+    // Within the lava troll's vertical reach (>= FLOOR+7-32 = 198, the LAVVI3 line), and
+    // above the burned-shore contact band (< 211) so the per-contact grab does not
+    // re-seize. pt1-16 gave gripped enemies the ROM's out-of-reach break-free (LAVVI3,
+    // :6653), so a bird staged ABOVE the reach line (the old victimY=120) now correctly
+    // climbs clear on frame one — an unreachable grab the troll could never have
+    // committed. Grab near the lava, where the shore troll actually reaches.
+    const victimY = 205
     const enemy = enemyAt(VICTIM_ID, 100, entityAt(100, victimY))
     const troll = trollAtGrip(VICTIM_ID, 98, victimY + GRIP_Y_OFFSET)
     let d = await trollSim([enemy, troll])

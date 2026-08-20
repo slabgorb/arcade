@@ -301,8 +301,11 @@ describe('jt9-11 AC-2 — the hand rises and tracks its victim before it can gra
   it('the grab COMMITS only when the hand reaches victim pixelY + 3 (CMPB PPOSY equal → LT1GRP)', async () => {
     const dmod = await loadSim()
     // Hand extended and ONE pixel short of the grip point: the next frame should land
-    // it on victim+3 and commit the grip. Grip is absent until that frame.
-    const victimY = 120
+    // it on victim+3 and commit the grip. Grip is absent until that frame. In the troll's
+    // reach (>= 198, the LAVVI3 line, pt1-16) for consistency with the other grab fixtures
+    // — this test stops the loop at commit, so reachability is not load-bearing for its
+    // assertion, but staging an unreachable grab would still be a lie about the geometry.
+    const victimY = 205
     const victim = playerAt(PLAYER1_ID, 100, victimY)
     const gripY = victimY + GRIP_Y_OFFSET
     let d = await stagedDemo([
@@ -332,7 +335,11 @@ describe('jt9-11 AC-3 — the committed grip is seeded from the wave LAVGRA and 
   /** Stage a troll already at the grip point so the next step commits the grab. */
   async function aboutToGrab(wave: number): Promise<{ d: SimState; step: (d: SimState) => SimState }> {
     const dmod = await loadSim()
-    const victimY = 120
+    // In the troll's reach (>= FLOOR+7-32 = 198, the LAVVI3 line, pt1-16) and above the
+    // burned-shore contact band (< 211): a victim staged above the reach line would break
+    // free on frame one (outOfTrollReach), so the pull-driven fall this suite measures
+    // would be replaced by normal flight physics.
+    const victimY = 205
     const gripY = victimY + GRIP_Y_OFFSET
     const d = await stagedDemo(
       [
@@ -416,7 +423,12 @@ describe('jt9-11 AC-4 — a gripped victim can break free for 50 points or be pu
   async function committed(gripOver: Partial<NonNullable<SimProcess['grip']>> = {}, inputs = false) {
     const troll = await loadTroll()
     const dmod = await loadSim()
-    const victimY = 120
+    // Within the troll's vertical reach (>= FLOOR+7-32 = 198, the LAVVI3 line), and above
+    // the burned-shore contact band (< 211) so a freed victim is not re-seized by the
+    // per-contact grab. pt1-16 gave a gripped bird the ROM's out-of-reach break-free
+    // (LAVVI3, :6653), so a victim staged ABOVE the reach line (the old victimY=120) now
+    // climbs clear on frame one instead of being dragged down — an unreachable grab.
+    const victimY = 205
     const gripY = victimY + GRIP_Y_OFFSET
     const base = troll.beginGrip(4)
     const d = await stagedDemo([

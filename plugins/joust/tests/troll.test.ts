@@ -209,6 +209,20 @@ describe('AC-2 — the grip repoints gravity and the break-free is sustained', (
     expect(t.ESCAPE_SCORE).toBe(50)
     expect(t.escapeScoreEvent()).toEqual({ kind: 'score', value: 50, reason: 'escape' })
   })
+
+  // pt1-16 — LAVVI3, the SECOND break-free path: a gripped bird that has climbed clear of
+  // the troll's reach breaks free (ADLX / JSR LAVVI3 / BNE ADLFRE, JOUSTRV4.SRC:6653). The
+  // reach line is a WHOLE-PIXEL Y ceiling `CMPA #FLOOR+7-32 / BLO` (:1719) — strictly ABOVE
+  // FLOOR+7-32 = 230-32 = 198. Pinned exactly, the way BREAK_FREE_VY / isLavaDeath are, so a
+  // one-pixel drift of the 32px citation reddens rather than passing the whole suite.
+  it('outOfTrollReach is the exact FLOOR+7-32 = 198 ceiling (BLO — strictly above)', async () => {
+    const t = await loadTroll()
+    expect(t.LAVVI3_ESCAPE_Y, 'the reach line is FLOOR+7-32 = 198').toBe(198)
+    expect(t.outOfTrollReach(197), 'one pixel above the line (197) is OUT of reach — breaks free').toBe(true)
+    expect(t.outOfTrollReach(198), 'AT the line (198) is still IN reach — held (BLO is strict)').toBe(false)
+    expect(t.outOfTrollReach(199), 'below the line (199) is IN reach — held').toBe(false)
+    expect(t.outOfTrollReach(230), 'at the kill plane is IN reach — the drown path owns it, not escape').toBe(false)
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
