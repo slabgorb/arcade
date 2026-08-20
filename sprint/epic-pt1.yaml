@@ -179,10 +179,11 @@ stories:
     description: 'Playtest 2026-08-19: when an egg hatches, the new enemy appears in the air immediately. Authentic behavior: the egg hatches into a rider standing on the ground/platform, then a buzzard flies down to pick the rider up before it becomes a threat. Verify the hatch → wait → buzzard-pickup sequence against the ROM.'
     points: 3
     priority: p1
-    status: in_progress
+    status: done
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-16
     title: 'joust: enemies are too vulnerable to lava — a screen can be cleared by waiting for them to suicide'
