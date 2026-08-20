@@ -16,9 +16,9 @@
 //   fix folds bunkers into the armed pool WITHIN that model. The bunker's gun is
 //   its LOW BODY, not a tower cap: the bunker's whole body spans 0..6 height
 //   units (WSOBJ.MAC .WP GND rings; hex radix), i.e. 6*120 = 720 raw ROM units
-//   = 24 at the surface sim's 1/30 height scale (D-013: SKIM_ALTITUDE 128 ==
-//   GD$MDT 3840). GDHTBK even centers the bunker's hit explosion at 3*120
-//   (WSGRND:1166). So a bunker muzzle is <= 24 — never TOWER_HEIGHT (352).
+//   at the surface sim's 1:1 scale (pt1-3; D-013: SKIM_ALTITUDE == GD$MDT ==
+//   3840). GDHTBK even centers the bunker's hit explosion at 3*120 = 360
+//   (WSGRND:1166). So a bunker muzzle is <= 720 — never TOWER_HEIGHT (10560).
 //   The ROM's distance-weighted fire chance (`LDA #40 / SUBA 4+M.X0 / CMPA
 //   P.RND1`, WSGRND:1294-1296) belongs to the house-ruled fire model and is
 //   routed to a Delivery Finding, not pinned here.
@@ -39,21 +39,22 @@
 //
 //   The ceiling that makes towers unavoidable: the surface flight band is
 //   GD$MNT ($200) .. GD$MXT ($1C00) (WSMAIN.MAC:2597-2598) = 512..7168 raw ROM
-//   units, i.e. ~17..~239 at the 1/30 height scale — BELOW the 58*120/30 = 232
-//   ... tower cap at TOWER_HEIGHT (352). Unclamped climb would let the pilot
+//   units (the sim runs at this 1:1 scale since pt1-3) — the clone clamps at
+//   MAX_SKIM_ALTITUDE 7168, BELOW the tower cap at TOWER_HEIGHT (10560 = 0x58*120).
+//   Unclamped climb would let the pilot
 //   hop every tower and the maze could not fight back; the clamp is pinned
 //   here (any ceiling strictly below TOWER_HEIGHT passes).
 //
 // REACHABILITY RULING (logged as a TEA deviation in the session): the ROM's
 // bunker-crash band exists because its floor (512) is below the bunker top
-// (720). The clone's floor is MIN_SKIM_ALTITUDE = 40 (house rule D-021), ABOVE
-// the raw-scaled bunker top (24) — a 1:1 scale port would make the bunker half
-// of D-020 dead code. The story title says the maze fights back, so this suite
-// stages the bunker crash at MIN_SKIM_ALTITUDE (the lowest legal flight): the
-// clone's bunker-crash ceiling must sit ABOVE the floor (40) and AT OR BELOW
-// the default cruise (SKIM_ALTITUDE = 128), preserving the ROM's shape:
-// low flight risks bunkers, cruise clears them. (Proportional candidate:
-// 40 * 720/512 ≈ 56 — Dev's pick, cited in the session.)
+// (720). The clone's floor is MIN_SKIM_ALTITUDE = 1200 (house rule D-021), ABOVE
+// the raw bunker top (720) — so the literal "below the bunker top" test would make
+// the bunker half of D-020 dead code. The story title says the maze fights back, so
+// this suite stages the bunker crash at MIN_SKIM_ALTITUDE (the lowest legal flight):
+// the clone's bunker-crash ceiling must sit ABOVE the floor (1200) and AT OR BELOW
+// the default cruise (SKIM_ALTITUDE = 3840), preserving the ROM's shape:
+// low flight risks bunkers, cruise clears them. (Candidate: the ÷30-era
+// 40*720/512 ≈ 56 scaled ×30 = 1680 — Dev's pick, cited in the session.)
 //
 // CONTRACT PINNED HERE (TEA-defined; the sprint YAML carried only the title):
 //   - the crash emits ONE 'object-crash' GameEvent per hit (its own cue, like
@@ -110,13 +111,15 @@ const ground = (pos: Vec3, kind: 'tower' | 'bunker' | 'bishop', age = 0): Turret
 const CLIMB: Input = { aimX: 0, aimY: 1, fire: false } // +aimY = up (surface.test.ts convention)
 
 /** The bunker's whole body tops out at 6 height units * 120 scale = 720 raw ROM
- *  units = 24 at the sim's 1/30 height scale (WSOBJ.MAC .WP GND / D-013). A
- *  LITERAL, not a constant-under-audit (tp1-27 rule). */
-const BUNKER_BODY_TOP = 24
+ *  units (WSOBJ.MAC .WP GND / D-013). pt1-3: the surface renders at 1:1 raw now,
+ *  so this is 720 (was 24 at the retired ÷30 height scale). A LITERAL, not a
+ *  constant-under-audit (tp1-27 rule). */
+const BUNKER_BODY_TOP = 720
 
-/** GD$MXT ($1C00 = 7168 raw, WSMAIN.MAC:2598) at the 1/30 height scale — the
- *  ROM's surface ceiling, staged as "as high as the cabinet lets you fly". */
-const ROM_CEILING = 238
+/** GD$MXT ($1C00 = 7168 raw, WSMAIN.MAC:2598) — the ROM's surface ceiling, staged
+ *  as "as high as the cabinet lets you fly". pt1-3: raw 1:1 scale now (was 238 at
+ *  the retired ÷30 height scale). */
+const ROM_CEILING = 7168
 
 /** Step `steps` frames, collecting every emitted event type along the way. */
 function fly(s0: GameState, steps: number, input: Input = NO_INPUT): { s: GameState; types: string[] } {
@@ -153,8 +156,8 @@ describe('sw7-5 / D-016 — standing bunkers fire', () => {
   })
 
   it("the bunker's fireball erupts from its LOW body, never the tower cap (RED)", () => {
-    // The bunker's body spans 0..720 raw ROM units = 0..24 sim height units;
-    // a muzzle at TOWER_HEIGHT (352) would erupt from empty air — the exact
+    // The bunker's body spans 0..720 raw ROM units (1:1 sim scale, pt1-3);
+    // a muzzle at TOWER_HEIGHT (10560) would erupt from empty air — the exact
     // wrongness the old sim comment worried about.
     const s1 = stepGame(armedBunker(), NO_INPUT, DT)
     const shot = s1.enemyShots[0]
@@ -268,8 +271,8 @@ describe('sw7-5 / D-020 — a standing TOWER dead ahead is a crash', () => {
 
   it('cannot be overflown — the crash bites even at the ROM ceiling (RED)', () => {
     // ROM: the tower branch has NO height gate (WSGRND:901-912), and the flight
-    // band tops out at GD$MXT below the tower cap — staged at the scaled
-    // ceiling (238), still under TOWER_HEIGHT (352).
+    // band tops out at GD$MXT below the tower cap — staged at the raw
+    // ceiling (MAX_SKIM 7168), still under TOWER_HEIGHT (10560).
     const s0 = towerAhead({ altitude: ROM_CEILING })
     const { s, types } = fly(s0, 40)
     expect(s.lives).toBe(s0.lives - 1)
@@ -365,10 +368,10 @@ describe('sw7-5 / D-020 — a standing BUNKER is a LOW hazard: dive risks it, cr
 
 describe('sw7-5 — the surface flight band has the ROM ceiling (GD$MXT, WSMAIN:2598)', () => {
   it('sustained max climb clamps at a ceiling strictly below the tower cap (RED)', () => {
-    // Unclamped, 30 s of full climb reaches 128 + 200·30 = 6128 — the pilot
+    // Unclamped, 30 s of full climb reaches 3840 + 6000·30 = 183840 — the pilot
     // hops every tower and D-020 is decoration. The ROM band is $200..$1C00
-    // raw (512..7168), ceiling ≈ 238 at the height scale — any finite clamp
-    // strictly below TOWER_HEIGHT (352) passes; the exact value is Dev's, with
+    // raw (512..7168), ceiling MAX_SKIM 7168 (1:1 raw scale, pt1-3) — any finite clamp
+    // strictly below TOWER_HEIGHT (10560) passes; the exact value is Dev's, with
     // the citation.
     let s: GameState = { ...surface(), turrets: [], surfaceMazeLaid: true }
     for (let i = 0; i < 400; i++) s = stepGame(s, CLIMB, 0.05) // 20 s of climb

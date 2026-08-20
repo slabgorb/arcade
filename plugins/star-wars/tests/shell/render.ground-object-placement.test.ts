@@ -20,33 +20,40 @@
 // So these tests pin the CONTRACT of the bridge (where the tower ends up), never
 // the matrix that implements it. Dev stays free to compose it however reads best.
 //
+// -- pt1-3: THE SURFACE RENDERS AT 1:1 RAW ROM UNITS ------------------------
+//
+// sw5-5 originally drew the ground objects at a 1/30 PRESENTATION scale (footprint
+// 960 -> 32, height 10560 -> 352, altitude 3840 -> 128). pt1-3 retired that stale
+// pre-migration fudge (2026-08-08 projection audit §5/§6.2): the surface now
+// renders at 1:1 raw ROM units, like the space/trench phases and every other
+// model, so GROUND_MODEL_SCALE = 1 and these placement values ARE the ROM numbers
+// verbatim. The heights/footprint/altitude below are the raw values; their RATIOS
+// (aspect, skim fraction) are unchanged from the presentation era.
+//
 // -- WHAT THE BRIDGE MUST PRESERVE, AND WHAT IT MUST CHANGE ------------------
 //
 // PRESERVE: the tower's FOOTPRINT. The ROM base ring is r=8 -> 8*120 = 960 raw
-// units, and the shipped game draws it at r=32. So the presentation scale is
-// 960 -> 32, i.e. 1/30 (equivalently: 4 world units per .S unit, sw3-11's "x4").
-// The tower must not get wider; the maze spacing and hit radii all assume today's
-// footprint.
+// units, drawn 1:1. The tower must not get wider; the maze spacing and hit radii
+// all assume that raw footprint.
 //
 // CHANGE: the tower's HEIGHT. sw3-11 read the `.PGND` height column in decimal
 // when WSOBJ.MAC is `.RADIX 16` (see tests/core/ground-objects-rom.test.ts), so
-// the shipped tower is too short. Read correctly the rings land at, in world y:
+// the shipped tower was too short. Read correctly the rings land at, in raw world
+// y (= the presentation-era values × 30):
 //
-//     h=0x00  ->    0     base            (on the floor)
-//     h=0x06  ->   24     near bottom
-//     h=0x14  ->   80     midline         (was 56 -- the decimal misread)
-//     h=0x52  ->  328     bottom of cannon (was 208)
-//     h=0x58  ->  352     top of cannon    (was 232)  <- the new TOWER_HEIGHT
+//     h=0x00  ->      0     base            (on the floor)
+//     h=0x06  ->    720     near bottom
+//     h=0x14  ->   2400     midline
+//     h=0x52  ->   9840     bottom of cannon
+//     h=0x58  -> 10560      top of cannon    <- TOWER_HEIGHT (0x58 x 120)
 //
 // -- GD$MDT IS THE SKIM ALTITUDE --------------------------------------------
 //
 // GD$MDT (0xF00 = 3840) is not a cosmetic offset. Its comment is "OFFSET HITE TO
 // MID OF PLAYERS HITE": the ROM recentres the tower so that model z=0 sits at the
-// height the player flies at. Scaled into the world that is 3840/30 = 128 — so
-// the ROM has been telling us the skim altitude all along. state.ts's
-// SKIM_ALTITUDE was 120, a hand-picked number its own comment flagged as "chosen
-// to play right... named for easy correction once deeper reverse-engineering
-// recovers the real numbers". This is that correction.
+// height the player flies at. At 1:1 raw scale that IS SKIM_ALTITUDE = 3840 (was
+// 3840/30 = 128 in the presentation era) — so the ROM has been telling us the skim
+// altitude all along.
 
 import { describe, it, expect } from 'vitest'
 import { TOWER_ORIENT, GROUND_MODEL_SCALE, modelMatrix } from '../../src/shell/render'
@@ -82,13 +89,12 @@ describe('sw5-5 — the ROM ground objects land correctly in the y-up world', ()
   // as `undefined`, the default silently takes over, and the placement tests below
   // quietly measure an unscaled model instead of failing. Pin the export itself so
   // that trapdoor is nailed shut: this test fails loudly, first, and by name.
-  it('the shell exports the ROM -> world presentation scale', () => {
+  it('the shell exports the ROM -> world scale, now 1:1 raw (pt1-3)', () => {
     expect(typeof GROUND_MODEL_SCALE, 'src/shell/render.ts must export GROUND_MODEL_SCALE').toBe('number')
-    // The ROM base ring is r=8 -> 8 * .S(120) = 960 raw units, and the shipped
-    // game draws it at r=32. 32/960 = 1/30. This is the number that keeps the
-    // tower's FOOTPRINT identical while its height is corrected.
-    expect(GROUND_MODEL_SCALE).toBeCloseTo(1 / 30, 10)
-    expect(960 * GROUND_MODEL_SCALE).toBeCloseTo(32, 10)
+    // pt1-3: the surface renders at 1:1 raw ROM units — the ÷30 presentation fudge
+    // is retired. The ROM base ring r=8 -> 8 * .S(120) = 960 raw units draws at 960.
+    expect(GROUND_MODEL_SCALE).toBe(1)
+    expect(960 * GROUND_MODEL_SCALE).toBe(960)
   })
 
   it('TOWER_ORIENT actually reorients — the ROM model is z-up and cannot ship as IDENTITY', () => {
@@ -105,18 +111,20 @@ describe('sw5-5 — the ROM ground objects land correctly in the y-up world', ()
     for (const v of base) expect(v[2]).toBeCloseTo(0) // native up axis: base sits on the floor
   })
 
-  it('keeps the shipped FOOTPRINT: the base ring is still r = 32 world units', () => {
-    // The tower gets taller, never wider. 960 raw -> 32 world is the 1/30
-    // presentation scale, and the maze spacing/hit radii all assume it.
+  it('keeps the shipped FOOTPRINT: the base ring is r = 960 raw units', () => {
+    // The tower gets taller, never wider. pt1-3: raw 1:1 scale, so the base ring is
+    // r=8 * .S(120) = 960 raw (was 32 at the ÷30 presentation scale). The maze
+    // spacing/hit radii all assume it.
     const base = placed(SURFACE_TOWER).filter((_, i) => [0, 1, 2].includes(i))
-    for (const r of radii(base)) expect(r).toBeCloseTo(32)
+    for (const r of radii(base)) expect(r).toBeCloseTo(960)
   })
 
-  it('puts every ring at its true HEX height — 0 / 24 / 80 / 328 / 352', () => {
-    // The decimal misread put the midline at 56 and the cannon at 208/232. If a
-    // future edit reverts to decimal, these are the numbers that move.
+  it('puts every ring at its true HEX height — 0 / 720 / 2400 / 9840 / 10560 (raw)', () => {
+    // The decimal misread put the midline low and the cannon short. pt1-3: raw 1:1
+    // scale, so the rings land at the ROM values × 30 (0/24/80/328/352 was the ÷30
+    // presentation era). If a future edit reverts to decimal, these numbers move.
     const levels = [...new Set(ys(placed(SURFACE_TOWER)).map((y) => Math.round(y)))]
-    expect(levels.sort((a, b) => a - b)).toEqual([0, 24, 80, 328, 352])
+    expect(levels.sort((a, b) => a - b)).toEqual([0, 720, 2400, 9840, 10560])
   })
 
   it('the cannon top is the composite peak, and TOWER_HEIGHT is exactly it (WYSIWYG)', () => {
@@ -126,7 +134,7 @@ describe('sw5-5 — the ROM ground objects land correctly in the y-up world', ()
     // cannon-top ring bare), so the composite is what counts.
     const composite = [...placedDrawn(SURFACE_TOWER), ...placedDrawn(TOWER_CAP)]
     expect(Math.max(...ys(composite))).toBeCloseTo(TOWER_HEIGHT)
-    expect(TOWER_HEIGHT).toBe(352)
+    expect(TOWER_HEIGHT).toBe(10560) // pt1-3: raw ROM units (0x58 × 120); was 352 at ÷30
   })
 
   it('is the ROM aspect — 0x58 tall on a 16-wide base, ~5.5:1, not the 3.6:1 of the misread', () => {
@@ -137,10 +145,10 @@ describe('sw5-5 — the ROM ground objects land correctly in the y-up world', ()
 })
 
 describe('sw5-5 — the bunker is still the SHORTY once placed', () => {
-  it('stands on the floor and reaches only the near-bottom ring (h=6 -> y=24)', () => {
+  it('stands on the floor and reaches only the near-bottom ring (h=6 -> y=720 raw)', () => {
     const p = placedDrawn(SURFACE_BUNKER)
     expect(Math.min(...ys(p))).toBeCloseTo(0)
-    expect(Math.max(...ys(p))).toBeCloseTo(24)
+    expect(Math.max(...ys(p))).toBeCloseTo(720) // pt1-3: raw (h=6 × 120); was 24 at ÷30
   })
 
   it('is squat: no taller than half its own width (the macro\'s own word, "SHORTY")', () => {
@@ -163,7 +171,7 @@ describe('sw5-5 — the bunker is still the SHORTY once placed', () => {
 describe('sw5-5 AC-5 — the collidable volume, and what the taller tower does to it', () => {
   it('GD$MDT IS the skim altitude: SKIM_ALTITUDE is derived from the ROM, not guessed', () => {
     expect(SKIM_ALTITUDE).toBe(GD$MDT * GROUND_MODEL_SCALE)
-    expect(SKIM_ALTITUDE).toBe(128)
+    expect(SKIM_ALTITUDE).toBe(3840) // pt1-3: raw (= GD$MDT); was 128 at ÷30
   })
 
   it('the ship flies at the ROM\'s true fraction of tower height (GD$MDT / the tower\'s height)', () => {
@@ -183,20 +191,21 @@ describe('sw5-5 AC-5 — the collidable volume, and what the taller tower does t
     // AC-5 asks for any change in the collidable volume to be called out. There
     // is none: a turret is a TURRET_HIT_RADIUS sphere centred on its base, and
     // this story does not touch it. What changes is the tower drawn AROUND it.
-    expect(TURRET_HIT_RADIUS).toBe(200)
+    expect(TURRET_HIT_RADIUS).toBe(6000) // pt1-3: raw ROM units; was 200 at ÷30
   })
 
   it('CALLED OUT: the hit sphere no longer reaches the cannon — the top of the tower is not shootable', () => {
     // This is the consequence AC-5 wants surfaced rather than discovered later.
-    // The sphere reaches y=200 from the base. The old tower peaked at 232, so
-    // all but its cap was coverable; the corrected tower peaks at 352, so the
-    // entire cannon section (from y=328) now sits outside the hit volume.
+    // The sphere reaches y=6000 (raw) from the base; the tower peaks at 10560, so
+    // the entire cannon section (from y=9840) sits outside the hit volume. pt1-3:
+    // raw ROM units throughout — the presentation era read 200 / 328 / 352, same
+    // ratios.
     //
     // Deliberately NOT fixed here: growing the radius is a play-balance decision,
     // not a fidelity one, and the ROM's own turret hit test is not yet recovered.
     // Logged as a Delivery Finding. Pinned so the gap cannot go quiet.
-    const cannonSeat = 328
+    const cannonSeat = 9840
     expect(TURRET_HIT_RADIUS).toBeLessThan(cannonSeat)
-    expect(TOWER_HEIGHT - TURRET_HIT_RADIUS, 'unshootable metres of tower').toBe(152)
+    expect(TOWER_HEIGHT - TURRET_HIT_RADIUS, 'unshootable metres of tower').toBe(4560)
   })
 })

@@ -134,7 +134,7 @@ describe('sw7-16 — the surface ship point is ONE function', () => {
     //   * THE BEHAVIOURAL half — that the gun really does cast from this point rather than merely
     //     agreeing with it — is `hitscan-laser.test.ts`'s "the beam is cast from the ship point,
     //     not the world origin", which fires a shot that lands ONLY from the flying eye (the same
-    //     ray cast from the origin passes ~228 away, outside TURRET_HIT_RADIUS). That is where the
+    //     ray cast from the origin passes ~6150 away, outside TURRET_HIT_RADIUS (pt1-3 raw scale)). That is where the
     //     "the gun uses it" claim is earned; this file does not take credit for it.
     const s0 = surface({ altitude: 173 })
     expect(shipPoint(s0)).toEqual(eyeOf(s0))

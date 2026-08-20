@@ -333,7 +333,7 @@ export function stepGame(stateIn: GameState, input: Input, dt: number): GameStat
   // rides, the beam leaves from THERE. Cast from the world origin while the eye flies above it,
   // the sight-line and the beam run on parallel rays and everything the crosshair lands on is
   // missed underneath by exactly that gap. In the trench the ship is `trenchView` (the pilot flies
-  // 512..3840 above the floor); on the surface it is [0, 0, altitude] (40..238 above it). Only in
+  // 512..3840 above the floor); on the surface it is [0, 0, altitude] (1200..7168 above it). Only in
   // space is the ship the fixed cockpit at the origin. `shipPoint` is that one point, per phase.
   //
   // It is the ship at the START of the step — the eye the pilot actually sighted down, since the
@@ -2395,7 +2395,7 @@ export function surfaceShip(altitude: number): Vec3 {
  * and the collision world does NOT follow him:
  *
  *   space    the fixed cockpit at the origin — the only phase where eye and origin coincide
- *   surface  [0, 0, altitude] — he flies 40..238 above the floor (MIN/MAX_SKIM_ALTITUDE)
+ *   surface  [0, 0, altitude] — he flies 1200..7168 above the floor (MIN/MAX_SKIM_ALTITUDE)
  *   trench   `trenchView` — he flies 512..3840 above it (TRENCH_EYE_MIN/MAX), and steers
  *
  * Exhaustive over Phase — no `default`, no trailing return — so a fourth phase is a COMPILE error
@@ -2407,9 +2407,10 @@ export function surfaceShip(altitude: number): Vec3 {
  * the frame drawn from THIS state: this is the eye he sighted down, and his bolt leaves from it.
  * `stepSurface` builds its OWN `surfaceShip(altitude)` from the flown height because its jobs
  * resolve at the END of the frame. Both are right; they answer different questions. The two differ
- * by one frame of climb (ALTITUDE_RATE * dt = 3.33), and by up to 88 on a terrain-crash frame,
- * where the bump TELEPORTS the ship 40 -> 128 rather than flying it — so do not derive that bound
- * from ALTITUDE_RATE alone. Pinned by `surface-aim-wysiwyg.test.ts` (b), which fires with aimY != 0.
+ * by one frame of climb (ALTITUDE_RATE * dt = 100 at raw scale), and by up to ~2639 on a
+ * terrain-crash frame, where the bump TELEPORTS the ship MIN_SKIM+1 -> SKIM_ALTITUDE (1201 -> 3840)
+ * rather than flying it — so do not derive that bound from ALTITUDE_RATE alone. Pinned by
+ * `surface-aim-wysiwyg.test.ts` (b), which fires with aimY != 0.
  */
 export function shipPoint(s: GameState): Vec3 {
   switch (s.phase) {

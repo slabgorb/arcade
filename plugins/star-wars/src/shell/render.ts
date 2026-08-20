@@ -248,16 +248,21 @@ export function trenchWallOrient(o: TrenchObstacle): Mat4 {
 // symmetric about the vertical and the rotation's horizontal-axis swap is invisible.
 export const PORT_ORIENT: Mat4 = IDENTITY // RETIRED sw10-1: native world basis, no per-model rotation
 
-// The ROM → world presentation scale for the ground objects (story sw5-5).
+// The ROM → world scale for the ground objects (story sw5-5; pt1-3 raw unify).
 //
-// models.ts now holds the GROUND LASAR TOWER family in RAW ROM UNITS, as it
-// already did for every ship — which is what lets the contact sheet compare them
-// against the ROM at all. The ROM authors them at `.S = 30.*4` = 120 units per
-// design unit, so the base ring (r = 8) spans 960 raw units. The shipped game
-// draws that footprint at r = 32, and the maze spacing and turret hit radius all
-// assume it: 32/960 = 1/30. The tower gets TALLER (sw5-5 corrects its hex-misread
-// heights), never wider.
-export const GROUND_MODEL_SCALE = 1 / 30
+// models.ts holds the GROUND LASAR TOWER family in RAW ROM UNITS, as it does for
+// every ship — the ROM authors them at `.S = 30.*4` = 120 units per design unit,
+// so the base ring (r = 8) spans 960 raw units.
+//
+// pt1-3: the surface now renders at 1:1 raw, like the space and trench phases and
+// every other model — the 1/30 presentation scale was a stale pre-migration fudge
+// (2026-08-08 projection audit §5/§6.2) that left the raw-positioned maze towers
+// drawn ÷30 too small, so they read as distant specks. With scale 1 the tower's
+// raw footprint (960) and raw height (0x58×120 = 10560) render at the same scale
+// as their raw maze positions, the raw camera seat (GD$MDT = 3840) and the raw
+// ground grid — one coherent world. Kept as an exported constant (= 1) so the maze
+// spacing / hit-radius / camera derivations that reference it stay single-sourced.
+export const GROUND_MODEL_SCALE = 1
 
 // The ground-object placement basis (story sw5-5; sw10-1 native-basis remap).
 // TOWER_ORIENT is the ONE per-model orient the native migration keeps: it is not a
@@ -277,10 +282,11 @@ export const GROUND_MODEL_SCALE = 1 / 30
 //   2. the lift undoes GD$MDT. The ROM recentres every ground object's height so
 //      that model z = 0 is the height the PLAYER flies at (its comment: "OFFSET
 //      HITE TO MID OF PLAYERS HITE"), leaving the base ring at z = -GD$MDT. Adding
-//      GD$MDT back — at the presentation scale — seats the base on the floor; under
-//      P the old +Y lift lands on the native up (+Z) axis, where it belongs.
+//      GD$MDT back — at the model scale (raw 1:1 since pt1-3) — seats the base on
+//      the floor; under P the old +Y lift lands on the native up (+Z) axis, where it belongs.
 //
-// That lift is 3840/30 = 128 world units, which is exactly SKIM_ALTITUDE: the ROM
+// That lift is GD_HEIGHT_OFFSET × GROUND_MODEL_SCALE = 3840 × 1 = 3840 world units,
+// which is exactly SKIM_ALTITUDE: the ROM
 // has been telling us the ship's skim height all along. Derived here from the ROM
 // constant rather than from SKIM_ALTITUDE itself, so that retuning the flight
 // height (a play-balance knob) cannot silently sink the towers into the floor.
