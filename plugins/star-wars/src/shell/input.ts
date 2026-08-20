@@ -24,7 +24,15 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     // the pointer's Y grows downward — negate it, or pushing the yoke up would dive.
     state.aimY = -(((e.clientY - r.top) / r.height) * 2 - 1)
   })
-  window.addEventListener('pointerdown', () => { state.fire = true })
+  window.addEventListener('pointerdown', () => {
+    state.fire = true
+    // A mouse click also arms the start edge (pt1-10), exactly as Enter/1 do —
+    // the core acts on `start` only in attract/gameover, so a click starts the
+    // game there and is harmlessly ignored during play. A pointerdown carries no
+    // OS auto-repeat, so one click is inherently one edge; the keydown path's
+    // `!e.repeat` guard has no analogue to need here.
+    pendingStart = true
+  })
   window.addEventListener('pointerup', () => { state.fire = false })
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space') state.fire = true
