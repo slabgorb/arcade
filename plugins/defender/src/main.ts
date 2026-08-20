@@ -168,6 +168,9 @@ const loop = createLoop(
         LOGICAL_WIDTH,
         LOGICAL_HEIGHT,
         session.phase === 'game-over' ? { board: session.board, nameEntry: session.nameEntry } : undefined,
+        // pt1-20: show the control hint on the ATTRACT screen (the self-playing demo) so a
+        // first-time player learns Defender's unintuitive keys; live play stays un-cluttered.
+        { controlHint: session.phase === 'attract' },
       ),
     )
   },

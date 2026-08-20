@@ -284,6 +284,29 @@ function drawPlayerBlip(fb: Framebuffer, state: SimState): void {
   }
 }
 
+// ─── pt1-20: the on-screen CONTROL HINT (discoverability) ────────────────────────────
+// Playtest 2026-08-19: a first-time player cannot tell how to fly or fire — Defender's
+// reverse-to-turn scheme is unintuitive and nothing on screen explains it. The bindings work
+// (shell/input.ts: A=reverse-facing, D=thrust, W/S=vertical, Space/Enter=fire, ShiftLeft/B=
+// smart-bomb — RightShift is hyperspace, a separate power); the gap is DISCOVERABILITY. The attract demo carries this hint line so a player
+// learns the keys before dropping a coin. Drawn in CORE (the defender draw-in-core rule) as a
+// sparse index-9 text line — never a full-frame flash (ADR-0005).
+
+/** The control-hint text. It names the SAME keys shell/input.ts installs — KEEP IT IN STEP with
+ *  input.ts (core cannot import shell). The charset is A-Z / digits / space / ",:!?." (no arrows),
+ *  so the keys are spelled as words. */
+export const CONTROL_HINT = 'A REVERSE D THRUST SPACE FIRE SHIFT BOMB'
+/** Hint line position: low on the raster, above the planet surface (rows ~186+), left-aligned so
+ *  the line (measured 250px wide — the charset is non-uniform: most letters advance 7px, but 'I'
+ *  is 5px and 'M' 9px) clears the 292-wide board. */
+const HINT_X = 8
+const HINT_Y = 168
+
+/** Draw the pt1-20 control hint as a WHITE (palette 9) text line over the play field. */
+function drawControlHint(fb: Framebuffer): void {
+  writeText(fb, CONTROL_HINT, HINT_X, HINT_Y, TEXT_COLOUR)
+}
+
 /** Draw the df5-3 score/men HUD + df5-2 wave number down the top-left, by palette INDEX (WHITE). */
 function drawHud(fb: Framebuffer, state: SimState): void {
   writeText(fb, String(state.score ?? 0), HUD_X, HUD_SCORE_Y, TEXT_COLOUR)
@@ -384,6 +407,7 @@ export function composeFrame(
   width: number,
   height: number,
   hof?: { board: readonly DefenderHighScore[]; nameEntry: { readonly buffer: string; readonly score: number } | null },
+  options?: { readonly controlHint?: boolean },
 ): Framebuffer {
   const fb = createFramebuffer(width, height)
   clear(fb, BACKGROUND)
@@ -458,6 +482,11 @@ export function composeFrame(
   drawScanner(fb, state, spriteColour(landerPic))
   drawPlayerBlip(fb, state)
   drawHud(fb, state)
+
+  // pt1-20: the control hint, painted last over the play field when the caller asks for it (the
+  // attract demo). Opt-in, so live play stays un-cluttered; drawn AFTER the gameOver early-return
+  // above, so it never touches the end screen.
+  if (options?.controlHint) drawControlHint(fb)
 
   return fb
 }
