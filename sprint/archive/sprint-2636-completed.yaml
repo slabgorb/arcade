@@ -92,3 +92,8 @@ completed_stories:
     title: 'joust: egg-hatching spawns the rider mid-air instead of waiting for a buzzard to descend and collect it'
     points: 3
     completed: '2026-08-20'
+  - id: pt1-19
+    epic: pt1
+    title: "defender: landers spawn and fall in a synchronized Space-Invaders row instead of roaming independently"
+    points: 5
+    completed: 2026-08-20
