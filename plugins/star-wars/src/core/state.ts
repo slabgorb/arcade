@@ -987,7 +987,8 @@ export const SPACE_PHASE_HEAD_START_S = 1.95
  * quota-neutral).
  *
  * sw4-3 RECONCILE (user-ratified): this SUPERSEDES sw3-3's disasm `byte_98CB`
- * stream quota (22,22,32,…,50). The surface is a finite single-pass maze — the
+ * stream quota (22,22,32,…,50). The maze is a FIXED tower set (pt1-21 re-flies it
+ * across ~5 staged laps, but the set never grows and killed towers stay dead) — the
  * original Atari source (`WSGRND.MAC` `IGRND` seeds "# OF TOWERS LEFT" straight
  * from `.TWRS`) outranks the disasm per CLAUDE.md, and a maze of N towers can
  * only be cleared by killing its N towers (a larger target would soft-lock).
