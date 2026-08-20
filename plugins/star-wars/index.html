@@ -7,6 +7,9 @@
     <title>Star Wars</title>
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: crosshair; }
+      /* pt1-4: center the letterboxed canvas so the black page shows through as the
+         aspect-ratio bars (canvas is sized to a pinned 4:3 by shell/viewport). */
+      body { display: flex; align-items: center; justify-content: center; }
       canvas { display: block; }
     </style>
   </head>
