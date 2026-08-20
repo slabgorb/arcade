@@ -312,14 +312,28 @@ function drawScanner(fb: Framebuffer, state: SimState): void {
  * column-major, consecutive addresses step DOWN) until CMPA #(SCANER!>8)+64 (:1223). The table
  * is DOUBLED (128 triples, bytes 0-191 == 192-383) so a 64-triple read from any start 0..63
  * never wraps. Our re-derivation (the df5-7/df7-5 precedent — we draw OUR centred strip, not
- * the Williams bitmap addresses): the row byte anchors at SCANNER_ORIGIN_Y like every blip,
- * and each non-zero pattern byte paints one pixel in the colour its OWN nibbles carry
- * (every non-zero MTERR nibble is 7 — the colour comes from the transcribed data, never
- * invented). Drawn unconditionally, attacker-independent, every frame.
+ * the Williams bitmap addresses): the row byte is an ABSOLUTE screen y — `STD ,Y` stores it as
+ * the address low byte with nothing adding SCANER's row — while a blip's address adds
+ * `#SCANER-1` (AMODE1.SRC:1268), i.e. row (oy>>3) + SCANH-1 = (oy>>3)+7 (SCANH = YMIN-34 = 8,
+ * PHR6.SRC:158-159, YMIN=42). Our blip origin (SCANNER_ORIGIN_Y + oy>>3, drawScanner) folds
+ * that +7 into SCANNER_ORIGIN_Y, so the whole instrument's ROM→clone row map is
+ * fb = abs - 7 + SCANNER_ORIGIN_Y; the contour subtracts the same SCANNER_TERRAIN_ROW_BIAS to
+ * share the blips' registration (flush with the bezel bottom, as the ROM's contour-39 sits
+ * against its bezel-38/39). Each non-zero pattern byte paints one pixel in the colour its OWN
+ * nibbles carry (every non-zero MTERR nibble is 7 — the colour comes from the transcribed
+ * data, never invented). Drawn every frame, attacker-independent. The ROM gates the contour
+ * on a terrain flag (`LDA STATUS / BITA #2 / BNE MTX`, AMODE1.SRC:1206-1208, "NO TERRAIN???")
+ * — NOT yet ported, because the clone has no terrainless mode; a future space-wave story
+ * ports that skip.
  */
 const MTERR_BLOCK = 'MTERR'
 /** Bytes per MTERR strip column — the triple [row, pat0, pat1] (LDB #3 / MUL, AMODE1.SRC:1204). */
 const MTERR_TRIPLE = 3
+/** SCANH-1 = 7: the row bias the blip path bakes in via `ADDD #SCANER-1` (AMODE1.SRC:1268;
+ *  SCANH = YMIN-34 with YMIN = 42, PHR6.SRC:158-159) and our blip origin folds into
+ *  SCANNER_ORIGIN_Y. MTERR row bytes are absolute screen y, so the contour subtracts this to
+ *  register with the blips. */
+const SCANNER_TERRAIN_ROW_BIAS = 7
 
 function drawScannerTerrain(fb: Framebuffer, camera: number): void {
   const mterr = require_(TERRAIN, MTERR_BLOCK, 'terrain block').bytes
@@ -332,7 +346,9 @@ function drawScannerTerrain(fb: Framebuffer, camera: number): void {
     const x = originX + c
     for (const [dy, pat] of [mterr[t + 1], mterr[t + 2]].entries()) {
       if (pat === 0) continue // a $00 pattern byte paints nothing (only pat1 is ever $00)
-      const y = SCANNER_ORIGIN_Y + row + dy // pat0 at the row byte, pat1 one row DOWN (:1214-1215)
+      // pat0 at the row byte, pat1 one row DOWN (:1214-1215); the row byte is absolute, so
+      // subtract the SCANH-1 bias the blip origin already carries (see SCANNER_TERRAIN_ROW_BIAS).
+      const y = SCANNER_ORIGIN_Y + row + dy - SCANNER_TERRAIN_ROW_BIAS
       if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
       // The pattern byte's own non-zero nibble IS the palette index (every MTERR nibble is 7).
       fb.data[y * fb.width + x] = (pat >> 4) || (pat & 0x0f)
