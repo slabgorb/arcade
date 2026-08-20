@@ -6,7 +6,7 @@ export const meta: GameMeta = {
   title: 'CENTIPEDE',
   year: 1981,
   color: '#2aa358',
-  controls: ['Mouse'],
+  controls: ['MOVE — Mouse / Arrows / WASD', 'FIRE — Click / Space'],
   order: 5,
   listed: true,
   showcase: true,

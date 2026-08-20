@@ -52,8 +52,12 @@ const NON_KEY_CHARS = /[\s/,+&()—–-]/g
  */
 function isBareDeviceLabel(hint: string): boolean {
   let residue = hint.toLowerCase()
-  for (const word of DEVICE_WORDS) {
-    residue = residue.replaceAll(word, '')
+  // Longest word first so 'touchscreen' is removed whole before 'touch' could leave
+  // 'screen' behind. split/join removes every occurrence — replaceAll is ES2021 and
+  // this repo targets ES2020 (tsconfig lib), so the shared-tests typecheck gate
+  // rejects it.
+  for (const word of [...DEVICE_WORDS].sort((a, b) => b.length - a.length)) {
+    residue = residue.split(word).join('')
   }
   residue = residue.replace(NON_KEY_CHARS, '')
   return residue.length === 0
