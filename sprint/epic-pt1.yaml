@@ -365,9 +365,10 @@ stories:
       From the 2026-08-20 render audit. A Laser record stores x, facing, alive but NO y (laser.ts:56). Both the render (scene.ts:467) and the collision test (sim.ts:815) draw/test each in-flight laser at state.ship.y / shipRow — the ship live row — so firing and then moving up or down drags every existing shot to the new row and makes it collide there. The ROM laser PD is a full screen address encoding its own fixed row. Fix: capture y at fire time on the Laser record and use it in both the render and hitTestLasers. Small; fixes a render AND a collision bug together.
     points: 3
     priority: p1
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-20'
     type: bug
   - id: pt1-28
     title: 'defender: thrusting shows no exhaust flame — only an audio cue plays'
