@@ -44,7 +44,7 @@ stories:
     description: 'Playtest 2026-08-19: make the star-wars canvas a fixed size rather than tracking the window, to avoid display problems (projection/scaling artifacts). Pair with pt1-3 — a fixed logical resolution may be prerequisite to pinning the projection.'
     points: 2
     priority: p1
-    status: in_progress
+    status: in_review
     started: '2026-08-20'
     repos: arcade
     workflow: tdd
