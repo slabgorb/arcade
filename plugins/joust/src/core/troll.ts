@@ -47,7 +47,7 @@
 //     death line is DEATH_Y = FLOOR+7 = 230 (arena.isLavaDeath), a WHOLE-PIXEL test.
 //   • `pull` (CLVGRA) is a 16-bit magnitude ADDED to VY (positive = down).
 
-import { BRIDGE_WAVE, TROLL_DELAY, isLavaDeath } from './arena.js'
+import { BRIDGE_WAVE, TROLL_DELAY, DEATH_Y, isLavaDeath } from './arena.js'
 import type { ArenaState } from './arena-state.js'
 
 export { BRIDGE_WAVE, TROLL_DELAY }
@@ -87,6 +87,13 @@ export const TROLL_WAVE = BRIDGE_WAVE + TROLL_DELAY
 export const GRIP_ROUTINE = 'ADDLAV'
 /** 'ADDGRA' — the normal gravity routine the grip replaces / restores (:6641). */
 export const NORMAL_ROUTINE = 'ADDGRA'
+/** `CMPA #FLOOR+7-32` (LAVVI3, JOUSTRV4.SRC:6653,1718) — a gripped bird that rises
+ * ABOVE this whole-pixel scanline is OUT OF the troll's reach and breaks free
+ * (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653). 32 px above the kill plane. The SECOND
+ * escape path beside the -$0180 velocity break-free: a bird flapping steadily out of
+ * the grip (an AI enemy on its brain's wingbeat) climbs clear rather than mashing to
+ * escape velocity. DECIMAL offset off the hex DEATH_Y (= 198). */
+export const LAVVI3_ESCAPE_Y = DEATH_Y - 32
 
 /** The troll grip's escalating state — the two RAM words PATCH1/2/3 drive. */
 export interface TrollGrip {
@@ -169,6 +176,11 @@ export function escalateGrip(grip: TrollGrip): TrollGrip {
  * `ADDD PPOSY+1` so the position is FROZEN that frame. Otherwise the fall integrates
  * and, at or below FLOOR+7 whole pixels (`CMPA #FLOOR+7 / BLO`), the victim dies in
  * the lava. Pure.
+ *
+ * The SECOND ROM escape — `ADLX / JSR LAVVI3 / BNE ADLFRE` (:6653), a bird that has
+ * climbed OUT OF the troll's vertical reach — is NOT here: it needs no gravity math,
+ * only the post-step whole-pixel Y, and the grip LOOP (`stepTrolls`) owns it via
+ * `outOfTrollReach` so this per-frame gravity kernel stays a pure velocity/lava test.
  */
 export function stepGrip(velY: number, posY: number, grip: TrollGrip, wingsUp = false): GripStep {
   // REG.B addition to gravity: CLRB (0) with the flap button HELD, LDB #$04 (4) with
@@ -185,6 +197,18 @@ export function stepGrip(velY: number, posY: number, grip: TrollGrip, wingsUp = 
   // negative) lands with an unsigned high byte ≥ DEATH_Y and registers a lava death.
   const newPosY = uint16(posY + newVelY)
   return { velY: newVelY, posY: newPosY, escaped: false, inLava: isLavaDeath(newPosY) }
+}
+
+/**
+ * LAVVI3 (JOUSTRV4.SRC:6653,1714-1720) — a gripped bird has climbed OUT OF the lava
+ * troll's reach and breaks free (`ADLX / JSR LAVVI3 / BNE ADLFRE`). The reach test is
+ * a whole-pixel Y ceiling: a bird ABOVE FLOOR+7-32 is out (`CMPA #FLOOR+7-32 / BLO`,
+ * :1718). This is how a steadily-flapping bird that never reaches escape VELOCITY —
+ * an AI enemy on its BOLEV1 wingbeat — still survives the grip: it simply climbs
+ * clear. (LAVVI3's alive/airborne/X-bounds arms are moot in the grip loop: the victim
+ * is a live airborne bird and ADDLAV clears its velX, so it holds the grabbed X.) */
+export function outOfTrollReach(pixelY: number): boolean {
+  return pixelY < LAVVI3_ESCAPE_Y
 }
 
 /**

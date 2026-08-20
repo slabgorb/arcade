@@ -97,6 +97,7 @@ import {
   beginGrip,
   escalateGrip,
   stepGrip,
+  outOfTrollReach,
   escapeScoreEvent,
   type TrollGrip,
 } from './troll.js'
@@ -1143,14 +1144,42 @@ function stepTrolls(
     if (troll.grip) {
       // ADDLAV: escalate the pull, then fold it into the victim's fall.
       const grip = escalateGrip(troll.grip)
-      const input = inputs?.[victim.id] ?? NEUTRAL_INPUT
+      // The gripped bird's flap is the ONLY way out (ADLFRE / LAVVI3, JOUSTRV4.SRC:6616,
+      // 6653). A PLAYER reads the human joystick; an ENEMY reads its OWN synthetic
+      // joystick — a gripped bird still runs the flying loop `AIROVR / JSR [PJOY,U]`
+      // (:6459) each wing cycle, and ADDLAV only REPLACES its gravity (:6608-6642).
+      // Its seek/looker brain is frozen while gripped (jt9-42), but the FLAP loop is
+      // the base level-flight rule BOLEV1 — flap iff falling (`PVELY >= 0`), which
+      // self-alternates (a flap arms the BOLEV2 coast). Without this an AI enemy was
+      // pinned to NEUTRAL_INPUT and could never struggle free — every grabbed enemy
+      // drowned, so a wave could be cleared by waiting (pt1-16).
+      let input: PlayerInput
+      if (victim.kind === 'enemy' && victim.enemy) {
+        const falling = vEnt.velY >= 0
+        input = { dir: 0, flap: falling, flapHeld: falling }
+      } else {
+        input = inputs?.[victim.id] ?? NEUTRAL_INPUT
+      }
       let vent = vEnt
-      if (input.flap) vent = flap(vent, input)
+      if (input.flap) {
+        // ADDFLP reads PTIMUP for the impulse, THEN GOFLAP clears it (JOUSTRV4.SRC:6219)
+        // — so a bird flapping out of the grip keeps FULL-strength impulses instead of
+        // decaying toward zero as its airtime accumulates. Without the clear a
+        // steadily-flapping enemy stalls before it can climb clear of the troll.
+        vent = { ...flap(vent, input), timeUp: 0 }
+      }
       const gs = stepGrip(vent.velY, vent.posY, grip, !input.flapHeld)
       setBirdEntity(victim, { ...vent, velY: gs.velY, posY: gs.posY, timeUp: tickTimeUp(vent.timeUp) })
-      if (gs.escaped) {
-        // ADLFRE: broke free — 50 points to the victim, and the grip releases.
-        events.push({ ...escapeScoreEvent(), player: victim.id })
+      // ADLFRE is reached two ways (:6617, :6653): escape VELOCITY (`gs.escaped`), or —
+      // the way a slow-flapping AI enemy gets out — the bird has climbed clear of the
+      // troll's reach (LAVVI3). Either releases the grip.
+      const brokeFree = gs.escaped || (!gs.inLava && outOfTrollReach(gs.posY >> 8))
+      if (brokeFree) {
+        // ADLFRE: broke free — the grip releases. The 50-point award is the PLAYER's
+        // for escaping (SCRTEN off the player's PDECSN, :6668); an ENEMY climbing clear
+        // scores nothing — crediting it would hand the player free points for merely
+        // waiting out the troll, the very defect pt1-16 fixes.
+        if (victim.kind === 'player') events.push({ ...escapeScoreEvent(), player: victim.id })
         victim.grippedBy = undefined
         removed.add(troll.id)
       } else if (gs.inLava) {

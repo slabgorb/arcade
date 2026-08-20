@@ -416,7 +416,12 @@ describe('jt9-11 AC-4 — a gripped victim can break free for 50 points or be pu
   async function committed(gripOver: Partial<NonNullable<SimProcess['grip']>> = {}, inputs = false) {
     const troll = await loadTroll()
     const dmod = await loadSim()
-    const victimY = 120
+    // Within the troll's vertical reach (>= FLOOR+7-32 = 198, the LAVVI3 line), and above
+    // the burned-shore contact band (< 211) so a freed victim is not re-seized by the
+    // per-contact grab. pt1-16 gave a gripped bird the ROM's out-of-reach break-free
+    // (LAVVI3, :6653), so a victim staged ABOVE the reach line (the old victimY=120) now
+    // climbs clear on frame one instead of being dragged down — an unreachable grab.
+    const victimY = 205
     const gripY = victimY + GRIP_Y_OFFSET
     const base = troll.beginGrip(4)
     const d = await stagedDemo([

@@ -13,84 +13,59 @@ joust: enemies are too vulnerable to lava — a screen can be cleared by waiting
 - **Epic:** Playtest bug sweep 2026-08-19 (pt1)
 
 ## Problem
-Playtest 2026-08-19: enemy riders drown themselves; waiting clears the wave.
+Playtest 2026-08-19: enemy riders die to lava at a rate that lets the player clear a
+wave by simply waiting.
 
-## Findings (research complete — root cause: the BOUNDER's lava gate was never ported)
+## Confirmed root cause (owner, 2026-08-20): the LAVA TROLL grab is not survivable for AI
+The owner described what they saw: **"the troll yanked them down but they didn't try to
+get away enough."** From wave 4 on (bridge burned, `trollSpawnable`), the lava troll grabs
+enemy riders at the shore and drags them under — and a gripped AI enemy never struggles.
 
-**Lava lethality itself is correct, not the bug.** The arcade kills enemies in
-lava permanently: `JOUSTRV4.SRC:6508-6539` (ADGCEI/ADGFLR, dedicated SNELAV cue),
-sink + `JMP [DCRE,X]` (`:6566-6572`) where every enemy's DCRE is `EMYDIE = JMP
-VSUCIDE` (`:5558-5577`, `:5606`) — only players re-create. Ported correctly
-(`sim.ts:397-423`, `:2571-2595`). Don't touch.
+`stepTrolls`' grip branch read the victim's flap from the HUMAN input map only
+(`inputs?.[victim.id] ?? NEUTRAL_INPUT`), so an AI enemy was pinned to neutral: it never
+flapped, could never break free, and every grabbed enemy drowned. That is the "die to lava
+by waiting" the report names — the troll picks the wave apart and none survive.
 
-**The bug:** `enemy.ts:1229-1236` `lavaGateFires` — the divert into the BOLAVA
-climb-out episode — handles `b2undr` (hunter, ≥ LAVA_ESCAPE_Y=$D3) and `shadow`
-(no target + ≥ SHDIR_LAVA_Y=$D0)… **and returns false for `boundr`, the most
-common promoted brain (`brainFor('bounder')`, `sim.ts:794-803`). The ROM's
-bounder HAS the gate, and it's the tail every bounder path funnels through:**
+The ROM: a gripped bird is NOT frozen. The troll only swaps its GRAVITY (`PADGRA → ADDLAV`,
+JOUSTRV4.SRC:1651-1652); ADDLAV (:6608-6642) runs INSIDE the ordinary flying loop
+(`FLAPST/FLIPST → JSR [PADGRA,U]`), which each wing cycle re-reads the bird's joystick
+(`AIROVR / JSR [PJOY,U]`, :6459) — for an enemy, its own synthetic CURJOY. It escapes two
+ways: break-free VELOCITY (`CMPD #-$0180 / BLT ADLFRE`, :6616) or by climbing OUT OF the
+troll's reach (`ADLX / JSR LAVVI3 / BNE ADLFRE`, :6653; `CMPA #FLOOR+7-32`, :1718). Escape
+is only possible during the 30 s grace (pull = base LAVGRA $04..$08, :7305); past grace the
+pull escalates to the $500 cap (:6374-6386) and is inescapable.
 
-```
-JOUSTRV4.SRC:3870-3874  BODIRL: below $D3 and not already rising ⇒ LBPL BOLAVA
-                        "GO UP FAST BEFORE THE LAVA GETS ME!!"
-```
-Reached from every bounder exit: `:3840` (BODN2A), `:3869` (BOUP1B), `:3899`
-(BOUP2A), `:3821-3867`, and the level route `:3939-3946`. Structurally identical
-to the hunter's B2DIRL (`:4097-4102`) and shadow's SHDIR (`:4330-4334`) — the
-two we DID port. `linet` (pre-promotion) is already fine — `linetTarget`
-(`enemy.ts:451-455`) tracks $D0, matching `:3733-3745`. So the suicides are
-promoted bounders exactly.
+## Delivered fix
+`stepTrolls` now drives a gripped ENEMY's grip flap from its base level-flight rule (BOLEV1:
+flap iff falling), NOT the human input map; PTIMUP is cleared on the flap edge (GOFLAP/GOFLIP,
+:6185/:6219) so flaps stay full strength; and `outOfTrollReach` (LAVVI3, the FLOOR+7-32 reach
+line) is honoured in the grip loop, so a steadily-flapping enemy climbs clear during grace.
+The seek/looker brain stays frozen while gripped (jt9-42, unchanged). Post-grace at the $500
+cap the enemy still drowns (guard). An enemy climbing free scores NOTHING — the break-free 50
+is the player's award (crediting an enemy escape would restore free points for waiting).
 
-**Second, softer gap — BOLEV1's lure window:** the bounder's LEVEL route
-tolerates being under $D3 only when the player is within ±63px in X
-(`JOUSTRV4.SRC:3913-3925` — "IF HERE, LET HIM LOURE ME INTO LAVA"; outside the
-126px window it climbs unconditionally). Our `pursue` (`enemy.ts:784-821`) has no
-such clause (`flap: velY >= 0` only, `:820`).
+Lava lethality itself is correct and untouched (ADGFLR/SNELAV, `sim.ts` stepLavaDeath).
 
-**Already in place to reuse:** the BOLAVA episode itself (`enemy.ts:1598-1626`,
-`lavaRecheckExits:1534`, divert application `:1662-1673`) — cited as JT922-001..013
-in `claims/bolava.json`; constants `LAVA_ESCAPE_Y = 0xd3` (`enemy.ts:389`),
-`SHDIR_LAVA_Y = 0xd0` (`:412`). The fix is two clauses, not a new system.
-
-## Technical Approach
-1. Extend `lavaGateFires`: `enemy.brain === 'boundr' ⇒ pixelY >= LAVA_ESCAPE_Y`
-   (BODIRL — same $D3, same velY≥0 predicate as the hunter).
-2. Add BOLEV1's proximity clause to the level route in `pursue`: below $D3 with
-   no player within ±63px in X ⇒ climb (BOFAST), else the authentic lure window
-   stands.
-3. New claims: `JOUSTRV4.SRC:3870-3874` (BODIRL) and `:3913-3925` (BOLEV1 lure
-   window) — neither is claimed today. Source-test re-derivations in
-   `bolava-source.test.ts` via `tests/helpers/joust-source.ts`.
-Note the demo AI (`demo-ai.ts:48 LAVA_GUARD_Y = 205`) is the PLAYER's guard —
-untouched; `tests/demo-ai.test.ts` replay is self-consistency and survives.
+## NOT this story — a separate, UNVERIFIED ROM fidelity gap (→ follow-up)
+An earlier research pass proposed a different root cause: the bounder's `BODIRL` lava-avoid
+divert (`JOUSTRV4.SRC:3870-3874`) and `BOLEV1`'s ±63px lure window (`:3913-3925`) are unported
+(`lavaGateFires` returns false for `boundr`; `pursue` has no lure clause). Both ARE real ROM
+gaps. BUT the owner's symptom is the troll, not self-flight, and the gap could not be verified:
+the direct-flight sim tests available run on a wave-1 arena, which has NO exposed lava (the
+bridge/platforms cover it until the wave-3 burn), so "enemies don't suicide" measurements there
+prove nothing either way. This gap needs its own story with a wave-3+/burned-bridge harness
+before any behaviour change — see the Delivery Findings in the session file.
 
 ## Scope
-- In scope: the two gate clauses + claims.
-- Out of scope: lava death mechanics (correct); troll behavior (pt1-13); enemy
-  speed/promotion cadence; the demo AI.
+- In scope: the lava-troll grip survivability for AI enemies (the confirmed defect).
+- Out of scope: the bounder BODIRL / BOLEV1 lure-window fidelity gap (unverified → follow-up);
+  lava death mechanics (correct); the demo/player AI (`demo-ai.ts` LAVA_GUARD_Y is untouched).
 
-## Tests affected / cascade risk — the jt13 standing risk, with named precedent
-- Direct: `tests/bolava.test.ts` (its header `:1-27` documents exactly which
-  gates were ported — where the omission is visible) + `bolava-source.test.ts`;
-  `tests/enemy.test.ts`/`enemy-source.test.ts`; `tests/steering*.test.ts`
-  (BODIR "reads PFACE and samples nothing" — the new gate must keep that);
-  `tests/climb-prep-bounder.test.ts` (+source/wiring);
-  `tests/lava-death-jt13-5.test.ts`, `lava-death-cinematic-jt13-10.test.ts`,
-  `joust-jt9-54-lava-throttle-and-airborne.test.ts`.
-- **Frozen fingerprints WILL move:** `tests/audio-events.test.ts:825-1067` (three
-  seeds × {frame, rng, wave, procs, scores, lives}). Precedent in the file's own
-  comments: uf1-8, jt9-24, jt9-8, jt9-43, jt5-4 — all enemy-AI re-baselines. The
-  gate reads position/velocity, draws no randomness ⇒ **rng must stay
-  1_928_172_029** — lead the re-baseline note with that; procs/scores/wave move
-  legitimately. Also sweep `glide-prologue.test.ts` ("14 promotions"),
-  `dumb-wingbeat.test.ts`, `audio-flap.test.ts`, `audio-thud.test.ts`,
-  `demo-round2.test.ts`, `demo-jt5-16.test.ts`, `rng-shared-adoption.test.ts`.
-
-## Acceptance Criteria
-_TEA to define at RED. Suggested: AC1 a promoted bounder below $D3 and falling
-diverts to BOLAVA (cited to BODIRL); AC2 the BOLEV1 lure window: stays low ONLY
-with a player within ±63px (cited); AC3 a seeded idle wave (no player input) does
-NOT self-clear within N minutes (the symptom pinned directly); AC4 enemy lava
-death remains terminal when it does happen; AC5 re-baselines show rng unmoved._
+## Acceptance Criteria (TEA, RED)
+- AC1: a gripped enemy in the grace window breaks free via its own flap and does not drown.
+- AC1-anchor: the identical grace grip is escapable — a flapping player breaks free (control).
+- AC2 (guard): a gripped enemy at the $500 cap still drowns (no immunity).
+- AC1 also pins: an enemy climbing free scores no escape award.
 
 ---
-_Generated by `pf context create story pt1-16`; researched and expanded by Architect 2026-08-19._
+_Generated by `pf context create story pt1-16`; root cause confirmed with the owner 2026-08-20._

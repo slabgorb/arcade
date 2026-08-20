@@ -186,9 +186,13 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
 
     let brokeFree = false
     let drowned = false
-    for (let i = 0; i < 240 && !brokeFree && !drowned; i++) {
+    let scoredEscape = false
+    // The enemy climbs clear of the troll's reach (LAVVI3) — a slow struggle, not a
+    // mash-to-escape-velocity, so give it the grace window rather than a handful of frames.
+    for (let i = 0; i < 480 && !brokeFree && !drowned; i++) {
       d = smod.stepSim(d)
       for (const c of d.cues) if (c.type === 'enemy-lava-death') drowned = true
+      if (d.events.some((e) => e.kind === 'score' && (e as { reason?: string }).reason === 'escape')) scoredEscape = true
       const en = enemyIn(d, VICTIM_ID)
       const y = pixelYOf(en)
       // A genuine break-free: still alive, no longer gripped, and ABOVE the lava
@@ -200,6 +204,9 @@ describe('pt1-16 — a lava-troll grip on an enemy is survivable during the grac
     // flapping out — the wave depletes by waiting, which is the reported bug.
     expect(drowned, 'a gripped enemy in the grace window must NOT drown — its AI flaps it clear').toBe(false)
     expect(brokeFree, 'the gripped enemy breaks free of the troll and survives above the lava').toBe(true)
+    // An enemy climbing free scores NOTHING — the break-free 50 is the PLAYER's award.
+    // Crediting it would restore "free points for waiting", the flip side of the bug.
+    expect(scoredEscape, 'an enemy break-free awards no escape score').toBe(false)
   })
 
   it('ANCHOR: the identical grace grip is escapable — a gripped PLAYER flaps free', async () => {
