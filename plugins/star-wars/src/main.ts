@@ -6,7 +6,6 @@
 
 import { initialState, type GameState, type Phase } from './core/state'
 import { stepGame, enterPhase, beginNameEntry, enterInitial } from './core/sim'
-import { seedDefaultHighScores } from './core/highScores'
 import {
   qualifiesForHighScore,
   insertHighScore,
@@ -60,9 +59,11 @@ installAudioUnlock(() => audio.resume(), window)
 // pure core's initialState() is a fresh PLAYING run; the shell frames it.
 let state: GameState = { ...initialState(), mode: 'attract' }
 // Local high scores, loaded once and kept in the shell (IO, not simulation).
-// sw7-3 H-015: a fresh cabinet (empty storage) is seeded with the ROM's 10
-// default Rebel entries (DOINTS-on-reset); a real ladder is left untouched.
-let highScores = seedDefaultHighScores(highScoreStorage.load())
+// pt1-8: a fresh cabinet (empty storage) starts with an EMPTY board — no built-in
+// seed. The ROM default Rebel ladder is retired from the boot path (render shows
+// "NO SCORES YET" until a real score is posted). DEFAULT_HIGH_SCORES survives in
+// core/highScores.ts only as unwired ROM reference.
+let highScores = highScoreStorage.load()
 
 // Dev-only phase-jump (story 11-4): jump the run straight to a phase to eyeball
 // its scene — the surface grid (11-5) / the trench channel (11-6) — without

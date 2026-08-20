@@ -1,10 +1,10 @@
 // tests/core/default-high-scores.test.ts
 //
-// sw7-3 RED — H-015: the ROM ships a SEEDED default high-score board. DOINTS
+// H-015: the ROM's SEEDED default high-score board. A real cabinet's DOINTS
 // (TCHSCR.MAC:701-716) copies 10 default entries — INTINT initials + INTSCR
-// scores — into the table on a NOVRAM reset. Our board boots empty ("NO SCORES
-// YET"); a fresh cabinet must instead greet the player with the iconic Rebel
-// names OBI .. RLM.
+// scores — into the table on a NOVRAM reset. This suite is the byte-decode
+// REFERENCE for that constant (`DEFAULT_HIGH_SCORES` in src/core/highScores.ts),
+// kept green after pt1-8 retired the runtime seed (see the pt1-8 note below).
 //
 // The scores are PACKED BCD, not hex: `INTSCR: .WORD 0128,5353` is read as the
 // decimal-digit string 0128'5353 = 1,285,353 (TCHSCR is effectively RADIX 16,
@@ -13,13 +13,6 @@
 // verified ARITHMETICALLY against the primary source
 // (~/Projects/star-wars-1983-source-text/TCHSCR.MAC:718-738), not the finding's
 // prose — e.g. `.WORD 0087,2551` -> 00'87'25'51 -> 872,551.
-//
-// This module (src/core/highScores.ts) does not exist until GREEN; the import
-// fails RED. Dev creates:
-//   - DEFAULT_HIGH_SCORES : HighScoreTable<'wave'>  (pure data, highest first)
-//   - seedDefaultHighScores(loaded) : returns the defaults on an EMPTY board,
-//                                     the loaded table UNCHANGED otherwise
-//     — the DOINTS-on-reset seam main.ts wires the storage.load() through.
 import { describe, it, expect } from 'vitest'
 // pt1-8 (2026-08-20): the SEED is retired. star-wars no longer greets a fresh cabinet
 // with the ROM defaults — the board starts EMPTY (localStorage-backed real scores only),
