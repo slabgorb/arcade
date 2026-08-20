@@ -37,3 +37,8 @@ completed_stories:
     title: 'pac-man: peach level followed by another peach level — verify the fruit sequence against the ROM table'
     points: 1
     completed: '2026-08-20'
+  - id: pt1-16
+    epic: pt1
+    title: 'joust: enemies are too vulnerable to lava — a screen can be cleared by waiting for them to suicide'
+    points: 3
+    completed: '2026-08-20'
