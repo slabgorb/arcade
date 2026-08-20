@@ -100,6 +100,8 @@ stories:
     repos: arcade
     workflow: tdd
     type: bug
+    review_findings: 'R1: (1) HIGH vacuous AC1 polyline test — /glowPolyline\(/ matches the drawSelect comment, mutation-proven green after deleting the real call; strengthen to comment-blind/anchor to previewRing. (2) MEDIUM confabulated BODSPL colour citation (render.ts:854) — re-anchor to ALSCOR.MAC:1154 (LDY I,RED before JSR BODSPL); keep red. Feature behavior approved.'
+    review_verdict: rejected
   - id: pt1-10
     title: 'star-wars: clicking the mouse should start the game, not just Enter'
     description: 'Playtest 2026-08-19: on the start screen, a mouse click should start the game in addition to Enter.'
