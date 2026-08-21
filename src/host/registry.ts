@@ -74,7 +74,7 @@ export const GAMES: readonly GameMeta[] = [
     order: 6,
     listed: true,
     showcase: true,
-    version: '1.0.7',
+    version: '1.0.8',
   },
   {
     id: 'red-baron',
