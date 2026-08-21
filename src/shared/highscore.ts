@@ -42,7 +42,7 @@
 // quota-exceeded / no DOM / a hostile document) — a game keeps playing, scores just don't
 // persist, and a summary that cannot be trusted seeds nothing rather than a wrong number.
 
-import { getStorage } from './storage'
+import { getStorage } from './storage.js'
 
 /** Board depth — the classic 10-deep arcade ladder. The single source of truth
  *  (AC-4): no game redeclares it. */

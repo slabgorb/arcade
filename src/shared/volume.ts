@@ -10,8 +10,8 @@
 // subscriber callbacks, never on the per-frame hot path, so the read is cheap and
 // there is no cross-load state to get stale. Every storage path degrades and never
 // throws — persistence must never crash a frame.
-import { clamp } from './clamp'
-import { getStorage } from './storage'
+import { clamp } from './clamp.js'
+import { getStorage } from './storage.js'
 
 export const VOLUME_STORAGE_KEY = 'arcade-volume'
 const DEFAULT_VOLUME = 1
