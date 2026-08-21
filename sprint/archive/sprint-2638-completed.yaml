@@ -12,3 +12,8 @@ completed_stories:
     title: Consistent display chrome — shared overlay framing the non-game screen area, all games route through it
     points: 5
     completed: '2026-08-21'
+  - id: sa1-3
+    epic: sa1
+    title: Consistent mouse capture — all games capture on focus and release on ESC
+    points: 3
+    completed: '2026-08-21'
