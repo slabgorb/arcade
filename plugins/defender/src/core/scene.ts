@@ -259,8 +259,15 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
 // are THTAB entries at fixed offsets off THX (sim.ts: THINIT seeds the table from the
 // injected rand, THPROC slides THX every 4 ticks) stored RAW — a zero nibble paints palette
 // index 0, and that black-out IS the flicker. For a LEFT-facing ship THOUT1 ("BACKWARDS
-// THRUST") lays the identical taper on the far side of the 8-byte ship cell (+$801..+$B02):
-// exactly pt1-26's mirror, px → span-1-px with rows unchanged, run past the cell edge.
+// THRUST", DEFA7.SRC:2243-2260) lays the SAME ENVELOPE on the far side of the 8-byte ship
+// cell (+$801..+$B02): taper, rows and byte-columns mirror THOUT exactly — pt1-26's
+// px → span-1-px with rows unchanged, run past the cell edge. The per-cell byte SOURCE does
+// NOT mirror, though: THOUT1 pulls THTAB sequentially off THX (`PULU D,Y` — stub = offsets
+// 0-4, then 5,6,7 / 10,11,8 / 9; offset 12 never read), where THOUT reads scattered offsets
+// (0,1,5,9,12 / 3,6,10 / 4,7,11 / 8). This port deliberately reuses THOUT's mapping mirrored
+// for both facings: both sides read the same 4-tick window of the same RAND-filled THTAB, so
+// only WHICH random byte lands in WHICH cell differs — a visually-indistinguishable flicker
+// texture, envelope-identical to the machine's.
 
 /** THOUT's stores, transcribed: [THTAB offset off THX, dx (left pixel of the byte), dy]. */
 const THRUST_STUB_STORES: readonly (readonly [off: number, dx: number, dy: number])[] = [
@@ -296,7 +303,7 @@ function drawThrustExhaust(fb: Framebuffer, state: SimState): void {
     if (y < 0 || y >= fb.height) return
     for (let half = 0; half < 2; half++) {
       const px = dx + half // the byte's two pixels: high nibble left, low nibble right
-      const x = ship.x + (mirrored ? span - 1 - px : px) // THOUT1 = the pt1-26 mirror
+      const x = ship.x + (mirrored ? span - 1 - px : px) // THOUT1's ENVELOPE = the pt1-26 mirror (byte source differs — header)
       if (x < 0 || x >= fb.width) continue
       fb.data[y * fb.width + x] = half === 0 ? (byte >> 4) & 0x0f : byte & 0x0f
     }

@@ -24,12 +24,15 @@
 //     column -$400, row  +3                → px dx {-8,-7} × dy {3}
 //
 // So the plume TRAILS the right-facing ship leftward — behind it, opposite travel —
-// tapering 5 rows → 3 → 3 → 1. THOUT1 stores the mirror image at +$801..+$B02: the
-// ship occupies byte columns PLAXC..+7 (PLAPIC is 8 bytes = 16 px wide), so column
-// +$800 rows 1-5 / +$900 rows 2-4 / +$A00 rows 2-4 / +$B00 row 3 is the SAME taper
-// immediately RIGHT of the left-facing ship. THE FLAME FLIPS WITH FACING, and the
-// mirror is exactly pt1-26's ship transform (local px → SHIP_W-1-px, rows unchanged),
-// extended past the cell edge: dx -1..-8 ↔ dx 16..23.
+// tapering 5 rows → 3 → 3 → 1. THOUT1 (DEFA7.SRC:2243-2260) lays the SAME taper at
+// +$801..+$B02: the ship occupies byte columns PLAXC..+7 (PLAPIC is 8 bytes = 16 px
+// wide), so column +$800 rows 1-5 / +$900 rows 2-4 / +$A00 rows 2-4 / +$B00 row 3 sits
+// immediately RIGHT of the left-facing ship. THE FLAME FLIPS WITH FACING: the ENVELOPE
+// is exactly pt1-26's ship transform (local px → SHIP_W-1-px, rows unchanged) extended
+// past the cell edge, dx -1..-8 ↔ dx 16..23. (The per-cell byte SOURCE does not mirror:
+// THOUT1 pulls THTAB sequentially via `PULU D,Y` — not THOUT's scattered offsets — and
+// the clone mirrors THOUT's mapping for both facings instead, an envelope-identical
+// modeling choice; see scene.ts drawThrustExhaust. These tests pin the envelope only.)
 //
 // FLICKER: the 13 bytes THOUT stores each frame come from THTAB (offsets 0..12 off
 // THX), a table THINIT fills from RAND (DEFA7.SRC THINIT: `JSR RAND / STA 32,X /
@@ -105,8 +108,9 @@ const EXT_RIGHT: readonly Cell[] = (() => {
   return cells
 })()
 
-/** THOUT1's mirror: the pt1-26 flip transform (px → SHIP_W-1-px) run past the cell edge —
- *  -$100..-$400 left of PLAXC ↔ +$800..+$B00 right of it, rows unchanged. */
+/** THOUT1's ENVELOPE: the pt1-26 flip transform (px → SHIP_W-1-px) run past the cell edge —
+ *  -$100..-$400 left of PLAXC ↔ +$800..+$B00 right of it, rows unchanged. (Cell positions
+ *  only — THOUT1's byte sourcing is sequential, not mirrored; see the header.) */
 const mirrorCell = ([dx, dy]: Cell): Cell => [SHIP_W - 1 - dx, dy]
 const EXT_LEFT: readonly Cell[] = EXT_RIGHT.map(mirrorCell)
 
@@ -225,13 +229,52 @@ describe('pt1-28 AC1 — held thrust draws the exhaust plume behind a right-faci
       ).toBe(0)
     }
   })
+
+  it('coverage floor: the plume spans the full THOUT taper, not a truncated stub', () => {
+    // Reviewer finding (review round 1): the two tests above pass on a plume truncated to
+    // a single extension pixel — containment plus non-emptiness set no floor. THOUT's
+    // thrust-gated stores paint 7 THTAB bytes = 14 px across THREE byte-columns
+    // (-$200/-$300 rows 2-4, -$400 row 3) whenever the table bytes are non-zero. Any ONE
+    // tick may legitimately miss pixels (a RAND nibble is zero 1-in-16 — the flicker), so
+    // the floor accumulates over a held run long enough for THPROC to slide THX through
+    // several 4-tick windows; each pixel then sees several independent table bytes, and a
+    // pinned seed makes the whole run deterministic — no flake, by construction. Floors:
+    // every extension byte-column must light at least once (a truncated plume can never
+    // reach -$300 or -$400), and at least 12 of the 14 envelope pixels must be reached.
+    let s = createSim(makeRand(11))
+    const men = s.men
+    const lit = new Set<string>()
+    const litColumns = new Set<number>()
+    for (let t = 0; t < 16; t++) {
+      s = stepSim(s, HOLD)
+      expect(s.gameOver, `seed 11 proved hostile: game over at tick ${t + 1} — pick another seed`).toBe(false)
+      expect(s.men, `seed 11 proved hostile: a death at tick ${t + 1} — pick another seed`).toBe(men)
+      const fb = composeFrame(parked(s, 'right'), LOGICAL_WIDTH, LOGICAL_HEIGHT)
+      for (const cell of EXT_RIGHT) {
+        const [dx, dy] = cell
+        if (at(fb, SHIP_X + dx, SHIP_Y + dy) !== 0) {
+          lit.add(cellKey(cell))
+          litColumns.add(Math.floor(dx / 2)) // px pair → ROM byte-column: -2 ↔ -$200, -3 ↔ -$300, -4 ↔ -$400
+        }
+      }
+    }
+    expect(
+      [...litColumns].sort((a, b) => a - b),
+      'the plume never reached all three THOUT extension byte-columns (-$200/-$300/-$400) — truncated taper',
+    ).toEqual([-4, -3, -2])
+    expect(
+      lit.size,
+      `only ${lit.size}/${EXT_RIGHT.length} extension pixels ever lit over 16 held ticks — plume truncated`,
+    ).toBeGreaterThanOrEqual(12)
+  })
 })
 
 // ─── AC2 (RED) — the flame flips with facing, per THOUT1 ──────────────────────────────
 describe('pt1-28 AC2 — the exhaust trails the ship on the side OPPOSITE its facing', () => {
   it('facing left, the thrust diff lands entirely in the MIRRORED envelope (right of the ship)', () => {
-    // THOUT1 stores the same taper at +$800..+$B00 — immediately right of the 8-byte
-    // left-facing ship — the exact pt1-26 mirror (px → SHIP_W-1-px) of THOUT's stores.
+    // THOUT1 lays the same taper at +$800..+$B00 — immediately right of the 8-byte
+    // left-facing ship — the pt1-26 mirror (px → SHIP_W-1-px) of THOUT's ENVELOPE
+    // (cell positions; the byte sourcing differs — see the header).
     // The facing seam is the rendered one: state.ship.facing, forced in the projection.
     const thrust = composeFrame(parked(run(13, HOLD, TICKS), 'left'), LOGICAL_WIDTH, LOGICAL_HEIGHT)
     const idle = composeFrame(parked(run(13, IDLE, TICKS), 'left'), LOGICAL_WIDTH, LOGICAL_HEIGHT)
