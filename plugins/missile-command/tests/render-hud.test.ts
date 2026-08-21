@@ -406,10 +406,10 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     // would miss. The guard's teeth are against MINTING A NEW src/shared library
     // (esp. a glyph/font one for the HUD); reusing an ALREADY-EXTRACTED shared VERB is
     // fine. Allowed pre-existing modules: @shared/font (mc9-4's HUD note), and — added
-    // by mc6-3 — @shared/pause (the pause-key VERB, SH2-12) and @shared/esc-overlay
-    // (the pause overlay, SH2-12), already the fleet-wide pause pattern (reused by
-    // asteroids, battlezone, centipede, red-baron, star-wars, tempest); mc6-3's AC
-    // explicitly reuses them for the pause key + overlay rather than reinventing them.
+    // by mc6-3 — @shared/pause (the pause-key VERB, SH2-12), already the fleet-wide
+    // pause pattern (reused by asteroids, battlezone, centipede, red-baron, star-wars,
+    // tempest); mc6-3's AC reused it for the pause key rather than reinventing it.
+    // (@shared/esc-overlay, mc6-3's other reuse, is DROPPED by sa1-5 below.)
     // mc10-5 adds @shared/view (the pure `letterbox`/`resizeToDisplay` aspect-fit VERB,
     // SH2-10) — an ALREADY-EXTRACTED shared module the sibling cabinets already consume:
     // battlezone `shell/viewport.ts` (letterbox + resizeToDisplay) and asteroids
@@ -425,10 +425,18 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     // render.ts wires it honestly with container === game (MC's canvas is itself
     // resized to the letterboxed box, shell/viewport.ts), so it paints no bars today
     // but shares the ONE surround colour/seam every game now goes through.
+    // sa1-5 (Option A): @shared/esc-overlay is DROPPED — the rebindable
+    // @shared/controls-overlay now owns pause chrome outright (main.ts), so
+    // render.ts no longer reuses drawEscOverlay. In its place: @shared/keybind
+    // (the pure binding-resolution VERB, shell/input.ts/controls.ts) and
+    // @shared/controls-overlay (the browser rebind/pause chrome + its
+    // localStorage store, shell/controls.ts) — the SAME already-extracted
+    // fleet-wide sa1-5 pair every adopted game reuses, not a fresh extraction.
     const ALLOWED = new Set([
       '@shared/font',
       '@shared/pause',
-      '@shared/esc-overlay',
+      '@shared/keybind',
+      '@shared/controls-overlay',
       '@shared/view',
       '@shared/highscore',
       '@shared/cabinet',
@@ -444,7 +452,8 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     expect(
       disallowed,
       'a NEW missile-command shared library belongs in src/shell, not a fresh src/shared extraction; only ' +
-        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay, view, highscore, cabinet) may be reused',
+        'the sanctioned pre-existing @shared modules (font, pause, keybind, controls-overlay, view, highscore, ' +
+        'cabinet) may be reused',
     ).toEqual([])
   })
 })

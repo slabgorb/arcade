@@ -26,6 +26,34 @@ import { launchAbm } from '../core/abm.js'
 import { startGame, stepInitials, commitNameEntry, abortNameEntry, type GameState } from '../core/game.js'
 import { togglePause } from '../core/state.js'
 import { isPauseKey } from '@shared/pause'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls.js'
+
+// sa1-5: the four DISCRETE keyboard controls (the three fire-base keys + the
+// '1' start/abort switch) are now CONTROL_MANIFEST's defaults (controls.ts),
+// resolved through @shared/keybind so a saved rebind (controls-overlay, wired
+// in main.ts) overrides them. setBindings is the overlay's onChange hook.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
+}
+
+/**
+ * sa1-5: translate a physical KeyboardEvent.code into the canonical key string
+ * the existing pure reducers below already speak — 'z'/'x'/'c' (fireKeyToBase)
+ * or '1' (isStartKey) — via the LIVE resolved bindings, so a saved rebind
+ * changes which physical key fires which base without touching a single one of
+ * those reducers or their existing test coverage. Returns null for any code not
+ * currently bound to one of these four actions, so main.ts falls back to the
+ * raw `event.key` for everything else (name-entry letters, Enter, Escape).
+ */
+export function codeToKey(code: string): string | null {
+  if (bindings.fireLeft.includes(code)) return 'z'
+  if (bindings.fireCentre.includes(code)) return 'x'
+  if (bindings.fireRight.includes(code)) return 'c'
+  if (bindings.start.includes(code)) return '1'
+  return null
+}
 
 // mc8-4: the base-ammo count at which a launch sounds the "LOW" warning cue (LO) instead
 // of the normal launch (LA). ABMLAU: `LDA NMMISB / CMP I,4 / IFEQ` (W3MAIN.MAC:1385) — the

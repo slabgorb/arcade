@@ -10,6 +10,8 @@
 import { createLoop } from '@shared/loop'
 import { mountCanvas } from '@shared/host-helpers'
 import { CABINET_CHROME } from '@shared/cabinet'
+import { isPauseKey } from '@shared/pause'
+import { createControlsOverlay } from '@shared/controls-overlay'
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { drawFrame } from './shell/render.js'
 import { applyLetterbox } from './shell/viewport.js'
@@ -20,7 +22,10 @@ import {
   applyPointerMotion,
   createPointerLock,
   TRACKBALL_SCALE,
+  codeToKey,
+  setBindings,
 } from './shell/input.js'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls.js'
 import { makeMcHighScoreStorage, loadHighScores } from './shell/highscore.js'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/audio-dispatch.js'
@@ -65,6 +70,43 @@ const audio = createAudioEngine()
 const unlock = (): void => audio.resume()
 canvas.addEventListener('pointerdown', unlock)
 window.addEventListener('keydown', unlock)
+
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of the old core PAUSE-phase toggle + drawPauseOverlay
+// card, and its onChange hook (setBindings) is how a saved rebind reaches
+// input.ts's live map. CONTROLS_OVERLAY_OPTS carries forward the old card's
+// functional white colour and dim opacity (controls.ts).
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE every other window keydown listener below
+// (registration order on the SAME target — window — decides who sees the event
+// first; capture:true is what every other adopted game marks this listener
+// with too): while the overlay is open it must consume the keydown outright
+// (stopImmediatePropagation) so a key typed to rebind a control never also
+// lands in the fire-key reducer or the high-score initials field. Escape opens
+// the overlay from the closed state, guarded by e.repeat so an OS auto-repeat
+// can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 // mc6-4: a pointer CLICK leaves the ATTRACT demo for SETUP, so the demo ends on a
 // click as well as a keydown (keydowns leave via fireOrStart below). Only pointerdown
@@ -135,14 +177,24 @@ canvas.addEventListener('mousemove', (event: MouseEvent): void => {
 // ammo, spending one round per shot. mc6-4: in ATTRACT any key leaves the demo for
 // SETUP (not a direct fresh game — setup auto-advances to play a frame later); after
 // GAME OVER a fire key restarts (fireOrStart). The reducer appends `launched` (or
-// `ammoEmpty` on a refused shot) to the sound channel, which we voice at once.
+// `ammoEmpty` on a refused shot) to the sound channel, which we voice at once. This
+// listener never runs while the overlay is open — the capture-phase listener above
+// swallows every keydown first (stopImmediatePropagation).
 window.addEventListener('keydown', (event: KeyboardEvent): void => {
   const prevScores = game.highScores
+  // sa1-5: translate the physical code into the canonical 'z'/'x'/'c'/'1' key the
+  // composed reducer speaks, through the LIVE rebound map — but only outside name
+  // entry, where every raw letter/Backspace/Enter must keep reaching stepInitials
+  // unchanged (a fire-key rebind landing on a letter must not steal it while typing
+  // initials). codeToKey returns null for any code not currently bound to one of the
+  // four rebindable actions, so every other key (letters, Enter) falls back to the
+  // raw event.key exactly as before.
+  const key = (game.phase !== 'entry' && codeToKey(event.code)) || event.key
   // mc7-3: the composed keydown reducer (pauseFromKey → nameEntryFromKey → fireOrStart).
   // It gates fireOrStart on the PRE-keystroke phase so a full-buffer Enter that commits
   // (entry→attract) does NOT then fall into fireOrStart's attract→setup path and start
   // an unrequested new game — see keydownReducer's contract in shell/input.ts.
-  game = keydownReducer(event.key, game)
+  game = keydownReducer(key, game)
   // Persist the moment a commit changes the ladder: commitNameEntry's insert returns
   // a NEW array, so a changed reference is the save signal (the asteroids pattern).
   if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
@@ -177,6 +229,12 @@ canvas.addEventListener('contextmenu', (event: MouseEvent): void => {
 // The RENDER thunk paints the latest state; MC doesn't interpolate, so alpha is unused.
 const loop = createLoop(
   () => {
+    // sa1-5: the frozen-frame gate. A frame with the controls overlay open advances
+    // nothing — no stepGame, no sound — and createLoop still drains its accumulator
+    // by counting this no-op step, so resume banks no catch-up burst. Replaces the
+    // old core-side freeze (stepGame's phase==='pause' branch is still real and still
+    // tested, but 'pause' no longer becomes reachable from real input — see render.ts).
+    if (overlay.isOpen()) return
     const prev = game
     game = stepGame(game)
     // Voice this step's sim sound moments (detonations, kills, structure losses), then the
@@ -195,6 +253,9 @@ const loop = createLoop(
     // the game. Without this 5th arg drawFrame falls back to its wave=INITIAL_WAVE default
     // and every frame renders the wave-1 colours forever, no matter how far play advances.
     drawFrame(context, game, canvas.width, canvas.height, game.wave)
+    // sa1-5: the controls overlay dims the frozen field and draws the pause/rebind
+    // chrome over it, in the SAME width/height space drawFrame just used.
+    if (overlay.isOpen()) overlay.draw(context, canvas.width, canvas.height)
   },
 )
 loop.start()
