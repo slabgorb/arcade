@@ -187,27 +187,47 @@ describe('pt1-27 AC2 — an in-flight laser keeps its fire row when the ship mov
 // laser's captured y" from both sides through the REAL hitTestLasers path.
 // ══════════════════════════════════════════════════════════════════════════════════
 describe('pt1-27 AC3 — collision happens at the laser’s own row, not the ship’s (sim.ts hitTestLasers)', () => {
-  it('a shot fired at row 120 does NOT strike a wall parked at the ship’s NEW row (the dragged-shot bug)', () => {
-    // Pods at rows 40+42: their 4x8 boxes blanket rows 40..50, covering the ship's
-    // Y_TOP_FREEZE park band (42..43) wherever it lands. The laser (fired from row 120)
-    // sweeps px ~76..291 beneath rows 40..50 over its ~30-tick flight (df8-4: $400/tick)
-    // while the ship climbs into the band — a shipRow-based query would mow the wall down.
-    const { state, cues } = runSim(7, 115, fireThenClimb, (s) => podWall(s, [40, 42]))
-    expect(state.ship.y, 'the ship parked at the top freeze, inside the wall band').toBeLessThanOrEqual(44)
+  it('a shot fired at row 120 does NOT strike a wall parked across the ship’s climb path (the dragged-shot bug)', () => {
+    // RE-STAGED for df8-4 ($400/tick): the laser now dies ~tick 29 (px 83→291), so the
+    // original wall at the Y_TOP_FREEZE band (rows 40..50, which the ship only reaches
+    // ~tick 43) sat entirely OUTSIDE the flight window — even a shipRow-based query
+    // never overlapped it, and this arm went vacuous (caught in df8-4 review). Pods
+    // now sit at rows 94+102 (4x8 boxes blanket rows 94..110): the climbing ship
+    // crosses that band at ticks ~9..20, exactly while the laser is sweeping the wall
+    // columns (px ~153..239) — a shipRow-based query mows the wall down there; only a
+    // laser that KEPT its captured row 120 clears it (nearest coverage ends at 110).
+    // The flightRows assertion pins that overlap, so a future speed/climb change that
+    // reopens the vacuity gap fails HERE instead of silently passing.
+    let s = createSim(makeRand(7))
+    s = stepSim(s, NEUTRAL) // the opening tick: wave 1 spawns; the ship rests at row 120
+    podWall(s, [94, 102])
+    const cues = new Set<string>()
+    const flightRows: number[] = [] // the ship's row on every tick the laser is still alive
+    for (let i = 0; i < 115; i++) {
+      s = stepSim(s, fireThenClimb(i))
+      for (const c of s.cues) cues.add(c.type)
+      if (s.lasers.some((l) => l.alive)) flightRows.push(s.ship.y)
+    }
+    expect(
+      flightRows.some((r) => r >= 94 && r <= 110),
+      'non-vacuity: the ship crossed the wall band WHILE the laser was in flight',
+    ).toBe(true)
     expect(
       cues,
-      'the laser was fired from row 120 — it must NOT collide at the ship’s new row (40s)',
+      'the laser was fired from row 120 — it must NOT collide at the ship’s live row (90s..100s)',
     ).not.toContain('pod-hit')
-    const pods = rig(state)._podBank.pods
+    const pods = rig(s)._podBank.pods
     expect(pods.length, 'the wall is present (non-vacuity: 12 cols × 2 rows)').toBeGreaterThanOrEqual(24)
     expect(pods.every((p) => p.alive), 'every pod survived a shot that never crossed its row').toBe(true)
   })
 
   it('the same shot DOES strike a wall at its OWN firing row after the ship has left', () => {
     // The mirror wall: same columns, rows 116+118 (boxes blanket 116..126, covering the
-    // firing row 120). The ship climbs away immediately — a shipRow-based query leaves
-    // the band within ~13 ticks, before the laser reaches the first pod (px 109), and
-    // never returns; only a laser that KEPT its own row still sweeps the wall.
+    // firing row 120). The ship climbs out of the band within ~4 ticks and never
+    // returns; the laser (df8-4: $400/tick) sweeps the wall columns from ~tick 4 to
+    // ~tick 25 — only a laser that KEPT its captured row 120 is still killing there.
+    // (This arm pins the positive half; the discrimination against a shipRow-based
+    // query is the sibling arm's job — its wall sits where the ship IS mid-flight.)
     const { cues } = runSim(7, 115, fireThenClimb, (s) => podWall(s, [116, 118]))
     expect(
       cues,

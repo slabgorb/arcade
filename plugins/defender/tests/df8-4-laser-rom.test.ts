@@ -15,10 +15,11 @@
 //    too long at $100/tick.
 //
 // 2. FIRE IS AUTO-REPEAT; THE ROM IS EDGE-PER-PRESS. sim.ts fires every tick
-//    `input.fire` is held (sim.ts:607). The ROM's switch scan is edge-triggered and
+//    `input.fire` is held (the step-7 LFIRE block). The ROM's switch scan is edge-triggered and
 //    debounced — SSCAN (DEFA7.SRC:760-796) dispatches a switch-table entry once per
 //    distinct closure (SWTAB → LFIRE, DEFB6.SRC:1845); a held button re-fires nothing.
-//    Fix shape: the prevThrust edge idiom already in sim.ts (:534-536).
+//    Fix shape: the `prevThrust` edge idiom already in sim.ts (the thrust-start/stop
+//    cue edge in stepSim).
 //
 // 3. THE BEAM IS 4 px OF FLAT INK; THE ROM LAYS A LONG BRIGHT-TIPPED BEAM. scene.ts
 //    LASER_LENGTH = 4 draws four palette-1 pixels. The ROM lays, EVERY frame: four
