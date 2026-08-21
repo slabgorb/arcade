@@ -3,7 +3,7 @@
 // controller. ADR-0003 browser subpath — classified by its dirtiest dependency
 // (localStorage + ctx), like esc-overlay.ts and highscore.ts. Pure binding logic
 // and the navigation state machine live in ./keybind.ts.
-import { parseOverrides, type Overrides, MENU_ITEMS, type Screen, type BindingMap, type ControlManifest, type Binding } from './keybind.js'
+import { parseOverrides, type Overrides, MENU_ITEMS, type Screen, type BindingMap, type ControlManifest, type Binding, resolveBindings, diffOverrides, resetToDefaults, rebindReduce, INITIAL_SCREEN } from './keybind.js'
 import { strokeCardLine } from './esc-overlay.js'
 
 export interface BindingStore {
@@ -102,4 +102,64 @@ export function drawControlsOverlay(
   const lineHeight = size * 1.6
   const top = h / 2 - (lines.length - 1) * lineHeight * 0.5
   lines.forEach((line, i) => strokeCardLine(ctx, line, w / 2, top + i * lineHeight + size / 2, size, opts.color))
+}
+
+/**
+ * The keydown-capture controller: owns the live binding map, the current
+ * screen, and the open/closed state, and wires keyboard input through
+ * keybind.ts's pure `rebindReduce` state machine into `store` (persist) and
+ * `onChange` (the shell's live-binding callback). This is the integration
+ * keystone every game wires its ESC/pause path to.
+ */
+export interface ControlsOverlay {
+  open(): void
+  close(): void
+  isOpen(): boolean
+  handleKey(e: KeyboardEvent): boolean // true = consumed
+  draw(ctx: CanvasRenderingContext2D, w: number, h: number): void
+  readonly bindings: BindingMap
+}
+
+export function createControlsOverlay(args: {
+  manifest: ControlManifest
+  store: BindingStore
+  opts: ControlsOverlayOptions
+  onChange?: (map: BindingMap) => void
+}): ControlsOverlay {
+  const { manifest, store, opts, onChange } = args
+  let map = resolveBindings(manifest, store.load())
+  let screen: Screen = INITIAL_SCREEN
+  let open = false
+
+  const toEvent = (code: string) => {
+    if (screen.name === 'controls' && screen.capturing !== null) {
+      return code === 'Escape' ? { t: 'back' as const } : { t: 'capture' as const, code }
+    }
+    if (code === 'ArrowUp' || code === 'KeyW') return { t: 'up' as const }
+    if (code === 'ArrowDown' || code === 'KeyS') return { t: 'down' as const }
+    if (code === 'Enter' || code === 'Space') return { t: 'select' as const }
+    if (code === 'Escape') return { t: 'back' as const }
+    return null
+  }
+
+  return {
+    open() { open = true; screen = INITIAL_SCREEN },
+    close() { open = false },
+    isOpen: () => open,
+    get bindings() { return map },
+    handleKey(e: KeyboardEvent): boolean {
+      if (!open) return false
+      const ev = toEvent(e.code)
+      if (ev) {
+        const r = rebindReduce(screen, map, manifest, ev)
+        screen = r.screen; map = r.map
+        if (r.command === 'resume') open = false
+        else if (r.command === 'save') { store.save(diffOverrides(manifest, map)); onChange?.(map) }
+        else if (r.command === 'reset') { map = resetToDefaults(manifest); store.save({}); onChange?.(map) }
+      }
+      e.preventDefault()
+      return true
+    },
+    draw(ctx, w, h) { if (open) drawControlsOverlay(ctx, w, h, screen, map, manifest, opts) },
+  }
 }

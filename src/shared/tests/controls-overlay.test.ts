@@ -7,7 +7,7 @@ const font = vi.hoisted(() => {
 })
 vi.mock('@shared/font', () => ({ layoutText: font.layoutText, CELL_H: 8 }))
 
-import { drawControlsOverlay, bindingLabel } from '@shared/controls-overlay'
+import { drawControlsOverlay, bindingLabel, createControlsOverlay } from '@shared/controls-overlay'
 import type { ControlManifest, Screen } from '@shared/keybind'
 
 function memStorage(): Storage {
@@ -88,5 +88,48 @@ describe('drawControlsOverlay', () => {
     drawControlsOverlay(recCtx(), 800, 600, s, { thrust: ['ArrowUp'], fire: ['Space'] }, M, { color: '#0f0', opacity: 0.6 })
     expect(font.calls.some((t) => t.includes('THRUST') && t.includes('PRESS A KEY'))).toBe(true)
     expect(font.calls.some((t) => t.includes('THRUST') && t.includes('↑'))).toBe(false)
+  })
+})
+
+function key(code: string) { return { code, preventDefault: () => {} } as KeyboardEvent }
+
+describe('createControlsOverlay controller', () => {
+  const make = () => {
+    const saved: any[] = []
+    const store = { load: () => ({}), save: (o: any) => saved.push(o) }
+    let changed: any = null
+    const o = createControlsOverlay({ manifest: M, store, opts: { color: '#0f0', opacity: 0.6 }, onChange: (m) => (changed = m) })
+    return { o, saved, changed: () => changed }
+  }
+
+  it('ignores keys and consumes nothing while closed', () => {
+    const { o } = make()
+    expect(o.isOpen()).toBe(false)
+    expect(o.handleKey(key('Enter'))).toBe(false)
+  })
+  it('rebinds thrust end-to-end: open → CONTROLS → select → capture', () => {
+    const { o, saved, changed } = make()
+    o.open()
+    o.handleKey(key('ArrowDown'))  // cursor → CONTROLS
+    o.handleKey(key('Enter'))      // enter controls
+    o.handleKey(key('Enter'))      // capture thrust (row 0)
+    o.handleKey(key('KeyT'))       // bind KeyT
+    expect(o.bindings.thrust).toEqual(['KeyT'])
+    expect(saved.at(-1)).toEqual({ thrust: ['KeyT'] })
+    expect(changed()?.thrust).toEqual(['KeyT'])
+  })
+  it('RESUME closes the overlay', () => {
+    const { o } = make()
+    o.open()
+    o.handleKey(key('Enter'))      // RESUME (cursor 0)
+    expect(o.isOpen()).toBe(false)
+  })
+  it('Escape while capturing cancels, does not bind', () => {
+    const { o, saved } = make()
+    o.open(); o.handleKey(key('ArrowDown')); o.handleKey(key('Enter')); o.handleKey(key('Enter'))
+    const before = saved.length
+    o.handleKey(key('Escape'))
+    expect(o.bindings.thrust).toEqual(['ArrowUp', 'KeyW'])
+    expect(saved.length).toBe(before)
   })
 })
