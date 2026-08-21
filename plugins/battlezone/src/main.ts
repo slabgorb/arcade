@@ -38,6 +38,7 @@ import { createKeyboardTreads } from './shell/input'
 import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from './shell/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio'
 import { playEventSounds, updateContinuousSounds } from './shell/audio-dispatch'
 import { applyLetterbox } from './shell/viewport'
@@ -87,8 +88,19 @@ document.documentElement.dataset.arcadeShared = SHARED_VERSION
 
 // bz2-1: pin the canvas to the fixed cabinet aspect ratio and letterbox it,
 // instead of stretching to the full window. The fit math + HiDPI clamp live in
-// the pure, unit-tested shell/viewport module; the black page background shows
+// the pure, unit-tested shell/viewport module; the page background shows
 // through around the centered canvas as the letterbox/pillarbox bars.
+//
+// sa1-1: unlike every sibling that fills the canvas ELEMENT to the window and
+// paints its own dead margin inside the 2D context (asteroids' marginRects,
+// centipede's integer-fit bars), battlezone letterboxes the canvas element
+// itself (index.html's flex-centered body) — the backing store IS the fitted
+// game rect, with no in-canvas dead space for drawCabinetChrome to paint. The
+// real bars live at the DOM layer, so the shared cabinet colour is applied
+// there instead: one runtime source of truth (CABINET_CHROME.color) rather than
+// a hand-typed hex duplicate baked into index.html's CSS.
+document.body.style.background = CABINET_CHROME.color
+
 function resize(): void {
   applyLetterbox(canvas, window.innerWidth, window.innerHeight, window.devicePixelRatio)
 }
@@ -181,6 +193,16 @@ function renderFrame(): void {
   ctx.fillStyle = '#000'
   ctx.shadowBlur = 0
   ctx.fillRect(0, 0, w, h)
+
+  // sa1-1: the shared cabinet-chrome seam. applyLetterbox sizes the canvas
+  // ELEMENT to the fitted 4:3 box (shell/viewport.ts), so the backing store
+  // (w, h) always equals the fitted game rect — this draws NOTHING every
+  // frame. It is still wired, same as tempest/red-baron's window-filling
+  // canvases, so the seam is honest and battlezone picks up any future story
+  // that moves the letterbox in-canvas without a silent gap. The bars that ARE
+  // visible today are painted at the DOM layer (see the CABINET_CHROME body
+  // background set at boot above), since they sit outside this canvas entirely.
+  drawCabinetChrome(ctx, { width: w, height: h }, { x: 0, y: 0, width: w, height: h }, CABINET_CHROME)
 
   // bz1-12: the green-tinted horizon band sits behind the green vector world.
   drawHorizonBand(ctx, w, h)

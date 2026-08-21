@@ -6,15 +6,20 @@
 // actually PAINTS that mask, and paints it without breaking the two things the
 // ACs guard: it must not obscure the play area, and it must not obscure the HUD.
 //
+// sa1-1: the mask is now routed through the shared @shared/cabinet module
+// (drawCabinetChrome + CABINET_CHROME) so asteroids' margin reads identically to
+// every other game's. The geometry contract is unchanged (same bars); only the
+// fill colour changed, from asteroids' own translucent white wash to the shared
+// cabinet's opaque near-black (#0a0a12) — see isCabinetChrome below.
+//
 // The testable seam (as in render.test.ts) is the ordered stream of draw calls a
 // mock CanvasRenderingContext2D records. render() already fills one full-frame
 // black background rect; the mask is any *non*-full-frame fill on top. The mock
 // timestamps every fillRect and fillText with a monotonic order counter so we can
 // assert the mask lands BEFORE the first HUD glyph — the deterministic expression
-// of "does not obscure UI elements". Exact opacity is a feel value the house
-// convention verifies in the dev server, so this suite pins that the mask reads as
-// a light overlay in the margin (the play area is pure black, so the mask lightens
-// to frame it — see session Design Deviations), not its precise alpha.
+// of "does not obscure UI elements". This suite pins that the mask paints the ONE
+// shared cabinet colour (@shared/cabinet CABINET_CHROME, '#0a0a12') every game in
+// the cabinet uses — that uniformity is the whole point of sa1-1.
 //
 // An INDEPENDENT oracle (`fit`) re-derives the expected playfield from the WORLD
 // constants so the margin/play-area classification is not circular with margin.ts.
@@ -25,6 +30,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render } from '../src/shell/render'
 import { WORLD_W, WORLD_H, initialState, type GameState, type Mode } from '../src/core/state'
 import { NO_INPUT } from '../src/core/input'
+import { CABINET_CHROME } from '@shared/cabinet'
 
 // SH2-4: HUD text is stroked from @shared/font layoutText geometry, not
 // drawn via ctx.fillText. To keep the "mask before HUD text" ordering check, the
@@ -124,15 +130,10 @@ const containsPoint = (f: FillRec, x: number, y: number): boolean =>
 const hitsPlayfield = (f: FillRec, p: ReturnType<typeof fit>): boolean =>
   f.x + f.w > p.left + EPS && f.x < p.right - EPS && f.y + f.h > p.top + EPS && f.y < p.bottom - EPS
 
-/** A light overlay: white-family fill (globalAlpha, or an rgba()/#rrggbbaa alpha,
- *  carries the transparency). The play area is pure black (#000), so the margin
- *  mask must LIGHTEN to frame it — a dark mask would vanish on black. See the
- *  session Design Deviations (A2-1 spec reconciliation: "light mask", story
- *  title). Pins colour polarity, not the exact alpha, which is browser-verified. */
-const isLightOverlay = (style: string): boolean => {
-  const s = style.trim().toLowerCase()
-  return /^#f{3,8}$/.test(s) || s === 'white' || /^rgba?\(\s*255\s*,\s*255\s*,\s*255\b/.test(s)
-}
+/** The ONE shared cabinet surround colour (@shared/cabinet CABINET_CHROME) every
+ *  game in the fleet must paint its margin with — sa1-1's whole point is that this
+ *  no longer varies per game. */
+const isCabinetChrome = (style: string): boolean => style.trim().toLowerCase() === CABINET_CHROME.color
 
 const playingState = (over: Partial<GameState> = {}, mode: Mode = 'playing'): GameState => ({
   ...initialState(1979),
@@ -180,13 +181,13 @@ describe('render margin mask — pillarbox (wide canvas)', () => {
     }
   })
 
-  it('reads as a light overlay (AC-2 intent; exact opacity is browser-verified)', () => {
+  it('paints the shared cabinet chrome colour (sa1-1: one look for the whole fleet)', () => {
     const { ctx, fills } = makeCtx()
     render(ctx, playingState(), W, H, NO_INPUT)
     const mask = maskFillsOf(fills, W, H)
     expect(mask.length, 'no mask to check the colour of').toBeGreaterThan(0)
     for (const f of mask) {
-      expect(isLightOverlay(f.style), `mask fill style "${f.style}" is not a light overlay`).toBe(true)
+      expect(isCabinetChrome(f.style), `mask fill style "${f.style}" is not CABINET_CHROME`).toBe(true)
     }
   })
 

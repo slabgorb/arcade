@@ -7,8 +7,11 @@
     <title>Battlezone</title>
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-      /* bz2-1: center the letterboxed canvas so the black page shows through as
-         the aspect-ratio bars (canvas is sized to a pinned 4:3 by shell/viewport). */
+      /* bz2-1: center the letterboxed canvas so the page background shows through
+         as the aspect-ratio bars (canvas is sized to a pinned 4:3 by shell/viewport).
+         sa1-1: main.ts overwrites this #000 with the shared @shared/cabinet
+         CABINET_CHROME colour at boot — the CSS value here is only the pre-JS
+         paint, never a second hand-typed copy of the cabinet's surround colour. */
       body { display: flex; align-items: center; justify-content: center; }
       canvas { display: block; }
     </style>
