@@ -17,3 +17,8 @@ completed_stories:
     title: Consistent mouse capture — all games capture on focus and release on ESC
     points: 3
     completed: '2026-08-21'
+  - id: sa1-2
+    epic: sa1
+    title: Consistent ESC pause overlay with per-game localized graphics (currently shows battlezone for all)
+    points: 3
+    completed: '2026-08-21'

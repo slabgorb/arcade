@@ -21,9 +21,11 @@ stories:
     description: Unify the ESC pause overlay look across all games; today every game shows the battlezone pause art. Each game supplies its own localized graphics through the shared pause component.
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-21'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-21'
   - id: sa1-3
     title: Consistent mouse capture — all games capture on focus and release on ESC
     description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on ESC. Consistent enter/exit semantics fleet-wide.'
