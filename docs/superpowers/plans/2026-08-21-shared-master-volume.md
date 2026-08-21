@@ -18,8 +18,10 @@
 - **`masterGain: 0` is honoured, not defaulted** — pinned by `synth-source-rules.test.ts` and `audio.test.ts`. Default a headroom with `??`, never `||`. The volume factor multiplies headroom, so `volume × 0 === 0` for any volume; these tests must stay green **unchanged**.
 - **Default volume 1.0** — a fresh player hears exactly today's levels (headroom already prevents clipping). No behaviour change on upgrade.
 - **Type check:** `npm run lint` (`tsc --noEmit`, repo-wide) is the only type check; run it before finishing a task that adds a module or export.
+- **ESM relative imports carry `.js`** (lang-review #5, pinned by `score-cookie-source-rules.test.ts`): every relative import in `src/shared/*.ts` must end in `.js` (e.g. `import { clamp } from './clamp.js'`), even though the file on disk is `.ts`. A missing `.js` reddens the whole `shared` project.
+- **Purity classification** (pinned by `purity.test.ts`): any `src/shared/*.ts` that references a DOM global (`document`, `window`, `canvas`, `FontFace`) must be listed in `BROWSER_SUBPATHS` in `src/shared/tests/purity.test.ts` **and** added to the pinned-list assertion in the "browser exemption list is pinned" test. `volume.ts` (window `storage` listener) and `volume-ui.ts` (document/window) both require this.
+- **Run the WHOLE project, not a single file, before committing** — the repo-wide guards (`purity`, `score-cookie-source-rules`, source-rules) only run at project scope: `npx vitest run --project shared` for shared modules, `npx vitest run --project <id>` for a game. A single-file green is not sufficient.
 - **Branch:** work is on `feat/sa1-4-shared-master-volume` (already cut from `develop`). Commit per task; do not push to `develop`.
-- **Run a single shared test file:** `npx vitest run <path>` (e.g. `npx vitest run src/shared/tests/volume.test.ts`). Run a whole app project: `npx vitest run --project <id>`.
 
 ---
 
@@ -667,6 +669,8 @@ describe('volume-ui', () => {
 
 Run: `npx vitest run src/shared/tests/volume-ui.dom.test.ts`
 Expected: FAIL — `Cannot find module '@shared/volume-ui'`.
+
+> **Purity classification (required):** `volume-ui.ts` references `document`/`window`, so it must be added to `BROWSER_SUBPATHS` in `src/shared/tests/purity.test.ts` **and** to the pinned-list assertion in the "browser exemption list is pinned" test — in the same commit as this task, or `purity.test.ts` reddens the whole `shared` project. Import from `@shared/volume` uses the module alias (a bare `@shared/volume` import is not a relative import, so the `.js` rule does not apply to it; any relative import you add must carry `.js`).
 
 - [ ] **Step 3: Implement `volume-ui.ts`**
 
