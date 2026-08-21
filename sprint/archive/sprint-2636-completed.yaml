@@ -132,3 +132,8 @@ completed_stories:
     title: "defender: the scanner only blips landers — no humanoids, no other enemies, no terrain contour on the radar strip"
     points: 3
     completed: 2026-08-20
+  - id: pt1-28
+    epic: pt1
+    title: "defender: thrusting shows no exhaust flame — only an audio cue plays"
+    points: 3
+    completed: 2026-08-21
