@@ -55,6 +55,7 @@ const BROWSER_SUBPATHS = [
   'host-helpers',
   'held-keys',
   'volume',
+  'volume-ui',
 ] as const
 
 const srcPath = (name: string) => join(SHARED_ROOT, `${name}.ts`)
@@ -182,6 +183,7 @@ describe('purity guard — classification is honest, not just a Set literal', ()
         'synth',
         'view',
         'volume',
+        'volume-ui',
       ].sort(),
     )
   })
