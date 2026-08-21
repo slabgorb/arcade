@@ -74,14 +74,16 @@ export type Overrides = Record<string, Binding[]>
 /** Defaults merged under overrides (override wins per-action, whole-list replace). */
 export function resolveBindings(manifest: ControlManifest, overrides: Overrides): BindingMap
 
-/** Bind `code` to `action`, stealing it from any other action that held it so
- *  bindings stay unambiguous. Returns the action it was unbound from, if any, so
- *  the overlay can flash a one-line note. */
+/** Set `action`'s binding to the single captured `code` (replace, not append).
+ *  Codes are NOT globally unique across actions — some games deliberately share
+ *  one (asteroids' Space is both `fire` and `start`; `ArrowUp` is `thrust`), so
+ *  this NEVER auto-unbinds another action. `alsoBoundTo` lists the other actions
+ *  that already hold `code`, purely so the overlay can flash an informational note. */
 export function applyRebind(
   map: BindingMap,
   action: string,
   code: Binding,
-): { map: BindingMap; unboundFrom: string | null }
+): { map: BindingMap; alsoBoundTo: string[] }
 
 /** A fresh map equal to the manifest defaults. */
 export function resetToDefaults(manifest: ControlManifest): BindingMap
@@ -204,9 +206,12 @@ export function createControlsOverlay(args: {
   normally — asteroids binds `ShiftLeft`/`ShiftRight` for hyperspace, so a player must be
   able to remap onto a lone modifier. Capture reads `e.code` and calls `e.preventDefault()`
   so the keypress does nothing else.
-- **Conflicts:** `applyRebind` steals the code from any other action (unambiguous bindings);
-  `unboundFrom` lets the overlay show a one-line "unbound from X" note. An action left with
-  zero bindings is allowed (a player may intentionally clear one); the overlay shows `[ — ]`.
+- **Conflicts:** capturing **replaces** an action's binding with the single new code; it
+  never auto-unbinds another action, because deliberate overlaps exist (Space = fire+start).
+  A code already bound elsewhere is allowed; `alsoBoundTo` lets the overlay flash a one-line
+  "also X" note. Multi-key *defaults* (arrows + WASD) survive untouched until that action is
+  rebound, at which point it collapses to the one chosen code; `RESET DEFAULTS` restores the
+  full default list.
 
 ## Per-game adoption (all 12)
 
