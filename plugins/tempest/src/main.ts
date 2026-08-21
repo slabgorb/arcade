@@ -1,7 +1,7 @@
 // src/main.ts
 import { initialState } from './core/state'
 import { enterInitial } from './core/sim'
-import { createInputController } from './shell/input'
+import { createInputController, setBindings } from './shell/input'
 import { createLoop } from './shell/loop'
 import { createFx } from './shell/fx'
 import { createAudioEngine } from './shell/audio'
@@ -9,9 +9,10 @@ import { playEventSounds } from './shell/audio-dispatch'
 import { render, advanceStarfield } from './shell/render'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { resizeToDisplay } from '@shared/view'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
-import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { isPauseKey } from '@shared/pause'
+import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 
 // tempest records the `level` reached; the shared factory binds load/save to the
 // 'tempest-high-scores' localStorage key and validates each row's finite score +
@@ -56,28 +57,39 @@ installAudioUnlock(() => audio.resume(), window)
 const initial = initialState((Math.random() * 0xffffffff) >>> 0)
 initial.highScoreTable = highScores.load()
 
-// SH2-14: Escape toggles pause via the shared @shared/pause gate — the
-// cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
-// machine-gun the toggle. The freeze itself is the loop's stepUnlessPaused gate,
-// which polls the isPaused accessor passed to createLoop below.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches input.ts's live map.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
 
-// Per-cabinet NUMBERS for the pause card: tempest's keybinds, its authentic 1981
-// green banner colour (#39ff14, the BONUS/TIME face), and the dim alpha. Copy /
-// colour / opacity are playtest-tunable.
-const TEMPEST_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'ARROWS       ROTATE',
-    'SPACE        FIRE',
-    'SHIFT        SUPERZAP',
-    'ENTER        START',
-  ],
-  color: '#39ff14',
-  opacity: 0.72,
-} as const
+// Capture-phase so this runs BEFORE any other keydown listener (input.ts's
+// held-key tracker, the initials-entry handler below): while the overlay is
+// open it must consume the keydown outright (stopImmediatePropagation) so a
+// letter typed to rebind a control never also lands in the high-score
+// initials field or gets latched as a held game key. Escape opens the overlay
+// from the closed state, guarded by e.repeat so an OS auto-repeat can't
+// machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 const loop = createLoop(
   initial,
@@ -95,12 +107,13 @@ const loop = createLoop(
     // of by a brittle source text-match.
     playEventSounds(audio, frameEvents)
     render(ctx, s, W, H, fx, dpr, rdt)
-    // SH2-14: the pause overlay dims the frozen tube and draws the keybind card
-    // over it. render() leaves the ctx in its phosphor-composited state, so set
-    // the dpr transform explicitly to draw the card in CSS-pixel space (W, H).
-    if (pause.isPaused()) {
+    // sa1-5: the controls overlay dims the frozen tube and draws the
+    // pause/rebind chrome over it. render() leaves the ctx in its
+    // phosphor-composited state, so set the dpr transform explicitly to draw
+    // the card in CSS-pixel space (W, H).
+    if (overlay.isOpen()) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawEscOverlay(ctx, W, H, TEMPEST_PAUSE)
+      overlay.draw(ctx, W, H)
     }
   },
   () => performance.now(),
@@ -112,8 +125,8 @@ const loop = createLoop(
   (oldMode) => {
     if (oldMode === 'highscore') highScores.save(loop.getState().highScoreTable)
   },
-  // SH2-14: the loop polls this each sub-step; a paused sub-step freezes the sim.
-  () => pause.isPaused(),
+  // sa1-5: the loop polls this each sub-step; a paused sub-step freezes the sim.
+  () => overlay.isOpen(),
   // tp1-1: everything that must run on the GAME's clock rather than the display's
   // hangs off this hook. It fires once per sub-step that actually advanced the sim,
   // with the sim's own dt — so a paused or stalled game advances none of it.
