@@ -15,6 +15,7 @@
 // surfaces touched.
 
 import { mountCanvas } from '@shared/host-helpers'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { PLYFLD_STRIDE } from './core/conway'
 import { BACKGROUND_BIT } from './core/mushroom'
 import { VACANT_COLOR, segmentOnScreen } from './core/millipede'
@@ -332,13 +333,22 @@ const frame = (ts: number): void => {
 
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false
   const scale = Math.max(1, Math.floor(Math.min(canvas.width / LOGICAL_W, canvas.height / LOGICAL_H)))
   const dx = Math.floor((canvas.width - LOGICAL_W * scale) / 2)
   const dy = Math.floor((canvas.height - LOGICAL_H * scale) / 2)
   ctx.drawImage(logical, dx, dy, LOGICAL_W * scale, LOGICAL_H * scale)
+  // sa1-1: the shared cabinet surround — one uniform fill over the integer-fit's
+  // dead margin (the bars the centred, floored dx/dy leave around the scaled
+  // raster), matching every other adopter's frame colour (centipede's
+  // src/main.ts is the mirrored sibling adoption).
+  drawCabinetChrome(
+    ctx,
+    { width: canvas.width, height: canvas.height },
+    { x: dx, y: dy, width: LOGICAL_W * scale, height: LOGICAL_H * scale },
+    CABINET_CHROME,
+  )
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)
