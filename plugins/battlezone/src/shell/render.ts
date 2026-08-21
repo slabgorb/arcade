@@ -12,7 +12,6 @@ import { BLIP_PEAK } from '../core/radar'
 import { H_FOV } from '../core/camera'
 import { layoutText, CELL_H } from './font'
 import { withGlow } from './glow'
-import { drawEscOverlay } from '@shared/esc-overlay'
 
 // SH2-6: HUD/framing text is stroked from the shared ROM vector font
 // (@shared/font via ./font), not painted through the canvas text API —
@@ -449,50 +448,13 @@ export function drawMessage(
   drawText(ctx, text, w / 2, h * 0.3 + size, size, 'center', color)
 }
 
-/**
- * The paused keybind card (bz2-5). Blank entries are spacing. The first column
- * is the key, the second what it does — the player must be able to read off how
- * to RESUME (Escape) as well as drive/fire. Copy/format is playtest-tunable; the
- * shared vector font and layout come from drawScreenLines, so this matches the
- * rest of the HUD automatically.
- */
-const PAUSE_LINES: readonly string[] = [
-  'PAUSED',
-  '',
-  'ESC        RESUME',
-  'E / D      LEFT TREAD',
-  'I / K      RIGHT TREAD',
-  'ARROWS     DRIVE',
-  'SPACE      FIRE',
-  'ENTER      START',
-]
-
-/** Dim-panel alpha over the frozen battlefield (bz2-5's rgba 0.72). Per-cabinet,
- *  playtest-tunable — passed to the shared overlay as its opacity NUMBER. */
-const PAUSE_DIM = 0.72
-
-/**
- * Stroke the pause overlay (bz2-5): a translucent black panel dimming the frozen
- * battlefield, then the keybind card centered on top — so it reads as "paused",
- * not as text floating over live vectors. The loop draws this only while paused;
- * the sim behind it is held frozen (see shell/pause.ts). Placement/opacity is
- * playtest-tunable per the epic's shell-by-eyeball convention.
- *
- * SH2-14 RE-POINT: the dim + centred keybind card is now the shared browser
- * subpath @shared/esc-overlay (extracted from THIS function in SH2-12) —
- * the cabinet shares the VERB. battlezone's per-cabinet NUMBERS stay here and
- * pass through verbatim: the dual-tread PAUSE_LINES card, its GLOW_GREEN colour,
- * and the 0.72 dim. drawEscOverlay strokes the card through the same shared font
- * layoutText this module used, so the card reads identically to before.
- */
-export function drawPauseOverlay(
-  ctx: CanvasRenderingContext2D,
-  w: number,
-  h: number,
-  color: string = GLOW_GREEN,
-): void {
-  drawEscOverlay(ctx, w, h, { lines: PAUSE_LINES, color, opacity: PAUSE_DIM })
-}
+// sa1-5 RETIREMENT (Option A): the bz2-5 keybind card + its SH2-14 drawEscOverlay
+// delegate (PAUSE_LINES, PAUSE_DIM, drawPauseOverlay) are gone from this module.
+// Pause chrome is no longer battlezone-local at all — main.ts's rebindable
+// @shared/controls-overlay OWNS it outright (menu + per-action rebind rows,
+// including RESUME), replacing the static card this function used to stroke.
+// GLOW_GREEN (above) survives as the per-cabinet colour NUMBER main.ts still
+// feeds the shared overlay's opts (controls.ts's CONTROLS_OVERLAY_OPTS).
 
 /**
  * The always-on control indicator (bz2-5), anchored bottom-left so it clears the

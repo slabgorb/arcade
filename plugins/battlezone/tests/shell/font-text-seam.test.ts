@@ -129,12 +129,13 @@ describe('SH2-6 — the screen-line surfaces flow through layoutText', () => {
 // ---- (2) tracking + caps contracts on EVERY run ------------------------------
 
 // The LOCAL-font typographic HUD surfaces (drawLives is a bespoke triangle, not
-// here). SH2-14 RE-POINT: drawPauseOverlay LEAVES this census — its keybind card
-// now strokes through the shared @shared/esc-overlay (which calls layoutText
-// on the shared font INTERNALLY, not battlezone's local './font'), so it no longer
-// makes a local-font run to observe here. The shared overlay's own tracking + caps
-// contract is enforced in arcade-shared's esc-overlay tests (SH2-12); battlezone's
-// side is that it hands the card lines to drawEscOverlay (tests/shell/pause-overlay.test.ts).
+// here). SH2-14 RE-POINT: drawPauseOverlay LEFT this census — its keybind card
+// struck through the shared @shared/esc-overlay (which calls layoutText on the
+// shared font INTERNALLY, not battlezone's local './font'), so it made no
+// local-font run to observe here. sa1-5 RETIREMENT (Option A): drawPauseOverlay
+// itself is now gone from render.ts entirely — pause chrome is the rebindable
+// @shared/controls-overlay (main.ts), whose own tracking + caps contract is
+// enforced at the shared layer (src/shared/tests/controls-overlay.test.ts).
 const surfaces: [string, (c: CanvasRenderingContext2D) => void][] = [
   ['drawScore', (c) => drawScore(c, 12_345, W, H)],
   ['drawScreenLines', (c) => drawScreenLines(c, ['BATTLEZONE', '', 'PRESS START'], W, H)],
