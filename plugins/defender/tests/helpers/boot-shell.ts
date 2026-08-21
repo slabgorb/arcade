@@ -50,6 +50,18 @@ function hashData(data: ArrayLike<number>): number {
   return h
 }
 
+/** The DOM `key` (character / name) for a `code`, so a synthetic keydown carries BOTH
+ *  fields a real event does: installHeldKeys reads `code` ('KeyD'), while host-helpers'
+ *  pause toggle (sa1-2) reads `key` ('d' / 'Escape'). Covers the codes these tests
+ *  dispatch (KeyD, Enter) plus Escape, mirroring the real DOM's code↔key pairing. */
+function keyFor(code: string): string {
+  if (code.startsWith('Key')) return code.slice(3).toLowerCase() // KeyD → d
+  if (code.startsWith('Digit')) return code.slice(5) // Digit1 → 1
+  if (code === 'Space') return ' '
+  if (code.startsWith('Shift')) return 'Shift'
+  return code // Enter, Escape, ArrowUp… — key === code
+}
+
 /**
  * Install the stub browser onto `globalThis`, then return the harness. MUST be called
  * before `await import('../src/main.js')`, which reads `document`/`window` and starts the
@@ -121,8 +133,8 @@ export function installShellDom(): BootHarness {
       cb(t)
     },
     scheduled: () => rafCb !== null,
-    keyDown: (code) => dispatch('keydown', { code, preventDefault() {} }),
-    keyUp: (code) => dispatch('keyup', { code, preventDefault() {} }),
+    keyDown: (code) => dispatch('keydown', { code, key: keyFor(code), preventDefault() {} }),
+    keyUp: (code) => dispatch('keyup', { code, key: keyFor(code), preventDefault() {} }),
     drawnHash: () => {
       if (lastDrawn === null) throw new Error('the shell has not drawn a frame yet')
       return hashData(lastDrawn)

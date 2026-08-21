@@ -25,9 +25,11 @@ import {
 } from './core/game'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
-import { mountCanvas } from '@shared/host-helpers'
+import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
 import { installHeldKeys } from '@shared/held-keys'
 import { resizeToDisplay } from '@shared/view'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
+import { drawEscOverlay } from '@shared/esc-overlay'
 
 // pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
 // eyes-only 'eaten' body for a returning ghost) moved into render.ts as the
@@ -177,6 +179,22 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
+// guards e.repeat so a held key can't machine-gun it). The freeze skips the sim pump
+// below; the card + colour are Pac-Man's OWN per-cabinet NUMBERS (its banner yellow).
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+const PAC_MAN_PAUSE = {
+  lines: [
+    'PAUSED',
+    '',
+    'ESC          RESUME',
+    'ARROWS/WASD  MOVE',
+    'SPACE        START',
+  ],
+  color: '#ffff00',
+  opacity: 0.72,
+} as const
+
 let acc = 0
 let last = 0
 let started = false
@@ -196,7 +214,10 @@ const frame = (now: number): void => {
   } else {
     const elapsed = (now - last) / 1000
     last = now
-    acc = pumpFrame(
+    // sa1-2: freeze the sim while paused — skip the pump, but keep `last` current
+    // above so the paused wall-time is discarded and resume banks no catch-up burst.
+    if (!pause.isPaused())
+      acc = pumpFrame(
       acc,
       elapsed,
       // pm4-6: fold the start/coin latch into the sim input (consumed each
@@ -265,6 +286,9 @@ const frame = (now: number): void => {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(logical, 0, 0, LOGICAL_W, LOGICAL_H, fit.dx, fit.dy, fit.width, fit.height)
+
+  // sa1-2: dim the frozen maze and stroke Pac-Man's own keybind card over it.
+  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, PAC_MAN_PAUSE)
 
   requestAnimationFrame(frame)
 }
