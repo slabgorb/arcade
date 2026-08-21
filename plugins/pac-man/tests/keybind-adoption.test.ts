@@ -1,0 +1,19 @@
+import { describe, it, expect } from 'vitest'
+import { resolveBindings } from '@shared/keybind'
+import { CONTROL_MANIFEST } from '../src/shell/controls'
+
+describe('pac-man key rebinding', () => {
+  it('manifest declares every control with non-empty physical-code defaults', () => {
+    expect(CONTROL_MANIFEST.length).toBeGreaterThan(0)
+    for (const c of CONTROL_MANIFEST) {
+      expect(c.defaults.length).toBeGreaterThan(0)
+      for (const code of c.defaults) expect(code).toMatch(/^[A-Z][A-Za-z0-9]+$/) // physical e.code, not a bare char
+    }
+  })
+  it('an override resolves onto the new code and drops the default', () => {
+    const map = resolveBindings(CONTROL_MANIFEST, { up: ['KeyI'] })
+    expect(map.up).toEqual(['KeyI'])
+    expect(map.up).not.toContain('ArrowUp')
+    expect(map.down).toEqual(['ArrowDown', 'KeyS']) // untouched actions keep defaults
+  })
+})

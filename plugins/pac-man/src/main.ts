@@ -23,14 +23,14 @@ import {
   isReturningHome,
   type GameState,
 } from './core/game'
-import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
-import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
-import { installHeldKeys } from '@shared/held-keys'
+import { mountCanvas } from '@shared/host-helpers'
 import { resizeToDisplay } from '@shared/view'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
+import { isPauseKey } from '@shared/pause'
+import { createControlsOverlay } from '@shared/controls-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
+import { currentDir, consumeStart, setBindings } from './shell/input'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 
 // pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
 // eyes-only 'eaten' body for a returning ghost) moved into render.ts as the
@@ -108,49 +108,10 @@ try {
 const overlays = createOverlays()
 
 // ── Keyboard: held-direction sampling + name-entry edge events ───────────
-// SH4-2: the shared held-keys tracker owns the Set + keydown/keyup + a blur
-// reset (new — a direction key no longer sticks across an alt-tab). idOf is
-// `e.key.toLowerCase()` so DIR_KEYS' lower-case names match. The keydown below
-// keeps only its SIDE effects (audio unlock, the start/coin latch, name entry);
-// membership is read through `keys`. `keys.uninstall()` is the disposer.
-const keys = installHeldKeys(window, { idOf: (e) => e.key.toLowerCase() })
-const DIR_KEYS: Readonly<Record<string, Dir>> = {
-  arrowup: 'up',
-  arrowdown: 'down',
-  arrowleft: 'left',
-  arrowright: 'right',
-  w: 'up',
-  s: 'down',
-  a: 'left',
-  d: 'right',
-}
-
-function currentDir(): Dir {
-  // Newest-held-wins is unrecoverable from a Set alone (no press order), so
-  // this samples in a fixed priority order — good enough for a keyboard
-  // (a real joystick reports one direction at a time anyway; pacman.ts's own
-  // `pending` latch is what makes an early turn "stick" until it opens).
-  for (const key of ['arrowup', 'w', 'arrowdown', 's', 'arrowleft', 'a', 'arrowright', 'd']) {
-    if (keys.has(key) && DIR_KEYS[key]) return DIR_KEYS[key]
-  }
-  return 'none'
-}
-
-// pm4-6: the start/coin latch. Set on a start-key press, consumed by the sim
-// input below on the next sub-step, so exactly one `start: true` reaches
-// `stepGame` per press. Space / 1 (1-player) / 5 (coin) — Enter stays the
-// game-over restart it already was. The core only acts on it in `attract`
-// (advance -> ready + reseed); it is inert everywhere else, so no phase logic
-// lives here.
-const START_KEYS: ReadonlySet<string> = new Set([' ', 'spacebar', '1', '5'])
-let startPressed = false
-/** Read and clear the start/coin latch — one `start: true` per key press. */
-const consumeStart = (): boolean => {
-  const pressed = startPressed
-  startPressed = false
-  return pressed
-}
-
+// sa1-5: the held-direction sampling + start/coin latch now live in
+// shell/input.ts (currentDir/consumeStart), reading through @shared/keybind so
+// a player's rebind reaches the sim. This listener keeps only its SIDE
+// effects (audio unlock, name entry).
 let audioStarted = false
 window.addEventListener('keydown', (e) => {
   // WebAudio autoplay policy: the context stays suspended until a user gesture.
@@ -159,9 +120,6 @@ window.addEventListener('keydown', (e) => {
   // the context was live (which would leave the siren dead for the session).
   resumeAudio()
   audioStarted = true
-
-  const key = e.key.toLowerCase()
-  if (START_KEYS.has(key)) startPressed = true
 
   // Initials entry rides its own edge event, same as centipede's
   // enterInitial — it is not part of the held-direction sampling above.
@@ -180,21 +138,41 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
-// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
-// guards e.repeat so a held key can't machine-gun it). The freeze skips the sim pump
-// below; the card + colour are Pac-Man's OWN per-cabinet NUMBERS (its banner yellow).
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-const PAC_MAN_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'ARROWS/WASD  MOVE',
-    'SPACE        START',
-  ],
-  color: '#ffff00',
-  opacity: 0.72,
-} as const
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches input.ts's live map. The
+// opts colour/opacity are Pac-Man's OWN per-cabinet NUMBERS (its banner yellow),
+// carried over from the old PAC_MAN_PAUSE card (controls.ts).
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the audio-unlock/name-entry handler above
+// and shell/input.ts's own held-keys/start-latch keydown listeners: while the
+// overlay is open it must consume the keydown outright
+// (stopImmediatePropagation) so a letter typed to rebind a control never also
+// lands in the high-score initials field or gets latched as a held game key.
+// Escape opens the overlay from the closed state, guarded by e.repeat so an OS
+// auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 let acc = 0
 let last = 0
@@ -215,10 +193,11 @@ const frame = (now: number): void => {
   } else {
     const elapsed = (now - last) / 1000
     last = now
-    // sa1-2: freeze the sim while paused — skip the pump, but keep `last` current
-    // above so the paused wall-time is discarded and resume banks no catch-up burst.
+    // sa1-5: freeze the sim while the controls overlay is open — skip the pump, but
+    // keep `last` current above so the paused wall-time is discarded and resume
+    // banks no catch-up burst.
     // (Braced so a future statement added after the pump can't silently escape the guard.)
-    if (!pause.isPaused()) {
+    if (!overlay.isOpen()) {
       acc = pumpFrame(
       acc,
       elapsed,
@@ -283,7 +262,7 @@ const frame = (now: number): void => {
     if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   }
   drawHud(logicalCtx, game.score, game.highScoreTable[0]?.score ?? 0, game.lives, game.level)
-  overlays.draw(logicalCtx, game, pause.isPaused()) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield (sa1-2: frozen while paused)
+  overlays.draw(logicalCtx, game, overlay.isOpen()) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield (sa1-5: frozen while the controls overlay is open)
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false
@@ -300,8 +279,8 @@ const frame = (now: number): void => {
     CABINET_CHROME,
   )
 
-  // sa1-2: dim the frozen maze and stroke Pac-Man's own keybind card over it.
-  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, PAC_MAN_PAUSE)
+  // sa1-5: dim the frozen maze and stroke the rebind/pause chrome over it.
+  if (overlay.isOpen()) overlay.draw(ctx, canvas.width, canvas.height)
 
   requestAnimationFrame(frame)
 }
