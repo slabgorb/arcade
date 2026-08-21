@@ -61,17 +61,25 @@ let game: GameState = { ...createGame(0x1982), highScores: loadHighScores(highSc
 //    through the shell adapter, drained once per stepped frame. Under lock those
 //    deltas are UNBOUNDED (the cursor never hits a screen edge), so the mouse
 //    behaves like the cabinet trackball. The cursor is hidden while it does. ──
+// sa1-3 — fleet-consistent capture chrome: the OS cursor is hidden only WHILE the
+// pointer is captured, not from boot. It is visible in attract (so the player sees a
+// pointer to click) and RESTORED on a lock EXIT (Escape). This mirrors missile-command
+// (main.ts hides on capture, restores `cursor = ''` on onExit) and matches centipede,
+// which never hides it. The hide moves into the pointerdown capture path below; onExit
+// restores it here.
 const mouse = createMouseAdapter(document)
-canvas.style.cursor = 'none'
 // R5: an Escape-exit keeps the window focused, so 'blur' never fires — the
 // pointerlockchange listener clears the last accumulated delta regardless of what
 // caused the exit (Escape or blur) so the gun does not keep drifting (no runaway
-// travel). R4/cp2-8: a rejected requestPointerLock (re-lock cooldown) is surfaced to
-// the console instead of vanishing.
+// travel), and (sa1-3) restores the OS cursor the capture hid. R4/cp2-8: a rejected
+// requestPointerLock (re-lock cooldown) is surfaced to the console instead of vanishing.
 const pointerLock = createPointerLock(
   canvas,
   document,
-  () => mouse.reset(),
+  () => {
+    mouse.reset()
+    canvas.style.cursor = '' // sa1-3: restore the OS cursor on lock EXIT (ESC parity with mc)
+  },
   (reason) => console.warn('millipede: pointer lock request rejected', reason),
 )
 
@@ -116,6 +124,7 @@ window.addEventListener('keyup', (e: KeyboardEvent) => {
 })
 canvas.addEventListener('pointerdown', () => {
   startPlay()
+  canvas.style.cursor = 'none' // sa1-3: hide the OS cursor WHEN capture is requested (onExit restores it)
   void pointerLock.request() // click-to-lock the canvas for the trackball (R4-safe)
   fireHeld = true
   firePending = true
