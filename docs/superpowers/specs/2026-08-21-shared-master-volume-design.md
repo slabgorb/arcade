@@ -157,7 +157,7 @@ export function mountVolumeControl(opts: {
 - **`volume.ts`** (vitest, storage stub from `src/shared/tests/helpers/storage-stub.ts`):
   default 1.0 when unset; persist round-trip; clamp below 0 / above 1; storage-throws →
   no throw, returns default; `subscribeVolume` notify on set; unsubscribe stops
-  notifications; `storage` event updates cache + notifies.
+  notifications; `storage` event re-reads and notifies (the module is cacheless — `getMasterVolume()` reads storage each call).
 - **`storage.ts`**: `getStorage()` returns the global; returns `null` when access throws;
   `highscore` tests stay green after the lift.
 - **`audio.ts` / `synth.ts`**: `master.gain.value === volume × headroom` on resume for a
