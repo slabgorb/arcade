@@ -734,15 +734,21 @@ export function drawHud(
   }
 
   // Bottom-right: the fruit row — the last up-to-7 levels' fruits, newest at the
-  // right (tile 27) stepping left, so the window slides and drops the oldest. The
-  // loop counts DOWN from the current level and is bounded to FRUIT_ROW_CAP
-  // iterations, so a non-finite `level` (guarded here) can neither spin it forever
-  // nor index the level table out of range.
+  // right stepping left, so the window slides and drops the oldest. The loop counts
+  // DOWN from the current level and is bounded to FRUIT_ROW_CAP iterations, so a
+  // non-finite `level` (guarded here) can neither spin it forever nor index the
+  // level table out of range.
+  //
+  // pm-fruit-crop: the newest fruit anchors at tile 26, not 27. drawFruit centres a
+  // 16px (2-tile) sprite on its anchor tile (a -4px offset), so tile 27 would blit to
+  // x 212..228 and clip the rightmost 4px against the 224px-wide buffer. Tile 26 blits
+  // to 204..220, a 4px right margin that mirrors the lives icons' 4px left margin.
+  const FRUIT_ROW_RIGHT_TILE = 26
   if (Number.isFinite(level)) {
     for (let k = 0; k < FRUIT_ROW_CAP; k++) {
       const l = level - k
       if (l < 1) break // fewer than 7 levels reached — no older fruit to show
-      drawFruit(ctx, 27 - 2 * k, MAZE.rows - 2 + ICON_DROP_PX / TILE_PX, levelRow(l).fruit.type)
+      drawFruit(ctx, FRUIT_ROW_RIGHT_TILE - 2 * k, MAZE.rows - 2 + ICON_DROP_PX / TILE_PX, levelRow(l).fruit.type)
     }
   }
 }
