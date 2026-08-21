@@ -52,14 +52,17 @@ function overlaps(a: Rect, b: Rect): boolean {
  *  returns): describe the three fit cases plus the two degenerate ones. */
 const CONTAINER: Size = { width: 800, height: 600 }
 
-const CASES: { name: string; game: Rect; expectedBars: number }[] = [
+// The exact region COUNT is deliberately not pinned — the decomposition is the
+// module's choice; the invariants below (no-overlap, exact-complement area,
+// in-bounds, non-empty) jointly prove an exact tiling regardless of how the frame
+// is cut into strips.
+const CASES: { name: string; game: Rect }[] = [
   // Pillarbox: game is 4:3-ish but narrower than the container → left+right bars.
-  { name: 'pillarbox (bars left/right)', game: { x: 100, y: 0, width: 600, height: 600 }, expectedBars: 2 },
+  { name: 'pillarbox (bars left/right)', game: { x: 100, y: 0, width: 600, height: 600 } },
   // Letterbox: game is wider than tall relative to container → top+bottom bars.
-  { name: 'letterbox (bars top/bottom)', game: { x: 0, y: 75, width: 800, height: 450 }, expectedBars: 2 },
-  // Both: game smaller in BOTH axes, centred → a full surround (>=2 regions
-  // tiling the frame; the exact decomposition is Dev's, we assert the invariants).
-  { name: 'full surround (smaller both axes)', game: { x: 100, y: 75, width: 600, height: 450 }, expectedBars: 3 },
+  { name: 'letterbox (bars top/bottom)', game: { x: 0, y: 75, width: 800, height: 450 } },
+  // Both: game smaller in BOTH axes, centred → a full surround (a picture frame).
+  { name: 'full surround (smaller both axes)', game: { x: 100, y: 75, width: 600, height: 450 } },
 ]
 
 describe('chromeRegions — the non-game surround (pure)', () => {
@@ -138,7 +141,7 @@ describe('drawCabinetChrome — uniform fill of the surround (DOM seam)', () => 
 
   it('paints one fill per non-game region', () => {
     const { ctx, fills } = recordingCtx()
-    drawCabinetChrome(ctx as unknown as CanvasRenderingContext2D, CONTAINER, game, { color: '#101018' })
+    drawCabinetChrome(ctx, CONTAINER, game, { color: '#101018' })
     const regions = chromeRegions(CONTAINER, game)
     // exactly the regions get a fill — not zero (nothing drawn), not the whole frame.
     expect(fills.length).toBe(regions.length)
@@ -151,14 +154,14 @@ describe('drawCabinetChrome — uniform fill of the surround (DOM seam)', () => 
 
   it('uses ONE consistent style for every region (uniform chrome)', () => {
     const { ctx, fills } = recordingCtx()
-    drawCabinetChrome(ctx as unknown as CanvasRenderingContext2D, CONTAINER, game, { color: '#101018' })
+    drawCabinetChrome(ctx, CONTAINER, game, { color: '#101018' })
     const styles = new Set(fills.map((f) => f.style))
     expect(styles).toEqual(new Set(['#101018']))
   })
 
   it('never paints inside the game rect', () => {
     const { ctx, fills } = recordingCtx()
-    drawCabinetChrome(ctx as unknown as CanvasRenderingContext2D, CONTAINER, game, { color: '#101018' })
+    drawCabinetChrome(ctx, CONTAINER, game, { color: '#101018' })
     for (const f of fills) {
       expect(overlaps({ x: f.x, y: f.y, width: f.w, height: f.h }, game)).toBe(false)
     }
@@ -167,7 +170,7 @@ describe('drawCabinetChrome — uniform fill of the surround (DOM seam)', () => 
   it('draws nothing when the game fills the container', () => {
     const { ctx, fills } = recordingCtx()
     const full: Rect = { x: 0, y: 0, width: CONTAINER.width, height: CONTAINER.height }
-    drawCabinetChrome(ctx as unknown as CanvasRenderingContext2D, CONTAINER, full, { color: '#101018' })
+    drawCabinetChrome(ctx, CONTAINER, full, { color: '#101018' })
     expect(fills.length).toBe(0)
   })
 })

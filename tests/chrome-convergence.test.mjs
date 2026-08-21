@@ -71,10 +71,24 @@ function srcFiles(game) {
   return out;
 }
 
-/** Does any of this game's source import from '@shared/cabinet'? */
-function routesThroughChrome(game) {
+/** Does any of this game's source IMPORT from '@shared/cabinet'? */
+function importsChrome(game) {
   const importRe = /from\s*['"]@shared\/cabinet['"]/;
   return srcFiles(game).some((f) => importRe.test(stripComments(readFileSync(f, 'utf8'))));
+}
+
+/**
+ * Does this game genuinely ROUTE THROUGH the shared chrome — import it AND actually
+ * CALL `drawCabinetChrome(...)`? The import alone is not adoption: a dangling import
+ * (or one kept only for a type) paints nothing, so requiring the call site closes the
+ * hole where a game satisfies the matrix without ever framing its surround. (Whether
+ * that call paints a bar this frame depends on the live fit — a full-bleed game's call
+ * is a legitimate no-op — so we require the call site, not a proven non-empty draw.)
+ */
+function routesThroughChrome(game) {
+  if (!importsChrome(game)) return false;
+  const callRe = /\bdrawCabinetChrome\s*\(/;
+  return srcFiles(game).some((f) => callRe.test(stripComments(readFileSync(f, 'utf8'))));
 }
 
 /** Parse the recorded matrix into { [game]: cell }. */
@@ -112,13 +126,13 @@ test('the matrix lists exactly the whole cabinet floor — no game omitted', () 
   assert.deepEqual(Object.keys(rows).sort(), [...GAMES].sort());
 });
 
-test('every game marked `adopted` actually imports @shared/cabinet', () => {
+test('every game marked `adopted` imports AND calls @shared/cabinet (not just a dangling import)', () => {
   const rows = readMatrix();
   for (const game of GAMES) {
     if (rows[game] !== 'adopted') continue;
     assert.ok(
       routesThroughChrome(game),
-      `${game} is 'adopted' but no file under plugins/${game}/src imports '@shared/cabinet'`,
+      `${game} is 'adopted' but its source does not both import '@shared/cabinet' AND call drawCabinetChrome(...)`,
     );
   }
 });
@@ -127,8 +141,9 @@ test('every game NOT marked `adopted` does NOT import @shared/cabinet (the reaso
   const rows = readMatrix();
   for (const game of GAMES) {
     if (rows[game] === 'adopted') continue;
+    // A non-adopted game must not import the module at all — not merely skip the call.
     assert.ok(
-      !routesThroughChrome(game),
+      !importsChrome(game),
       `${game} is '${rows[game]}' but its source DOES import '@shared/cabinet' — mark it 'adopted'`,
     );
   }

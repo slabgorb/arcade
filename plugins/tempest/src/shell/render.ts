@@ -17,6 +17,7 @@ import {
 } from './glyphs'
 import { layoutText, CELL_H } from './font'
 import { WARP_STARFIELD_GATE, ROM_FPS, EYE_FLYIN_START, MAX_SELECT_LEVEL, startWaveBonus } from '../core/rules'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 // The Superzapper strobe ramp (Story 10-15): eight hues the well flashes through
 // while a zap is active, indexed by the core's flash counter. The per-level WELL
@@ -1057,6 +1058,14 @@ export function render(
   vg.addColorStop(1, 'rgba(0,0,0,0)')
   ctx.fillStyle = vg
   ctx.fillRect(0, 0, W, H)
+
+  // sa1-1: the shared cabinet-chrome seam. tempest fills the whole render surface
+  // (resizeToDisplay sizes the canvas to the window, no letterbox/pillarbox — see
+  // @shared/view's header comment), so the fitted game rect equals the container
+  // and this draws NOTHING every frame. It is still wired so tempest's surround
+  // matches the cabinet-wide look the instant a future story fits tempest into a
+  // fixed aspect instead of filling the window.
+  drawCabinetChrome(ctx, { width: W, height: H }, { x: 0, y: 0, width: W, height: H }, CABINET_CHROME)
 
   // tp1-12: the well and the per-level accent come from the COLTAB palette
   // (glyphs.ts `wellColor`), not an arbitrary 8-hue list. `wellName` is the well

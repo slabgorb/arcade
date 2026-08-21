@@ -11,7 +11,8 @@ stories:
     description: One shared display component that frames every game with consistent chrome indicating the non-game parts of the user's screen. All games render through it for visual consistency.
     points: 5
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-21'
     repos: arcade
     workflow: tdd
   - id: sa1-2

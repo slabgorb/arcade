@@ -17,6 +17,7 @@
 
 import { fitIntegerScale } from '@shared/view'
 import { paletteToRgba, type Rgba } from '@shared/palette-decoder'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { DEFAULT_PCRAM, resolveCram } from '../core/palette.js'
 import type { Framebuffer } from '../core/framebuffer.js'
 
@@ -24,12 +25,6 @@ import type { Framebuffer } from '../core/framebuffer.js'
 export const LOGICAL_WIDTH = 292
 /** Visible raster height — same source. */
 export const LOGICAL_HEIGHT = 240
-
-/** The letterbox/ground colour, as a palette INDEX (not a literal). Index 0 is the
- *  background; df2-2's transcribed CRAM palette gives it the authentic colour without
- *  touching the fill site. Reaching the ground through the palette — as joust does
- *  with colours[0] — keeps "colours are never invented" true for every pixel drawn. */
-export const BACKGROUND_INDEX = 0
 
 /** A decoded colour: 8-bit channels, opaque unless a later palette says otherwise.
  *  Re-exported from @shared/palette-decoder (df2-2) so the whole blit path speaks one
@@ -55,11 +50,13 @@ export function indexToRgba(index: number, cram: readonly number[] = CRAM): Rgba
 
 /**
  * Blit a framebuffer to the canvas at the largest whole-number scale that fits,
- * centred, on a black ground. The geometry is delegated to @shared/view
- * fitIntegerScale — whose scale is clamped to at least 1 — so a zero-size canvas
- * yields a finite result instead of dividing by a canvas dimension. Pixels are
- * expanded into an already-scaled ImageData and blitted once, keeping the 1980s
- * pixels crisp without an OffscreenCanvas (putImageData does not resample).
+ * centred. The geometry is delegated to @shared/view fitIntegerScale — whose scale is
+ * clamped to at least 1 — so a zero-size canvas yields a finite result instead of
+ * dividing by a canvas dimension. Pixels are expanded into an already-scaled ImageData
+ * and blitted once, keeping the 1980s pixels crisp without an OffscreenCanvas
+ * (putImageData does not resample). Any dead margin outside the fitted raster (the
+ * letterbox bars) is then painted with sa1-1's shared cabinet chrome (@shared/cabinet)
+ * — the one surround colour every game in the cabinet uses, not this game's own ground.
  */
 export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer, pcram?: readonly number[]): void {
   const { canvas } = ctx
@@ -74,12 +71,6 @@ export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer, pcram?: r
   // PCRAM→CRAM copy, modelled by resolveCram), falling back to the boot palette for the
   // static path. Every pixel below reaches its colour by INDEX through this one `cram`.
   const cram = pcram ? resolveCram(pcram) : CRAM
-
-  // Ground (letterbox bars + anything the raster does not cover): the background
-  // palette index resolved through indexToRgba, never an invented literal.
-  const bg = indexToRgba(BACKGROUND_INDEX, cram)
-  ctx.fillStyle = `rgb(${bg.r} ${bg.g} ${bg.b})`
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   const img = ctx.createImageData(width, height)
   const out = img.data
@@ -98,4 +89,13 @@ export function render(ctx: CanvasRenderingContext2D, fb: Framebuffer, pcram?: r
     }
   }
   ctx.putImageData(img, dx, dy)
+
+  // sa1-1: the shared cabinet chrome (@shared/cabinet) — paints the non-game margin
+  // (letterbox bars, when the canvas isn't an exact multiple of the logical raster)
+  // with the ONE surround colour every game in the cabinet shares, replacing the
+  // former hand-rolled full-canvas ground fill (which used this game's own palette
+  // index 0 as the letterbox colour). Painted AFTER the blit so it never gets
+  // overdrawn by the framebuffer image, and it draws nothing when the raster already
+  // fills the canvas exactly (dx===dy===0, width/height===canvas.width/height).
+  drawCabinetChrome(ctx, canvas, { x: dx, y: dy, width, height }, CABINET_CHROME)
 }
