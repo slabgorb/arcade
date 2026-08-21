@@ -109,6 +109,10 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
     return
   }
+  // sa1-2: Escape is the PAUSE key (installPauseToggle owns it on its own listener) —
+  // it must NOT also fall into startPlay/fire here, or toggling pause on the attract
+  // screen would latch startPending and boot an unrequested game on resume.
+  if (isPauseKey(e.key.toLowerCase())) return
   startPlay()
   if (FIRE_KEYS.has(e.key)) fireHeld = true
 })
@@ -337,7 +341,8 @@ const frame = (ts: number): void => {
   // and the mouse travel is consumed whole.
   // sa1-2: freeze the sim while paused — skip the fixed-step pump. `lastTs` is
   // already updated above, so paused wall-time is discarded (no catch-up burst).
-  if (!pause.isPaused())
+  // (Braced so a future statement added after the pump can't silently escape the guard.)
+  if (!pause.isPaused()) {
     accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
     const input: GameInput = isFirst
       ? { dh: toByte(dh), dv: toByte(dv), fire: firePending || fireHeld, start: startPending }
@@ -349,7 +354,8 @@ const frame = (ts: number): void => {
     game = stepGame(game, input)
     playEventSounds(audio, game.events)
     ;(window as unknown as { __sim?: GameState }).__sim = game
-  })
+    })
+  }
 
   render(game)
 

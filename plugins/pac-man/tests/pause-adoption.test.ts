@@ -45,8 +45,11 @@ function importersOf(pattern: RegExp): string[] {
     .map((f) => f.slice(srcDir.length + 1))
 }
 
-const PAUSE_IMPORT = /['"]@shared\/pause['"]/
-const ESC_OVERLAY_IMPORT = /['"]@shared\/esc-overlay['"]/
+// Anchored to a line that STARTS with `import … from` (not just any quoted mention),
+// so a commented-out / dead import or a doc-comment quoting the specifier can NOT
+// false-pass the adoption assertion — only a live import statement counts.
+const PAUSE_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]@shared\/pause['"]/m
+const ESC_OVERLAY_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]@shared\/esc-overlay['"]/m
 
 // Runtime-only resolution: keep the specifiers out of Vite's static analysis so an
 // unresolvable subpath surfaces as ONE failing test, not a module-graph crash.

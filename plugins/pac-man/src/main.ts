@@ -216,7 +216,8 @@ const frame = (now: number): void => {
     last = now
     // sa1-2: freeze the sim while paused — skip the pump, but keep `last` current
     // above so the paused wall-time is discarded and resume banks no catch-up burst.
-    if (!pause.isPaused())
+    // (Braced so a future statement added after the pump can't silently escape the guard.)
+    if (!pause.isPaused()) {
       acc = pumpFrame(
       acc,
       elapsed,
@@ -255,7 +256,8 @@ const frame = (now: number): void => {
         overlays.onEvents(game.events)
         if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
-    )
+      )
+    }
   }
 
   if (game.phase === 'intermission') {
@@ -280,7 +282,7 @@ const frame = (now: number): void => {
     if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   }
   drawHud(logicalCtx, game.score, game.highScoreTable[0]?.score ?? 0, game.lives, game.level)
-  overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
+  overlays.draw(logicalCtx, game, pause.isPaused()) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield (sa1-2: frozen while paused)
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false

@@ -334,7 +334,11 @@ function renderTitleScreen(): void {
   paintText(screen.extraMount, extraMountX, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.replayLevel, extraMountX + screen.extraMount.width, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.pointsSuffix, extraMountX + screen.extraMount.width + screen.replayLevel.width, TITLE_EXTRA_MOUNT_Y)
-  titleFrame++
+  // sa1-2: the MARQUE colour-cycle is a draw-side counter, so it must freeze with the
+  // rest of the cabinet while paused — otherwise the title keeps cycling colour under
+  // the dimmed PAUSED overlay. (The pumped dwell/attract clocks already freeze via the
+  // pause gate on pumpFrames; this is the one render-time counter that needs the guard.)
+  if (!pause.isPaused()) titleFrame++
 }
 
 // jt10-4 — paint the core's ordered draw list for a game sim (back platforms →
@@ -571,8 +575,9 @@ window.addEventListener('visibilitychange', () => {
 })
 
 // sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
-// guards e.repeat). Only the PLAYING sim freezes; the title / attract / highscore
-// screens keep their own timing. The card text is joust's OWN per-cabinet NUMBERS;
+// guards e.repeat). The whole cabinet freezes while paused — play, attract, title
+// and highscore alike (the fleet's pause-anytime convention; see the gate below).
+// The card text is joust's OWN per-cabinet NUMBERS;
 // its colour is the P1-yellow COLOR1 register (index 5), built at draw time as an
 // rgb(${...}) template from the transcribed palette so the render denylist (no
 // invented colour literals on the paint path) stays green.
@@ -602,7 +607,8 @@ const frame = (now: number): void => {
     // holds — play, attract and the title/highscore cycles alike, matching the fleet's
     // pause-anytime convention). `last` is updated above, so paused wall-time is
     // discarded and resume banks no catch-up burst.
-    if (!pause.isPaused())
+    // (Braced so a future statement added after the pump can't silently escape the guard.)
+    if (!pause.isPaused()) {
       accumulator = pumpFrames(accumulator, elapsed, () => {
       if (cabinet.mode === 'gameover') {
         // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
@@ -723,7 +729,8 @@ const frame = (now: number): void => {
       }
       prevFlap1 = in1.flapHeld
       prevFlap2 = in2.flapHeld
-    })
+      })
+    }
   }
 
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
