@@ -1,0 +1,48 @@
+id: sa1
+type: epic
+title: Shared arcade & lobby features and polish
+description: 'Cross-cutting consistency and QOL across the lobby and all games: shared display chrome, unified pause overlay, uniform mouse capture, volume controls, and key rebinding.'
+priority: p2
+status: backlog
+repos: arcade
+stories:
+  - id: sa1-1
+    title: Consistent display chrome — shared overlay framing the non-game screen area, all games route through it
+    description: One shared display component that frames every game with consistent chrome indicating the non-game parts of the user's screen. All games render through it for visual consistency.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: sa1-2
+    title: Consistent ESC pause overlay with per-game localized graphics (currently shows battlezone for all)
+    description: Unify the ESC pause overlay look across all games; today every game shows the battlezone pause art. Each game supplies its own localized graphics through the shared pause component.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: sa1-3
+    title: Consistent mouse capture — all games capture on focus and release on X
+    description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on X. Consistent enter/exit semantics fleet-wide.'
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: sa1-4
+    title: Sound volume controls
+    description: Shared volume control (master/SFX) available across the lobby and games, persisted via the single-origin localStorage.
+    points: 3
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
+  - id: sa1-5
+    title: Key binding customization
+    description: Let players remap controls; persist bindings and expose a shared rebinding UI usable by every game.
+    points: 5
+    priority: p2
+    status: backlog
+    repos: arcade
+    workflow: tdd
