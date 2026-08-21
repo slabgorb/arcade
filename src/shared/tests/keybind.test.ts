@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveBindings, applyRebind, resetToDefaults, diffOverrides, type ControlManifest } from '@shared/keybind'
+import { resolveBindings, applyRebind, resetToDefaults, diffOverrides, parseOverrides, type ControlManifest } from '@shared/keybind'
 
 const MANIFEST: ControlManifest = [
   { action: 'thrust', label: 'THRUST', defaults: ['ArrowUp', 'KeyW'] },
@@ -63,5 +63,23 @@ describe('diffOverrides', () => {
   it('round-trips with resolveBindings', () => {
     const map = { thrust: ['ArrowUp', 'KeyW'], fire: ['KeyJ'] }
     expect(resolveBindings(MANIFEST, diffOverrides(MANIFEST, map))).toEqual(map)
+  })
+})
+
+describe('parseOverrides', () => {
+  it('accepts a record of action -> string[]', () => {
+    expect(parseOverrides({ fire: ['KeyJ'], thrust: ['KeyW', 'ArrowUp'] })).toEqual({ fire: ['KeyJ'], thrust: ['KeyW', 'ArrowUp'] })
+  })
+  it('accepts the empty record', () => {
+    expect(parseOverrides({})).toEqual({})
+  })
+  it('rejects non-objects', () => {
+    expect(parseOverrides(null)).toBeNull()
+    expect(parseOverrides('nope')).toBeNull()
+    expect(parseOverrides(['a'])).toBeNull()
+  })
+  it('rejects a value that is not a string array', () => {
+    expect(parseOverrides({ fire: 'KeyJ' })).toBeNull()
+    expect(parseOverrides({ fire: [1, 2] })).toBeNull()
   })
 })

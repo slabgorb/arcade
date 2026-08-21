@@ -65,3 +65,14 @@ export function diffOverrides(manifest: ControlManifest, map: BindingMap): Overr
   }
   return out
 }
+
+/** Parse persisted JSON into Overrides, or null if malformed (the storage guard). */
+export function parseOverrides(raw: unknown): Overrides | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null
+  const out: Overrides = {}
+  for (const [action, codes] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Array.isArray(codes) || !codes.every((c) => typeof c === 'string')) return null
+    out[action] = codes as string[]
+  }
+  return out
+}
