@@ -15,6 +15,7 @@
 // surfaces touched.
 
 import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
@@ -321,6 +322,8 @@ function render(state: GameState): void {
 // so a paused cabinet frees the mouse — pressing ESC again resumes. The freeze skips
 // the fixed-step pump below; the card + colour are millipede's OWN per-cabinet NUMBERS.
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 const MILLIPEDE_PAUSE = {
   lines: [
     'PAUSED',
@@ -342,6 +345,10 @@ let accMs = 0
 let lastTs: number | null = null
 
 const frame = (ts: number): void => {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame — it
+  // must track both entering AND leaving pause, so this runs unconditionally,
+  // ahead of the freeze branch below (which skips the sim pump, not this).
+  volume.setVisible(pause.isPaused())
   const elapsed = lastTs === null ? 0 : ts - lastTs
   lastTs = ts
 

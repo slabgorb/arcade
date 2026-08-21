@@ -35,6 +35,8 @@
 //
 // RED until src/audio.ts exists and exports createAudioEngine.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { setMasterVolume } from '../volume'
+import { makeFakeStorage } from './helpers/storage-stub'
 
 // ── Fake WebAudio surface ─────────────────────────────────────────────────────
 // A stub AudioContext / GainNode / BufferSource + a stub fetch/decode pipeline,
@@ -134,6 +136,11 @@ class FakeCtx {
 }
 
 let saved: { AC: unknown; WK: unknown; FETCH: unknown }
+// sa1-4: this suite's vitest project runs with `environment: 'node'` (no real
+// `localStorage`), so getMasterVolume()/setMasterVolume() would otherwise always
+// read/write nothing and every case would silently see the 1.0 default — install
+// the same fake Storage volume.test.ts uses so a set value actually round-trips.
+let savedLS: PropertyDescriptor | undefined
 
 function install(opts: InstallOpts = {}): FakeHandles {
   const created: FakeHandles['created'] = {
@@ -197,12 +204,22 @@ async function mkEngine(manifest: unknown, opts: InstallOpts = {}) {
 beforeEach(() => {
   const g = globalThis as Record<string, unknown>
   saved = { AC: g.AudioContext, WK: g.webkitAudioContext, FETCH: g.fetch }
+  savedLS = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: makeFakeStorage(),
+    configurable: true,
+  })
 })
 afterEach(() => {
   const g = globalThis as Record<string, unknown>
   g.AudioContext = saved.AC
   g.webkitAudioContext = saved.WK
   g.fetch = saved.FETCH
+  if (savedLS) Object.defineProperty(globalThis, 'localStorage', savedLS)
+  else delete (globalThis as { localStorage?: unknown }).localStorage
+  // sa1-4: belt-and-suspenders reset so a case that throws before reaching its
+  // own setMasterVolume(1) can never leak volume state into a later case.
+  setMasterVolume(1)
 })
 
 // ── AC-2: lazy context, no-op-before-resume, inert without WebAudio ─────────────
@@ -300,6 +317,33 @@ describe('SH2-16 audio — master GainNode (AC-2)', () => {
     expect(created.sources[0].connectedTo, 'source connects to the master gain').toBe(
       created.gains[0],
     )
+  })
+
+  // ── sa1-4: user master volume scales the headroom ─────────────────────────
+  it('master gain is volume × headroom after resume', async () => {
+    setMasterVolume(0.5)
+    const { engine, created } = await mkEngine({ ...TWO, masterGain: 0.4 })
+    engine.resume()
+    // 0.5 user × 0.4 headroom
+    expect(created.gains[0].gain.value).toBeCloseTo(0.2, 9)
+    setMasterVolume(1)
+  })
+
+  it('a live volume change re-applies volume × headroom to the master node', async () => {
+    const { engine, created } = await mkEngine({ ...TWO, masterGain: 0.4 })
+    engine.resume()
+    expect(created.gains[0].gain.value).toBeCloseTo(0.4, 9) // default volume 1.0
+    setMasterVolume(0.25)
+    expect(created.gains[0].gain.value).toBeCloseTo(0.1, 9) // 0.25 × 0.4
+    setMasterVolume(1)
+  })
+
+  it('headroom 0 stays 0 for any volume (muted cabinet honoured)', async () => {
+    setMasterVolume(0.8)
+    const { engine, created } = await mkEngine({ ...TWO, masterGain: 0 })
+    engine.resume()
+    expect(created.gains[0].gain.value).toBe(0)
+    setMasterVolume(1)
   })
 })
 

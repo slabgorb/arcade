@@ -26,6 +26,12 @@
 // Buffers are keyed by FILENAME (not logical name): a manifest mapping several names
 // to one `.wav` fetches/decodes that file ONCE and both names resolve to it
 // (design §4.1 — the asteroids N:1 case, absorbed as a superset rather than a mode).
+//
+// sa1-4: the master GainNode's value is getMasterVolume() × headroom, where headroom
+// is the per-cabinet `manifest.masterGain ?? DEFAULT_MASTER_GAIN` clip number this
+// file already had. The user volume multiplies INTO that headroom, live, via
+// subscribeVolume — see createAudioEngine below.
+import { getMasterVolume, subscribeVolume } from './volume.js'
 
 // ── Event→cue dispatch convention (SH4-5) ────────────────────────────────────
 // The seven cabinets that turn core `GameEvent`s into calls on this engine share a
@@ -149,6 +155,17 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
   let voiceFrames = 0
   let voiceChannel: string | null = null
 
+  // The cabinet's clip headroom (manifest.masterGain, default DEFAULT_MASTER_GAIN).
+  // The user's master volume (sa1-4) multiplies INTO this, never replaces it.
+  const headroomFor = (): number => manifest.masterGain ?? DEFAULT_MASTER_GAIN
+
+  // Live volume updates (sa1-4). Guarded on a live `master` — a change before
+  // resume(), or after a closed context, is a silent no-op, consistent with the
+  // engine's degrade contract.
+  subscribeVolume((v) => {
+    if (master) master.gain.value = v * headroomFor()
+  })
+
   // Release the arbitrated voice: nothing is sounding, so the next sound of any
   // priority is accepted with no comparison at all.
   function releaseVoice(): void {
@@ -208,7 +225,7 @@ export function createAudioEngine<N extends string>(manifest: AudioManifest<N>):
       try {
         ctx = new Ctor()
         master = ctx.createGain()
-        master.gain.value = manifest.masterGain ?? DEFAULT_MASTER_GAIN
+        master.gain.value = getMasterVolume() * headroomFor()
         master.connect(ctx.destination)
       } catch {
         // A blocked-autoplay context (or any ctor failure) leaves the game silent.

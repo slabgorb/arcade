@@ -56,6 +56,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 // are handed a SynthTarget by the engine, and saying so is what makes them typecheck
 // against the real signature instead of a hand-drawn approximation of it.
 import type { SynthTarget } from '../synth'
+import { setMasterVolume } from '../volume'
+import { makeFakeStorage } from './helpers/storage-stub'
 
 // ── Fake WebAudio surface ────────────────────────────────────────────────────
 // The rb-grade fake (rb2-11, review round 1): close() really CLOSES, and a closed
@@ -392,8 +394,29 @@ async function loadSynth() {
   return import('../synth')
 }
 
+// sa1-4: `beforeEach` calls `vi.resetModules()` (needed so each test's dynamic
+// `import('../synth')` gets a fresh engine instance), which ALSO gives synth.ts's
+// own `import './volume.js'` a fresh module instance — decoupled from this test
+// file's static top-level `import { setMasterVolume } from '../volume'`, whose
+// binding was resolved once, before any resetModules ever ran. That decoupling is
+// invisible for the BUILD-time cases (getMasterVolume() bridges across module
+// instances via the shared localStorage), but a LIVE update relies on an in-memory
+// listeners Set that does NOT persist across instances — so a live-update test must
+// dynamically import volume.ts AFTER loadSynth(), landing on the SAME cached module
+// instance synth.ts subscribed against.
+async function loadVolumeForLiveUpdate() {
+  return import('../volume')
+}
+
 /** Let queued microtasks (a rejected resume() promise) settle. */
 const settle = () => new Promise((r) => setTimeout(r, 0))
+
+// sa1-4: this suite's vitest project runs with `environment: 'node'` (no real
+// `localStorage`), so getMasterVolume()/setMasterVolume() would otherwise always
+// read/write nothing and every case would silently see the 1.0 default — install
+// the same fake Storage audio.test.ts/volume.test.ts use so a set value actually
+// round-trips.
+let savedLS: PropertyDescriptor | undefined
 
 beforeEach(() => {
   vi.resetModules()
@@ -402,10 +425,20 @@ beforeEach(() => {
   FakeAudioContext.rejectClose = false
   vi.stubGlobal('AudioContext', FakeAudioContext)
   vi.stubGlobal('webkitAudioContext', FakeAudioContext)
+  savedLS = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: makeFakeStorage(),
+    configurable: true,
+  })
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  if (savedLS) Object.defineProperty(globalThis, 'localStorage', savedLS)
+  else delete (globalThis as { localStorage?: unknown }).localStorage
+  // Belt-and-suspenders reset so a case that throws before reaching its own
+  // setMasterVolume(1) can never leak volume state into a later case.
+  setMasterVolume(1)
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -485,6 +518,56 @@ describe('the master gain', () => {
     const master = only().gains[0]
     expect(master.gain.values, 'masterGain 0 must reach the node, not become 0.8').toContain(0)
     expect(master.gain.values).not.toContain(0.8)
+  })
+
+  // ── sa1-4: the user master volume multiplies into the cabinet's headroom ────
+  it('master gain is volume × headroom on resume', async () => {
+    setMasterVolume(0.5)
+    const { createSynthEngine } = await loadSynth()
+    createSynthEngine({ masterGain: 0.8 }).resume()
+    // 0.5 × 0.8 = 0.4 reaches the node
+    expect(only().gains[0].gain.values).toContain(0.4)
+    setMasterVolume(1)
+  })
+
+  it('a live volume change re-applies volume × headroom', async () => {
+    const { createSynthEngine } = await loadSynth()
+    // Same cached module instance synth.ts's subscribeVolume registered against —
+    // see loadVolumeForLiveUpdate's comment above.
+    const { setMasterVolume: setLiveVolume } = await loadVolumeForLiveUpdate()
+    const engine = createSynthEngine({ masterGain: 0.8 })
+    engine.resume()
+    expect(only().gains[0].gain.values, 'default volume 1.0 × 0.8 headroom').toContain(0.8)
+    setLiveVolume(0.25)
+    expect(only().gains[0].gain.values).toContain(0.2) // 0.25 × 0.8
+    setLiveVolume(1)
+  })
+
+  it('headroom 0 stays 0 for any volume', async () => {
+    setMasterVolume(0.8)
+    const { createSynthEngine } = await loadSynth()
+    const engine = createSynthEngine({ masterGain: 0 })
+    engine.resume()
+    expect(only().gains[0].gain.values).toContain(0)
+    expect(only().gains[0].gain.values).not.toContain(0.8)
+    setMasterVolume(1)
+  })
+
+  it('a volume change before resume() is a silent no-op — no context to touch yet', async () => {
+    const { createSynthEngine } = await loadSynth()
+    createSynthEngine({ masterGain: 0.8 })
+    expect(() => setMasterVolume(0.5)).not.toThrow()
+    expect(contexts()).toHaveLength(0)
+    setMasterVolume(1)
+  })
+
+  it('a volume change after the context closes is a silent no-op', async () => {
+    const { createSynthEngine } = await loadSynth()
+    const engine = createSynthEngine({ masterGain: 0.8 })
+    engine.resume()
+    await only().close()
+    expect(() => setMasterVolume(0.3)).not.toThrow()
+    setMasterVolume(1)
   })
 })
 

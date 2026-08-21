@@ -240,25 +240,47 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
   let logical: { el: Record<string, unknown>; draws: DrawRecord[] } | null = null
   const g = globalThis as unknown as Record<string, unknown>
 
+  // sa1-4: a generic element for the NON-canvas tags document.createElement is
+  // now asked for too — @shared/volume-ui's <div>/<label>/<input> chrome. Only
+  // 'canvas' calls hit the logical-backbuffer/scratch-canvas capture logic below;
+  // everything else (and document.body, for the control's mount point) gets this.
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '',
+      hidden: false,
+      value: '',
+      children: [] as unknown[],
+      appendChild: (child: unknown): unknown => {
+        ;(el.children as unknown[]).push(child)
+        return child
+      },
+      setAttribute: () => {},
+    }
+    Object.assign(el, listen(el))
+    return el
+  }
+
   const documentStub: Record<string, unknown> = {
     // The element that currently holds the pointer lock (ml10-5). `null` = unlocked;
     // setLockAcquired(true) points it at the display canvas. createPointerLock's
     // pointerlockchange handler reads it to tell an ACQUIRE from an EXIT.
     pointerLockElement: null as unknown,
-    // mountCanvas(document) → querySelector('#game'); createElement makes the
-    // logical backbuffer canvas main.ts blits from. The FIRST createElement (at
+    // mountCanvas(document) → querySelector('#game'); createElement('canvas') makes
+    // the logical backbuffer canvas main.ts blits from. The FIRST such call (at
     // main.ts module init) is that backbuffer; LATER ones are render.ts blit()'s
     // 8x8 scratch canvas (the transparent-pen compositing stage) — those must
     // NOT overwrite the captured `logical` reference, or draws('logical') would
     // read the scratch canvas instead of the frame.
     querySelector: (): unknown => canvas,
-    createElement: (): unknown => {
+    createElement: (tag?: string): unknown => {
+      if (tag !== 'canvas') return makeGenericElement()
       if (logical === null) {
         logical = makeCanvas()
         return logical.el
       }
       return makeCanvas().el // a scratch canvas — created, but not captured
     },
+    body: makeGenericElement(),
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

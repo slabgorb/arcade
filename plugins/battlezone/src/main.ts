@@ -37,6 +37,7 @@ import { MESSAGES } from './core/text'
 import { createKeyboardTreads } from './shell/input'
 import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from './shell/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio'
@@ -140,6 +141,8 @@ let wasAttract = true
 // shell/pause re-exports verbatim from @shared/pause). The 4-arg stepUnlessPaused
 // gate and the local drawPauseOverlay stay battlezone's — only the listener moved.
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 
 // Initials entry (SH2-13): typed letters and Backspace are edge events, not
 // held state, so they bypass the per-frame tread sample and feed the core's
@@ -185,6 +188,8 @@ function stepFrame(dt: number): void {
 }
 
 function renderFrame(): void {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame.
+  volume.setVisible(pause.isPaused())
   const w = canvas.width
   const h = canvas.height
   const aspect = w / h

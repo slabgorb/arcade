@@ -26,6 +26,7 @@
 // their frame — only play and attract advance a sim.
 
 import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { createLoop } from '@shared/loop'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
@@ -103,6 +104,8 @@ window.addEventListener('keydown', (event) => {
 // freeze is the early-return in the step callback below; the card + colour are
 // Defender's OWN per-cabinet NUMBERS (the epic's share-the-VERB-not-the-NUMBERS rule).
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 const DEFENDER_PAUSE = {
   lines: [
     'PAUSED',
@@ -176,6 +179,8 @@ const loop = createLoop(
     }
   },
   () => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame.
+    volume.setVisible(pause.isPaused())
     canvas.width = canvas.clientWidth
     canvas.height = canvas.clientHeight
     // df7-4: feed the hall-of-fame payload (the loaded/committed board + the in-progress

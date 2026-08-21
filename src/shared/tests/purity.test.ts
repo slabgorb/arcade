@@ -54,6 +54,8 @@ const BROWSER_SUBPATHS = [
   'synth',
   'host-helpers',
   'held-keys',
+  'volume',
+  'volume-ui',
 ] as const
 
 const srcPath = (name: string) => join(SHARED_ROOT, `${name}.ts`)
@@ -171,7 +173,18 @@ describe('purity guard — classification is honest, not just a Set literal', ()
     // reads KeyboardEvent and attaches keydown/keyup/blur listeners — the DOM
     // wiring IS the module, so it can never belong in PURE_SUBPATHS.
     expect([...BROWSER_SUBPATHS].sort()).toEqual(
-      ['audio', 'esc-overlay', 'glow', 'held-keys', 'highscore', 'host-helpers', 'synth', 'view'].sort(),
+      [
+        'audio',
+        'esc-overlay',
+        'glow',
+        'held-keys',
+        'highscore',
+        'host-helpers',
+        'synth',
+        'view',
+        'volume',
+        'volume-ui',
+      ].sort(),
     )
   })
 

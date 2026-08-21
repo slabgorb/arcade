@@ -45,7 +45,7 @@
 //    green 8 times running is not proven green, and every other centipede suite
 //    pins a literal seed. `SEED` below is that pin; it reaches main.ts through
 //    `window.location.search`, in the shape of the `?wave=` debug param the
-//    shell already parses (main.ts:41-50). `?seed=` was this rework's one
+//    shell already parses (main.ts:42-51). `?seed=` was this rework's one
 //    production change — it did not exist when these guards were written, and
 //    `seedWasHonoured` is the assertion that reddened until it landed. Keep
 //    that assertion: without it, a `?seed=` that stops being honoured leaves
@@ -192,13 +192,35 @@ export function installShellDom(): ShellHarness {
     return el
   }
 
+  // sa1-4: a generic DOM element for document.createElement calls that are NOT
+  // the canvas — mountVolumeControl (@shared/volume-ui) builds a <div>/<label>/
+  // <input> chrome tree, none of which need canvas members, but all of which
+  // need appendChild/setAttribute/className/hidden/value to boot without throwing.
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '',
+      hidden: false,
+      value: '',
+      children: [] as unknown[],
+      appendChild: (child: unknown): unknown => {
+        ;(el.children as unknown[]).push(child)
+        return child
+      },
+      setAttribute: (): void => {},
+    }
+    Object.assign(el, listen(el))
+    return el
+  }
+
   const canvas = makeCanvas()
+  const body = makeGenericElement()
   const g = globalThis as unknown as Record<string, unknown>
 
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
-    createElement: (): unknown => makeCanvas(),
+    createElement: (tag?: string): unknown => (tag === 'canvas' ? makeCanvas() : makeGenericElement()),
     pointerLockElement: null,
+    body,
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

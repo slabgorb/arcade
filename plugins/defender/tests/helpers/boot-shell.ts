@@ -109,7 +109,32 @@ export function installShellDom(): BootHarness {
 
   const g = globalThis as unknown as Record<string, unknown>
 
-  g.document = { querySelector: () => canvas }
+  // sa1-4: a generic element for document.createElement / document.body — the
+  // shared @shared/volume-ui control main.ts now mounts builds a <div>/<label>/
+  // <input> chrome tree via createElement + body.appendChild, neither of which
+  // this stub answered before (it only ever handed out the ONE canvas).
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '',
+      hidden: false,
+      value: '',
+      children: [] as unknown[],
+      appendChild: (child: unknown): unknown => {
+        ;(el.children as unknown[]).push(child)
+        return child
+      },
+      setAttribute: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }
+    return el
+  }
+
+  g.document = {
+    querySelector: () => canvas,
+    createElement: () => makeGenericElement(),
+    body: makeGenericElement(),
+  }
 
   g.window = {
     addEventListener: addWindowListener,

@@ -63,6 +63,7 @@ import { multiply, type Mat4, type Vec3 } from '@shared/math3d'
 import { createRng, nextFloat } from '@shared/rng'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { installHeldKeys } from '@shared/held-keys'
 import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
@@ -387,6 +388,8 @@ installAudioUnlock(() => audio.resume(), window)
 // cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
 // machine-gun the toggle. The freeze itself is the frame loop's pause guard below.
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 
 // Per-cabinet NUMBERS for the pause card: red-baron's yoke keybinds (letter
 // alternates so no arrow glyphs the ROM font lacks), the cabinet green, and the
@@ -634,6 +637,8 @@ function preMotionFrame(events: GameEvent[]): boolean {
 }
 
 function frame(nowMs: number): void {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame.
+  volume.setVisible(pause.isPaused())
   if (lastMs === null) lastMs = nowMs
   // Cap the catch-up so a stalled tab (huge dt) can't spiral the fixed-step loop.
   accumulator += Math.min((nowMs - lastMs) / 1000, 0.25)
