@@ -132,36 +132,14 @@ const LASER_COLOUR = 1
 /** Pixels of the laser's leading streak drawn behind its head. */
 const LASER_LENGTH = 4
 
-// ─── df4-6: the df4-2 materialize/explosion effects, blitted over the world ─────────
-// An effect renders the object's INERT picture (rastered normally — the ADR-0005 LOCALIZED
-// path) plus a small expanding "spark" RING (SAMEXAP7's grow/shrink, approximated) so the
-// materialize/explosion reads even where it sits over its own enemy. Colour is taken from
-// the sprite itself (never invented); the ring is bounded, so no death touches more than a
-// tiny region — the whole point of the ADR-0005 accessibility exception.
+// ─── df4-6 → df8-2: the df4-2 materialize/explosion effects, blitted over the world ─────
+// A LOCALIZED effect renders the object's picture (rastered normally) and NOTHING else — the
+// ROM's SAMEXAP7 animates the object's OWN picture and draws no decoration around it. df4-6
+// had added an invented "spark ring" (a diamond outline) around each appear/explode; df8-2
+// removed it for ROM fidelity: the sprite blit IS the whole effect.
 
-/** The ring's minimum radius — larger than the biggest enemy sprite's half-extent, so the
- *  spark always shows even atop the object it animates; it then grows a few pixels. */
-const EFFECT_RING_MIN = 6
-/** How far the ring grows over the animation — kept small so the burst stays LOCALIZED. */
-const EFFECT_RING_GROW = 4
-/** RSIZE bounds (SAMEXAP7): APPEAR runs $AF00→$8000, EXPLODE runs $0100→~$3100. Used only
- *  to derive the ring's animation phase (0..1), not as new gameplay values. */
-const APPEAR_HI = 0xaf00
-const APPEAR_LO = 0x8000
-const EXPLODE_LO = 0x0100
-const EXPLODE_HI = 0x3100
-
-/** The effect's animation phase (0 = just started, 1 = finishing), from its RSIZE counter. */
-function effectPhase(e: PlacedEffect): number {
-  const p =
-    e.kind === 'explode'
-      ? (e.size - EXPLODE_LO) / (EXPLODE_HI - EXPLODE_LO)
-      : (APPEAR_HI - e.size) / (APPEAR_HI - APPEAR_LO)
-  return Math.max(0, Math.min(1, p))
-}
-
-/** A colour the sprite actually uses (its first non-transparent nibble) — so the spark is
- *  reached BY INDEX from the transcribed picture, never an invented RGB. */
+/** A colour the sprite actually uses (its first non-transparent nibble) — so the scanner
+ *  blip is reached BY INDEX from the transcribed picture, never an invented RGB. */
 function spriteColour(pic: ObjectImage): number {
   for (const byte of pic.bytes) {
     const hi = byte >> 4
@@ -172,70 +150,30 @@ function spriteColour(pic: ObjectImage): number {
   return LASER_COLOUR // a pathological all-transparent sprite still gets a visible spark
 }
 
-/** Draw a diamond-ring outline (|dx|+|dy| == r) centred at (cx, cy), clipped to the frame. */
-function drawRing(fb: Framebuffer, cx: number, cy: number, r: number, colour: number): void {
-  for (let dx = -r; dx <= r; dx++) {
-    const dy = r - Math.abs(dx)
-    for (const y of dy === 0 ? [cy] : [cy - dy, cy + dy]) {
-      const x = cx + dx
-      if (x < 0 || y < 0 || x >= fb.width || y >= fb.height) continue
-      fb.data[y * fb.width + x] = colour
-    }
-  }
-}
-
-// ─── pt1-25: the ADR-0005 SCREEN effects (player death / smart bomb / hyperspace) ──────
+// ─── pt1-25 → df8-2: the SCREEN effects (player death / smart bomb / hyperspace) ───────
 // The ROM presents these three as full-frame white/inverse STROBES (the smart bomb's SBMBX0
 // COM PCRAM whole-page invert DEFA7.SRC:3199, the player-death and hyperspace screen flashes).
-// ADR-0005 (owner photosensitivity) forbids that: classify() marks them full-frame-strobe and
-// the composer substitutes a BOUNDED, low-contrast, single-shot DECAYING wash. It lifts only
-// a SPARSE lattice (every third cell) of the empty BACKGROUND to a dim index — sprites, terrain,
-// stars and HUD are untouched — so it repaints ≤ 1/9 of the frame. That keeps it clear of the
-// fleet's medical guards (no single colour ≥ 60% of the frame, df3-6-live-sim; a safe clear
-// repaints < 90%, df5-7-visual-playtest) and of assertNoFullFrameStrobe, and it is never a
-// >3 Hz large-area strobe: one pulse per trigger, fading out over the effect's life.
-// The fade/freeze/particle policy distinction is preserved in classify() for future divergence;
-// the safe MVP renders EVERY non-raster presentation (fade AND freeze AND particle) as this one
-// wash — a literal "freeze" (holding a prior frame) is not expressible in this stateless per-tick
-// composer, and no separate particle-burst renderer exists yet ('terrain-blow' is not spawned into
-// the bank today, so 'particle' is currently latent). See the pt1-25 Design Deviation.
+// pt1-25 substituted a dim stride-3 lattice "wash" under ADR-0005's owner-photosensitivity
+// rationale — but the owner is NOT photosensitive (corrected 2026-08-21), so that rationale
+// was void and the wash was simply a non-ROM red/green dot grid over the playfield. df8-2
+// removed it: a SCREEN effect now paints NOTHING full-field — the playfield stays clean
+// (background + stars + sprites + terrain + HUD) during a death/bomb/warp. The ROM's real
+// white-strobe is deliberately NOT ported either; the sim-side wiring (pt1-25's tagged
+// screen effects and classify()'s presentation taxonomy) is unchanged and still drives the
+// audio cues — only the paint went.
 
-/** The wash's peak index — a DIM lift of the empty field (BACKGROUND=0), kept low so the
- *  substitute is low-contrast, the opposite of the ROM's full-white strobe. */
-const SCREEN_WASH_PEAK = 3
-/** Lattice stride: only every SCREEN_WASH_STEP-th cell on each axis is touched, so the wash
- *  covers at most 1/STEP² of the frame — bounded in area, well under the fleet's flash guards. */
-const SCREEN_WASH_STEP = 3
-
-/** Paint the ADR-0005 safe wash: lift a sparse lattice of the empty background to a dim index
- *  that DECAYS as the effect ages (brightest at spawn, gone by the end), touching no drawn pixel. */
-function drawScreenWash(fb: Framebuffer, phase: number): void {
-  const intensity = Math.round((1 - phase) * SCREEN_WASH_PEAK)
-  if (intensity <= BACKGROUND) return
-  for (let y = 0; y < fb.height; y += SCREEN_WASH_STEP) {
-    for (let x = 0; x < fb.width; x += SCREEN_WASH_STEP) {
-      const i = y * fb.width + x
-      if (fb.data[i] === BACKGROUND) fb.data[i] = intensity
-    }
-  }
-}
-
-/** Blit one in-flight effect. A SCREEN effect (pt1-25) renders as the ADR-0005 safe wash; a
- *  LOCALIZED enemy effect renders its picture (rastered normally) plus the expanding spark.
+/** Blit one in-flight effect. A SCREEN effect (non-raster presentation) draws nothing —
+ *  no full-field substitute (df8-2). A LOCALIZED enemy effect renders its picture and only
+ *  its picture (SAMEXAP7 animates the object's own image; there is no ring — df8-2).
  *  `camera` (BGL) camera-offsets the world-x, so the localized effect scrolls with its enemy. */
 function drawEffect(fb: Framebuffer, e: PlacedEffect, camera: number): void {
   if (classify(e.event).presentation !== 'raster') {
-    drawScreenWash(fb, effectPhase(e)) // pt1-25 — player death / smart bomb / hyperspace
-    return
+    return // pt1-25 events (player death / smart bomb / hyperspace) — no paint (df8-2)
   }
   if (!e.picture) return // a localized effect always carries its sprite; guard the type anyway
   const col = projectWorldX(e.x, camera) // world-x → visible-window pixel (pt1-18), null if off-window
   if (col === null) return // an effect on an off-camera enemy is culled with it (scanner has no effects)
   blitObject(fb, e.picture, col, e.y)
-  const cx = col + e.picture.width // sprite centre-x (the cell is width×2 pixels wide)
-  const cy = e.y + (e.picture.height >> 1)
-  const radius = EFFECT_RING_MIN + Math.round(effectPhase(e) * EFFECT_RING_GROW)
-  drawRing(fb, cx, cy, radius, spriteColour(e.picture))
 }
 
 /** Draw a short horizontal laser streak trailing the leading edge `headX` at row `y`. */
