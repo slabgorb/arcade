@@ -150,4 +150,29 @@ describe('rebindReduce — controls', () => {
     expect(r.screen).toEqual({ name: 'menu', cursor: 1 })
     expect(r.command).toBe('save')
   })
+  it('controls up clamps at the top (cursor 0)', () => {
+    const top: Screen = { name: 'controls', cursor: 0, capturing: null }
+    expect(rebindReduce(top, map, M, { t: 'up' }).screen).toEqual(top)
+  })
+  it('controls down clamps at the last row (BACK)', () => {
+    const last: Screen = { name: 'controls', cursor: controlsRowCount(M) - 1, capturing: null }
+    expect(rebindReduce(last, map, M, { t: 'down' }).screen).toEqual(last)
+  })
+  it('up/down/select are ignored while capturing (no move, no command, map unchanged)', () => {
+    const capturing: Screen = { name: 'controls', cursor: 0, capturing: 'thrust' }
+    for (const t of ['up', 'down', 'select'] as const) {
+      const r = rebindReduce(capturing, map, M, { t })
+      expect(r.screen).toEqual(capturing)
+      expect(r.command).toBeUndefined()
+      expect(r.map).toEqual(map)
+    }
+  })
+  it('RESET leaves the screen unchanged', () => {
+    const onReset: Screen = { name: 'controls', cursor: M.length, capturing: null }
+    expect(rebindReduce(onReset, map, M, { t: 'select' }).screen).toEqual(onReset)
+  })
+  it('select on the second action (cursor 1) captures that action', () => {
+    const s: Screen = { name: 'controls', cursor: 1, capturing: null }
+    expect(rebindReduce(s, map, M, { t: 'select' }).screen).toEqual({ name: 'controls', cursor: 1, capturing: 'fire' })
+  })
 })
