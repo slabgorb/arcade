@@ -16,10 +16,21 @@ stories:
     workflow: tdd
   - id: df8-2
     title: 'defender: full-screen flash/artifact during play'
-    description: 'Playtest 2026-08-20: a flash/artifact fills the whole playfield during play (dense red-dot field covering the screen). Reference screenshot: docs/playtest/df8-defender-flash-2026-08-20.png. Investigate the raster compose path (core/scene.ts composeFrame) — determine whether this is a background-fill/palette bug, a mis-timed effect wash, or a render layering issue. NOTE accessibility: any fix must respect the no->3Hz/large-area luminance strobe rule (photosensitive-epilepsy safety outranks ROM fidelity).'
+    description: 'Playtest 2026-08-20: a flash/artifact fills the whole playfield during play (dense red-dot field covering the screen). Reference screenshot: docs/playtest/df8-defender-flash-2026-08-20.png. RESOLVED (2026-08-21): the red/green dot grid was the pt1-25 ADR-0005 screen wash (drawScreenWash) painting palette indices 2=RED/3=GREEN on a stride-3 lattice, mis-read as a dim ramp. Removed the wash (screen effects paint nothing full-field). The old accessibility caveat is superseded: the owner has epilepsy but is NOT photosensitive (ADR-0005 amended 2026-08-21), so strobe/flash is not a personal trigger and ROM fidelity is not gated on it.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
     repos: arcade
     workflow: tdd
+    completed: '2026-08-21'
+    type: bug
+  - id: df8-3
+    title: 'defender: remove the invented spawn/death spark ring (green diamond around enemies)'
+    description: 'Playtest 2026-08-20: every spawning/dying enemy was enclosed in a green diamond outline (drawRing in core/scene.ts), radius 6-10px around each localized appear/explode effect — pure non-ROM invention (an ADR-0005-era accessibility spark) the owner did not want. Real Defender has no such ring. Removed drawRing; localized effects now raster their sprite only, like the ROM. Delivered together with df8-2 (same drawEffect function) in the same branch/PR.'
+    points: 1
+    priority: p2
+    status: done
+    repos: arcade
+    workflow: tdd
+    completed: '2026-08-21'
     type: bug
