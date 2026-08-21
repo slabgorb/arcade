@@ -25,6 +25,7 @@ import {
 } from './core/game'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
 import { installHeldKeys } from '@shared/held-keys'
 import { resizeToDisplay } from '@shared/view'
@@ -184,6 +185,9 @@ window.addEventListener('keydown', (e) => {
 // guards e.repeat so a held key can't machine-gun it). The freeze skips the sim pump
 // below; the card + colour are Pac-Man's OWN per-cabinet NUMBERS (its banner yellow).
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused so a DOM
+// slider never fights sa1-3's pointer lock (released while paused).
+const volume = mountVolumeControl({ root: document.body })
 const PAC_MAN_PAUSE = {
   lines: [
     'PAUSED',
@@ -213,6 +217,10 @@ const frame = (now: number): void => {
     started = true
     last = now
   } else {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame — it
+    // must track both entering AND leaving pause, so this runs unconditionally,
+    // ahead of the freeze branch below (which skips the sim pump, not this).
+    volume.setVisible(pause.isPaused())
     const elapsed = (now - last) / 1000
     last = now
     // sa1-2: freeze the sim while paused — skip the pump, but keep `last` current
