@@ -184,8 +184,14 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // shots are in flight) WHICH enemies each shot strikes shifts, and the hit-cue order with it
     // (287 cues before and after — content shifted, not count). Intended: that ship-tracked collision
     // row WAS the pt1-27 bug. Replay + seed-divergence above still pass, so the stream is healthy.
+    // RE-BASELINED for pt1-28: THINIT seeds the thrust-flame table from 33 rand draws at
+    // createSim (DEFA7.SRC:2203-2210), shifting every subsequent draw — so which enemies
+    // roam/shoot/collide where over this scripted run shifts, and the integrated cue order
+    // with it (287 -> 289 cues). Intended: the flame's randomness MUST come from the same
+    // injected rand (the df3 seam) the purity sweep enforces. Replay + seed-divergence above
+    // still pass, so the stream is healthy, not leaking entropy.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      'e80467cdef87c1e5',
+      'c8b2fd6ddca739c3',
     )
   })
 })

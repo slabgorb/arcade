@@ -131,7 +131,7 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
     const shipMask = (camera: number): number[] =>
       diffCols(
         composeFrame(noEntities(camera), W, H),
-        composeFrame({ ...noEntities(camera), ship: { x: -80, y: base.ship.y, facing: 'right' } }, W, H),
+        composeFrame({ ...noEntities(camera), ship: { ...base.ship, x: -80, y: base.ship.y, facing: 'right' } }, W, H),
       )
     expect(
       shipMask(0x1000),

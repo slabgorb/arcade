@@ -129,6 +129,13 @@ const STARTING_SMART_BOMBS = 3
  *  sequence (PLADIE → new ship), whose exact timing/animation is a later df story. */
 const RESPAWN_GRACE = 60
 
+// ─── pt1-28: the THOUT thrust-exhaust flame tables (DEFA7.SRC:2203-2210, 3282-3288) ─────
+/** THX slides over byte positions 0..THTAB_WINDOW inclusive — THPROC keeps X while
+ *  `CMPX #THTAB+32 / BLS` holds and resets to THTAB past it, so the window has 33 stops. */
+const THTAB_WINDOW = 32
+/** THPROC advances THX one byte per `NAP 4,THPROC` slice — every 4 ticks. */
+const THPROC_NAP = 4
+
 /** The pure per-tick input snapshot the shell feeds the ship (shell owns the PIA read).
  *  df6-1 adds the two emergency-power buttons (edge-debounced in-core, like `reverse`). */
 export interface Input {
@@ -149,6 +156,9 @@ export interface ShipView {
   readonly x: number
   readonly y: number
   readonly facing: Facing
+  /** pt1-28: this tick's thrust button LEVEL (PIA21 bit $02) — THOUT gates the exhaust
+   *  plume's extension on it at draw (scene.ts drawThrustExhaust). */
+  readonly thrust: boolean
 }
 
 /** An in-flight aimed enemy shot: WORLD x, display row y, per-tick velocity, remaining life. */
@@ -257,6 +267,15 @@ export interface SimState {
   readonly _rt: SimRuntime
   /** pt1-22: the pure state of the three standing colour cyclers (COLR/CBOMB/TIECOL). */
   readonly _colorCycle: ColorCycleState
+  /** pt1-28: THTAB — the RAND-seeded flame byte table (THINIT), each byte stored at i AND
+   *  i+32 so THOUT's 13-byte window (offsets 0..12 off THX) never wrap-scans mid-read.
+   *  Lives on state (seeded from createSim's injected rand) so composeFrame stays pure. */
+  readonly _thtab: readonly number[]
+  /** pt1-28: THX — the sliding byte index into _thtab (THPROC: +1 every 4 ticks, wrapping
+   *  past THTAB+32). */
+  readonly _thx: number
+  /** pt1-28: ticks until THX next advances — THPROC's `NAP 4` countdown. */
+  readonly _thnap: number
 }
 
 const INITIAL_PLAX16 = 0x2000
@@ -378,10 +397,24 @@ export function createSim(rand: () => number): SimState {
   }
 
   const facing: Facing = 'right'
+
+  // pt1-28 THINIT (DEFA7.SRC:2203-2210): fill THTAB from RAND — `JSR RAND / STA 32,X /
+  // STA ,X+` over positions 0..32, each byte landing at i AND i+32 (the ,X+ store at i=32
+  // last, exactly the ROM's order), so a THX anywhere in its 0..32 window reads its 13
+  // bytes without wrap-scanning. Seeded AFTER initStars so the starfield keeps its
+  // pre-pt1-28 layout under a given seed; every rand draw AFTER createSim shifts by 33.
+  const stars = initStars(rand)
+  const thtab = new Array<number>(THTAB_WINDOW * 2 + 1).fill(0)
+  for (let i = 0; i <= THTAB_WINDOW; i++) {
+    const b = rand()
+    thtab[i + THTAB_WINDOW] = b
+    thtab[i] = b
+  }
+
   return withBanks({
-    ship: { x: projectOnscreenX(INITIAL_PLAX16), y: INITIAL_Y, facing },
+    ship: { x: projectOnscreenX(INITIAL_PLAX16), y: INITIAL_Y, facing, thrust: false },
     camera: 0,
-    stars: initStars(rand),
+    stars,
     lasers: laserBank.lasers,
     landers: enemyBank.landers,
     humanoids: enemyBank.humanoids,
@@ -404,6 +437,9 @@ export function createSim(rand: () => number): SimState {
     // cyclers start ready to fire on the first tick.
     pcram: [...DEFAULT_PCRAM],
     _colorCycle: initColorCycle(),
+    _thtab: thtab,
+    _thx: 0, // THINIT: STX THX with X = #THTAB
+    _thnap: THPROC_NAP,
     _plaxv24: 0,
     _rev: { facing, revflg: false },
     _vy: { y16: INITIAL_Y << 8, playv: 0 },
@@ -498,6 +534,16 @@ export function stepSim(state: SimState, input: Input): SimState {
   if (input.thrust && !rt.prevThrust) rt.cues.push({ type: 'thrust-start' })
   else if (!input.thrust && rt.prevThrust) rt.cues.push({ type: 'thrust-stop' })
   rt.prevThrust = input.thrust
+
+  // pt1-28 THPROC (DEFA7.SRC:3282-3288): slide the flame window one byte per NAP-4 slice
+  // (every 4 ticks), wrapping to THTAB once THX passes THTAB+32 — the flicker animation
+  // the exhaust draw (scene.ts drawThrustExhaust) reads through _thtab[_thx..+12].
+  let thnap = state._thnap - 1
+  let thx = state._thx
+  if (thnap <= 0) {
+    thnap = THPROC_NAP
+    thx = thx >= THTAB_WINDOW ? 0 : thx + 1
+  }
 
   const stars = stepStars(state.stars, camera.bgl, camera.bglx, STAR_COUNT)
 
@@ -636,11 +682,13 @@ export function stepSim(state: SimState, input: Input): SimState {
 
   return withBanks({
     ...state,
-    ship: { x: projectOnscreenX(plax16), y: shipRow, facing: shipFacing },
+    ship: { x: projectOnscreenX(plax16), y: shipRow, facing: shipFacing, thrust: input.thrust },
     camera: camera.bgl,
     stars,
     pcram: cycled.pcram,
     _colorCycle: cycled.cc,
+    _thx: thx,
+    _thnap: thnap,
     _plaxv24: plaxv24,
     _rev: { facing: shipFacing, revflg: rev.revflg },
     _vy: vy,

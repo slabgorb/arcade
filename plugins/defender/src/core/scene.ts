@@ -250,6 +250,69 @@ function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'lef
   }
 }
 
+// ─── pt1-28: THOUT / THOUT1 — the thrust-exhaust flame (DEFA7.SRC:2214-2260) ────────────
+// PRDSP2 calls THOUT right after the ship blit (POUT). Williams VRAM is COLUMN-major
+// (addr = byteCol*$100 + row, one byte = two 4-bit pixels, high nibble = LEFT pixel), so
+// each store below is one byte-column of the plume at a ship-relative (dx, dy): the FIRST
+// column (PLAXC-$100, rows 1-5) goes down UNCONDITIONALLY — the idle tail stub — and only
+// after `LDA PIA21 / BITA #$02 / BEQ THOUTX` does the 3-column extension follow. The bytes
+// are THTAB entries at fixed offsets off THX (sim.ts: THINIT seeds the table from the
+// injected rand, THPROC slides THX every 4 ticks) stored RAW — a zero nibble paints palette
+// index 0, and that black-out IS the flicker. For a LEFT-facing ship THOUT1 ("BACKWARDS
+// THRUST", DEFA7.SRC:2243-2260) lays the SAME ENVELOPE on the far side of the 8-byte ship
+// cell (+$801..+$B02): taper, rows and byte-columns mirror THOUT exactly — pt1-26's
+// px → span-1-px with rows unchanged, run past the cell edge. The per-cell byte SOURCE does
+// NOT mirror, though: THOUT1 pulls THTAB sequentially off THX (`PULU D,Y` — stub = offsets
+// 0-4, then 5,6,7 / 10,11,8 / 9; offset 12 never read), where THOUT reads scattered offsets
+// (0,1,5,9,12 / 3,6,10 / 4,7,11 / 8). This port deliberately reuses THOUT's mapping mirrored
+// for both facings: both sides read the same 4-tick window of the same RAND-filled THTAB, so
+// only WHICH random byte lands in WHICH cell differs — a visually-indistinguishable flicker
+// texture, envelope-identical to the machine's.
+
+/** THOUT's stores, transcribed: [THTAB offset off THX, dx (left pixel of the byte), dy]. */
+const THRUST_STUB_STORES: readonly (readonly [off: number, dx: number, dy: number])[] = [
+  // LDD ,X / STD ,U · LDA 5,X / LDB 9,X / STD 2,U · LDA 12,X / STA 4,U (column -$100)
+  [0, -2, 1],
+  [1, -2, 2],
+  [5, -2, 3],
+  [9, -2, 4],
+  [12, -2, 5],
+]
+const THRUST_EXT_STORES: readonly (readonly [off: number, dx: number, dy: number])[] = [
+  // LDA 3,X / LDB 6,X / STD -$100+1,U · LDA 10,X / STA -$100+3,U (column -$200)
+  [3, -4, 2],
+  [6, -4, 3],
+  [10, -4, 4],
+  // LDA 4,X / LDB 7,X / STD -$200+1,U · LDA 11,X / STA -$200+3,U (column -$300)
+  [4, -6, 2],
+  [7, -6, 3],
+  [11, -6, 4],
+  // LDA 8,X / STA -$300+2,U (column -$400)
+  [8, -8, 3],
+]
+
+/** Paint the exhaust flame relative to the ship pose: the idle stub always, the taper
+ *  extension only while thrust is held. Clips to the framebuffer; pure of state. */
+function drawThrustExhaust(fb: Framebuffer, state: SimState): void {
+  const ship = state.ship
+  const span = require_(OBJECTS, SHIP_OBJECT, 'object').width * 2 // the pt1-26 mirror pivot (16 px)
+  const mirrored = ship.facing === 'left'
+  const store = ([off, dx, dy]: readonly [number, number, number]): void => {
+    const byte = state._thtab[state._thx + off]
+    const y = ship.y + dy
+    if (y < 0 || y >= fb.height) return
+    for (let half = 0; half < 2; half++) {
+      const px = dx + half // the byte's two pixels: high nibble left, low nibble right
+      const x = ship.x + (mirrored ? span - 1 - px : px) // THOUT1's ENVELOPE = the pt1-26 mirror (byte source differs — header)
+      if (x < 0 || x >= fb.width) continue
+      fb.data[y * fb.width + x] = half === 0 ? (byte >> 4) & 0x0f : byte & 0x0f
+    }
+  }
+  for (const s of THRUST_STUB_STORES) store(s) // before the PIA21 test — always drawn
+  if (!ship.thrust) return // BITA #$02 / BEQ THOUTX  IDLE
+  for (const s of THRUST_EXT_STORES) store(s)
+}
+
 // ─── df5-7 + df7-5 + df7-8: the SCANNER radar strip + score/men/wave HUD + game-over screen ──
 // The scanner (df5-1 projectScanner) is a compressed radar band across the TOP: every live
 // ATTACKER (lander) a blip at its radar column, coloured by palette INDEX (OBJCOL). df5-7
@@ -594,6 +657,10 @@ export function composeFrame(
   // pt1-26: the ship faces the way it flies — mirror PLAPIC (a right-facing cell) when the
   // tracked facing (sim.ts stepReverse) is 'left', the same seam the laser already reads.
   blitObject(fb, require_(OBJECTS, SHIP_OBJECT, 'object'), state.ship.x, state.ship.y, state.ship.facing === 'left')
+
+  // pt1-28: the thrust exhaust, drawn right after the ship exactly as PRDSP2 calls THOUT
+  // after POUT — the idle stub always, the plume extension while thrust is held.
+  drawThrustExhaust(fb, state)
 
   // df4-3 abduction population, blitted over the world by palette INDEX (LNDP1 / ASTP1), projected
   // through the visible window (pt1-18); an off-window entity is culled here and seen only on radar.
