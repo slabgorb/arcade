@@ -518,8 +518,13 @@ describe('ml10-4 main.ts — pointer-lock is actually WIRED (boot harness, behav
     shell = await bootMillipedeShell()
   })
 
-  it('hides the cursor at boot (canvas.style.cursor === "none")', () => {
-    expect(shell.cursorStyle(), 'main.ts must set the display canvas cursor to none').toBe('none')
+  it('does NOT hide the cursor at boot — it is visible in attract, hidden only on capture (sa1-3)', () => {
+    // sa1-3 fleet-consistency fix: the OS cursor is no longer hidden unconditionally at
+    // boot. It is visible in attract (so the player sees a pointer to click) and hidden
+    // WHEN capture is requested — mc/centipede parity. The full lifecycle (attract →
+    // capture → ESC-release) is pinned in cursor-visibility-lifecycle.test.ts; this
+    // updated assertion just guards the corrected boot state (was `=== 'none'`).
+    expect(shell.cursorStyle(), 'in attract, before any capture, the cursor must be visible').not.toBe('none')
   })
 
   it('a canvas pointerdown INVOKES requestPointerLock (click-to-lock is not dead wiring)', () => {

@@ -25,11 +25,12 @@ stories:
     repos: arcade
     workflow: tdd
   - id: sa1-3
-    title: Consistent mouse capture — all games capture on focus and release on X
-    description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on X. Consistent enter/exit semantics fleet-wide.'
+    title: Consistent mouse capture — all games capture on focus and release on ESC
+    description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on ESC. Consistent enter/exit semantics fleet-wide.'
     points: 3
     priority: p2
-    status: backlog
+    status: in_progress
+    started: '2026-08-21'
     repos: arcade
     workflow: tdd
   - id: sa1-4

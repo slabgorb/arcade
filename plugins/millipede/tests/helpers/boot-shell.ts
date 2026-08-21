@@ -93,6 +93,16 @@ export interface ShellHarness {
    */
   setLockAcquired(acquired: boolean): void
   /**
+   * Arm the NEXT `canvas.requestPointerLock()` to REJECT (sa1-3), simulating the
+   * browser's re-lock cooldown (R4). createPointerLock.request() swallows the
+   * rejection to onReject and resolves WITHOUT ever setting `pointerLockElement`,
+   * so a lock-held-guarded cursor hide (mc parity) must NOT fire — the cursor must
+   * stay visible. Without this the mock always resolves, so the rejected-re-lock
+   * path (where an unguarded hide leaves the cursor stuck hidden with no lock) is
+   * unobservable. One-shot: it clears after the next request.
+   */
+  rejectNextLock(): void
+  /**
    * The trackball delta main.ts drained into the LAST frame, via the
    * `window.__trackball` tap main.ts installs alongside `window.__sim`. Behavioural
    * read of the R5 reset: after a lock EXIT the wired `onExit → mouse.reset()` clears
@@ -213,8 +223,16 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
   // can prove click-to-lock actually fires, and returns a resolved promise so the
   // shell's `void pointerLock.request()` never becomes an unhandled rejection.
   let pointerLockRequests = 0
+  let rejectNext = false
   canvas.requestPointerLock = (): Promise<void> => {
     pointerLockRequests += 1
+    if (rejectNext) {
+      rejectNext = false
+      // The re-lock cooldown (R4): the browser rejects, createPointerLock swallows it
+      // to onReject and resolves, and `pointerLockElement` stays null — so a guarded
+      // hide never fires and the cursor must remain visible (sa1-3).
+      return Promise.reject(new Error('pointer lock request rejected (simulated re-lock cooldown)'))
+    }
     return Promise.resolve()
   }
   // The logical backbuffer main.ts creates via document.createElement — captured
@@ -348,6 +366,9 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
     },
     setLockAcquired(acquired: boolean): void {
       documentStub.pointerLockElement = acquired ? canvas : null
+    },
+    rejectNextLock(): void {
+      rejectNext = true
     },
     lastTrackball(): unknown {
       return (windowStub as { __trackball?: unknown }).__trackball
