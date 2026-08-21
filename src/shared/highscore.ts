@@ -42,6 +42,8 @@
 // quota-exceeded / no DOM / a hostile document) — a game keeps playing, scores just don't
 // persist, and a summary that cannot be trusted seeds nothing rather than a wrong number.
 
+import { getStorage } from './storage'
+
 /** Board depth — the classic 10-deep arcade ladder. The single source of truth
  *  (AC-4): no game redeclares it. */
 export const MAX_HIGH_SCORES = 10
@@ -464,16 +466,6 @@ export function readTopScore(gameId: string): number | null {
 export interface HighScoreStorage<E extends HighScoreEntryBase> {
   load(): E[]
   save(table: readonly E[]): void
-}
-
-// Access localStorage defensively: in private-browsing / sandboxed contexts even
-// *reading* the global can throw, and outside a browser it is simply absent.
-function getStorage(): Storage | null {
-  try {
-    return globalThis.localStorage ?? null
-  } catch {
-    return null
-  }
 }
 
 // Bind a load/save pair to `${gameId}-high-scores`, filtering loaded rows through
