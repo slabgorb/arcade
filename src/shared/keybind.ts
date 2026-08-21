@@ -31,3 +31,18 @@ export function resolveBindings(manifest: ControlManifest, overrides: Overrides)
   }
   return map
 }
+
+/** Set `action` to the single captured `code` (replace, not append). NEVER
+ *  auto-unbinds another action — deliberate overlaps exist (Space = fire+start).
+ *  `alsoBoundTo` lists the other actions already holding `code`, for a note only. */
+export function applyRebind(
+  map: BindingMap,
+  action: string,
+  code: Binding,
+): { map: BindingMap; alsoBoundTo: string[] } {
+  const next: BindingMap = {}
+  for (const a of Object.keys(map)) next[a] = [...map[a]]
+  const alsoBoundTo = Object.keys(map).filter((a) => a !== action && map[a].includes(code))
+  next[action] = [code]
+  return { map: next, alsoBoundTo }
+}
