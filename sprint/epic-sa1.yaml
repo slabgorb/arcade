@@ -11,10 +11,11 @@ stories:
     description: One shared display component that frames every game with consistent chrome indicating the non-game parts of the user's screen. All games render through it for visual consistency.
     points: 5
     priority: p2
-    status: in_progress
+    status: done
     started: '2026-08-21'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-21'
   - id: sa1-2
     title: Consistent ESC pause overlay with per-game localized graphics (currently shows battlezone for all)
     description: Unify the ESC pause overlay look across all games; today every game shows the battlezone pause art. Each game supplies its own localized graphics through the shared pause component.
