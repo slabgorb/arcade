@@ -65,6 +65,7 @@ import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { installHeldKeys } from '@shared/held-keys'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 // sc1-1: the checked mount. This file previously cast the element and then used a
 // NULLABLE ctx, which is why draw sites guard with `!ctx`/`&& ctx`. The mount now
@@ -350,6 +351,14 @@ function draw(
       height,
     )
   }
+
+  // sa1-1: the shared cabinet surround. resize() sets canvas.width/height straight
+  // from clientWidth/clientHeight (no letterbox, no fitIntegerScale — the cockpit
+  // fills the whole viewport, RBARON.MAC has no notion of a windowed cabinet), so
+  // the game rect IS the container and this draws nothing every frame. It is still
+  // wired so red-baron's surround matches the cabinet-wide look the instant a
+  // future story fits it into a fixed aspect instead of filling the window.
+  drawCabinetChrome(ctx, { width, height }, { x: 0, y: 0, width, height }, CABINET_CHROME)
 }
 
 // ─── the yoke: keyboard → FlightInput ─────────────────────────────────────────
