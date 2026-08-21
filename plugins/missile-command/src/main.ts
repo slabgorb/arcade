@@ -114,6 +114,7 @@ window.addEventListener(
 // so a stray mouse jitter can't cut the attract screen short. A no-op outside attract,
 // so it never disturbs a live game's aim.
 canvas.addEventListener('pointerdown', () => {
+  if (overlay.isOpen()) return   // frozen while the controls overlay is up — no demo exit
   game = beginSetupOnInput(game)
 })
 
@@ -208,6 +209,7 @@ window.addEventListener('keydown', (event: KeyboardEvent): void => {
 // launch cue. The existing click→pointer-lock handler still runs — mousedown fires, click
 // locks, and both coexist.
 canvas.addEventListener('mousedown', (event: MouseEvent): void => {
+  if (overlay.isOpen()) return   // frozen while the controls overlay is up — no fire/start
   const prevScores = game.highScores
   game = mousedownReducer(event.button, game)
   if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)

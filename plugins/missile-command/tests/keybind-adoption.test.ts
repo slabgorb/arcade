@@ -5,6 +5,9 @@
 import { describe, it, expect } from 'vitest'
 import { resolveBindings } from '@shared/keybind'
 import { CONTROL_MANIFEST } from '../src/shell/controls.js'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 
 describe('missile-command key rebinding', () => {
   it('manifest declares every control with non-empty physical-code defaults', () => {
@@ -23,5 +26,44 @@ describe('missile-command key rebinding', () => {
     expect(map.fireCentre).toEqual(['KeyX'])
     expect(map.fireRight).toEqual(['KeyC'])
     expect(map.start).toEqual(['Digit1'])
+  })
+})
+
+describe('sa1-5 overlay mouse handlers freeze game state while overlay is open', () => {
+  it('pointerdown handler is guarded by overlay.isOpen() — no demo exit while rebinding', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
+    // The pointerdown listener (mc6-4) calls beginSetupOnInput, which mutates state
+    // to leave the attract demo. The guard ensures this does not happen while the
+    // overlay is open (the game is frozen).
+    const pointerdownMatch = main.match(/canvas\.addEventListener\('pointerdown',\s*\(\)\s*=>\s*\{([^}]+)\}/s)
+    expect(
+      pointerdownMatch && pointerdownMatch[1].includes('if (overlay.isOpen()) return'),
+      'pointerdown handler must guard on overlay.isOpen() to freeze while rebinding',
+    ).toBe(true)
+  })
+
+  it('mousedown handler is guarded by overlay.isOpen() — no fire while rebinding', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
+    // The mousedown listener (pt1-12) calls mousedownReducer to fire a base or start
+    // a new game. The guard ensures neither happens while the overlay is open.
+    const mousedownMatch = main.match(/canvas\.addEventListener\('mousedown',\s*\([^)]*\)\s*:\s*void\s*=>\s*\{([^}]+)\}/s)
+    expect(
+      mousedownMatch && mousedownMatch[1].includes('if (overlay.isOpen()) return'),
+      'mousedown handler must guard on overlay.isOpen() to freeze while rebinding',
+    ).toBe(true)
+  })
+
+  it('mousemove handler is NOT guarded — crosshair tracking stays live', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
+    // mousemove only updates the cursor position (pure aim), not game state like
+    // firing or starting. It may remain live while the overlay is open.
+    const mousemoveMatch = main.match(/canvas\.addEventListener\('mousemove',\s*\([^)]*\)\s*:\s*void\s*=>\s*\{([^}]+)\}/s)
+    expect(
+      mousemoveMatch && !mousemoveMatch[1].includes('if (overlay.isOpen()) return'),
+      'mousemove handler must NOT guard — crosshair tracking is a live cursor aim',
+    ).toBe(true)
   })
 })
