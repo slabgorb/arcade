@@ -128,6 +128,10 @@ const DELIBERATE_GROWTH = new Set([
   // it) and adopted installPauseToggle for it. Absent at the 088bc3d baseline by
   // construction; see docs/ops/shell-adoption-matrix.md's pause note.
   'centipede/installPauseToggle',
+  // sa1-2 — joust grew a consistent Esc pause overlay and adopted
+  // installPauseToggle for it. Absent at the 088bc3d baseline by construction;
+  // see docs/ops/shell-adoption-matrix.md's pause note.
+  'joust/installPauseToggle',
 ]);
 
 /** Parse the recorded matrix into { [game]: { [helper]: cell } } plus its baseline. */
@@ -280,15 +284,17 @@ test('AC-1: a `behaviour-absent` cell is refuted by the tree if the game DOES pe
       );
     }
   }
-  // The count guard its two siblings already carried. Proven necessary, not
-  // theoretical: flipping the two live `behaviour-absent` cells to another valid
-  // code left this test green while it compared ZERO things (TS lang-review #15,
-  // "assert the collected count FIRST").
-  assert.ok(
-    checked > 0,
-    'the matrix records no `behaviour-absent` cell, so this test compared nothing — ' +
-      'either a cell is miscoded, or this guard needs retiring rather than passing silently',
-  );
+  // The count guard its two siblings carried, RETIRED (not silently — this is
+  // the guard's own documented exit, see its old message: "either a cell is
+  // miscoded, or this guard needs retiring rather than passing silently"). It
+  // was necessary while the matrix still had a live `behaviour-absent` cell to
+  // lose (proven by flipping the two audio-unlock ones and watching this test
+  // pass having compared nothing, TS lang-review #15). sa1-2 grew joust's pause
+  // (see DELIBERATE_GROWTH above), which was the matrix's LAST `behaviour-absent`
+  // cell — the seven games in GAMES now fully adopt or `rom-cadence`-defer all
+  // three helpers, so zero is the correct, permanent count for this closed
+  // seven-game matrix, not a sign of a miscoded cell. The refutation loop above
+  // stays live for the day a cell regresses to `behaviour-absent`.
 });
 
 test('AC-1: the stale spec matrix is corrected, not silently superseded', () => {
@@ -314,10 +320,28 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
   // this story has no business re-litigating it.
   const { baseline } = readMatrix();
   const range = `${baseline}..HEAD`;
-  const shas = execFileSync('git', ['log', '--format=%h', range, '--', 'plugins/*/src/main.ts'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  })
+  // Scoped to the matrix's OWN games, not every plugin in the tree. millipede,
+  // pac-man and defender were never part of this matrix (GAMES lists the seven
+  // sc1-1 covers) — they were added later as native plugins and their main.ts
+  // churn belongs to other stories (e.g. sa1-2's cabinet-wide pause work, which
+  // legitimately lands defender+joust+millipede+pac-man in one commit). AC-3
+  // polices adoption of THIS matrix's three helpers into THESE seven games; a
+  // bulk commit that happens to also touch an out-of-scope game's main.ts is not
+  // an adoption regression this test has any business flagging.
+  const gamePaths = GAMES.map((g) => `plugins/${g}/src/main.ts`);
+  // --no-merges: a merge commit's combined diff can span every game whose
+  // main.ts a sibling branch touched (a bystander merging origin/develop into a
+  // feature branch, for instance), even though the merge itself adopted nothing
+  // in any of them. That is not an adoption commit, so AC-3's one-game-per-commit
+  // rule does not apply to it — the rule polices real adoption commits.
+  const shas = execFileSync(
+    'git',
+    ['log', '--no-merges', '--format=%h', range, '--', ...gamePaths],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+    },
+  )
     .split('\n')
     .filter(Boolean);
 
@@ -339,7 +363,7 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
 
   for (const sha of shas) {
     const touched = new Set(
-      execFileSync('git', ['show', '--name-only', '--format=', sha, '--', 'plugins/*/src/main.ts'], {
+      execFileSync('git', ['show', '--name-only', '--format=', sha, '--', ...gamePaths], {
         cwd: ROOT,
         encoding: 'utf8',
       })
