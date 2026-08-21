@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveBindings, applyRebind, type ControlManifest } from '@shared/keybind'
+import { resolveBindings, applyRebind, resetToDefaults, diffOverrides, type ControlManifest } from '@shared/keybind'
 
 const MANIFEST: ControlManifest = [
   { action: 'thrust', label: 'THRUST', defaults: ['ArrowUp', 'KeyW'] },
@@ -44,5 +44,24 @@ describe('applyRebind', () => {
   })
   it('reports no overlap for a fresh code', () => {
     expect(applyRebind(base, 'fire', 'KeyK').alsoBoundTo).toEqual([])
+  })
+})
+
+describe('resetToDefaults', () => {
+  it('rebuilds the full default map', () => {
+    expect(resetToDefaults(MANIFEST)).toEqual({ thrust: ['ArrowUp', 'KeyW'], fire: ['Space'] })
+  })
+})
+
+describe('diffOverrides', () => {
+  it('is empty when the map equals the defaults', () => {
+    expect(diffOverrides(MANIFEST, { thrust: ['ArrowUp', 'KeyW'], fire: ['Space'] })).toEqual({})
+  })
+  it('keeps only actions whose list differs (order-insensitive)', () => {
+    expect(diffOverrides(MANIFEST, { thrust: ['KeyW', 'ArrowUp'], fire: ['KeyJ'] })).toEqual({ fire: ['KeyJ'] })
+  })
+  it('round-trips with resolveBindings', () => {
+    const map = { thrust: ['ArrowUp', 'KeyW'], fire: ['KeyJ'] }
+    expect(resolveBindings(MANIFEST, diffOverrides(MANIFEST, map))).toEqual(map)
   })
 })

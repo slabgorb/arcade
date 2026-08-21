@@ -1,6 +1,6 @@
 // @shared/keybind — sa1-5. PURE binding logic + the rebinding navigation state
 // machine. DOM-free (no localStorage, ctx, or globals) so the purity guard scans
-// it clean like view.ts/cabinet.ts. The browser half — storage, canvas render,
+// it clean like view.ts/cabinet.ts. The browser half — storage, rendering,
 // key capture — lives in ./controls-overlay.ts.
 
 /** A physical KeyboardEvent.code, e.g. 'KeyW' | 'ArrowUp' | 'Space'. Canonical fleet-wide. */
@@ -45,4 +45,23 @@ export function applyRebind(
   const alsoBoundTo = Object.keys(map).filter((a) => a !== action && map[a].includes(code))
   next[action] = [code]
   return { map: next, alsoBoundTo }
+}
+
+export function resetToDefaults(manifest: ControlManifest): BindingMap {
+  return resolveBindings(manifest, {})
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && [...a].sort().join(',') === [...b].sort().join(',')
+
+/** Reduce a resolved map to only the actions whose binding list differs from the
+ *  manifest default (order-insensitive). That delta is what we persist, so a later
+ *  change to a game's default still reaches players who never touched that action. */
+export function diffOverrides(manifest: ControlManifest, map: BindingMap): Overrides {
+  const out: Overrides = {}
+  for (const c of manifest) {
+    const cur = map[c.action]
+    if (cur && !sameSet(cur, c.defaults)) out[c.action] = [...cur]
+  }
+  return out
 }
