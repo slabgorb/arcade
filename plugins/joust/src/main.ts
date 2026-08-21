@@ -46,7 +46,9 @@ import {
 } from './core/highscore.js'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
-import { mountCanvas } from '@shared/host-helpers'
+import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
+import { drawEscOverlay } from '@shared/esc-overlay'
 import { layoutHud } from './shell/hudScreen.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
@@ -333,7 +335,11 @@ function renderTitleScreen(): void {
   paintText(screen.extraMount, extraMountX, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.replayLevel, extraMountX + screen.extraMount.width, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.pointsSuffix, extraMountX + screen.extraMount.width + screen.replayLevel.width, TITLE_EXTRA_MOUNT_Y)
-  titleFrame++
+  // sa1-2: the MARQUE colour-cycle is a draw-side counter, so it must freeze with the
+  // rest of the cabinet while paused — otherwise the title keeps cycling colour under
+  // the dimmed PAUSED overlay. (The pumped dwell/attract clocks already freeze via the
+  // pause gate on pumpFrames; this is the one render-time counter that needs the guard.)
+  if (!pause.isPaused()) titleFrame++
 }
 
 // jt10-4 — paint the core's ordered draw list for a game sim (back platforms →
@@ -569,6 +575,23 @@ window.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') commitEntryOnExit()
 })
 
+// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
+// guards e.repeat). The whole cabinet freezes while paused — play, attract, title
+// and highscore alike (the fleet's pause-anytime convention; see the gate below).
+// The card text is joust's OWN per-cabinet NUMBERS;
+// its colour is the P1-yellow COLOR1 register (index 5), built at draw time as an
+// rgb(${...}) template from the transcribed palette so the render denylist (no
+// invented colour literals on the paint path) stays green.
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+const JOUST_PAUSE_LINES = [
+  'PAUSED',
+  '',
+  'ESC          RESUME',
+  'LEFT / RIGHT WALK',
+  'SPACE        FLAP',
+  '1 / 2        START',
+] as const
+
 const MAX_CATCHUP_SECONDS = 0.25
 let accumulator = 0
 let last = 0
@@ -581,7 +604,13 @@ const frame = (now: number): void => {
   } else {
     const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
     last = now
-    accumulator = pumpFrames(accumulator, elapsed, () => {
+    // sa1-2: the frozen-frame gate. A paused frame pumps nothing (the whole cabinet
+    // holds — play, attract and the title/highscore cycles alike, matching the fleet's
+    // pause-anytime convention). `last` is updated above, so paused wall-time is
+    // discarded and resume banks no catch-up burst.
+    // (Braced so a future statement added after the pump can't silently escape the guard.)
+    if (!pause.isPaused()) {
+      accumulator = pumpFrames(accumulator, elapsed, () => {
       if (cabinet.mode === 'gameover') {
         // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
         // afterGameOver → 'highscore' iff the best score qualifies against the
@@ -701,7 +730,8 @@ const frame = (now: number): void => {
       }
       prevFlap1 = in1.flapHeld
       prevFlap2 = in2.flapHeld
-    })
+      })
+    }
   }
 
   logicalContext.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
@@ -766,6 +796,17 @@ const frame = (now: number): void => {
     { x: view.offsetX, y: view.offsetY, width: LOGICAL_WIDTH * view.scale, height: LOGICAL_HEIGHT * view.scale },
     CABINET_CHROME,
   )
+
+  // sa1-2: dim the frozen field and stroke joust's own keybind card over it, in the
+  // P1-yellow COLOR1 register (index 5) built from the transcribed palette — an
+  // rgb(${...}) template, the sanctioned form the render denylist permits.
+  if (pause.isPaused()) {
+    drawEscOverlay(context, canvas.width, canvas.height, {
+      lines: JOUST_PAUSE_LINES,
+      color: `rgb(${colours[5].r} ${colours[5].g} ${colours[5].b})`,
+      opacity: 0.72,
+    })
+  }
 
   requestAnimationFrame(frame)
 }

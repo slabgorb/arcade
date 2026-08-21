@@ -25,9 +25,11 @@ import {
 } from './core/game'
 import type { Dir } from './core/actor'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
-import { mountCanvas } from '@shared/host-helpers'
+import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
 import { installHeldKeys } from '@shared/held-keys'
 import { resizeToDisplay } from '@shared/view'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
+import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 // pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
@@ -178,6 +180,22 @@ window.addEventListener('keydown', (e) => {
   }
 })
 
+// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
+// guards e.repeat so a held key can't machine-gun it). The freeze skips the sim pump
+// below; the card + colour are Pac-Man's OWN per-cabinet NUMBERS (its banner yellow).
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+const PAC_MAN_PAUSE = {
+  lines: [
+    'PAUSED',
+    '',
+    'ESC          RESUME',
+    'ARROWS/WASD  MOVE',
+    'SPACE        START',
+  ],
+  color: '#ffff00',
+  opacity: 0.72,
+} as const
+
 let acc = 0
 let last = 0
 let started = false
@@ -197,7 +215,11 @@ const frame = (now: number): void => {
   } else {
     const elapsed = (now - last) / 1000
     last = now
-    acc = pumpFrame(
+    // sa1-2: freeze the sim while paused — skip the pump, but keep `last` current
+    // above so the paused wall-time is discarded and resume banks no catch-up burst.
+    // (Braced so a future statement added after the pump can't silently escape the guard.)
+    if (!pause.isPaused()) {
+      acc = pumpFrame(
       acc,
       elapsed,
       // pm4-6: fold the start/coin latch into the sim input (consumed each
@@ -235,7 +257,8 @@ const frame = (now: number): void => {
         overlays.onEvents(game.events)
         if (game.highScoreTable !== boardBefore) highScoreStorage.save(game.highScoreTable)
       },
-    )
+      )
+    }
   }
 
   if (game.phase === 'intermission') {
@@ -260,7 +283,7 @@ const frame = (now: number): void => {
     if (game.fruit) drawFruit(logicalCtx, game.fruit.tile.x, game.fruit.tile.y, game.fruit.fruit.type)
   }
   drawHud(logicalCtx, game.score, game.highScoreTable[0]?.score ?? 0, game.lives, game.level)
-  overlays.draw(logicalCtx, game) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield
+  overlays.draw(logicalCtx, game, pause.isPaused()) // pm3-7: banners/popups/flash sit ABOVE the HUD and playfield (sa1-2: frozen while paused)
 
   const fit = fitIntegerScale(canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false
@@ -276,6 +299,9 @@ const frame = (now: number): void => {
     { x: fit.dx, y: fit.dy, width: fit.width, height: fit.height },
     CABINET_CHROME,
   )
+
+  // sa1-2: dim the frozen maze and stroke Pac-Man's own keybind card over it.
+  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, PAC_MAN_PAUSE)
 
   requestAnimationFrame(frame)
 }

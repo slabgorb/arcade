@@ -34,8 +34,10 @@ export interface Overlays {
    *  same seam and same per-substep call site as `AudioDriver.onEvents`. */
   onEvents(events: readonly GameEvent[]): void
   /** Paint this frame's overlays into `ctx`, decrementing every latched
-   *  timer by exactly one call — the sole clock this driver has. */
-  draw(ctx: CanvasRenderingContext2D, game: GameState): void
+   *  timer by exactly one call — the sole clock this driver has. When `paused`
+   *  is true (sa1-2) the latched timers are painted but NOT decremented, so the
+   *  popups freeze with the rest of the cabinet instead of ageing out mid-pause. */
+  draw(ctx: CanvasRenderingContext2D, game: GameState, paused?: boolean): void
 }
 
 // A ghost-chain popup ("200"/"400"/.../"1600", pm3-6's SCORE_SPRITE) stays on
@@ -128,7 +130,7 @@ export function createOverlays(): Overlays {
     return { xPx: game.pac.actor.xPx, yPx: game.pac.actor.yPx }
   }
 
-  function draw(ctx: CanvasRenderingContext2D, game: GameState): void {
+  function draw(ctx: CanvasRenderingContext2D, game: GameState, paused = false): void {
     if (prevPhase === 'game-over' && game.phase !== 'game-over') {
       resetForNewGame()
     }
@@ -144,9 +146,13 @@ export function createOverlays(): Overlays {
 
     for (const popup of active) {
       drawScorePopup(ctx, popup.xPx, popup.yPx, popup.points)
-      popup.framesLeft--
+      // sa1-2: a paused frame paints the popups FROZEN — do not age them, or a score
+      // popup visible when the player presses ESC would count down and vanish mid-pause
+      // while the rest of the cabinet holds still. New popups can't arrive while paused
+      // (overlays.onEvents runs inside the frozen pump), so `queued` is empty here.
+      if (!paused) popup.framesLeft--
     }
-    active = active.filter((popup) => popup.framesLeft > 0)
+    if (!paused) active = active.filter((popup) => popup.framesLeft > 0)
 
     // pm4-9: while the pm4-8 demo plays itself in attract, paint the cabinet's
     // attract screen on top of it (never READY! — that belongs to the pre-play

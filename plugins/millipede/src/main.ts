@@ -14,7 +14,9 @@
 // 60 Hz steps; the mouse, the AudioContext and the canvas are the only browser
 // surfaces touched.
 
-import { mountCanvas } from '@shared/host-helpers'
+import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
+import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { PLYFLD_STRIDE } from './core/conway'
 import { BACKGROUND_BIT } from './core/mushroom'
@@ -117,6 +119,10 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
     return
   }
+  // sa1-2: Escape is the PAUSE key (installPauseToggle owns it on its own listener) —
+  // it must NOT also fall into startPlay/fire here, or toggling pause on the attract
+  // screen would latch startPending and boot an unrequested game on resume.
+  if (isPauseKey(e.key.toLowerCase())) return
   startPlay()
   if (FIRE_KEYS.has(e.key)) fireHeld = true
 })
@@ -310,6 +316,24 @@ function render(state: GameState): void {
   )
 }
 
+// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
+// guards e.repeat). Escape also releases the trackball pointer-lock (browser default),
+// so a paused cabinet frees the mouse — pressing ESC again resumes. The freeze skips
+// the fixed-step pump below; the card + colour are millipede's OWN per-cabinet NUMBERS.
+const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+const MILLIPEDE_PAUSE = {
+  lines: [
+    'PAUSED',
+    '',
+    'ESC          RESUME',
+    'MOUSE        AIM',
+    'SPACE        FIRE',
+    'CLICK        START',
+  ],
+  color: '#7bff5a',
+  opacity: 0.72,
+} as const
+
 // ── Fixed-timestep accumulator (ml7-5). stepGame is one ROM 60 Hz frame, so we
 //    drive it off REAL elapsed time, not the raw rAF cadence: a >60 Hz display
 //    (or uncapped rAF) no longer runs the sim faster than the arcade, and a
@@ -331,7 +355,11 @@ const frame = (ts: number): void => {
   // (runFixedSteps folds the delta + carries the remainder). Input is drained once,
   // into the first sub-step, so a catch-up burst can't replay the same fire/start
   // and the mouse travel is consumed whole.
-  accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
+  // sa1-2: freeze the sim while paused — skip the fixed-step pump. `lastTs` is
+  // already updated above, so paused wall-time is discarded (no catch-up burst).
+  // (Braced so a future statement added after the pump can't silently escape the guard.)
+  if (!pause.isPaused()) {
+    accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
     const input: GameInput = isFirst
       ? { dh: toByte(dh), dv: toByte(dv), fire: firePending || fireHeld, start: startPending }
       : { dh: 0, dv: 0, fire: false, start: false }
@@ -342,7 +370,8 @@ const frame = (ts: number): void => {
     game = stepGame(game, input)
     playEventSounds(audio, game.events)
     ;(window as unknown as { __sim?: GameState }).__sim = game
-  })
+    })
+  }
 
   render(game)
 
@@ -364,6 +393,9 @@ const frame = (ts: number): void => {
     { x: dx, y: dy, width: LOGICAL_W * scale, height: LOGICAL_H * scale },
     CABINET_CHROME,
   )
+  // sa1-2: dim the frozen field and stroke millipede's own keybind card over it —
+  // drawn AFTER the cabinet chrome so the pause dim covers the surround too.
+  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, MILLIPEDE_PAUSE)
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)
