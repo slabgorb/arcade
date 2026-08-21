@@ -137,3 +137,13 @@ completed_stories:
     title: "defender: thrusting shows no exhaust flame — only an audio cue plays"
     points: 3
     completed: 2026-08-21
+  - id: df8-2
+    epic: df8
+    title: "defender: full-screen flash/artifact during play"
+    points: 3
+    completed: 2026-08-21
+  - id: df8-3
+    epic: df8
+    title: "defender: remove the invented spawn/death spark ring (green diamond around enemies)"
+    points: 1
+    completed: 2026-08-21
