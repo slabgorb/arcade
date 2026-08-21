@@ -4,6 +4,7 @@
 // — is static markup in index.html. All this does is fill the grid with one tile per
 // registry game, and upgrade the typeface once the vector face lands.
 import { LISTED_GAMES } from '@host/registry'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { loadVectorFont } from './shell/font'
 import { mountShowcase } from './shell/showcase'
 import { getTopScore } from './shell/storage'
@@ -35,6 +36,10 @@ if (!showcase) throw new Error('lobby: #showcase container missing from index.ht
 // once, here, is what makes `listed: false` mean "the lobby does not show this game"
 // rather than "the lobby does not show this game in one of its two places".
 mountShowcase(showcase, LISTED_GAMES)
+
+// sa1-4: the shared master-volume control, always visible in the lobby (unlike a
+// game, there is no pause state here to gate it on).
+mountVolumeControl({ root: document.body, initiallyVisible: true })
 
 // The scores above are a snapshot, and the player is about to go and beat one. When they
 // come back, `pageshow` is the only signal we are guaranteed to get: a back-navigation is
