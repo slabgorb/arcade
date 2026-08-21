@@ -147,7 +147,7 @@ function spriteColour(pic: ObjectImage): number {
     if (hi !== 0) return hi
     if (lo !== 0) return lo
   }
-  return LASER_COLOUR // a pathological all-transparent sprite still gets a visible spark
+  return LASER_COLOUR // a pathological all-transparent sprite still gets a visible scanner blip
 }
 
 // ─── pt1-25 → df8-2: the SCREEN effects (player death / smart bomb / hyperspace) ───────

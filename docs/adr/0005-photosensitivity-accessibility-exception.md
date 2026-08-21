@@ -1,6 +1,6 @@
 # ADR-0005: Photosensitivity accessibility — the one standing exception to ROM-always-wins
 
-**Status:** Accepted
+**Status:** Accepted — **Amended 2026-08-21** (see [the amendment](#amendment--2026-08-21-the-owner-is-not-photosensitive) at the end: the medical premise was wrong, and the chrome built on it was removed in df8-2)
 **Date:** 2026-08-16
 **Author:** Architect
 **Story:** df4 (decided at the menagerie epic's kickoff, per the roadmap ruling; binds df4/df5/df7)
@@ -72,3 +72,24 @@ Concretely:
   point of doing it once, in writing, instead of ad hoc in each epic.
 - **Fidelity elsewhere is undiminished.** This ADR narrows the exception to a single visual
   class defined by a medical constraint; it grants no general licence to "improve" the ROM.
+
+## Amendment — 2026-08-21: the owner is not photosensitive
+
+The medical premise above was wrong. **The owner has epilepsy but is NOT photosensitive** —
+flashing/strobing is not a personal seizure trigger (owner correction, 2026-08-21). The
+statement "the owner has photosensitive epilepsy" in the Context, and everything reasoned
+from it, is preserved above as history but no longer holds.
+
+Consequences of the correction:
+
+- **The anti-strobe chrome built on this premise was removed in df8-2**: defender's
+  full-field screen wash (the pt1-25 dim stride-3 lattice substituted for the ROM's
+  death/smart-bomb/hyperspace strobes) and the spawn/death spark ring (the df4-6 diamond
+  outline drawn around materialize/explode). Neither was in the ROM; both existed only as
+  ADR-0005 substitutes. The sim-side wiring (tagged screen effects, `classify()`'s
+  presentation taxonomy) remains, but a SCREEN event now paints nothing full-field and a
+  localized effect rasters its sprite only.
+- **Going forward, ROM fidelity is not gated on owner photosensitivity.** This ADR's
+  "one standing exception to ROM-always-wins" no longer applies on medical grounds.
+  (df8-2 itself did not port the ROM's white/inverse strobes — it only removed the
+  invented substitutes; whether to port the strobes is a separate fidelity decision.)
