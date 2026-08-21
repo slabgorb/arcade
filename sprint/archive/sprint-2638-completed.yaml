@@ -1,7 +1,3 @@
-# Sprint TO Sprint 2638 - Completed Stories
-# Jira Sprint ID: 8
-# Archived: 2026-08-21
-
 sprint:
   name: "TO Sprint 2638"
   number: 2638
@@ -9,5 +5,10 @@ sprint:
   jira_sprint_name: "TO Sprint 2638"
   goal: Polish and QOL
 
-completed:
-  # Completed stories will be appended here by pf sprint archive
+completed_epics: []
+completed_stories:
+  - id: sa1-1
+    epic: sa1
+    title: Consistent display chrome — shared overlay framing the non-game screen area, all games route through it
+    points: 5
+    completed: '2026-08-21'
