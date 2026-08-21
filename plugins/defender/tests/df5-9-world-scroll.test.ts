@@ -177,7 +177,8 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
   // projectWorldX), so a lander DRAWN on-screen is exactly the one that is hittable. We settle a
   // stable nonzero camera, plant a lander DRAWN mid-beam (well right of the ship's lead column, a
   // whole world offset from where a camera-blind raw-world collision would look), with a lure
-  // humanoid on the beam row so it lingers there instead of diving, hold fire, and require its
+  // humanoid on the beam row so it lingers there instead of diving, pulse fire (df8-4: edge-
+  // per-press), and require its
   // on-screen death. The nonzero-camera assertion is load-bearing: at camera 0 this is vacuous.
   it('you can shoot the enemy you SEE at a scrolled camera (COLIDE agrees with the camera-offset render)', () => {
     const THRUST: Input = { thrust: true, reverse: false, up: false, down: false, fire: false, smartBomb: false }
@@ -199,8 +200,10 @@ describe('df5-9 world scroll — composeFrame camera-offsets the world (terrain 
     s = spawnLander(s, wrap16(camera + BEAM_OFFSET))
 
     let onscreenKill = false
+    // df8-4: fire is edge-per-press — PULSE it (a distinct press every 2 ticks) so the run
+    // keeps a laser stream up; a held FIRE would spawn exactly one laser over 4000 ticks.
     for (let i = 0; i < 4000 && !onscreenKill; i++) {
-      s = stepSim(s, FIRE)
+      s = stepSim(s, i % 2 === 0 ? FIRE : NEUTRAL)
       onscreenKill = s.effects.some((e) => {
         if (e.kind !== 'explode') return false
         const px = drawnPixel(e.x)

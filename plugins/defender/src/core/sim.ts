@@ -204,6 +204,9 @@ interface SimRuntime {
    *  carrying a humanoid upward (the single aggregate suck voice). */
   prevThrust: boolean
   prevSucking: boolean
+  /** df8-4 — last tick's fire button, so LFIRE dispatches once per distinct press
+   *  (SSCAN edge-per-closure, DEFA7.SRC:760-796), never per held tick. */
+  prevFire: boolean
   shots: ShotRecord[]
   cues: GameEvent[]
   /** Landers seen carrying (so lander-pickup fires once per abduction). */
@@ -303,6 +306,7 @@ export function createSim(rand: () => number): SimState {
     prevHyperspace: false,
     prevThrust: false,
     prevSucking: false,
+    prevFire: false,
     shots: [],
     cues: [],
     carrying: new WeakSet<object>(),
@@ -603,11 +607,15 @@ export function stepSim(state: SimState, input: Input): SimState {
     }
   }
 
-  // 7. Fire BEFORE the dispatch (df3-5): the laser travels next tick.
-  if (input.fire) {
+  // 7. Fire BEFORE the dispatch (df3-5): the laser travels next tick. df8-4: fire on
+  // the button's RISING EDGE only — the ROM's switch scan is edge-per-closure (SSCAN,
+  // DEFA7.SRC:760-796, dispatching SWTAB→LFIRE once per distinct press, DEFB6.SRC:1845);
+  // a held button re-fires nothing. Same prevThrust/prevSmartBomb edge idiom as above.
+  if (input.fire && !rt.prevFire) {
     const laser = state._laserBank.fire(plax16, shipFacing, shipRow) // pt1-27: capture the fire row
     if (laser) rt.cues.push({ type: 'laser-fire' }) // LASSND — only on a real spawn (cap at 4)
   }
+  rt.prevFire = input.fire // unconditional — the edge re-arms only on a real release
 
   // 8. Update the enemy-aim pose (WORLD space) and dispatch every process.
   rt.player = { x: shipWorldX(plax16, camera.bgl), y: shipRow }

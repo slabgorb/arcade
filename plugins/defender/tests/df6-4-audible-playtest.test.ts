@@ -118,21 +118,24 @@ function playtest(seed: number, ticks: number, input: (i: number) => Input, setu
   return eng
 }
 
-/** Stand a row of landers across the field ahead of the ship and hold FIRE — the df6-1
- *  fireWall shape, narrowed to landers. `spawnLander` takes only x (the bank fixes the
- *  spawn row), so this is one lander per column; the swept laser strikes them over the run. */
+/** Stand a row of landers across the field ahead of the ship and PULSE fire — the df6-1
+ *  fireWall shape, narrowed to landers (df8-4: fire is edge-per-press, so a held button
+ *  spawns one laser ever; pulsing restores the stream). `spawnLander` takes only x (the
+ *  bank fixes the spawn row), so this is one lander per column; the swept lasers strike
+ *  them over the run. */
 function landerWall(r: Rig): void {
   for (let col = 10; col <= 36; col += 2) r._enemyBank.spawnLander(col << 8) // pt1-18: on-screen firing band (col<<8 < 9600 window)
 }
 
 // ─── 1. The whole df6 loop reaches the ENGINE — laser / hit / explosion (AC1) ─────────
 describe('df6-4 — the play loop SOUNDS on its moments: laser, enemy hit, explosion (AC1)', () => {
-  it('holding fire into a lander wall makes the engine hear laserFire AND landerHit', () => {
+  it('pulsed fire into a lander wall makes the engine hear laserFire AND landerHit', () => {
     // The exact main.ts composition: real stepSim cues → playEventSounds → the engine. If
     // either half regresses (the sim stops emitting, or the dispatch stops routing) the
     // engine hears nothing and this reddens — the audible analogue of df5-7's "escalation
-    // reaches the pixels".
-    const eng = playtest(3, 60, () => withInput({ fire: true }), landerWall)
+    // reaches the pixels". df8-4: fire pulses (a distinct press every 2 ticks) — a held
+    // button is one edge, one laser.
+    const eng = playtest(3, 60, (i) => withInput({ fire: i % 2 === 0 }), landerWall)
     expect(eng.played('laserFire'), 'firing sounded no LASSND — the laser cue did not reach the engine').toBe(true)
     expect(eng.played('landerHit'), 'a killed lander sounded no LHSND — the hit cue did not reach the engine').toBe(true)
   })

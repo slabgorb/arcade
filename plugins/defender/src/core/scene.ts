@@ -127,10 +127,18 @@ const BOMBER_OBJECT = 'TIEP1' // bomber (TIE), DEFB6.SRC:1923 (the sprite bitmap
 const POD_OBJECT = 'PRBP1' // pod/probe, DEFB6.SRC:1909
 const SWARMER_OBJECT = 'SWPIC1' // swarmer
 const BOMB_OBJECT = 'BMBP1' // the bomber's dropped bomb/mine, DEFB6.SRC:1935
-/** LASER colour: palette entry 1 (core/palette.ts DEFAULT_PCRAM label 1 = LASER). */
+/** LASER body ink: palette entry 1 — the ROM lays the beam body in `$11` bytes (both
+ *  nibbles index 1, `LDB #$11`, DEFA7.SRC:2801; DEFAULT_PCRAM label 1 = LASER). */
 const LASER_COLOUR = 1
-/** Pixels of the laser's leading streak drawn behind its head. */
-const LASER_LENGTH = 4
+/** The bright tip ink: palette entry 9 (WHITE) — the ROM stores one `$99` byte at the
+ *  leading edge every frame (`LDB #$99`, DEFA7.SRC:2808-2809; LASL1 mirror :2857-2858). */
+const LASER_TIP_COLOUR = 9
+/** The tip's pixel width: one VRAM byte-column ($100 of laser.x, a nibble pair) through
+ *  the port's projection (64*292/9600 ≈ 1.95 px/column) ≈ 2 px. */
+const LASER_TIP_PX = 2
+/** The body's pixel length: the four `$11` byte-columns LASR1 lays per frame
+ *  (`LDA #4` × `LEAX $100,X`, DEFA7.SRC:2799-2807) — $400 ≈ 8 px. */
+const LASER_BODY_PX = 8
 
 // ─── df4-6 → df8-2: the df4-2 materialize/explosion effects, blitted over the world ─────
 // A LOCALIZED effect renders the object's picture (rastered normally) and NOTHING else — the
@@ -176,16 +184,20 @@ function drawEffect(fb: Framebuffer, e: PlacedEffect, camera: number): void {
   blitObject(fb, e.picture, col, e.y)
 }
 
-/** Draw a short horizontal laser streak trailing the leading edge `headX` at row `y`. */
+/** Draw the ROM-laid laser beam at row `y` (df8-4, DEFA7.SRC:2799-2827): the bright
+ *  `$99` tip AT the leading edge `headX`, with the four-byte-column `$11` body trailing
+ *  behind it — to the left when travelling right, mirrored for a left beam (LASL1,
+ *  :2848-2859). ~10 px total, replacing df3-5's 4 px flat-ink placeholder stub. */
 function drawLaserStreak(fb: Framebuffer, headX: number, y: number, facing: 'left' | 'right'): void {
   if (y < 0 || y >= fb.height) return
-  // The streak trails BEHIND the head: to the left when travelling right, and vice versa.
+  // The beam trails BEHIND the head: to the left when travelling right, and vice versa.
   const dir = facing === 'right' ? -1 : 1
-  for (let i = 0; i < LASER_LENGTH; i++) {
-    const x = headX + dir * i
-    if (x < 0 || x >= fb.width) continue
-    fb.data[y * fb.width + x] = LASER_COLOUR
+  const put = (x: number, ink: number): void => {
+    if (x < 0 || x >= fb.width) return
+    fb.data[y * fb.width + x] = ink
   }
+  for (let i = 0; i < LASER_TIP_PX; i++) put(headX + dir * i, LASER_TIP_COLOUR)
+  for (let i = 0; i < LASER_BODY_PX; i++) put(headX + dir * (LASER_TIP_PX + i), LASER_COLOUR)
 }
 
 // ─── pt1-28: THOUT / THOUT1 — the thrust-exhaust flame (DEFA7.SRC:2214-2260) ────────────

@@ -25,8 +25,9 @@
 //
 // ─── WHY THE SIM GEOMETRY BELOW WORKS (the df6-1 fireWall precedent) ──────────────
 // A fresh sim rests the ship at row 120 (INITIAL_Y), onscreen x px≈62. A laser fired
-// facing right spawns at plax16+$704 → px≈76 and sweeps rightward ~2 px/tick, dying
-// at the ROM right edge after ~113 ticks. Holding `up` climbs the ship at 1..2
+// facing right spawns at plax16+$704 → px≈76 and sweeps rightward ~7.8 px/tick (the
+// ROM's $400/tick head advance, df8-4), dying at the ROM right edge after ~30 ticks.
+// Holding `up` climbs the ship at 1..2
 // rows/tick until the Y_TOP_FREEZE band (rows 42..43, ship.ts) parks it by ~tick 47.
 // PODS are the wall enemy of choice: their drift path is unported (probes.ts — they
 // stand perfectly still), wave 1 spawns none (so `pod-hit` is unambiguous), and their
@@ -164,11 +165,14 @@ describe('pt1-27 AC2 — an in-flight laser keeps its fire row when the ship mov
     expect(fireRow, 'no vertical input on the fire tick — fired from row 120').toBe(120)
     expect(s.lasers.length, 'exactly one laser in flight').toBe(1)
 
-    for (let i = 0; i < 30; i++) s = stepSim(s, withInput({ up: true }))
+    // 20 climb ticks: well inside the laser's ~30-tick flight at the df8-4 $400/tick step
+    // (spawn $2704 → the $9800 edge in ~29 travel ticks), and 1..2 rows/tick of climb has
+    // moved the ship ≥ 20 rows by then.
+    for (let i = 0; i < 20; i++) s = stepSim(s, withInput({ up: true }))
     expect(s.ship.y, 'the ship genuinely left the firing row').toBeLessThan(fireRow - 20)
 
     const laser = s.lasers.find((l) => l.alive)
-    expect(laser, 'the laser is still in flight (lifetime ~113 ticks)').toBeDefined()
+    expect(laser, 'the laser is still in flight (lifetime ~30 ticks)').toBeDefined()
     expect(
       laserY(laser!),
       'the in-flight laser must still carry the row it was FIRED from — not follow the ship',
@@ -185,9 +189,9 @@ describe('pt1-27 AC2 — an in-flight laser keeps its fire row when the ship mov
 describe('pt1-27 AC3 — collision happens at the laser’s own row, not the ship’s (sim.ts hitTestLasers)', () => {
   it('a shot fired at row 120 does NOT strike a wall parked at the ship’s NEW row (the dragged-shot bug)', () => {
     // Pods at rows 40+42: their 4x8 boxes blanket rows 40..50, covering the ship's
-    // Y_TOP_FREEZE park band (42..43) wherever it lands. The ship parks INSIDE the wall
-    // band by ~tick 47 while the laser (fired from row 120) sweeps px 109..280 beneath
-    // rows 40..50 until ~tick 105 — today's shipRow-based query mows the wall down.
+    // Y_TOP_FREEZE park band (42..43) wherever it lands. The laser (fired from row 120)
+    // sweeps px ~76..291 beneath rows 40..50 over its ~30-tick flight (df8-4: $400/tick)
+    // while the ship climbs into the band — a shipRow-based query would mow the wall down.
     const { state, cues } = runSim(7, 115, fireThenClimb, (s) => podWall(s, [40, 42]))
     expect(state.ship.y, 'the ship parked at the top freeze, inside the wall band').toBeLessThanOrEqual(44)
     expect(
@@ -218,13 +222,15 @@ describe('pt1-27 AC3 — collision happens at the laser’s own row, not the shi
 // state composed with and without its lasers — the differing pixels ARE the streak.
 // ══════════════════════════════════════════════════════════════════════════════════
 describe('pt1-27 AC4 — the streak renders on the firing row (scene.ts composeFrame)', () => {
-  it('after the ship climbs away, the laser pixels are on row 120 — not the parked row', () => {
+  it('after the ship climbs away, the laser pixels are on row 120 — not the ship’s new row', () => {
     let s = createSim(makeRand(7))
     s = stepSim(s, NEUTRAL)
     s = stepSim(s, withInput({ fire: true })) // fired from row 120
-    for (let i = 0; i < 60; i++) s = stepSim(s, withInput({ up: true }))
-    expect(s.ship.y, 'the ship parked at the top freeze').toBeLessThanOrEqual(44)
-    expect(s.lasers.some((l) => l.alive), 'the laser is still in flight at tick 61').toBe(true)
+    // 20 climb ticks (RE-STAGED for df8-4: at the ROM's $400/tick the laser dies ~tick 30,
+    // so the old 60-tick climb-to-the-park left it dead — climb while it still flies).
+    for (let i = 0; i < 20; i++) s = stepSim(s, withInput({ up: true }))
+    expect(s.ship.y, 'the ship climbed at least 25 rows off the firing row').toBeLessThanOrEqual(120 - 25)
+    expect(s.lasers.some((l) => l.alive), 'the laser is still in flight at tick 21').toBe(true)
 
     // Same state, with and without its lasers: composeFrame is pure, so every differing
     // pixel is laser ink (drawLaserStreak is the only consumer of state.lasers).
@@ -240,7 +246,7 @@ describe('pt1-27 AC4 — the streak renders on the firing row (scene.ts composeF
       'the streak must be drawn on the FIRING row (120), not follow the ship',
     ).toContain(120)
     for (const row of streakRows) {
-      expect(row, 'no laser ink dragged up into the ship’s parked band').toBeGreaterThan(60)
+      expect(row, 'no laser ink dragged up toward the ship’s new row').toBeGreaterThan(s.ship.y + 10)
     }
   })
 })

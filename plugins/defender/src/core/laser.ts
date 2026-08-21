@@ -40,14 +40,14 @@ const RIGHT_EDGE = 0x9800 // CMPX #$9800 / BHS LRDIE (DEFA7.SRC:2802-2803)
 const LEFT_EDGE = 0x0500 //  CMPX #$0500 / BLS LLDIE (DEFA7.SRC:2851-2852)
 
 /**
- * The core's uniform per-tick travel step for the leading edge. It matches one
- * `LEAX $100,X` head increment (DEFA7.SRC:2805) in DIRECTION and constancy, but it is
- * NOT the ROM's full per-tick head advance: LASR1 runs that `LEAX` four times per frame
- * (`LDA #4`, :2799-2807), so the ROM head actually moves $400/tick to lay its 4-segment
- * beam. That magnitude is render-entangled (beam width), so the pure core reproduces
- * only travel's direction + constancy and leaves the exact speed to a render/tuning story.
+ * The ROM's per-tick head advance (df8-4). LASR1 runs `LEAX $100,X` FOUR times per
+ * frame (`LDA #4`, DEFA7.SRC:2799-2807), laying a body byte at each step, then
+ * `STX PD,U` (:2810) stores the fourth position back as the new head — the head moves
+ * $400 every tick. LASL1 mirrors it leftward (`LEAX -$100,X`, :2848-2859). df3-5 had
+ * shipped a $100 placeholder (one LEAX, pinning direction + constancy only); df8-4
+ * pins the full ROM magnitude — the 4× crawl was the "weak and slow" playtest defect.
  */
-const STEP = 0x100
+const STEP = 0x400
 
 /** The scheduler PTYPE tag for a laser process (an opaque id; any distinct value). */
 const LASER_PTYPE = 1

@@ -66,11 +66,12 @@
 //    "fissle" sparkle table, LCOLRX colour) is RENDER. The pure core models only the
 //    LEADING-EDGE travel + off-screen death. So this suite pins the per-tick delta's
 //    DIRECTION and CONSTANCY (uniform velocity, faithful to NAP 1/tick) but not an
-//    exact pixel step. Concretely: the ROM's head PD advances $400/tick — LASR1 runs
-//    `LEAX $100,X` FOUR times per frame (`LDA #4`, :2799-2807) to lay the 4-segment
-//    beam — so pinning the core's placeholder STEP=0x100 as an exact magnitude would
-//    assert a number the ROM does not use. Direction + constancy only; the true speed
-//    is a render/tuning concern, distinct from the fire/travel mechanism df3-5 covers.
+//    exact pixel step — df3-5 shipped STEP=0x100 as a placeholder. SUPERSEDED by
+//    df8-4: the magnitude IS now pinned at the ROM's $400/tick head advance (LASR1
+//    runs `LEAX $100,X` FOUR times per frame, `LDA #4` :2799-2807, and `STX PD,U`
+//    :2810 stores the fourth position as the new head), asserted by
+//    df8-4-laser-rom.test.ts. This suite's direction+constancy assertions are
+//    magnitude-agnostic and stand unchanged.
 // D3 (fire is synchronous, travel is a process): fire() models LFIRE executing — the
 //    cap check + INC LFLG + positioning PD — synchronously, and returns the laser
 //    handle; its TRAVEL then runs as a scheduler process (NAP 1/tick). The laser is
