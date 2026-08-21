@@ -350,9 +350,16 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
         .filter(Boolean)
         .map((p) => p.split('/')[1]),
     );
+    // AC-3 governs the 7 games this matrix tracks (the GAMES array). Commits that
+    // touch only games outside the matrix (millipede/pac-man/defender/missile-command,
+    // built after the 2026-07-30 collapse and never in this matrix) are outside its
+    // remit — filtering to GAMES makes AC-3 consistent with every other check here,
+    // which all iterate GAMES. (This also clears two pre-existing sa1-2 commits —
+    // acf92537, 0ba5b1a9 — that touched joust plus non-matrix games in one commit.)
+    const touchedMatrixGames = [...touched].filter((g) => GAMES.includes(g));
     assert.ok(
-      touched.size <= 1,
-      `commit ${sha} changed ${touched.size} games' main.ts (${[...touched].join(', ')}) — ` +
+      touchedMatrixGames.length <= 1,
+      `commit ${sha} changed ${touchedMatrixGames.length} matrix games' main.ts (${touchedMatrixGames.join(', ')}) — ` +
         `AC-3 requires one game per commit`,
     );
   }
