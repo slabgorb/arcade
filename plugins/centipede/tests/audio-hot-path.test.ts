@@ -135,10 +135,13 @@ beforeAll(async () => {
   }
   step()
 
-  shell.emit('window', 'keydown', { key: 'Enter' })
+  // sa1-5: the keyboard adapter matches on physical e.code now, not e.key —
+  // both fields are set, matching a real KeyboardEvent's shape (main.ts's
+  // Escape-capture listener still reads e.key).
+  shell.emit('window', 'keydown', { key: 'Enter', code: 'Enter' })
   for (let i = 0; i < 10; i++) step()
-  shell.emit('window', 'keyup', { key: 'Enter' })
-  shell.emit('window', 'keydown', { key: ' ' })
+  shell.emit('window', 'keyup', { key: 'Enter', code: 'Enter' })
+  shell.emit('window', 'keydown', { key: ' ', code: 'Space' })
 
   // Play until a step emits something, then poison that step.
   rec.arm = true
@@ -172,7 +175,7 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
   it('the boot is SEEDED — "a step emitted something within 400 tries" is reproducible', () => {
     // REWORK (Reviewer round 1, MEDIUM). This file plays until a step emits an
     // event and poisons that step, giving up after 400 tries. Against a
-    // wall-clock seed (main.ts:204 still falls back to `Date.now()` when no
+    // wall-clock seed (main.ts:224 still falls back to `Date.now()` when no
     // `?seed=` is given) whether one arrives in time is a property of the
     // clock. With the seed pinned it is a property of the game. See
     // helpers/boot-shell.ts `seedWasHonoured`, which is what stops the override
@@ -215,8 +218,8 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
     // file was 185 lines; the wiring diff grew it past that, and main.ts:183
     // then read `const board = sim.highScoreTable` — a real, plausible, WRONG
     // line, which is worse than a dangling one because a reader who checks it
-    // is misled rather than stopped. The trailing call is at main.ts:336 (the
-    // bootstrap that starts the chain is main.ts:338). Pinned by
+    // is misled rather than stopped. The trailing call is at main.ts:360 (the
+    // bootstrap that starts the chain is main.ts:362). Pinned by
     // tests/audio-citations.test.ts — round 2 found the bare `:216`/`:218`
     // forms this note first used had themselves gone stale (the `?seed=` block
     // grew the file by 11 more lines), unseen because the sweep only matches
@@ -225,7 +228,7 @@ describe('cp5-2 AC3 — an unmapped kind must not freeze the frame loop', () => 
       outcome.threw,
       `the unmapped kind threw out of the frame callback (${String(outcome.threwOnPoisonedFrame)}). ` +
         'In the browser this exception escapes into requestAnimationFrame, the trailing ' +
-        'requestAnimationFrame(frame) at main.ts:336 never runs, and the game freezes on the ' +
+        'requestAnimationFrame(frame) at main.ts:360 never runs, and the game freezes on the ' +
         'last drawn frame. Per the AC3 ruling the dispatch must DEGRADE — skip the cue it ' +
         'cannot name and keep going',
     ).toBe(false)

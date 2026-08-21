@@ -8,18 +8,24 @@
 // Nothing here fakes the game. The REAL core, atlas, renderer, timebase and input
 // adapters all run; only the browser is a stub. Two seams are wrapped, each to
 // OBSERVE rather than replace:
-//   • shell/audio        — createAudio returns a RECORDING engine, so every cue
-//                          (play / startLoop / stopLoop / tick) the real dispatch
-//                          emits is captured. This is the "existing SoundSurface
-//                          double" AC2 names.
-//   • @shared/esc-overlay — drawEscOverlay records its call rather than stroking
-//                          the ctx. Two reasons: (a) the node ctx stub has no
-//                          beginPath/stroke, so the real overlay would throw; and
-//                          (b) recording is exactly how AC3's "the overlay is
-//                          drawn while paused" becomes checkable here. The overlay
-//                          PLACEMENT — on the visible ctx AFTER the integer blit so
-//                          the card is not pixel-scaled — has no unit seam and is
-//                          an acceptance-by-manual-run (see the TEA Assessment).
+//   • shell/audio             — createAudio returns a RECORDING engine, so every
+//                               cue (play / startLoop / stopLoop / tick) the real
+//                               dispatch emits is captured. This is the "existing
+//                               SoundSurface double" AC2 names.
+//   • @shared/controls-overlay — sa1-5 supersedes the old drawEscOverlay double:
+//                               createControlsOverlay's real factory still runs
+//                               (so open/close/isOpen/handleKey all behave for
+//                               real — main.ts's Escape wiring is exercised
+//                               unmocked), but the returned overlay's `draw`
+//                               method is wrapped to RECORD its call rather than
+//                               stroke the ctx. Two reasons: (a) the node ctx stub
+//                               has no beginPath/stroke, so the real draw would
+//                               throw; and (b) recording is exactly how AC3's
+//                               "the overlay is drawn while paused" becomes
+//                               checkable here. The overlay PLACEMENT — on the
+//                               visible ctx AFTER the integer blit so the card is
+//                               not pixel-scaled — has no unit seam and is an
+//                               acceptance-by-manual-run (see the TEA Assessment).
 //
 // WHY EDGE-DRIVEN AUDIO IS THE HARD PART (lang-review #14, origin: cp5-1). The
 // core emits only the EDGES of a sustained voice — march-start once, march-stop
@@ -45,7 +51,7 @@ const rec = vi.hoisted(() => ({
   ticks: 0,
   /** How many engines were built — main.ts must build exactly one, at boot. */
   engines: 0,
-  /** Every drawEscOverlay call: the viewport it was handed. */
+  /** Every overlay.draw() call: the viewport it was handed. */
   overlay: [] as { w: number; h: number }[],
 }))
 
@@ -77,16 +83,29 @@ vi.mock('../src/shell/audio', async (importOriginal) => {
   }
 })
 
-vi.mock('@shared/esc-overlay', async (importOriginal) => {
-  const real = await importOriginal<typeof import('@shared/esc-overlay')>()
+vi.mock('@shared/controls-overlay', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@shared/controls-overlay')>()
   return {
-    // Anchor the recorder's parameters to the REAL drawEscOverlay signature
-    // (ctx, w, h, opts) so a future signature change is caught at compile time
-    // here — the same discipline the audio mock above uses (lang-review #8). A
-    // bare `(ctx, w, h)` would silently drop the 4th `opts` param.
-    drawEscOverlay: (...args: Parameters<typeof real.drawEscOverlay>): void => {
-      const [, w, h] = args
-      rec.overlay.push({ w, h })
+    ...real,
+    // The REAL factory still runs — open/close/isOpen/handleKey all behave for
+    // real, so main.ts's Escape wiring is exercised unmocked. Only `draw` is
+    // wrapped, to RECORD its call (w, h) instead of stroking the ctx stub (which
+    // has no beginPath/stroke). Anchored to the REAL draw signature so a future
+    // signature change is caught at compile time here — the same discipline the
+    // audio mock above uses (lang-review #8).
+    createControlsOverlay: (
+      ...args: Parameters<typeof real.createControlsOverlay>
+    ): ReturnType<typeof real.createControlsOverlay> => {
+      const overlay = real.createControlsOverlay(...args)
+      // Recording only — NOT delegating to the real draw, which strokes the ctx
+      // (the node ctx stub has no beginPath/stroke, so it would throw). Nothing
+      // else about the overlay is faked: open/close/isOpen/handleKey are the
+      // real implementation, so main.ts's Escape wiring runs unmocked.
+      overlay.draw = (...drawArgs: Parameters<typeof overlay.draw>): void => {
+        const [, w, h] = drawArgs
+        rec.overlay.push({ w, h })
+      }
+      return overlay
     },
   }
 })
@@ -130,17 +149,31 @@ beforeAll(async () => {
     }
   }
   const escape = (): void =>
-    // key:'Escape' (the DOM spelling installPauseToggle lowercases), repeat:false
-    // so it reads as an EDGE, not an auto-repeat level.
-    shell.emit('window', 'keydown', { key: 'Escape', repeat: false })
+    // key:'Escape' (the DOM spelling isPauseKey lowercases), repeat:false so it
+    // reads as an EDGE, not an auto-repeat level. sa1-5: while the overlay is
+    // OPEN this same keydown is handled by overlay.handleKey(e), which reads
+    // e.code (Escape → 'back', resuming from the menu screen) and always calls
+    // e.preventDefault() — and the capture-phase listener itself always calls
+    // e.stopImmediatePropagation(). A real KeyboardEvent carries all of these;
+    // the fake one here must too, or the second (resuming) escape() no-ops.
+    shell.emit('window', 'keydown', {
+      key: 'Escape',
+      code: 'Escape',
+      repeat: false,
+      stopImmediatePropagation() {},
+      preventDefault() {},
+    })
 
   run(1, 0) // baseline frame — main.ts only stamps `last`, no sub-steps
 
   // START1 → leave attract for a live game (the core keeps attract silent, so no
   // sustained voice can ring until this lands).
-  shell.emit('window', 'keydown', { key: 'Enter' })
+  // sa1-5: the keyboard adapter matches on physical e.code now, not e.key —
+  // both fields are set, matching a real KeyboardEvent's shape (main.ts's
+  // Escape-capture listener still reads e.key).
+  shell.emit('window', 'keydown', { key: 'Enter', code: 'Enter' })
   run(40, ONE_STEP_MS)
-  shell.emit('window', 'keyup', { key: 'Enter' })
+  shell.emit('window', 'keyup', { key: 'Enter', code: 'Enter' })
 
   // The march is the game's heartbeat — it rings continuously through live play.
   // Snapshot the ringing set and the live state reference the instant before we
@@ -312,18 +345,19 @@ describe('cp7-6 AC2 — the sustained voices are silenced through the pause', ()
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe('cp7-6 AC3 — the keybind overlay is drawn while paused, and only then', () => {
-  it('drawEscOverlay is called during the paused span', () => {
-    // RED today: main.ts never imports or calls drawEscOverlay, so a paused frame
-    // draws no overlay. (That the card lands on the VISIBLE ctx AFTER the blit, so
-    // it is not pixel-scaled into the 240x256 backbuffer, is AC3's placement half
-    // — no unit seam, verified by the manual run recorded in the TEA Assessment.)
+  it('overlay.draw() is called during the paused span', () => {
+    // sa1-5: the controls overlay owns pause chrome now (drawControlsOverlay,
+    // not drawEscOverlay). That the card lands on the VISIBLE ctx AFTER the
+    // blit, so it is not pixel-scaled into the 240x256 backbuffer, is AC3's
+    // placement half — no unit seam, verified by the manual run recorded in
+    // the TEA Assessment.
     expect(
       overlayCallsDuringPause,
-      'no pause overlay was drawn while paused — drawEscOverlay was never called',
+      'no pause overlay was drawn while paused — overlay.draw() was never called',
     ).toBeGreaterThan(0)
   })
 
-  it('drawEscOverlay is NOT called while playing (before the pause)', () => {
+  it('overlay.draw() is NOT called while playing (before the pause)', () => {
     // The dim card must not sit over live play. The whole run before the pause
     // drew no overlay. (Holds today too — this is the negative guard that keeps
     // the positive one honest.)

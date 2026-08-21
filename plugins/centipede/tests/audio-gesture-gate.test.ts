@@ -94,7 +94,7 @@ beforeAll(async () => {
 describe('cp5-2 AC4 — the gesture gate is respected', () => {
   it('the boot is SEEDED — this file observes a pinned world, not whatever the clock said', () => {
     // REWORK (Reviewer round 1, MEDIUM). Shared with the other two boot suites:
-    // main.ts:204 seeded attract straight from `Date.now()`, so "the attract
+    // main.ts:224 seeded attract straight from `Date.now()`, so "the attract
     // screen ran 60 frames and stayed silent" was an observation about one
     // particular world. Attract silence is a core guarantee
     // (core/events.ts:23-26) and does not depend on the seed, but the run below

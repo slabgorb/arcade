@@ -198,14 +198,16 @@ describe('cp1-5 input — keyboard adapter (arrow / WASD fallback)', () => {
     const input = await loadInput()
     const bus = makeBus()
     const kbd = input.createKeyboardAdapter(bus)
-    bus.emit('keydown', { key: 'ArrowRight' })
+    // sa1-5: the keyboard adapter matches on physical e.code now, not e.key —
+    // bindings are e.code fleet-wide (@shared/keybind's Binding doc comment).
+    bus.emit('keydown', { code: 'ArrowRight' })
     // cp2-14 RE-PIN (sign): ArrowRight is a RIGHTWARD device push, so it
     // synthesizes -KEY_COUNT — the ROM count that drives PLAYH toward 0x0B, the
     // cabinet's RIGHT edge. Magnitude and the held/released lifecycle are
     // unchanged, which is what this test is for.
     expect(kbd.sample().dh).toBe(-input.KEY_COUNT)
     expect(kbd.sample().dh).toBe(-input.KEY_COUNT) // still held on the next frame
-    bus.emit('keyup', { key: 'ArrowRight' })
+    bus.emit('keyup', { code: 'ArrowRight' })
     expect(kbd.sample().dh).toBe(0)
   })
 
@@ -213,10 +215,10 @@ describe('cp1-5 input — keyboard adapter (arrow / WASD fallback)', () => {
     const input = await loadInput()
     const bus = makeBus()
     const kbd = input.createKeyboardAdapter(bus)
-    bus.emit('keydown', { key: 'ArrowUp' })
+    bus.emit('keydown', { code: 'ArrowUp' })
     expect(kbd.sample().dv).toBe(input.KEY_COUNT)
-    bus.emit('keyup', { key: 'ArrowUp' })
-    bus.emit('keydown', { key: 'ArrowDown' })
+    bus.emit('keyup', { code: 'ArrowUp' })
+    bus.emit('keydown', { code: 'ArrowDown' })
     expect(kbd.sample().dv).toBe(-input.KEY_COUNT)
   })
 
@@ -224,8 +226,8 @@ describe('cp1-5 input — keyboard adapter (arrow / WASD fallback)', () => {
     const input = await loadInput()
     const bus = makeBus()
     const kbd = input.createKeyboardAdapter(bus)
-    bus.emit('keydown', { key: 'ArrowLeft' })
-    bus.emit('keydown', { key: 'ArrowRight' })
+    bus.emit('keydown', { code: 'ArrowLeft' })
+    bus.emit('keydown', { code: 'ArrowRight' })
     expect(kbd.sample().dh).toBe(0)
   })
 
@@ -233,10 +235,10 @@ describe('cp1-5 input — keyboard adapter (arrow / WASD fallback)', () => {
     const input = await loadInput()
     const bus = makeBus()
     const kbd = input.createKeyboardAdapter(bus)
-    bus.emit('keydown', { key: 'd' })
+    bus.emit('keydown', { code: 'KeyD' })
     expect(kbd.sample().dh).toBe(-input.KEY_COUNT) // cp2-14: 'd' == ArrowRight == ROM-negative
-    bus.emit('keyup', { key: 'd' })
-    bus.emit('keydown', { key: ' ' }) // Space
+    bus.emit('keyup', { code: 'KeyD' })
+    bus.emit('keydown', { code: 'Space' })
     expect(kbd.sample().fire).toBe(true)
   })
 })
@@ -254,7 +256,7 @@ describe('cp1-5 input — mouse and keyboard drive the identical core contract (
 
     const kbdBus = makeBus()
     const kbd = input.createKeyboardAdapter(kbdBus)
-    kbdBus.emit('keydown', { key: 'ArrowRight' })
+    kbdBus.emit('keydown', { code: 'ArrowRight' }) // sa1-5: matches on physical e.code now
 
     const mouseBus = makeBus()
     const mouse = input.createMouseAdapter(mouseBus)

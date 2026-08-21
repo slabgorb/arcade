@@ -353,9 +353,10 @@ describe('cp2-14 AC-2 — device-right still moves the gun screen-RIGHT after th
   const rest = createPlayer()
 
   it('keyboard: ArrowRight drives PLAYH toward the ROM right edge AND moves the gun screen-right', () => {
+    // sa1-5: the keyboard adapter matches on physical e.code now, not e.key.
     const busR = makeBus()
     const right = createKeyboardAdapter(busR)
-    busR.fire('keydown', { key: 'ArrowRight' })
+    busR.fire('keydown', { code: 'ArrowRight' })
     const movedR = movePlayer(rest, right.sample())
 
     expect(movedR.h, 'device-right moves PLAYH toward 0x0B, the ROM RIGHT edge').toBeLessThan(rest.h)
@@ -363,7 +364,7 @@ describe('cp2-14 AC-2 — device-right still moves the gun screen-RIGHT after th
 
     const busL = makeBus()
     const leftAd = createKeyboardAdapter(busL)
-    busL.fire('keydown', { key: 'ArrowLeft' })
+    busL.fire('keydown', { code: 'ArrowLeft' })
     const movedL = movePlayer(rest, leftAd.sample())
 
     expect(movedL.h, 'device-left moves PLAYH toward 0xF4, the ROM LEFT edge').toBeGreaterThan(rest.h)

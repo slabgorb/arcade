@@ -306,17 +306,18 @@ describe('cp4-5 AC-3 (shell) — the keyboard start key ports START1', () => {
 
     expect((kbd.sample() as Input).start ?? false, 'no key held → not starting').toBe(false)
 
-    bus.emit('keydown', { key: 'Enter' })
+    // sa1-5: the keyboard adapter matches on physical e.code now, not e.key.
+    bus.emit('keydown', { code: 'Enter' })
     expect((kbd.sample() as Input).start, 'Enter held → start signal (ports the START1 press)').toBe(true)
 
-    bus.emit('keyup', { key: 'Enter' })
+    bus.emit('keyup', { code: 'Enter' })
     expect((kbd.sample() as Input).start ?? false, 'Enter released → start clears').toBe(false)
   })
 
   it('a plain movement key does NOT raise start (the gun does not begin the game)', () => {
     const bus = makeBus()
     const kbd = createKeyboardAdapter(bus)
-    bus.emit('keydown', { key: 'ArrowLeft' })
+    bus.emit('keydown', { code: 'ArrowLeft' })
     expect((kbd.sample() as Input).start ?? false, 'moving the gun is not a start').toBe(false)
   })
 })
