@@ -47,6 +47,7 @@ export function applyRebind(
   return { map: next, alsoBoundTo }
 }
 
+/** Discard all overrides and resolve straight from the manifest's own defaults. */
 export function resetToDefaults(manifest: ControlManifest): BindingMap {
   return resolveBindings(manifest, {})
 }

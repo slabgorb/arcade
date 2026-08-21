@@ -123,12 +123,13 @@ const PERFORMS = {
 // The `adopted`-requires-import-and-call check (AC-1, above) is UNAFFECTED, so a
 // cell here still has to genuinely wire the helper in the tree — this cannot be
 // used to mark a cell adopted that nothing implements.
-const DELIBERATE_GROWTH = new Set([
-  // cp7-6 — centipede grew the house player pause (five vector games already had
-  // it) and adopted installPauseToggle for it. Absent at the 088bc3d baseline by
-  // construction; see docs/ops/shell-adoption-matrix.md's pause note.
-  'centipede/installPauseToggle',
-]);
+// Currently empty: sa1-5 retired the only entry (centipede/installPauseToggle) by
+// moving every game's installPauseToggle cell to own-implementation (overlay-driven
+// pause) — the growth-check's `if (rows[game][helper] !== 'adopted') continue` skips
+// non-`adopted` cells before this Set is ever consulted, so the old entry was already
+// dead code by the time it was removed. Left as an empty Set (not deleted) because a
+// later `adopted` cell that grew after the baseline will need a waiver here again.
+const DELIBERATE_GROWTH = new Set([]);
 
 /** Parse the recorded matrix into { [game]: { [helper]: cell } } plus its baseline. */
 function readMatrix() {

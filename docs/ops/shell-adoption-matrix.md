@@ -111,8 +111,9 @@ cell is still refuted against the live tree on every run.
 
 ## installPauseToggle is retired fleet-wide: pause is now overlay-driven (sa1-5)
 
-**sa1-5** (key rebinding) gives every game a controls overlay
-(`createControlsOverlay`), and the simplest correct place to gate the pause
+**sa1-5** (key rebinding) gave every game a controls overlay
+(`createControlsOverlay`) — landed fleet-wide across all seven games in this
+table — and the simplest correct place to gate the pause
 freeze is that overlay's own open/closed state — the sim freezes while
 `overlay.isOpen()`, rather than through a separate pause key and the shared
 `installPauseToggle` listener. Once a game owns its pause through the overlay,

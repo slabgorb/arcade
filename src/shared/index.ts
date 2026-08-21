@@ -12,6 +12,11 @@
 //   - SH-3  ./rng       — the seeded mulberry32 PRNG
 //   - SH-4  ./highscore — the high-score table logic + localStorage seam
 //   - SH-5  ./loop       — the fixed-timestep game-loop accumulator
+//   - sa1-5 ./keybind         — pure: ControlManifest, resolveBindings, applyRebind,
+//                               resetToDefaults, diffOverrides, parseOverrides, and
+//                               the rebindReduce navigation state machine
+//   - sa1-5 ./controls-overlay — rendering/storage/key-capture: makeBindingStore,
+//                               drawControlsOverlay, createControlsOverlay
 //
 // Eligibility bar (ADR-0001): only code byte/algorithm-identical across >=2
 // games belongs here. Game-specific render pipelines, sim bodies, and input
