@@ -324,16 +324,18 @@ describe('df3-6 laser — fires, travels, and never exceeds four in flight (LFIR
     expect(moved, `laser stayed at x=${x0} — it is not travelling (scheduler.stepTick not driving it)`).toBe(true)
   })
 
-  it('holding fire caps at four concurrent lasers, never five', async () => {
+  it('pulsed fire presses cap at four concurrent lasers, never five', async () => {
+    // df8-4: fire is edge-per-press, so this pulses (a distinct press every 2 ticks) — a
+    // held button is one edge, one laser, and the cap would go unvacuously untested. Six
+    // presses inside the ~30-tick flight must pin the LFIRE cap at EXACTLY four.
     const { createSim, stepSim } = await loadSim()
     let s = createSim(makeRand(29))
     let peak = 0
     for (let i = 0; i < 12; i++) {
-      s = stepSim(s, withInput({ fire: true }))
+      s = stepSim(s, withInput({ fire: i % 2 === 0 }))
       peak = Math.max(peak, s.lasers.filter((l) => l.alive).length)
     }
-    expect(peak, 'never spawned a laser at all while holding fire').toBeGreaterThanOrEqual(1)
-    expect(peak, `had ${peak} lasers in flight — LFIRE caps at 4 (MAX_LASERS)`).toBeLessThanOrEqual(4)
+    expect(peak, `had ${peak} lasers in flight — LFIRE caps at 4 (MAX_LASERS), and six presses must REACH it`).toBe(4)
   })
 })
 

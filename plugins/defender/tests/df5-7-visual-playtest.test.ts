@@ -163,14 +163,14 @@ function changedCells(a: Framebuffer, b: Framebuffer): number {
 function stepUntil(
   sim: SimModule,
   start: SimState,
-  input: Input,
+  input: Input | ((i: number) => Input),
   pred: (s: SimState) => boolean,
   budget: number,
 ): { state: SimState; met: boolean } {
   let state = start
   for (let i = 0; i < budget; i++) {
     if (pred(state)) return { state, met: true }
-    state = sim.stepSim(state, input)
+    state = sim.stepSim(state, typeof input === 'function' ? input(i) : input)
   }
   return { state, met: pred(state) }
 }
@@ -214,7 +214,15 @@ describe('df5-7 — the score/men HUD reaches the live frame (df5-3)', () => {
     s = sim.spawnLander(s, 38 << 8)
     const scoreBefore = s.score
     const before = s.landers.length
-    const { state, met } = stepUntil(sim, s, FIRE, (st) => st.landers.length < before && st.score > scoreBefore, 20_000)
+    // df8-4: fire is edge-per-press — pulse it so the abduction run climbs into a laser
+    // STREAM (a held FIRE is one edge, one laser over the whole 20k-tick budget).
+    const { state, met } = stepUntil(
+      sim,
+      s,
+      (i) => (i % 2 === 0 ? FIRE : IDLE),
+      (st) => st.landers.length < before && st.score > scoreBefore,
+      20_000,
+    )
     expect(met, 'a killed lander awarded no points — the df4-1 kill is not wired to df5-3 addPoints').toBe(true)
     expect(state.score, 'the score must rise by at least the lander value (ENEMY_POINTS.lander === 150)').toBeGreaterThanOrEqual(
       scoreBefore + 150,

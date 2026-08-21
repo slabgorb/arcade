@@ -190,8 +190,16 @@ describe('df6-1 AC1 — the cue stream replays bit-for-bit (no entropy, no order
     // with it (287 -> 289 cues). Intended: the flame's randomness MUST come from the same
     // injected rand (the df3 seam) the purity sweep enforces. Replay + seed-divergence above
     // still pass, so the stream is healthy, not leaking entropy.
+    // RE-BASELINED for df8-4: the laser is now ROM-faithful — the head advances $400/tick
+    // (LASR1 ×4 LEAX $100, DEFA7.SRC:2799-2810) instead of the $100 placeholder, and fire is
+    // edge-per-press (SSCAN, :760-796) instead of auto-repeat. This script's `fire: i % 5 === 0`
+    // pulses are already distinct edges (4 released ticks between presses), so the fire CADENCE
+    // is unchanged — but each shot now crosses the field 4× faster, so WHICH enemies die when
+    // shifts, and the integrated hit/scream/pickup cue order with it (289 -> 306 cues).
+    // Intended: the $100 crawl WAS the df8-4 playtest defect. Replay + seed-divergence above
+    // still pass, so the stream is healthy.
     expect(fingerprint, `the seed-42 cue stream drifted from its baseline (${stream.length} cues)`).toBe(
-      'c8b2fd6ddca739c3',
+      'af61f05958d98f14',
     )
   })
 })
