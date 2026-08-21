@@ -8,7 +8,7 @@ repos: arcade
 stories:
   - id: df8-1
     title: "defender: rethink thrust/reverse controls — 'a'=switch + 'd'=thrust regardless of heading is confusing"
-    description: "Playtest 2026-08-20: the current keys are confusing — 'a' switches the ship's facing direction and 'd' thrusts, but thrust ignores the ship's visible heading, so players can't predict which way they'll move. Proposal to evaluate: an a-s-d layout where 's' switches direction and BOTH 'a' and 'd' thrust (a=thrust left, d=thrust right), so the thrust key matches the intended direction directly. Check the Defender ROM/cabinet control convention (2-way reverse + thrust button) before committing to a mapping; this is shell/input only — must not touch core sim determinism."
+    description: "Playtest 2026-08-20: the current keys are confusing — 'a' switches the ship's facing and 'd' thrusts, but thrust ignores the visible heading, so players can't predict which way they'll move. Revised proposal (s is needed for DOWN): use w=up, s=down for vertical movement, and a=thrust-left, d=thrust-right for horizontal — where each thrust key ALSO sets the ship's facing to match. That makes a separate 'switch/reverse' key unnecessary (direction is implied by which thrust key you press) and keeps 's' free for down. Evaluate against the Defender ROM/cabinet control convention (2-way reverse + thrust + up/down) before committing; shell/input only — must not touch core sim determinism."
     points: 3
     priority: p2
     status: backlog
