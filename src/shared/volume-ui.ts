@@ -13,10 +13,45 @@ export interface VolumeControlHandle {
   destroy(): void
 }
 
+// No app in the cabinet links a shared stylesheet — the lobby and every game each
+// carry their own inline <style> in index.html (see CLAUDE.md's "Serving the arcade").
+// So the control brings its own chrome: a one-time <style> injected into <head>,
+// guarded on this id so mounting more than once (or in more than one game over its
+// lifetime) never stacks duplicate rules.
+const STYLE_ID = 'arcade-volume-style'
+
+function ensureStyle(): void {
+  if (document.getElementById(STYLE_ID)) return
+  const style = document.createElement('style')
+  style.id = STYLE_ID
+  style.textContent = `
+.arcade-volume {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  font: 12px/1 monospace;
+  color: #fff;
+}
+.arcade-volume[hidden] { display: none; }
+.arcade-volume__slider { accent-color: #fff; }
+`
+  document.head.appendChild(style)
+}
+
 export function mountVolumeControl(opts: {
   root: ParentNode
   initiallyVisible?: boolean
 }): VolumeControlHandle {
+  ensureStyle()
+
   const container = document.createElement('div')
   container.className = 'arcade-volume'
   container.hidden = opts.initiallyVisible !== true
