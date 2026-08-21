@@ -12,6 +12,7 @@ import { resizeToDisplay } from '@shared/view'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 
 // tempest records the `level` reached; the shared factory binds load/save to the
 // 'tempest-high-scores' localStorage key and validates each row's finite score +
@@ -61,6 +62,8 @@ initial.highScoreTable = highScores.load()
 // machine-gun the toggle. The freeze itself is the loop's stepUnlessPaused gate,
 // which polls the isPaused accessor passed to createLoop below.
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 
 // Per-cabinet NUMBERS for the pause card: tempest's keybinds, its authentic 1981
 // green banner colour (#39ff14, the BONUS/TIME face), and the dim alpha. Copy /
@@ -83,6 +86,8 @@ const loop = createLoop(
   initial,
   () => input.sample(),
   (s, frameEvents) => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame.
+    volume.setVisible(pause.isPaused())
     const t = performance.now()
     let rdt = (t - lastDraw) / 1000
     lastDraw = t
