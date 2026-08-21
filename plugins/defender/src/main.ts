@@ -25,15 +25,16 @@
 // human snapshot), not only the start/coin button. setup/pause/death/game-over still hold
 // their frame — only play and attract advance a sim.
 
-import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { mountCanvas } from '@shared/host-helpers'
 import { createLoop } from '@shared/loop'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
+import { isPauseKey } from '@shared/pause'
+import { createControlsOverlay } from '@shared/controls-overlay'
 import { installHeldKeys } from '@shared/held-keys'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT, render } from './shell/render.js'
 import { stepSim } from './core/sim.js'
 import { composeFrame } from './core/scene.js'
-import { mapInput, startPressed } from './shell/input.js'
+import { mapInput, startPressed, setBindings } from './shell/input.js'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls.js'
 import { bootSession, advanceStart, stepSessionInitials, confirmSessionInitials, abortNameEntry } from './core/start.js'
 import { attractInput, hasPlayerInput } from './core/attract.js'
 import type { PhaseSignals } from './core/phase.js'
@@ -98,32 +99,48 @@ window.addEventListener('keydown', (event) => {
   }
 })
 
-// sa1-2: Escape toggles pause via the shared @shared/pause gate — the cabinet-wide
-// VERB (installPauseToggle guards e.repeat, so a held key can't machine-gun it). The
-// freeze is the early-return in the step callback below; the card + colour are
-// Defender's OWN per-cabinet NUMBERS (the epic's share-the-VERB-not-the-NUMBERS rule).
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-const DEFENDER_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'A / D        REVERSE / THRUST',
-    'W / S        UP / DOWN',
-    'SPACE        FIRE',
-    'B            SMART BOMB',
-    'H            HYPERSPACE',
-  ],
-  color: '#5ad1ff',
-  opacity: 0.72,
-} as const
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches input.ts's live map.
+// CONTROLS_OVERLAY_OPTS carries forward the old DEFENDER_PAUSE card's cyan
+// colour and dim opacity (controls.ts).
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the initials-entry handler above and
+// installHeldKeys' own listener: while the overlay is open it must consume
+// the keydown outright (stopImmediatePropagation) so a letter typed to rebind
+// a control never also lands in the high-score initials field or gets
+// latched as a held game key. Escape opens the overlay from the closed
+// state, guarded by e.repeat so an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 const loop = createLoop(
   () => {
-    // sa1-2: the frozen-frame gate. A paused frame advances nothing — no phase
-    // machine, no sim step, no audio — and createLoop still drains its accumulator
-    // by counting this no-op step, so resume banks no catch-up burst.
-    if (pause.isPaused()) return
+    // sa1-2/sa1-5: the frozen-frame gate. A frame with the controls overlay open
+    // advances nothing — no phase machine, no sim step, no audio — and createLoop
+    // still drains its accumulator by counting this no-op step, so resume banks no
+    // catch-up burst.
+    if (overlay.isOpen()) return
     // Drive df7-1's phase machine each frame. `startRequested` leaves attract on the
     // start/coin button (ST1 *ONE PLAYER START, DEFA7.SRC:1100) OR on ANY player key
     // (df7-3: the self-playing demo yields to a real game the instant a human touches the
@@ -212,8 +229,10 @@ const loop = createLoop(
       // (laser/bomb/TIE/mutant) render instead of sitting frozen at their $00 boot black.
       session.sim.pcram,
     )
-    // sa1-2: dim the frozen field and stroke Defender's own keybind card over it.
-    if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, DEFENDER_PAUSE)
+    // sa1-5: the controls overlay dims the frozen field and draws the pause/rebind
+    // chrome over it — same cyan colour + dim opacity the old DEFENDER_PAUSE card
+    // used, now sourced from CONTROLS_OVERLAY_OPTS (controls.ts).
+    if (overlay.isOpen()) overlay.draw(ctx, canvas.width, canvas.height)
   },
 )
 loop.start()

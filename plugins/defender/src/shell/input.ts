@@ -9,35 +9,31 @@
 // shell → core, never the reverse.
 
 import type { KeyMembership } from '@shared/held-keys'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
 import type { Input } from '../core/sim.js'
+import { CONTROL_MANIFEST, bindingStore } from './controls.js'
 
-/** Key bindings per action. Each action is bound to a WASD key and an arrow/space
- *  alternative, so either scheme drives the ship. `thrust` accelerates in the facing
- *  direction; `reverse` flips the facing (debounced in the core). */
-const BINDINGS: Readonly<Record<keyof Input, readonly string[]>> = {
-  thrust: ['KeyD', 'ArrowRight'],
-  reverse: ['KeyA', 'ArrowLeft'],
-  up: ['KeyW', 'ArrowUp'],
-  down: ['KeyS', 'ArrowDown'],
-  fire: ['Space', 'Enter'],
-  // df5-7: the smart-bomb key (SBOMB) — a dedicated button, distinct from fire.
-  smartBomb: ['KeyB', 'ShiftLeft'],
-  // df6-1: hyperspace (HYPER) — the second emergency power, edge-debounced in the core
-  // (like `reverse`). ShiftRight, not ShiftLeft, so it does not collide with smart bomb.
-  hyperspace: ['KeyH', 'ShiftRight'],
+// sa1-5: the WASD/arrow-alternative table above is now CONTROL_MANIFEST's
+// defaults (controls.ts), and the live map below is resolved through
+// @shared/keybind so a player's saved rebind (controls-overlay, wired in
+// main.ts) overrides them. setBindings is the overlay's onChange hook — it
+// swaps this module's live map in place.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
 }
 
 /** Map the held-key set to the pure per-tick Input snapshot. */
 export function mapInput(held: KeyMembership): Input {
   const anyHeld = (keys: readonly string[]): boolean => keys.some((k) => held.has(k))
   return {
-    thrust: anyHeld(BINDINGS.thrust),
-    reverse: anyHeld(BINDINGS.reverse),
-    up: anyHeld(BINDINGS.up),
-    down: anyHeld(BINDINGS.down),
-    fire: anyHeld(BINDINGS.fire),
-    smartBomb: anyHeld(BINDINGS.smartBomb),
-    hyperspace: anyHeld(BINDINGS.hyperspace),
+    thrust: anyHeld(bindings.thrust),
+    reverse: anyHeld(bindings.reverse),
+    up: anyHeld(bindings.up),
+    down: anyHeld(bindings.down),
+    fire: anyHeld(bindings.fire),
+    smartBomb: anyHeld(bindings.smartBomb),
+    hyperspace: anyHeld(bindings.hyperspace),
   }
 }
 
