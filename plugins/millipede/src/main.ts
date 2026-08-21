@@ -62,11 +62,12 @@ let game: GameState = { ...createGame(0x1982), highScores: loadHighScores(highSc
 //    deltas are UNBOUNDED (the cursor never hits a screen edge), so the mouse
 //    behaves like the cabinet trackball. The cursor is hidden while it does. ──
 // sa1-3 — fleet-consistent capture chrome: the OS cursor is hidden only WHILE the
-// pointer is captured, not from boot. It is visible in attract (so the player sees a
-// pointer to click) and RESTORED on a lock EXIT (Escape). This mirrors missile-command
-// (main.ts hides on capture, restores `cursor = ''` on onExit) and matches centipede,
-// which never hides it. The hide moves into the pointerdown capture path below; onExit
-// restores it here.
+// pointer is actually captured, not from boot. It is visible in attract (so the player
+// sees a pointer to click) and RESTORED on a lock EXIT (Escape). mc parity: missile-command
+// hides the cursor only AFTER the lock is confirmed held (inside request().then(), guarded
+// by pointerLockElement === canvas, main.ts:113-117) and restores it with `cursor = ''` on
+// onExit; centipede never hides it (the OS handles it under lock). The guarded hide lives in
+// the pointerdown capture path below; onExit restores it here.
 const mouse = createMouseAdapter(document)
 // R5: an Escape-exit keeps the window focused, so 'blur' never fires — the
 // pointerlockchange listener clears the last accumulated delta regardless of what
@@ -124,8 +125,13 @@ window.addEventListener('keyup', (e: KeyboardEvent) => {
 })
 canvas.addEventListener('pointerdown', () => {
   startPlay()
-  canvas.style.cursor = 'none' // sa1-3: hide the OS cursor WHEN capture is requested (onExit restores it)
-  void pointerLock.request() // click-to-lock the canvas for the trackball (R4-safe)
+  // click-to-lock the canvas for the trackball (R4-safe). sa1-3: hide the OS cursor ONLY
+  // once the lock is ACTUALLY held — request() resolves on a swallowed rejection too (the
+  // R4 re-lock cooldown), so gate on pointerLockElement or a rejected re-lock would leave
+  // the cursor hidden with no lock (mc main.ts:113-117). onExit restores it on ESC.
+  void pointerLock.request().then(() => {
+    if (document.pointerLockElement === canvas) canvas.style.cursor = 'none'
+  })
   fireHeld = true
   firePending = true
 })

@@ -30,18 +30,24 @@
 // unconditionally).
 //
 // This BEHAVIOURAL boot-harness pin drives the real booted main.ts through the whole
-// capture lifecycle and asserts the cursor's visibility at each state. It is RED on
-// states (1) and (3) until GREEN brings millipede to mc parity: hide the cursor when
-// capture is requested (the pointerdown handler), restore it on the lock-exit callback
-// — NOT hidden forever from boot.
+// capture lifecycle and asserts the cursor's visibility at each state. GREEN brings
+// millipede to mc parity: hide the cursor only once the lock is CONFIRMED held (from
+// request().then(), guarded by pointerLockElement === canvas — NOT synchronously on the
+// gesture), restore it on the lock-exit callback, and never hide it from boot.
 //
-// Why all three states, not just the broken two: pinning "hidden while locked" as well
-// box-canyons the fix. The lazy green — delete the boot `cursor='none'` line — would
-// satisfy (1) and (3) but regress (2) (the cursor would never hide during play). Only
-// the hide-on-capture + restore-on-exit shape passes all three, which is exactly the
-// mc/centipede contract this story exists to make uniform. A source-regex would miss
-// all of this (the ml10 epic's "built but dead" lesson — see pointer-lock-reset-on-
-// exit.test.ts); the running shell is the only honest witness.
+// FOUR states, because the hide must be gated on the lock actually being held:
+//   (1) attract → visible   (2) lock CONFIRMED held → hidden   (3) ESC exit → restored
+//   (4) REJECTED re-lock (R4 cooldown) → the lock is never acquired, so the guarded hide
+//       must NOT fire and the cursor stays visible. This is the case review round 1
+//       flagged: an UNGUARDED hide (hidden synchronously on the pointerdown gesture, before
+//       request() resolves) leaves the cursor stuck hidden with no lock, because on a
+//       swallowed rejection no pointerlockchange EXIT ever fires to restore it. missile-
+//       command guards against exactly this (main.ts:110-117); state (4) pins the guard.
+// Together the four states box-canyon the fix: the lazy "delete the boot cursor line" green
+// regresses (2); a synchronous-optimistic hide regresses (4); only the lock-confirmed hide +
+// restore-on-exit passes all four — the mc/centipede contract this story makes uniform. A
+// source-regex would miss all of this (the ml10 epic's "built but dead" lesson — see
+// pointer-lock-reset-on-exit.test.ts); the running shell is the only honest witness.
 
 import { describe, it, expect, beforeAll } from 'vitest'
 import { bootMillipedeShell, type ShellHarness } from './helpers/boot-shell'
@@ -49,6 +55,12 @@ import { bootMillipedeShell, type ShellHarness } from './helpers/boot-shell'
 // The OS cursor is "visible" whenever `canvas.style.cursor` is anything other than the
 // hiding value 'none' (default '', 'auto', 'default', etc. all show a pointer).
 const HIDDEN = 'none'
+
+// The hide is now gated on the lock being CONFIRMED held, so it fires from
+// `pointerLock.request().then(...)` — a microtask chain, not synchronously in the
+// pointerdown handler. A macrotask tick flushes every pending microtask so the guarded
+// hide (or, on a rejected re-lock, its correct absence) has resolved before we assert.
+const flushMicrotasks = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('sa1-3 — millipede cursor visibility across the capture lifecycle (boot harness, behavioural)', () => {
   let shell: ShellHarness
@@ -68,15 +80,20 @@ describe('sa1-3 — millipede cursor visibility across the capture lifecycle (bo
     ).not.toBe(HIDDEN)
   })
 
-  it('(2) CAPTURING — requesting the lock (the play gesture) HIDES the cursor for the trackball', () => {
-    // The play gesture: a canvas pointerdown requests the lock (main.ts:117). While the
-    // trackball drives the gun the OS cursor must be hidden. This is the ONE state that
-    // is (accidentally) correct today; the fix must keep it correct.
+  it('(2) CAPTURING — the cursor hides only once the lock is CONFIRMED held', async () => {
+    // The play gesture: a canvas pointerdown requests the lock. The hide is gated on the
+    // lock actually being held (mc parity) — it fires from request().then() only when
+    // document.pointerLockElement === canvas, NOT synchronously on the gesture. So drive a
+    // real acquisition: request, mark the lock granted (the browser sets pointerLockElement
+    // before request() resolves), flush the microtask, then assert hidden. Asserting BEFORE
+    // the acquire would be the reject-unsafe shape this story's review rejected in round 1.
     shell.emit('canvas', 'pointerdown')
     expect(shell.pointerLockRequests(), 'the play gesture requested pointer lock').toBeGreaterThan(0)
+    shell.setLockAcquired(true) // the lock is granted
+    await flushMicrotasks() // let request().then() run against the held lock
     expect(
       shell.cursorStyle(),
-      'while the pointer is captured for the trackball the OS cursor must be hidden',
+      'once the lock is CONFIRMED held the OS cursor is hidden for the trackball',
     ).toBe(HIDDEN)
   })
 
@@ -94,6 +111,24 @@ describe('sa1-3 — millipede cursor visibility across the capture lifecycle (bo
     expect(
       shell.cursorStyle(),
       'on ESC-release the OS cursor must return — a wired onExit restores it, the current mouse.reset()-only onExit leaves it hidden',
+    ).not.toBe(HIDDEN)
+  })
+
+  it('(4) REJECTED RE-LOCK — a request that never acquires the lock leaves the cursor VISIBLE', async () => {
+    // The mc-documented hazard (missile-command main.ts:110-112): request() resolves on a
+    // SWALLOWED rejection too (the R4 re-lock cooldown — ESC then an immediate re-click), and
+    // on that path the lock is never held and no pointerlockchange EXIT fires, so nothing else
+    // could restore the cursor. An UNGUARDED hide would therefore leave the cursor stuck hidden
+    // with no lock — the exact regression review round 1 rejected. The pointerLockElement guard
+    // must keep the cursor visible. (State (3) left it visible; the lock is not acquired here —
+    // no setLockAcquired(true) — so the guard sees pointerLockElement !== canvas.)
+    expect(shell.cursorStyle(), 'precondition: the ESC exit above left the cursor visible').not.toBe(HIDDEN)
+    shell.rejectNextLock() // the next requestPointerLock() rejects (cooldown)
+    shell.emit('canvas', 'pointerdown')
+    await flushMicrotasks() // request() swallows the rejection and resolves; its .then() runs
+    expect(
+      shell.cursorStyle(),
+      'a rejected re-lock acquired no lock, so the guarded hide must not fire — the cursor stays visible',
     ).not.toBe(HIDDEN)
   })
 })
