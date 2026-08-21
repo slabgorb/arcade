@@ -22,6 +22,7 @@ import { playEventSounds } from './shell/audio-dispatch'
 import type { GameEvent } from './core/events'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { installPauseToggle } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
@@ -181,6 +182,8 @@ let pausedLoops: SoundName[] = []
 // is coherent and deliberate (AC5): the player loses the trackball and gets a
 // pause card; a click re-locks on resume.
 const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-4: the shared master-volume control, shown only while paused.
+const volume = mountVolumeControl({ root: document.body })
 
 // The pause keybind card (per-cabinet NUMBERS; the shared overlay owns the dim +
 // centred-card MECHANISM). Copy / colour / opacity are playtest-tunable. Centipede's
@@ -242,6 +245,8 @@ const frame = (now: number): void => {
   // edge, snapshot the ringing loops and stop them; on the resume edge, restart
   // exactly that set. `paused` also gates the sim step and gates the overlay draw.
   const paused = pause.isPaused()
+  // sa1-4: keep the volume slider's visibility in sync every animated frame.
+  volume.setVisible(paused)
   if (paused && !wasPaused) {
     pausedLoops = [...liveLoops]
     for (const name of pausedLoops) {
