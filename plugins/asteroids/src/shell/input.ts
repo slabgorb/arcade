@@ -16,6 +16,8 @@
 import type { Input } from '../core/input'
 import { DEFAULT_TUNING, type RotationTuning } from './tuning'
 import { installHeldKeys, type HeldKeysHandle } from '@shared/held-keys'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
 
 export interface InputController {
   /** A fresh Input reflecting the keys held this instant. */
@@ -27,14 +29,15 @@ export interface InputController {
 // AND start — safe because start is inert during play and fire is inert in
 // attract/gameover (the sim gates each by mode); Enter is the start/confirm
 // primary, matching the initials-entry confirm (A-16).
-const KEYS = {
-  left: ['ArrowLeft', 'KeyA'],
-  right: ['ArrowRight', 'KeyD'],
-  thrust: ['ArrowUp', 'KeyW'],
-  fire: ['Space', 'KeyK'],
-  hyperspace: ['ArrowDown', 'KeyS', 'ShiftLeft', 'ShiftRight'],
-  start: ['Enter', 'Space'],
-} as const
+//
+// sa1-5: the codes above are now CONTROL_MANIFEST's defaults (controls.ts), and
+// the live map below is resolved through @shared/keybind so a player's saved
+// rebind (controls-overlay, wired in main.ts) overrides them. setBindings is the
+// overlay's onChange hook — it swaps this module's live map in place.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
+}
 
 // Keys the browser would otherwise scroll the page with — the cabinet owns them.
 const SCROLL_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'])
@@ -80,8 +83,8 @@ export function createInputController(
   let keys: HeldKeysHandle
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!keys.has(e.code)) {
-      if ((KEYS.left as readonly string[]).includes(e.code)) leftEdge = true
-      if ((KEYS.right as readonly string[]).includes(e.code)) rightEdge = true
+      if (bindings.left.includes(e.code)) leftEdge = true
+      if (bindings.right.includes(e.code)) rightEdge = true
     }
   })
   keys = installHeldKeys(window, { preventDefaultFor: SCROLL_KEYS })
@@ -121,8 +124,8 @@ export function createInputController(
 
   return {
     sample(): Input {
-      const l = rotate(KEYS.left, leftFrames, leftEdge)
-      const r = rotate(KEYS.right, rightFrames, rightEdge)
+      const l = rotate(bindings.left, leftFrames, leftEdge)
+      const r = rotate(bindings.right, rightFrames, rightEdge)
       leftFrames = l.frames
       rightFrames = r.frames
       leftEdge = false
@@ -130,12 +133,12 @@ export function createInputController(
       return {
         left: l.out,
         right: r.out,
-        thrust: any(KEYS.thrust),
-        fire: any(KEYS.fire) || mouseFireHeld,
-        hyperspace: any(KEYS.hyperspace) || mouseHyperspaceHeld,
+        thrust: any(bindings.thrust),
+        fire: any(bindings.fire) || mouseFireHeld,
+        hyperspace: any(bindings.hyperspace) || mouseHyperspaceHeld,
         // The left mouse button doubles as start, exactly as Space does: fire
         // during play, start from attract/gameover — the sim gates each by mode.
-        start: any(KEYS.start) || mouseFireHeld,
+        start: any(bindings.start) || mouseFireHeld,
       }
     },
   }
