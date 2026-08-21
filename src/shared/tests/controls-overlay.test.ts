@@ -9,6 +9,7 @@ vi.mock('@shared/font', () => ({ layoutText: font.layoutText, CELL_H: 8 }))
 
 import { drawControlsOverlay, bindingLabel, createControlsOverlay } from '@shared/controls-overlay'
 import type { ControlManifest, Screen } from '@shared/keybind'
+import { resetToDefaults } from '@shared/keybind'
 
 function memStorage(): Storage {
   const m = new Map<string, string>()
@@ -131,5 +132,22 @@ describe('createControlsOverlay controller', () => {
     o.handleKey(key('Escape'))
     expect(o.bindings.thrust).toEqual(['ArrowUp', 'KeyW'])
     expect(saved.length).toBe(before)
+  })
+  it('RESET DEFAULTS restores defaults, persists {}, and fires onChange', () => {
+    const { o, saved, changed } = make()
+    // First rebind thrust so the map is non-default
+    o.open()
+    o.handleKey(key('ArrowDown')) // menu → CONTROLS
+    o.handleKey(key('Enter'))     // enter controls (cursor 0 = thrust)
+    o.handleKey(key('Enter'))     // capture thrust
+    o.handleKey(key('KeyT'))      // bind KeyT
+    expect(o.bindings.thrust).toEqual(['KeyT'])
+    // Now navigate to RESET DEFAULTS and select
+    o.handleKey(key('ArrowDown')) // cursor 0 → 1
+    o.handleKey(key('ArrowDown')) // cursor 1 → 2 (RESET DEFAULTS)
+    o.handleKey(key('Enter'))     // select RESET
+    expect(o.bindings).toEqual(resetToDefaults(M))     // thrust back to ArrowUp/KeyW
+    expect(saved.at(-1)).toEqual({})                   // persisted empty overrides
+    expect(changed()).toEqual(o.bindings)              // onChange fired with the reset map
   })
 })
