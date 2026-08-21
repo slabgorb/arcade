@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { resolveBindings, applyRebind, resetToDefaults, diffOverrides, parseOverrides, type ControlManifest } from '@shared/keybind'
+import {
+  resolveBindings,
+  applyRebind,
+  resetToDefaults,
+  diffOverrides,
+  parseOverrides,
+  rebindReduce,
+  INITIAL_SCREEN,
+  MENU_ITEMS,
+  controlsRowCount,
+  type ControlManifest,
+  type Screen,
+} from '@shared/keybind'
 
 const MANIFEST: ControlManifest = [
   { action: 'thrust', label: 'THRUST', defaults: ['ArrowUp', 'KeyW'] },
@@ -81,5 +93,61 @@ describe('parseOverrides', () => {
   it('rejects a value that is not a string array', () => {
     expect(parseOverrides({ fire: 'KeyJ' })).toBeNull()
     expect(parseOverrides({ fire: [1, 2] })).toBeNull()
+  })
+})
+
+const map = { thrust: ['ArrowUp'], fire: ['Space'] }
+const M = MANIFEST // thrust,fire
+
+describe('rebindReduce — menu', () => {
+  it('down then up clamps at the ends', () => {
+    let s = INITIAL_SCREEN
+    s = rebindReduce(s, map, M, { t: 'up' }).screen           // already top
+    expect(s).toEqual({ name: 'menu', cursor: 0 })
+    s = rebindReduce(s, map, M, { t: 'down' }).screen
+    s = rebindReduce(s, map, M, { t: 'down' }).screen         // clamp at RESUME/CONTROLS end
+    expect(s).toEqual({ name: 'menu', cursor: MENU_ITEMS.length - 1 })
+  })
+  it('RESUME emits resume', () => {
+    expect(rebindReduce({ name: 'menu', cursor: 0 }, map, M, { t: 'select' }).command).toBe('resume')
+  })
+  it('CONTROLS enters the controls screen', () => {
+    expect(rebindReduce({ name: 'menu', cursor: 1 }, map, M, { t: 'select' }).screen)
+      .toEqual({ name: 'controls', cursor: 0, capturing: null })
+  })
+})
+
+describe('rebindReduce — controls', () => {
+  const controls: Screen = { name: 'controls', cursor: 0, capturing: null }
+  it('has actions + RESET + BACK rows', () => {
+    expect(controlsRowCount(M)).toBe(M.length + 2)
+  })
+  it('select on an action begins capture', () => {
+    expect(rebindReduce(controls, map, M, { t: 'select' }).screen)
+      .toEqual({ name: 'controls', cursor: 0, capturing: 'thrust' })
+  })
+  it('capture rebinds, clears capturing, and requests save', () => {
+    const capturing: Screen = { name: 'controls', cursor: 0, capturing: 'thrust' }
+    const r = rebindReduce(capturing, map, M, { t: 'capture', code: 'KeyT' })
+    expect(r.map.thrust).toEqual(['KeyT'])
+    expect(r.screen).toEqual({ name: 'controls', cursor: 0, capturing: null })
+    expect(r.command).toBe('save')
+  })
+  it('back while capturing cancels without saving', () => {
+    const capturing: Screen = { name: 'controls', cursor: 0, capturing: 'thrust' }
+    const r = rebindReduce(capturing, map, M, { t: 'back' })
+    expect(r.screen).toEqual({ name: 'controls', cursor: 0, capturing: null })
+    expect(r.command).toBeUndefined()
+    expect(r.map).toEqual(map)
+  })
+  it('RESET emits reset', () => {
+    const onReset: Screen = { name: 'controls', cursor: M.length, capturing: null }
+    expect(rebindReduce(onReset, map, M, { t: 'select' }).command).toBe('reset')
+  })
+  it('BACK returns to the menu on CONTROLS and saves', () => {
+    const onBack: Screen = { name: 'controls', cursor: M.length + 1, capturing: null }
+    const r = rebindReduce(onBack, map, M, { t: 'select' })
+    expect(r.screen).toEqual({ name: 'menu', cursor: 1 })
+    expect(r.command).toBe('save')
   })
 })

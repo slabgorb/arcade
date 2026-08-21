@@ -76,3 +76,74 @@ export function parseOverrides(raw: unknown): Overrides | null {
   }
   return out
 }
+
+/** The rebind overlay's two screens: the pause-style menu, and the controls list
+ *  where an action row can be selected to capture its next keypress. */
+export type Screen =
+  | { readonly name: 'menu'; readonly cursor: number }
+  | { readonly name: 'controls'; readonly cursor: number; readonly capturing: string | null }
+
+/** Input events the overlay's reducer accepts — navigation, selection, cancel, and
+ *  a captured physical key while `capturing` is set. */
+export type RebindEvent =
+  | { readonly t: 'up' } | { readonly t: 'down' } | { readonly t: 'select' } | { readonly t: 'back' }
+  | { readonly t: 'capture'; readonly code: Binding }
+
+/** Side effects the caller (the DOM-touching half) must perform after a reduce. */
+export type RebindCommand = 'resume' | 'save' | 'reset'
+
+export const MENU_ITEMS = ['RESUME', 'CONTROLS'] as const
+export const INITIAL_SCREEN: Screen = { name: 'menu', cursor: 0 }
+
+/** action rows + RESET DEFAULTS + BACK. */
+export function controlsRowCount(manifest: ControlManifest): number {
+  return manifest.length + 2
+}
+
+const clamp = (n: number, max: number): number => (n < 0 ? 0 : n > max ? max : n)
+
+/** Pure navigation state machine for the rebind overlay. Never touches storage or
+ *  the DOM — it only ever returns a next screen, a next map, and an optional command
+ *  for the caller to carry out (resume closing the overlay, save persisting the map,
+ *  reset rebuilding it to defaults). */
+export function rebindReduce(
+  screen: Screen,
+  map: BindingMap,
+  manifest: ControlManifest,
+  event: RebindEvent,
+): { screen: Screen; map: BindingMap; command?: RebindCommand } {
+  if (screen.name === 'menu') {
+    switch (event.t) {
+      case 'up': return { screen: { ...screen, cursor: clamp(screen.cursor - 1, MENU_ITEMS.length - 1) }, map }
+      case 'down': return { screen: { ...screen, cursor: clamp(screen.cursor + 1, MENU_ITEMS.length - 1) }, map }
+      case 'back': return { screen, map, command: 'resume' }
+      case 'select':
+        return screen.cursor === 0
+          ? { screen, map, command: 'resume' }
+          : { screen: { name: 'controls', cursor: 0, capturing: null }, map }
+      default: return { screen, map }
+    }
+  }
+  // controls
+  const rows = controlsRowCount(manifest)
+  const resetIdx = manifest.length
+  const backIdx = manifest.length + 1
+  if (screen.capturing !== null) {
+    if (event.t === 'capture') {
+      const { map: next } = applyRebind(map, screen.capturing, event.code)
+      return { screen: { ...screen, capturing: null }, map: next, command: 'save' }
+    }
+    if (event.t === 'back') return { screen: { ...screen, capturing: null }, map }
+    return { screen, map }
+  }
+  switch (event.t) {
+    case 'up': return { screen: { ...screen, cursor: clamp(screen.cursor - 1, rows - 1) }, map }
+    case 'down': return { screen: { ...screen, cursor: clamp(screen.cursor + 1, rows - 1) }, map }
+    case 'back': return { screen: { name: 'menu', cursor: 1 }, map, command: 'save' }
+    case 'select':
+      if (screen.cursor === backIdx) return { screen: { name: 'menu', cursor: 1 }, map, command: 'save' }
+      if (screen.cursor === resetIdx) return { screen, map, command: 'reset' }
+      return { screen: { ...screen, capturing: manifest[screen.cursor].action }, map }
+    default: return { screen, map }
+  }
+}
