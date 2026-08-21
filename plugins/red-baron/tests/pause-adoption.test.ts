@@ -1,40 +1,37 @@
 // tests/pause-adoption.test.ts
 //
-// Story SH2-14 (epic SH2) — RED phase (Furiosa / TEA). red-baron GAINS a pause
-// AND jumps its @arcade/shared pin forward. It is the odd cabinet: it still pins
-// the pre-font `#v0.5.0` (math3d + rng only), which predates BOTH `/font` and the
-// SH2-12 `/pause` + `/esc-overlay` subpaths. This story bumps the pin to the
-// published tag that carries them and wires red-baron onto the shared mechanism.
+// Story SH2-14 (epic SH2) — red-baron GAINED a pause via the shared @shared/pause
+// VERB (isPauseKey / togglePaused / stepUnlessPaused) plus the original
+// @shared/esc-overlay BROWSER card (drawEscOverlay), whose LINES, COLOUR and
+// OPACITY were per-cabinet NUMBERS the caller supplied (RED_BARON_PAUSE).
 //
-// Clean AC-4 resolution (documented in the story context): red-baron needs NO
-// separate HUD-font migration — the shared drawEscOverlay strokes its keybind
-// card through @shared/font INTERNALLY, so adopting the overlay renders
-// red-baron's card in the shared face transitively.
+// sa1-5 (Option A) supersedes that overlay half: the rebindable
+// @shared/controls-overlay now OWNS pause chrome outright — Escape opens it, and
+// it draws the dim+card itself (drawControlsOverlay via overlay.draw(), not
+// drawEscOverlay). red-baron drops its drawEscOverlay import, its
+// installPauseToggle import/call, RED_BARON_PAUSE and the `pause` object
+// entirely; @shared/pause's VERB (isPauseKey) is still what gates the Escape
+// edge in main.ts — only the overlay half moved. (Its own-implementation freeze
+// — a loop guard over `overlay.isOpen()` rather than the shared single-state
+// stepUnlessPaused thunk — is unchanged by this story and stays out of scope for
+// this file, exactly as it was pre-sa1-5: red-baron's state lives across many
+// closure vars, not one object.)
 //
 // The live pause BEHAVIOUR (keydown edge → freeze → overlay in the rAF loop) is
 // AC-5, a MANUAL run — the keydown+rAF wiring has no unit seam (the standing
 // "shell IO is verified by running the game" convention). So the automated RED
-// drivers pin the WIRING, the PIN BUMP, and the dep-pin CONTRACT:
-//   1. adoption   — some src module imports @shared/pause (fails: none does).
-//   2. overlay    — some src module imports @shared/esc-overlay (fails: none).
-//   3. pin bump   — package.json no longer pins the pre-font #v0.5.0 (AC-4).
-//   4. resolution — the pin resolves both subpaths (fails HARD today: #v0.5.0's
-//                   exports map has neither /pause nor /esc-overlay).
+// drivers pin the WIRING and the resolution CONTRACT:
+//   1. adoption   — some src module imports @shared/pause.
+//   2. overlay    — some src module imports @shared/controls-overlay (sa1-5:
+//                   the pause-owning chrome, replacing esc-overlay).
+//   3. resolution — both subpaths resolve with the expected exports.
 //
-// MONOREPO MIGRATION — driver 3 above, `drops the pre-font #v0.5.0 pin (AC-4)`,
-// is REMOVED as false BY DESIGN. It read package.json's `@arcade/shared`
-// dependency and asserted the git-URL ref was not `#v0.5.0`. The per-plugin
-// package.json is now a three-field stub with no dependencies at all: the shared
-// library is in-repo at src/shared, reached through the `@shared` alias, so there
-// is no pin, no ref, and nothing that CAN be stale. This is the second of two
-// git-URL-pin assertions this import deletes (the other is in scaffold.test.ts);
-// both are called out rather than folded in silently, because a pinned dependency
-// pipe was a real guard and it is genuinely gone, not re-homed.
-//
-// Drivers 1, 2 and 4 all SURVIVE, rewritten onto the `@shared` specifier: what
-// they assert — that red-baron's own src really imports the shared pause gate and
-// esc-overlay, and that both really resolve with their full APIs — is a fact
-// about red-baron, not about how the library was delivered.
+// MONOREPO MIGRATION (unchanged by sa1-5): a third driver that read
+// package.json's `@arcade/shared` git-URL pin was REMOVED as false — the
+// per-plugin package.json is now a three-field stub with no dependencies at
+// all, the shared library is in-repo at src/shared, and there is no pin to go
+// stale. That removal is recorded here rather than folded in silently, because
+// a pinned dependency pipe was a real guard and it is genuinely gone.
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -59,13 +56,12 @@ function importersOf(pattern: RegExp): string[] {
 }
 
 const PAUSE_IMPORT = /['"]@shared\/pause['"]/
-const ESC_OVERLAY_IMPORT = /['"]@shared\/esc-overlay['"]/
+const CONTROLS_OVERLAY_IMPORT = /['"]@shared\/controls-overlay['"]/
 
 // Runtime-only resolution: keep the specifiers out of Vite's static analysis so
-// the (currently unresolvable) subpaths surface as ONE failing test each, not a
-// module-graph crash that would silence the wiring + pin drivers.
+// an unresolvable subpath surfaces as ONE failing test, not a module-graph crash.
 const PAUSE_SUBPATH = '@shared/pause'
-const ESC_OVERLAY_SUBPATH = '@shared/esc-overlay'
+const CONTROLS_OVERLAY_SUBPATH = '@shared/controls-overlay'
 
 interface SharedPauseModule {
   INITIAL_PAUSED: boolean
@@ -73,16 +69,11 @@ interface SharedPauseModule {
   togglePaused: (paused: boolean) => boolean
   stepUnlessPaused: <S>(step: () => S, prev: S, paused: boolean) => S
 }
-interface SharedEscOverlayModule {
-  drawEscOverlay: (
-    ctx: CanvasRenderingContext2D,
-    w: number,
-    h: number,
-    opts: { lines: readonly string[]; color: string; opacity: number },
-  ) => void
+interface SharedControlsOverlayModule {
+  createControlsOverlay: (args: unknown) => unknown
 }
 
-describe('SH2-14 — red-baron adopts @shared/pause + /esc-overlay (AC-1, AC-2, AC-4)', () => {
+describe('SH2-14/sa1-5 — red-baron adopts @shared/pause + /controls-overlay (AC-1, AC-2)', () => {
   it('a src module imports the shared pause gate', () => {
     expect(
       importersOf(PAUSE_IMPORT),
@@ -90,11 +81,18 @@ describe('SH2-14 — red-baron adopts @shared/pause + /esc-overlay (AC-1, AC-2, 
     ).not.toHaveLength(0)
   })
 
-  it('a src module imports the shared esc-overlay', () => {
+  it('a src module imports the shared controls overlay (sa1-5: owns pause chrome)', () => {
     expect(
-      importersOf(ESC_OVERLAY_IMPORT),
-      'no src file imports @shared/esc-overlay — red-baron draws no pause overlay',
+      importersOf(CONTROLS_OVERLAY_IMPORT),
+      'no src file imports @shared/controls-overlay — red-baron draws no pause overlay',
     ).not.toHaveLength(0)
+  })
+
+  it('no src module imports the retired @shared/esc-overlay any more', () => {
+    expect(
+      importersOf(/['"]@shared\/esc-overlay['"]/),
+      'sa1-5 replaces the bare esc-overlay card with the rebindable controls overlay',
+    ).toHaveLength(0)
   })
 
   it('the shared library resolves /pause with the full gate API', async () => {
@@ -111,8 +109,13 @@ describe('SH2-14 — red-baron adopts @shared/pause + /esc-overlay (AC-1, AC-2, 
     expect(stepCalls, 'a paused frame must not call the step thunk').toBe(0)
   })
 
-  it('the shared library resolves /esc-overlay with drawEscOverlay', async () => {
-    const overlay = (await import(/* @vite-ignore */ ESC_OVERLAY_SUBPATH)) as unknown as SharedEscOverlayModule
-    expect(typeof overlay.drawEscOverlay, 'drawEscOverlay must be exported by @shared/esc-overlay').toBe('function')
+  it('@shared/controls-overlay resolves with createControlsOverlay', async () => {
+    const overlay = (await import(
+      /* @vite-ignore */ CONTROLS_OVERLAY_SUBPATH
+    )) as unknown as SharedControlsOverlayModule
+    expect(
+      typeof overlay.createControlsOverlay,
+      'createControlsOverlay must be exported by @shared/controls-overlay',
+    ).toBe('function')
   })
 })

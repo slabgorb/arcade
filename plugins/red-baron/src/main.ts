@@ -61,11 +61,12 @@ import { playEventSounds, updateContinuousSounds } from './shell/audio-dispatch'
 import { hudTextSegments } from './core/hud-font'
 import { multiply, type Mat4, type Vec3 } from '@shared/math3d'
 import { createRng, nextFloat } from '@shared/rng'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
-import { installHeldKeys } from '@shared/held-keys'
-import { drawEscOverlay } from '@shared/esc-overlay'
+import { isPauseKey } from '@shared/pause'
+import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { sampleYoke, setBindings } from './shell/input'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 
 // sc1-1: the checked mount. This file previously cast the element and then used a
 // NULLABLE ctx, which is why draw sites guard with `!ctx`/`&& ctx`. The mount now
@@ -362,20 +363,10 @@ function draw(
 }
 
 // ─── the yoke: keyboard → FlightInput ─────────────────────────────────────────
-
-const CONTROL_KEYS = new Set([
-  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'a', 'A', 'd', 'D', 'w', 'W', 's', 'S',
-  ' ', // Space = fire — must not scroll the page
-])
-const axis = (pos: boolean, neg: boolean): number => (pos ? 1 : 0) - (neg ? 1 : 0)
-
-// SH4-2: the shared held-keys tracker replaces the hand-rolled Set + keydown/keyup.
-// idOf is e.key (red-baron keys on the character, not the physical code); arrows
-// and Space preventDefault so they fly rather than scroll; blur clears the held
-// set so a key does not stick across an alt-tab (the old hand-rolled version had
-// no blur reset). `keys.uninstall()` is the disposer this exposes.
-const keys = installHeldKeys(window, { idOf: (e) => e.key, preventDefaultFor: CONTROL_KEYS })
+// sa1-5: the held-key tracking itself (CONTROL_KEYS, the installHeldKeys call)
+// now lives in ./shell/input.ts, reading through @shared/keybind's live map so a
+// player's saved rebind (the controls overlay below) overrides the defaults.
+// sampleYoke() is that module's read side.
 
 // rb2-11: POKEY + analog sound. The browser forbids an AudioContext before a user
 // gesture, so the engine stays inert until the pilot touches a key (or clicks) —
@@ -383,28 +374,40 @@ const keys = installHeldKeys(window, { idOf: (e) => e.key, preventDefaultFor: CO
 const audio = createAudioEngine()
 installAudioUnlock(() => audio.resume(), window)
 
-// SH2-14: Escape toggles pause via the shared @shared/pause gate — the
-// cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
-// machine-gun the toggle. The freeze itself is the frame loop's pause guard below.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches shell/input.ts's live map.
+// CONTROLS_OVERLAY_OPTS carries over red-baron's cabinet green + 0.72 dim from
+// the old RED_BARON_PAUSE card (shell/controls.ts).
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
 
-// Per-cabinet NUMBERS for the pause card: red-baron's yoke keybinds (letter
-// alternates so no arrow glyphs the ROM font lacks), the cabinet green, and the
-// dim alpha. The card strokes through drawEscOverlay's transitive @shared/font
-// — no separate red-baron HUD-font migration (the clean AC-4 resolution). Copy /
-// colour / opacity are playtest-tunable.
-const RED_BARON_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'A / D        TURN',
-    'W / S        CLIMB DIVE',
-    'SPACE        FIRE',
-  ],
-  color: '#33ff66',
-  opacity: 0.72,
-} as const
+// Capture-phase so this runs BEFORE installHeldKeys' own keydown inside
+// shell/input.ts: while the overlay is open it must consume the keydown outright
+// (stopImmediatePropagation) so a letter typed to rebind a control never also
+// gets latched as a held yoke key. Escape opens the overlay from the closed
+// state via the shared @shared/pause VERB (isPauseKey), guarded by e.repeat so
+// an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 /** Depth of the CLOSEST live plane (smallest depth), or +Infinity when the sky is clear. */
 function nearestDepth(planes: readonly Enemy[]): number {
@@ -419,9 +422,10 @@ function nearestDepth(planes: readonly Enemy[]): number {
  * the slow band regardless of the nearest object (rb3-2, findings §2).
  */
 function readInput(enemies: readonly Enemy[], grmode: number): FlightInput {
+  const yoke = sampleYoke()
   return {
-    turn: axis(keys.has('ArrowRight') || keys.has('d') || keys.has('D'), keys.has('ArrowLeft') || keys.has('a') || keys.has('A')),
-    pitch: axis(keys.has('ArrowUp') || keys.has('w') || keys.has('W'), keys.has('ArrowDown') || keys.has('s') || keys.has('S')),
+    turn: yoke.turn,
+    pitch: yoke.pitch,
     proximity: controlBand(isGroundMode(grmode), proximityBand(nearestDepth(enemies))),
   }
 }
@@ -643,7 +647,7 @@ function frame(nowMs: number): void {
   displayFrame += 1
 
   const input = readInput(enemies, grmode)
-  const fireHeld = keys.has(' ')
+  const fireHeld = sampleYoke().fireHeld
   // The frame the sim's SCREEN-SPACE questions are asked against (the blimp's entry + despawn).
   const aspect = viewAspect()
   // rb2-11: the sound moments this frame's calc-steps produce. red-baron has no
@@ -655,14 +659,15 @@ function frame(nowMs: number): void {
   // render frame's calc-steps. BOTH enemy shooters set it: the blimp (below) and —
   // once the GMLEVL grants the fire bit — the wave planes (uf1-1, the planeFires loop).
   let enemyFiring = false
-  // SH2-14: the frozen-frame gate. While paused, run NO calc-frames (the sim —
-  // flight, guns, waves, wrecks, blimp, mountains, score — is held) and discard the
-  // banked time down to the sub-step remainder, so resume never burst-replays the
-  // paused span. (red-baron's state lives across many closure vars, not one object,
-  // so the freeze is realised as this loop guard rather than the shared single-state
-  // stepUnlessPaused thunk — see the SH2-14 deviation note; the shared pause VERB is
-  // still the isPauseKey/togglePaused edge above.)
-  if (pause.isPaused()) accumulator %= SIM_TIMESTEP_S
+  // SH2-14 / sa1-5: the frozen-frame gate. While the controls overlay is open, run
+  // NO calc-frames (the sim — flight, guns, waves, wrecks, blimp, mountains, score
+  // — is held) and discard the banked time down to the sub-step remainder, so
+  // resume never burst-replays the paused span. (red-baron's state lives across
+  // many closure vars, not one object, so the freeze is realised as this loop
+  // guard rather than the shared single-state stepUnlessPaused thunk — see the
+  // SH2-14 deviation note; the shared @shared/pause VERB is still the isPauseKey
+  // edge that opens the overlay above.)
+  if (overlay.isOpen()) accumulator %= SIM_TIMESTEP_S
   while (accumulator >= SIM_TIMESTEP_S) {
     // rb4-4: the pre-motion block — EOLSEQ, SCOREM, ENDLFE and the GREND check,
     // one call per calc frame (see preMotionFrame). It returns true only when
@@ -921,7 +926,7 @@ function frame(nowMs: number): void {
   // from live state. A paused game falls silent.
   playEventSounds(audio, events)
   updateContinuousSounds(audio, {
-    playing: !pause.isPaused(),
+    playing: !overlay.isOpen(),
     gunFiring: fireHeld && !guns.overheated,
     enemyFiring, // rb4-10 / SN-017: an enemy shell fired this frame rattles the gun
     nearestDepth: nearestDepth(enemies),
@@ -953,10 +958,10 @@ function frame(nowMs: number): void {
       canvas.height,
     )
   }
-  // SH2-14: the pause overlay dims the frozen scene and draws the keybind card over
-  // it — drawn last (over the whole world) and only while paused. red-baron draws in
-  // device pixels (no dpr pre-scale), so it takes canvas.width/height directly.
-  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, RED_BARON_PAUSE)
+  // sa1-5: the controls overlay dims the frozen scene and draws the pause/rebind
+  // chrome over it — drawn last (over the whole world) and only while open. red-baron
+  // draws in device pixels (no dpr pre-scale), so it takes canvas.width/height directly.
+  if (overlay.isOpen()) overlay.draw(ctx, canvas.width, canvas.height)
   window.requestAnimationFrame(frame)
 }
 window.requestAnimationFrame(frame)

@@ -101,12 +101,19 @@ describe('rb4-19 AC-1 / AC-2 — the shared-font wiring is adopted, the overlay 
     ).not.toHaveLength(0)
   })
 
-  it('a game src module STILL imports @shared/esc-overlay (AC-2: overlay unchanged)', () => {
+  it('a game src module STILL imports a pause-chrome overlay (AC-2: overlay path unchanged)', () => {
     // Regression guard: the HUD migration must NOT rip out the already-correct
-    // pause/ESC overlay path (which strokes the shared font transitively).
+    // pause overlay path (which strokes the shared font transitively).
+    //
+    // sa1-5 superseded the concrete import this once pinned: red-baron dropped
+    // @shared/esc-overlay in favour of the rebindable @shared/controls-overlay,
+    // which now owns pause chrome outright (Option A) and still strokes through
+    // @shared/font internally — the AC-2 guarantee this test protects. Checking
+    // BOTH subpaths keeps the guard's original intent (some pause-overlay import
+    // survives the HUD migration) true regardless of which one is live.
     expect(
-      importsSubpath('@shared/esc-overlay'),
-      'the pause/ESC overlay import vanished — AC-2 says this story leaves the overlay path untouched',
+      [...importsSubpath('@shared/esc-overlay'), ...importsSubpath('@shared/controls-overlay')],
+      'no pause-overlay import survives — AC-2 says this story leaves the overlay path untouched',
     ).not.toHaveLength(0)
   })
 })
