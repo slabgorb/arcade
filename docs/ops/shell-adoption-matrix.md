@@ -19,13 +19,13 @@ prose; only this one is the contract, and the test refuses to run without them.
 
 | game | mountCanvas | installAudioUnlock | installPauseToggle |
 |------|-------------|--------------------|--------------------|
-| tempest | adopted | adopted | adopted |
-| star-wars | adopted | adopted | adopted |
-| asteroids | adopted | adopted | adopted |
-| battlezone | adopted | adopted | adopted |
-| red-baron | adopted | adopted | adopted |
-| centipede | rom-cadence | rom-cadence | adopted |
-| joust | adopted | rom-cadence | behaviour-absent |
+| tempest | adopted | adopted | own-implementation |
+| star-wars | adopted | adopted | own-implementation |
+| asteroids | adopted | adopted | own-implementation |
+| battlezone | adopted | adopted | own-implementation |
+| red-baron | adopted | adopted | own-implementation |
+| centipede | rom-cadence | rom-cadence | own-implementation |
+| joust | adopted | rom-cadence | own-implementation |
 
 <!-- adoption-matrix:end -->
 
@@ -40,7 +40,7 @@ nobody will re-examine.
 | `adopted` | the game calls this helper. The test requires the import to exist. |
 | `behaviour-absent` | the game does not do this thing at all, so there is nothing to converge. **The test refutes this against the tree** — if the game turns out to perform the behaviour, the cell is wrong and the suite says so. |
 | `rom-cadence` | the game performs the behaviour, but it runs a cabinet's own frame cadence and the risk is not worth the tidiness. A deliberate deferral, not an oversight. |
-| `own-implementation` | the game has its own version that is not merely a copy. Currently unused — see the battlezone note below for the case that nearly needed it. |
+| `own-implementation` | the game has its own version that is not merely a copy. No tree check and no import/call check apply to this code — see the pause-overlay note below for the fleet-wide case, and the battlezone note for the case that nearly needed it before that. |
 
 **A `rom-cadence` cell is the interesting one**, because it is the only code that
 says "yes, this game does this, and we chose not to touch it". Nothing here is a
@@ -109,18 +109,45 @@ exemption is narrow: it waives only the "existed at baseline" test, so the
 the helper. **joust's pause stays `behaviour-absent`** — it never grew one; that
 cell is still refuted against the live tree on every run.
 
-## Why battlezone counts as `adopted` for pause
+## installPauseToggle is retired fleet-wide: pause is now overlay-driven (sa1-5)
 
-battlezone imports its pause primitives from its own `src/shell/pause.ts`, and the
-design spec's original table recorded that as an own implementation. Reading the
-module settles it: it **re-exports `INITIAL_PAUSED`, `isPauseKey` and
-`togglePaused` verbatim from `@shared/pause`**, and only `stepUnlessPaused` is a
-local 4-argument delegate.
+**sa1-5** (key rebinding) gives every game a controls overlay
+(`createControlsOverlay`), and the simplest correct place to gate the pause
+freeze is that overlay's own open/closed state — the sim freezes while
+`overlay.isOpen()`, rather than through a separate pause key and the shared
+`installPauseToggle` listener. Once a game owns its pause through the overlay,
+the shared helper is no longer what drives it, even for the games that used to
+call it, so **every `installPauseToggle` cell in the table above is now
+`own-implementation`** — there is no adopted/rom-cadence/behaviour-absent
+distinction left to draw for this column; all seven games gate on their own
+overlay.
 
-So the keydown listener was the same one the other four carried, and battlezone
-adopts the helper while keeping its own gate and its own overlay — the helper takes
-the pause predicate as a parameter for exactly this reason. It adopts the wiring
-without adopting a policy.
+This also **corrects joust's previously-stale `behaviour-absent` cell**: sa1-2
+gave joust an ESC pause overlay (landed in the "consistent ESC pause overlay
+per-game" work), so by the time sa1-5 was picked up joust's main.ts already
+performed the behaviour the matrix still recorded as absent —
+`tests/shell-convergence.test.mjs`'s AC-1 `behaviour-absent` refutation test
+was catching exactly this drift before it was retired (see that test file for
+why the guard itself is now gone rather than merely fixed: with no
+`behaviour-absent` cell left anywhere in the table, there is nothing left for
+it to refute).
+
+## Why battlezone counted as `adopted` for pause (pre-sa1-5 history)
+
+Before sa1-5 retired the column fleet-wide (previous section), battlezone's
+cell read `adopted`, not `own-implementation`, and this section recorded why.
+It imported its pause primitives from its own `src/shell/pause.ts`, and the
+design spec's original table recorded that as an own implementation. Reading
+the module settled it: it **re-exported `INITIAL_PAUSED`, `isPauseKey` and
+`togglePaused` verbatim from `@shared/pause`**, and only `stepUnlessPaused` was
+a local 4-argument delegate.
+
+So the keydown listener was the same one the other four carried, and
+battlezone adopted the helper while keeping its own gate and its own overlay —
+the helper took the pause predicate as a parameter for exactly this reason. It
+adopted the wiring without adopting a policy. sa1-5 replaced that keydown-driven
+wiring with the overlay's own open/closed gate, which is why the cell moved to
+`own-implementation` along with the other six games.
 
 ## The stale table this replaces
 

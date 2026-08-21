@@ -258,38 +258,30 @@ test('AC-1: no game GROWS a behaviour — a helper is adopted only where the beh
   assert.ok(checked > 0, 'no adopted cell to check — see the count note above (TS lang-review #15)');
 });
 
-test('AC-1: a `behaviour-absent` cell is refuted by the tree if the game DOES perform it', () => {
-  // This is the guard the spec's own matrix would have failed. `behaviour-absent`
-  // is the single reason code that makes a claim about the source, so it is the
-  // single one that can be checked — and it is checked against the tree, not
-  // against a remembered census.
-  const { rows } = readMatrix();
-  let checked = 0;
-  for (const game of GAMES) {
-    // Evaluated on the WORKING TREE deliberately, unlike the growth check above.
-    // `behaviour-absent` is a claim about the code as it stands NOW ("this game
-    // does not do this"), so the live tree is the right thing to refute it with.
-    const src = mainSrc(game);
-    for (const helper of HELPERS) {
-      if (rows[game][helper] !== 'behaviour-absent') continue;
-      checked++;
-      assert.ok(
-        !PERFORMS[helper](src),
-        `${game}/${helper} is recorded \`behaviour-absent\`, but ${game}'s main.ts performs it — ` +
-          `use a different reason code (this is exactly how the 2026-07-30 spec matrix went stale)`,
-      );
-    }
-  }
-  // The count guard its two siblings already carried. Proven necessary, not
-  // theoretical: flipping the two live `behaviour-absent` cells to another valid
-  // code left this test green while it compared ZERO things (TS lang-review #15,
-  // "assert the collected count FIRST").
-  assert.ok(
-    checked > 0,
-    'the matrix records no `behaviour-absent` cell, so this test compared nothing — ' +
-      'either a cell is miscoded, or this guard needs retiring rather than passing silently',
-  );
-});
+// ─── RETIRED: AC-1 `behaviour-absent` refutation ────────────────────────────
+// This guard used to read: "AC-1: a `behaviour-absent` cell is refuted by the
+// tree if the game DOES perform it". It walked every `behaviour-absent` cell
+// in the matrix and asserted PERFORMS[helper] was false against the live
+// tree — the guard the 2026-07-30 spec matrix would have failed, since that
+// matrix went stale in exactly this direction (recorded absent, later true).
+//
+// sa1-5 flipped every `installPauseToggle` cell to `own-implementation` (see
+// docs/ops/shell-adoption-matrix.md, "installPauseToggle is retired
+// fleet-wide"): every game now gates its pause on its own controls overlay
+// rather than the shared helper, including joust, whose cell had been
+// `behaviour-absent` since sc1-1 and had in fact gone stale — sa1-2 gave
+// joust an ESC pause overlay, which is exactly what this guard's own count
+// caught (it was RED on this branch before sa1-5's matrix edit landed).
+//
+// With that flip, no `behaviour-absent` cell remains anywhere in the table,
+// and none of mountCanvas/installAudioUnlock has ever used the code either.
+// The guard's own comment sanctioned this outcome: "either a cell is
+// miscoded, or this guard needs retiring rather than passing silently" — its
+// `checked > 0` count guard would now fail on every run, for a table with
+// nothing left of this reason code to check. Retiring the test (rather than
+// leaving it to fail forever, or hollowing it into an always-skip) is that
+// sanctioned path. Git history retains the original test verbatim; restore
+// it if a `behaviour-absent` cell is ever reintroduced into the matrix.
 
 test('AC-1: the stale spec matrix is corrected, not silently superseded', () => {
   // The design spec is the story's declared input and it is WRONG in two rows.
@@ -314,10 +306,21 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
   // this story has no business re-litigating it.
   const { baseline } = readMatrix();
   const range = `${baseline}..HEAD`;
-  const shas = execFileSync('git', ['log', '--format=%h', range, '--', 'plugins/*/src/main.ts'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  })
+  // --no-merges: a merge commit authors no single game's main.ts change of its
+  // own — it combines commits that were each already single-game (e.g. 75c421f1
+  // merges separate joust/millipede/pac-man commits and would otherwise report
+  // 3 games touched in one "commit"). AC-3's intent is "one suspect per commit",
+  // which is a statement about commits that actually author a change, so the
+  // range is measured over non-merge commits; the per-commit `git show
+  // --name-only` logic below is unchanged.
+  const shas = execFileSync(
+    'git',
+    ['log', '--format=%h', '--no-merges', range, '--', 'plugins/*/src/main.ts'],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+    },
+  )
     .split('\n')
     .filter(Boolean);
 
