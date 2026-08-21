@@ -180,8 +180,14 @@ describe('SH3-2 AC-3 — adoption matrix + @shared/loop timebase verdict', () =>
     ).toBe('rom-cadence')
   })
 
-  it("leaves joust's installPauseToggle cell behaviour-absent (untouched)", () => {
-    expect(joustMatrixRow().installPauseToggle).toBe('behaviour-absent')
+  it("records joust's installPauseToggle cell as own-implementation (sa1-5: overlay-driven pause fleet-wide)", () => {
+    // sa1-5 retired installPauseToggle fleet-wide: every game (joust included, since
+    // sa1-2 gave it a pause) now gates its freeze on its own controls overlay's
+    // open/closed state rather than the shared listener, so the column collapsed to
+    // `own-implementation` for all seven games — see shell-adoption-matrix.md's
+    // "installPauseToggle is retired fleet-wide" section. This was `behaviour-absent`
+    // at SH3-2 (joust had no pause yet); that premise no longer holds.
+    expect(joustMatrixRow().installPauseToggle).toBe('own-implementation')
   })
 
   it('keeps joust\'s own ROM timebase pump (pumpFrames) — @shared/loop is not swapped in', () => {

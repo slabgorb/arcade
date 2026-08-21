@@ -18,6 +18,8 @@
 // Both are needed; neither substitutes for the other.
 
 import type { KeyMembership } from '@shared/held-keys'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
 
 /** Exactly what core accepts. */
 export interface PlayerInput {
@@ -26,24 +28,31 @@ export interface PlayerInput {
   flapHeld: boolean
 }
 
-/** One player's physical bindings. */
-interface Binding {
-  left: string
-  right: string
-  flap: string
+// sa1-5: the two players' left/right/flap defaults above are now
+// CONTROL_MANIFEST's defaults (controls.ts, as p1Left/p1Right/p1Flap and
+// p2Left/p2Right/p2Flap), and the live map below is resolved through
+// @shared/keybind so a player's saved rebind (controls-overlay, wired in
+// main.ts) overrides them. setBindings is the overlay's onChange hook — it
+// swaps this module's live map in place.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
 }
 
-/** Player 1: arrow keys and space. */
-const PLAYER_1: Binding = { left: 'ArrowLeft', right: 'ArrowRight', flap: 'Space' }
-/** Player 2: A / D and left shift — disjoint from P1 so neither steals keys. */
-const PLAYER_2: Binding = { left: 'KeyA', right: 'KeyD', flap: 'ShiftLeft' }
+const any = (codes: readonly string[], held: KeyMembership): boolean => codes.some((code) => held.has(code))
 
-function map(binding: Binding, held: KeyMembership, prevFlap: boolean): PlayerInput {
-  const left = held.has(binding.left)
-  const right = held.has(binding.right)
+function mapFrom(
+  leftCodes: readonly string[],
+  rightCodes: readonly string[],
+  flapCodes: readonly string[],
+  held: KeyMembership,
+  prevFlap: boolean,
+): PlayerInput {
+  const left = any(leftCodes, held)
+  const right = any(rightCodes, held)
   // The ROM's answer for both-at-once: neutral.
   const dir: -1 | 0 | 1 = left === right ? 0 : left ? -1 : 1
-  const flapHeld = held.has(binding.flap)
+  const flapHeld = any(flapCodes, held)
   return { dir, flap: flapHeld && !prevFlap, flapHeld }
 }
 
@@ -53,9 +62,9 @@ function map(binding: Binding, held: KeyMembership, prevFlap: boolean): PlayerIn
  *                  shell's edge memory, kept out here so this stays pure
  */
 export function mapPlayer1(held: KeyMembership, prevFlap: boolean): PlayerInput {
-  return map(PLAYER_1, held, prevFlap)
+  return mapFrom(bindings.p1Left, bindings.p1Right, bindings.p1Flap, held, prevFlap)
 }
 
 export function mapPlayer2(held: KeyMembership, prevFlap: boolean): PlayerInput {
-  return map(PLAYER_2, held, prevFlap)
+  return mapFrom(bindings.p2Left, bindings.p2Right, bindings.p2Flap, held, prevFlap)
 }

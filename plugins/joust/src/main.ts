@@ -46,9 +46,10 @@ import {
 } from './core/highscore.js'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
-import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
+import { mountCanvas } from '@shared/host-helpers'
+import { isPauseKey } from '@shared/pause'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls.js'
 import { layoutHud } from './shell/hudScreen.js'
 import { layoutSelectScreen } from './shell/selectScreen.js'
 import { layoutHighscoreScreen } from './shell/highscoreScreen.js'
@@ -72,7 +73,7 @@ import {
   viewport,
   type Rgba,
 } from './shell/render.js'
-import { mapPlayer1, mapPlayer2 } from './shell/input.js'
+import { mapPlayer1, mapPlayer2, setBindings } from './shell/input.js'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds } from './shell/audio-dispatch.js'
@@ -335,11 +336,12 @@ function renderTitleScreen(): void {
   paintText(screen.extraMount, extraMountX, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.replayLevel, extraMountX + screen.extraMount.width, TITLE_EXTRA_MOUNT_Y)
   paintText(screen.pointsSuffix, extraMountX + screen.extraMount.width + screen.replayLevel.width, TITLE_EXTRA_MOUNT_Y)
-  // sa1-2: the MARQUE colour-cycle is a draw-side counter, so it must freeze with the
-  // rest of the cabinet while paused — otherwise the title keeps cycling colour under
-  // the dimmed PAUSED overlay. (The pumped dwell/attract clocks already freeze via the
-  // pause gate on pumpFrames; this is the one render-time counter that needs the guard.)
-  if (!pause.isPaused()) titleFrame++
+  // sa1-2/sa1-5: the MARQUE colour-cycle is a draw-side counter, so it must freeze with
+  // the rest of the cabinet while the controls overlay is open — otherwise the title
+  // keeps cycling colour under the dimmed PAUSED/rebind overlay. (The pumped
+  // dwell/attract clocks already freeze via the overlay gate on pumpFrames; this is the
+  // one render-time counter that needs the guard.)
+  if (!overlay.isOpen()) titleFrame++
 }
 
 // jt10-4 — paint the core's ordered draw list for a game sim (back platforms →
@@ -575,22 +577,40 @@ window.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') commitEntryOnExit()
 })
 
-// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
-// guards e.repeat). The whole cabinet freezes while paused — play, attract, title
-// and highscore alike (the fleet's pause-anytime convention; see the gate below).
-// The card text is joust's OWN per-cabinet NUMBERS;
-// its colour is the P1-yellow COLOR1 register (index 5), built at draw time as an
-// rgb(${...}) template from the transcribed palette so the render denylist (no
-// invented colour literals on the paint path) stays green.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-const JOUST_PAUSE_LINES = [
-  'PAUSED',
-  '',
-  'ESC          RESUME',
-  'LEFT / RIGHT WALK',
-  'SPACE        FLAP',
-  '1 / 2        START',
-] as const
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of the old installPauseToggle + drawEscOverlay
+// card, and its onChange hook (setBindings) is how a saved rebind reaches
+// input.ts's live map. CONTROLS_OVERLAY_OPTS carries forward the old
+// JOUST_PAUSE card's colour (the P1-yellow COLOR1 register) and dim opacity.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the highscore-initials keydown handler
+// above and installHeldKeys' own listener: while the overlay is open it must
+// consume the keydown outright (stopImmediatePropagation) so a letter typed to
+// rebind a control never also lands in the initials field or gets latched as a
+// held game key. Escape opens the overlay from the closed state, guarded by
+// e.repeat so an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 const MAX_CATCHUP_SECONDS = 0.25
 let accumulator = 0
@@ -604,12 +624,12 @@ const frame = (now: number): void => {
   } else {
     const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
     last = now
-    // sa1-2: the frozen-frame gate. A paused frame pumps nothing (the whole cabinet
-    // holds — play, attract and the title/highscore cycles alike, matching the fleet's
-    // pause-anytime convention). `last` is updated above, so paused wall-time is
-    // discarded and resume banks no catch-up burst.
+    // sa1-2/sa1-5: the frozen-frame gate. A frame with the controls overlay open pumps
+    // nothing (the whole cabinet holds — play, attract and the title/highscore cycles
+    // alike, matching the fleet's pause-anytime convention). `last` is updated above,
+    // so held wall-time is discarded and resume banks no catch-up burst.
     // (Braced so a future statement added after the pump can't silently escape the guard.)
-    if (!pause.isPaused()) {
+    if (!overlay.isOpen()) {
       accumulator = pumpFrames(accumulator, elapsed, () => {
       if (cabinet.mode === 'gameover') {
         // Hold the banner ~88 ticks (GOVWAT), then route on through the PURE gate:
@@ -797,16 +817,10 @@ const frame = (now: number): void => {
     CABINET_CHROME,
   )
 
-  // sa1-2: dim the frozen field and stroke joust's own keybind card over it, in the
-  // P1-yellow COLOR1 register (index 5) built from the transcribed palette — an
-  // rgb(${...}) template, the sanctioned form the render denylist permits.
-  if (pause.isPaused()) {
-    drawEscOverlay(context, canvas.width, canvas.height, {
-      lines: JOUST_PAUSE_LINES,
-      color: `rgb(${colours[5].r} ${colours[5].g} ${colours[5].b})`,
-      opacity: 0.72,
-    })
-  }
+  // sa1-5: the controls overlay dims the frozen field and draws the pause/rebind
+  // chrome over it — same P1-yellow COLOR1 register + dim opacity the old
+  // JOUST_PAUSE card used, now sourced from CONTROLS_OVERLAY_OPTS (controls.ts).
+  if (overlay.isOpen()) overlay.draw(context, canvas.width, canvas.height)
 
   requestAnimationFrame(frame)
 }
