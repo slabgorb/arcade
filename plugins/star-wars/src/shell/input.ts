@@ -5,11 +5,23 @@
 
 import type { Input } from '../core/input'
 import type { Mode } from '../core/state'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
 
 export interface InputController {
   // The current game mode is passed in so a mouse click can be CONTEXTUAL — see
   // the note in sample(). The loop already holds the state, so this is free.
   sample(mode: Mode): Input
+}
+
+// sa1-5: the codes below are now CONTROL_MANIFEST's defaults (controls.ts), and
+// the live map is resolved through @shared/keybind so a player's saved rebind
+// (the controls overlay, wired in main.ts) overrides them. setBindings is the
+// overlay's onChange hook — it swaps this module's live map in place. The yoke
+// (mouse aim + click) is analog and stays outside this map entirely.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
 }
 
 export function createInputController(canvas: HTMLCanvasElement): InputController {
@@ -46,16 +58,16 @@ export function createInputController(canvas: HTMLCanvasElement): InputControlle
     clickSpentOnStart = false
   })
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') spaceDown = true
+    if (bindings.fire.includes(e.code)) spaceDown = true
     // Edge, not level: only a fresh press (never an OS key-repeat) arms start
     // (SH2-13, the battlezone latch discipline). With the typed initials entry
     // behind this same key, a repeat-armed latch would machine-gun start edges
     // into the entry screen.
-    if ((e.code === 'Enter' || e.code === 'Digit1' || e.code === 'Numpad1') && !e.repeat) {
+    if (bindings.start.includes(e.code) && !e.repeat) {
       pendingKeyStart = true
     }
   })
-  window.addEventListener('keyup', (e) => { if (e.code === 'Space') spaceDown = false })
+  window.addEventListener('keyup', (e) => { if (bindings.fire.includes(e.code)) spaceDown = false })
 
   return {
     sample(mode: Mode): Input {
