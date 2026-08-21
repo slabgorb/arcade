@@ -23,6 +23,7 @@ import type { GameEvent } from './core/events'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { installPauseToggle } from '@shared/host-helpers'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -314,6 +315,15 @@ const frame = (now: number): void => {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(logical, 0, 0, LOGICAL_W, LOGICAL_H, fit.dx, fit.dy, fit.width, fit.height)
+  // sa1-1: the shared cabinet surround — one uniform fill over the integer-fit's
+  // dead margin (the bars fitIntegerScale's centred, floored dx/dy leave around
+  // the scaled raster), matching every other adopter's frame colour.
+  drawCabinetChrome(
+    ctx,
+    { width: canvas.width, height: canvas.height },
+    { x: fit.dx, y: fit.dy, width: fit.width, height: fit.height },
+    CABINET_CHROME,
+  )
 
   // cp7-6 (AC3): the pause card is drawn on the VISIBLE ctx, AFTER the integer
   // blit — never into the 240x256 logical backbuffer, or it would be pixel-scaled
