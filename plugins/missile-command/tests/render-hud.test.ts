@@ -420,7 +420,19 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     // one-origin load-on-boot / save-on-commit seam (shell/highscore.ts). Reuse of this
     // already-extracted library is exactly what this guard permits; the teeth still
     // bite a NEW src/shared extraction (esp. a glyph/HUD one).
-    const ALLOWED = new Set(['@shared/font', '@shared/pause', '@shared/esc-overlay', '@shared/view', '@shared/highscore'])
+    // Added by sa1-1: @shared/cabinet — the fleet-wide cabinet-chrome VERB
+    // (drawCabinetChrome/CABINET_CHROME), already adopted by tempest and star-wars.
+    // render.ts wires it honestly with container === game (MC's canvas is itself
+    // resized to the letterboxed box, shell/viewport.ts), so it paints no bars today
+    // but shares the ONE surround colour/seam every game now goes through.
+    const ALLOWED = new Set([
+      '@shared/font',
+      '@shared/pause',
+      '@shared/esc-overlay',
+      '@shared/view',
+      '@shared/highscore',
+      '@shared/cabinet',
+    ])
     const disallowed: string[] = []
     for (const f of readdirSync(shellDir).filter((f) => f.endsWith('.ts'))) {
       const src = readFileSync(join(shellDir, f), 'utf8')
@@ -432,7 +444,7 @@ describe('mc9-4 AC2 — no premature src/shared extraction', () => {
     expect(
       disallowed,
       'a NEW missile-command shared library belongs in src/shell, not a fresh src/shared extraction; only ' +
-        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay, view, highscore) may be reused',
+        'the sanctioned pre-existing @shared modules (font, pause, esc-overlay, view, highscore, cabinet) may be reused',
     ).toEqual([])
   })
 })

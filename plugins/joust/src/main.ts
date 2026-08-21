@@ -73,6 +73,7 @@ import {
   type Rgba,
 } from './shell/render.js'
 import { mapPlayer1, mapPlayer2 } from './shell/input.js'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio.js'
 import { playEventSounds } from './shell/audio-dispatch.js'
 
@@ -775,10 +776,6 @@ const frame = (now: number): void => {
   canvas.height = canvas.clientHeight
   configureContext(context)
   const view = viewport(canvas.width, canvas.height)
-  // The letterbox is palette index 0's colour (the 1982 background), not an
-  // invented literal — so the widened denylist scan covers this file too.
-  context.fillStyle = `rgb(${colours[0].r} ${colours[0].g} ${colours[0].b})`
-  context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(
     logical,
     0,
@@ -789,6 +786,15 @@ const frame = (now: number): void => {
     view.offsetY,
     LOGICAL_WIDTH * view.scale,
     LOGICAL_HEIGHT * view.scale,
+  )
+  // The letterbox/pillarbox margin left by the centred integer fit is the shared
+  // cabinet surround (sa1-1), not an invented literal — every game frames its
+  // dead space with the same CABINET_CHROME colour rather than its own.
+  drawCabinetChrome(
+    context,
+    { width: canvas.width, height: canvas.height },
+    { x: view.offsetX, y: view.offsetY, width: LOGICAL_WIDTH * view.scale, height: LOGICAL_HEIGHT * view.scale },
+    CABINET_CHROME,
   )
 
   // sa1-2: dim the frozen field and stroke joust's own keybind card over it, in the

@@ -129,6 +129,10 @@ export async function bootMcShell(): Promise<ShellHarness> {
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
     pointerLockElement: null,
+    // sa1-1: main.ts paints the page body the shared cabinet-chrome colour at boot
+    // (the game letterboxes the canvas element, so the visible bars are the body bg).
+    // A deferred module always has document.body in the browser; model it here.
+    body: { style: {} as Record<string, unknown> },
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

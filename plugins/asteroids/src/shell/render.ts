@@ -36,20 +36,15 @@ import { SAUCER_DEBRIS_LIFETIME_S } from '../core/saucerDebris'
 import { SHRAPNEL_LIFETIME_S } from '../core/shrapnel'
 import { formatScore } from '../core/score'
 import type { Input } from '../core/input'
-import { marginRects, fitScale } from './margin'
+import { fitScale } from './margin'
 import { layoutText, CELL_H } from './font'
 import { withGlow, glowPolyline } from './glow'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 const SHIP_COLOR = '#ffffff' // 1979 Asteroids is white-phosphor monochrome
 const FLAME_COLOR = '#ffb454' // warm thrust flame (A-19 recalibrates palette)
 const GLOW_BLUR = 8
 const LINE_WIDTH = 2
-
-// A2-1: the non-playable margin overlay. The play area is pure black (#000), so a
-// *lightening* wash — not a dark one, which would vanish on black — frames the
-// arena inside an off-4:3 window. Low alpha keeps it subtle; the HUD draws on top
-// and stays crisp. Opacity is a feel value, calibrated in the dev server.
-const MARGIN_MASK_COLOR = 'rgba(255, 255, 255, 0.06)'
 
 // HUD / overlay type (A-16). SH2-4 retired the non-commercial vendored TTF for the
 // shared ROM stroke-vector font (@shared/font, via ./font). These
@@ -403,15 +398,21 @@ function drawGameOverOverlay(
   drawText(ctx, echo, w / 2, h * 0.65, BANNER_SIZE, 'center')
 }
 
-/** Overlay the non-playable margin (letterbox/pillarbox bars) with a faint light
- *  wash so the black play area reads as a clearly bounded arena. Drawn after the
- *  world and before the HUD, so it frames the arena without dimming HUD text. A
- *  flat fill — no glow. */
+/** Overlay the non-playable margin (letterbox/pillarbox bars) with the shared
+ *  cabinet surround (@shared/cabinet CABINET_CHROME) so the black play area reads
+ *  as a clearly bounded arena AND asteroids' margin reads identically to every
+ *  other game's. Drawn after the world and before the HUD, so it frames the arena
+ *  without dimming HUD text. A flat fill — no glow. The fitted game rect is
+ *  derived from the SAME `fitScale` the world is drawn at (WORLD_W/WORLD_H times
+ *  that one scale, centred), so the chrome and the drawn world can never drift. */
 function drawMarginMask(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  const scale = fitScale(w, h)
+  const width = WORLD_W * scale
+  const height = WORLD_H * scale
+  const gameRect = { x: (w - width) / 2, y: (h - height) / 2, width, height }
   ctx.save()
   ctx.shadowBlur = 0
-  ctx.fillStyle = MARGIN_MASK_COLOR
-  for (const bar of marginRects(w, h)) ctx.fillRect(bar.x, bar.y, bar.w, bar.h)
+  drawCabinetChrome(ctx, { width: w, height: h }, gameRect, CABINET_CHROME)
   ctx.restore()
 }
 

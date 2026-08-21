@@ -17,6 +17,7 @@
 import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { PLYFLD_STRIDE } from './core/conway'
 import { BACKGROUND_BIT } from './core/mushroom'
 import { VACANT_COLOR, segmentOnScreen } from './core/millipede'
@@ -62,17 +63,26 @@ let game: GameState = { ...createGame(0x1982), highScores: loadHighScores(highSc
 //    through the shell adapter, drained once per stepped frame. Under lock those
 //    deltas are UNBOUNDED (the cursor never hits a screen edge), so the mouse
 //    behaves like the cabinet trackball. The cursor is hidden while it does. ──
+// sa1-3 — fleet-consistent capture chrome: the OS cursor is hidden only WHILE the
+// pointer is actually captured, not from boot. It is visible in attract (so the player
+// sees a pointer to click) and RESTORED on a lock EXIT (Escape). mc parity: missile-command
+// hides the cursor only AFTER the lock is confirmed held (inside request().then(), guarded
+// by pointerLockElement === canvas, main.ts:113-117) and restores it with `cursor = ''` on
+// onExit; centipede never hides it (the OS handles it under lock). The guarded hide lives in
+// the pointerdown capture path below; onExit restores it here.
 const mouse = createMouseAdapter(document)
-canvas.style.cursor = 'none'
 // R5: an Escape-exit keeps the window focused, so 'blur' never fires — the
 // pointerlockchange listener clears the last accumulated delta regardless of what
 // caused the exit (Escape or blur) so the gun does not keep drifting (no runaway
-// travel). R4/cp2-8: a rejected requestPointerLock (re-lock cooldown) is surfaced to
-// the console instead of vanishing.
+// travel), and (sa1-3) restores the OS cursor the capture hid. R4/cp2-8: a rejected
+// requestPointerLock (re-lock cooldown) is surfaced to the console instead of vanishing.
 const pointerLock = createPointerLock(
   canvas,
   document,
-  () => mouse.reset(),
+  () => {
+    mouse.reset()
+    canvas.style.cursor = '' // sa1-3: restore the OS cursor on lock EXIT (ESC parity with mc)
+  },
   (reason) => console.warn('millipede: pointer lock request rejected', reason),
 )
 
@@ -121,7 +131,13 @@ window.addEventListener('keyup', (e: KeyboardEvent) => {
 })
 canvas.addEventListener('pointerdown', () => {
   startPlay()
-  void pointerLock.request() // click-to-lock the canvas for the trackball (R4-safe)
+  // click-to-lock the canvas for the trackball (R4-safe). sa1-3: hide the OS cursor ONLY
+  // once the lock is ACTUALLY held — request() resolves on a swallowed rejection too (the
+  // R4 re-lock cooldown), so gate on pointerLockElement or a rejected re-lock would leave
+  // the cursor hidden with no lock (mc main.ts:113-117). onExit restores it on ESC.
+  void pointerLock.request().then(() => {
+    if (document.pointerLockElement === canvas) canvas.style.cursor = 'none'
+  })
   fireHeld = true
   firePending = true
 })
@@ -361,14 +377,24 @@ const frame = (ts: number): void => {
 
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.imageSmoothingEnabled = false
   const scale = Math.max(1, Math.floor(Math.min(canvas.width / LOGICAL_W, canvas.height / LOGICAL_H)))
   const dx = Math.floor((canvas.width - LOGICAL_W * scale) / 2)
   const dy = Math.floor((canvas.height - LOGICAL_H * scale) / 2)
   ctx.drawImage(logical, dx, dy, LOGICAL_W * scale, LOGICAL_H * scale)
-  // sa1-2: dim the frozen field and stroke millipede's own keybind card over it.
+  // sa1-1: the shared cabinet surround — one uniform fill over the integer-fit's
+  // dead margin (the bars the centred, floored dx/dy leave around the scaled
+  // raster), matching every other adopter's frame colour (centipede's
+  // src/main.ts is the mirrored sibling adoption).
+  drawCabinetChrome(
+    ctx,
+    { width: canvas.width, height: canvas.height },
+    { x: dx, y: dy, width: LOGICAL_W * scale, height: LOGICAL_H * scale },
+    CABINET_CHROME,
+  )
+  // sa1-2: dim the frozen field and stroke millipede's own keybind card over it —
+  // drawn AFTER the cabinet chrome so the pause dim covers the surround too.
   if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, MILLIPEDE_PAUSE)
   requestAnimationFrame(frame)
 }

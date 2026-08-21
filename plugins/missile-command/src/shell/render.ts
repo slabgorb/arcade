@@ -36,6 +36,7 @@ import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK, BOMBER_DOTS,
 import { glyphRows } from './glyphs.js'
 import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import {
   TITLE_LINE_1,
   TITLE_LINE_2,
@@ -91,6 +92,14 @@ export function drawFrame(
   const hue = (slot: number): string => rgbCss(pal[slot])
 
   clearField(ctx, width, height, hue(SLOT.SKY)) // sky = COL000
+
+  // Cabinet chrome seam (sa1-1 adoption): missile-command's canvas element is itself
+  // resized to the letterboxed box (shell/viewport.ts's applyLetterbox), so `width`/
+  // `height` here already ARE the fitted game rect — the page background outside the
+  // canvas draws the aspect bars, not this render surface. drawCabinetChrome is still
+  // wired honestly with container === game: chromeRegions finds no complement and
+  // paints nothing, but the shared surround seam is real rather than skipped.
+  drawCabinetChrome(ctx, { width, height }, { x: 0, y: 0, width, height }, CABINET_CHROME)
 
   // GROUND (mc10-2) — the COL001 terrain landmass along the field bottom (GROUND legend
   // slot, W3DSUP.MAC:1706). Painted after the sky clear and BEFORE the structures so the

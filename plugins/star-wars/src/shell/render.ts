@@ -28,6 +28,7 @@ import {
   type TrenchObstacle,
 } from '../core/state'
 import type { HighScoreTable } from '@shared/highscore'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { formatScore, formatLives, formatWave } from '../core/hud'
 import {
   TIE_FIGHTER,
@@ -570,6 +571,14 @@ export function render(
 ): void {
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, w, h)
+
+  // Cabinet chrome seam (sa1-1 adoption): star-wars' canvas element is itself
+  // resized to the letterboxed box (shell/viewport.ts's applyLetterbox), so `w`/`h`
+  // here already ARE the fitted game rect — the page background outside the canvas
+  // draws the aspect bars, not this render surface. drawCabinetChrome is still
+  // wired honestly with container === game: chromeRegions finds no complement and
+  // paints nothing, but the shared surround seam is real rather than skipped.
+  drawCabinetChrome(ctx, { width: w, height: h }, { x: 0, y: 0, width: w, height: h }, CABINET_CHROME)
 
   // The WSSTAR field goes down FIRST, so everything else flies in front of it — the
   // attract pages and all three flight phases alike (sw7-10 / M-015; the cabinet drives

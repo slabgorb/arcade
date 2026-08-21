@@ -30,6 +30,7 @@ import { installHeldKeys } from '@shared/held-keys'
 import { resizeToDisplay } from '@shared/view'
 import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 
 // pm4-3: the per-ghost render-mode selector (frightened/flash/chase, plus the
 // eyes-only 'eaten' body for a returning ghost) moved into render.ts as the
@@ -288,6 +289,16 @@ const frame = (now: number): void => {
   ctx.imageSmoothingEnabled = false
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(logical, 0, 0, LOGICAL_W, LOGICAL_H, fit.dx, fit.dy, fit.width, fit.height)
+  // sa1-1: frame the integer-scaled raster's centred letterbox/pillarbox bars with
+  // the ONE shared cabinet-surround colour (@shared/cabinet), replacing the bare
+  // clearRect-to-transparent (which only read as black via index.html's body
+  // background) with an explicit, game-consistent fill.
+  drawCabinetChrome(
+    ctx,
+    { width: canvas.width, height: canvas.height },
+    { x: fit.dx, y: fit.dy, width: fit.width, height: fit.height },
+    CABINET_CHROME,
+  )
 
   // sa1-2: dim the frozen maze and stroke Pac-Man's own keybind card over it.
   if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, PAC_MAN_PAUSE)

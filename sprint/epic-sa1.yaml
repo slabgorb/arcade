@@ -11,9 +11,11 @@ stories:
     description: One shared display component that frames every game with consistent chrome indicating the non-game parts of the user's screen. All games render through it for visual consistency.
     points: 5
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-21'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-21'
   - id: sa1-2
     title: Consistent ESC pause overlay with per-game localized graphics (currently shows battlezone for all)
     description: Unify the ESC pause overlay look across all games; today every game shows the battlezone pause art. Each game supplies its own localized graphics through the shared pause component.
@@ -23,13 +25,17 @@ stories:
     repos: arcade
     workflow: tdd
   - id: sa1-3
-    title: Consistent mouse capture — all games capture on focus and release on X
-    description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on X. Consistent enter/exit semantics fleet-wide.'
+    title: Consistent mouse capture — all games capture on focus and release on ESC
+    description: 'Uniform mouse-capture behavior across all games: capture the pointer during play, release it on ESC. Consistent enter/exit semantics fleet-wide.'
     points: 3
     priority: p2
-    status: backlog
+    status: done
+    started: '2026-08-21'
     repos: arcade
     workflow: tdd
+    completed: '2026-08-21'
+    review_findings: "R2 APPROVED. R1 findings F1 (optimistic reject-unsafe cursor hide) and F2 (test pinned the flaw + harness couldn't simulate rejection) both resolved: hide moved into request().then() guarded by pointerLockElement===canvas (mc parity), harness gained rejectNextLock(), state(2) asserts after confirmed acquire, state(4) pins rejected-re-lock-stays-visible. All 3 enabled specialists CLEAN; mutation-verified non-vacuous. millipede 1517/1517, lint clean, orchestrator 507/507."
+    review_verdict: approved
   - id: sa1-4
     title: Sound volume controls
     description: Shared volume control (master/SFX) available across the lobby and games, persisted via the single-origin localStorage.

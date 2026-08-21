@@ -17,6 +17,7 @@ import { createLoop } from '@shared/loop'
 import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from '@shared/pause'
 import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
 import { drawEscOverlay } from '@shared/esc-overlay'
+import { CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio'
 import { render } from './shell/render'
 import { drawDebugOverlay } from './shell/debug-overlay'
@@ -31,6 +32,12 @@ const highScoreStorage = makeHighScoreStorage('star-wars', makeHighScoreRowGuard
 
 // sc1-1: the checked mount replaces `as HTMLCanvasElement` + `getContext('2d')!`.
 const { canvas, ctx } = mountCanvas(document)
+
+// sa1-1: star-wars letterboxes the canvas ELEMENT (shell/viewport applyLetterbox), so
+// the visible dead area is the flex-centered page background, not in-canvas pixels that
+// drawCabinetChrome could reach. Paint the body the one shared surround colour so those
+// bars match every other game — one runtime source of truth, not a hand-typed hex.
+document.body.style.background = CABINET_CHROME.color
 
 // pt1-4: pin the canvas to a fixed 4:3 cabinet aspect and letterbox it (shell/viewport,
 // over @shared/view), instead of filling the window. Handing render() the fitted box —

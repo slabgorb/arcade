@@ -9,6 +9,7 @@
 
 import { createLoop } from '@shared/loop'
 import { mountCanvas } from '@shared/host-helpers'
+import { CABINET_CHROME } from '@shared/cabinet'
 import { createGame, stepGame, type GameState } from './core/game.js'
 import { drawFrame } from './shell/render.js'
 import { applyLetterbox } from './shell/viewport.js'
@@ -29,6 +30,12 @@ import { playEventSounds, playEdgeCues, updateSustainedSounds } from './shell/au
 // owns the null / not-a-canvas / no-2d-context guards and returns a non-null canvas +
 // ctx, so `context` is aliased straight out of the destructure.
 const { canvas, ctx: context } = mountCanvas(document)
+
+// sa1-1: missile-command letterboxes the canvas ELEMENT (shell/viewport applyLetterbox),
+// so the visible dead area is the page background, not in-canvas pixels drawCabinetChrome
+// could reach. Paint the body the one shared surround colour so those bars match every
+// other game — one runtime source of truth, not a hand-typed hex in index.html.
+document.body.style.background = CABINET_CHROME.color
 
 // mc10-5: pin the canvas to the fixed 256:222 field ratio and letterbox it, instead
 // of stretching to the full ~2:1 window. The fit math + HiDPI clamp live in the pure,
