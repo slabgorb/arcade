@@ -368,13 +368,19 @@ test('no test was quietly removed from synth.test.ts', () => {
   // So: green here means "no test was deleted outright from synth.test.ts", not "the
   // suite's coverage is provably identical". Both review rounds re-measured the real
   // numbers to cover the difference.
+  //
+  // sa1-4 (2026-08-21) bumped 51 -> 56: 5 shared master-volume test cases were
+  // legitimately ADDED (not split/merged) to synth.test.ts — getMasterVolume() ×
+  // headroom applied on resume(), a live update while a voice is already playing,
+  // masterGain: 0 honoured, a no-op before resume(), and a no-op after close(). The
+  // describes count (11) is unchanged — these landed inside existing describe blocks.
   const src = read(SYNTH_TEST);
   const its = (src.match(/^\s*(?:it|test)\(/gm) ?? []).length;
   const describes = (src.match(/^\s*describe\(/gm) ?? []).length;
   assert.equal(
     its,
-    51,
-    `synth.test.ts declares ${its} tests, baseline 51 — a typing fix must not change this. ` +
+    56,
+    `synth.test.ts declares ${its} tests, baseline 56 — a typing fix must not change this. ` +
       'If a test was legitimately split or merged, update this number and say why in the session.',
   );
   assert.equal(describes, 11, `synth.test.ts declares ${describes} describes, baseline 11`);
