@@ -133,9 +133,10 @@ export function startExplode(picture: ObjectImage, event: EffectEvent = 'enemy-e
   return { kind: 'explode', size: EXPLODE_INIT_SIZE, picture, event, done: false }
 }
 
-/** pt1-25: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace). It has
- *  NO sprite — the composer `classify()`s the event into the ADR-0005 safe presentation (a
- *  bounded fade/freeze wash), not a raster. It rides the EXPLODE decay so it retires itself. */
+/** pt1-25 → df8-2: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace).
+ *  It has NO sprite — the composer `classify()`s it as a SCREEN event and, since df8-2
+ *  (owner not photosensitive, corrected 2026-08-21), paints no full-field substitute for it.
+ *  It rides the EXPLODE decay so it retires itself. */
 export function startScreen(event: EffectEvent): EffectState {
   return { kind: 'explode', size: EXPLODE_INIT_SIZE, event, done: false }
 }
@@ -287,11 +288,11 @@ export interface PlacedEffect {
   readonly done: boolean
   /** RSIZE (SAMEXAP7): the animation counter, so the composer can size the burst. */
   readonly size: number
-  /** pt1-25: the ADR-0005 event, so the composer `classify()`s a SCREEN effect into its
-   *  seizure-safe presentation instead of the localized sprite raster. */
+  /** pt1-25: the event tag, so the composer `classify()`s a SCREEN effect apart from the
+   *  localized sprite raster (since df8-2 a SCREEN effect paints nothing full-field). */
   readonly event: EffectEvent
   /** The df2-4 INERT ObjectImage this effect animates — the SAME object, by reference. Absent
-   *  on a SCREEN effect (a fade/freeze substitute animates no sprite). */
+   *  on a SCREEN effect (which animates no sprite). */
   readonly picture?: ObjectImage
 }
 
@@ -302,8 +303,9 @@ export interface EffectBank {
   spawnAppear: (x: number, y: number, picture: ObjectImage) => void
   /** EXST: begin an EXPLOSION at (x, y) over `picture` (played when an enemy is killed). */
   spawnExplode: (x: number, y: number, picture: ObjectImage) => void
-  /** pt1-25: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace) — a
-   *  full-frame ADR-0005 safe wash, so it carries no position or picture. */
+  /** pt1-25 → df8-2: begin a SCREEN effect for `event` (player death / smart bomb / hyperspace)
+   *  — it carries no position or picture, and since df8-2 the composer paints nothing
+   *  full-field for it (the pt1-25 wash was removed; owner not photosensitive, 2026-08-21). */
   spawnScreen: (event: EffectEvent) => void
   /** Advance every effect one frame; retire the ones the ROM's finish test has fired. */
   step: () => void

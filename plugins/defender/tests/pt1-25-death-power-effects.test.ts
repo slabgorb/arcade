@@ -44,9 +44,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { createSim, stepSim, type Input, type SimState } from '../src/core/sim.js'
-import { composeFrame } from '../src/core/scene.js'
 import type { EffectEvent } from '../src/core/effects.js'
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../src/shell/render.js'
 
 const NEUTRAL: Input = {
   thrust: false,
@@ -83,10 +81,6 @@ interface Rig {
   _rt: { player: { x: number; y: number } }
 }
 const rig = (s: SimState): Rig => s as unknown as Rig
-
-/** scene.ts caps the wash at SCREEN_WASH_PEAK=3, a DIM lift; assert no changed cell exceeds a
- *  low index, so a mutation that fills the frame bright/white (index 15) reddens. */
-const WASH_MAX_INDEX = 4
 
 /** A safe byte source: constant 100 — in-band for initStars, ≤192 so hyperspace teleports. */
 const safeRand = (): (() => number) => () => 100
@@ -169,36 +163,8 @@ describe('pt1-25 — a smart bomb spawns an ADR-0005 fade effect (not just per-e
     ).toContain('smart-bomb')
   })
 
-  it('the smart-bomb screen effect is drawn and is bounded — surfaced in scene.ts, never a strobe', () => {
-    const s = stepSim(createSim(safeRand()), withInput({ smartBomb: true }))
-
-    // Isolate the SCREEN effect's contribution: the same state with only the screen effects
-    // stripped (enemy bursts kept). composeFrame is pure, so any differing pixel is the wash.
-    const withWash = composeFrame(s, LOGICAL_WIDTH, LOGICAL_HEIGHT)
-    const withoutWash = composeFrame(
-      { ...s, effects: s.effects.filter((e) => !isScreenEvent((e as TaggedEffect).event)) },
-      LOGICAL_WIDTH,
-      LOGICAL_HEIGHT,
-    )
-
-    // Measure the wash directly, not via assertNoFullFrameStrobe: composeFrame draws the
-    // scanner/HUD AFTER the effect, so the frame is never byte-identically all-$F and that guard
-    // cannot see a full-fill regression here. Bound the wash itself instead.
-    let changed = 0
-    let brightest = 0
-    for (let i = 0; i < withWash.data.length; i++) {
-      if (withWash.data[i] !== withoutWash.data[i]) {
-        changed++
-        if (withWash.data[i] > brightest) brightest = withWash.data[i]
-      }
-    }
-    const total = withWash.data.length
-    expect(changed, 'the smart-bomb effect must actually reach the framebuffer, not just SimState').toBeGreaterThan(0)
-    // ADR-0005: the wash is a BOUNDED sparse lattice (≤1/9 of the frame), never a near-full-screen
-    // flash — a mutation filling the whole frame (changed/total→~1) reddens here.
-    expect(changed / total, 'the wash must stay a bounded fraction of the frame').toBeLessThan(0.2)
-    // ADR-0005: the wash is a DIM low-contrast lift — a mutation to a bright/white fill (index 15)
-    // reddens here.
-    expect(brightest, 'no washed cell may exceed the dim SCREEN_WASH_PEAK band').toBeLessThanOrEqual(WASH_MAX_INDEX)
-  })
+  // The old 'smart-bomb screen effect is drawn and is bounded' render test was DELETED by
+  // df8-2: it demanded the invented wash reach the framebuffer. A screen effect now paints
+  // nothing — the inverted contract (byte-identical with/without the screen effect) is
+  // pinned, strictly stronger, in df8-2-no-effect-chrome.test.ts.
 })

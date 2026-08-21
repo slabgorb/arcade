@@ -625,8 +625,11 @@ export function stepSim(state: SimState, input: Input): SimState {
       rt.smartBombArmed = true
       rt.smartBombFlash = SMART_BOMB_FLASHES
       rt.cues.push({ type: 'smart-bomb' }) // SBSND — the ONE cue; the cleared enemies are silent
-      // pt1-25: the screen-level flash — the ADR-0005 smart-bomb wash (the COM PCRAM invert's
-      // seizure-safe substitute), distinct from the per-enemy explosions clearAllEnemies queues.
+      // pt1-25 → df8-2: the screen-level effect still spawns, tags and retires, but the
+      // composer paints NO full-field substitute for it — pt1-25's wash was removed in df8-2
+      // (the owner is not photosensitive, corrected 2026-08-21, so ADR-0005's rationale was
+      // void; the ROM's COM PCRAM invert is deliberately not ported either). Distinct from
+      // the per-enemy explosions clearAllEnemies queues.
       state._effectBank.spawnScreen('smart-bomb')
       clearAllEnemies(state, award)
     }

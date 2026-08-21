@@ -202,19 +202,12 @@ describe('df4-6 — enemies MATERIALIZE (df4-2 APPEAR / SAMEXAP7 APST)', () => {
     ).toBe(true)
   })
 
-  it('composeFrame RENDERS the appear effect — the frame changes when only `effects` is emptied', async () => {
-    // Isolate the EFFECT's contribution: the lander itself renders in both frames; the
-    // ONLY difference is whether the appear effect is present. If the two digests match,
-    // composeFrame ignored `effects` and nothing materialized on screen.
-    const sim = await loadSim()
-    const { composeFrame } = await loadDynamicScene()
-    const withAppear = sim.spawnLander(sim.createSim(makeRand(3)), 1000)
-    const withoutEffects: SimState = { ...withAppear, effects: [] }
-    expect(
-      digest(composeFrame(withAppear, LOGICAL_WIDTH, LOGICAL_HEIGHT)),
-      'composeFrame ignored the APPEAR effect — the materialize animation never reaches the frame',
-    ).not.toBe(digest(composeFrame(withoutEffects, LOGICAL_WIDTH, LOGICAL_HEIGHT)))
-  })
+  // The old 'composeFrame RENDERS the appear effect' digest-differs test was DELETED by
+  // df8-2: it passed only via the invented spark ring — the appear effect blits the lander's
+  // own picture at the live lander's exact position, a pixel-perfect overdraw, so with the
+  // ring gone the two frames are legally identical. The replacement contract (sprite pixels
+  // present in the cell, nothing outside it) is pinned in df8-2-no-effect-chrome.test.ts;
+  // state-level appear presence stays pinned by the test above.
 })
 
 // ─── 3. SAFE KILL — a LOCALIZED explosion, never a full-screen strobe (ADR-0005) ────
