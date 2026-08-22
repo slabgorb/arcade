@@ -48,7 +48,7 @@ describe('SH2-6 — @shared/font resolves with the battlezone glyph set', () => 
     expect(font.GLYPH_CHARS).toContain('-')
     expect(font.GLYPH_CHARS).toContain('/')
     // Representative HUD text (dash, spaces, slash) lays out to real geometry.
-    for (const sample of ['DUAL-TREAD   ESC PAUSE', 'E / D']) {
+    for (const sample of ['DUAL-TREAD   ESC PAUSE / CONTROLS', 'E / D']) {
       const laid = font.layoutText(sample)
       expect(laid.strokes.length, `no strokes for ${JSON.stringify(sample)}`).toBeGreaterThan(0)
       expect(laid.width, `zero width for ${JSON.stringify(sample)}`).toBeGreaterThan(0)

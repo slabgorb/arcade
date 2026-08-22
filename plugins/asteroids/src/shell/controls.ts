@@ -10,7 +10,7 @@ export const CONTROL_MANIFEST: ControlManifest = [
   { action: 'thrust', label: 'THRUST', defaults: ['ArrowUp', 'KeyW'] },
   { action: 'fire', label: 'FIRE', defaults: ['Space', 'KeyK'] },
   { action: 'hyperspace', label: 'HYPERSPACE', defaults: ['ArrowDown', 'KeyS', 'ShiftLeft', 'ShiftRight'] },
-  { action: 'start', label: 'START', defaults: ['Enter', 'Space'] },
+  { action: 'start', label: 'START', defaults: ['Enter', 'NumpadEnter', 'Space'] },
 ]
 export const bindingStore = makeBindingStore('asteroids')
 // Carried over from the old ASTEROIDS_PAUSE card: white vector chrome, 0.72 dim.

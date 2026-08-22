@@ -11,7 +11,7 @@ import type { ControlManifest } from '@shared/keybind'
 
 export const CONTROL_MANIFEST: ControlManifest = [
   { action: 'fire', label: 'FIRE', defaults: ['Space'] },
-  { action: 'start', label: 'START', defaults: ['Enter', 'Digit1', 'Numpad1'] },
+  { action: 'start', label: 'START', defaults: ['Enter', 'NumpadEnter', 'Digit1', 'Numpad1'] },
 ]
 export const bindingStore = makeBindingStore('star-wars')
 // Carried over from the old STAR_WARS_PAUSE card: green cockpit-HUD chrome, 0.72 dim.
