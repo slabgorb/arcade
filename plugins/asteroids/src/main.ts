@@ -11,6 +11,7 @@
 import { createLoop } from '@shared/loop'
 import { isPauseKey, stepUnlessPaused } from '@shared/pause'
 import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { initialState, type GameState } from './core/state'
 import { stepGame, enterInitial } from './core/sim'
 import type { Input } from './core/input'
@@ -101,6 +102,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // The renderer needs the frame's input to draw the thrust flame — the pure core
 // carries no "thrusting" flag (GameState.ship is pos/vel/dir only). Sample once
@@ -132,6 +136,9 @@ const loop = createLoop(
     )
   },
   () => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     ctx.save()
     ctx.scale(dpr, dpr)
     render(ctx, state, W, H, frameInput)

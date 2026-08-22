@@ -55,6 +55,8 @@ const BROWSER_SUBPATHS = [
   'host-helpers',
   'held-keys',
   'controls-overlay', // sa1-5 adds `controls-overlay`: it reads/writes localStorage and (Task 7) draws to a canvas ctx — browser by construction.
+  'volume', // sa1-4 — persisted single-origin master volume (localStorage)
+  'volume-ui', // sa1-4 — DOM master-volume slider
 ] as const
 
 const srcPath = (name: string) => join(SHARED_ROOT, `${name}.ts`)
@@ -172,7 +174,19 @@ describe('purity guard — classification is honest, not just a Set literal', ()
     // reads KeyboardEvent and attaches keydown/keyup/blur listeners — the DOM
     // wiring IS the module, so it can never belong in PURE_SUBPATHS.
     expect([...BROWSER_SUBPATHS].sort()).toEqual(
-      ['audio', 'controls-overlay', 'esc-overlay', 'glow', 'held-keys', 'highscore', 'host-helpers', 'synth', 'view'].sort(),
+      [
+        'audio',
+        'controls-overlay',
+        'esc-overlay',
+        'glow',
+        'held-keys',
+        'highscore',
+        'host-helpers',
+        'synth',
+        'view',
+        'volume',
+        'volume-ui',
+      ].sort(),
     )
   })
 

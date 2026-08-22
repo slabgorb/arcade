@@ -63,6 +63,7 @@ import { multiply, type Mat4, type Vec3 } from '@shared/math3d'
 import { createRng, nextFloat } from '@shared/rng'
 import { isPauseKey } from '@shared/pause'
 import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createControlsOverlay } from '@shared/controls-overlay'
 import { sampleYoke, setBindings } from './shell/input'
@@ -385,6 +386,9 @@ const overlay = createControlsOverlay({
   opts: CONTROLS_OVERLAY_OPTS,
   onChange: setBindings,
 })
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // Capture-phase so this runs BEFORE installHeldKeys' own keydown inside
 // shell/input.ts: while the overlay is open it must consume the keydown outright
@@ -638,6 +642,9 @@ function preMotionFrame(events: GameEvent[]): boolean {
 }
 
 function frame(nowMs: number): void {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame,
+  // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(overlay.isOpen())
   if (lastMs === null) lastMs = nowMs
   // Cap the catch-up so a stalled tab (huge dt) can't spiral the fixed-step loop.
   accumulator += Math.min((nowMs - lastMs) / 1000, 0.25)

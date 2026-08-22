@@ -37,6 +37,7 @@ import { MESSAGES } from './core/text'
 import { createKeyboardTreads, setBindings } from './shell/input'
 import { isPauseKey, stepUnlessPaused } from './shell/pause'
 import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createControlsOverlay } from '@shared/controls-overlay'
@@ -168,6 +169,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // Initials entry (SH2-13): typed letters and Backspace are edge events, not
 // held state, so they bypass the per-frame tread sample and feed the core's
@@ -213,6 +217,9 @@ function stepFrame(dt: number): void {
 }
 
 function renderFrame(): void {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame,
+  // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(overlay.isOpen())
   const w = canvas.width
   const h = canvas.height
   const aspect = w / h

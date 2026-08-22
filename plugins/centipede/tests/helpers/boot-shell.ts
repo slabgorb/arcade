@@ -45,7 +45,7 @@
 //    green 8 times running is not proven green, and every other centipede suite
 //    pins a literal seed. `SEED` below is that pin; it reaches main.ts through
 //    `window.location.search`, in the shape of the `?wave=` debug param the
-//    shell already parses (main.ts:41-50). `?seed=` was this rework's one
+//    shell already parses (main.ts:42-51). `?seed=` was this rework's one
 //    production change — it did not exist when these guards were written, and
 //    `seedWasHonoured` is the assertion that reddened until it landed. Keep
 //    that assertion: without it, a `?seed=` that stops being honoured leaves
@@ -192,13 +192,49 @@ export function installShellDom(): ShellHarness {
     return el
   }
 
+  // sa1-4: a generic DOM element for document.createElement calls that are NOT
+  // the canvas — mountVolumeControl (@shared/volume-ui) builds a <div>/<label>/
+  // <input> chrome tree, none of which need canvas members, but all of which
+  // need appendChild/setAttribute/className/hidden/value to boot without throwing.
+  // `remove` backs VolumeControlHandle.destroy(); `id` is a plain writable
+  // property (volume-ui.ts sets `style.id = STYLE_ID`) — no getter needed since
+  // this is an untyped stub object, not a real Element.
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '',
+      hidden: false,
+      value: '',
+      children: [] as unknown[],
+      appendChild: (child: unknown): unknown => {
+        ;(el.children as unknown[]).push(child)
+        return child
+      },
+      setAttribute: (): void => {},
+      remove: (): void => {},
+    }
+    Object.assign(el, listen(el))
+    return el
+  }
+
   const canvas = makeCanvas()
+  const body = makeGenericElement()
+  // sa1-4: the <head> mountVolumeControl's one-time <style> injection appends to
+  // (ensureStyle, @shared/volume-ui.ts) — a second generic element, distinct
+  // from `body`, so a real appendChild call on either is observable separately.
+  const head = makeGenericElement()
   const g = globalThis as unknown as Record<string, unknown>
 
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
-    createElement: (): unknown => makeCanvas(),
+    createElement: (tag?: string): unknown => (tag === 'canvas' ? makeCanvas() : makeGenericElement()),
+    // sa1-4: ensureStyle's de-dupe guard — the stub never actually inserts a
+    // node the next call could find, so it always reports "not yet injected"
+    // and mountVolumeControl proceeds to build the <style> unconditionally.
+    // Harmless: nothing here asserts the style is injected at most once.
+    getElementById: (): null => null,
     pointerLockElement: null,
+    body,
+    head,
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

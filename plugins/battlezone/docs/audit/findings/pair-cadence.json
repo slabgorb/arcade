@@ -34,7 +34,7 @@
     },
     "ours": {
       "file": "src/main.ts",
-      "line": 384,
+      "line": 391,
       "verbatim": "const loop = createLoop(stepFrame, renderFrame)"
     }
   },

@@ -121,9 +121,25 @@ async function bootRun(opts: { seed: number; nowMs: number; frames: number }): P
   const keydownHandlers: Array<(e: unknown) => void> = []
   const keyupHandlers: Array<(e: unknown) => void> = []
   let rafCallback: ((nowMs: number) => void) | null = null
+  // sa1-4: a generic element for document.createElement / document.body — the
+  // shared @shared/volume-ui control main.ts now mounts builds a <div>/<label>/
+  // <input> chrome tree via createElement + body.appendChild.
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '', hidden: false, value: '', children: [] as unknown[],
+      appendChild: (child: unknown): unknown => { (el.children as unknown[]).push(child); return child },
+      setAttribute: () => {}, addEventListener: () => {}, removeEventListener: () => {},
+    }
+    return el
+  }
   // sc1-1: `querySelector` alongside `getElementById` — main.ts mounts through
   // @shared/host-helpers' mountCanvas, which takes a selector.
-  vi.stubGlobal('document', { getElementById: () => canvas, querySelector: () => canvas })
+  vi.stubGlobal('document', {
+    getElementById: () => canvas,
+    querySelector: () => canvas,
+    createElement: () => makeGenericElement(),
+    body: makeGenericElement(),
+  })
   vi.stubGlobal('location', location)
   vi.stubGlobal('window', {
     innerWidth: width,

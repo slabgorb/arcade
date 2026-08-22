@@ -74,38 +74,38 @@ interface Anchor {
  */
 const ANCHORS: Anchor[] = [
   {
-    cite: 'main.ts:41-50',
-    line: 41,
+    cite: 'main.ts:42-51',
+    line: 42,
     must: /cp2-13: shell-only `\?wave=N` debug seed/,
     what: 'the ?wave= shell-only debug param the ?seed= override is modelled on',
   },
   {
-    cite: 'main.ts:122',
-    line: 122,
+    cite: 'main.ts:123',
+    line: 123,
     must: /^window\.addEventListener\('keydown', unlockAudio\)$/,
     what: "the window 'keydown' gesture binding that unlocks the audio engine",
   },
   {
-    cite: 'main.ts:124-127',
-    line: 124,
+    cite: 'main.ts:125-128',
+    line: 125,
     must: /^canvas\.addEventListener\('click', \(\) => \{$/,
     what: "the canvas 'click' listener, which calls unlockAudio() before lock.request()",
   },
   {
-    cite: 'main.ts:133-135',
-    line: 133,
+    cite: 'main.ts:134-136',
+    line: 134,
     must: /^window\.addEventListener\('keydown', \(e\) => \{$/,
     what: 'the initials keydown listener — a second window keydown, NOT a gesture binding',
   },
   {
-    cite: 'main.ts:224',
-    line: 224,
+    cite: 'main.ts:228',
+    line: 228,
     must: /createAttract\(/,
     what: 'where attract is seeded — the line the ?seed= override has to reach',
   },
   {
-    cite: 'main.ts:360',
-    line: 360,
+    cite: 'main.ts:367',
+    line: 367,
     // Two lines in main.ts read `requestAnimationFrame(frame)`. The TRAILING
     // one — the link in the chain a thrown exception breaks — is the indented
     // one inside `frame()`; the bare one at column 0 is the bootstrap that
@@ -117,8 +117,8 @@ const ANCHORS: Anchor[] = [
   // re-spelled from the bare `:N` form (which this file cannot see) to
   // `main.ts:N`. Their values had gone stale exactly as this file predicts.
   {
-    cite: 'main.ts:362',
-    line: 362,
+    cite: 'main.ts:369',
+    line: 369,
     // The column-0 counterpart of :227 — see the indent note there.
     must: /^requestAnimationFrame\(frame\)$/,
     what: 'the bare bootstrap requestAnimationFrame(frame) that starts the chain',
@@ -130,14 +130,14 @@ const ANCHORS: Anchor[] = [
     what: 'the createAudio import (now also EVENT_SOUND + SoundName for cp7-6 loop tracking), then playEventSounds',
   },
   {
-    cite: 'main.ts:107',
-    line: 107,
+    cite: 'main.ts:108',
+    line: 108,
     must: /^const audio = createAudio\(\)$/,
     what: 'where main.ts builds the one engine, at boot',
   },
   {
-    cite: 'main.ts:315',
-    line: 315,
+    cite: 'main.ts:322',
+    line: 322,
     must: /^ {6}playEventSounds\(audio, sim\.events\)$/,
     what: 'the dispatch call inside the pump callback — once per stepped frame',
   },

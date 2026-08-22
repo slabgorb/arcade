@@ -47,6 +47,7 @@ import {
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { installHeldKeys, type KeyMembership } from '@shared/held-keys'
 import { mountCanvas } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { isPauseKey } from '@shared/pause'
 import { createControlsOverlay } from '@shared/controls-overlay'
 import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls.js'
@@ -611,6 +612,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 const MAX_CATCHUP_SECONDS = 0.25
 let accumulator = 0
@@ -622,6 +626,11 @@ const frame = (now: number): void => {
     started = true
     last = now
   } else {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame — it
+    // must track both entering AND leaving pause, so this runs unconditionally,
+    // ahead of the freeze branch below (which skips the sim pump, not this).
+    // Re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     const elapsed = Math.min((now - last) / 1000, MAX_CATCHUP_SECONDS)
     last = now
     // sa1-2/sa1-5: the frozen-frame gate. A frame with the controls overlay open pumps

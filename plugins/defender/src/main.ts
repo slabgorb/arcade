@@ -26,6 +26,7 @@
 // their frame — only play and attract advance a sim.
 
 import { mountCanvas } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { createLoop } from '@shared/loop'
 import { isPauseKey } from '@shared/pause'
 import { createControlsOverlay } from '@shared/controls-overlay'
@@ -133,6 +134,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 const loop = createLoop(
   () => {
@@ -193,6 +197,9 @@ const loop = createLoop(
     }
   },
   () => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     canvas.width = canvas.clientWidth
     canvas.height = canvas.clientHeight
     // df7-4: feed the hall-of-fame payload (the loaded/committed board + the in-progress

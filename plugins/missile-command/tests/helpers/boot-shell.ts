@@ -126,13 +126,39 @@ export async function bootMcShell(): Promise<ShellHarness> {
 
   const g = globalThis as unknown as Record<string, unknown>
 
+  // sa1-4: a generic element for document.createElement / document.body — the
+  // shared @shared/volume-ui control main.ts now mounts builds a <div>/<label>/
+  // <input> chrome tree via createElement + body.appendChild.
+  const makeGenericElement = (): Record<string, unknown> => {
+    const el: Record<string, unknown> = {
+      className: '',
+      hidden: false,
+      value: '',
+      style: {} as Record<string, unknown>,
+      children: [] as unknown[],
+      appendChild: (child: unknown): unknown => {
+        ;(el.children as unknown[]).push(child)
+        return child
+      },
+      setAttribute: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }
+    return el
+  }
+
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
+    createElement: (): unknown => makeGenericElement(),
+    // sa1-4: ensureStyle's de-dupe guard (@shared/volume-ui.ts) — always "not yet
+    // injected" since the stub never inserts a node getElementById could find.
+    getElementById: (): null => null,
     pointerLockElement: null,
     // sa1-1: main.ts paints the page body the shared cabinet-chrome colour at boot
     // (the game letterboxes the canvas element, so the visible bars are the body bg).
     // A deferred module always has document.body in the browser; model it here.
-    body: { style: {} as Record<string, unknown> },
+    body: makeGenericElement(),
+    head: makeGenericElement(),
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

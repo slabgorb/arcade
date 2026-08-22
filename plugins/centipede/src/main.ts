@@ -21,6 +21,7 @@ import { createAudio, EVENT_SOUND, type SoundName } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import type { GameEvent } from './core/events'
 import { isPauseKey } from '@shared/pause'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createControlsOverlay } from '@shared/controls-overlay'
 import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
@@ -188,6 +189,9 @@ const overlay = createControlsOverlay({
   opts: CONTROLS_OVERLAY_OPTS,
   onChange: setBindings,
 })
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // Capture-phase so this runs BEFORE the initials-entry keydown handler above
 // and the keyboard adapter's own listener: while the overlay is open it must
@@ -265,6 +269,9 @@ const frame = (now: number): void => {
   // sa1-5: the controls overlay OWNS pause now — its own open/closed state IS
   // the freeze gate, not a separate installPauseToggle listener.
   const paused = overlay.isOpen()
+  // sa1-4: keep the volume slider's visibility in sync every animated frame,
+  // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(paused)
   if (paused && !wasPaused) {
     pausedLoops = [...liveLoops]
     for (const name of pausedLoops) {

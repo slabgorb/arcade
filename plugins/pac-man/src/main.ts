@@ -25,6 +25,7 @@ import {
 } from './core/game'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { mountCanvas } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { resizeToDisplay } from '@shared/view'
 import { isPauseKey } from '@shared/pause'
 import { createControlsOverlay } from '@shared/controls-overlay'
@@ -173,6 +174,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 let acc = 0
 let last = 0
@@ -191,6 +195,10 @@ const frame = (now: number): void => {
     started = true
     last = now
   } else {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame — it
+    // must track both entering AND leaving pause, so this runs unconditionally,
+    // ahead of the freeze branch below (which skips the sim pump, not this).
+    volume.setVisible(overlay.isOpen())
     const elapsed = (now - last) / 1000
     last = now
     // sa1-5: freeze the sim while the controls overlay is open — skip the pump, but

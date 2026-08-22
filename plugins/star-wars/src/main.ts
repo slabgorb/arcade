@@ -18,6 +18,7 @@ import { isPauseKey, stepUnlessPaused } from '@shared/pause'
 import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
 import { createControlsOverlay } from '@shared/controls-overlay'
 import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio'
 import { render } from './shell/render'
@@ -132,6 +133,9 @@ const overlay = createControlsOverlay({
   opts: CONTROLS_OVERLAY_OPTS,
   onChange: setBindings,
 })
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // Capture-phase so this runs BEFORE the initials-entry handler above: while the
 // overlay is open it must consume the keydown outright (stopImmediatePropagation)
@@ -311,6 +315,9 @@ const loop = createLoop(
     }
   },
   () => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     ctx.save()
     ctx.scale(dpr, dpr)
     render(ctx, state, W, H, highScores)

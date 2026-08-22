@@ -9,6 +9,7 @@
 
 import { createLoop } from '@shared/loop'
 import { mountCanvas } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { CABINET_CHROME } from '@shared/cabinet'
 import { isPauseKey } from '@shared/pause'
 import { createControlsOverlay } from '@shared/controls-overlay'
@@ -41,6 +42,11 @@ const { canvas, ctx: context } = mountCanvas(document)
 // could reach. Paint the body the one shared surround colour so those bars match every
 // other game — one runtime source of truth, not a hand-typed hex in index.html.
 document.body.style.background = CABINET_CHROME.color
+
+// sa1-4: the shared master-volume control, shown only while paused (missile-command
+// has no `pause` handle — its pause is a core phase, `game.phase === 'pause'`,
+// flipped by `pauseFromKey` — so the render loop below reads that directly).
+const volume = mountVolumeControl({ root: document.body })
 
 // mc10-5: pin the canvas to the fixed 256:222 field ratio and letterbox it, instead
 // of stretching to the full ~2:1 window. The fit math + HiDPI clamp live in the pure,
@@ -249,6 +255,10 @@ const loop = createLoop(
     game = { ...game, soundEvents: [] }
   },
   () => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame — runs
+    // unconditionally in the render thunk, which createLoop calls once per rAF tick
+    // regardless of whether a sim step ran, so it tracks entering AND leaving pause.
+    volume.setVisible(game.phase === 'pause')
     // The backing store is the letterboxed buffer set by resize() (mc10-5) — the loop
     // no longer resizes it, so drawFrame paints into the pinned 256:222 canvas.
     // mc10-4: feed the LIVE wave so the per-wave palette (paletteForWave, mc9-2) follows

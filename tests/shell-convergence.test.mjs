@@ -123,12 +123,14 @@ const PERFORMS = {
 // The `adopted`-requires-import-and-call check (AC-1, above) is UNAFFECTED, so a
 // cell here still has to genuinely wire the helper in the tree — this cannot be
 // used to mark a cell adopted that nothing implements.
-// Currently empty: sa1-5 retired the only entry (centipede/installPauseToggle) by
-// moving every game's installPauseToggle cell to own-implementation (overlay-driven
-// pause) — the growth-check's `if (rows[game][helper] !== 'adopted') continue` skips
-// non-`adopted` cells before this Set is ever consulted, so the old entry was already
-// dead code by the time it was removed. Left as an empty Set (not deleted) because a
-// later `adopted` cell that grew after the baseline will need a waiver here again.
+// Currently empty: sa1-5 retired the only entries by moving every game's
+// installPauseToggle cell to own-implementation (overlay-driven pause). Both the
+// cp7-6 centipede growth and the sa1-2 joust growth are moot now — the games no
+// longer call installPauseToggle at all, so their cells are own-implementation,
+// not adopted. The growth-check's `if (rows[game][helper] !== 'adopted') continue`
+// skips non-`adopted` cells before this Set is ever consulted, so any old entry was
+// already dead code. Left as an empty Set (not deleted) because a later `adopted`
+// cell that grew after the baseline will need a waiver here again.
 const DELIBERATE_GROWTH = new Set([]);
 
 /** Parse the recorded matrix into { [game]: { [helper]: cell } } plus its baseline. */
@@ -307,16 +309,23 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
   // this story has no business re-litigating it.
   const { baseline } = readMatrix();
   const range = `${baseline}..HEAD`;
-  // --no-merges: a merge commit authors no single game's main.ts change of its
-  // own — it combines commits that were each already single-game (e.g. 75c421f1
-  // merges separate joust/millipede/pac-man commits and would otherwise report
-  // 3 games touched in one "commit"). AC-3's intent is "one suspect per commit",
-  // which is a statement about commits that actually author a change, so the
-  // range is measured over non-merge commits; the per-commit `git show
-  // --name-only` logic below is unchanged.
+  // Scoped to the matrix's OWN games, not every plugin in the tree. millipede,
+  // pac-man and defender were never part of this matrix (GAMES lists the seven
+  // sc1-1 covers) — they were added later as native plugins and their main.ts
+  // churn belongs to other stories (e.g. sa1-2's cabinet-wide pause work, which
+  // legitimately lands defender+joust+millipede+pac-man in one commit). AC-3
+  // polices adoption of THIS matrix's three helpers into THESE seven games; a
+  // bulk commit that happens to also touch an out-of-scope game's main.ts is not
+  // an adoption regression this test has any business flagging.
+  const gamePaths = GAMES.map((g) => `plugins/${g}/src/main.ts`);
+  // --no-merges: a merge commit's combined diff can span every game whose
+  // main.ts a sibling branch touched (a bystander merging origin/develop into a
+  // feature branch, for instance), even though the merge itself adopted nothing
+  // in any of them. That is not an adoption commit, so AC-3's one-game-per-commit
+  // rule does not apply to it — the rule polices real adoption commits.
   const shas = execFileSync(
     'git',
-    ['log', '--format=%h', '--no-merges', range, '--', 'plugins/*/src/main.ts'],
+    ['log', '--no-merges', '--format=%h', range, '--', ...gamePaths],
     {
       cwd: ROOT,
       encoding: 'utf8',
@@ -343,7 +352,7 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
 
   for (const sha of shas) {
     const touched = new Set(
-      execFileSync('git', ['show', '--name-only', '--format=', sha, '--', 'plugins/*/src/main.ts'], {
+      execFileSync('git', ['show', '--name-only', '--format=', sha, '--', ...gamePaths], {
         cwd: ROOT,
         encoding: 'utf8',
       })

@@ -15,6 +15,7 @@
 // surfaces touched.
 
 import { mountCanvas } from '@shared/host-helpers'
+import { mountVolumeControl } from '@shared/volume-ui'
 import { isPauseKey } from '@shared/pause'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import { createControlsOverlay } from '@shared/controls-overlay'
@@ -356,6 +357,9 @@ window.addEventListener(
   },
   true,
 )
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // ── Fixed-timestep accumulator (ml7-5). stepGame is one ROM 60 Hz frame, so we
 //    drive it off REAL elapsed time, not the raw rAF cadence: a >60 Hz display
@@ -365,6 +369,11 @@ let accMs = 0
 let lastTs: number | null = null
 
 const frame = (ts: number): void => {
+  // sa1-4: keep the volume slider's visibility in sync every animated frame — it
+  // must track both entering AND leaving pause, so this runs unconditionally,
+  // ahead of the freeze branch below (which skips the sim pump, not this).
+  // Re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(overlay.isOpen())
   const elapsed = lastTs === null ? 0 : ts - lastTs
   lastTs = ts
 

@@ -13,6 +13,7 @@ import { isPauseKey } from '@shared/pause'
 import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
 import { createControlsOverlay } from '@shared/controls-overlay'
 import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
+import { mountVolumeControl } from '@shared/volume-ui'
 
 // tempest records the `level` reached; the shared factory binds load/save to the
 // 'tempest-high-scores' localStorage key and validates each row's finite score +
@@ -66,6 +67,9 @@ const overlay = createControlsOverlay({
   opts: CONTROLS_OVERLAY_OPTS,
   onChange: setBindings,
 })
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
+const volume = mountVolumeControl({ root: document.body })
 
 // Capture-phase so this runs BEFORE any other keydown listener (input.ts's
 // held-key tracker, the initials-entry handler below): while the overlay is
@@ -95,6 +99,9 @@ const loop = createLoop(
   initial,
   () => input.sample(),
   (s, frameEvents) => {
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     const t = performance.now()
     let rdt = (t - lastDraw) / 1000
     lastDraw = t

@@ -15,6 +15,13 @@
 // The NUMBERS stay home — every oscillator, filter, envelope and ROM seam belongs to
 // the cabinet that owns it, and none of them appear in this file.
 //
+// sa1-4: the master GainNode's value is getMasterVolume() × headroom, where headroom
+// is `config.masterGain ?? DEFAULT_MASTER_GAIN` — the number this file already had.
+// The user volume multiplies INTO that headroom, live, via subscribeVolume — applied
+// at both build sites (initial resume() and the context-recovery rebuild), and
+// re-applied on every change through the engine's own live()/guard() so a change
+// before resume() or after a closed context is a silent no-op.
+//
 // ── THE NO-THROW CONTRACT (load-bearing — do not "simplify" it away) ─────────
 //
 // Browsers forbid an AudioContext before a user gesture, so the context is built
@@ -33,6 +40,8 @@
 // `withAudio()` fuses the two so a caller cannot take one without the other.
 
 /** The live rig a cabinet plays into: the context, and the master bus to connect to. */
+import { getMasterVolume, subscribeVolume } from './volume.js'
+
 export interface SynthTarget {
   readonly context: AudioContext
   readonly out: GainNode
@@ -169,6 +178,17 @@ export function createSynthEngine<N extends string>(config?: SynthConfig): Synth
     }
   }
 
+  // sa1-4: re-apply the user master volume onto the live master bus when it changes.
+  // Uses the engine's guard/live so a change before resume() or after a closed
+  // context is a silent no-op (the degrade contract). masterGain stays the cabinet's
+  // headroom NUMBER; the user volume multiplies into it.
+  subscribeVolume((v) => {
+    const rig = live()
+    const bus = master
+    if (rig === null || bus === null) return
+    guard(() => bus.gain.setValueAtTime(v * masterGain, rig.context.currentTime))
+  })
+
   function resume(): void {
     // RECOVERY (review round 1). A context the browser CLOSED is dead for good — every
     // factory on it throws. The old guard was `if (ctx === null)`, and a closed context is
@@ -194,7 +214,7 @@ export function createSynthEngine<N extends string>(config?: SynthConfig): Synth
       try {
         building = new Ctor()
         const gain = building.createGain()
-        gain.gain.setValueAtTime(masterGain, building.currentTime)
+        gain.gain.setValueAtTime(getMasterVolume() * masterGain, building.currentTime)
         gain.connect(building.destination)
         ctx = building
         master = gain

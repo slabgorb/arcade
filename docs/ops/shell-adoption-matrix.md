@@ -106,8 +106,11 @@ baseline, this is the one cell the AC-1 growth check exempts by name — a
 `DELIBERATE_GROWTH` entry in `tests/shell-convergence.test.mjs` citing cp7-6. The
 exemption is narrow: it waives only the "existed at baseline" test, so the
 `adopted`-requires-import-and-call check still holds centipede to actually wiring
-the helper. **joust's pause stays `behaviour-absent`** — it never grew one; that
-cell is still refuted against the live tree on every run.
+the helper. **joust grew one too, in sa1-2** (the consistent Esc pause overlay
+per-game graphics work): it now imports `installPauseToggle` and
+`isPauseKey`/`INITIAL_PAUSED` and calls `installPauseToggle(window, isPauseKey,
+INITIAL_PAUSED)` (`plugins/joust/src/main.ts`). Its pause cell is `adopted` too, and
+carries the same `DELIBERATE_GROWTH` waiver, cited to sa1-2 rather than cp7-6.
 
 ## installPauseToggle is retired fleet-wide: pause is now overlay-driven (sa1-5)
 
