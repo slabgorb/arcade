@@ -20,7 +20,7 @@ export const CONTROL_MANIFEST: ControlManifest = [
   { action: 'right', label: 'ROTATE RIGHT', defaults: ['ArrowRight'] },
   { action: 'fire', label: 'FIRE', defaults: ['Space'] },
   { action: 'zap', label: 'SUPERZAP', defaults: ['ShiftLeft', 'ShiftRight'] },
-  { action: 'start', label: 'START', defaults: ['Enter'] },
+  { action: 'start', label: 'START', defaults: ['Enter', 'NumpadEnter'] },
 ]
 export const bindingStore = makeBindingStore('tempest')
 // Carried over from the old TEMPEST_PAUSE card in main.ts: the authentic 1981

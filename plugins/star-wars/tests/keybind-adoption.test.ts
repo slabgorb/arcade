@@ -14,6 +14,6 @@ describe('star-wars key rebinding', () => {
     const map = resolveBindings(CONTROL_MANIFEST, { fire: ['KeyJ'] })
     expect(map.fire).toEqual(['KeyJ'])
     expect(map.fire).not.toContain('Space')
-    expect(map.start).toEqual(['Enter', 'Digit1', 'Numpad1']) // untouched actions keep defaults
+    expect(map.start).toEqual(['Enter', 'NumpadEnter', 'Digit1', 'Numpad1']) // untouched actions keep defaults
   })
 })

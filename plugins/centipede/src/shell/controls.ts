@@ -20,7 +20,7 @@ export const CONTROL_MANIFEST: ControlManifest = [
   { action: 'fire', label: 'FIRE', defaults: ['Space'] },
   // cp4-5: the keyboard port of the ROM's 1-player START button (START1,
   // CENTI4.MAC:833-836) — a separate control from the gun.
-  { action: 'start', label: 'START', defaults: ['Enter'] },
+  { action: 'start', label: 'START', defaults: ['Enter', 'NumpadEnter'] },
 ]
 export const bindingStore = makeBindingStore('centipede')
 // Carried over from the old CENTIPEDE_PAUSE card in main.ts: a fixed bright

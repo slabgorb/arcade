@@ -42,7 +42,7 @@ export const CONTROL_MANIFEST: ControlManifest = [
   // Shared controls.
   { action: 'fire', label: 'FIRE', defaults: ['Space', 'KeyF'] },
   { action: 'fineAim', label: 'FINE AIM', defaults: ['ShiftLeft', 'ShiftRight'] },
-  { action: 'start', label: 'START', defaults: ['Enter', 'Digit1'] },
+  { action: 'start', label: 'START', defaults: ['Enter', 'NumpadEnter', 'Digit1'] },
 ]
 export const bindingStore = makeBindingStore('battlezone')
 // Carried over from the old PAUSE_LINES card: battlezone's signature phosphor

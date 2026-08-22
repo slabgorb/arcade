@@ -50,4 +50,29 @@ for (const id of GAMES) {
     const src = stripComments(readFileSync(input, 'utf8'));
     assert.match(src, /resolveBindings/, `${id} input.ts must resolve bindings, not hard-code keys`);
   });
+
+  // A manifest + resolveBindings is inert unless main.ts actually stands the
+  // overlay up and gives it the two powers the whole feature rests on: freezing
+  // the sim while it is open, and drawing itself. Without this, a future game
+  // could pass the two checks above yet ship an un-openable, un-freezing overlay
+  // — a manifest nobody can reach. Bind every assertion to the overlay VARIABLE
+  // (captured from its construction), so `.isOpen()`/`.draw(` on some unrelated
+  // object cannot satisfy the guard.
+  test(`${id} main.ts wires the controls overlay`, () => {
+    const main = join(ROOT, `plugins/${id}/src/main.ts`);
+    const src = stripComments(readFileSync(main, 'utf8'));
+    const built = src.match(/const\s+(\w+)\s*=\s*createControlsOverlay\s*\(/);
+    assert.ok(built, `${id} main.ts must construct the overlay (const <v> = createControlsOverlay(...))`);
+    const v = built[1];
+    assert.match(
+      src,
+      new RegExp(`\\b${v}\\.isOpen\\s*\\(\\s*\\)`),
+      `${id} main.ts must gate the sim freeze on ${v}.isOpen()`,
+    );
+    assert.match(
+      src,
+      new RegExp(`\\b${v}\\.draw\\s*\\(`),
+      `${id} main.ts must render the overlay with ${v}.draw(...)`,
+    );
+  });
 }

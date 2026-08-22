@@ -71,6 +71,7 @@ describe('createInputController — keyboard (regression pin)', () => {
     ['hyperspace', 'ShiftLeft'],
     ['hyperspace', 'ShiftRight'],
     ['start', 'Enter'],
+    ['start', 'NumpadEnter'],
   ] as const)('%s responds to keydown/keyup of %s', (field, code) => {
     const ctrl = build()
     windowBus.emit('keydown', { code })

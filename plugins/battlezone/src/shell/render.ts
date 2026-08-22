@@ -459,9 +459,9 @@ export function drawMessage(
 /**
  * The always-on control indicator (bz2-5), anchored bottom-left so it clears the
  * top HUD band (lives/score/radar). Names the cabinet's dual-tread control scheme
- * and the pause key, so the controls — and how to pause — are discoverable at a
- * glance during play. Vector font for HUD consistency (bz2-2); copy/placement is
- * playtest-tunable.
+ * and the ESC menu, so the controls — and that ESC now pauses INTO a RESUME/CONTROLS
+ * menu where keys can be rebound (sa1-5/sa1-6) — are discoverable at a glance during
+ * play. Vector font for HUD consistency (bz2-2); copy/placement is playtest-tunable.
  */
 export function drawControlIndicator(
   ctx: CanvasRenderingContext2D,
@@ -471,5 +471,5 @@ export function drawControlIndicator(
 ): void {
   const size = Math.max(12, Math.round(Math.min(w, h) * 0.03))
   // Bottom-left; the glyph baseline sits at h - size (old textBaseline:'bottom').
-  drawText(ctx, 'DUAL-TREAD   ESC PAUSE', size, h - size, size, 'left', color)
+  drawText(ctx, 'DUAL-TREAD   ESC PAUSE / CONTROLS', size, h - size, size, 'left', color)
 }
