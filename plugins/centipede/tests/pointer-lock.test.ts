@@ -210,7 +210,7 @@ describe('cp2-2 R5 — the held gun state actually clears (reset + pointer-lock 
     const input = await loadInput()
     const b = makeBus()
     const kbd = input.createKeyboardAdapter(b.bus)
-    b.fire('keydown', { key: 'ArrowRight' })
+    b.fire('keydown', { code: 'ArrowRight' }) // sa1-5: matches on physical e.code now
     expect(kbd.sample().dh).toBeLessThan(0) // cp2-14: right == negative ROM count
     kbd.reset()
     expect(kbd.sample().dh, 'reset released the held key').toBe(0)

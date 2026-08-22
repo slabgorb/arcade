@@ -98,14 +98,14 @@ const ANCHORS: Anchor[] = [
     what: 'the initials keydown listener — a second window keydown, NOT a gesture binding',
   },
   {
-    cite: 'main.ts:207',
-    line: 207,
+    cite: 'main.ts:228',
+    line: 228,
     must: /createAttract\(/,
     what: 'where attract is seeded — the line the ?seed= override has to reach',
   },
   {
-    cite: 'main.ts:341',
-    line: 341,
+    cite: 'main.ts:367',
+    line: 367,
     // Two lines in main.ts read `requestAnimationFrame(frame)`. The TRAILING
     // one — the link in the chain a thrown exception breaks — is the indented
     // one inside `frame()`; the bare one at column 0 is the bootstrap that
@@ -117,8 +117,8 @@ const ANCHORS: Anchor[] = [
   // re-spelled from the bare `:N` form (which this file cannot see) to
   // `main.ts:N`. Their values had gone stale exactly as this file predicts.
   {
-    cite: 'main.ts:343',
-    line: 343,
+    cite: 'main.ts:369',
+    line: 369,
     // The column-0 counterpart of :227 — see the indent note there.
     must: /^requestAnimationFrame\(frame\)$/,
     what: 'the bare bootstrap requestAnimationFrame(frame) that starts the chain',
@@ -136,8 +136,8 @@ const ANCHORS: Anchor[] = [
     what: 'where main.ts builds the one engine, at boot',
   },
   {
-    cite: 'main.ts:297',
-    line: 297,
+    cite: 'main.ts:322',
+    line: 322,
     must: /^ {6}playEventSounds\(audio, sim\.events\)$/,
     what: 'the dispatch call inside the pump callback — once per stepped frame',
   },

@@ -9,8 +9,13 @@
 //
 // Battlezone has NO monolithic render(): it exports one draw function per HUD
 // surface (drawScore / drawScreenLines / drawLives / drawMessage /
-// drawControlIndicator / drawPauseOverlay), each handed its text as a parameter.
-// So the mechanism seam is driven per-function, not through a GameState.
+// drawControlIndicator), each handed its text as a parameter. So the mechanism
+// seam is driven per-function, not through a GameState.
+//
+// sa1-5 RETIREMENT (Option A): drawPauseOverlay is GONE from render.ts — the
+// rebindable @shared/controls-overlay now owns pause chrome outright (main.ts),
+// so it dropped out of the census below along with every other game surface
+// this file no longer owns.
 //
 // The migration DELETES the text-as-string canvas signal from the game surface:
 // post-migration NO HUD text reaches ctx.fillText — every glyph (and the lives
@@ -36,7 +41,6 @@ import {
   drawLives,
   drawMessage,
   drawControlIndicator,
-  drawPauseOverlay,
 } from '../../src/shell/render'
 
 const W = 800
@@ -90,7 +94,6 @@ const textDraws: ReadonlyArray<{ name: string; run: (c: CanvasRenderingContext2D
   { name: 'drawScreenLines', run: (c) => drawScreenLines(c, ['BATTLEZONE', '', 'PRESS START'], W, H) },
   { name: 'drawMessage', run: (c) => drawMessage(c, 'ENEMY IN RANGE', W, H) },
   { name: 'drawControlIndicator', run: (c) => drawControlIndicator(c, W, H) },
-  { name: 'drawPauseOverlay', run: (c) => drawPauseOverlay(c, W, H) },
 ]
 
 // ---- (1) mechanism: HUD text is stroked, never drawn through the text API -----

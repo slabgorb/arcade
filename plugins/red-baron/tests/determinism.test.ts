@@ -164,7 +164,10 @@ async function bootRun(opts: { seed: number; nowMs: number; frames: number }): P
 
   // Hold FIRE for the whole run so waves are cleared and re-spawned — a MULTI-WAVE
   // run (spawn sides, blimp rolls, wave composition), not one hovering wave.
-  for (const h of keydownHandlers) h({ key: ' ', repeat: false, preventDefault: () => {} })
+  // sa1-5: held-key tracking reads the PHYSICAL code (installHeldKeys' default
+  // idOf) instead of raw e.key — `code: 'Space'` is what fire's binding matches.
+  // `key` is kept too: the capture-phase pause listener still reads e.key.
+  for (const h of keydownHandlers) h({ key: ' ', code: 'Space', repeat: false, preventDefault: () => {} })
 
   const out: string[] = []
   let nowMs = 0

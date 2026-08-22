@@ -9,14 +9,13 @@
 // localStorage (where the lobby tile reads it).
 
 import { createLoop } from '@shared/loop'
-import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from '@shared/pause'
-import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { isPauseKey, stepUnlessPaused } from '@shared/pause'
+import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
 import { mountVolumeControl } from '@shared/volume-ui'
-import { drawEscOverlay } from '@shared/esc-overlay'
 import { initialState, type GameState } from './core/state'
 import { stepGame, enterInitial } from './core/sim'
 import type { Input } from './core/input'
-import { createInputController } from './shell/input'
+import { createInputController, setBindings } from './shell/input'
 import { createTuning, loadTuning } from './shell/tuning'
 import { mountTuningPanel } from './shell/tuning-panel'
 import { render } from './shell/render'
@@ -24,6 +23,8 @@ import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { createAudioEngine } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { resizeToDisplay } from '@shared/view'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 
 // asteroids records the `wave` reached; the shared factory binds load/save to the
 // 'asteroids-high-scores' localStorage key and validates each row's finite score +
@@ -69,30 +70,42 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (/^[a-zA-Z]$/.test(e.key) || e.key === 'Backspace') state = enterInitial(state, e.key)
 })
 
-// SH2-14: Escape toggles pause via the shared @shared/pause gate — the
-// cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
-// machine-gun the toggle. The freeze itself is stepUnlessPaused in the loop below.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-// sa1-4: the shared master-volume control, shown only while paused.
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches input.ts's live map.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the initials-entry handler below and
+// installHeldKeys inside createInputController: while the overlay is open it
+// must consume the keydown outright (stopImmediatePropagation) so a letter
+// typed to rebind a control never also lands in the high-score initials field
+// or gets latched as a held game key. Escape opens the overlay from the closed
+// state, guarded by e.repeat so an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
 const volume = mountVolumeControl({ root: document.body })
 
-// Per-cabinet NUMBERS for the pause card: asteroids' keybinds (arrow OR WASD; the
-// card names the letter alternates so it needs no arrow glyphs the ROM font lacks),
-// its white vector chrome, and the dim alpha. Copy/colour/opacity are playtest-tunable.
-const ASTEROIDS_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'A / D        ROTATE',
-    'W            THRUST',
-    'S            HYPERSPACE',
-    'SPACE        FIRE',
-    'ENTER        START',
-  ],
-  color: '#ffffff',
-  opacity: 0.72,
-} as const
 // The renderer needs the frame's input to draw the thrust flame — the pure core
 // carries no "thrusting" flag (GameState.ship is pos/vel/dir only). Sample once
 // per fixed step and reuse in render; seeded with an all-false sample so the
@@ -119,18 +132,19 @@ const loop = createLoop(
         return stepped
       },
       state,
-      pause.isPaused(),
+      overlay.isOpen(),
     )
   },
   () => {
-    // sa1-4: keep the volume slider's visibility in sync every animated frame.
-    volume.setVisible(pause.isPaused())
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     ctx.save()
     ctx.scale(dpr, dpr)
     render(ctx, state, W, H, frameInput)
-    // SH2-14: the pause overlay dims the frozen field and draws the keybind card
-    // over it — inside the dpr-scaled block so it shares render()'s CSS-pixel space.
-    if (pause.isPaused()) drawEscOverlay(ctx, W, H, ASTEROIDS_PAUSE)
+    // sa1-5: the controls overlay dims the frozen field and draws the pause/rebind
+    // chrome over it — inside the dpr-scaled block so it shares render()'s CSS-pixel space.
+    if (overlay.isOpen()) overlay.draw(ctx, W, H)
     ctx.restore()
   },
 )

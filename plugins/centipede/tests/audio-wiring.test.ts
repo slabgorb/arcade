@@ -253,14 +253,17 @@ beforeAll(async () => {
   // START1: leave attract for a live game. The core keeps attract silent by
   // design (core/events.ts:23-26 — stepAttractDemo clears the stream), so no
   // cue can be observed until this lands.
-  shell.emit('window', 'keydown', { key: 'Enter' })
+  // sa1-5: the keyboard adapter matches on physical e.code now, not e.key —
+  // both fields are set, matching a real KeyboardEvent's shape (main.ts's
+  // Escape-capture listener still reads e.key).
+  shell.emit('window', 'keydown', { key: 'Enter', code: 'Enter' })
   run(10, ONE_STEP_MS)
-  shell.emit('window', 'keyup', { key: 'Enter' })
+  shell.emit('window', 'keyup', { key: 'Enter', code: 'Enter' })
 
   // Hold the gun down and play. BURST_MS frames run a catch-up burst of sim
   // steps each (measured: 14), which is both the fast way to accumulate a long
   // run and the exact shape that separates a per-STEP call from a per-rAF one.
-  shell.emit('window', 'keydown', { key: ' ' })
+  shell.emit('window', 'keydown', { key: ' ', code: 'Space' })
   run(1500, BURST_MS)
 })
 
@@ -270,7 +273,7 @@ beforeAll(async () => {
 
 describe('cp5-2 — the boot is SEEDED, so what this run happens to produce is not luck', () => {
   it('main.ts honoured the ?seed= override instead of seeding attract from the clock', () => {
-    // REWORK (Reviewer round 1, MEDIUM). main.ts:207 used to seed attract with
+    // REWORK (Reviewer round 1, MEDIUM). main.ts:228 used to seed attract with
     // `createAttract(Date.now())`, and the assertions below this line are about
     // EMERGENT play: that the gun cue fires, that a spider loop opens and
     // closes, that some step emitted two events. Against a wall-clock seed

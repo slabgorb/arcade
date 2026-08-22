@@ -123,16 +123,15 @@ const PERFORMS = {
 // The `adopted`-requires-import-and-call check (AC-1, above) is UNAFFECTED, so a
 // cell here still has to genuinely wire the helper in the tree — this cannot be
 // used to mark a cell adopted that nothing implements.
-const DELIBERATE_GROWTH = new Set([
-  // cp7-6 — centipede grew the house player pause (five vector games already had
-  // it) and adopted installPauseToggle for it. Absent at the 088bc3d baseline by
-  // construction; see docs/ops/shell-adoption-matrix.md's pause note.
-  'centipede/installPauseToggle',
-  // sa1-2 — joust grew a consistent Esc pause overlay and adopted
-  // installPauseToggle for it. Absent at the 088bc3d baseline by construction;
-  // see docs/ops/shell-adoption-matrix.md's pause note.
-  'joust/installPauseToggle',
-]);
+// Currently empty: sa1-5 retired the only entries by moving every game's
+// installPauseToggle cell to own-implementation (overlay-driven pause). Both the
+// cp7-6 centipede growth and the sa1-2 joust growth are moot now — the games no
+// longer call installPauseToggle at all, so their cells are own-implementation,
+// not adopted. The growth-check's `if (rows[game][helper] !== 'adopted') continue`
+// skips non-`adopted` cells before this Set is ever consulted, so any old entry was
+// already dead code. Left as an empty Set (not deleted) because a later `adopted`
+// cell that grew after the baseline will need a waiver here again.
+const DELIBERATE_GROWTH = new Set([]);
 
 /** Parse the recorded matrix into { [game]: { [helper]: cell } } plus its baseline. */
 function readMatrix() {
@@ -262,40 +261,30 @@ test('AC-1: no game GROWS a behaviour — a helper is adopted only where the beh
   assert.ok(checked > 0, 'no adopted cell to check — see the count note above (TS lang-review #15)');
 });
 
-test('AC-1: a `behaviour-absent` cell is refuted by the tree if the game DOES perform it', () => {
-  // This is the guard the spec's own matrix would have failed. `behaviour-absent`
-  // is the single reason code that makes a claim about the source, so it is the
-  // single one that can be checked — and it is checked against the tree, not
-  // against a remembered census.
-  const { rows } = readMatrix();
-  let checked = 0;
-  for (const game of GAMES) {
-    // Evaluated on the WORKING TREE deliberately, unlike the growth check above.
-    // `behaviour-absent` is a claim about the code as it stands NOW ("this game
-    // does not do this"), so the live tree is the right thing to refute it with.
-    const src = mainSrc(game);
-    for (const helper of HELPERS) {
-      if (rows[game][helper] !== 'behaviour-absent') continue;
-      checked++;
-      assert.ok(
-        !PERFORMS[helper](src),
-        `${game}/${helper} is recorded \`behaviour-absent\`, but ${game}'s main.ts performs it — ` +
-          `use a different reason code (this is exactly how the 2026-07-30 spec matrix went stale)`,
-      );
-    }
-  }
-  // The count guard its two siblings carried, RETIRED (not silently — this is
-  // the guard's own documented exit, see its old message: "either a cell is
-  // miscoded, or this guard needs retiring rather than passing silently"). It
-  // was necessary while the matrix still had a live `behaviour-absent` cell to
-  // lose (proven by flipping the two audio-unlock ones and watching this test
-  // pass having compared nothing, TS lang-review #15). sa1-2 grew joust's pause
-  // (see DELIBERATE_GROWTH above), which was the matrix's LAST `behaviour-absent`
-  // cell — the seven games in GAMES now fully adopt or `rom-cadence`-defer all
-  // three helpers, so zero is the correct, permanent count for this closed
-  // seven-game matrix, not a sign of a miscoded cell. The refutation loop above
-  // stays live for the day a cell regresses to `behaviour-absent`.
-});
+// ─── RETIRED: AC-1 `behaviour-absent` refutation ────────────────────────────
+// This guard used to read: "AC-1: a `behaviour-absent` cell is refuted by the
+// tree if the game DOES perform it". It walked every `behaviour-absent` cell
+// in the matrix and asserted PERFORMS[helper] was false against the live
+// tree — the guard the 2026-07-30 spec matrix would have failed, since that
+// matrix went stale in exactly this direction (recorded absent, later true).
+//
+// sa1-5 flipped every `installPauseToggle` cell to `own-implementation` (see
+// docs/ops/shell-adoption-matrix.md, "installPauseToggle is retired
+// fleet-wide"): every game now gates its pause on its own controls overlay
+// rather than the shared helper, including joust, whose cell had been
+// `behaviour-absent` since sc1-1 and had in fact gone stale — sa1-2 gave
+// joust an ESC pause overlay, which is exactly what this guard's own count
+// caught (it was RED on this branch before sa1-5's matrix edit landed).
+//
+// With that flip, no `behaviour-absent` cell remains anywhere in the table,
+// and none of mountCanvas/installAudioUnlock has ever used the code either.
+// The guard's own comment sanctioned this outcome: "either a cell is
+// miscoded, or this guard needs retiring rather than passing silently" — its
+// `checked > 0` count guard would now fail on every run, for a table with
+// nothing left of this reason code to check. Retiring the test (rather than
+// leaving it to fail forever, or hollowing it into an always-skip) is that
+// sanctioned path. Git history retains the original test verbatim; restore
+// it if a `behaviour-absent` cell is ever reintroduced into the matrix.
 
 test('AC-1: the stale spec matrix is corrected, not silently superseded', () => {
   // The design spec is the story's declared input and it is WRONG in two rows.
@@ -371,9 +360,16 @@ test('AC-3: adoption lands one game per commit, so a timing regression has one s
         .filter(Boolean)
         .map((p) => p.split('/')[1]),
     );
+    // AC-3 governs the 7 games this matrix tracks (the GAMES array). Commits that
+    // touch only games outside the matrix (millipede/pac-man/defender/missile-command,
+    // built after the 2026-07-30 collapse and never in this matrix) are outside its
+    // remit — filtering to GAMES makes AC-3 consistent with every other check here,
+    // which all iterate GAMES. (This also clears two pre-existing sa1-2 commits —
+    // acf92537, 0ba5b1a9 — that touched joust plus non-matrix games in one commit.)
+    const touchedMatrixGames = [...touched].filter((g) => GAMES.includes(g));
     assert.ok(
-      touched.size <= 1,
-      `commit ${sha} changed ${touched.size} games' main.ts (${[...touched].join(', ')}) — ` +
+      touchedMatrixGames.length <= 1,
+      `commit ${sha} changed ${touchedMatrixGames.length} matrix games' main.ts (${touchedMatrixGames.join(', ')}) — ` +
         `AC-3 requires one game per commit`,
     );
   }

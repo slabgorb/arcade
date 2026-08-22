@@ -44,7 +44,7 @@ describe('cp1-6 input lifecycle — keyboard', () => {
   it('clears held keys on blur (a stuck key does not keep driving the gun)', () => {
     const b = makeBus()
     const kbd = createKeyboardAdapter(b.bus)
-    b.fire('keydown', { key: 'ArrowRight' })
+    b.fire('keydown', { code: 'ArrowRight' }) // sa1-5: matches on physical e.code now
     // cp2-14 RE-PIN (sign): a held right key is a NEGATIVE ROM count (it drives
     // PLAYH toward 0x0B, the cabinet's RIGHT edge). Still a strict inequality —
     // "the key is driving the gun" is exactly as strongly pinned as before.

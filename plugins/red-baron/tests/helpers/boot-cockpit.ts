@@ -160,7 +160,18 @@ export async function bootCockpit(width: number, height: number, seedMs: number)
   if (rafCallback === null) throw new Error('main.ts never scheduled a frame — the cockpit did not boot')
   const frame = rafCallback as (nowMs: number) => void
 
-  const keyEvent = (key: string): unknown => ({ key, repeat: false, preventDefault: () => {} })
+  // sa1-5: held-key tracking reads the PHYSICAL code (installHeldKeys' default
+  // idOf), not raw e.key, so a synthetic event needs both — `key` for the
+  // capture-phase pause listener (still isPauseKey(e.key.toLowerCase())) and
+  // `code` for shell/input.ts's bindings. Callers pass the OLD e.key literals
+  // ('ArrowUp', 'd', ' '); this derives the matching physical code.
+  const codeFor = (key: string): string => {
+    if (key === ' ') return 'Space'
+    if (key.startsWith('Arrow')) return key
+    if (/^[a-zA-Z]$/.test(key)) return `Key${key.toUpperCase()}`
+    return key
+  }
+  const keyEvent = (key: string): unknown => ({ key, code: codeFor(key), repeat: false, preventDefault: () => {} })
   let nowMs = 0
   return {
     aspect: width / height,

@@ -15,16 +15,16 @@ import { buildAtlas } from './shell/atlas'
 import { schemeNumberForWave } from './shell/palette'
 import { LOGICAL_W, LOGICAL_H, fitIntegerScale } from './shell/layout'
 import { pumpFrame } from './shell/timebase'
-import { createMouseAdapter, createKeyboardAdapter, createPointerLock } from './shell/input'
+import { createMouseAdapter, createKeyboardAdapter, createPointerLock, setBindings } from './shell/input'
 import { makeHighScoreStorage, makeHighScoreRowGuard } from '@shared/highscore'
 import { createAudio, EVENT_SOUND, type SoundName } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import type { GameEvent } from './core/events'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { installPauseToggle } from '@shared/host-helpers'
+import { isPauseKey } from '@shared/pause'
 import { mountVolumeControl } from '@shared/volume-ui'
-import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')
 if (!canvas) throw new Error('index.html must host a <canvas id="game">')
@@ -173,27 +173,48 @@ function trackLoopEdges(events: readonly GameEvent[]): void {
  *  the set that was ringing when the player paused. */
 let pausedLoops: SoundName[] = []
 
-// cp7-6 — the pause toggle on Escape. installPauseToggle bakes in the two halves
-// that are easy to drop when hand-rolling a listener: the `!e.repeat` edge test
-// (so holding Escape does not flip pause once per OS key-repeat) and the
-// `key.toLowerCase()` fold (so the shared predicate matches while the DOM spells
-// the key 'Escape'). Escape also exits pointer lock (input.ts:158-161) and
-// createPointerLock's exit callback resets input above — pausing on the same key
-// is coherent and deliberate (AC5): the player loses the trackball and gets a
-// pause card; a click re-locks on resume.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-// sa1-4: the shared master-volume control, shown only while paused.
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of the old installPauseToggle + drawEscOverlay
+// card, and its onChange hook (setBindings) is how a saved rebind reaches
+// input.ts's live map. CONTROLS_OVERLAY_OPTS carries forward the old
+// CENTIPEDE_PAUSE card's colour (a fixed bright neutral that reads over any
+// wave's cycling palette) and dim opacity. Escape also exits pointer lock
+// (input.ts:158-161) and createPointerLock's exit callback resets input above
+// — opening the overlay on the same key is coherent and deliberate (AC5): the
+// player loses the trackball and gets the pause/rebind chrome; a click
+// re-locks on resume.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
 const volume = mountVolumeControl({ root: document.body })
 
-// The pause keybind card (per-cabinet NUMBERS; the shared overlay owns the dim +
-// centred-card MECHANISM). Copy / colour / opacity are playtest-tunable. Centipede's
-// playfield palette cycles per wave, so the card takes a fixed bright neutral that
-// reads over any wave's colours once the scene is dimmed.
-const CENTIPEDE_PAUSE = {
-  lines: ['PAUSED', '', 'ESC          RESUME', 'ARROWS/WASD  MOVE', 'SPACE        FIRE', 'ENTER        START'],
-  color: '#f4f4f4',
-  opacity: 0.72,
-} as const
+// Capture-phase so this runs BEFORE the initials-entry keydown handler above
+// and the keyboard adapter's own listener: while the overlay is open it must
+// consume the keydown outright (stopImmediatePropagation) so a letter typed to
+// rebind a control never also lands in the initials field or gets latched as a
+// held game key. Escape opens the overlay from the closed state, guarded by
+// e.repeat so an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 // cp4-5: boot into ATTRACT — the game now has a start gate. The loop shows the
 // attract world until the player presses Enter (START1), which reseeds a fresh
@@ -216,8 +237,9 @@ let acc = 0
 let last = 0
 let started = false
 // cp7-6: the previous frame's pause state, so the loop can spot the pause/resume
-// EDGE and silence/restore the live loops exactly once per transition.
-let wasPaused = INITIAL_PAUSED
+// EDGE and silence/restore the live loops exactly once per transition. sa1-5:
+// the cabinet always boots with the overlay closed, i.e. not paused.
+let wasPaused = false
 
 // cp2-2 R1: sample INSIDE the sim-step loop (via pumpFrame) instead of once
 // per rAF frame, so a mouse delta accumulated in the adapter is drained
@@ -244,8 +266,11 @@ const frame = (now: number): void => {
   // #14, whose origin is this game's own dropped creature `-stop`). On the pause
   // edge, snapshot the ringing loops and stop them; on the resume edge, restart
   // exactly that set. `paused` also gates the sim step and gates the overlay draw.
-  const paused = pause.isPaused()
-  // sa1-4: keep the volume slider's visibility in sync every animated frame.
+  // sa1-5: the controls overlay OWNS pause now — its own open/closed state IS
+  // the freeze gate, not a separate installPauseToggle listener.
+  const paused = overlay.isOpen()
+  // sa1-4: keep the volume slider's visibility in sync every animated frame,
+  // re-keyed to the overlay's open state (sa1-5 redefined "paused").
   volume.setVisible(paused)
   if (paused && !wasPaused) {
     pausedLoops = [...liveLoops]
@@ -330,13 +355,14 @@ const frame = (now: number): void => {
     CABINET_CHROME,
   )
 
-  // cp7-6 (AC3): the pause card is drawn on the VISIBLE ctx, AFTER the integer
-  // blit — never into the 240x256 logical backbuffer, or it would be pixel-scaled
-  // along with the playfield. render() (which drew the frozen scene into `logical`
-  // above) stays OUTSIDE the pause gate, so the frozen frame keeps showing beneath
-  // the dimmed card. This is the one place centipede differs from the five vector
-  // adopters, which draw the overlay into their single ctx.
-  if (paused) drawEscOverlay(ctx, canvas.width, canvas.height, CENTIPEDE_PAUSE)
+  // cp7-6 (AC3) / sa1-5: the pause/rebind card is drawn on the VISIBLE ctx,
+  // AFTER the integer blit — never into the 240x256 logical backbuffer, or it
+  // would be pixel-scaled along with the playfield. render() (which drew the
+  // frozen scene into `logical` above) stays OUTSIDE the pause gate, so the
+  // frozen frame keeps showing beneath the dimmed card. This is the one place
+  // centipede differs from the five vector adopters, which draw the overlay
+  // into their single ctx.
+  if (overlay.isOpen()) overlay.draw(ctx, canvas.width, canvas.height)
 
   requestAnimationFrame(frame)
 }

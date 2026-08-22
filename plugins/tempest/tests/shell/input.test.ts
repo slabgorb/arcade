@@ -69,7 +69,7 @@ describe('createInputController auto-fire cadence (Story 6-2)', () => {
   // AC1/AC5: holding space (keyboard auto-fire) must behave identically.
   it('requests fire on every frame while space is held', () => {
     const ctrl = build()
-    windowBus.emit('keydown', { key: ' ', repeat: false })
+    windowBus.emit('keydown', { code: 'Space', repeat: false })
 
     expect(ctrl.sample().fire, 'initial press fires').toBe(true)
     for (let frame = 1; frame <= 12; frame++) {

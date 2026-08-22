@@ -46,13 +46,14 @@ describe('cp1-6 sign chain — keyboard', () => {
   it('ArrowRight moves the gun RIGHT on screen; ArrowLeft moves it LEFT', () => {
     const restX = gunScreenX(createPlayer().h)
 
+    // sa1-5: the keyboard adapter matches on physical e.code now, not e.key.
     const busR = makeBus()
     const right = createKeyboardAdapter(busR)
-    busR.fire('keydown', { key: 'ArrowRight' })
+    busR.fire('keydown', { code: 'ArrowRight' })
 
     const busL = makeBus()
     const left = createKeyboardAdapter(busL)
-    busL.fire('keydown', { key: 'ArrowLeft' })
+    busL.fire('keydown', { code: 'ArrowLeft' })
 
     expect(screenXAfter(right.sample()), 'device right → screen right').toBeGreaterThan(restX)
     expect(screenXAfter(left.sample()), 'device left → screen left').toBeLessThan(restX)
@@ -69,10 +70,10 @@ describe('cp1-6 sign chain — keyboard', () => {
 describe('cp2-14 sign chain — driven to the stops, the gun reaches the matching SCREEN edge', () => {
   const HELD_FRAMES = 200 // ample to walk 0x80 to either clamp at <=4 px/frame
 
-  function driveTo(key: string): number {
+  function driveTo(code: string): number {
     const bus = makeBus()
     const kbd = createKeyboardAdapter(bus)
-    bus.fire('keydown', { key })
+    bus.fire('keydown', { code })
     let p = createPlayer()
     for (let i = 0; i < HELD_FRAMES; i++) p = movePlayer(p, kbd.sample())
     return p.h

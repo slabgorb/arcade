@@ -1,35 +1,27 @@
 // tests/pause-adoption.test.ts
 //
-// Story cp7-6 (centipede) — RED phase (Han Solo / TEA). Centipede ADOPTS the
-// house pause the cabinet's five vector games already carry and it never had.
-// A 1980 coin-op has no player pause (the vendored tree has zero 'pause' hits),
-// so this carries NO fidelity claim (AC8) — it is a shell feature, and every
-// assertion here is about centipede's own `src/`, not about the ROM.
+// Story cp7-6 (centipede) — GREEN phase (Han Solo / TEA). Centipede ADOPTED the
+// house pause the cabinet's five vector games already carried. A 1980 coin-op
+// has no player pause (the vendored tree has zero 'pause' hits), so this
+// carries NO fidelity claim (AC8) — it is a shell feature, and every assertion
+// here is about centipede's own `src/`, not about the ROM.
 //
-// This file is the STRUCTURAL half, the shape red-baron/asteroids/tempest/
-// star-wars all ship (plugins/red-baron/tests/pause-adoption.test.ts:38-118):
-//   1. adoption   — some src module imports @shared/pause      (fails: none does)
-//   2. overlay    — some src module imports @shared/esc-overlay (fails: none does)
-//   3. host-helper — some src module imports @shared/host-helpers for the pause
-//                    toggle (fails: none does). AC6 requires the keydown wiring
-//                    keep the `!e.repeat` edge test and the `key.toLowerCase()`
-//                    fold; installPauseToggle BAKES BOTH IN (host-helpers.ts:150),
-//                    and the story is explicit that centipede's main.ts hand-rolls
-//                    all its listeners today "which is exactly how those two get
-//                    missed." Requiring the import is how AC6's two guards are
-//                    enforced without a source-text scan of the wiring itself.
-//   4. resolution — @shared/pause / /esc-overlay / /host-helpers resolve with
-//                   their full APIs (these PASS today: the shared modules already
-//                   exist — they are CONTRACT PINS on the API centipede adopts,
-//                   not reds, so a later shared-lib edit that drops an export
-//                   reddens centipede's suite too).
+// sa1-5 (Option A) supersedes AC6's overlay/host-helpers halves: the rebindable
+// @shared/controls-overlay now OWNS pause chrome outright — Escape opens it,
+// and it draws the dim+card itself (drawControlsOverlay, not drawEscOverlay).
+// centipede drops its drawEscOverlay AND installPauseToggle imports entirely —
+// the keydown listener is hand-rolled in main.ts (capture-phase, guarded by
+// `!e.repeat`, folding `key.toLowerCase()` itself), matching every other
+// sa1-5 adopter. @shared/pause's VERB (isPauseKey + stepUnlessPaused) is
+// UNCHANGED and still gates the frozen frame, so AC6's core half still holds.
 //
-// The LIVE pause behaviour — Escape freezes the sim, silences the ringing loops,
-// and draws the overlay through the rAF loop — is in tests/pause-behaviour.test.ts
-// (booted through the shell). The visible-canvas overlay PLACEMENT (drawn after
-// the integer-scale blit so the keybind card is not pixel-scaled, AC3) has no unit
-// seam and is an acceptance-by-manual-run, per the standing "shell IO is verified
-// by running the game" convention every adopter declares.
+// The LIVE pause behaviour — Escape freezes the sim, silences the ringing
+// loops, and draws the overlay through the rAF loop — is in
+// tests/pause-behaviour.test.ts (booted through the shell). The visible-canvas
+// overlay PLACEMENT (drawn after the integer-scale blit so the keybind card is
+// not pixel-scaled, AC3) has no unit seam and is an acceptance-by-manual-run,
+// per the standing "shell IO is verified by running the game" convention every
+// adopter declares.
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -39,8 +31,6 @@ import {
   togglePaused,
   stepUnlessPaused,
 } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
-import { installPauseToggle } from '@shared/host-helpers'
 
 const srcDir = fileURLToPath(new URL('../src', import.meta.url))
 
@@ -76,33 +66,20 @@ function importersOf(pattern: RegExp): string[] {
 // and the two siblings below are prefixes of nothing — `@shared/pause` is NOT a
 // prefix of `@shared/pause-x`, and the `['"]` bracket pins both quote styles.
 const PAUSE_IMPORT = /['"]@shared\/pause['"]/
-const ESC_OVERLAY_IMPORT = /['"]@shared\/esc-overlay['"]/
-const HOST_HELPERS_IMPORT = /['"]@shared\/host-helpers['"]/
+const CONTROLS_OVERLAY_IMPORT = /['"]@shared\/controls-overlay['"]/
 
-describe('cp7-6 — centipede adopts the shared pause gate (AC6)', () => {
-  it('a src module imports @shared/pause', () => {
+describe('cp7-6/sa1-5 — centipede adopts the shared pause gate + controls overlay', () => {
+  it('a src module imports the shared pause gate', () => {
     expect(
       importersOf(PAUSE_IMPORT),
-      'no src file imports @shared/pause — centipede has not wired the pause gate, ' +
-        'or it re-implemented the toggle by hand (AC6 forbids that)',
+      'no src file imports @shared/pause — centipede has not wired the pause gate',
     ).not.toHaveLength(0)
   })
 
-  it('a src module imports @shared/esc-overlay', () => {
+  it('a src module imports the shared controls overlay (sa1-5: owns pause chrome)', () => {
     expect(
-      importersOf(ESC_OVERLAY_IMPORT),
-      'no src file imports @shared/esc-overlay — centipede draws no pause overlay',
-    ).not.toHaveLength(0)
-  })
-
-  it('a src module imports @shared/host-helpers for installPauseToggle', () => {
-    // AC6: the keydown wiring must keep the `!e.repeat` edge test and the
-    // `key.toLowerCase()` fold. installPauseToggle bakes both in; hand-rolling
-    // the listener is exactly how those two get dropped (story context).
-    expect(
-      importersOf(HOST_HELPERS_IMPORT),
-      'no src file imports @shared/host-helpers — the pause keydown is hand-rolled, ' +
-        'so the !e.repeat edge test and the key.toLowerCase() fold are unguarded (AC6)',
+      importersOf(CONTROLS_OVERLAY_IMPORT),
+      'no src file imports @shared/controls-overlay — centipede draws no pause overlay',
     ).not.toHaveLength(0)
   })
 })
@@ -110,8 +87,8 @@ describe('cp7-6 — centipede adopts the shared pause gate (AC6)', () => {
 describe('cp7-6 — the shared pause API centipede adopts (contract pins)', () => {
   it('@shared/pause exposes the full gate, boots into play, and freezes by reference', () => {
     // These PASS today — the shared module already exists. They pin the contract
-    // centipede is about to depend on: a later edit to src/shared/pause.ts that
-    // drops an export or changes the frozen-reference guarantee reddens HERE too.
+    // centipede depends on: a later edit to src/shared/pause.ts that drops an
+    // export or changes the frozen-reference guarantee reddens HERE too.
     expect(INITIAL_PAUSED, 'the cabinet boots into play, not frozen').toBe(false)
     expect(togglePaused(INITIAL_PAUSED), 'first Escape pauses').toBe(true)
     expect(togglePaused(true), 'a second Escape resumes — a toggle, not a latch').toBe(false)
@@ -157,13 +134,13 @@ describe('cp7-6 — the shared pause API centipede adopts (contract pins)', () =
     }
   })
 
-  it('@shared/esc-overlay and @shared/host-helpers resolve their APIs', () => {
-    expect(typeof drawEscOverlay, 'drawEscOverlay must be exported by @shared/esc-overlay').toBe(
-      'function',
-    )
+  it('@shared/controls-overlay resolves with createControlsOverlay', async () => {
+    const overlay = (await import('@shared/controls-overlay')) as unknown as {
+      createControlsOverlay: (args: unknown) => unknown
+    }
     expect(
-      typeof installPauseToggle,
-      'installPauseToggle must be exported by @shared/host-helpers',
+      typeof overlay.createControlsOverlay,
+      'createControlsOverlay must be exported by @shared/controls-overlay',
     ).toBe('function')
   })
 })

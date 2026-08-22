@@ -23,8 +23,21 @@
 // it attached using the SAME function references it registered with.
 
 import { TBLMT_LIMIT, type InputCounts } from '../core/player'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
 
 export const KEY_COUNT = TBLMT_LIMIT
+
+// sa1-5: the five discrete keyboard controls (right/left/up/down/fire) plus
+// start are now CONTROL_MANIFEST's defaults (controls.ts), and the live map
+// below is resolved through @shared/keybind so a player's saved rebind (the
+// controls overlay, wired in main.ts) overrides them. setBindings is the
+// overlay's onChange hook — it swaps this module's live map in place. The
+// TRACKBALL/MOUSE adapter below is analog and reads no binding; untouched.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
+}
 
 interface EventTarget {
   addEventListener(type: string, listener: (event: Record<string, unknown>) => void): void
@@ -93,25 +106,14 @@ export function createMouseAdapter(target: EventTarget): InputAdapter {
   }
 }
 
-const RIGHT_KEYS = new Set(['ArrowRight', 'd', 'D'])
-const LEFT_KEYS = new Set(['ArrowLeft', 'a', 'A'])
-const UP_KEYS = new Set(['ArrowUp', 'w', 'W'])
-const DOWN_KEYS = new Set(['ArrowDown', 's', 'S'])
-const FIRE_KEYS = new Set([' ', 'Spacebar'])
-// cp4-5: the keyboard port of the ROM's 1-player START button (START1,
-// CENTI4.MAC:833-836). Enter is the arcade "start / insert" key; the sim's
-// game-loop machine reads InputCounts.start to leave attract / restart from
-// game-over. A separate control from the gun — movement keys never raise it.
-const START_KEYS = new Set(['Enter'])
-
 export function createKeyboardAdapter(target: EventTarget): InputAdapter {
   const held = new Set<string>()
 
   const onKeyDown = (e: Record<string, unknown>): void => {
-    held.add(String(e.key))
+    held.add(String(e.code))
   }
   const onKeyUp = (e: Record<string, unknown>): void => {
-    held.delete(String(e.key))
+    held.delete(String(e.code))
   }
   const reset = (): void => {
     held.clear()
@@ -124,24 +126,26 @@ export function createKeyboardAdapter(target: EventTarget): InputAdapter {
   target.addEventListener('keyup', onKeyUp)
   target.addEventListener('blur', onBlur)
 
-  const any = (keys: Set<string>): boolean => {
-    for (const k of held) if (keys.has(k)) return true
+  const any = (codes: readonly string[]): boolean => {
+    for (const k of held) if (codes.includes(k)) return true
     return false
   }
 
   return {
     sample(): InputCounts {
-      const right = any(RIGHT_KEYS)
-      const left = any(LEFT_KEYS)
-      const up = any(UP_KEYS)
-      const down = any(DOWN_KEYS)
+      const right = any(bindings.right)
+      const left = any(bindings.left)
+      const up = any(bindings.up)
+      const down = any(bindings.down)
       return {
         // cp2-14: right is the NEGATIVE ROM count (it drives PLAYH toward 0x0B,
         // the cabinet's RIGHT edge) — the keyboard mirror of the mouse sign.
         dh: (left ? KEY_COUNT : 0) - (right ? KEY_COUNT : 0),
         dv: (up ? KEY_COUNT : 0) - (down ? KEY_COUNT : 0),
-        fire: any(FIRE_KEYS),
-        start: any(START_KEYS), // cp4-5: START1 port (attract → play, game-over → restart)
+        fire: any(bindings.fire),
+        // cp4-5: START1 port (attract → play, game-over → restart) — a separate
+        // control from the gun, movement keys never raise it.
+        start: any(bindings.start),
       }
     },
     reset,

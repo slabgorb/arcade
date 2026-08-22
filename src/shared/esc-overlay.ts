@@ -28,7 +28,7 @@ export interface EscOverlayOptions {
 const GLYPH_TRACKING = 0.1 * CELL_H
 
 /** Stroke one centred card line from the shared vector font, in `color`. */
-function strokeCardLine(
+export function strokeCardLine(
   ctx: CanvasRenderingContext2D,
   text: string,
   cx: number,

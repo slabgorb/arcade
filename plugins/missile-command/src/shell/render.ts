@@ -35,7 +35,6 @@ import { INITIAL_WAVE } from '../core/wave.js'
 import { CITY_STAMPS, STAMP_H, STAMP_W, stampPixels, MISSILE_STACK, BOMBER_DOTS, SATELLITE_DOTS } from './stamps.js'
 import { glyphRows } from './glyphs.js'
 import { paletteForWave, rgbCss, SLOT, FLASH_SLOTS } from './palette.js'
-import { drawEscOverlay } from '@shared/esc-overlay'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
 import {
   TITLE_LINE_1,
@@ -344,12 +343,18 @@ export function drawFrame(
 
   // mc6-5: attract-mode presentation (title + scrolling PRESS START + the HIGH SCORES
   // slot) rides on top of the self-playing demo (mc6-4). THE END rides the game-over
-  // explosion. Painted last so they sit over the field. Pause wins over everything.
+  // explosion. Painted last so they sit over the field.
   if (state.phase === 'attract') drawAttract(ctx, state, width, height)
   if (state.phase === 'over') drawTheEnd(ctx, width, height)
 
-  // mc6-3: while paused, dim the frozen scene and show the resume card on top.
-  if (state.phase === 'pause') drawPauseOverlay(ctx, width, height)
+  // sa1-5 (Option A): pause chrome is no longer drawn here — the rebindable
+  // @shared/controls-overlay OWNS pause outright (main.ts draws it, on top of
+  // this frame, only while `overlay.isOpen()`). The core PAUSE phase (togglePause,
+  // stepGame's freeze branch, the S_PAUS/PAUSE-STATE citation) is untouched and
+  // still real — main.ts's keyboard Escape path now never reaches pauseFromKey
+  // (the overlay intercepts it first), so `state.phase` no longer becomes
+  // 'pause' in practice, matching the fleet's Option-A adoption (defender's
+  // phase.ts 'pause' branch is the identical shape: kept, no longer reachable).
 }
 
 // ─── mc6-5: attract presentation (shell render of the attract-message layer) ─────────
@@ -443,17 +448,3 @@ export function drawTheEnd(ctx: CanvasRenderingContext2D, width: number, height:
   drawCenteredGlyphs(ctx, MSG_THE_END, Math.round(height / 2), width, gp)
 }
 
-// mc6-3: the pause overlay. Reuses the shared @shared/esc-overlay VERB (a full-
-// viewport dim panel + a centred keybind card from the shared vector font) that
-// battlezone's drawPauseOverlay established (SH2-12). MC supplies its own card copy,
-// colour and dim — per-cabinet NUMBERS, playtest-tunable. drawFrame calls this while
-// the phase is 'pause'; the sim behind it is held frozen by stepGame's pause branch.
-// (This is the overlay's shell-side rationale — the ROM-provenance of the pause STATE
-// itself is discussed in core/state.ts togglePause, not re-claimed here.)
-const PAUSE_LINES = ['PAUSED', '', 'PRESS ESC TO RESUME'] as const
-const PAUSE_COLOR = '#fff' // functional HUD white (the crosshair/HUD are not palette registers)
-const PAUSE_DIM = 0.72 // dim-panel alpha over the frozen field
-
-export function drawPauseOverlay(ctx: CanvasRenderingContext2D, width: number, height: number): void {
-  drawEscOverlay(ctx, width, height, { lines: PAUSE_LINES, color: PAUSE_COLOR, opacity: PAUSE_DIM })
-}

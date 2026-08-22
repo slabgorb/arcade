@@ -11,20 +11,29 @@
 // the local './font' re-export and reads the routed strings from there. The
 // bz2-2 'Vector Battle' font-family assertions retired with the TTF (their
 // replacement — every run goes through layoutText, upper-cased, with tracking —
-// lives in font-text-seam.test.ts). The dimming backdrop is a fillRect, not text,
-// so it is still observed directly.
+// lives in font-text-seam.test.ts).
 //
-// SH2-14 REPOINT: drawPauseOverlay's card now flows through the shared
-// @shared/esc-overlay (not battlezone's local font), so it is observed at
-// THAT boundary — the card lines handed to drawEscOverlay. drawControlIndicator
-// still uses the local font seam and is read from the layoutText mock as before.
+// SH2-14 REPOINT (superseded below): drawPauseOverlay's card used to flow
+// through the shared @shared/esc-overlay (not battlezone's local font), observed
+// at THAT boundary — the card lines handed to drawEscOverlay.
 //
-// WHAT IS PINNED (cheap + deterministic): the keybind card is actually routed; it
-// names the resume key; a dimming backdrop panel is drawn; the control indicator
-// draws a non-empty hint. WHAT IS NOT pinned (playtest-tunable per the epic):
-// exact copy, glyph size, placement, opacity, backdrop geometry.
+// sa1-5 RETIREMENT (Option A): drawPauseOverlay (and PAUSE_LINES/PAUSE_DIM) is
+// GONE from src/shell/render.ts — battlezone no longer owns any pause chrome at
+// all. Escape now opens the rebindable @shared/controls-overlay (main.ts), which
+// draws its own dim panel + menu/rebind rows and is unit-tested at the shared
+// layer (src/shared/tests/controls-overlay.test.ts); the "resume is reachable"
+// and "the frozen field is dimmed" guarantees pinned below by the retired
+// describe block are now that module's contract, not this file's — see
+// tests/shell/pause-esc-overlay-repoint.test.ts for battlezone's wiring-level
+// pin (imports @shared/controls-overlay, no longer @shared/esc-overlay).
+// drawControlIndicator is UNCHANGED by sa1-5 (still an always-on, always-local
+// HUD hint through the local font seam) and keeps its coverage below.
+//
+// WHAT IS PINNED (cheap + deterministic): the control indicator draws a
+// non-empty hint. WHAT IS NOT pinned (playtest-tunable per the epic): exact
+// copy, glyph size, placement.
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { drawPauseOverlay, drawControlIndicator } from '../../src/shell/render'
+import { drawControlIndicator } from '../../src/shell/render'
 
 // drawControlIndicator still strokes through battlezone's LOCAL font (layoutText);
 // record the strings it hands over — its post-migration text seam.
@@ -50,33 +59,6 @@ vi.mock('../../src/shell/font', () => ({
   // the graph imports. Dead once Dev deletes the TTF loader (GREEN).
   UI_FONT_FAMILY: 'Vector Battle',
 }))
-
-// SH2-14 RE-POINT: drawPauseOverlay now delegates the paused keybind card to the
-// shared @shared/esc-overlay, which strokes it through the shared font
-// INTERNALLY — unobservable via a local-font mock (and the dist's internal font
-// import is node_modules-relative, so a shared-font mock can't reach it either).
-// So observe drawPauseOverlay at the seam it now OWNS: the card LINES it hands to
-// drawEscOverlay. The mock also strokes the real dim fillRect so the backdrop
-// assertion still holds; the shared overlay's own font layout / tracking is
-// unit-tested in arcade-shared (SH2-12).
-const overlay = vi.hoisted(() => {
-  const cards: string[][] = []
-  return {
-    cards,
-    drawEscOverlay(
-      ctx: { fillRect(x: number, y: number, w: number, h: number): void },
-      w: number,
-      h: number,
-      opts: { lines: readonly string[]; color: string; opacity: number },
-    ) {
-      cards.push([...opts.lines])
-      ctx.fillRect(0, 0, w, h) // the dim panel (opts.opacity) — a real backdrop
-    },
-  }
-})
-vi.mock('@shared/esc-overlay', () => ({ drawEscOverlay: overlay.drawEscOverlay }))
-
-const cardLines = () => overlay.cards.flat()
 
 const W = 800
 const H = 600
@@ -108,42 +90,19 @@ const texts = () => font.calls.map((c) => c.text)
 
 beforeEach(() => {
   font.calls.length = 0
-  overlay.cards.length = 0
 })
 
-describe('bz2-5 — drawPauseOverlay: the paused keybind overlay (SH2-14: via shared esc-overlay)', () => {
-  it('hands the keybind card to the shared drawEscOverlay — AC2', () => {
-    const { ctx } = recordingCtx()
-    drawPauseOverlay(ctx, W, H)
-    expect(
-      overlay.cards.length,
-      'drawPauseOverlay did not route through the shared drawEscOverlay',
-    ).toBeGreaterThan(0)
-    expect(
-      cardLines().some((t) => t.trim().length > 0),
-      'the pause overlay routed only blank card lines',
-    ).toBe(true)
-  })
-
-  it('tells the player how to resume — the card names the Escape key (AC3)', () => {
-    // AC3 is "resume on a subsequent Escape press". A keybind card that never
-    // mentions Escape leaves the player frozen with no way back in — so the
-    // resume key must appear somewhere in the card lines.
-    const { ctx } = recordingCtx()
-    drawPauseOverlay(ctx, W, H)
-    const all = cardLines().join(' \n ')
-    expect(all, `overlay card "${all}" must reference the Escape (resume) key`).toMatch(/esc/i)
-  })
-
-  it('dims the view behind a backdrop panel (it is an OVERLAY, not floating text)', () => {
-    // "An overlay appears" (AC2) means the frozen world is dimmed behind a panel,
-    // not that bare glyphs float over live vectors. That SOME dimming rectangle
-    // is drawn is the structure; exact size/opacity/placement is playtest-tunable.
-    const { ctx, fillRects } = recordingCtx()
-    drawPauseOverlay(ctx, W, H)
-    expect(fillRects.length, 'the pause overlay drew no dimming backdrop').toBeGreaterThan(0)
-  })
-})
+// sa1-5 RETIREMENT: the former 'bz2-5 — drawPauseOverlay' describe block lived
+// here, pinning AC2 (routes through the shared drawEscOverlay), AC3 (names
+// Escape) and the dimming backdrop directly against battlezone's now-deleted
+// drawPauseOverlay. That behaviour is not gone from the game — it moved to
+// @shared/controls-overlay, which main.ts's Escape listener now opens outright
+// (tests/shell/pause-esc-overlay-repoint.test.ts pins the wiring: battlezone
+// imports @shared/controls-overlay, no longer @shared/esc-overlay). The dim
+// panel + "how to resume" (its menu's RESUME row) contracts are that shared
+// module's own coverage (src/shared/tests/controls-overlay.test.ts), so
+// re-pinning them here against a mock would only duplicate that suite while
+// asserting nothing about battlezone-specific code.
 
 describe('bz2-5 — drawControlIndicator: the always-on control hint', () => {
   it('routes a non-empty control hint through the shared font — AC4', () => {

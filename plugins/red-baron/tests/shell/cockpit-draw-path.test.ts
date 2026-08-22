@@ -473,8 +473,11 @@ const toPixel = (nx: number, ny: number): [number, number] => [
 ]
 
 const fire = (): void => {
+  // sa1-5: held-key tracking reads the PHYSICAL code (installHeldKeys' default
+  // idOf) instead of raw e.key — `code: 'Space'` is what fire's binding matches.
+  // `key` is kept too: the capture-phase pause listener still reads e.key.
   for (const fn of listeners.get('keydown') ?? []) {
-    fn({ key: ' ', repeat: false, preventDefault: () => {} })
+    fn({ key: ' ', code: 'Space', repeat: false, preventDefault: () => {} })
   }
 }
 

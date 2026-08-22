@@ -14,11 +14,12 @@
 // 60 Hz steps; the mouse, the AudioContext and the canvas are the only browser
 // surfaces touched.
 
-import { mountCanvas, installPauseToggle } from '@shared/host-helpers'
+import { mountCanvas } from '@shared/host-helpers'
 import { mountVolumeControl } from '@shared/volume-ui'
-import { INITIAL_PAUSED, isPauseKey } from '@shared/pause'
-import { drawEscOverlay } from '@shared/esc-overlay'
+import { isPauseKey } from '@shared/pause'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 import { PLYFLD_STRIDE } from './core/conway'
 import { BACKGROUND_BIT } from './core/mushroom'
 import { VACANT_COLOR, segmentOnScreen } from './core/millipede'
@@ -34,7 +35,7 @@ import { fieldPens, playerPens, alphanumericPens, spritePens } from './shell/pla
 import { createAudio } from './shell/audio'
 import { playEventSounds } from './shell/audio-dispatch'
 import { runFixedSteps } from './shell/frame-clock'
-import { createMouseAdapter, createPointerLock, nameEntryFromKey } from './shell/input'
+import { createMouseAdapter, createPointerLock, nameEntryFromKey, bindings, setBindings } from './shell/input'
 import { makeMilliHighScoreStorage, loadHighScores } from './shell/highscore'
 
 const LOGICAL_W = 240
@@ -107,7 +108,9 @@ const startPlay = (): void => {
 // Fire while HELD: the sim only spawns a shot when none is on screen
 // (sim.ts `!shot.active && input.fire`), so keeping fire true down the whole
 // hold auto-repeats at the natural one-shot-at-a-time cadence.
-const FIRE_KEYS = new Set([' ', 'Spacebar', 'Enter', 'Control', 'z', 'Z', 'x', 'X', 'ArrowUp'])
+// sa1-5: the fire key set is now CONTROL_MANIFEST's default, resolved through
+// shell/input.ts's `bindings` (physical e.code) instead of a hard-coded e.key
+// literal set — see shell/controls.ts.
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   // ml10-2: during name entry a keystroke types an initial (or commits on Enter) and
   // must NOT start/fire — gate on the PRE-keystroke phase, or a committing Enter
@@ -120,15 +123,16 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (game.highScores !== prevScores) highScoreStorage.save(game.highScores)
     return
   }
-  // sa1-2: Escape is the PAUSE key (installPauseToggle owns it on its own listener) —
-  // it must NOT also fall into startPlay/fire here, or toggling pause on the attract
-  // screen would latch startPending and boot an unrequested game on resume.
+  // sa1-5 (Option A): Escape is the PAUSE key, now owned by the controls overlay's
+  // own capture-phase listener below — it must NOT also fall into startPlay/fire
+  // here, or toggling pause on the attract screen would latch startPending and
+  // boot an unrequested game on resume.
   if (isPauseKey(e.key.toLowerCase())) return
   startPlay()
-  if (FIRE_KEYS.has(e.key)) fireHeld = true
+  if (bindings.fire.includes(e.code)) fireHeld = true
 })
 window.addEventListener('keyup', (e: KeyboardEvent) => {
-  if (FIRE_KEYS.has(e.key)) fireHeld = false
+  if (bindings.fire.includes(e.code)) fireHeld = false
 })
 canvas.addEventListener('pointerdown', () => {
   startPlay()
@@ -317,25 +321,45 @@ function render(state: GameState): void {
   )
 }
 
-// sa1-2: Escape toggles pause via the shared @shared/pause gate (installPauseToggle
-// guards e.repeat). Escape also releases the trackball pointer-lock (browser default),
-// so a paused cabinet frees the mouse — pressing ESC again resumes. The freeze skips
-// the fixed-step pump below; the card + colour are millipede's OWN per-cabinet NUMBERS.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-// sa1-4: the shared master-volume control, shown only while paused.
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of the old installPauseToggle + drawEscOverlay
+// MILLIPEDE_PAUSE card, and its onChange hook (setBindings) is how a saved
+// rebind reaches shell/input.ts's live `bindings` map. CONTROLS_OVERLAY_OPTS
+// carries forward the old card's colour (millipede's own bright green) and
+// dim opacity. Escape also releases the trackball pointer-lock (browser
+// default), so a paused cabinet frees the mouse — pressing ESC again resumes.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the gun/fire/start keydown handler above:
+// while the overlay is open it must consume the keydown outright
+// (stopImmediatePropagation) so a letter typed to rebind a control never also
+// lands as a name-entry keystroke or gets latched as fireHeld. Escape opens
+// the overlay from the closed state, guarded by e.repeat so an OS auto-repeat
+// can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
 const volume = mountVolumeControl({ root: document.body })
-const MILLIPEDE_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'MOUSE        AIM',
-    'SPACE        FIRE',
-    'CLICK        START',
-  ],
-  color: '#7bff5a',
-  opacity: 0.72,
-} as const
 
 // ── Fixed-timestep accumulator (ml7-5). stepGame is one ROM 60 Hz frame, so we
 //    drive it off REAL elapsed time, not the raw rAF cadence: a >60 Hz display
@@ -348,7 +372,8 @@ const frame = (ts: number): void => {
   // sa1-4: keep the volume slider's visibility in sync every animated frame — it
   // must track both entering AND leaving pause, so this runs unconditionally,
   // ahead of the freeze branch below (which skips the sim pump, not this).
-  volume.setVisible(pause.isPaused())
+  // Re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(overlay.isOpen())
   const elapsed = lastTs === null ? 0 : ts - lastTs
   lastTs = ts
 
@@ -362,10 +387,11 @@ const frame = (ts: number): void => {
   // (runFixedSteps folds the delta + carries the remainder). Input is drained once,
   // into the first sub-step, so a catch-up burst can't replay the same fire/start
   // and the mouse travel is consumed whole.
-  // sa1-2: freeze the sim while paused — skip the fixed-step pump. `lastTs` is
-  // already updated above, so paused wall-time is discarded (no catch-up burst).
+  // sa1-5: freeze the sim while the controls overlay is open — skip the
+  // fixed-step pump. `lastTs` is already updated above, so paused wall-time is
+  // discarded (no catch-up burst).
   // (Braced so a future statement added after the pump can't silently escape the guard.)
-  if (!pause.isPaused()) {
+  if (!overlay.isOpen()) {
     accMs = runFixedSteps(accMs, elapsed, (isFirst) => {
     const input: GameInput = isFirst
       ? { dh: toByte(dh), dv: toByte(dv), fire: firePending || fireHeld, start: startPending }
@@ -400,9 +426,9 @@ const frame = (ts: number): void => {
     { x: dx, y: dy, width: LOGICAL_W * scale, height: LOGICAL_H * scale },
     CABINET_CHROME,
   )
-  // sa1-2: dim the frozen field and stroke millipede's own keybind card over it —
+  // sa1-5: dim the frozen field and stroke the controls/pause overlay over it —
   // drawn AFTER the cabinet chrome so the pause dim covers the surround too.
-  if (pause.isPaused()) drawEscOverlay(ctx, canvas.width, canvas.height, MILLIPEDE_PAUSE)
+  if (overlay.isOpen()) overlay.draw(ctx, canvas.width, canvas.height)
   requestAnimationFrame(frame)
 }
 requestAnimationFrame(frame)

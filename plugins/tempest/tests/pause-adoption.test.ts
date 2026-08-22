@@ -2,29 +2,28 @@
 //
 // Story SH2-14 (epic SH2) — RED phase (Furiosa / TEA). tempest GAINS a pause:
 // today only battlezone pauses, and SH2-12 published the shared mechanism as two
-// @shared subpaths — PURE `/pause` (INITIAL_PAUSED / isPauseKey /
+// shared-library subpaths — PURE `/pause` (INITIAL_PAUSED / isPauseKey /
 // togglePaused / the generic `stepUnlessPaused<S>(step, prev, paused)` thunk gate)
 // and BROWSER `/esc-overlay` (drawEscOverlay: dim + centred keybind card via the
-// shared font). This story wires tempest onto them: an Escape keydown EDGE toggles
-// pause, the frozen-frame gate holds the sim, and drawEscOverlay draws over the
-// held world — with tempest supplying its OWN keybind card + colour (per-cabinet
-// NUMBERS), per the epic's share-the-VERB-not-the-NUMBERS rule.
+// shared font). This story wired tempest onto them: an Escape keydown EDGE
+// toggled pause, the frozen-frame gate held the sim, and drawEscOverlay drew
+// over the held world — with tempest supplying its OWN keybind card + colour
+// (per-cabinet NUMBERS), per the epic's share-the-VERB-not-the-NUMBERS rule.
+//
+// sa1-5 (Option A) supersedes AC-2: the rebindable @shared/controls-overlay now
+// OWNS pause chrome outright — Escape opens it, and it draws the dim+card itself
+// (drawControlsOverlay, not drawEscOverlay). tempest drops its drawEscOverlay
+// import entirely; @shared/pause's VERB (isPauseKey + stepUnlessPaused) is
+// unchanged and still gates the frozen frame, so AC-1's contract still holds.
 //
 // The live pause BEHAVIOUR (keydown edge → freeze → overlay in the rAF loop) is
 // AC-5, a MANUAL run — the keydown+rAF wiring has no unit seam (the standing
 // "shell IO is verified by running the game" convention; see bz2-5). So the
-// automated RED drivers pin the WIRING + the RESOLUTION CONTRACT:
-//   1. adoption   — some src module imports @shared/pause (fails: none does).
-//   2. overlay    — some src module imports @shared/esc-overlay (fails: none).
-//   3. resolution — both subpaths resolve with the expected exports; it fails if
-//                   the shared library ever drops one of them.
-//
-// MONOREPO MIGRATION: nothing here was removed. The shared library used to be a
-// version-pinned git-URL dependency, so (3) was phrased as a DEP-PIN contract
-// ("tempest is already pinned ≥ v0.9.0"). The library now lives in this repo at
-// src/shared behind the `@shared` alias, so the same two dynamic imports below
-// exercise the alias instead of the pin — the assertion's intent (the subpath
-// resolves and exports the full gate API) is unchanged.
+// automated RED drivers pin the WIRING + the resolution CONTRACT:
+//   1. adoption   — some src module imports @shared/pause.
+//   2. overlay    — some src module imports @shared/controls-overlay (sa1-5:
+//                   the pause-owning chrome, replacing esc-overlay).
+//   3. resolution — both subpaths resolve with the expected exports.
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -49,12 +48,12 @@ function importersOf(pattern: RegExp): string[] {
 }
 
 const PAUSE_IMPORT = /['"]@shared\/pause['"]/
-const ESC_OVERLAY_IMPORT = /['"]@shared\/esc-overlay['"]/
+const CONTROLS_OVERLAY_IMPORT = /['"]@shared\/controls-overlay['"]/
 
 // Runtime-only resolution: keep the specifiers out of Vite's static analysis so an
 // unresolvable subpath surfaces as ONE failing test, not a module-graph crash.
 const PAUSE_SUBPATH = '@shared/pause'
-const ESC_OVERLAY_SUBPATH = '@shared/esc-overlay'
+const CONTROLS_OVERLAY_SUBPATH = '@shared/controls-overlay'
 
 interface SharedPauseModule {
   INITIAL_PAUSED: boolean
@@ -62,13 +61,8 @@ interface SharedPauseModule {
   togglePaused: (paused: boolean) => boolean
   stepUnlessPaused: <S>(step: () => S, prev: S, paused: boolean) => S
 }
-interface SharedEscOverlayModule {
-  drawEscOverlay: (
-    ctx: CanvasRenderingContext2D,
-    w: number,
-    h: number,
-    opts: { lines: readonly string[]; color: string; opacity: number },
-  ) => void
+interface SharedControlsOverlayModule {
+  createControlsOverlay: (args: unknown) => unknown
 }
 
 describe('SH2-14 — tempest adopts @shared/pause + /esc-overlay (AC-1, AC-2)', () => {
@@ -79,14 +73,14 @@ describe('SH2-14 — tempest adopts @shared/pause + /esc-overlay (AC-1, AC-2)', 
     ).not.toHaveLength(0)
   })
 
-  it('a src module imports the shared esc-overlay', () => {
+  it('a src module imports the shared controls overlay (sa1-5: owns pause chrome)', () => {
     expect(
-      importersOf(ESC_OVERLAY_IMPORT),
-      'no src file imports @shared/esc-overlay — tempest draws no pause overlay',
+      importersOf(CONTROLS_OVERLAY_IMPORT),
+      'no src file imports @shared/controls-overlay — tempest draws no pause overlay',
     ).not.toHaveLength(0)
   })
 
-  it('@shared resolves /pause with the full gate API', async () => {
+  it('@shared/pause resolves with the full gate API', async () => {
     const pause = (await import(/* @vite-ignore */ PAUSE_SUBPATH)) as unknown as SharedPauseModule
     expect(pause.INITIAL_PAUSED, 'the cabinet boots into play, not frozen').toBe(false)
     expect(typeof pause.isPauseKey, 'isPauseKey must be exported').toBe('function')
@@ -100,8 +94,13 @@ describe('SH2-14 — tempest adopts @shared/pause + /esc-overlay (AC-1, AC-2)', 
     expect(stepCalls, 'a paused frame must not call the step thunk').toBe(0)
   })
 
-  it('@shared resolves /esc-overlay with drawEscOverlay', async () => {
-    const overlay = (await import(/* @vite-ignore */ ESC_OVERLAY_SUBPATH)) as unknown as SharedEscOverlayModule
-    expect(typeof overlay.drawEscOverlay, 'drawEscOverlay must be exported by @shared/esc-overlay').toBe('function')
+  it('@shared/controls-overlay resolves with createControlsOverlay', async () => {
+    const overlay = (await import(
+      /* @vite-ignore */ CONTROLS_OVERLAY_SUBPATH
+    )) as unknown as SharedControlsOverlayModule
+    expect(
+      typeof overlay.createControlsOverlay,
+      'createControlsOverlay must be exported by @shared/controls-overlay',
+    ).toBe('function')
   })
 })

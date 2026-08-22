@@ -25,6 +25,20 @@
 
 import { createGame, type GameState } from '../core/game-state'
 import { stepInitials, insertHighScore, MILLI_INITIALS_LENGTH } from '../core/highscore'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
+
+// sa1-5: millipede's one discrete keyboard control (FIRE) is now
+// CONTROL_MANIFEST's default (controls.ts), resolved through @shared/keybind
+// so a player's saved rebind (the controls overlay, wired in main.ts)
+// overrides it. setBindings is the overlay's onChange hook — it swaps this
+// module's live map in place. main.ts reads `bindings.fire` against the
+// keydown/keyup e.code instead of the old hard-coded FIRE_KEYS set. The
+// trackball/mouse/pointer-lock path below is analog and untouched.
+export let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
+}
 
 interface EventTarget {
   addEventListener(type: string, listener: (event: Record<string, unknown>) => void): void

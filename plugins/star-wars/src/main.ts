@@ -12,12 +12,13 @@ import {
   makeHighScoreStorage,
   makeHighScoreRowGuard,
 } from '@shared/highscore'
-import { createInputController } from './shell/input'
+import { createInputController, setBindings } from './shell/input'
 import { createLoop } from '@shared/loop'
-import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from '@shared/pause'
-import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { isPauseKey, stepUnlessPaused } from '@shared/pause'
+import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 import { mountVolumeControl } from '@shared/volume-ui'
-import { drawEscOverlay } from '@shared/esc-overlay'
 import { CABINET_CHROME } from '@shared/cabinet'
 import { createAudioEngine } from './shell/audio'
 import { render } from './shell/render'
@@ -123,27 +124,40 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (/^[a-zA-Z]$/.test(e.key) || e.key === 'Backspace') state = enterInitial(state, e.key)
 })
 
-// SH2-14: Escape toggles pause via the shared @shared/pause gate — the
-// cabinet-wide VERB. Edge, not level (guard e.repeat) so a held key can't
-// machine-gun the toggle. The freeze itself is stepUnlessPaused in the loop below.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-// sa1-4: the shared master-volume control, shown only while paused.
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of a bare drawEscOverlay card, and its onChange
+// hook (setBindings) is how a saved rebind reaches input.ts's live map.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
 const volume = mountVolumeControl({ root: document.body })
 
-// Per-cabinet NUMBERS for the pause card: star-wars' yoke keybinds, its green
-// cockpit-HUD chrome, and the dim alpha. Copy/colour/opacity are playtest-tunable.
-const STAR_WARS_PAUSE = {
-  lines: [
-    'PAUSED',
-    '',
-    'ESC          RESUME',
-    'MOUSE        AIM',
-    'SPACE        FIRE',
-    'ENTER        START',
-  ],
-  color: '#00e600',
-  opacity: 0.72,
-} as const
+// Capture-phase so this runs BEFORE the initials-entry handler above: while the
+// overlay is open it must consume the keydown outright (stopImmediatePropagation)
+// so a letter typed to rebind a control never also lands in the high-score
+// initials field or the shell's own key state. Escape opens the overlay from the
+// closed state, guarded by e.repeat so an OS auto-repeat can't machine-gun it.
+window.addEventListener(
+  'keydown',
+  (e: KeyboardEvent) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
 
 const loop = createLoop(
   (dt) => {
@@ -154,7 +168,7 @@ const loop = createLoop(
     // below (they must not re-fire against a stale, un-advanced state).
     // sample(state.mode): the mouse click is contextual (pt1-10) — a click on the
     // attract screen means "start" (like Enter), and the trigger everywhere else.
-    state = stepUnlessPaused(() => stepGame(state, input.sample(state.mode), dt), state, pause.isPaused())
+    state = stepUnlessPaused(() => stepGame(state, input.sample(state.mode), dt), state, overlay.isOpen())
     if (state === prev) return
     // Play one sound per gameplay event the core emitted this frame. The pump
     // lives here (not loop.ts) because the game state — and its `events` channel
@@ -301,8 +315,9 @@ const loop = createLoop(
     }
   },
   () => {
-    // sa1-4: keep the volume slider's visibility in sync every animated frame.
-    volume.setVisible(pause.isPaused())
+    // sa1-4: keep the volume slider's visibility in sync every animated frame,
+    // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+    volume.setVisible(overlay.isOpen())
     ctx.save()
     ctx.scale(dpr, dpr)
     render(ctx, state, W, H, highScores)
@@ -310,9 +325,9 @@ const loop = createLoop(
     // drawn only when toggled on. The `import.meta.env.DEV &&` guard lets Vite
     // tree-shake it (and drawDebugOverlay) out of a production build entirely.
     if (import.meta.env.DEV && debugOverlay) drawDebugOverlay(ctx, state, W, H)
-    // SH2-14: the pause overlay dims the frozen cockpit and draws the keybind card
-    // over it — inside the dpr-scaled block so it shares render()'s CSS-pixel space.
-    if (pause.isPaused()) drawEscOverlay(ctx, W, H, STAR_WARS_PAUSE)
+    // sa1-5: the controls overlay dims the frozen cockpit and draws the pause/rebind
+    // chrome over it — inside the dpr-scaled block so it shares render()'s CSS-pixel space.
+    if (overlay.isOpen()) overlay.draw(ctx, W, H)
     ctx.restore()
   },
 )

@@ -280,7 +280,11 @@ export async function bootMillipedeShell(): Promise<ShellHarness> {
       }
       return makeCanvas().el // a scratch canvas — created, but not captured
     },
+    // sa1-4: ensureStyle's de-dupe guard (@shared/volume-ui.ts) — always "not yet
+    // injected" since the stub never inserts a node getElementById could find.
+    getElementById: (): null => null,
     body: makeGenericElement(),
+    head: makeGenericElement(),
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

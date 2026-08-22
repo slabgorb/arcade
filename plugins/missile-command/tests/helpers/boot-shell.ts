@@ -150,11 +150,15 @@ export async function bootMcShell(): Promise<ShellHarness> {
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
     createElement: (): unknown => makeGenericElement(),
+    // sa1-4: ensureStyle's de-dupe guard (@shared/volume-ui.ts) — always "not yet
+    // injected" since the stub never inserts a node getElementById could find.
+    getElementById: (): null => null,
     pointerLockElement: null,
     // sa1-1: main.ts paints the page body the shared cabinet-chrome colour at boot
     // (the game letterboxes the canvas element, so the visible bars are the body bg).
     // A deferred module always has document.body in the browser; model it here.
     body: makeGenericElement(),
+    head: makeGenericElement(),
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

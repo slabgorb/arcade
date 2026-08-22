@@ -196,6 +196,9 @@ export function installShellDom(): ShellHarness {
   // the canvas — mountVolumeControl (@shared/volume-ui) builds a <div>/<label>/
   // <input> chrome tree, none of which need canvas members, but all of which
   // need appendChild/setAttribute/className/hidden/value to boot without throwing.
+  // `remove` backs VolumeControlHandle.destroy(); `id` is a plain writable
+  // property (volume-ui.ts sets `style.id = STYLE_ID`) — no getter needed since
+  // this is an untyped stub object, not a real Element.
   const makeGenericElement = (): Record<string, unknown> => {
     const el: Record<string, unknown> = {
       className: '',
@@ -207,6 +210,7 @@ export function installShellDom(): ShellHarness {
         return child
       },
       setAttribute: (): void => {},
+      remove: (): void => {},
     }
     Object.assign(el, listen(el))
     return el
@@ -214,13 +218,23 @@ export function installShellDom(): ShellHarness {
 
   const canvas = makeCanvas()
   const body = makeGenericElement()
+  // sa1-4: the <head> mountVolumeControl's one-time <style> injection appends to
+  // (ensureStyle, @shared/volume-ui.ts) — a second generic element, distinct
+  // from `body`, so a real appendChild call on either is observable separately.
+  const head = makeGenericElement()
   const g = globalThis as unknown as Record<string, unknown>
 
   const documentStub: Record<string, unknown> = {
     querySelector: (): unknown => canvas,
     createElement: (tag?: string): unknown => (tag === 'canvas' ? makeCanvas() : makeGenericElement()),
+    // sa1-4: ensureStyle's de-dupe guard — the stub never actually inserts a
+    // node the next call could find, so it always reports "not yet injected"
+    // and mountVolumeControl proceeds to build the <style> unconditionally.
+    // Harmless: nothing here asserts the style is injected at most once.
+    getElementById: (): null => null,
     pointerLockElement: null,
     body,
+    head,
   }
   Object.assign(documentStub, listen(documentStub))
   g.document = documentStub

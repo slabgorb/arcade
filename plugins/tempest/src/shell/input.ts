@@ -2,6 +2,8 @@
 import { Input } from '../core/input'
 import { ROM_FPS, SPIN_SENSITIVITY } from '../core/rules'
 import { chaserRimFramesPerLane } from '../core/enemies/interpreter'
+import { resolveBindings, type BindingMap } from '@shared/keybind'
+import { CONTROL_MANIFEST, bindingStore } from './controls'
 
 // ─── Both controls are SPINNERS. Neither is a per-frame tick. (tp1-1) ────────
 //
@@ -104,6 +106,17 @@ export function keyboardTurnRate(): number {
   return KEY_SPIN_RATE * SPIN_SENSITIVITY
 }
 
+// sa1-5: the keyboard's five discrete controls (left/right/fire/zap/start) are
+// now CONTROL_MANIFEST's defaults (controls.ts), and the live map below is
+// resolved through @shared/keybind so a player's saved rebind (the controls
+// overlay, wired in main.ts) overrides them. setBindings is the overlay's
+// onChange hook — it swaps this module's live map in place. The WHEEL spinner
+// is analog and reads no binding; it is untouched below.
+let bindings: BindingMap = resolveBindings(CONTROL_MANIFEST, bindingStore.load())
+export function setBindings(map: BindingMap): void {
+  bindings = map
+}
+
 export interface InputController {
   /**
    * Advance the held-key spinner by one sub-step of SIM time. Wired to the loop's
@@ -157,26 +170,26 @@ export function createInputController(target: HTMLElement): InputController {
 
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.repeat) return
-    if (e.key === 'ArrowLeft') leftHeld = true
-    else if (e.key === 'ArrowRight') rightHeld = true
-    else if (e.key === ' ') {
-      // Hold space to autofire, mirroring held mouse — frees the hand on the
+    if (bindings.left.includes(e.code)) leftHeld = true
+    else if (bindings.right.includes(e.code)) rightHeld = true
+    else if (bindings.fire.includes(e.code)) {
+      // Hold fire to autofire, mirroring held mouse — frees the hand on the
       // wheel. The `e.repeat` guard above means we only see the initial press;
       // sample() drives the repeat cadence off `spaceHeld`.
       spaceHeld = true
       fireQueued = true
       e.preventDefault()
-    } else if (e.key === 'Shift') {
+    } else if (bindings.zap.includes(e.code)) {
       // Superzapper: a single edge per press. The `e.repeat` guard above keeps
-      // a held Shift from re-triggering; sample() consumes the edge each frame.
+      // a held zap key from re-triggering; sample() consumes the edge each frame.
       zapQueued = true
-    } else if (e.key === 'Enter') startQueued = true
+    } else if (bindings.start.includes(e.code)) startQueued = true
   })
 
   window.addEventListener('keyup', (e: KeyboardEvent) => {
-    if (e.key === 'ArrowLeft') leftHeld = false
-    else if (e.key === 'ArrowRight') rightHeld = false
-    else if (e.key === ' ') spaceHeld = false
+    if (bindings.left.includes(e.code)) leftHeld = false
+    else if (bindings.right.includes(e.code)) rightHeld = false
+    else if (bindings.fire.includes(e.code)) spaceHeld = false
   })
 
   return {

@@ -13,14 +13,23 @@
 // one of the four that adopt NOTHING today — so it has no pause at all, which is
 // the real gap this story closes.
 //
+// sa1-5 (Option A) supersedes AC-2: the rebindable @shared/controls-overlay now
+// OWNS pause chrome outright — Escape opens it, and it draws the dim+card itself
+// (drawControlsOverlay, not drawEscOverlay). joust drops its drawEscOverlay
+// import entirely; @shared/pause's VERB (isPauseKey — stepUnlessPaused's thunk
+// gate is exercised by the module-resolution assertion below, not by joust's own
+// pumpFrames-based freeze gate) is unchanged and still gates the frozen frame, so
+// AC-1's contract still holds.
+//
 // The live pause BEHAVIOUR (keydown edge → freeze → overlay in the rAF loop) and
 // the "card matches this cabinet's aesthetic, not battlezone's" look are AC-5, a
 // MANUAL run — the keydown+rAF wiring has no unit seam (the standing "shell IO is
 // verified by running the game" convention; see bz2-5, and the identical asteroids
 // SH2-14 adoption driver). So the automated RED drivers pin the WIRING + the
 // resolution CONTRACT:
-//   1. adoption   — some src module imports @shared/pause (fails today: none does).
-//   2. overlay    — some src module imports @shared/esc-overlay (fails today: none).
+//   1. adoption   — some src module imports @shared/pause.
+//   2. overlay    — some src module imports @shared/controls-overlay (sa1-5:
+//                   the pause-owning chrome, replacing esc-overlay).
 //   3. resolution — both subpaths resolve with the expected exports.
 //
 // NOTE (jt9-30 guard): this file cites SYMBOLS and story ids only — no contiguous
@@ -52,12 +61,12 @@ function importersOf(pattern: RegExp): string[] {
 // so a commented-out / dead import or a doc-comment quoting the specifier can NOT
 // false-pass the adoption assertion — only a live import statement counts.
 const PAUSE_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]@shared\/pause['"]/m
-const ESC_OVERLAY_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]@shared\/esc-overlay['"]/m
+const CONTROLS_OVERLAY_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]@shared\/controls-overlay['"]/m
 
 // Runtime-only resolution: keep the specifiers out of Vite's static analysis so an
 // unresolvable subpath surfaces as ONE failing test, not a module-graph crash.
 const PAUSE_SUBPATH = '@shared/pause'
-const ESC_OVERLAY_SUBPATH = '@shared/esc-overlay'
+const CONTROLS_OVERLAY_SUBPATH = '@shared/controls-overlay'
 
 interface SharedPauseModule {
   INITIAL_PAUSED: boolean
@@ -65,16 +74,11 @@ interface SharedPauseModule {
   togglePaused: (paused: boolean) => boolean
   stepUnlessPaused: <S>(step: () => S, prev: S, paused: boolean) => S
 }
-interface SharedEscOverlayModule {
-  drawEscOverlay: (
-    ctx: CanvasRenderingContext2D,
-    w: number,
-    h: number,
-    opts: { lines: readonly string[]; color: string; opacity: number },
-  ) => void
+interface SharedControlsOverlayModule {
+  createControlsOverlay: (args: unknown) => unknown
 }
 
-describe('sa1-2 — joust adopts @shared/pause + /esc-overlay (AC-1, AC-2)', () => {
+describe('sa1-2 — joust adopts @shared/pause + @shared/controls-overlay (AC-1, AC-2)', () => {
   it('a src module imports the shared pause gate', () => {
     expect(
       importersOf(PAUSE_IMPORT),
@@ -82,10 +86,10 @@ describe('sa1-2 — joust adopts @shared/pause + /esc-overlay (AC-1, AC-2)', () 
     ).not.toHaveLength(0)
   })
 
-  it('a src module imports the shared esc-overlay', () => {
+  it('a src module imports the shared controls overlay (sa1-5: owns pause chrome)', () => {
     expect(
-      importersOf(ESC_OVERLAY_IMPORT),
-      'no src file imports @shared/esc-overlay — joust draws no pause overlay',
+      importersOf(CONTROLS_OVERLAY_IMPORT),
+      'no src file imports @shared/controls-overlay — joust draws no pause overlay',
     ).not.toHaveLength(0)
   })
 
@@ -103,8 +107,13 @@ describe('sa1-2 — joust adopts @shared/pause + /esc-overlay (AC-1, AC-2)', () 
     expect(stepCalls, 'a paused frame must not call the step thunk').toBe(0)
   })
 
-  it('@shared/esc-overlay resolves with drawEscOverlay', async () => {
-    const overlay = (await import(/* @vite-ignore */ ESC_OVERLAY_SUBPATH)) as unknown as SharedEscOverlayModule
-    expect(typeof overlay.drawEscOverlay, 'drawEscOverlay must be exported by @shared/esc-overlay').toBe('function')
+  it('@shared/controls-overlay resolves with createControlsOverlay', async () => {
+    const overlay = (await import(
+      /* @vite-ignore */ CONTROLS_OVERLAY_SUBPATH
+    )) as unknown as SharedControlsOverlayModule
+    expect(
+      typeof overlay.createControlsOverlay,
+      'createControlsOverlay must be exported by @shared/controls-overlay',
+    ).toBe('function')
   })
 })

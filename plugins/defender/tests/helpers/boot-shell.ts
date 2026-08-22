@@ -133,7 +133,11 @@ export function installShellDom(): BootHarness {
   g.document = {
     querySelector: () => canvas,
     createElement: () => makeGenericElement(),
+    // sa1-4: ensureStyle's de-dupe guard (@shared/volume-ui.ts) — always "not yet
+    // injected" since the stub never inserts a node getElementById could find.
+    getElementById: () => null,
     body: makeGenericElement(),
+    head: makeGenericElement(),
   }
 
   g.window = {

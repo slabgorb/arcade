@@ -54,6 +54,18 @@
 // (MC-ANCH-W3MAIN-615, `.SBTTL PAUSE STATE`) is already committed by the rom-study
 // bootstrap. AC5 GUARDS that citation (it reddens only if the anchor is deleted); it
 // drives no Dev work. Dev writes NO claim for mc6-3.
+//
+// ─── sa1-5 (Option A) SUPERSEDES AC4 ──────────────────────────────────────────
+// The rebindable @shared/controls-overlay now OWNS pause chrome outright (Escape
+// opens it, main.ts draws it) — `drawPauseOverlay`/`drawEscOverlay` are DROPPED from
+// shell/render.ts entirely, and main.ts's real Escape keydown never reaches
+// `pauseFromKey` any more (the overlay's capture-phase listener consumes it first),
+// so `state.phase` no longer becomes 'pause' from real input. AC1–AC3 below are
+// UNCHANGED and still hold: `togglePause`, `stepGame`'s freeze branch and
+// `pauseFromKey` are all still real, still correct, still ROM-cited pure functions —
+// only the WIRING that reached them moved to the overlay (see main.ts's sa1-5
+// comment). AC4 is rewritten below to pin the new, truthful contract: render.ts draws
+// no overlay of its own, and main.ts is the module that imports @shared/controls-overlay.
 
 import { describe, it, expect } from 'vitest'
 import { createPlayGame, stepGame, type GameState } from '../src/core/game.js'
@@ -73,11 +85,9 @@ import { dirname, join } from 'node:path'
 // new surface is still absent (the mc6-1/mc6-2 state/input loader idiom).
 const STATE_SPECIFIER = '../src/core/state.js'
 const INPUT_SPECIFIER = '../src/shell/input.js'
-const RENDER_SPECIFIER = '../src/shell/render.js'
 
 type TogglePause = (phase: Phase) => Phase
 type PauseFromKey = (key: string, state: GameState) => GameState
-type DrawPauseOverlay = (ctx: CanvasRenderingContext2D, w: number, h: number) => void
 
 async function loadTogglePause(): Promise<TogglePause> {
   const mod = (await import(/* @vite-ignore */ STATE_SPECIFIER)) as Record<string, unknown>
@@ -104,19 +114,6 @@ async function loadPauseFromKey(): Promise<PauseFromKey> {
     )
   }
   return mod.pauseFromKey as PauseFromKey
-}
-
-async function loadDrawPauseOverlay(): Promise<DrawPauseOverlay> {
-  const mod = (await import(/* @vite-ignore */ RENDER_SPECIFIER)) as Record<string, unknown>
-  if (typeof mod.drawPauseOverlay !== 'function') {
-    throw new Error(
-      'drawPauseOverlay not built yet — GREEN (Loki) adds `drawPauseOverlay(ctx, w, h)` to ' +
-        'src/shell/render.ts REUSING `drawEscOverlay` from @shared/esc-overlay (the battlezone ' +
-        'precedent): a full-viewport dim panel + a centred keybind card over the frozen scene, with ' +
-        "MC's own card copy/colour/opacity. drawFrame must call it when state.phase === 'pause'.",
-    )
-  }
-  return mod.drawPauseOverlay as DrawPauseOverlay
 }
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
@@ -348,36 +345,62 @@ describe('mc6-3 AC3 — pauseFromKey binds the pause key (reuses @shared/pause)'
 })
 
 // ═════════════════════════════════════════════════════════════════════════════
-// AC4 — the shared pause overlay: drawPauseOverlay reuses @shared/esc-overlay's dim
-//        panel, and drawFrame draws it ONLY when the phase is 'pause'. Behavioural
-//        via a recording ctx — no source-text grep (render is node-importable).
+// AC4 (sa1-5 rewrite) — pause chrome moved OUT of render.ts and into the
+// rebindable @shared/controls-overlay, which main.ts wires up. Two truthful
+// halves: (a) render.ts no longer draws a pause overlay of its own — the
+// SAME frame paints for phase 'pause' and phase 'play' — and (b) main.ts is
+// the module that actually imports @shared/controls-overlay and can build one.
+// The live keydown-edge -> overlay.open() -> frozen-frame BEHAVIOUR has no
+// unit seam of its own (the fleet's standing "shell IO is verified by running
+// the game" convention — see the joust/defender/centipede sa1-5 adoption
+// tests) so it is not re-pinned here.
 // ═════════════════════════════════════════════════════════════════════════════
 const W = 640
 const H = 480
 
-describe('mc6-3 AC4 — the frozen scene is dimmed by the shared pause overlay', () => {
-  it('drawPauseOverlay dims the FULL viewport (reuses drawEscOverlay: fillRect(0,0,w,h))', async () => {
-    const drawPauseOverlay = await loadDrawPauseOverlay()
-    const { ctx, fullViewportFills } = recordingCtx(W, H)
-    drawPauseOverlay(ctx, W, H)
-    // drawEscOverlay's first act is a full-viewport dim panel — so at least one
-    // fillRect(0,0,W,H) must have been issued.
-    expect(fullViewportFills()).toBeGreaterThanOrEqual(1)
+describe('sa1-5 AC4 — render.ts draws no pause chrome of its own any more', () => {
+  it('drawPauseOverlay no longer exists on shell/render.ts', async () => {
+    const render = (await import('../src/shell/render.js')) as Record<string, unknown>
+    expect(
+      'drawPauseOverlay' in render,
+      'drawPauseOverlay should be GONE from shell/render.ts — sa1-5 (Option A) moves pause ' +
+        'chrome to @shared/controls-overlay, drawn by main.ts, not render.ts',
+    ).toBe(false)
   })
 
-  it('drawFrame paints the overlay when paused and NOT when playing', async () => {
-    // A live frame: clearField's sky is the ONLY full-viewport fill.
+  it('drawFrame paints the SAME scene for phase "pause" as for phase "play" (no overlay of its own)', () => {
+    // Before sa1-5 a paused frame drew strictly MORE full-viewport fills (the dim
+    // panel). Now render.ts does not know about the overlay at all, so the two
+    // phases must paint byte-identically many full-viewport fills.
     const live = recordingCtx(W, H)
     drawFrame(live.ctx, midBattle('play'), W, H)
     const playFills = live.fullViewportFills()
 
-    // A paused frame: same scene PLUS the overlay's dim panel — strictly more.
     const held = recordingCtx(W, H)
     drawFrame(held.ctx, midBattle('pause'), W, H)
     const pauseFills = held.fullViewportFills()
 
     expect(playFills).toBeGreaterThanOrEqual(1) // the sky clear
-    expect(pauseFills).toBeGreaterThan(playFills) // the added overlay dim
+    expect(pauseFills).toBe(playFills) // no added overlay dim — render.ts is chrome-free
+  })
+})
+
+describe('sa1-5 AC4 — main.ts is the module that owns the rebindable pause overlay', () => {
+  it('src/main.ts imports @shared/controls-overlay', () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+    const main = readFileSync(join(root, 'src', 'main.ts'), 'utf8')
+    expect(
+      main,
+      'src/main.ts no longer imports @shared/controls-overlay — sa1-5 wires the rebindable ' +
+        'pause/controls overlay there, replacing the old render.ts drawPauseOverlay',
+    ).toMatch(/^\s*import\b[^\n]*\bfrom\s+['"]@shared\/controls-overlay['"]/m)
+  })
+
+  it('@shared/controls-overlay resolves with createControlsOverlay', async () => {
+    const overlay = (await import('@shared/controls-overlay')) as unknown as {
+      createControlsOverlay: (args: unknown) => unknown
+    }
+    expect(typeof overlay.createControlsOverlay, 'createControlsOverlay must be exported').toBe('function')
   })
 })
 

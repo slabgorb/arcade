@@ -34,12 +34,14 @@ import { enterInitial } from './core/sim'
 import { attractLines, gameOverLines, entryLines } from './core/screens'
 import { inGameAlert, alertFlashOn } from './core/alerts'
 import { MESSAGES } from './core/text'
-import { createKeyboardTreads } from './shell/input'
-import { INITIAL_PAUSED, isPauseKey, stepUnlessPaused } from './shell/pause'
-import { mountCanvas, installAudioUnlock, installPauseToggle } from '@shared/host-helpers'
+import { createKeyboardTreads, setBindings } from './shell/input'
+import { isPauseKey, stepUnlessPaused } from './shell/pause'
+import { mountCanvas, installAudioUnlock } from '@shared/host-helpers'
 import { mountVolumeControl } from '@shared/volume-ui'
 import { makeHighScoreStorage, isHighScoreRow } from '@shared/highscore'
 import { drawCabinetChrome, CABINET_CHROME } from '@shared/cabinet'
+import { createControlsOverlay } from '@shared/controls-overlay'
+import { CONTROL_MANIFEST, bindingStore, CONTROLS_OVERLAY_OPTS } from './shell/controls'
 import { createAudioEngine } from './shell/audio'
 import { playEventSounds, updateContinuousSounds } from './shell/audio-dispatch'
 import { applyLetterbox } from './shell/viewport'
@@ -54,7 +56,6 @@ import {
   drawPeriscope,
   drawHorizonBand,
   drawMessage,
-  drawPauseOverlay,
   drawControlIndicator,
   drawVolcanoRocks,
 } from './shell/render'
@@ -134,14 +135,42 @@ const highScoreStorage = makeHighScoreStorage('battlezone', isHighScoreRow, '')
 let game: GameState = { ...initGame(Date.now() >>> 0), highScores: highScoreStorage.load() }
 let wasAttract = true
 
-// bz2-5: Escape toggles pause. Edge, not level (guard e.repeat) so a held key
-// can't machine-gun the toggle — the same one-press-one-event discipline as the
-// bz1-10 start latch (shell/input.ts). The freeze itself lives in stepUnlessPaused.
-// sc1-1: the toggle is the shared helper, fed battlezone's OWN isPauseKey (which
-// shell/pause re-exports verbatim from @shared/pause). The 4-arg stepUnlessPaused
-// gate and the local drawPauseOverlay stay battlezone's — only the listener moved.
-const pause = installPauseToggle(window, isPauseKey, INITIAL_PAUSED)
-// sa1-4: the shared master-volume control, shown only while paused.
+// sa1-5 (Option A): the controls overlay OWNS pause — Escape opens the
+// rebind/pause chrome instead of the old drawPauseOverlay keybind card, and its
+// onChange hook (setBindings) is how a saved rebind reaches input.ts's live map.
+const overlay = createControlsOverlay({
+  manifest: CONTROL_MANIFEST,
+  store: bindingStore,
+  opts: CONTROLS_OVERLAY_OPTS,
+  onChange: setBindings,
+})
+
+// Capture-phase so this runs BEFORE the initials-entry handler below and
+// installHeldKeys inside createKeyboardTreads: while the overlay is open it
+// must consume the keydown outright (stopImmediatePropagation) so a letter
+// typed to rebind a control never also lands in the high-score initials field
+// or gets latched as a held game key. Escape opens the overlay from the closed
+// state, guarded by e.repeat so an OS auto-repeat can't machine-gun it. isPauseKey
+// is battlezone's OWN predicate (shell/pause re-exports it verbatim from
+// @shared/pause) — the gate this listener guards is unchanged from bz2-5.
+window.addEventListener(
+  'keydown',
+  (e) => {
+    if (overlay.isOpen()) {
+      overlay.handleKey(e)
+      e.stopImmediatePropagation()
+      return
+    }
+    if (isPauseKey(e.key.toLowerCase()) && !e.repeat) {
+      overlay.open()
+      e.stopImmediatePropagation()
+      e.preventDefault()
+    }
+  },
+  true,
+)
+// sa1-4: the shared master-volume control, shown only while the controls
+// overlay (sa1-5's pause) is open.
 const volume = mountVolumeControl({ root: document.body })
 
 // Initials entry (SH2-13): typed letters and Backspace are edge events, not
@@ -165,7 +194,7 @@ function stepFrame(dt: number): void {
   frameInput = treads.read()
   framePrevPose = game.player // pre-step pose — a blocked translation leaves it unchanged
   const prev = game
-  game = stepUnlessPaused(game, frameInput, dt, pause.isPaused())
+  game = stepUnlessPaused(game, frameInput, dt, overlay.isOpen())
 
   // bz2-5: a paused sub-step is frozen (game === prev) — the sim did not advance,
   // so the shell side-effects must NOT fire. Replaying the held step's one-shot
@@ -188,8 +217,9 @@ function stepFrame(dt: number): void {
 }
 
 function renderFrame(): void {
-  // sa1-4: keep the volume slider's visibility in sync every animated frame.
-  volume.setVisible(pause.isPaused())
+  // sa1-4: keep the volume slider's visibility in sync every animated frame,
+  // re-keyed to the overlay's open state (sa1-5 redefined "paused").
+  volume.setVisible(overlay.isOpen())
   const w = canvas.width
   const h = canvas.height
   const aspect = w / h
@@ -352,9 +382,10 @@ function renderFrame(): void {
     drawScreenLines(ctx, lines, w, h)
   }
 
-  // bz2-5: the pause overlay sits above the whole scene — the frozen world shows
-  // dimmed behind the keybind card. Drawn last so nothing paints over it.
-  if (pause.isPaused()) drawPauseOverlay(ctx, w, h)
+  // sa1-5: the controls/rebind overlay sits above the whole scene — the frozen
+  // world shows dimmed behind the menu/keybind chrome. Drawn last so nothing
+  // paints over it.
+  if (overlay.isOpen()) overlay.draw(ctx, w, h)
 }
 
 const loop = createLoop(stepFrame, renderFrame)
