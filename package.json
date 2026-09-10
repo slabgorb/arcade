@@ -22,6 +22,6 @@
     "rust-just": "1.57.0",
     "typescript": "^5.4.0",
     "vite": "^8.1.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   }
 }
